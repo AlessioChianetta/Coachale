@@ -43,6 +43,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
@@ -147,6 +148,8 @@ interface ProactiveLead {
   welcomeEmailSent?: boolean;
   welcomeEmailSentAt?: string;
   welcomeEmailError?: string;
+  nurturingStartDate?: string;
+  nurturingEmailsSent?: number;
   metadata?: {
     tags?: string[];
     notes?: string;
@@ -651,6 +654,40 @@ export default function ProactiveLeadsPage() {
     onError: (error: Error) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
       setTriggeringLeadId(null);
+    },
+  });
+
+  // Toggle nurturing mutation
+  const toggleNurturingMutation = useMutation({
+    mutationFn: async ({ leadId, enable }: { leadId: string; enable: boolean }) => {
+      const endpoint = enable 
+        ? `/api/proactive-leads/${leadId}/nurturing/start`
+        : `/api/proactive-leads/${leadId}/nurturing/stop`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to toggle nurturing");
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      toast({
+        title: variables.enable ? "✅ Nurturing Attivato" : "⏹️ Nurturing Disattivato",
+        description: variables.enable 
+          ? "Il lead riceverà email nurturing per 365 giorni."
+          : "Le email nurturing sono state disattivate per questo lead.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -1597,6 +1634,7 @@ export default function ProactiveLeadsPage() {
                           <TableHead>Obiettivo</TableHead>
                           <TableHead>Prossimo Contatto</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Nurturing</TableHead>
                           <TableHead className="text-right">Azioni</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1652,6 +1690,30 @@ export default function ProactiveLeadsPage() {
                                   <StatusIcon className="h-3.5 w-3.5" />
                                   {config?.label || "In Attesa"}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {lead.email ? (
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={lead.nurturingEnabled || false}
+                                      onCheckedChange={(checked) => {
+                                        toggleNurturingMutation.mutate({ leadId: lead.id, enable: checked });
+                                      }}
+                                      disabled={toggleNurturingMutation.isPending}
+                                    />
+                                    {lead.nurturingEnabled ? (
+                                      <Badge className="bg-green-500 text-white border-green-600">
+                                        Giorno {lead.nurturingEmailsSent || 0}/365
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-slate-300 text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+                                        Inattivo
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-400">Email mancante</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
@@ -1878,6 +1940,72 @@ export default function ProactiveLeadsPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email || ""}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="mario.rossi@email.com"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Opzionale. Necessaria per inviare email di benvenuto e nurturing.
+                  </p>
+                </div>
+
+                {/* Email Options - Solo se email è compilata */}
+                {formData.email && formData.email.trim() !== "" && (
+                  <div className="space-y-4 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-emerald-600" />
+                      <h4 className="font-semibold text-emerald-900 dark:text-emerald-100">Opzioni Email</h4>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="welcomeEmailEnabled"
+                          checked={formData.welcomeEmailEnabled}
+                          onCheckedChange={(checked) => 
+                            setFormData({ ...formData, welcomeEmailEnabled: checked === true })
+                          }
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor="welcomeEmailEnabled" className="text-sm font-medium cursor-pointer">
+                            Invia email di benvenuto
+                          </Label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Invia una email di benvenuto insieme al primo messaggio WhatsApp
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="nurturingEnabled"
+                          checked={formData.nurturingEnabled}
+                          onCheckedChange={(checked) => 
+                            setFormData({ ...formData, nurturingEnabled: checked === true })
+                          }
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor="nurturingEnabled" className="text-sm font-medium cursor-pointer">
+                            Attiva email nurturing (365 giorni)
+                          </Label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Invia automaticamente una email di valore al giorno per un anno
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Agente WhatsApp */}
                 <div className="space-y-2">

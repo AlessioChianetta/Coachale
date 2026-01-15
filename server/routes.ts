@@ -69,6 +69,7 @@ import momentumRouter from "./routes/momentum";
 import proactiveLeadsRouter from "./routes/proactive-leads";
 import leadNurturingRouter from "./routes/lead-nurturing";
 import publicUnsubscribeRouter from "./routes/public-unsubscribe";
+import nurturingTrackingRouter from "./routes/nurturing-tracking";
 import campaignsRouter from "./routes/campaigns";
 import customTemplatesRouter from "./routes/whatsapp/custom-templates";
 import templateAssignmentsRouter from "./routes/whatsapp/template-assignments-router";
@@ -12166,6 +12167,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Public Unsubscribe routes (GDPR compliance - no auth required)
   app.use("/", publicUnsubscribeRouter);
+  
+  // Email tracking routes (no auth required - for tracking pixels and click redirects)
+  app.use("/", nurturingTrackingRouter);
 
   // WhatsApp Template Export to Twilio routes
   app.use("/api", twilioTemplateExportRouter);

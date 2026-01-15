@@ -58,7 +58,10 @@ import {
   ChevronDown,
   ChevronUp,
   Inbox,
-  ArrowRight
+  ArrowRight,
+  CalendarDays,
+  MousePointer,
+  Search
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
@@ -1511,6 +1514,17 @@ export default function ConsultantAIConfigPage() {
   const [customBusinessContext, setCustomBusinessContext] = useState("");
   const [customGenerationSuccess, setCustomGenerationSuccess] = useState<{ count: number } | null>(null);
   
+  // Nurturing 365 State
+  const [businessDescription, setBusinessDescription] = useState("");
+  const [referenceEmail, setReferenceEmail] = useState("");
+  const [preferredTone, setPreferredTone] = useState<"professionale" | "amichevole" | "motivazionale">("professionale");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 365, percent: 0 });
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateCategory, setTemplateCategory] = useState<string>("all");
+  const [templatePage, setTemplatePage] = useState(1);
+  const [expandedTemplate, setExpandedTemplate] = useState<number | null>(null);
+  
   const { data: customJourneyData, isLoading: customJourneyLoading } = useQuery<{
     templates: EmailJourneyTemplate[];
     isCustom: boolean;
@@ -1539,6 +1553,138 @@ export default function ConsultantAIConfigPage() {
     if (customJourneyData?.businessContext) {
       setCustomBusinessContext(customJourneyData.businessContext);
     }
+  });
+
+  // Nurturing 365 Queries
+  const { data: nurturingConfig, isLoading: nurturingConfigLoading } = useQuery({
+    queryKey: ["/api/lead-nurturing/config"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/config", { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const { data: nurturingVariables } = useQuery({
+    queryKey: ["/api/lead-nurturing/variables"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/variables", { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const { data: nurturingTemplatesData, isLoading: nurturingTemplatesLoading } = useQuery<{
+    success: boolean;
+    templates: any[];
+    pagination: { page: number; limit: number; total: number; pages: number };
+  }>({
+    queryKey: ["/api/lead-nurturing/templates", templatePage, templateCategory, templateSearch],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: templatePage.toString(),
+        limit: "31",
+      });
+      if (templateCategory !== "all") params.set("category", templateCategory);
+      if (templateSearch.trim()) params.set("search", templateSearch.trim());
+      const res = await fetch(`/api/lead-nurturing/templates?${params}`, { headers: getAuthHeaders() });
+      if (!res.ok) return { success: false, templates: [], pagination: { page: 1, limit: 31, total: 0, pages: 0 } };
+      return res.json();
+    },
+    enabled: !!nurturingConfig?.config?.templatesGenerated,
+  });
+
+  const { data: nurturingAnalytics } = useQuery({
+    queryKey: ["/api/lead-nurturing/analytics"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/analytics", { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  // Nurturing 365 Mutations
+  const generateNurturingTemplatesMutation = useMutation({
+    mutationFn: async (data: { businessDescription: string; referenceEmail: string; preferredTone: string }) => {
+      setIsGenerating(true);
+      setGenerationProgress({ current: 0, total: 365, percent: 0 });
+      const res = await fetch("/api/lead-nurturing/generate", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore generazione");
+      return res;
+    },
+    onSuccess: async (res) => {
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setIsGenerating(false);
+        toast({ title: "Errore", description: "Impossibile leggere lo stream di risposta", variant: "destructive" });
+        return;
+      }
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        const lines = text.split('\n').filter(l => l.startsWith('data: '));
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line.replace('data: ', ''));
+            if (data.progress) setGenerationProgress(data.progress);
+            if (data.completed) {
+              setIsGenerating(false);
+              queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/templates"] });
+              toast({ title: "Templates generati!", description: `${data.completed.templatesGenerated} email create con successo` });
+            }
+          } catch {}
+        }
+      }
+    },
+    onError: (error: any) => {
+      setIsGenerating(false);
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateNurturingVariablesMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/lead-nurturing/variables", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore salvataggio");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/variables"] });
+      toast({ title: "Variabili salvate!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateNurturingConfigMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/lead-nurturing/config", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore salvataggio");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+      toast({ title: "Configurazione salvata!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
   });
 
   // Generate Custom Templates Mutation
@@ -2336,7 +2482,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
           </div>
 
           <Tabs defaultValue="controllo" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
+            <TabsList className="grid w-full grid-cols-10 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 h-auto rounded-xl shadow-sm backdrop-blur-sm">
               <TabsTrigger 
                 value="controllo" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-800 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
@@ -2399,6 +2545,13 @@ Non limitarti a stato attuale/ideale. Attingi da:
               >
                 <Zap className="h-4 w-4" />
                 <span className="hidden lg:inline">Test</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="nurturing" 
+                className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              >
+                <CalendarDays className="h-4 w-4" />
+                <span className="hidden lg:inline">Nurturing</span>
               </TabsTrigger>
             </TabsList>
 
@@ -4066,6 +4219,431 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         </>
                       )}
                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Nurturing 365 Tab */}
+            <TabsContent value="nurturing" className="space-y-6">
+              {/* Dashboard KPI */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg">
+                        <Send className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {nurturingAnalytics?.totalSent || 0}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Email Inviate</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg">
+                        <Eye className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {nurturingAnalytics?.openRate ? `${nurturingAnalytics.openRate.toFixed(1)}%` : '0%'}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Open Rate</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+                        <MousePointer className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {nurturingAnalytics?.clickRate ? `${nurturingAnalytics.clickRate.toFixed(1)}%` : '0%'}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Click Rate</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
+                        <Users className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {nurturingAnalytics?.activeLeads || 0}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Lead Attivi</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Genera Templates Card */}
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    Genera 365 Email Templates
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    L'AI genererà 365 email personalizzate per il tuo business, una per ogni giorno dell'anno
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {nurturingConfig?.config?.templatesGenerated ? (
+                    <Alert className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                      <AlertDescription className="text-emerald-800 dark:text-emerald-200">
+                        <strong>{nurturingConfig.config.templatesGenerated || 365} templates già generati!</strong> 
+                        {' '}Puoi visualizzarli e modificarli nella sezione Templates qui sotto.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="business-desc">Descrizione del tuo Business</Label>
+                        <Textarea
+                          id="business-desc"
+                          placeholder="Descrivi il tuo business, i servizi che offri, il tuo target di clienti..."
+                          rows={4}
+                          value={businessDescription}
+                          onChange={(e) => setBusinessDescription(e.target.value)}
+                          className="resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reference-email">Email di Riferimento (opzionale)</Label>
+                        <Textarea
+                          id="reference-email"
+                          placeholder="Incolla un esempio di email che rappresenta il tuo stile comunicativo..."
+                          rows={3}
+                          value={referenceEmail}
+                          onChange={(e) => setReferenceEmail(e.target.value)}
+                          className="resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tono delle Email</Label>
+                        <div className="flex gap-4">
+                          {(["professionale", "amichevole", "motivazionale"] as const).map((tone) => (
+                            <label key={tone} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="tone"
+                                checked={preferredTone === tone}
+                                onChange={() => setPreferredTone(tone)}
+                                className="w-4 h-4 text-emerald-600 accent-emerald-600"
+                              />
+                              <span className="text-sm capitalize">{tone}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {isGenerating && (
+                        <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Generazione in corso...</span>
+                            <span className="font-mono">{generationProgress.current}/{generationProgress.total}</span>
+                          </div>
+                          <Progress value={generationProgress.percent} className="h-2" />
+                          <p className="text-xs text-slate-500">
+                            Questo processo può richiedere alcuni minuti. Non chiudere questa pagina.
+                          </p>
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={() => generateNurturingTemplatesMutation.mutate({
+                          businessDescription,
+                          referenceEmail,
+                          preferredTone,
+                        })}
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                        size="lg"
+                        disabled={!businessDescription || isGenerating || generateNurturingTemplatesMutation.isPending}
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Generazione in corso...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-5 w-5" />
+                            Genera 365 Templates
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Variabili Email Card */}
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
+                    Variabili Email
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Configura le variabili che verranno inserite automaticamente nelle email
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="var-business-name">Nome Business</Label>
+                      <Input
+                        id="var-business-name"
+                        placeholder="Es: Coaching Academy"
+                        defaultValue={nurturingVariables?.variables?.businessName || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, businessName: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="var-calendar-link">Link Calendario</Label>
+                      <Input
+                        id="var-calendar-link"
+                        placeholder="https://calendly.com/tuo-link"
+                        defaultValue={nurturingVariables?.variables?.calendarLink || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, calendarLink: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="var-whatsapp">Numero WhatsApp</Label>
+                      <Input
+                        id="var-whatsapp"
+                        placeholder="+39 123 456 7890"
+                        defaultValue={nurturingVariables?.variables?.whatsappNumber || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, whatsappNumber: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="var-signature">Firma Email</Label>
+                      <Textarea
+                        id="var-signature"
+                        placeholder="La tua firma email..."
+                        rows={2}
+                        className="resize-none"
+                        defaultValue={nurturingVariables?.variables?.emailSignature || ""}
+                        onChange={(e) => {
+                          const newVars = { ...nurturingVariables?.variables, emailSignature: e.target.value };
+                          updateNurturingVariablesMutation.mutate(newVars);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Templates Card */}
+              {nurturingConfig?.config?.templatesGenerated && (
+                <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                      <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
+                        <FileText className="h-4 w-4 text-white" />
+                      </div>
+                      Templates Email ({nurturingTemplatesData?.pagination?.total || 0} totali)
+                    </CardTitle>
+                    <CardDescription className="text-slate-500 dark:text-slate-400">
+                      Visualizza e modifica i templates generati per ogni giorno dell'anno
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Filters */}
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            placeholder="Cerca nei templates..."
+                            value={templateSearch}
+                            onChange={(e) => setTemplateSearch(e.target.value)}
+                            className="pl-9"
+                          />
+                        </div>
+                      </div>
+                      <Select value={templateCategory} onValueChange={setTemplateCategory}>
+                        <SelectTrigger className="w-full md:w-48">
+                          <SelectValue placeholder="Categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutte le categorie</SelectItem>
+                          <SelectItem value="valore">Valore</SelectItem>
+                          <SelectItem value="engagement">Engagement</SelectItem>
+                          <SelectItem value="conversione">Conversione</SelectItem>
+                          <SelectItem value="relazione">Relazione</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Templates List */}
+                    {nurturingTemplatesLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+                      </div>
+                    ) : (
+                      <Accordion type="single" collapsible className="space-y-2">
+                        {nurturingTemplatesData?.templates?.map((template: any) => (
+                          <AccordionItem 
+                            key={template.dayNumber} 
+                            value={`day-${template.dayNumber}`}
+                            className="border rounded-lg px-4 bg-slate-50 dark:bg-slate-800/50"
+                          >
+                            <AccordionTrigger className="hover:no-underline">
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline" className="bg-white dark:bg-slate-700">
+                                  Giorno {template.dayNumber}
+                                </Badge>
+                                <span className="text-sm font-medium truncate max-w-[300px]">
+                                  {template.subject}
+                                </span>
+                                {template.category && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {template.category}
+                                  </Badge>
+                                )}
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-3 pt-2">
+                                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border">
+                                  <p className="text-sm font-medium mb-1">Oggetto:</p>
+                                  <p className="text-sm text-slate-600 dark:text-slate-300">{template.subject}</p>
+                                </div>
+                                <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border">
+                                  <p className="text-sm font-medium mb-1">Corpo:</p>
+                                  <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
+                                    {template.body?.substring(0, 500)}
+                                    {template.body?.length > 500 && '...'}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button variant="outline" size="sm">
+                                    <Edit className="h-3 w-3 mr-1" />
+                                    Modifica
+                                  </Button>
+                                  <Button variant="outline" size="sm">
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Anteprima
+                                  </Button>
+                                </div>
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    )}
+
+                    {/* Pagination */}
+                    {nurturingTemplatesData?.pagination && nurturingTemplatesData.pagination.pages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setTemplatePage(p => Math.max(1, p - 1))}
+                          disabled={templatePage === 1}
+                        >
+                          Precedente
+                        </Button>
+                        <span className="text-sm text-slate-500">
+                          Pagina {templatePage} di {nurturingTemplatesData.pagination.pages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setTemplatePage(p => Math.min(nurturingTemplatesData.pagination.pages, p + 1))}
+                          disabled={templatePage === nurturingTemplatesData.pagination.pages}
+                        >
+                          Successiva
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Impostazioni Invio Card */}
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
+                      <CalendarDays className="h-4 w-4 text-white" />
+                    </div>
+                    Impostazioni Invio
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Configura quando e come inviare le email di nurturing
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="space-y-1">
+                      <Label htmlFor="nurturing-enabled" className="text-base font-semibold">
+                        Attiva Nurturing Automatico
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {nurturingConfig?.config?.isEnabled 
+                          ? "Le email vengono inviate automaticamente ai lead" 
+                          : "Nurturing disattivato - attivalo per iniziare"}
+                      </p>
+                    </div>
+                    <Switch
+                      id="nurturing-enabled"
+                      checked={nurturingConfig?.config?.isEnabled || false}
+                      onCheckedChange={(checked) => {
+                        updateNurturingConfigMutation.mutate({ isEnabled: checked });
+                      }}
+                      disabled={updateNurturingConfigMutation.isPending}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <input
+                      type="checkbox"
+                      id="skip-weekends"
+                      checked={nurturingConfig?.config?.skipWeekends || false}
+                      onChange={(e) => {
+                        updateNurturingConfigMutation.mutate({ skipWeekends: e.target.checked });
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-emerald-600 accent-emerald-600"
+                    />
+                    <div>
+                      <Label htmlFor="skip-weekends" className="cursor-pointer">
+                        Salta i weekend
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Non inviare email il sabato e la domenica
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
