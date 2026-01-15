@@ -77,21 +77,24 @@ The platform extensively leverages AI for various functionalities:
 
 ## Lead Nurturing 365 System
 - **Purpose**: Automated 365-day email nurturing sequence for proactive leads with AI-generated content.
-- **Database Tables**: 4 tables (`lead_nurturing_templates`, `lead_nurturing_config`, `lead_nurturing_logs`, `consultant_email_variables`) + 5 fields on `proactive_leads`.
+- **Database Tables**: 4 tables (`lead_nurturing_templates`, `lead_nurturing_config` with `brandVoiceData` JSONB, `lead_nurturing_logs`, `consultant_email_variables`) + 5 fields on `proactive_leads`.
 - **AI Generation**: Uses Gemini 3 Preview via `provider-factory.ts` to generate 365 personalized email templates with SSE progress streaming.
+- **Brand Voice Integration**: Consultant identity data (vision, mission, values, USP, credentials, services) stored in `brandVoiceData` JSONB and injected into all AI prompts via `buildBrandVoiceContext()`.
 - **Template Variables**: Dynamic placeholders (`{{nome}}`, `{{linkCalendario}}`, `{{linkDisiscrizione}}`, etc.) with XSS sanitization.
 - **Cron Scheduler**: Daily email sending at 09:00 Europe/Rome timezone with weekend skip option.
 - **GDPR Compliance**: Public unsubscribe endpoint (`/unsubscribe/:token`) with HMAC-SHA256 token validation, styled HTML pages with consultant branding.
 - **Backend Services**:
   - `server/services/template-compiler.ts` - Variable compilation with XSS protection
-  - `server/services/lead-nurturing-generation-service.ts` - AI batch generation
+  - `server/services/lead-nurturing-generation-service.ts` - AI batch generation with Brand Voice context
   - `server/cron/nurturing-scheduler.ts` - Daily sending + weekly log cleanup
   - `server/routes/nurturing-tracking.ts` - Email open/click tracking endpoints
-- **API Routes**: Full CRUD at `/api/lead-nurturing/*` for config, templates, variables, analytics.
+- **API Routes**: Full CRUD at `/api/lead-nurturing/*` for config, templates, variables, analytics, and brand-voice.
 - **Email Tracking**: Pixel tracking for opens (`/api/nurturing/track/open/:logId`) and click tracking with validated redirects (`/api/nurturing/track/click/:logId/:linkId`).
 - **Frontend UI** (in `client/src/pages/consultant-ai-config.tsx` Tab "Nurturing"):
   - Dashboard with 4 KPI cards (emails sent, open rate, click rate, active leads)
   - AI template generation with business description, tone selection, and SSE progress bar
+  - **Brand Voice section** with 4 collapsible panels (Informazioni Business, Authority & Posizionamento, Credenziali & Risultati, Servizi & Garanzie) identical to WhatsApp agent configuration
+  - **"Importa da Agente"** button to copy Brand Voice data from existing WhatsApp agents
   - Email variables configuration (calendar link, business name, WhatsApp, signature)
   - Templates accordion with search, category filter, and pagination (31/page)
   - Sending settings with enable/disable toggle and skip weekends option
