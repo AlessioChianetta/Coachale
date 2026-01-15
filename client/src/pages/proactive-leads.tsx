@@ -1716,28 +1716,34 @@ export default function ProactiveLeadsPage() {
                                   {config?.label || "In Attesa"}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="w-20">
                                 {lead.email ? (
-                                  <div className="flex items-center gap-2">
-                                    <Switch
-                                      checked={lead.nurturingEnabled || false}
-                                      onCheckedChange={(checked) => {
-                                        toggleNurturingMutation.mutate({ leadId: lead.id, enable: checked });
-                                      }}
-                                      disabled={toggleNurturingMutation.isPending}
-                                    />
-                                    {lead.nurturingEnabled ? (
-                                      <Badge className="bg-green-500 text-white border-green-600">
-                                        Giorno {lead.nurturingEmailsSent || 0}/365
-                                      </Badge>
-                                    ) : (
-                                      <Badge className="bg-slate-300 text-slate-700 dark:bg-slate-600 dark:text-slate-200">
-                                        Inattivo
-                                      </Badge>
-                                    )}
-                                  </div>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex flex-col items-center gap-1">
+                                          <Switch
+                                            checked={lead.nurturingEnabled || false}
+                                            onCheckedChange={(checked) => {
+                                              toggleNurturingMutation.mutate({ leadId: lead.id, enable: checked });
+                                            }}
+                                            disabled={toggleNurturingMutation.isPending}
+                                            className="scale-90"
+                                          />
+                                          <span className={`text-[10px] font-medium ${lead.nurturingEnabled ? 'text-green-600' : 'text-gray-400'}`}>
+                                            {lead.nurturingEnabled ? `${lead.nurturingEmailsSent || 0}/365` : 'Off'}
+                                          </span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {lead.nurturingEnabled 
+                                          ? `Nurturing attivo: Giorno ${lead.nurturingEmailsSent || 0}/365`
+                                          : 'Nurturing disattivato'}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 ) : (
-                                  <span className="text-xs text-gray-400">Email mancante</span>
+                                  <span className="text-[10px] text-gray-400 text-center block">No email</span>
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
