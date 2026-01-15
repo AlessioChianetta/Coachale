@@ -284,11 +284,21 @@ RISPONDI IN QUESTO FORMATO ESATTO (JSON):
   
   let parsed: { subject: string; body: string };
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    // Remove markdown code blocks if present
+    let cleanText = text;
+    if (cleanText.includes('```json')) {
+      cleanText = cleanText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    } else if (cleanText.includes('```')) {
+      cleanText = cleanText.replace(/```\s*/g, '');
+    }
+    
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error(`[NURTURING GENERATION] Day ${day} - No JSON found after cleanup. Clean text: ${cleanText.substring(0, 300)}`);
       throw new Error("No JSON found in response");
     }
     parsed = JSON.parse(jsonMatch[0]);
+    console.log(`[NURTURING GENERATION] Day ${day} - Successfully parsed JSON with subject: "${parsed.subject?.substring(0, 50)}..."`);
   } catch (e) {
     console.error(`[NURTURING GENERATION] Failed to parse response for day ${day}:`, text.substring(0, 200));
     parsed = {
