@@ -354,12 +354,16 @@ export default function ContentStudioIdeas() {
   const filteredAndSortedIdeas = useMemo(() => {
     let result = [...ideas];
 
-    if (statusFilter !== "all") {
-      if (statusFilter === "developed") {
-        result = result.filter((idea) => idea.status === "developed" || idea.developedPostId);
-      } else {
-        result = result.filter((idea) => idea.status === statusFilter && !idea.developedPostId);
-      }
+    // Filtra per stato
+    if (statusFilter === "all") {
+      // "Tutte" mostra solo idee NON sviluppate (senza developedPostId e status !== "developed")
+      result = result.filter((idea) => !idea.developedPostId && idea.status !== "developed");
+    } else if (statusFilter === "developed") {
+      // "Sviluppate" mostra solo idee già sviluppate
+      result = result.filter((idea) => idea.status === "developed" || idea.developedPostId);
+    } else {
+      // Altri filtri (new, in_progress, archived) - escludono sempre le sviluppate
+      result = result.filter((idea) => idea.status === statusFilter && !idea.developedPostId);
     }
 
     if (filterContentType !== "all") {
