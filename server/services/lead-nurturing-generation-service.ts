@@ -229,8 +229,10 @@ RISPONDI IN QUESTO FORMATO ESATTO (JSON):
 
   const result = await provider.client.generateContent({
     model: GEMINI_3_MODEL,
-    contents: prompt,
-    config: {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 2048,
       thinkingConfig: {
         thinkingBudget: GEMINI_3_THINKING_LEVEL === "minimal" ? 0 : 
                        GEMINI_3_THINKING_LEVEL === "low" ? 1024 : 
@@ -239,7 +241,18 @@ RISPONDI IN QUESTO FORMATO ESATTO (JSON):
     },
   });
   
-  const text = result.text?.trim() || "";
+  // Extract text from response - handle both direct .text and candidates array
+  let text = "";
+  if (result.text) {
+    text = result.text.trim();
+  } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+    text = result.candidates[0].content.parts[0].text.trim();
+  }
+  
+  console.log(`[NURTURING GENERATION] Day ${day} raw response length: ${text.length}`);
+  if (text.length < 50) {
+    console.log(`[NURTURING GENERATION] Day ${day} response preview: ${text}`);
+  }
   
   let parsed: { subject: string; body: string };
   try {
