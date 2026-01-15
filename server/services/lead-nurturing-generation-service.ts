@@ -227,31 +227,59 @@ RISPONDI IN QUESTO FORMATO ESATTO (JSON):
   "body": "<p>Corpo HTML dell'email qui...</p><p style='font-size:12px;color:#666;margin-top:30px;'>Non vuoi più ricevere queste email? <a href='{{linkUnsubscribe}}'>Disiscriviti qui</a></p>"
 }`;
 
-  const result = await provider.client.generateContent({
-    model: GEMINI_3_MODEL,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 2048,
-      thinkingConfig: {
-        thinkingBudget: GEMINI_3_THINKING_LEVEL === "minimal" ? 0 : 
-                       GEMINI_3_THINKING_LEVEL === "low" ? 1024 : 
-                       GEMINI_3_THINKING_LEVEL === "medium" ? 4096 : 8192,
-      },
-    },
-  });
+  console.log(`[NURTURING GENERATION] Day ${day} - Calling AI with model: ${GEMINI_3_MODEL}`);
+  console.log(`[NURTURING GENERATION] Day ${day} - Provider type: ${provider.metadata?.name || 'unknown'}`);
+  console.log(`[NURTURING GENERATION] Day ${day} - Prompt length: ${prompt.length} chars`);
   
-  // Extract text from response - handle both direct .text and candidates array
-  let text = "";
-  if (result.text) {
-    text = result.text.trim();
-  } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-    text = result.candidates[0].content.parts[0].text.trim();
+  let result: any;
+  try {
+    result = await provider.client.generateContent({
+      model: GEMINI_3_MODEL,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      },
+    });
+  } catch (apiError: any) {
+    console.error(`[NURTURING GENERATION] Day ${day} - API call failed:`, apiError.message);
+    console.error(`[NURTURING GENERATION] Day ${day} - Full error:`, JSON.stringify(apiError, null, 2));
+    throw apiError;
   }
   
-  console.log(`[NURTURING GENERATION] Day ${day} raw response length: ${text.length}`);
-  if (text.length < 50) {
-    console.log(`[NURTURING GENERATION] Day ${day} response preview: ${text}`);
+  // Log the full response structure for debugging
+  console.log(`[NURTURING GENERATION] Day ${day} - Response keys: ${Object.keys(result || {}).join(', ')}`);
+  console.log(`[NURTURING GENERATION] Day ${day} - result.text type: ${typeof result?.text}`);
+  console.log(`[NURTURING GENERATION] Day ${day} - result.candidates exists: ${!!result?.candidates}`);
+  if (result?.candidates) {
+    console.log(`[NURTURING GENERATION] Day ${day} - candidates length: ${result.candidates.length}`);
+    if (result.candidates[0]) {
+      console.log(`[NURTURING GENERATION] Day ${day} - candidate[0] keys: ${Object.keys(result.candidates[0]).join(', ')}`);
+    }
+  }
+  
+  // Extract text from response - handle multiple possible formats
+  let text = "";
+  if (typeof result?.text === 'string') {
+    text = result.text.trim();
+    console.log(`[NURTURING GENERATION] Day ${day} - Got text from result.text`);
+  } else if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+    text = result.candidates[0].content.parts[0].text.trim();
+    console.log(`[NURTURING GENERATION] Day ${day} - Got text from candidates array`);
+  } else if (result?.response?.text) {
+    text = typeof result.response.text === 'function' ? result.response.text() : result.response.text;
+    text = text?.trim() || "";
+    console.log(`[NURTURING GENERATION] Day ${day} - Got text from result.response.text`);
+  }
+  
+  console.log(`[NURTURING GENERATION] Day ${day} - Final text length: ${text.length}`);
+  if (text.length > 0 && text.length < 200) {
+    console.log(`[NURTURING GENERATION] Day ${day} - Text preview: ${text}`);
+  } else if (text.length >= 200) {
+    console.log(`[NURTURING GENERATION] Day ${day} - Text preview (first 200): ${text.substring(0, 200)}...`);
+  } else {
+    console.log(`[NURTURING GENERATION] Day ${day} - WARNING: Empty text response!`);
+    console.log(`[NURTURING GENERATION] Day ${day} - Full result:`, JSON.stringify(result, null, 2).substring(0, 1000));
   }
   
   let parsed: { subject: string; body: string };
