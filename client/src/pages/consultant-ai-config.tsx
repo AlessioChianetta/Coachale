@@ -5414,7 +5414,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
 
                       <Button
                         onClick={() => {
-                          const savedBrandVoice = nurturingConfig?.brandVoiceData;
+                          const savedBrandVoice = nurturingConfig?.config?.brandVoiceData;
                           const hasBrandVoice = savedBrandVoice && Object.keys(savedBrandVoice).some(key => {
                             const val = (savedBrandVoice as any)[key];
                             return val !== undefined && val !== null && val !== "" && 
