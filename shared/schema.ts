@@ -2802,6 +2802,22 @@ export const whatsappAgentKnowledgeItems = pgTable("whatsapp_agent_knowledge_ite
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Lead Nurturing Knowledge Base Items - Knowledge documents for AI email template generation
+export const nurturingKnowledgeItems = pgTable("nurturing_knowledge_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  type: text("type").$type<"text" | "pdf" | "docx" | "txt">().notNull(),
+  content: text("content").notNull(),
+  filePath: text("file_path"),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  order: integer("order").default(0).notNull(),
+  sourceConsultantDocId: varchar("source_consultant_doc_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 export const whatsappGlobalApiKeys = pgTable("whatsapp_global_api_keys", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
@@ -3202,6 +3218,14 @@ export const insertWhatsappAgentKnowledgeItemSchema = createInsertSchema(whatsap
 });
 
 export const updateWhatsappAgentKnowledgeItemSchema = insertWhatsappAgentKnowledgeItemSchema.partial();
+
+export const insertNurturingKnowledgeItemSchema = createInsertSchema(nurturingKnowledgeItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateNurturingKnowledgeItemSchema = insertNurturingKnowledgeItemSchema.partial();
 
 export const insertWhatsappGlobalApiKeySchema = createInsertSchema(whatsappGlobalApiKeys).omit({
   id: true,
@@ -4018,6 +4042,9 @@ export type InsertConsultantWhatsappConfig = z.infer<typeof insertConsultantWhat
 export type WhatsappAgentKnowledgeItem = typeof whatsappAgentKnowledgeItems.$inferSelect;
 export type InsertWhatsappAgentKnowledgeItem = z.infer<typeof insertWhatsappAgentKnowledgeItemSchema>;
 export type UpdateWhatsappAgentKnowledgeItem = z.infer<typeof updateWhatsappAgentKnowledgeItemSchema>;
+export type NurturingKnowledgeItem = typeof nurturingKnowledgeItems.$inferSelect;
+export type InsertNurturingKnowledgeItem = z.infer<typeof insertNurturingKnowledgeItemSchema>;
+export type UpdateNurturingKnowledgeItem = z.infer<typeof updateNurturingKnowledgeItemSchema>;
 export type WhatsappGlobalApiKey = typeof whatsappGlobalApiKeys.$inferSelect;
 export type InsertWhatsappGlobalApiKey = z.infer<typeof insertWhatsappGlobalApiKeySchema>;
 export type WhatsappConversation = typeof whatsappConversations.$inferSelect;

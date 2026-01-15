@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { getAIProvider, GEMINI_3_MODEL, GEMINI_3_THINKING_LEVEL } from "../ai/provider-factory";
 import { Response } from "express";
@@ -77,6 +77,35 @@ function getCategoryDescription(day: number): string {
   return "Contenuto generale";
 }
 
+async function fetchNurturingKnowledgeItems(consultantId: string): Promise<string> {
+  try {
+    const items = await db
+      .select()
+      .from(schema.nurturingKnowledgeItems)
+      .where(eq(schema.nurturingKnowledgeItems.consultantId, consultantId))
+      .orderBy(asc(schema.nurturingKnowledgeItems.order));
+
+    if (items.length === 0) {
+      return "";
+    }
+
+    let kbContext = "\n\nKNOWLEDGE BASE DOCUMENTI (usa queste informazioni per arricchire le email):\n";
+    
+    for (const item of items) {
+      kbContext += `\n### ${item.title} (${item.type})\n`;
+      const contentPreview = item.content.length > 3000 
+        ? item.content.substring(0, 3000) + "...[contenuto troncato]"
+        : item.content;
+      kbContext += contentPreview + "\n";
+    }
+
+    return kbContext;
+  } catch (error) {
+    console.error("[NURTURING GENERATION] Error fetching KB items:", error);
+    return "";
+  }
+}
+
 function buildBrandVoiceContext(brandVoice?: BrandVoiceData): string {
   if (!brandVoice || Object.keys(brandVoice).length === 0) {
     return "";
@@ -151,7 +180,8 @@ function buildBrandVoiceContext(brandVoice?: BrandVoiceData): string {
 async function generateTemplateForDay(
   day: number,
   config: GenerationConfig,
-  consultantId: string
+  consultantId: string,
+  knowledgeBaseContext: string = ""
 ): Promise<{ subject: string; body: string; category: string }> {
   const category = getCategoryForDay(day);
   const categoryDesc = getCategoryDescription(day);
@@ -168,7 +198,7 @@ CONTESTO BUSINESS:
 - Tono: ${config.tone}
 - Azienda: ${config.companyName || "{{nomeAzienda}}"}
 - Mittente: ${config.senderName || "{{firmaEmail}}"}
-${brandVoiceContext}
+${brandVoiceContext}${knowledgeBaseContext}
 CATEGORIA EMAIL (Giorno ${day}): ${categoryDesc}
 - Fase del percorso: ${category}
 - Obiettivo fase: ${categoryDesc}
@@ -255,6 +285,9 @@ export async function generateNurturingTemplates(
     
     console.log(`[NURTURING GENERATION] Cleared existing templates for consultant ${consultantId}`);
     
+    const knowledgeBaseContext = await fetchNurturingKnowledgeItems(consultantId);
+    console.log(`[NURTURING GENERATION] Loaded KB context: ${knowledgeBaseContext ? 'yes' : 'no'} (${knowledgeBaseContext.length} chars)`);
+    
     const days = Array.from({ length: 365 }, (_, i) => i + 1);
     
     for (let i = 0; i < days.length; i += BATCH_SIZE) {
@@ -270,7 +303,7 @@ export async function generateNurturingTemplates(
       
       const batchPromises = batch.map(async (day) => {
         try {
-          const template = await generateTemplateForDay(day, config, consultantId);
+          const template = await generateTemplateForDay(day, config, consultantId, knowledgeBaseContext);
           
           await db.insert(schema.leadNurturingTemplates).values({
             consultantId,
@@ -334,7 +367,9 @@ export async function regenerateTemplate(
   config: GenerationConfig
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const template = await generateTemplateForDay(dayNumber, config, consultantId);
+    // Carica anche il knowledge base context per la rigenerazione
+    const knowledgeBaseContext = await fetchNurturingKnowledgeItems(consultantId);
+    const template = await generateTemplateForDay(dayNumber, config, consultantId, knowledgeBaseContext);
     
     const existing = await db.select()
       .from(schema.leadNurturingTemplates)

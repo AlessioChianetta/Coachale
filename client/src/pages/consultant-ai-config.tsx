@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1560,6 +1561,12 @@ export default function ConsultantAIConfigPage() {
   const [authorityOpen, setAuthorityOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [nurturingKBOpen, setNurturingKBOpen] = useState(false);
+  
+  // Nurturing KB states
+  const [uploadingNurturingKB, setUploadingNurturingKB] = useState(false);
+  const [nurturingKBImportOpen, setNurturingKBImportOpen] = useState(false);
+  const [selectedKBDocsForNurturing, setSelectedKBDocsForNurturing] = useState<string[]>([]);
   
   // Import dialog
   const [showImportAgentDialog, setShowImportAgentDialog] = useState(false);
@@ -1642,6 +1649,87 @@ export default function ConsultantAIConfigPage() {
       const res = await fetch("/api/lead-nurturing/analytics", { headers: getAuthHeaders() });
       if (!res.ok) return null;
       return res.json();
+    },
+  });
+
+  const { data: nurturingKBItems, isLoading: nurturingKBLoading } = useQuery<{ success: boolean; data: any[]; count: number }>({
+    queryKey: ["/api/lead-nurturing/knowledge"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/knowledge", { headers: getAuthHeaders() });
+      if (!res.ok) return { success: false, data: [], count: 0 };
+      return res.json();
+    },
+  });
+
+  const { data: nurturingKBCandidates } = useQuery<{ success: boolean; data: any[]; count: number }>({
+    queryKey: ["/api/lead-nurturing/knowledge/import-candidates"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/knowledge/import-candidates", { headers: getAuthHeaders() });
+      if (!res.ok) return { success: false, data: [], count: 0 };
+      return res.json();
+    },
+    enabled: nurturingKBImportOpen,
+  });
+
+  const addNurturingKBMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch("/api/lead-nurturing/knowledge", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || data.error || "Errore upload");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/knowledge"] });
+      toast({ title: "Documento aggiunto!", description: "Il documento è stato caricato con successo" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteNurturingKBMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/lead-nurturing/knowledge/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore eliminazione");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/knowledge"] });
+      toast({ title: "Documento eliminato" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const importNurturingKBMutation = useMutation({
+    mutationFn: async (documentIds: string[]) => {
+      const res = await fetch("/api/lead-nurturing/knowledge/import", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ documentIds }),
+      });
+      if (!res.ok) throw new Error("Errore importazione");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/knowledge"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/knowledge/import-candidates"] });
+      setNurturingKBImportOpen(false);
+      setSelectedKBDocsForNurturing([]);
+      toast({ title: "Importazione completata!", description: data.message });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
 
@@ -5005,7 +5093,163 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </CollapsibleContent>
                   </Card>
                 </Collapsible>
+
+                {/* 5. Knowledge Base per Nurturing */}
+                <Collapsible open={nurturingKBOpen} onOpenChange={setNurturingKBOpen}>
+                  <Card className="border-2 border-amber-500/20 shadow-lg">
+                    <CollapsibleTrigger className="w-full">
+                      <CardHeader className="bg-gradient-to-r from-amber-500/5 to-amber-500/10 cursor-pointer hover:from-amber-500/10 hover:to-amber-500/15 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-amber-500" />
+                            <CardTitle>Knowledge Base per Nurturing</CardTitle>
+                            {nurturingKBItems?.count && nurturingKBItems.count > 0 && (
+                              <Badge variant="secondary" className="ml-2">{nurturingKBItems.count}</Badge>
+                            )}
+                          </div>
+                          {nurturingKBOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                        <CardDescription className="text-left">Documenti che l'AI utilizzerà per generare email personalizzate</CardDescription>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-6 space-y-6">
+                        <NurturingKBDropzone 
+                          onFilesDropped={async (files) => {
+                            for (const file of files) {
+                              setUploadingNurturingKB(true);
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              formData.append('title', file.name.replace(/\.[^/.]+$/, ''));
+                              
+                              const ext = file.name.split('.').pop()?.toLowerCase();
+                              const typeMap: Record<string, string> = { pdf: 'pdf', docx: 'docx', txt: 'txt' };
+                              formData.append('type', typeMap[ext || ''] || 'txt');
+                              
+                              try {
+                                await addNurturingKBMutation.mutateAsync(formData);
+                              } catch (e) {
+                                console.error("Upload failed:", e);
+                              }
+                            }
+                            setUploadingNurturingKB(false);
+                          }}
+                          isUploading={uploadingNurturingKB}
+                        />
+
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setNurturingKBImportOpen(true)}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Importa da Knowledge Base
+                          </Button>
+                        </div>
+
+                        {nurturingKBLoading ? (
+                          <div className="flex justify-center py-4">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : nurturingKBItems?.data && nurturingKBItems.data.length > 0 ? (
+                          <div className="space-y-2">
+                            {nurturingKBItems.data.map((item: any) => (
+                              <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded">
+                                    <FileText className="h-4 w-4 text-amber-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">{item.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.type.toUpperCase()} • {item.content?.length > 0 ? `${(item.content.length / 1000).toFixed(1)}k caratteri` : 'Vuoto'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteNurturingKBMutation.mutate(item.id)}
+                                  disabled={deleteNurturingKBMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-center text-muted-foreground text-sm py-4">
+                            Nessun documento caricato. L'AI userà solo le informazioni del Brand Voice.
+                          </p>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               </div>
+
+              {/* Import KB Dialog */}
+              <Dialog open={nurturingKBImportOpen} onOpenChange={setNurturingKBImportOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Importa dalla Knowledge Base</DialogTitle>
+                    <DialogDescription>
+                      Seleziona i documenti da importare dalla tua Knowledge Base principale
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    {nurturingKBCandidates?.data && nurturingKBCandidates.data.length > 0 ? (
+                      <div className="max-h-60 overflow-y-auto space-y-2">
+                        {nurturingKBCandidates.data.map((doc: any) => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                            onClick={() => {
+                              setSelectedKBDocsForNurturing(prev =>
+                                prev.includes(doc.id)
+                                  ? prev.filter(id => id !== doc.id)
+                                  : [...prev, doc.id]
+                              );
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedKBDocsForNurturing.includes(doc.id)}
+                              onChange={() => {}}
+                              className="h-4 w-4 rounded accent-amber-600"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{doc.fileName}</p>
+                              <p className="text-xs text-muted-foreground">{doc.fileType}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">
+                        Nessun documento disponibile per l'importazione
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setNurturingKBImportOpen(false)}>
+                        Annulla
+                      </Button>
+                      <Button
+                        onClick={() => importNurturingKBMutation.mutate(selectedKBDocsForNurturing)}
+                        disabled={selectedKBDocsForNurturing.length === 0 || importNurturingKBMutation.isPending}
+                      >
+                        {importNurturingKBMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Importa ({selectedKBDocsForNurturing.length})
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               {/* Genera Templates Card */}
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
@@ -5566,6 +5810,73 @@ Non limitarti a stato attuale/ideale. Attingi da:
       </Dialog>
 
       <ConsultantAIAssistant />
+    </div>
+  );
+}
+
+// NurturingKBDropzone Component - Drag & Drop upload for Nurturing Knowledge Base
+interface NurturingKBDropzoneProps {
+  onFilesDropped: (files: File[]) => void;
+  isUploading?: boolean;
+}
+
+function NurturingKBDropzone({ onFilesDropped, isUploading }: NurturingKBDropzoneProps) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: onFilesDropped,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt']
+    },
+    maxFiles: 10,
+    multiple: true,
+    disabled: isUploading,
+  });
+
+  return (
+    <div
+      {...getRootProps()}
+      className={`relative p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
+        isDragActive
+          ? "border-amber-500 bg-amber-500/10 scale-[1.02]"
+          : isUploading
+          ? "border-amber-300/30 bg-amber-50/20 cursor-not-allowed"
+          : "border-amber-300/50 bg-gradient-to-br from-amber-50/30 to-orange-50/20 dark:from-amber-900/10 dark:to-orange-900/5 hover:border-amber-400 hover:bg-amber-50/50"
+      }`}
+    >
+      <input {...getInputProps()} />
+      <div className="flex flex-col items-center gap-3">
+        {isUploading ? (
+          <>
+            <Loader2 className="h-10 w-10 text-amber-500 animate-spin" />
+            <div className="text-center">
+              <p className="font-semibold text-lg">Caricamento in corso...</p>
+              <p className="text-sm text-muted-foreground">Attendere prego</p>
+            </div>
+          </>
+        ) : isDragActive ? (
+          <>
+            <FileText className="h-10 w-10 text-amber-500 animate-bounce" />
+            <p className="font-semibold text-lg text-amber-600">Rilascia qui i file!</p>
+          </>
+        ) : (
+          <>
+            <div className="p-4 rounded-full bg-amber-100 dark:bg-amber-900/30">
+              <FileText className="h-8 w-8 text-amber-600" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-lg">Trascina i tuoi documenti qui</p>
+              <p className="text-sm text-muted-foreground">oppure clicca per selezionare</p>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30">PDF</Badge>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30">DOCX</Badge>
+              <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30">TXT</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Fino a 10 file alla volta</p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
