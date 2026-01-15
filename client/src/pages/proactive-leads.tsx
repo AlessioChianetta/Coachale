@@ -302,7 +302,7 @@ export default function ProactiveLeadsPage() {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 
   // Fetch all leads
-  const { data: leadsData, isLoading: leadsLoading } = useQuery({
+  const { data: leadsData, isLoading: leadsLoading, refetch: refetchLeads, isFetching: isRefetchingLeads } = useQuery({
     queryKey: ["/api/proactive-leads"],
     queryFn: async () => {
       const response = await fetch("/api/proactive-leads", {
@@ -1352,6 +1352,19 @@ export default function ProactiveLeadsPage() {
                 </p>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
+                <Button
+                  onClick={() => refetchLeads()}
+                  variant="outline"
+                  disabled={isRefetchingLeads}
+                  className="flex-1 sm:flex-none"
+                >
+                  {isRefetchingLeads ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Aggiorna
+                </Button>
                 <Button
                   onClick={() => triggerCrmImportMutation.mutate()}
                   className="bg-purple-600 hover:bg-purple-700 flex-1 sm:flex-none"
