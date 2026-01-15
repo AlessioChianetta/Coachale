@@ -295,6 +295,8 @@ export default function ProactiveLeadsPage() {
 
   const [activityLogsDialogOpen, setActivityLogsDialogOpen] = useState(false);
   const [selectedLeadForLogs, setSelectedLeadForLogs] = useState<ProactiveLead | null>(null);
+  const [emailPreviewHtml, setEmailPreviewHtml] = useState<string | null>(null);
+  const [emailPreviewOpen, setEmailPreviewOpen] = useState(false);
   const [triggeringLeadId, setTriggeringLeadId] = useState<string | null>(null);
 
   // Bulk selection state
@@ -3060,9 +3062,14 @@ export default function ProactiveLeadsPage() {
                     manual_trigger: { icon: Zap, color: "text-purple-600 bg-purple-100" },
                     responded: { icon: MessageCircle, color: "text-green-600 bg-green-100" },
                     converted: { icon: Sparkles, color: "text-purple-600 bg-purple-100" },
+                    welcome_email_sent: { icon: Mail, color: "text-emerald-600 bg-emerald-100" },
+                    welcome_email_failed: { icon: Mail, color: "text-red-600 bg-red-100" },
+                    nurturing_email_sent: { icon: Mail, color: "text-teal-600 bg-teal-100" },
+                    nurturing_email_failed: { icon: Mail, color: "text-red-600 bg-red-100" },
                   };
                   const eventConfig = eventIcons[log.eventType] || { icon: Clock, color: "text-gray-600 bg-gray-100" };
                   const EventIcon = eventConfig.icon;
+                  const hasEmailHtml = log.eventDetails?.emailHtml;
                   
                   return (
                     <div key={log.id} className="flex gap-3 p-3 rounded-lg border bg-gray-50 dark:bg-gray-900/50">
@@ -3081,6 +3088,22 @@ export default function ProactiveLeadsPage() {
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                           {log.eventMessage}
                         </p>
+                        
+                        {hasEmailHtml && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 text-xs"
+                            onClick={() => {
+                              setEmailPreviewHtml(log.eventDetails.emailHtml);
+                              setEmailPreviewOpen(true);
+                            }}
+                          >
+                            <Mail className="h-3 w-3 mr-1" />
+                            Vedi Anteprima Email
+                          </Button>
+                        )}
+                        
                         {log.eventDetails && Object.keys(log.eventDetails).length > 0 && (
                           <Collapsible className="mt-2">
                             <CollapsibleTrigger className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
@@ -3088,7 +3111,10 @@ export default function ProactiveLeadsPage() {
                               Dettagli
                             </CollapsibleTrigger>
                             <CollapsibleContent className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono overflow-x-auto">
-                              <pre>{JSON.stringify(log.eventDetails, null, 2)}</pre>
+                              <pre>{JSON.stringify({
+                                ...log.eventDetails,
+                                emailHtml: log.eventDetails.emailHtml ? "[HTML contenuto - clicca 'Vedi Anteprima Email']" : undefined
+                              }, null, 2)}</pre>
                             </CollapsibleContent>
                           </Collapsible>
                         )}
@@ -3098,6 +3124,38 @@ export default function ProactiveLeadsPage() {
                 })}
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Preview Dialog */}
+      <Dialog open={emailPreviewOpen} onOpenChange={setEmailPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-emerald-600" />
+              Anteprima Email Inviata
+            </DialogTitle>
+            <DialogDescription>
+              Visualizza il contenuto dell'email come è stato inviato al destinatario
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto border rounded-lg bg-white">
+            {emailPreviewHtml && (
+              <iframe
+                srcDoc={emailPreviewHtml}
+                className="w-full h-[60vh] border-0"
+                title="Email Preview"
+                sandbox=""
+              />
+            )}
+          </div>
+          
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setEmailPreviewOpen(false)}>
+              Chiudi
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

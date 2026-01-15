@@ -5,6 +5,37 @@ import { eq, and } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { getAIProvider, GEMINI_3_MODEL, GEMINI_3_THINKING_LEVEL } from "../ai/provider-factory";
 
+async function logEmailActivity(
+  leadId: string,
+  consultantId: string,
+  agentConfigId: string | null,
+  eventType: "welcome_email_sent" | "welcome_email_failed",
+  eventMessage: string,
+  eventDetails: {
+    emailRecipient?: string;
+    emailSubject?: string;
+    emailHtml?: string;
+    emailType?: "welcome" | "nurturing";
+    errorMessage?: string;
+  },
+  leadStatusAtEvent?: string
+) {
+  try {
+    await db.insert(schema.proactiveLeadActivityLogs).values({
+      leadId,
+      consultantId,
+      agentConfigId,
+      eventType,
+      eventMessage,
+      eventDetails,
+      leadStatusAtEvent: leadStatusAtEvent as any,
+    });
+    console.log(`📧 [EMAIL ACTIVITY LOG] ${eventType}: ${eventMessage}`);
+  } catch (error) {
+    console.error(`❌ [EMAIL ACTIVITY LOG] Failed to save log:`, error);
+  }
+}
+
 export interface ProactiveLeadWelcomeEmailParams {
   leadId: string;
   consultantId: string;
@@ -243,9 +274,11 @@ export async function sendProactiveLeadWelcomeEmail(
       signature: emailVars?.emailSignature || undefined,
     });
     
+    const emailSubject = `${lead.firstName}, benvenuto! Ecco come posso aiutarti`;
+    
     await sendEmail({
       to: leadEmail,
-      subject: `${lead.firstName}, benvenuto! Ecco come posso aiutarti`,
+      subject: emailSubject,
       html: htmlContent,
       consultantId,
     });
@@ -264,6 +297,21 @@ export async function sendProactiveLeadWelcomeEmail(
         )
       );
     
+    await logEmailActivity(
+      leadId,
+      consultantId,
+      lead.agentConfigId,
+      "welcome_email_sent",
+      `Email di benvenuto inviata a ${leadEmail}`,
+      {
+        emailRecipient: leadEmail,
+        emailSubject,
+        emailHtml: htmlContent,
+        emailType: "welcome",
+      },
+      lead.status
+    );
+    
     console.log(`[WELCOME EMAIL] Sent successfully to ${leadEmail} for lead ${leadId}`);
     return { success: true };
     
@@ -281,6 +329,19 @@ export async function sendProactiveLeadWelcomeEmail(
           eq(schema.proactiveLeads.consultantId, consultantId)
         )
       );
+    
+    await logEmailActivity(
+      leadId,
+      consultantId,
+      null,
+      "welcome_email_failed",
+      `Errore invio email di benvenuto: ${error.message}`,
+      {
+        emailType: "welcome",
+        errorMessage: error.message || "Errore sconosciuto",
+      },
+      undefined
+    );
     
     return { success: false, error: error.message };
   }

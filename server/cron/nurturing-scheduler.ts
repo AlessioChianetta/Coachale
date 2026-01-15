@@ -7,6 +7,38 @@ import { compileTemplate, buildTemplateVariables } from "../services/template-co
 import { storage } from "../storage";
 import { generateUnsubscribeToken } from "../routes/public-unsubscribe";
 
+async function logNurturingEmailActivity(
+  leadId: string,
+  consultantId: string,
+  agentConfigId: string | null,
+  eventType: "nurturing_email_sent" | "nurturing_email_failed",
+  eventMessage: string,
+  eventDetails: {
+    emailRecipient?: string;
+    emailSubject?: string;
+    emailHtml?: string;
+    emailType?: "welcome" | "nurturing";
+    nurturingDay?: number;
+    errorMessage?: string;
+  },
+  leadStatusAtEvent?: string
+) {
+  try {
+    await db.insert(schema.proactiveLeadActivityLogs).values({
+      leadId,
+      consultantId,
+      agentConfigId,
+      eventType,
+      eventMessage,
+      eventDetails,
+      leadStatusAtEvent: leadStatusAtEvent as any,
+    });
+    console.log(`📧 [NURTURING ACTIVITY LOG] ${eventType}: ${eventMessage}`);
+  } catch (error) {
+    console.error(`❌ [NURTURING ACTIVITY LOG] Failed to save log:`, error);
+  }
+}
+
 let nurturingJob: cron.ScheduledTask | null = null;
 let cleanupJob: cron.ScheduledTask | null = null;
 
@@ -143,32 +175,68 @@ async function sendNurturingEmail(
     console.warn(`⚠️ [NURTURING] Template compilation warnings for day ${currentDay}:`, compiled.errors);
   }
   
-  await sendEmail({
-    to: leadEmail,
-    subject: compiled.subject,
-    html: compiled.body,
-    consultantId: config.consultantId,
-  });
-  
-  await db.insert(schema.leadNurturingLogs).values({
-    leadId: lead.id,
-    consultantId: config.consultantId,
-    templateId: template.id,
-    dayNumber: currentDay,
-    emailTo: leadEmail,
-    sentAt: new Date(),
-  });
-  
-  await db.update(schema.proactiveLeads)
-    .set({
-      nurturingEmailsSent: (lead.nurturingEmailsSent || 0) + 1,
-      nurturingLastEmailAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.proactiveLeads.id, lead.id));
-  
-  console.log(`✅ [NURTURING] Sent day ${currentDay} email to ${leadEmail}`);
-  return { success: true };
+  try {
+    await sendEmail({
+      to: leadEmail,
+      subject: compiled.subject,
+      html: compiled.body,
+      consultantId: config.consultantId,
+    });
+    
+    await db.insert(schema.leadNurturingLogs).values({
+      leadId: lead.id,
+      consultantId: config.consultantId,
+      templateId: template.id,
+      dayNumber: currentDay,
+      emailTo: leadEmail,
+      sentAt: new Date(),
+    });
+    
+    await db.update(schema.proactiveLeads)
+      .set({
+        nurturingEmailsSent: (lead.nurturingEmailsSent || 0) + 1,
+        nurturingLastEmailAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.proactiveLeads.id, lead.id));
+    
+    await logNurturingEmailActivity(
+      lead.id,
+      config.consultantId,
+      lead.agentConfigId,
+      "nurturing_email_sent",
+      `Email nurturing giorno ${currentDay} inviata a ${leadEmail}`,
+      {
+        emailRecipient: leadEmail,
+        emailSubject: compiled.subject,
+        emailHtml: compiled.body,
+        emailType: "nurturing",
+        nurturingDay: currentDay,
+      },
+      lead.status
+    );
+    
+    console.log(`✅ [NURTURING] Sent day ${currentDay} email to ${leadEmail}`);
+    return { success: true };
+  } catch (error: any) {
+    await logNurturingEmailActivity(
+      lead.id,
+      config.consultantId,
+      lead.agentConfigId,
+      "nurturing_email_failed",
+      `Errore invio email nurturing giorno ${currentDay}: ${error.message}`,
+      {
+        emailRecipient: leadEmail,
+        emailSubject: compiled.subject,
+        emailType: "nurturing",
+        nurturingDay: currentDay,
+        errorMessage: error.message || "Errore sconosciuto",
+      },
+      lead.status
+    );
+    
+    throw error;
+  }
 }
 
 async function cleanupOldLogs(): Promise<void> {

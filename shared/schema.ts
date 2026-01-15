@@ -3845,7 +3845,8 @@ export const proactiveLeadActivityLogs = pgTable("proactive_lead_activity_logs",
 
   // Event type
   eventType: text("event_type").$type<
-    "created" | "scheduled" | "processing" | "sent" | "failed" | "skipped" | "responded" | "converted" | "manual_trigger"
+    "created" | "scheduled" | "processing" | "sent" | "failed" | "skipped" | "responded" | "converted" | "manual_trigger" |
+    "welcome_email_sent" | "welcome_email_failed" | "nurturing_email_sent" | "nurturing_email_failed"
   >().notNull(),
 
   // Event details
@@ -3860,6 +3861,12 @@ export const proactiveLeadActivityLogs = pgTable("proactive_lead_activity_logs",
     isDryRun?: boolean;
     workingHoursCheck?: boolean;
     templateVariables?: Record<string, string>;
+    // Email-specific fields
+    emailRecipient?: string;
+    emailSubject?: string;
+    emailHtml?: string;
+    emailType?: "welcome" | "nurturing";
+    nurturingDay?: number;
   }>().default(sql`'{}'::jsonb`),
 
   // Status at time of event
