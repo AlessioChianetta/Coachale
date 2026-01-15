@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { eq, and, desc, asc, inArray, sql, notInArray } from "drizzle-orm";
 import * as schema from "@shared/schema";
-import { generateNurturingTemplates, regenerateTemplate, getTemplateCount, generatePreviewTemplate, generateRemainingTemplates } from "../services/lead-nurturing-generation-service";
+import { generateNurturingTemplates, regenerateTemplate, getTemplateCount, generatePreviewTemplate, generateRemainingTemplates, getGenerationStatus, generateWeekBlock } from "../services/lead-nurturing-generation-service";
 import { validateTemplate } from "../services/template-compiler";
 import { extractTextFromFile } from "../services/document-processor";
 import fs from "fs/promises";
@@ -463,6 +463,120 @@ router.post("/lead-nurturing/generate-remaining", authenticateToken, requireRole
       res.write(`data: ${JSON.stringify({ status: "error", error: error.message })}\n\n`);
       res.end();
     }
+  }
+});
+
+// NEW: Get generation status - how many templates exist and next day to generate
+router.get("/lead-nurturing/generation-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const status = await getGenerationStatus(consultantId);
+    
+    res.json({ success: true, ...status });
+  } catch (error: any) {
+    console.error("[NURTURING] Error fetching generation status:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// NEW: Generate a week block (7 days at a time)
+router.post("/lead-nurturing/generate-week", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { businessDescription, targetAudience, tone, companyName, senderName, startDay, previewTemplate } = req.body;
+    
+    if (!businessDescription) {
+      return res.status(400).json({ success: false, error: "businessDescription è richiesto" });
+    }
+    
+    const config = await storage.getNurturingConfig(consultantId);
+    const brandVoiceData = config?.brandVoiceData || undefined;
+    
+    let actualStartDay = startDay || 1;
+    let previewSaved = false;
+    const savedTemplates: { dayNumber: number; subject: string; body: string; category: string }[] = [];
+    
+    // Fixed: If startDay === 1 and previewTemplate is provided, save it as day 1 first
+    if (actualStartDay === 1 && previewTemplate && previewTemplate.subject && previewTemplate.body) {
+      console.log(`[NURTURING] Saving approved preview template as day 1 for consultant ${consultantId}`);
+      
+      const category = "welcome"; // Day 1 is always welcome category
+      
+      // Check if day 1 already exists
+      const existing = await db.select()
+        .from(schema.leadNurturingTemplates)
+        .where(
+          and(
+            eq(schema.leadNurturingTemplates.consultantId, consultantId),
+            eq(schema.leadNurturingTemplates.dayNumber, 1)
+          )
+        );
+      
+      if (existing.length > 0) {
+        // Update existing
+        await db.update(schema.leadNurturingTemplates)
+          .set({
+            subject: previewTemplate.subject,
+            body: previewTemplate.body,
+            category,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(schema.leadNurturingTemplates.consultantId, consultantId),
+              eq(schema.leadNurturingTemplates.dayNumber, 1)
+            )
+          );
+      } else {
+        // Insert new
+        await db.insert(schema.leadNurturingTemplates).values({
+          consultantId,
+          dayNumber: 1,
+          subject: previewTemplate.subject,
+          body: previewTemplate.body,
+          category,
+          isActive: true,
+        });
+      }
+      
+      savedTemplates.push({
+        dayNumber: 1,
+        subject: previewTemplate.subject,
+        body: previewTemplate.body,
+        category,
+      });
+      
+      previewSaved = true;
+      actualStartDay = 2; // Start generating from day 2
+      console.log(`[NURTURING] Preview template saved as day 1, starting generation from day 2`);
+    }
+    
+    const result = await generateWeekBlock({
+      consultantId,
+      businessDescription,
+      targetAudience: targetAudience || "Clienti interessati ai nostri servizi",
+      tone: tone || "professionale ma amichevole",
+      companyName,
+      senderName,
+      brandVoiceData,
+    }, actualStartDay);
+    
+    // Combine saved preview template with generated templates
+    const allTemplates = [...savedTemplates, ...result.templates];
+    const totalGenerated = previewSaved ? result.generated + 1 : result.generated;
+    
+    res.json({ 
+      success: result.success, 
+      generated: totalGenerated,
+      templates: allTemplates,
+      nextDay: result.nextDay,
+      isComplete: result.isComplete,
+      errors: result.errors,
+      previewSaved,
+    });
+  } catch (error: any) {
+    console.error("[NURTURING] Error generating week block:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

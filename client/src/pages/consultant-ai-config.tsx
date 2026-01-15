@@ -1535,6 +1535,10 @@ export default function ConsultantAIConfigPage() {
   const [previewTemplate, setPreviewTemplate] = useState<{ subject: string; body: string; category: string; dayNumber: number } | null>(null);
   const [showPreviewConfirmDialog, setShowPreviewConfirmDialog] = useState(false);
   const [showBrandVoiceWarningDialog, setShowBrandVoiceWarningDialog] = useState(false);
+  const [showWeekGenerationUI, setShowWeekGenerationUI] = useState(false);
+  const [generatedWeekTemplates, setGeneratedWeekTemplates] = useState<{ dayNumber: number; subject: string; body: string; category: string }[]>([]);
+  const [isGeneratingWeek, setIsGeneratingWeek] = useState(false);
+  const [weekGenerationErrors, setWeekGenerationErrors] = useState<string[]>([]);
   
   // Brand Voice states per Nurturing
   const [brandVoiceData, setBrandVoiceData] = useState<{
@@ -1626,6 +1630,22 @@ export default function ConsultantAIConfigPage() {
       if (!res.ok) return null;
       return res.json();
     },
+  });
+
+  const { data: generationStatus, refetch: refetchGenerationStatus } = useQuery<{
+    success: boolean;
+    totalGenerated: number;
+    nextDay: number;
+    isComplete: boolean;
+    lastGeneratedDay: number;
+  }>({
+    queryKey: ["/api/lead-nurturing/generation-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/generation-status", { headers: getAuthHeaders() });
+      if (!res.ok) return { success: false, totalGenerated: 0, nextDay: 1, isComplete: false, lastGeneratedDay: 0 };
+      return res.json();
+    },
+    enabled: showWeekGenerationUI || showPreviewConfirmDialog,
   });
 
   const { data: nurturingTemplatesData, isLoading: nurturingTemplatesLoading } = useQuery<{
@@ -1814,6 +1834,65 @@ export default function ConsultantAIConfigPage() {
     },
     onError: (error: any) => {
       setIsGenerating(false);
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const generateWeekMutation = useMutation({
+    mutationFn: async (data: { businessDescription: string; referenceEmail: string; preferredTone: string; startDay: number; previewTemplate?: { subject: string; body: string } }) => {
+      setIsGeneratingWeek(true);
+      setWeekGenerationErrors([]); // Clear previous errors
+      const res = await fetch("/api/lead-nurturing/generate-week", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessDescription: data.businessDescription,
+          targetAudience: "Clienti interessati ai nostri servizi",
+          tone: data.preferredTone,
+          startDay: data.startDay,
+          previewTemplate: data.previewTemplate, // Pass preview template if starting from day 1
+        }),
+      });
+      if (!res.ok) throw new Error("Errore generazione settimana");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setIsGeneratingWeek(false);
+      
+      // Always update templates if we got any, regardless of errors
+      if (data.templates && data.templates.length > 0) {
+        setGeneratedWeekTemplates(prev => [...prev, ...(data.templates || [])]);
+        refetchGenerationStatus();
+        queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/templates"] });
+      }
+      
+      // Track errors for display
+      if (data.errors && data.errors.length > 0) {
+        setWeekGenerationErrors(data.errors);
+        toast({
+          title: "Generazione parziale",
+          description: `${data.generated || 0} template generati, ma ${data.errors.length} giorni hanno avuto errori`,
+          variant: "destructive",
+        });
+      } else if (data.success) {
+        const endDay = Math.min((data.nextDay || 1) - 1, 365);
+        toast({
+          title: "Settimana generata!",
+          description: `${data.generated || 7} template generati (giorni fino al ${endDay})`,
+        });
+        if (data.isComplete) {
+          toast({
+            title: "🎉 Generazione completata!",
+            description: "Tutti i 365 template sono stati generati con successo!",
+          });
+        }
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore nella generazione", variant: "destructive" });
+      }
+    },
+    onError: (error: any) => {
+      setIsGeneratingWeek(false);
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
@@ -5914,87 +5993,269 @@ Non limitarti a stato attuale/ideale. Attingi da:
       </Dialog>
 
       <Dialog open={showPreviewConfirmDialog} onOpenChange={(open) => {
-        if (!open && !isGenerating) {
+        if (!open && !isGeneratingWeek) {
           setShowPreviewConfirmDialog(false);
-          setPreviewTemplate(null);
+          if (!showWeekGenerationUI) {
+            setPreviewTemplate(null);
+          }
         }
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-emerald-500" />
-              Anteprima Template Giorno 1
-            </DialogTitle>
-            <DialogDescription>
-              Ecco come apparirà la prima email della sequenza. Ti piace lo stile?
-            </DialogDescription>
-          </DialogHeader>
-          
-          {previewTemplate && (
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
-                <div className="mb-3">
-                  <Label className="text-xs text-muted-foreground">Oggetto:</Label>
-                  <p className="font-medium text-lg">{previewTemplate.subject}</p>
-                </div>
-                <Separator className="my-3" />
-                <div>
-                  <Label className="text-xs text-muted-foreground">Corpo email:</Label>
-                  <div 
-                    className="mt-2 prose prose-sm dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: previewTemplate.body }}
-                  />
-                </div>
-              </div>
+          {!showWeekGenerationUI ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-emerald-500" />
+                  Anteprima Template Giorno 1
+                </DialogTitle>
+                <DialogDescription>
+                  Ecco come apparirà la prima email della sequenza. Ti piace lo stile?
+                </DialogDescription>
+              </DialogHeader>
               
-              <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-800 dark:text-amber-200">
-                  <strong>Nota:</strong> Se confermi, verranno generate tutte le 365 email della sequenza.
-                  Questo processo richiederà alcuni minuti.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-          
-          <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowPreviewConfirmDialog(false);
-                setPreviewTemplate(null);
-              }}
-              disabled={isGenerating}
-            >
-              Annulla e Riprova
-            </Button>
-            <Button
-              onClick={() => {
-                if (previewTemplate) {
-                  generateRemainingMutation.mutate({
-                    businessDescription,
-                    referenceEmail,
-                    preferredTone,
-                    previewTemplate,
-                  });
-                }
-              }}
-              disabled={isGenerating || !previewTemplate}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generazione...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Genera tutti i 365 Templates
-                </>
+              {previewTemplate && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                    <div className="mb-3">
+                      <Label className="text-xs text-muted-foreground">Oggetto:</Label>
+                      <p className="font-medium text-lg">{previewTemplate.subject}</p>
+                    </div>
+                    <Separator className="my-3" />
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Corpo email:</Label>
+                      <div 
+                        className="mt-2 prose prose-sm dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{ __html: previewTemplate.body }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800 dark:text-blue-200">
+                      <strong>Nuovo!</strong> Ora puoi generare i template 7 alla volta. Potrai chiudere la finestra e riprendere quando vuoi.
+                    </AlertDescription>
+                  </Alert>
+                </div>
               )}
-            </Button>
-          </DialogFooter>
+              
+              <DialogFooter className="flex gap-2 sm:gap-0">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowPreviewConfirmDialog(false);
+                    setPreviewTemplate(null);
+                  }}
+                >
+                  Annulla e Riprova
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowWeekGenerationUI(true);
+                    setGeneratedWeekTemplates([]);
+                    refetchGenerationStatus();
+                  }}
+                  disabled={!previewTemplate}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Inizia Generazione Settimanale
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-emerald-500" />
+                  Generazione Template Lead Nurturing 365
+                </DialogTitle>
+                <DialogDescription>
+                  {generationStatus?.isComplete 
+                    ? "Tutti i template sono stati generati con successo!" 
+                    : "Genera i template 7 alla volta. Puoi chiudere questa finestra e riprendere in seguito."
+                  }
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Progresso generazione</span>
+                    <span className="text-muted-foreground">
+                      {generationStatus?.totalGenerated || 0} / 365 template
+                    </span>
+                  </div>
+                  <Progress 
+                    value={((generationStatus?.totalGenerated || 0) / 365) * 100} 
+                    className="h-3"
+                  />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {generationStatus?.isComplete 
+                        ? "Completato!" 
+                        : `Prossimo giorno da generare: ${generationStatus?.nextDay || 1}`
+                      }
+                    </span>
+                    <span>{Math.round(((generationStatus?.totalGenerated || 0) / 365) * 100)}%</span>
+                  </div>
+                </div>
+
+                {/* Display errors from week generation */}
+                {weekGenerationErrors.length > 0 && (
+                  <Alert className="bg-red-50 dark:bg-red-900/20 border-red-200">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800 dark:text-red-200">
+                      <strong>Alcuni giorni hanno avuto errori:</strong>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        {weekGenerationErrors.slice(0, 5).map((error, idx) => (
+                          <li key={idx} className="text-sm">{error}</li>
+                        ))}
+                        {weekGenerationErrors.length > 5 && (
+                          <li className="text-sm text-muted-foreground">
+                            ...e altri {weekGenerationErrors.length - 5} errori
+                          </li>
+                        )}
+                      </ul>
+                      <p className="mt-2 text-sm">Clicca "Genera prossimi 7 template" per riprovare i giorni mancanti.</p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {generationStatus?.isComplete ? (
+                  <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      <strong>🎉 Congratulazioni!</strong> Tutti i 365 template email sono stati generati. 
+                      Ora puoi visualizzarli nella lista e personalizzarli se necessario.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={() => {
+                        const startDay = generationStatus?.nextDay || 1;
+                        generateWeekMutation.mutate({
+                          businessDescription,
+                          referenceEmail,
+                          preferredTone,
+                          startDay,
+                          // Pass preview template if we're starting from day 1 and have a preview
+                          previewTemplate: startDay === 1 && previewTemplate ? {
+                            subject: previewTemplate.subject,
+                            body: previewTemplate.body,
+                          } : undefined,
+                        });
+                      }}
+                      disabled={isGeneratingWeek}
+                      size="lg"
+                      className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-lg px-8 py-6"
+                    >
+                      {isGeneratingWeek ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Generazione in corso...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRight className="mr-2 h-5 w-5" />
+                          Genera prossimi 7 template
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {generatedWeekTemplates.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Template generati in questa sessione ({generatedWeekTemplates.length})
+                    </Label>
+                    <Accordion type="single" collapsible className="w-full border rounded-lg">
+                      {generatedWeekTemplates.slice().reverse().slice(0, 14).map((template) => (
+                        <AccordionItem key={template.dayNumber} value={`day-${template.dayNumber}`}>
+                          <AccordionTrigger className="px-4 hover:no-underline">
+                            <div className="flex items-center gap-3 text-left">
+                              <Badge variant="secondary" className="shrink-0">
+                                Giorno {template.dayNumber}
+                              </Badge>
+                              <span className="text-sm truncate max-w-[300px]">
+                                {template.subject}
+                              </span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-4">
+                            <div className="space-y-3">
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Categoria:</Label>
+                                <Badge variant="outline" className="ml-2 capitalize">
+                                  {template.category}
+                                </Badge>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Oggetto:</Label>
+                                <p className="font-medium">{template.subject}</p>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Anteprima corpo:</Label>
+                                <div 
+                                  className="mt-2 prose prose-sm dark:prose-invert max-w-none bg-slate-50 dark:bg-slate-800 p-3 rounded border max-h-40 overflow-y-auto"
+                                  dangerouslySetInnerHTML={{ __html: template.body.substring(0, 500) + (template.body.length > 500 ? '...' : '') }}
+                                />
+                              </div>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                    {generatedWeekTemplates.length > 14 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        + altri {generatedWeekTemplates.length - 14} template generati
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {!generationStatus?.isComplete && generationStatus && generationStatus.totalGenerated > 0 && generatedWeekTemplates.length === 0 && (
+                  <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
+                    <History className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800 dark:text-amber-200">
+                      <strong>Ripresa generazione:</strong> Hai già generato {generationStatus.totalGenerated} template in precedenza.
+                      Clicca "Genera prossimi 7 template" per continuare dal giorno {generationStatus.nextDay}.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowPreviewConfirmDialog(false);
+                    setShowWeekGenerationUI(false);
+                  }}
+                  disabled={isGeneratingWeek}
+                >
+                  {generationStatus?.isComplete ? "Chiudi" : "Chiudi e Riprendi Dopo"}
+                </Button>
+                {generationStatus?.isComplete && (
+                  <Button
+                    onClick={() => {
+                      setShowPreviewConfirmDialog(false);
+                      setShowWeekGenerationUI(false);
+                      setPreviewTemplate(null);
+                      setGeneratedWeekTemplates([]);
+                    }}
+                    className="bg-gradient-to-r from-green-500 to-emerald-500"
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Completa
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

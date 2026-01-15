@@ -596,3 +596,161 @@ export async function generateRemainingTemplates(
     return { success: false, generated, errors: [...errors, error.message] };
   }
 }
+
+// NEW: Get generation status - how many templates exist and next day to generate
+// Fixed: Now properly detects gaps in day sequence instead of just using lastGeneratedDay + 1
+export async function getGenerationStatus(consultantId: string): Promise<{
+  totalGenerated: number;
+  nextDay: number;
+  isComplete: boolean;
+  lastGeneratedDay: number;
+  missingDays: number;
+}> {
+  const templates = await db.select({ dayNumber: schema.leadNurturingTemplates.dayNumber })
+    .from(schema.leadNurturingTemplates)
+    .where(eq(schema.leadNurturingTemplates.consultantId, consultantId))
+    .orderBy(asc(schema.leadNurturingTemplates.dayNumber));
+  
+  const totalGenerated = templates.length;
+  const lastGeneratedDay = templates.length > 0 ? Math.max(...templates.map(t => t.dayNumber)) : 0;
+  
+  // Create a set of existing day numbers for O(1) lookup
+  const existingDays = new Set(templates.map(t => t.dayNumber));
+  
+  // Find the first missing day by scanning from 1 to 365
+  let nextDay = 366; // Default: all complete
+  let missingDays = 0;
+  
+  for (let day = 1; day <= 365; day++) {
+    if (!existingDays.has(day)) {
+      if (nextDay === 366) {
+        nextDay = day; // First missing day
+      }
+      missingDays++;
+    }
+  }
+  
+  const isComplete = missingDays === 0;
+  
+  return { totalGenerated, nextDay, isComplete, lastGeneratedDay, missingDays };
+}
+
+// NEW: Generate a block of 7 days (one week)
+export async function generateWeekBlock(
+  config: GenerationConfig,
+  startDay: number
+): Promise<{ 
+  success: boolean; 
+  generated: number; 
+  templates: { dayNumber: number; subject: string; body: string; category: string }[];
+  nextDay: number;
+  isComplete: boolean;
+  errors: string[];
+}> {
+  const { consultantId } = config;
+  const WEEK_SIZE = 7;
+  const errors: string[] = [];
+  const generatedTemplates: { dayNumber: number; subject: string; body: string; category: string }[] = [];
+  
+  // Calculate end day (don't go past 365)
+  const endDay = Math.min(startDay + WEEK_SIZE - 1, 365);
+  const days = Array.from({ length: endDay - startDay + 1 }, (_, i) => i + startDay);
+  
+  console.log(`[NURTURING GENERATION] Generating week block: days ${startDay}-${endDay} for consultant ${consultantId}`);
+  
+  try {
+    const knowledgeBaseContext = await fetchNurturingKnowledgeItems(consultantId);
+    
+    // Generate templates sequentially to avoid rate limits
+    for (const day of days) {
+      try {
+        const template = await generateTemplateForDay(day, config, consultantId, knowledgeBaseContext);
+        
+        // Check if template already exists
+        const existing = await db.select()
+          .from(schema.leadNurturingTemplates)
+          .where(
+            and(
+              eq(schema.leadNurturingTemplates.consultantId, consultantId),
+              eq(schema.leadNurturingTemplates.dayNumber, day)
+            )
+          );
+        
+        if (existing.length > 0) {
+          // Update existing
+          await db.update(schema.leadNurturingTemplates)
+            .set({
+              subject: template.subject,
+              body: template.body,
+              category: template.category,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(schema.leadNurturingTemplates.consultantId, consultantId),
+                eq(schema.leadNurturingTemplates.dayNumber, day)
+              )
+            );
+        } else {
+          // Insert new
+          await db.insert(schema.leadNurturingTemplates).values({
+            consultantId,
+            dayNumber: day,
+            subject: template.subject,
+            body: template.body,
+            category: template.category,
+            isActive: true,
+          });
+        }
+        
+        generatedTemplates.push({
+          dayNumber: day,
+          subject: template.subject,
+          body: template.body,
+          category: template.category,
+        });
+        
+        console.log(`[NURTURING GENERATION] Day ${day} saved successfully`);
+        
+        // Small delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error: any) {
+        console.error(`[NURTURING GENERATION] Error generating day ${day}:`, error.message);
+        errors.push(`Day ${day}: ${error.message}`);
+      }
+    }
+    
+    // Update config with new count
+    const status = await getGenerationStatus(consultantId);
+    await db.update(schema.leadNurturingConfig)
+      .set({
+        templatesGenerated: status.totalGenerated,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+    
+    console.log(`[NURTURING GENERATION] Week block complete: ${generatedTemplates.length} templates generated`);
+    
+    // Fixed: Return success: false if any day failed
+    const hasErrors = errors.length > 0;
+    
+    return {
+      success: !hasErrors,
+      generated: generatedTemplates.length,
+      templates: generatedTemplates,
+      nextDay: status.nextDay,
+      isComplete: status.isComplete,
+      errors,
+    };
+  } catch (error: any) {
+    console.error("[NURTURING GENERATION] Fatal error in week block:", error);
+    return {
+      success: false,
+      generated: generatedTemplates.length,
+      templates: generatedTemplates,
+      nextDay: startDay + generatedTemplates.length,
+      isComplete: false,
+      errors: [...errors, error.message],
+    };
+  }
+}
