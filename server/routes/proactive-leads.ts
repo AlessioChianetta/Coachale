@@ -535,6 +535,80 @@ router.delete("/proactive-leads/bulk", authenticateToken, requireRole("consultan
   }
 });
 
+// POST /api/proactive-leads/bulk-nurturing - Bulk enable/disable nurturing
+router.post("/proactive-leads/bulk-nurturing", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { enable, excludeStatuses = ["converted", "inactive"] } = req.body;
+
+    if (typeof enable !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        error: "Request body must contain 'enable' boolean"
+      });
+    }
+
+    console.log(`📧 [NURTURING BULK] ${enable ? 'Enabling' : 'Disabling'} nurturing for consultant ${consultantId}`);
+
+    // Get all leads that should be updated
+    const allLeads = await storage.getAllProactiveLeads(consultantId);
+    
+    // Filter leads: exclude specified statuses and already in desired state
+    const leadsToUpdate = allLeads.filter(lead => {
+      // Exclude leads with specified statuses
+      if (excludeStatuses.includes(lead.status)) return false;
+      // Only update if different from desired state
+      if (lead.nurturingEnabled === enable) return false;
+      // For enabling, need email
+      if (enable && !storage.getLeadEmail(lead)) return false;
+      return true;
+    });
+
+    console.log(`📧 [NURTURING BULK] Found ${leadsToUpdate.length} leads to update`);
+
+    let updatedCount = 0;
+    const errors: Array<{ id: string; error: string }> = [];
+
+    for (const lead of leadsToUpdate) {
+      try {
+        const updateData: any = {
+          nurturingEnabled: enable,
+          updatedAt: new Date(),
+        };
+        
+        // If enabling, set start date if not already set
+        if (enable && !lead.nurturingStartDate) {
+          updateData.nurturingStartDate = new Date();
+        }
+
+        await storage.updateProactiveLead(lead.id, consultantId, updateData);
+        updatedCount++;
+      } catch (err: any) {
+        errors.push({ id: lead.id, error: err.message || "Unknown error" });
+      }
+    }
+
+    console.log(`✅ [NURTURING BULK] Updated ${updatedCount}/${leadsToUpdate.length} leads`);
+
+    res.json({
+      success: true,
+      updatedCount,
+      totalEligible: leadsToUpdate.length,
+      excludedStatuses: excludeStatuses,
+      errors: errors.length > 0 ? errors : undefined,
+      message: enable 
+        ? `Nurturing attivato per ${updatedCount} lead` 
+        : `Nurturing disattivato per ${updatedCount} lead`
+    });
+  } catch (error: any) {
+    console.error("❌ [NURTURING BULK] Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to update nurturing"
+    });
+  }
+});
+
 // DELETE /api/proactive-leads/:id - Delete lead (verify ownership)
 router.delete("/proactive-leads/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {

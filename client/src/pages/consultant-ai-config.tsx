@@ -68,7 +68,8 @@ import {
   Award,
   Star,
   Plus,
-  Download
+  Download,
+  Users
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
@@ -2158,6 +2159,31 @@ export default function ConsultantAIConfigPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
       toast({ title: "Configurazione salvata!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Bulk nurturing mutation - enable/disable nurturing for all leads
+  const bulkNurturingMutation = useMutation({
+    mutationFn: async ({ enable, excludeStatuses }: { enable: boolean; excludeStatuses?: string[] }) => {
+      const res = await fetch("/api/proactive-leads/bulk-nurturing", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ enable, excludeStatuses }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore durante l'operazione");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Nurturing aggiornato!", 
+        description: data.message 
+      });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -6612,6 +6638,55 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       <p className="text-sm text-muted-foreground">
                         Non inviare email il sabato e la domenica
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Bulk nurturing activation */}
+                  <div className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700">
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-base font-semibold text-emerald-800 dark:text-emerald-200">
+                          Attiva Nurturing su Tutti i Lead
+                        </Label>
+                        <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
+                          Abilita il nurturing per tutti i lead che hanno un'email e non sono clienti o inattivi
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => bulkNurturingMutation.mutate({ 
+                            enable: true, 
+                            excludeStatuses: ["converted", "inactive"] 
+                          })}
+                          disabled={bulkNurturingMutation.isPending}
+                        >
+                          {bulkNurturingMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Attivazione...
+                            </>
+                          ) : (
+                            <>
+                              <Users className="h-4 w-4 mr-2" />
+                              Attiva per Tutti
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => bulkNurturingMutation.mutate({ 
+                            enable: false, 
+                            excludeStatuses: [] 
+                          })}
+                          disabled={bulkNurturingMutation.isPending}
+                        >
+                          Disattiva per Tutti
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
