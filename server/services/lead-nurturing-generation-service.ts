@@ -420,11 +420,13 @@ Categoria: ${category} - ${categoryDesc}
 3. DEVE includere {{linkUnsubscribe}} nel footer per GDPR
 4. NO immagini, NO allegati
 
-=== FORMATO OUTPUT (JSON) ===
+=== FORMATO OUTPUT (JSON PURO) ===
+IMPORTANTE: Rispondi SOLO con JSON valido. NON scrivere pensieri, ragionamenti o commenti. Solo JSON.
 {
   "subject": "Subject max 60 char, deve riflettere il tema ${weekInfo.theme}",
-  "body": "<p>HTML email...</p><p style='font-size:12px;color:#666;margin-top:30px;'><a href='{{linkUnsubscribe}}'>Disiscriviti</a></p>"
-}`;
+  "body": "<p>HTML email completa...</p><p style='font-size:12px;color:#666;margin-top:30px;'><a href='{{linkUnsubscribe}}'>Disiscriviti</a></p>"
+}
+Rispondi SOLO con il JSON sopra, nient'altro.`;
 
   console.log(`[NURTURING GENERATION] Day ${day} - Calling AI with model: ${GEMINI_3_MODEL}`);
   console.log(`[NURTURING GENERATION] Day ${day} - Provider type: ${provider.metadata?.name || 'unknown'}`);
@@ -437,7 +439,7 @@ Categoria: ${category} - ${categoryDesc}
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
       },
     });
   } catch (apiError: any) {
