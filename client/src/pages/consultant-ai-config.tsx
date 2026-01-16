@@ -2155,12 +2155,26 @@ export default function ConsultantAIConfigPage() {
       if (!res.ok) throw new Error("Errore salvataggio");
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
-      toast({ title: "Configurazione salvata!" });
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/lead-nurturing/config"] });
+      const previousConfig = queryClient.getQueryData(["/api/lead-nurturing/config"]);
+      queryClient.setQueryData(["/api/lead-nurturing/config"], (old: any) => ({
+        ...old,
+        config: { ...old?.config, ...newData },
+      }));
+      return { previousConfig };
     },
-    onError: (error: any) => {
+    onError: (error: any, _newData, context) => {
+      if (context?.previousConfig) {
+        queryClient.setQueryData(["/api/lead-nurturing/config"], context.previousConfig);
+      }
       toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+    },
+    onSuccess: () => {
+      toast({ title: "Configurazione salvata!" });
     },
   });
 
