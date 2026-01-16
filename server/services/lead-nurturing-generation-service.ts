@@ -56,6 +56,79 @@ const TEMPLATE_CATEGORIES = [
   { name: "retention", days: Array.from({ length: 62 }, (_, i) => i + 304), description: "Fidelizzazione" },
 ];
 
+const WEEK_THEMES: { week: number; theme: string; focus: string; }[] = [
+  { week: 1, theme: "Benvenuto e Presentazione", focus: "Chi sei, cosa fai, cosa aspettarsi dal percorso" },
+  { week: 2, theme: "La Tua Storia", focus: "Perché fai questo lavoro, la tua missione personale" },
+  { week: 3, theme: "Errore Comune #1", focus: "Il primo grande errore che le persone fanno nel tuo settore" },
+  { week: 4, theme: "Come Funziona il Servizio", focus: "Spiegazione chiara del tuo metodo/approccio" },
+  { week: 5, theme: "Caso Studio #1", focus: "Storia di successo di un cliente reale" },
+  { week: 6, theme: "Mito da Sfatare", focus: "Una credenza sbagliata comune nel settore" },
+  { week: 7, theme: "Tool/Risorsa Gratuita", focus: "Condividi qualcosa di utile e pratico" },
+  { week: 8, theme: "Obiezione: Non Ho Tempo", focus: "Come superare la mancanza di tempo" },
+  { week: 9, theme: "Obiezione: Costa Troppo", focus: "Il vero costo di non agire" },
+  { week: 10, theme: "Behind The Scenes", focus: "Mostra come lavori, il tuo processo" },
+  { week: 11, theme: "FAQ - Domande Frequenti", focus: "Rispondi alle domande più comuni" },
+  { week: 12, theme: "Recap e Invito", focus: "Riassumi il valore e invita all'azione" },
+  { week: 13, theme: "Caso Studio #2", focus: "Un'altra storia di successo" },
+  { week: 14, theme: "I Tuoi Valori", focus: "Cosa ti guida nelle decisioni" },
+  { week: 15, theme: "Errore Comune #2", focus: "Secondo errore frequente" },
+  { week: 16, theme: "Testimonianza Cliente", focus: "Parole dirette di chi ti ha scelto" },
+  { week: 17, theme: "Il Tuo Perché", focus: "Motivazione profonda dietro il tuo lavoro" },
+  { week: 18, theme: "Risultati Misurabili", focus: "Numeri e dati concreti" },
+  { week: 19, theme: "Caso Studio #3", focus: "Focus su un settore/nicchia specifica" },
+  { week: 20, theme: "Obiezione: Non Sono Pronto", focus: "Perché il momento giusto è ora" },
+  { week: 21, theme: "Garanzie e Sicurezza", focus: "Come proteggi il cliente" },
+  { week: 22, theme: "Differenza vs Concorrenti", focus: "Cosa ti rende unico" },
+  { week: 23, theme: "Storia di Fallimento", focus: "Un tuo errore e cosa hai imparato" },
+  { week: 24, theme: "Invito Diretto", focus: "CTA forte per prenotare" },
+  { week: 25, theme: "Domanda Interattiva", focus: "Chiedi feedback o opinione" },
+  { week: 26, theme: "Caso Studio #4", focus: "Cliente con situazione difficile" },
+  { week: 27, theme: "Contenuto Esclusivo", focus: "Qualcosa solo per chi è in lista" },
+  { week: 28, theme: "Errore Comune #3", focus: "Terzo errore da evitare" },
+  { week: 29, theme: "Sondaggio/Quiz", focus: "Coinvolgi con domande" },
+  { week: 30, theme: "Trend del Settore", focus: "Novità e cambiamenti" },
+  { week: 31, theme: "Obiezione: Ho Già Provato", focus: "Perché stavolta è diverso" },
+  { week: 32, theme: "Caso Studio #5", focus: "Trasformazione rapida" },
+  { week: 33, theme: "Riflessione Personale", focus: "Pensiero profondo da condividere" },
+  { week: 34, theme: "Tool/Risorsa #2", focus: "Altra risorsa pratica" },
+  { week: 35, theme: "Anticipazione", focus: "Cosa sta per arrivare" },
+  { week: 36, theme: "Check-in", focus: "Come stai? Hai domande?" },
+  { week: 37, theme: "Urgenza Soft", focus: "Perché agire ora" },
+  { week: 38, theme: "Caso Studio #6", focus: "ROI e risultati economici" },
+  { week: 39, theme: "Offerta Speciale", focus: "Proposta esclusiva" },
+  { week: 40, theme: "Ultimi Posti", focus: "Scarsità genuina" },
+  { week: 41, theme: "Obiezione Finale", focus: "L'ultimo dubbio da superare" },
+  { week: 42, theme: "Decisione", focus: "Aiuta a decidere" },
+  { week: 43, theme: "Bonus Esclusivo", focus: "Valore aggiunto per chi prenota" },
+  { week: 44, theme: "Chiamata all'Azione", focus: "Invito finale diretto" },
+  { week: 45, theme: "Aggiornamento", focus: "Novità dal tuo mondo" },
+  { week: 46, theme: "Caso Studio #7", focus: "Cliente a lungo termine" },
+  { week: 47, theme: "Gratitudine", focus: "Ringrazia per essere in lista" },
+  { week: 48, theme: "Riflessione Annuale", focus: "Cosa hai imparato quest'anno" },
+  { week: 49, theme: "Auguri/Celebrazione", focus: "Momento speciale" },
+  { week: 50, theme: "Obiettivi Futuri", focus: "Cosa arriverà" },
+  { week: 51, theme: "Invito Finale Anno", focus: "Chiudi l'anno insieme" },
+  { week: 52, theme: "Nuovo Inizio", focus: "Prepararsi al nuovo anno" },
+];
+
+const EMAIL_TYPES = [
+  { type: "formazione", icon: "📚", description: "Insegna qualcosa di utile", ctaBias: "calendario" },
+  { type: "valore", icon: "💎", description: "Condividi insight esclusivo", ctaBias: "whatsapp" },
+  { type: "appuntamento", icon: "📅", description: "Invita a prenotare consulenza", ctaBias: "calendario" },
+  { type: "storia", icon: "📖", description: "Racconta esperienza personale", ctaBias: "risposta" },
+  { type: "case_study", icon: "🏆", description: "Mostra risultati cliente", ctaBias: "calendario" },
+  { type: "obiezione", icon: "❓", description: "Affronta dubbio comune", ctaBias: "whatsapp" },
+  { type: "risorsa", icon: "🎁", description: "Offri tool/checklist gratuita", ctaBias: "risposta" },
+  { type: "domanda", icon: "💬", description: "Chiedi feedback/opinione", ctaBias: "risposta" },
+];
+
+const CTA_TYPES = [
+  { type: "calendario", template: "Prenota la tua consulenza gratuita: {{linkCalendario}}", weight: 40 },
+  { type: "whatsapp", template: "Scrivimi su WhatsApp: {{whatsapp}}", weight: 30 },
+  { type: "risposta", template: "Rispondi a questa email, leggo personalmente ogni messaggio", weight: 20 },
+  { type: "risorsa", template: "Scarica la risorsa gratuita qui: {{linkCalendario}}", weight: 10 },
+];
+
 const BATCH_SIZE = 10;
 const DELAY_BETWEEN_BATCHES_MS = 1000;
 
@@ -75,6 +148,40 @@ function getCategoryDescription(day: number): string {
     }
   }
   return "Contenuto generale";
+}
+
+function getWeekNumber(day: number): number {
+  return Math.ceil(day / 7);
+}
+
+function getWeekTheme(day: number): { theme: string; focus: string } {
+  const week = getWeekNumber(day);
+  const weekTheme = WEEK_THEMES.find(w => w.week === week) || WEEK_THEMES[WEEK_THEMES.length - 1];
+  return { theme: weekTheme.theme, focus: weekTheme.focus };
+}
+
+function getEmailType(day: number): typeof EMAIL_TYPES[0] {
+  const dayOfWeek = ((day - 1) % 7);
+  const weeklyPattern = [0, 1, 3, 0, 4, 6, 2];
+  const weekNum = getWeekNumber(day);
+  const variation = weekNum % 4;
+  
+  let index = weeklyPattern[dayOfWeek];
+  if (variation === 1 && dayOfWeek === 4) index = 5;
+  if (variation === 2 && dayOfWeek === 5) index = 7;
+  if (variation === 3 && dayOfWeek === 1) index = 3;
+  
+  return EMAIL_TYPES[index];
+}
+
+function getCTAForDay(day: number, emailType: typeof EMAIL_TYPES[0]): typeof CTA_TYPES[0] {
+  const biasedCTA = CTA_TYPES.find(c => c.type === emailType.ctaBias);
+  const variation = day % 5;
+  if (variation === 0) {
+    const alternatives = CTA_TYPES.filter(c => c.type !== emailType.ctaBias);
+    return alternatives[day % alternatives.length];
+  }
+  return biasedCTA || CTA_TYPES[0];
 }
 
 async function fetchNurturingKnowledgeItems(consultantId: string): Promise<string> {
@@ -190,41 +297,60 @@ async function generateTemplateForDay(
   
   const brandVoiceContext = buildBrandVoiceContext(config.brandVoiceData);
   
+  const weekInfo = getWeekTheme(day);
+  const emailType = getEmailType(day);
+  const suggestedCTA = getCTAForDay(day, emailType);
+  
   const prompt = `Sei un esperto di email marketing B2C. Genera UN'UNICA email di nurturing per il giorno ${day} di un percorso di 365 giorni.
 
-CONTESTO BUSINESS:
+=== TEMA SETTIMANA ${getWeekNumber(day)} ===
+Tema: ${weekInfo.theme}
+Focus: ${weekInfo.focus}
+
+=== TIPO EMAIL ===
+${emailType.icon} ${emailType.type.toUpperCase()}
+Obiettivo: ${emailType.description}
+
+=== CTA SUGGERITA ===
+${suggestedCTA.template}
+
+=== CONTESTO BUSINESS ===
 - Descrizione: ${config.businessDescription}
 - Target: ${config.targetAudience}
 - Tono: ${config.tone}
 - Azienda: ${config.companyName || "{{nomeAzienda}}"}
 - Mittente: ${config.senderName || "{{firmaEmail}}"}
-${brandVoiceContext}${knowledgeBaseContext}
-CATEGORIA EMAIL (Giorno ${day}): ${categoryDesc}
-- Fase del percorso: ${category}
-- Obiettivo fase: ${categoryDesc}
+${brandVoiceContext}
+${knowledgeBaseContext}
 
-VARIABILI DISPONIBILI (usa esattamente questi placeholder):
-- {{nome}} - Nome del destinatario
-- {{nomeCompleto}} - Nome e cognome
-- {{linkCalendario}} - Link per prenotare consulenza
-- {{nomeAzienda}} - Nome dell'azienda
-- {{whatsapp}} - Numero WhatsApp
-- {{firmaEmail}} - Firma del consulente
-- {{linkUnsubscribe}} - Link per disiscriversi (OBBLIGATORIO nel footer)
-- {{giorno}} - Giorno corrente del percorso
+=== FASE DEL PERCORSO ===
+Categoria: ${category} - ${categoryDesc}
 
-REGOLE:
-1. Subject: max 60 caratteri, accattivante, può usare {{nome}}
+=== ISTRUZIONI SPECIFICHE ===
+1. TEMA: L'email DEVE trattare il tema "${weekInfo.theme}" - ${weekInfo.focus}
+2. TIPO: Scrivi come email di tipo "${emailType.type}" - ${emailType.description}
+3. BRAND VOICE: USA ATTIVAMENTE i dati del brand voice:
+   - Se ci sono case study, citane uno specifico con nomi e risultati
+   - Se ci sono libri pubblicati, menzionali come prova di autorevolezza
+   - Se ci sono software/tool creati, parlane come risorsa
+   - Usa i numeri reali (anni esperienza, clienti aiutati, risultati)
+4. VARIAZIONE: NON usare frasi generiche. Sii specifico e concreto.
+5. CTA: Usa la CTA suggerita: ${suggestedCTA.template}
+6. TONO: ${config.tone}
+
+=== VARIABILI DISPONIBILI ===
+{{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
+
+=== REGOLE FORMATO ===
+1. Subject: max 60 caratteri, accattivante, deve riflettere il tema "${weekInfo.theme}"
 2. Body: HTML semplice (p, strong, em, a, ul, li), max 500 parole
 3. DEVE includere {{linkUnsubscribe}} nel footer per GDPR
-4. Tono: ${config.tone}
-5. CTA chiara verso {{linkCalendario}} o {{whatsapp}}
-6. NO immagini, NO allegati
+4. NO immagini, NO allegati
 
-RISPONDI IN QUESTO FORMATO ESATTO (JSON):
+=== FORMATO OUTPUT (JSON) ===
 {
-  "subject": "Subject dell'email qui",
-  "body": "<p>Corpo HTML dell'email qui...</p><p style='font-size:12px;color:#666;margin-top:30px;'>Non vuoi più ricevere queste email? <a href='{{linkUnsubscribe}}'>Disiscriviti qui</a></p>"
+  "subject": "Subject max 60 char, deve riflettere il tema ${weekInfo.theme}",
+  "body": "<p>HTML email...</p><p style='font-size:12px;color:#666;margin-top:30px;'><a href='{{linkUnsubscribe}}'>Disiscriviti</a></p>"
 }`;
 
   console.log(`[NURTURING GENERATION] Day ${day} - Calling AI with model: ${GEMINI_3_MODEL}`);
