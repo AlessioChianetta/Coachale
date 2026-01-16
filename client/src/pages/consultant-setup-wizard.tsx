@@ -767,6 +767,28 @@ export default function ConsultantSetupWizard() {
           status: status?.hasEmailJourneyConfigured ? "verified" : "pending",
           configLink: "/consultant/ai-config?tab=ai-email",
         },
+        {
+          id: "nurturing_emails",
+          stepNumber: 10,
+          title: "Email Nurturing 365",
+          description: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo",
+          icon: <MailPlus className="h-4 w-4" />,
+          status: status?.hasNurturingEmails ? "verified" : "pending",
+          configLink: "/consultant/ai-config?tab=lead-nurturing",
+          count: status?.nurturingEmailsCount,
+          countLabel: "email",
+        },
+        {
+          id: "email_hub",
+          stepNumber: 11,
+          title: "Email Hub",
+          description: "Collega il tuo account email per gestire inbox, invii automatici e risposte AI",
+          icon: <Inbox className="h-4 w-4" />,
+          status: status?.hasEmailHubAccount ? "verified" : "pending",
+          configLink: "/consultant/email-hub",
+          count: status?.emailHubAccountsCount,
+          countLabel: "account",
+        },
       ],
     },
     {
@@ -775,7 +797,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "inbound_agent",
-          stepNumber: 10,
+          stepNumber: 12,
           title: "Agente Inbound",
           description: "Crea un agente per gestire le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -784,7 +806,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "outbound_agent",
-          stepNumber: 11,
+          stepNumber: 13,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -793,7 +815,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "consultative_agent",
-          stepNumber: 12,
+          stepNumber: 14,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -802,7 +824,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "public_agent_link",
-          stepNumber: 13,
+          stepNumber: 15,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -813,7 +835,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "ai_ideas",
-          stepNumber: 14,
+          stepNumber: 16,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -824,7 +846,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 15,
+          stepNumber: 17,
           title: "Altri Template WhatsApp",
           description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -841,7 +863,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 16,
+          stepNumber: 18,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -852,7 +874,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 17,
+          stepNumber: 19,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -863,7 +885,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 18,
+          stepNumber: 20,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -881,7 +903,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 19,
+          stepNumber: 21,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -889,28 +911,6 @@ export default function ConsultantSetupWizard() {
           configLink: "/consultant/appointments",
           count: status?.summaryEmailsCount,
           countLabel: "email",
-        },
-        {
-          id: "nurturing_emails",
-          stepNumber: 20,
-          title: "Email Nurturing 365",
-          description: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo",
-          icon: <MailPlus className="h-4 w-4" />,
-          status: status?.hasNurturingEmails ? "verified" : "pending",
-          configLink: "/consultant/ai-config?tab=lead-nurturing",
-          count: status?.nurturingEmailsCount,
-          countLabel: "email",
-        },
-        {
-          id: "email_hub",
-          stepNumber: 21,
-          title: "Email Hub",
-          description: "Collega il tuo account email per gestire inbox, invii automatici e risposte AI",
-          icon: <Inbox className="h-4 w-4" />,
-          status: status?.hasEmailHubAccount ? "verified" : "pending",
-          configLink: "/consultant/email-hub",
-          count: status?.emailHubAccountsCount,
-          countLabel: "account",
         },
         {
           id: "video_meeting",
