@@ -46,6 +46,15 @@ export interface GenerationConfig {
   brandVoiceData?: BrandVoiceData;
 }
 
+export interface TopicsGenerationConfig {
+  consultantId: string;
+  businessDescription?: string;
+  targetAudience?: string;
+  referenceEmail?: string;
+  preferredTone?: string;
+  brandVoiceData?: BrandVoiceData;
+}
+
 const TEMPLATE_CATEGORIES = [
   { name: "welcome", days: [1, 2, 3], description: "Benvenuto e introduzione" },
   { name: "education", days: Array.from({ length: 60 }, (_, i) => i + 4), description: "Contenuti educativi" },
