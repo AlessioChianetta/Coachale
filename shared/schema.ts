@@ -3706,6 +3706,7 @@ export const leadNurturingConfig = pgTable("lead_nurturing_config", {
   
   // Input originale (per rigenerazione)
   businessDescription: text("business_description"),
+  targetAudience: text("target_audience"),
   referenceEmail: text("reference_email"),
   preferredTone: text("preferred_tone").$type<
     "professionale" | "amichevole" | "motivazionale"
@@ -3751,6 +3752,27 @@ export const leadNurturingConfig = pgTable("lead_nurturing_config", {
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+// Lead Nurturing Topics - 365 argomenti per il percorso email (generati prima del contenuto)
+export const leadNurturingTopics = pgTable("lead_nurturing_topics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Giorno (1-365)
+  day: integer("day").notNull(),
+  
+  // Argomento dell'email
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // Audit
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  uniqueConsultantDay: unique().on(table.consultantId, table.day),
+  consultantIdx: index("nurturing_topics_consultant_idx").on(table.consultantId),
+  dayIdx: index("nurturing_topics_day_idx").on(table.day),
+}));
 
 // Lead Nurturing Logs - Log invii email nurturing
 export const leadNurturingLogs = pgTable("lead_nurturing_logs", {
@@ -3826,6 +3848,13 @@ export const insertConsultantEmailVariablesSchema = createInsertSchema(consultan
   updatedAt: true,
 });
 
+// Lead Nurturing Topics validation schemas
+export const insertLeadNurturingTopicSchema = createInsertSchema(leadNurturingTopics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Lead Nurturing types
 export type LeadNurturingTemplate = typeof leadNurturingTemplates.$inferSelect;
 export type InsertLeadNurturingTemplate = z.infer<typeof insertLeadNurturingTemplateSchema>;
@@ -3835,6 +3864,8 @@ export type LeadNurturingLog = typeof leadNurturingLogs.$inferSelect;
 export type InsertLeadNurturingLog = z.infer<typeof insertLeadNurturingLogSchema>;
 export type ConsultantEmailVariables = typeof consultantEmailVariables.$inferSelect;
 export type InsertConsultantEmailVariables = z.infer<typeof insertConsultantEmailVariablesSchema>;
+export type LeadNurturingTopic = typeof leadNurturingTopics.$inferSelect;
+export type InsertLeadNurturingTopic = z.infer<typeof insertLeadNurturingTopicSchema>;
 
 // Proactive Lead Activity Logs - Log delle attività dei lead proattivi
 export const proactiveLeadActivityLogs = pgTable("proactive_lead_activity_logs", {

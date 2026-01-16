@@ -1149,4 +1149,137 @@ router.post("/lead-nurturing/knowledge/import", authenticateToken, requireRole("
   }
 });
 
+// ============================================================
+// TOPICS ENDPOINTS - Argomenti 365 giorni
+// ============================================================
+
+// GET /lead-nurturing/topics - Lista tutti gli argomenti
+router.get("/lead-nurturing/topics", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const topics = await db.select()
+      .from(schema.leadNurturingTopics)
+      .where(eq(schema.leadNurturingTopics.consultantId, consultantId))
+      .orderBy(asc(schema.leadNurturingTopics.day));
+    
+    res.json({ 
+      success: true, 
+      topics,
+      count: topics.length 
+    });
+  } catch (error: any) {
+    console.error("[NURTURING TOPICS] Error fetching topics:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /lead-nurturing/topics/:id - Modifica un argomento
+router.put("/lead-nurturing/topics/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const topicId = req.params.id;
+    const { title, description } = req.body;
+    
+    // Verifica che il topic appartenga al consulente
+    const [existing] = await db.select()
+      .from(schema.leadNurturingTopics)
+      .where(and(
+        eq(schema.leadNurturingTopics.id, topicId),
+        eq(schema.leadNurturingTopics.consultantId, consultantId)
+      ));
+    
+    if (!existing) {
+      return res.status(404).json({ success: false, error: "Topic not found" });
+    }
+    
+    const [updated] = await db.update(schema.leadNurturingTopics)
+      .set({
+        title: title || existing.title,
+        description: description !== undefined ? description : existing.description,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.leadNurturingTopics.id, topicId))
+      .returning();
+    
+    res.json({ success: true, topic: updated });
+  } catch (error: any) {
+    console.error("[NURTURING TOPICS] Error updating topic:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /lead-nurturing/topics - Elimina tutti gli argomenti (per rigenerazione)
+router.delete("/lead-nurturing/topics", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    await db.delete(schema.leadNurturingTopics)
+      .where(eq(schema.leadNurturingTopics.consultantId, consultantId));
+    
+    res.json({ success: true, message: "All topics deleted" });
+  } catch (error: any) {
+    console.error("[NURTURING TOPICS] Error deleting topics:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /lead-nurturing/generate-outline - Genera 365 argomenti con AI
+router.post("/lead-nurturing/generate-outline", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Ottieni config per brand voice
+    const config = await storage.getNurturingConfig(consultantId);
+    const brandVoiceData = config?.brandVoiceData || {};
+    
+    // Importa il servizio di generazione argomenti
+    const { generateTopicsOutline } = await import("../services/lead-nurturing-generation-service");
+    
+    // Genera gli argomenti
+    const result = await generateTopicsOutline(consultantId, brandVoiceData, res);
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error("[NURTURING TOPICS] Error generating outline:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /lead-nurturing/save-config - Salva configurazione (businessDescription, targetAudience, tone)
+router.put("/lead-nurturing/save-config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { businessDescription, targetAudience, preferredTone, referenceEmail } = req.body;
+    
+    const existing = await storage.getNurturingConfig(consultantId);
+    
+    if (existing) {
+      await db.update(schema.leadNurturingConfig)
+        .set({
+          businessDescription: businessDescription ?? existing.businessDescription,
+          targetAudience: targetAudience ?? existing.targetAudience,
+          preferredTone: preferredTone ?? existing.preferredTone,
+          referenceEmail: referenceEmail ?? existing.referenceEmail,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+    } else {
+      await db.insert(schema.leadNurturingConfig).values({
+        consultantId,
+        businessDescription,
+        targetAudience,
+        preferredTone: preferredTone || "professionale",
+        referenceEmail,
+      });
+    }
+    
+    const updated = await storage.getNurturingConfig(consultantId);
+    res.json({ success: true, config: updated, message: "Configurazione salvata con successo" });
+  } catch (error: any) {
+    console.error("[NURTURING CONFIG] Error saving config:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

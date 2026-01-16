@@ -986,3 +986,192 @@ export async function generateWeekBlock(
     };
   }
 }
+
+// ============================================================
+// TOPICS OUTLINE GENERATION
+// ============================================================
+
+export async function generateTopicsOutline(
+  consultantId: string,
+  brandVoiceData: BrandVoiceData,
+  res?: Response
+): Promise<{ success: boolean; generated: number; errors: string[] }> {
+  console.log(`[TOPICS GENERATION] Starting outline generation for consultant ${consultantId}`);
+  
+  const errors: string[] = [];
+  let generated = 0;
+  
+  try {
+    // Delete existing topics for this consultant
+    await db.delete(schema.leadNurturingTopics)
+      .where(eq(schema.leadNurturingTopics.consultantId, consultantId));
+    
+    console.log("[TOPICS GENERATION] Deleted existing topics");
+    
+    // Get AI provider
+    const provider = await getAIProvider(consultantId, consultantId);
+    
+    // Build brand context
+    let brandContext = "";
+    if (brandVoiceData) {
+      if (brandVoiceData.businessName) brandContext += `\nBusiness: ${brandVoiceData.businessName}`;
+      if (brandVoiceData.businessDescription) brandContext += `\nDescrizione: ${brandVoiceData.businessDescription}`;
+      if (brandVoiceData.whoWeHelp) brandContext += `\nTarget: ${brandVoiceData.whoWeHelp}`;
+      if (brandVoiceData.whatWeDo) brandContext += `\nServizi: ${brandVoiceData.whatWeDo}`;
+      if (brandVoiceData.caseStudies?.length) {
+        brandContext += `\nCase Studies disponibili: ${brandVoiceData.caseStudies.map(c => c.client).join(", ")}`;
+      }
+    }
+    
+    // Generate topics in batches (50 at a time for better quality)
+    const BATCH_SIZE = 50;
+    const TOTAL_DAYS = 365;
+    
+    for (let batchStart = 1; batchStart <= TOTAL_DAYS; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE - 1, TOTAL_DAYS);
+      const daysInBatch = batchEnd - batchStart + 1;
+      
+      console.log(`[TOPICS GENERATION] Generating batch: days ${batchStart}-${batchEnd}`);
+      
+      // Send SSE progress if response available
+      if (res && !res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+      }
+      if (res) {
+        res.write(`data: ${JSON.stringify({ 
+          type: 'progress', 
+          current: batchStart, 
+          total: TOTAL_DAYS,
+          message: `Generando argomenti ${batchStart}-${batchEnd}...`
+        })}\n\n`);
+      }
+      
+      // Get previously generated topics for context (avoid repetition)
+      const previousTopics = await db.select()
+        .from(schema.leadNurturingTopics)
+        .where(eq(schema.leadNurturingTopics.consultantId, consultantId))
+        .orderBy(asc(schema.leadNurturingTopics.day));
+      
+      let previousContext = "";
+      if (previousTopics.length > 0) {
+        previousContext = `\n\n=== ARGOMENTI GIÀ GENERATI (NON RIPETERE) ===\n`;
+        previousContext += previousTopics.map(t => `Giorno ${t.day}: ${t.title}`).join("\n");
+      }
+      
+      const prompt = `Sei un esperto di email marketing. Genera gli ARGOMENTI (solo titoli e brevi descrizioni) per le email dal giorno ${batchStart} al giorno ${batchEnd} di un percorso di 365 giorni.
+
+CONTESTO BUSINESS:${brandContext || "\nConsulente professionale italiano"}
+${previousContext}
+
+REGOLE:
+1. Ogni email deve dare VALORE e FORMAZIONE
+2. Tutte le email portano verso un appuntamento WhatsApp
+3. Il giorno 1 è l'UNICA presentazione - mai più ripetere chi sei
+4. Progressione logica come un libro: ogni giorno si costruisce sul precedente
+5. Varietà: alterna storie, consigli pratici, errori comuni, case study, domande
+6. MAI ripetere argomenti già generati
+7. Argomenti specifici e concreti, non generici
+
+FORMATO OUTPUT (JSON array):
+[
+  {"day": ${batchStart}, "title": "Titolo conciso dell'argomento", "description": "Una frase che descrive cosa tratta l'email"},
+  ...
+]
+
+Genera ESATTAMENTE ${daysInBatch} argomenti per i giorni ${batchStart}-${batchEnd}. Rispondi SOLO con il JSON array.`;
+
+      try {
+        const result = await provider.client.generateContent({
+          model: GEMINI_3_MODEL,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.8,
+            maxOutputTokens: 8192,
+          },
+        });
+        
+        // Extract text
+        let text = "";
+        if (typeof result?.text === 'string') {
+          text = result.text.trim();
+        } else if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          text = result.candidates[0].content.parts[0].text.trim();
+        } else if (result?.response?.text) {
+          text = typeof result.response.text === 'function' ? result.response.text() : result.response.text;
+          text = text?.trim() || "";
+        }
+        
+        // Clean markdown
+        text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+        
+        // Parse JSON array
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+          console.error(`[TOPICS GENERATION] No JSON array found for batch ${batchStart}-${batchEnd}`);
+          errors.push(`Batch ${batchStart}-${batchEnd}: No JSON array found`);
+          continue;
+        }
+        
+        const topics = JSON.parse(jsonMatch[0]);
+        
+        // Insert topics into database
+        for (const topic of topics) {
+          if (topic.day && topic.title) {
+            await db.insert(schema.leadNurturingTopics)
+              .values({
+                consultantId,
+                day: topic.day,
+                title: topic.title,
+                description: topic.description || null,
+              })
+              .onConflictDoUpdate({
+                target: [schema.leadNurturingTopics.consultantId, schema.leadNurturingTopics.day],
+                set: {
+                  title: topic.title,
+                  description: topic.description || null,
+                  updatedAt: new Date(),
+                },
+              });
+            generated++;
+          }
+        }
+        
+        console.log(`[TOPICS GENERATION] Batch ${batchStart}-${batchEnd}: ${topics.length} topics saved`);
+        
+        // Small delay between batches
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (batchError: any) {
+        console.error(`[TOPICS GENERATION] Error in batch ${batchStart}-${batchEnd}:`, batchError.message);
+        errors.push(`Batch ${batchStart}-${batchEnd}: ${batchError.message}`);
+      }
+    }
+    
+    // Send completion
+    if (res) {
+      res.write(`data: ${JSON.stringify({ 
+        type: 'complete', 
+        generated,
+        errors 
+      })}\n\n`);
+      res.end();
+    }
+    
+    console.log(`[TOPICS GENERATION] Complete: ${generated} topics generated, ${errors.length} errors`);
+    
+    return { success: errors.length === 0, generated, errors };
+    
+  } catch (error: any) {
+    console.error("[TOPICS GENERATION] Fatal error:", error);
+    errors.push(error.message);
+    
+    if (res) {
+      res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
+      res.end();
+    }
+    
+    return { success: false, generated, errors };
+  }
+}
