@@ -380,7 +380,7 @@ export async function triggerNurturingNow(consultantId: string): Promise<{
       return { success: false, processed: 0, sent: 0, errors: ["Configurazione nurturing non trovata"] };
     }
     
-    const leads = await db.select()
+    const allLeads = await db.select()
       .from(schema.proactiveLeads)
       .where(
         and(
@@ -390,14 +390,21 @@ export async function triggerNurturingNow(consultantId: string): Promise<{
         )
       );
     
-    console.log(`📧 [NURTURING MANUAL] Found ${leads.length} leads with nurturing enabled`);
+    // Filter only leads with valid email
+    const leads = allLeads.filter(lead => {
+      const email = storage.getLeadEmail(lead);
+      return email && email.includes('@');
+    });
+    
+    const skippedNoEmail = allLeads.length - leads.length;
+    console.log(`📧 [NURTURING MANUAL] Found ${leads.length} leads with email (${skippedNoEmail} skipped - no email)`);
     
     const emailVars = await storage.getEmailVariables(consultantId);
     
     for (const lead of leads) {
       processed++;
       const leadEmail = storage.getLeadEmail(lead);
-      console.log(`📧 [NURTURING MANUAL] Processing lead ${lead.firstName || lead.id}: email=${leadEmail || 'NONE'}, startDate=${lead.nurturingStartDate}`);
+      console.log(`📧 [NURTURING MANUAL] Processing ${lead.firstName || lead.id} (${leadEmail})`);
       try {
         // Skip cooldown for manual test triggers
         const result = await sendNurturingEmail(lead, config, emailVars, { skipCooldown: true });
