@@ -583,37 +583,44 @@ ${day === 1 ? `⭐ QUESTA È L'EMAIL DI BENVENUTO (Giorno 1).
 === VARIABILI DISPONIBILI ===
 {{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
 
-=== STILE COPYWRITING "A CASCATA" (OBBLIGATORIO) ===
-Scrivi come un copywriter professionista. L'email deve essere MAGNETICA e impossibile da smettere di leggere.
+=== STILE COPYWRITING CONVERSAZIONALE (OBBLIGATORIO) ===
+Scrivi come se stessi parlando a un amico. Email MAGNETICA, impossibile smettere di leggere.
 
-TECNICHE OBBLIGATORIE:
-1. OPEN LOOP: Apri un "loop" di curiosità che chiudi solo alla fine (es: "C'è una cosa che non ti ho mai detto...")
-2. PATTERN INTERRUPT: Usa frasi inaspettate che rompono la monotonia (es: "Fermati.", "Aspetta.", "Ecco il problema.")
-3. TENSIONE EMOTIVA: Alterna momenti di tensione e rilascio. Crea suspense.
-4. FRASI INCOMPLETE: Usa i puntini di sospensione per creare attesa (es: "E poi è successo qualcosa...")
-5. DOMANDE RETORICHE: Coinvolgi il lettore con domande dirette
+REGOLE D'ORO:
+1. STORYTELLING PERSONALE: Racconta aneddoti veri, errori, scoperte. Mai parlare in astratto.
+2. DIALOGO INTERNO: Inserisci pensieri tra virgolette ("E io ho pensato: cavolo, è vero!")
+3. FRASI ULTRA-BREVI: 3-8 parole max. "SBAGLIATO.", "Esatto.", "Ecco il punto."
+4. PATTERN INTERRUPT: Frasi che spezzano il ritmo. "Ma aspetta.", "Fermati un secondo."
+5. DOMANDE DIRETTE: "Sai qual è la parte migliore?", "E indovina cosa è successo?"
+6. RIPETIZIONE STRATEGICA: Ribadisci i concetti chiave 2-3 volte in modi diversi
 
-STRUTTURA MAGNETICA:
-- HOOK (prime 2 righe): Cattura SUBITO l'attenzione con qualcosa di inaspettato
-- BODY: Racconta, non elencare. Usa transizioni come "Ecco il punto...", "Ma c'è di più...", "Il bello viene adesso..."
-- CLOSE: Chiudi il loop aperto all'inizio
+STRUTTURA:
+- HOOK: Inizia con qualcosa di personale/inaspettato (NON "Ciao, oggi parliamo di...")
+- BODY: Racconta una storia o un'esperienza. Usa → per elenchi brevi.
+- CLOSE: P.S. opzionale che rilancia il messaggio chiave
 
-FORMATO:
-- Max 10-15 parole per frase
-- Una frase = un paragrafo (<p> separati)
-- Usa <strong> per enfatizzare parole chiave
-- Usa <em> per creare intimità
+FORMATO HTML:
+- Ogni frase su riga separata: <p>Frase breve.</p>
+- Usa <strong> per parole chiave: <strong>SBAGLIATO.</strong>
+- Usa → per mini-elenchi (non <ul>): <p>→ Primo punto</p><p>→ Secondo punto</p>
+- Emoji minimal: solo ✅ e → quando servono
 
-ESEMPIO DI COPY MAGNETICO:
-<p>{{nome}}, devo dirti una cosa.</p>
-<p>Qualcosa che ho scoperto per caso.</p>
-<p>E che ha cambiato tutto.</p>
-<p>Vedi, la maggior parte delle persone pensa che...</p>
-<p><strong>Sbagliato.</strong></p>
-<p>Il vero segreto è un altro.</p>
-<p>E tra poco te lo svelo.</p>
+ESEMPIO PERFETTO:
+<p>{{nome}}, devo confessarti una cosa.</p>
+<p>Ieri ho fatto un errore.</p>
+<p>Un errore stupido.</p>
+<p>E sai cosa è successo?</p>
+<p>Mi hanno scritto 7 persone per farmelo notare.</p>
+<p><strong>Imbarazzante.</strong></p>
+<p>Ma ecco il punto...</p>
+<p>Quell'errore mi ha fatto capire qualcosa.</p>
+<p>Qualcosa che voglio condividere con te oggi.</p>
 
-⚠️ VIETATO: Elencare fatti in modo monotono. Ogni riga deve far venire voglia di leggere la successiva.
+⚠️ VIETATO: 
+- Iniziare con "Ciao {{nome}}, oggi parliamo di..."
+- Elencare fatti senza storytelling
+- Frasi lunghe e formali
+- Tono da "professore"
 
 === REGOLE FORMATO ===
 1. Subject: max 60 caratteri, accattivante, riflette "${topicTitle}"
