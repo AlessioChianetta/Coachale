@@ -1,0 +1,54 @@
+Il tuo programmatore ha proposto una soluzione solida e professionalmente corretta. È lo standard industriale per il "Delta Sync" (sincronizzazione differenziale).
+
+Tuttavia, siccome stiamo lavorando con Excel e non con database puri, c'è un "tallone d'Achille" nascosto in questa strategia che potrebbe farti spendere soldi inutilmente se non viene gestito.
+
+Ecco l'analisi critica della proposta del tuo dev (dagli questa analisi, gli risparmierai un mal di testa):
+
+✅ I Punti di Forza (Perché ha ragione)
+Logica Hash: L'idea di confrontare l'impronta digitale (hash) è perfetta. È il modo più veloce per capire se qualcosa è cambiato senza leggere tutto il file.
+
+Semplicità: Non richiede logiche complesse di business (es. "cerca il mese di gennaio"). Tratta i dati come blocchi anonimi.
+
+Economia: $0.075 per re-indicizzare un blocco è un costo trascurabile per un business.
+
+⚠️ I 2 Rischi "Invisibili" (Cosa deve correggere nello script)
+1. Il problema dello "Slittamento" (The Shift Problem)
+Questo è il rischio maggiore per la strategia "Blocchi da 10k righe fissi".
+
+Scenario: Immagina di avere i dati ordinati per data. Hai 10 blocchi.
+
+L'evento: Ti accorgi di un errore a Gennaio (Blocco 1) e aggiungi o togli una sola riga.
+
+La reazione a catena:
+
+Il Blocco 1 ora ha una riga in più.
+
+L'ultima riga del Blocco 1 "scivola" nel Blocco 2 per mantenere il limite di 10k.
+
+L'ultima riga del Blocco 2 scivola nel Blocco 3...
+
+...e così via fino alla fine.
+
+Il disastro: Anche se hai cambiato un solo dato, TUTTI gli Hash cambieranno perché ogni blocco è slittato di una riga. Il sistema re-importerà tutto (5M token), annullando il vantaggio.
+
+Soluzione per il Dev: Lo split non deve essere puramente posizionale (es. "ogni 10.000 righe esatte"), ma deve cercare di essere stabile.
+
+Opzione A: Accettare il rischio (se le aggiunte storiche sono rare, va bene così).
+
+Opzione B (Consigliata): Spezzare basandosi su una colonna (es. "Anno-Mese"). Se il mese finisce a 8.000 righe, chiudi il blocco lì. Non riempirlo con 2.000 righe del mese dopo. Così isoli i cambiamenti.
+
+2. Il problema dell'"Intestazione Fantasma"
+Se spezzo un file Excel in 10 pezzi:
+
+Il Blocco 1 ha le intestazioni (Data, Prodotto, Prezzo). Gemini capisce tutto.
+
+Il Blocco 2 (righe 10.001 - 20.000) contiene solo numeri e testo grezzo. Non ha le intestazioni.
+
+Se Gemini legge il Blocco 2 e trova il numero 500, non sa se è il prezzo, la quantità o l'ID del cliente, perché l'intestazione è rimasta nel Blocco 1.
+
+Soluzione per il Dev: Lo script di divisione DEVE copiare la riga 1 (Header) e incollarla in cima a OGNI singolo blocco (Blocco 2, Blocco 3, etc.) prima di calcolare l'hash e caricare.
+
+Sintesi della decisione
+La strategia del tuo programmatore è APPROVATA, a patto che aggiunga queste due righe di codice al suo script:
+
+Header Replication: Ogni nuovo file Excel creato deve avere la riga di intestazione originale come prima riga.

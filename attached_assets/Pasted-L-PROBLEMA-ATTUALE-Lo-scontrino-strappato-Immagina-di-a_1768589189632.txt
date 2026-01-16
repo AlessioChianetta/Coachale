@@ -1,0 +1,43 @@
+L PROBLEMA ATTUALE: "Lo scontrino strappato"
+Immagina di avere 100.000 scontrini del ristorante. Il tuo gestionale li salva spezzati in due fogli diversi:
+
+Foglio A (Testata): C'è scritto "Scontrino n. 100 del 15 Gennaio - Totale €50".
+
+Foglio B (Righe): C'è scritto "Scontrino n. 100: 1 Pizza, 1 Birra, 1 Caffè".
+
+Quando tu chiedi all'AI: "Quante pizze ho venduto a Gennaio?", l'AI va nel Foglio B (dove ci sono le pizze), ma lì non c'è scritta la data! C'è solo il numero dello scontrino. L'AI non è un database relazionale, non riesce a saltare dal Foglio B al Foglio A per 60.000 volte in un secondo per controllare la data.
+
+Risultato: L'AI ti risponde "Vedo le pizze, ma non so di che mese sono. Arrangiati tu." (Esattamente quello che è successo in chat).
+
+PASSO 1: La Soluzione (Da fare subito)
+"Incollare i due pezzi dello scontrino"
+
+Dobbiamo dire al programmatore di creare un File Unico (Flat Table) prima di darlo in pasto all'AI. Ogni riga deve contenere TUTTE le informazioni.
+
+Com'è adesso (Sbagliato per l'AI): Pizza Margherita | € 5.00 (Manca la data!)
+
+Come deve diventare (Giusto): 15/01/2026 | Pizza Margherita | € 5.00 | Categoria: Pizze
+
+Cosa dire al programmatore (Copia-incolla questo):
+
+"Prima di ogni altra cosa, modifica lo script di importazione. Non caricare le tabelle 'Testata' e 'Righe' separate. Fai una JOIN (unione) via codice tra DDTTESTATA e DDTRIGHE. Voglio che l'AI riceva un file CSV/Excel dove ogni singola riga di prodotto abbia già accanto la sua colonna DATA esplicita. Solo così l'AI saprà distinguere Gennaio da Agosto."
+
+Risultato immediato: L'AI smetterà di dirti "manca la colonna data".
+
+PASSO 2: La Soluzione (Da fare dopo)
+"Dare la calcolatrice all'AI"
+
+Una volta che l'AI legge le date giuste (grazie al passo 1), avrà un altro problema: non sa contare. L'AI è un modello linguistico (come un poeta), non matematico. Se vede 10.000 righe, va in confusione e ti dice "Ne vedo circa tante...".
+
+Qui interviene il Code Execution. È come se dicessimo all'AI: "Non provare a fare i conti a mente. Ti do un foglio Excel e Python: scrivi la formula e dammi il risultato."
+
+Cosa dire al programmatore (Dopo aver fatto il passo 1):
+
+"Ora che i dati sono uniti, attiva il tool Code Execution nelle API di Gemini. Quando chiedo un totale, l'AI non deve stimare leggendo il testo, deve scrivere ed eseguire codice Python per sommare le colonne esatte."
+
+Riassunto della strategia
+OGGI: Ordina al programmatore di fare il PASSO 1 (Unire i dati). È la base. Senza data sulla riga, non si va da nessuna parte.
+
+TEST: Carica il nuovo file unito e chiedi "Trovami le pizze di Gennaio". Vedrai che ora le trova.
+
+DOMANI: Se vedi che sbaglia la somma finale (es. dice 30.000 invece di 30.050), allora facciamo implementare il PASSO 2 (Code Execution).
