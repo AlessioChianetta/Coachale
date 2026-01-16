@@ -330,9 +330,38 @@ async function generateTemplateForDay(
   
   const brandVoiceContext = buildBrandVoiceContext(config.brandVoiceData);
   
+  // Try to get topic from database first (new topic-first approach)
+  const [topicFromDb] = await db.select()
+    .from(schema.leadNurturingTopics)
+    .where(and(
+      eq(schema.leadNurturingTopics.consultantId, consultantId),
+      eq(schema.leadNurturingTopics.day, day)
+    ));
+  
+  // If topic exists, use it; otherwise fall back to weekly themes
   const weekInfo = getWeekTheme(day);
   const emailType = getEmailType(day);
   const suggestedCTA = getCTAForDay(day, emailType);
+  
+  // Build topic context
+  let topicContext = "";
+  let topicTitle = weekInfo.theme;
+  let topicDescription = weekInfo.focus;
+  
+  if (topicFromDb) {
+    topicTitle = topicFromDb.title;
+    topicDescription = topicFromDb.description || "";
+    topicContext = `
+=== ARGOMENTO SPECIFICO GIORNO ${day} ===
+TITOLO: ${topicFromDb.title}
+DESCRIZIONE: ${topicFromDb.description || "Nessuna descrizione aggiuntiva"}
+
+L'email DEVE trattare ESATTAMENTE questo argomento. Non deviare.
+`;
+    console.log(`[NURTURING GENERATION] Day ${day} - Using topic from DB: "${topicFromDb.title}"`);
+  } else {
+    console.log(`[NURTURING GENERATION] Day ${day} - No topic in DB, using week theme: "${weekInfo.theme}"`);
+  }
   
   // Build previous emails context for anti-repetition
   let previousEmailsContext = "";
@@ -375,17 +404,19 @@ ${bodyText}
   
   const prompt = `Sei un esperto di email marketing B2C. Genera UN'UNICA email di nurturing per il giorno ${day} di un percorso di 365 giorni.
 ${previousEmailsContext}
+${topicContext}
 
-=== TEMA SETTIMANA ${getWeekNumber(day)} ===
-Tema: ${weekInfo.theme}
-Focus: ${weekInfo.focus}
+=== ARGOMENTO GIORNO ${day} ===
+Tema: ${topicTitle}
+${topicDescription ? `Descrizione: ${topicDescription}` : ""}
 
 === TIPO EMAIL ===
 ${emailType.icon} ${emailType.type.toUpperCase()}
 Obiettivo: ${emailType.description}
 
-=== CTA SUGGERITA ===
-${suggestedCTA.template}
+=== CTA ===
+Ogni email DEVE terminare con un invito all'azione WhatsApp:
+"Rispondimi su WhatsApp al {{whatsapp}} per fissare un appuntamento"
 
 === CONTESTO BUSINESS ===
 - Descrizione: ${config.businessDescription}
@@ -400,22 +431,22 @@ ${knowledgeBaseContext}
 Categoria: ${category} - ${categoryDesc}
 
 === ISTRUZIONI SPECIFICHE ===
-1. TEMA: L'email DEVE trattare il tema "${weekInfo.theme}" - ${weekInfo.focus}
-2. TIPO: Scrivi come email di tipo "${emailType.type}" - ${emailType.description}
+1. ARGOMENTO: L'email DEVE trattare ESATTAMENTE l'argomento "${topicTitle}"
+2. VALORE: L'email deve dare valore e formazione concreta, non essere promozionale
 3. BRAND VOICE: USA ATTIVAMENTE i dati del brand voice:
    - Se ci sono case study, citane uno specifico con nomi e risultati
    - Se ci sono libri pubblicati, menzionali come prova di autorevolezza
    - Se ci sono software/tool creati, parlane come risorsa
    - Usa i numeri reali (anni esperienza, clienti aiutati, risultati)
 4. VARIAZIONE: NON usare frasi generiche. Sii specifico e concreto.
-5. CTA: Usa la CTA suggerita: ${suggestedCTA.template}
+5. CTA FINALE: SEMPRE invito WhatsApp per appuntamento
 6. TONO: ${config.tone}
 
 === VARIABILI DISPONIBILI ===
 {{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
 
 === REGOLE FORMATO ===
-1. Subject: max 60 caratteri, accattivante, deve riflettere il tema "${weekInfo.theme}"
+1. Subject: max 60 caratteri, accattivante, deve riflettere l'argomento "${topicTitle}"
 2. Body: HTML semplice (p, strong, em, a, ul, li), max 500 parole
 3. DEVE includere {{linkUnsubscribe}} nel footer per GDPR
 4. NO immagini, NO allegati
@@ -423,8 +454,8 @@ Categoria: ${category} - ${categoryDesc}
 === FORMATO OUTPUT (JSON PURO) ===
 IMPORTANTE: Rispondi SOLO con JSON valido. NON scrivere pensieri, ragionamenti o commenti. Solo JSON.
 {
-  "subject": "Subject max 60 char, deve riflettere il tema ${weekInfo.theme}",
-  "body": "<p>HTML email completa...</p><p style='font-size:12px;color:#666;margin-top:30px;'><a href='{{linkUnsubscribe}}'>Disiscriviti</a></p>"
+  "subject": "Subject max 60 char, deve riflettere l'argomento ${topicTitle}",
+  "body": "<p>HTML email completa...</p><p>Rispondimi su WhatsApp al {{whatsapp}} per fissare un appuntamento.</p><p style='font-size:12px;color:#666;margin-top:30px;'><a href='{{linkUnsubscribe}}'>Disiscriviti</a></p>"
 }
 Rispondi SOLO con il JSON sopra, nient'altro.`;
 

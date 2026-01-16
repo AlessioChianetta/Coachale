@@ -1587,6 +1587,16 @@ export default function ConsultantAIConfigPage() {
   const [nurturingKBImportOpen, setNurturingKBImportOpen] = useState(false);
   const [selectedKBDocsForNurturing, setSelectedKBDocsForNurturing] = useState<string[]>([]);
   
+  // Topics Outline states (365 argomenti)
+  const [generatingOutline, setGeneratingOutline] = useState(false);
+  const [outlineProgress, setOutlineProgress] = useState(0);
+  const [editingTopic, setEditingTopic] = useState<any>(null);
+  const [localBusinessDesc, setLocalBusinessDesc] = useState("");
+  const [localTargetAudience, setLocalTargetAudience] = useState("");
+  const [localTone, setLocalTone] = useState<"professionale" | "amichevole" | "motivazionale">("professionale");
+  const [topicsPage, setTopicsPage] = useState(1);
+  const topicsPerPage = 30;
+  
   // Import dialog
   const [showImportAgentDialog, setShowImportAgentDialog] = useState(false);
   const [availableAgents, setAvailableAgents] = useState<any[]>([]);
@@ -1706,6 +1716,133 @@ export default function ConsultantAIConfigPage() {
     },
     enabled: nurturingKBImportOpen,
   });
+
+  // Topics Outline Query (365 argomenti)
+  const { data: nurturingTopics, refetch: refetchTopics, isLoading: topicsLoading } = useQuery<{ success: boolean; topics: any[]; count: number }>({
+    queryKey: ["/api/lead-nurturing/topics"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/topics", { headers: getAuthHeaders() });
+      if (!res.ok) return { success: false, topics: [], count: 0 };
+      return res.json();
+    },
+    enabled: !!nurturingConfig?.config,
+  });
+
+  // Initialize local state from nurturing config
+  useEffect(() => {
+    if (nurturingConfig?.config) {
+      if (nurturingConfig.config.businessDescription && !localBusinessDesc) {
+        setLocalBusinessDesc(nurturingConfig.config.businessDescription);
+      }
+      if (nurturingConfig.config.targetAudience && !localTargetAudience) {
+        setLocalTargetAudience(nurturingConfig.config.targetAudience);
+      }
+      if (nurturingConfig.config.preferredTone && localTone === "professionale") {
+        setLocalTone(nurturingConfig.config.preferredTone);
+      }
+    }
+  }, [nurturingConfig]);
+
+  // Save Nurturing Config Mutation
+  const saveNurturingConfigMutation = useMutation({
+    mutationFn: async (data: { businessDescription: string; targetAudience: string; preferredTone: string }) => {
+      const res = await fetch("/api/lead-nurturing/save-config", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore salvataggio configurazione");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+      toast({ title: "Configurazione salvata!", description: "Le impostazioni sono state aggiornate con successo" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update Topic Mutation
+  const updateTopicMutation = useMutation({
+    mutationFn: async (data: { id: string; title: string; description: string }) => {
+      const res = await fetch(`/api/lead-nurturing/topics/${data.id}`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ title: data.title, description: data.description }),
+      });
+      if (!res.ok) throw new Error("Errore modifica argomento");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchTopics();
+      setEditingTopic(null);
+      toast({ title: "Argomento aggiornato!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Generate Outline SSE Handler
+  const handleGenerateOutline = async () => {
+    setGeneratingOutline(true);
+    setOutlineProgress(0);
+    
+    try {
+      const res = await fetch("/api/lead-nurturing/generate-outline", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore generazione outline");
+      }
+      
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
+          
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line.replace("data: ", ""));
+              if (data.progress) {
+                setOutlineProgress(data.progress);
+              }
+              if (data.completed || data.status === "completed") {
+                toast({ title: "Outline generato!", description: `${data.count || 365} argomenti creati con successo` });
+                refetchTopics();
+              }
+              if (data.error) {
+                throw new Error(data.error);
+              }
+            } catch (e) {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      } else {
+        const data = await res.json();
+        if (data.success) {
+          toast({ title: "Outline generato!", description: `${data.count || 365} argomenti creati` });
+          refetchTopics();
+        }
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setGeneratingOutline(false);
+      setOutlineProgress(0);
+    }
+  };
 
   const addNurturingKBMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -4849,6 +4986,264 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Configurazione Nurturing Section */}
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
+                    Configurazione Nurturing
+                  </CardTitle>
+                  <CardDescription className="text-slate-500 dark:text-slate-400">
+                    Imposta i parametri base per la generazione delle email di nurturing
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="local-business-desc">Descrizione Business</Label>
+                      <Textarea
+                        id="local-business-desc"
+                        placeholder="Descrivi il tuo business, cosa fai e quali problemi risolvi..."
+                        rows={4}
+                        value={localBusinessDesc}
+                        onChange={(e) => setLocalBusinessDesc(e.target.value)}
+                        className="resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="local-target-audience">Target Audience</Label>
+                      <Textarea
+                        id="local-target-audience"
+                        placeholder="Chi sono i tuoi clienti ideali? Quali sono le loro caratteristiche?"
+                        rows={4}
+                        value={localTargetAudience}
+                        onChange={(e) => setLocalTargetAudience(e.target.value)}
+                        className="resize-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-end gap-4">
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="local-tone">Tono Preferito</Label>
+                      <Select value={localTone} onValueChange={(v: any) => setLocalTone(v)}>
+                        <SelectTrigger id="local-tone" className="w-full md:w-64">
+                          <SelectValue placeholder="Seleziona tono" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="professionale">Professionale</SelectItem>
+                          <SelectItem value="amichevole">Amichevole</SelectItem>
+                          <SelectItem value="motivazionale">Motivazionale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      onClick={() => saveNurturingConfigMutation.mutate({
+                        businessDescription: localBusinessDesc,
+                        targetAudience: localTargetAudience,
+                        preferredTone: localTone,
+                      })}
+                      disabled={saveNurturingConfigMutation.isPending}
+                      className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                    >
+                      {saveNurturingConfigMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Salva Configurazione
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Indice 365 Argomenti Section */}
+              <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                        <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg">
+                          <BookOpen className="h-4 w-4 text-white" />
+                        </div>
+                        Indice 365 Argomenti
+                        {nurturingTopics?.count && nurturingTopics.count > 0 && (
+                          <Badge variant="secondary" className="ml-2">{nurturingTopics.count} argomenti</Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription className="text-slate-500 dark:text-slate-400 mt-1">
+                        Genera gli argomenti per le 365 email annuali. Questi argomenti guideranno la generazione del contenuto.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      onClick={handleGenerateOutline}
+                      disabled={generatingOutline}
+                      className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600"
+                    >
+                      {generatingOutline ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generazione...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          {nurturingTopics?.count && nurturingTopics.count > 0 ? "Rigenera Indice" : "Genera Indice"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {generatingOutline && (
+                    <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Generazione argomenti in corso...</span>
+                        <span className="font-mono">{Math.round(outlineProgress)}%</span>
+                      </div>
+                      <Progress value={outlineProgress} className="h-2" />
+                      <p className="text-xs text-slate-500">
+                        L'AI sta creando 365 argomenti unici per il tuo piano di email marketing annuale.
+                      </p>
+                    </div>
+                  )}
+
+                  {topicsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : nurturingTopics?.topics && nurturingTopics.topics.length > 0 ? (
+                    <>
+                      <Accordion type="multiple" className="space-y-2">
+                        {nurturingTopics.topics
+                          .slice((topicsPage - 1) * topicsPerPage, topicsPage * topicsPerPage)
+                          .map((topic: any) => (
+                            <AccordionItem
+                              key={topic.id}
+                              value={topic.id}
+                              className="border rounded-lg px-4 bg-card"
+                            >
+                              <AccordionTrigger className="hover:no-underline">
+                                <div className="flex items-center gap-3 text-left">
+                                  <Badge variant="outline" className="min-w-[60px] justify-center">
+                                    Giorno {topic.day}
+                                  </Badge>
+                                  <span className="font-medium">{topic.title}</span>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                <div className="space-y-3 pt-2">
+                                  <p className="text-sm text-muted-foreground">
+                                    {topic.description || "Nessuna descrizione"}
+                                  </p>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditingTopic({ ...topic })}
+                                  >
+                                    <Edit className="h-3 w-3 mr-2" />
+                                    Modifica
+                                  </Button>
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                      </Accordion>
+
+                      {nurturingTopics.topics.length > topicsPerPage && (
+                        <div className="flex items-center justify-between pt-4 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTopicsPage(p => Math.max(1, p - 1))}
+                            disabled={topicsPage === 1}
+                          >
+                            Precedente
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            Pagina {topicsPage} di {Math.ceil(nurturingTopics.topics.length / topicsPerPage)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTopicsPage(p => Math.min(Math.ceil(nurturingTopics.topics.length / topicsPerPage), p + 1))}
+                            disabled={topicsPage === Math.ceil(nurturingTopics.topics.length / topicsPerPage)}
+                          >
+                            Successivo
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Nessun argomento generato.</p>
+                      <p className="text-sm mt-1">
+                        Clicca "Genera Indice" per creare 365 argomenti per le tue email di nurturing.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Edit Topic Dialog */}
+              <Dialog open={!!editingTopic} onOpenChange={(open) => !open && setEditingTopic(null)}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Modifica Argomento - Giorno {editingTopic?.day}</DialogTitle>
+                    <DialogDescription>
+                      Modifica il titolo e la descrizione dell'argomento per questo giorno.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-topic-title">Titolo</Label>
+                      <Input
+                        id="edit-topic-title"
+                        value={editingTopic?.title || ""}
+                        onChange={(e) => setEditingTopic((prev: any) => prev ? { ...prev, title: e.target.value } : null)}
+                        placeholder="Titolo dell'argomento"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-topic-desc">Descrizione</Label>
+                      <Textarea
+                        id="edit-topic-desc"
+                        value={editingTopic?.description || ""}
+                        onChange={(e) => setEditingTopic((prev: any) => prev ? { ...prev, description: e.target.value } : null)}
+                        placeholder="Descrizione dell'argomento..."
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setEditingTopic(null)}>
+                      Annulla
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (editingTopic) {
+                          updateTopicMutation.mutate({
+                            id: editingTopic.id,
+                            title: editingTopic.title,
+                            description: editingTopic.description,
+                          });
+                        }
+                      }}
+                      disabled={updateTopicMutation.isPending}
+                    >
+                      {updateTopicMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Salva Modifiche
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Brand Voice & Credibilità Section */}
               <div className="space-y-4">
