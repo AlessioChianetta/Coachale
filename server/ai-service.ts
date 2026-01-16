@@ -36,6 +36,15 @@ import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch }
 import { fileSearchService } from "./ai/file-search-service";
 import { conversationContextBuilder } from "./services/conversation-memory";
 import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
+import {
+  detectCalculationIntent,
+  getClientTabularDocuments,
+  buildInlineDataParts,
+  buildTabularDataSummary,
+  buildCodeExecutionInstruction,
+  TabularDocument,
+  InlineDataPartWithMeta
+} from "./services/code-execution-helper";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -2175,14 +2184,100 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     
+    // ========== CODE EXECUTION WITH TABULAR DATA ==========
+    // Detect if user is asking for calculations on tabular data
+    const calculationIntent = detectCalculationIntent(message);
+    let tabularDocs: TabularDocument[] = [];
+    let inlineDataParts: InlineDataPartWithMeta[] = [];
+    let codeExecutionSystemAddendum = '';
+    
+    // Only check for tabular data if we have a valid clientId and detected calculation intent
+    if (calculationIntent.isCalculation && clientId) {
+      console.log(`\n🧮 [CALC INTENT] Detected calculation request`);
+      console.log(`   📅 Has date filter: ${calculationIntent.hasDateFilter}`);
+      if (calculationIntent.suggestedDateFilter) {
+        console.log(`   🗓️  Suggested filter: ${calculationIntent.suggestedDateFilter}`);
+      }
+      
+      try {
+        // Get tabular documents for this client
+        tabularDocs = await getClientTabularDocuments(clientId);
+        
+        if (tabularDocs.length > 0) {
+          console.log(`📊 [TABULAR DATA] Found ${tabularDocs.length} tabular document(s) for Code Execution`);
+          
+          // Build inline data parts (CSV files as base64) with metadata
+          inlineDataParts = buildInlineDataParts(tabularDocs);
+          
+          if (inlineDataParts.length > 0) {
+            // Build system prompt addendum with instructions for Code Execution
+            // Now uses the inline parts metadata for accurate file descriptions
+            codeExecutionSystemAddendum = buildCodeExecutionInstruction(inlineDataParts);
+            
+            console.log(`📦 [INLINE DATA] Prepared ${inlineDataParts.length} CSV file(s) for Code Execution:`);
+            for (const part of inlineDataParts) {
+              console.log(`   📄 ${part.fileName}: ${part.rowCount} rows, ${part.headers.length} columns`);
+            }
+          }
+        } else {
+          console.log(`⚠️ [TABULAR DATA] No tabular documents found for client`);
+        }
+      } catch (tabularError) {
+        console.error(`❌ [TABULAR DATA] Error loading tabular documents:`, tabularError);
+        // Continue without tabular data - don't break the chat
+      }
+    } else if (calculationIntent.isCalculation && !clientId) {
+      console.log(`⚠️ [CALC INTENT] Calculation detected but no clientId - skipping tabular data`);
+    }
+    // =======================================================
+    
+    // Build contents with optional inline data for Code Execution
+    const buildContents = () => {
+      return geminiMessages.map((msg, idx) => {
+        const isLastUserMessage = msg.role === "user" && idx === geminiMessages.length - 1;
+        
+        // For the last user message, include inline data if we have tabular docs for calculation
+        if (isLastUserMessage && inlineDataParts.length > 0) {
+          const parts: any[] = [{ text: msg.content }];
+          
+          // Build file list description for inline instruction
+          const fileListDesc = inlineDataParts.map(p => 
+            `"${p.fileName}" (${p.rowCount} righe, colonne: ${p.headers.slice(0, 5).join(', ')}${p.headers.length > 5 ? '...' : ''})`
+          ).join(', ');
+          
+          // Add CSV files as inline data with correct Gemini API shape
+          for (const inlinePart of inlineDataParts) {
+            parts.push({ inlineData: inlinePart.inlineData });
+          }
+          
+          // Add clear instruction with file names
+          parts.push({ 
+            text: `\n\n[DATI CSV ALLEGATI: ${fileListDesc}. DEVI usare Code Execution Python con pandas per calcoli precisi. I dati CSV sono già disponibili sopra - leggili con pd.read_csv(io.StringIO(csv_content))]` 
+          });
+          
+          return {
+            role: "user",
+            parts
+          };
+        }
+        
+        return {
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        };
+      });
+    };
+    
+    // Add Code Execution instructions to system prompt if we have tabular data
+    const finalSystemPrompt = codeExecutionSystemAddendum 
+      ? systemPrompt + '\n\n' + codeExecutionSystemAddendum
+      : systemPrompt;
+    
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: dynamicConfig.model,
-      contents: geminiMessages.map(msg => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
+      contents: buildContents(),
       generationConfig: {
-        systemInstruction: systemPrompt,
+        systemInstruction: finalSystemPrompt,
         ...(dynamicConfig.useThinking && dynamicConfig.thinkingLevel && {
           thinkingConfig: {
             thinkingLevel: dynamicConfig.thinkingLevel,
