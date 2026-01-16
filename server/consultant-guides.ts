@@ -3893,6 +3893,392 @@ export const consultantGuides: ConsultantGuides = {
         ]
       }
     ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE 11: EMAIL SYSTEMS - Nurturing 365 e Email Hub
+  // ═══════════════════════════════════════════════════════════════════
+
+  emailNurturing365: {
+    emoji: "📧",
+    title: "Email Nurturing 365",
+    path: "/consultant/ai-config?tab=lead-nurturing",
+    navigation: "Sidebar → COMUNICAZIONE → AI Config → Tab 'Lead Nurturing'",
+    description: "Sistema automatico che genera e invia 365 email personalizzate per nutrire i lead proattivi nel tempo. L'AI crea contenuti educativi basati sul tuo brand.",
+    category: "automation",
+    sections: [
+      {
+        title: "CONFIGURAZIONE BRAND",
+        icon: "🏢",
+        description: "Imposta le informazioni del tuo brand per personalizzare le email.",
+        steps: [
+          {
+            title: "Nome Brand/Azienda",
+            content: "Inserisci il nome del tuo brand o studio. Questo apparirà nelle email e darà personalità ai contenuti.",
+            tips: ["Usa il nome con cui i clienti ti conoscono", "Può essere il nome dello studio o il tuo nome personale"]
+          },
+          {
+            title: "Settore",
+            content: "Specifica il tuo settore (es. Consulenza Finanziaria, Wealth Management). L'AI userà questo per generare contenuti pertinenti.",
+            tips: ["Sii specifico: 'Consulenza Finanziaria per Famiglie' è meglio di 'Finanza'"]
+          },
+          {
+            title: "Tono di Voce",
+            content: "Scegli tra Professionale, Amichevole o Formale. Il tono influenza lo stile di scrittura delle email.",
+            tips: ["Professionale: equilibrato e competente", "Amichevole: caldo e accessibile", "Formale: istituzionale e serio"]
+          }
+        ]
+      },
+      {
+        title: "GENERAZIONE EMAIL",
+        icon: "🤖",
+        description: "L'AI genera automaticamente 365 email uniche basate sui tuoi topic.",
+        steps: [
+          {
+            title: "Topic delle Email",
+            content: "L'AI genera email su: Educazione finanziaria base, Tips risparmio e investimento, Case study di successo, Novità del settore, Promozioni stagionali.",
+            tips: ["Puoi personalizzare i topic dalla configurazione", "Ogni topic genera circa 70 email diverse"]
+          },
+          {
+            title: "Genera Tutte le Email",
+            content: "Clicca 'Rigenera Tutte le Email' per creare l'intero set di 365 email. Il processo richiede alcuni minuti.",
+            actionText: "Configura Nurturing",
+            actionHref: "/consultant/ai-config?tab=lead-nurturing",
+            tips: ["La generazione usa l'AI e richiede Vertex AI configurato", "Le email vengono salvate e usate automaticamente"]
+          },
+          {
+            title: "Genera Email Mancanti",
+            content: "Se alcune email mancano, usa 'Genera Mancanti' per completare solo quelle non ancora create.",
+            tips: ["Utile se la generazione è stata interrotta", "Non sovrascrive le email esistenti"]
+          }
+        ]
+      },
+      {
+        title: "INVIO AUTOMATICO",
+        icon: "📤",
+        description: "Il sistema invia automaticamente le email ogni giorno.",
+        steps: [
+          {
+            title: "Frequenza Invio",
+            content: "Le email vengono inviate automaticamente ogni giorno alle ore 09:00 (fuso orario Europe/Rome).",
+            tips: ["L'orario è fisso per garantire coerenza", "I lead ricevono sempre all'ora italiana"]
+          },
+          {
+            title: "A Chi Vengono Inviate",
+            content: "Solo ai lead proattivi con flag 'nurturing' attivo. Esclude lead già convertiti in clienti e quelli senza consenso email.",
+            tips: ["Attiva il flag nurturing dalla scheda del lead", "I clienti convertiti escono automaticamente dal nurturing"],
+            warnings: ["Rispetta sempre il consenso GDPR dei lead"]
+          },
+          {
+            title: "Disiscrizione GDPR",
+            content: "Ogni email include un link di disiscrizione conforme GDPR. I lead che si disiscrivono vengono automaticamente esclusi.",
+            tips: ["Il link è obbligatorio per legge", "Non rimuovere mai il link dalle email"]
+          }
+        ]
+      },
+      {
+        title: "MONITORAGGIO",
+        icon: "📊",
+        description: "Traccia le performance delle email nurturing.",
+        steps: [
+          {
+            title: "Stato Sistema",
+            content: "La dashboard mostra: stato attivo/inattivo, email generate, email inviate, data ultimo invio.",
+            tips: ["Controlla regolarmente che il sistema sia attivo", "Se vedi errori, verifica la configurazione SMTP"]
+          },
+          {
+            title: "Tracciamento Aperture",
+            content: "Il sistema traccia le aperture delle email per misurare l'engagement dei lead.",
+            tips: ["Tassi di apertura normali: 20-40%", "Tassi bassi indicano oggetti poco efficaci"]
+          },
+          {
+            title: "Tracciamento Click",
+            content: "Ogni link nelle email viene tracciato per misurare l'interesse sui contenuti.",
+            tips: ["Analizza quali topic generano più click", "Usa i dati per migliorare i contenuti"]
+          }
+        ]
+      }
+    ]
+  },
+
+  emailHub: {
+    emoji: "📬",
+    title: "Email Hub - Gestione Centralizzata",
+    path: "/consultant/email-hub",
+    navigation: "Sidebar → COMUNICAZIONE → Email Hub",
+    description: "Hub centralizzato per gestire tutti i tuoi account email. Supporta IMAP/SMTP, sincronizzazione automatica e risposte AI basate sulla Knowledge Base.",
+    category: "communication",
+    sections: [
+      {
+        title: "COLLEGARE ACCOUNT EMAIL",
+        icon: "🔗",
+        description: "Aggiungi i tuoi account email per gestirli dalla piattaforma.",
+        steps: [
+          {
+            title: "Nuovo Account Email",
+            content: "Clicca 'Aggiungi Account' e inserisci: email address, password app, server IMAP (ricezione), server SMTP (invio).",
+            actionText: "Vai a Email Hub",
+            actionHref: "/consultant/email-hub",
+            tips: ["Per Gmail: usa App Password, non la password normale", "Server Gmail: imap.gmail.com (IMAP), smtp.gmail.com (SMTP)"]
+          },
+          {
+            title: "Configurazione IMAP",
+            content: "IMAP permette di ricevere le email. Configura: host, porta (993 per SSL), email e password.",
+            tips: ["Porta 993 con SSL è lo standard", "Alcuni provider usano porta 143 senza SSL"],
+            warnings: ["Credenziali errate impediscono la sincronizzazione"]
+          },
+          {
+            title: "Configurazione SMTP",
+            content: "SMTP permette di inviare email. Configura: host, porta (587 per TLS), email e password.",
+            tips: ["Porta 587 con TLS è lo standard moderno", "Alcuni provider accettano porta 465 con SSL"]
+          },
+          {
+            title: "Test Connessione",
+            content: "Dopo la configurazione, testa la connessione per verificare che tutto funzioni.",
+            tips: ["Il test verifica sia ricezione che invio", "Se fallisce, controlla credenziali e porte"]
+          }
+        ]
+      },
+      {
+        title: "SINCRONIZZAZIONE EMAIL",
+        icon: "🔄",
+        description: "Le email vengono sincronizzate automaticamente in background.",
+        steps: [
+          {
+            title: "Sincronizzazione Automatica",
+            content: "Il sistema sincronizza le email automaticamente ogni 5 minuti. Non devi fare nulla manualmente.",
+            tips: ["La sincronizzazione avviene in background", "Le nuove email appaiono automaticamente"]
+          },
+          {
+            title: "IMAP IDLE",
+            content: "Per email in tempo reale, il sistema supporta IMAP IDLE. Le email arrivano istantaneamente appena inviate.",
+            tips: ["IMAP IDLE richiede connessione persistente", "Non tutti i provider supportano IDLE"]
+          },
+          {
+            title: "Cartelle Supportate",
+            content: "Il sistema sincronizza: Inbox, Sent, Drafts, Trash, Spam e cartelle personalizzate.",
+            tips: ["Puoi scegliere quali cartelle sincronizzare", "Le cartelle personalizzate vengono rilevate automaticamente"]
+          }
+        ]
+      },
+      {
+        title: "RISPOSTE AI",
+        icon: "🤖",
+        description: "L'AI può generare bozze di risposta basate sulla Knowledge Base.",
+        steps: [
+          {
+            title: "Come Funziona",
+            content: "Quando arriva un'email, l'AI: 1) Analizza il contenuto 2) Cerca nella Knowledge Base 3) Genera una bozza di risposta 4) Tu approvi o modifichi prima dell'invio.",
+            tips: ["Le risposte sono sempre BOZZE, mai inviate automaticamente", "Puoi modificare completamente la bozza"]
+          },
+          {
+            title: "Collegare Knowledge Base",
+            content: "Ogni account email può avere una Knowledge Base dedicata. L'AI usa quei documenti per le risposte.",
+            actionText: "Gestisci Knowledge Base",
+            actionHref: "/consultant/file-search-documents",
+            tips: ["Carica FAQ, procedure, listini prezzi", "Più documenti = risposte più accurate"]
+          },
+          {
+            title: "Configurazione Tono",
+            content: "Imposta il tono delle risposte AI per ogni account: Professionale, Amichevole o Formale.",
+            tips: ["Puoi avere toni diversi per account diversi", "Il tono influenza lo stile di scrittura"]
+          },
+          {
+            title: "Istruzioni Speciali",
+            content: "Aggiungi istruzioni specifiche per l'AI, come firma, lingua preferita o regole particolari.",
+            tips: ["Es: 'Rispondi sempre in italiano formale'", "Es: 'Firma con Cordiali saluti, Studio Rossi'"]
+          }
+        ]
+      },
+      {
+        title: "GESTIONE INBOX",
+        icon: "📥",
+        description: "Visualizza e gestisci tutte le email dalla piattaforma.",
+        steps: [
+          {
+            title: "Inbox Unificata",
+            content: "Vedi tutte le email di tutti gli account in un'unica vista. Filtra per account, cartella o stato.",
+            tips: ["Usa i filtri per trovare email specifiche", "La ricerca cerca in oggetto e corpo"]
+          },
+          {
+            title: "Rispondere alle Email",
+            content: "Clicca su un'email per leggerla e rispondere. Puoi usare la bozza AI o scrivere da zero.",
+            tips: ["La bozza AI appare automaticamente se configurata", "Modifica sempre prima di inviare"]
+          },
+          {
+            title: "Sistema Ticket",
+            content: "Le email possono essere convertite in ticket per tracciare richieste da risolvere.",
+            tips: ["Utile per richieste complesse che richiedono follow-up", "I ticket hanno stati: aperto, in lavorazione, risolto"]
+          }
+        ]
+      }
+    ]
+  },
+
+  contentMarketingStudio: {
+    emoji: "🎨",
+    title: "Content Marketing Studio",
+    path: "/consultant/content-marketing",
+    navigation: "Sidebar → MARKETING → Content Marketing Studio",
+    description: "Suite completa per la creazione di contenuti marketing con AI. Include generazione idee, copy social media, immagini AI con Gemini Imagen 3, e campagne multi-step.",
+    category: "content",
+    sections: [
+      {
+        title: "IDEA GENERATION",
+        icon: "💡",
+        description: "Genera idee per contenuti basate sul tuo settore e target.",
+        steps: [
+          {
+            title: "Genera Idee",
+            content: "Inserisci il tuo settore, target e obiettivi. L'AI genera 10+ idee per contenuti originali.",
+            actionText: "Vai a Content Studio",
+            actionHref: "/consultant/content-marketing",
+            tips: ["Sii specifico sul tuo target", "Indica se preferisci contenuti educativi, promozionali o di intrattenimento"]
+          },
+          {
+            title: "Categorie Idee",
+            content: "Le idee sono organizzate per tipo: Post Social, Blog, Video, Infografiche, Stories, Caroselli.",
+            tips: ["Ogni categoria ha template specifici", "Puoi combinare più formati per una campagna"]
+          },
+          {
+            title: "Salva le Idee",
+            content: "Le idee migliori possono essere salvate nella libreria per svilupparle in seguito.",
+            tips: ["Organizza le idee per priorità", "Riprendi le idee quando hai tempo per svilupparle"]
+          }
+        ]
+      },
+      {
+        title: "SOCIAL MEDIA COPY",
+        icon: "✍️",
+        description: "Crea copy ottimizzati per ogni piattaforma social.",
+        steps: [
+          {
+            title: "Scegli la Piattaforma",
+            content: "Seleziona la piattaforma: LinkedIn, Instagram, Facebook, X/Twitter, TikTok. Il copy viene adattato automaticamente.",
+            tips: ["Ogni piattaforma ha limiti e stili diversi", "LinkedIn: professionale. Instagram: visuale. X: conciso"]
+          },
+          {
+            title: "Genera il Copy",
+            content: "Descrivi il messaggio che vuoi comunicare. L'AI crea copy completo con: hook, corpo, call-to-action, hashtag.",
+            tips: ["L'hook è la prima frase che cattura l'attenzione", "La CTA indica l'azione desiderata"]
+          },
+          {
+            title: "Varianti",
+            content: "L'AI genera 3 varianti per ogni copy. Scegli quella che preferisci o mixa elementi.",
+            tips: ["Testa varianti diverse per vedere cosa funziona", "Le varianti hanno toni leggermente diversi"]
+          }
+        ]
+      },
+      {
+        title: "AI IMAGE GENERATION",
+        icon: "🖼️",
+        description: "Genera immagini originali con Google Gemini Imagen 3.",
+        steps: [
+          {
+            title: "Descrivi l'Immagine",
+            content: "Inserisci una descrizione dettagliata dell'immagine che vuoi creare. Più dettagli = risultato migliore.",
+            tips: ["Includi: soggetto, stile, colori, mood, composizione", "Es: 'Professionista sorridente in ufficio moderno, colori caldi, stile corporate'"]
+          },
+          {
+            title: "Scegli lo Stile",
+            content: "Seleziona uno stile: Fotografico, Illustrazione, Grafica Piatta, Artistico, Minimale.",
+            tips: ["Fotografico per realismo", "Illustrazione per contenuti creativi", "Minimale per grafiche pulite"]
+          },
+          {
+            title: "Genera e Scarica",
+            content: "L'AI genera l'immagine in pochi secondi. Scarica in alta risoluzione per usarla nei tuoi contenuti.",
+            tips: ["Le immagini sono royalty-free", "Puoi rigenerare se il risultato non ti soddisfa"],
+            warnings: ["Richiede crediti AI disponibili"]
+          }
+        ]
+      },
+      {
+        title: "CAMPAIGN BUILDER",
+        icon: "📋",
+        description: "Crea campagne marketing complete in 6 step.",
+        steps: [
+          {
+            title: "Step 1: Obiettivo",
+            content: "Definisci l'obiettivo della campagna: awareness, lead generation, conversione, fidelizzazione.",
+            tips: ["Un obiettivo chiaro guida tutta la strategia", "Evita obiettivi multipli nella stessa campagna"]
+          },
+          {
+            title: "Step 2: Target",
+            content: "Definisci il pubblico target: demografia, interessi, problemi, bisogni.",
+            tips: ["Più specifico è il target, più efficace il messaggio", "Crea buyer personas se non le hai"]
+          },
+          {
+            title: "Step 3: Messaggi Chiave",
+            content: "Identifica i 3-5 messaggi chiave da comunicare nella campagna.",
+            tips: ["I messaggi devono rispondere ai bisogni del target", "Ordina per priorità"]
+          },
+          {
+            title: "Step 4: Contenuti",
+            content: "L'AI genera i contenuti per ogni canale: post social, email, landing page copy.",
+            tips: ["Ogni canale ha contenuti adattati", "Puoi modificare tutto prima di pubblicare"]
+          },
+          {
+            title: "Step 5: Visual",
+            content: "Genera le immagini per la campagna usando Imagen 3.",
+            tips: ["Mantieni coerenza visiva tra i contenuti", "Usa la stessa palette colori"]
+          },
+          {
+            title: "Step 6: Pianificazione",
+            content: "Pianifica la pubblicazione nel calendario. Definisci date e orari per ogni contenuto.",
+            tips: ["Distribuisci i contenuti nel tempo", "Evita di pubblicare tutto insieme"]
+          }
+        ]
+      },
+      {
+        title: "CONTENT CALENDAR",
+        icon: "📅",
+        description: "Visualizza e gestisci la pianificazione dei contenuti.",
+        steps: [
+          {
+            title: "Vista Calendario",
+            content: "Visualizza tutti i contenuti pianificati in vista mensile, settimanale o giornaliera.",
+            tips: ["Usa la vista mensile per la panoramica", "Vista giornaliera per i dettagli"]
+          },
+          {
+            title: "Drag & Drop",
+            content: "Sposta i contenuti trascinandoli nel calendario per ripianificare facilmente.",
+            tips: ["Utile per adattarsi a eventi imprevisti", "I contenuti mantengono tutte le impostazioni"]
+          },
+          {
+            title: "Stati Contenuto",
+            content: "Ogni contenuto ha uno stato: Bozza, In Revisione, Approvato, Pubblicato.",
+            tips: ["Usa 'In Revisione' quando aspetti feedback", "'Approvato' significa pronto per pubblicazione"]
+          }
+        ]
+      },
+      {
+        title: "BRAND ASSETS",
+        icon: "🏷️",
+        description: "Gestisci gli asset del tuo brand per coerenza visiva.",
+        steps: [
+          {
+            title: "Colori Brand",
+            content: "Definisci la palette colori del tuo brand. Questi colori verranno suggeriti nelle grafiche.",
+            tips: ["3-5 colori sono sufficienti", "Includi colore primario, secondario e accento"]
+          },
+          {
+            title: "Font",
+            content: "Indica i font del tuo brand per titoli e testo normale.",
+            tips: ["Usa font leggibili per il web", "Massimo 2 font diversi"]
+          },
+          {
+            title: "Logo",
+            content: "Carica il tuo logo in diverse versioni: full, icon, bianco/nero.",
+            tips: ["Formati consigliati: PNG trasparente, SVG", "Carica versioni per sfondo chiaro e scuro"]
+          },
+          {
+            title: "Tone of Voice",
+            content: "Documenta il tono di voce del brand: formale/informale, tecnico/accessibile, serio/leggero.",
+            tips: ["Questo guida la generazione AI dei copy", "Includi esempi di frasi 'sì' e 'no'"]
+          }
+        ]
+      }
+    ]
   }
 };
 
