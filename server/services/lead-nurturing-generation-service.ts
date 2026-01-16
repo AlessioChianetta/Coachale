@@ -584,22 +584,36 @@ ${day === 1 ? `⭐ QUESTA È L'EMAIL DI BENVENUTO (Giorno 1).
 {{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
 
 === STILE COPYWRITING "A CASCATA" (OBBLIGATORIO) ===
-Scrivi in stile copywriting moderno dove ogni riga aggancia la successiva:
-1. FRASI BREVI: max 10-15 parole per frase
-2. UNA FRASE = UN PARAGRAFO: ogni frase va a capo (usa <p> separati)
-3. RITMO INCALZANTE: ogni riga crea curiosità per la successiva
-4. GANCI EMOTIVI: usa domande retoriche, anticipazioni, pause strategiche
-5. NO MURI DI TESTO: mai più di 2 righe consecutive senza andare a capo
+Scrivi come un copywriter professionista. L'email deve essere MAGNETICA e impossibile da smettere di leggere.
 
-Esempio struttura narrativa:
-<p>Ciao {{nome}},</p>
-<p>Oggi ti racconto una cosa.</p>
-<p>Qualcosa che ho scoperto dopo anni.</p>
-<p>E che cambia tutto.</p>
+TECNICHE OBBLIGATORIE:
+1. OPEN LOOP: Apri un "loop" di curiosità che chiudi solo alla fine (es: "C'è una cosa che non ti ho mai detto...")
+2. PATTERN INTERRUPT: Usa frasi inaspettate che rompono la monotonia (es: "Fermati.", "Aspetta.", "Ecco il problema.")
+3. TENSIONE EMOTIVA: Alterna momenti di tensione e rilascio. Crea suspense.
+4. FRASI INCOMPLETE: Usa i puntini di sospensione per creare attesa (es: "E poi è successo qualcosa...")
+5. DOMANDE RETORICHE: Coinvolgi il lettore con domande dirette
 
-NOTA: Se la struttura richiede ELENCHI PUNTATI, usali comunque ma con frasi brevi:
-<ul><li>Punto 1 breve</li><li>Punto 2 breve</li></ul>
-Lo stile cascata si applica ai paragrafi, non sostituisce le liste quando richieste.
+STRUTTURA MAGNETICA:
+- HOOK (prime 2 righe): Cattura SUBITO l'attenzione con qualcosa di inaspettato
+- BODY: Racconta, non elencare. Usa transizioni come "Ecco il punto...", "Ma c'è di più...", "Il bello viene adesso..."
+- CLOSE: Chiudi il loop aperto all'inizio
+
+FORMATO:
+- Max 10-15 parole per frase
+- Una frase = un paragrafo (<p> separati)
+- Usa <strong> per enfatizzare parole chiave
+- Usa <em> per creare intimità
+
+ESEMPIO DI COPY MAGNETICO:
+<p>{{nome}}, devo dirti una cosa.</p>
+<p>Qualcosa che ho scoperto per caso.</p>
+<p>E che ha cambiato tutto.</p>
+<p>Vedi, la maggior parte delle persone pensa che...</p>
+<p><strong>Sbagliato.</strong></p>
+<p>Il vero segreto è un altro.</p>
+<p>E tra poco te lo svelo.</p>
+
+⚠️ VIETATO: Elencare fatti in modo monotono. Ogni riga deve far venire voglia di leggere la successiva.
 
 === REGOLE FORMATO ===
 1. Subject: max 60 caratteri, accattivante, riflette "${topicTitle}"
