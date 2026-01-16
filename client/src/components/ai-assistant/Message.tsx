@@ -594,12 +594,12 @@ export function Message({ message, onActionClick }: MessageProps) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] flex items-start gap-2">
-          <div className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl px-4 py-3">
+        <div className="max-w-[80%] flex items-end gap-2.5">
+          <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-br-md px-4 py-3 shadow-sm border border-slate-200/50 dark:border-slate-600/30">
             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content || ''}</p>
           </div>
-          <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-sm">
-            <User className="h-4 w-4 text-white" />
+          <div className="flex-shrink-0 h-7 w-7 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 dark:from-slate-500 dark:to-slate-600 flex items-center justify-center shadow-sm ring-2 ring-white dark:ring-slate-800">
+            <User className="h-3.5 w-3.5 text-white" />
           </div>
         </div>
       </div>
