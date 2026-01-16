@@ -6,7 +6,7 @@
  * Files are auto-deleted after 48 hours by Google.
  */
 
-import { GoogleGenAI, createPartFromUri } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
