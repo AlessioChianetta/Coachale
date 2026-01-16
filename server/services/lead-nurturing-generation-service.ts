@@ -583,6 +583,8 @@ ${day === 1 ? `⭐ QUESTA È L'EMAIL DI BENVENUTO (Giorno 1).
 === VARIABILI DISPONIBILI ===
 {{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
 
+⚠️ IMPORTANTE: NON usare MAI nomi inventati (Marco, Luca, Giovanni, ecc). Usa SEMPRE {{nome}} per riferirti al destinatario. Se racconti storie con altri personaggi, usa nomi generici come "un mio cliente", "una persona", "un imprenditore".
+
 === STILE COPYWRITING CONVERSAZIONALE (OBBLIGATORIO) ===
 Scrivi come se stessi parlando a un amico. Email MAGNETICA, impossibile smettere di leggere.
 
