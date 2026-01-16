@@ -23,6 +23,7 @@ router.get("/lead-nurturing/config", authenticateToken, requireRole("consultant"
         success: true,
         config: {
           isEnabled: false,
+          isActive: false,
           sendHour: 9,
           sendMinute: 0,
           timezone: "Europe/Rome",
@@ -31,7 +32,11 @@ router.get("/lead-nurturing/config", authenticateToken, requireRole("consultant"
       });
     }
     
-    res.json({ success: true, config });
+    // Map isActive to isEnabled for frontend compatibility
+    res.json({ 
+      success: true, 
+      config: { ...config, isEnabled: config.isActive } 
+    });
   } catch (error: any) {
     console.error("[NURTURING] Error fetching config:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -41,34 +46,32 @@ router.get("/lead-nurturing/config", authenticateToken, requireRole("consultant"
 router.put("/lead-nurturing/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { isEnabled, sendHour, sendMinute, timezone, skipWeekends } = req.body;
+    // Support both isEnabled (frontend) and isActive (schema) for compatibility
+    const { isEnabled, isActive, sendHour, sendMinute, timezone, skipWeekends } = req.body;
+    const activeValue = isEnabled ?? isActive;
     
     const existing = await storage.getNurturingConfig(consultantId);
     
     if (existing) {
       await db.update(schema.leadNurturingConfig)
         .set({
-          isEnabled: isEnabled ?? existing.isEnabled,
-          sendHour: sendHour ?? existing.sendHour,
-          sendMinute: sendMinute ?? existing.sendMinute,
-          timezone: timezone ?? existing.timezone,
-          skipWeekends: skipWeekends ?? existing.skipWeekends,
+          isActive: activeValue ?? existing.isActive,
           updatedAt: new Date(),
         })
         .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
     } else {
       await db.insert(schema.leadNurturingConfig).values({
         consultantId,
-        isEnabled: isEnabled ?? false,
-        sendHour: sendHour ?? 9,
-        sendMinute: sendMinute ?? 0,
-        timezone: timezone ?? "Europe/Rome",
-        skipWeekends: skipWeekends ?? false,
+        isActive: activeValue ?? false,
       });
     }
     
     const updated = await storage.getNurturingConfig(consultantId);
-    res.json({ success: true, config: updated });
+    // Map isActive to isEnabled for frontend compatibility
+    res.json({ 
+      success: true, 
+      config: updated ? { ...updated, isEnabled: updated.isActive } : null 
+    });
   } catch (error: any) {
     console.error("[NURTURING] Error updating config:", error);
     res.status(500).json({ success: false, error: error.message });
