@@ -68,8 +68,7 @@ import {
   Award,
   Star,
   Plus,
-  Download,
-  Users
+  Download
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
