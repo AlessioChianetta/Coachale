@@ -200,9 +200,10 @@ export function buildInlineDataParts(docs: TabularDocument[]): InlineDataPartWit
       // Convert to base64
       const base64Content = Buffer.from(csvContent, 'utf-8').toString('base64');
       
-      // Generate a clean filename
+      // Generate a clean unique filename (docId + sheetName to avoid duplicates)
+      const cleanDocName = doc.originalName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
       const cleanSheetName = sheetName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-      const fileName = `${cleanSheetName}.csv`;
+      const fileName = `${cleanDocName}_${cleanSheetName}.csv`;
       
       const sheet = doc.structuredData.sheets.find(s => s.name === sheetName);
       
