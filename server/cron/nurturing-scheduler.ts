@@ -258,6 +258,7 @@ async function sendNurturingEmail(
       consultantId: config.consultantId,
       templateId: template.id,
       dayNumber: currentDay,
+      status: "sent",
       emailTo: leadEmail,
       sentAt: new Date(),
     });

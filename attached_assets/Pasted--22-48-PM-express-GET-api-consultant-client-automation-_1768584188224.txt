@@ -1,0 +1,45 @@
+:22:48 PM [express] GET /api/consultant/client-automation-status 304 in 1694ms :: {"success":true,"…
+📧 [NURTURING MANUAL] Test trigger requested by consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📧 [NURTURING MANUAL] Manual trigger for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📧 [NURTURING MANUAL] Found 5 leads with email (0 skipped - no email)
+📧 [NURTURING MANUAL] Processing Mario (mario.rossi@test.com)
+📧 [NURTURING] Using Email Hub account: no-reply@alessiochianetta.it
+📧 [NURTURING] Saved to Email Hub with messageId: <f0af42d2-4663-dcdd-38bd-3d892e5f900b@alessiochianetta.it>
+📧 [NURTURING ACTIVITY LOG] nurturing_email_failed: Errore invio email nurturing giorno 1: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+❌ [NURTURING MANUAL] Error for Mario: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+📧 [NURTURING MANUAL] Processing Mario (mario.rossi@test.com)
+📧 [NURTURING] Using Email Hub account: no-reply@alessiochianetta.it
+📧 [NURTURING] Saved to Email Hub with messageId: <c74d928d-237d-7c89-de03-8259bacee2fd@alessiochianetta.it>
+📧 [NURTURING ACTIVITY LOG] nurturing_email_failed: Errore invio email nurturing giorno 1: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+❌ [NURTURING MANUAL] Error for Mario: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+📧 [NURTURING MANUAL] Processing Mario (mario.rossi@test.com)
+📧 [NURTURING] Using Email Hub account: no-reply@alessiochianetta.it
+📧 [NURTURING] Saved to Email Hub with messageId: <85ab326c-3475-d393-29f7-8100c82078fc@alessiochianetta.it>
+📧 [NURTURING ACTIVITY LOG] nurturing_email_failed: Errore invio email nurturing giorno 1: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+❌ [NURTURING MANUAL] Error for Mario: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+📧 [NURTURING MANUAL] Processing rosso (mario.rossi@test.com)
+📧 [NURTURING] Using Email Hub account: no-reply@alessiochianetta.it
+📧 [NURTURING] Saved to Email Hub with messageId: <a885095b-1468-3204-d975-a044ef8cd8d4@alessiochianetta.it>
+📧 [NURTURING ACTIVITY LOG] nurturing_email_failed: Errore invio email nurturing giorno 1: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+❌ [NURTURING MANUAL] Error for rosso: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+📧 [NURTURING MANUAL] Processing Alessio (orbitaleale@gmail.com)
+📧 [NURTURING] Using Email Hub account: no-reply@alessiochianetta.it
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-16T17:23:00.029Z
+
+[SHEETS POLLING] Starting polling cycle (ExecID: cisn8i)...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 1 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: cisn8i)
+📧 [NURTURING] Saved to Email Hub with messageId: <f7da12eb-7a71-3e1a-0b18-486d95b83243@alessiochianetta.it>
+📧 [NURTURING ACTIVITY LOG] nurturing_email_failed: Errore invio email nurturing giorno 1: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+❌ [NURTURING MANUAL] Error for Alessio: null value in column "status" of relation "lead_nurturing_logs" violates not-null constraint
+📧 [NURTURING MANUAL] Completed: 0/5 emails sent
+5:23:01 PM [express] POST /api/lead-nurturing/send-now 200 in 12588ms :: {"success":true,"message":"…
+🔒 [CIRCUIT BREAKER] Skipping agent fe95f393-b8c9-4fc0-80d7-2035dcba305a (Receptionist Principale) - circuit breaker is open
