@@ -54,6 +54,7 @@ import {
   Phone,
   Instagram,
   CreditCard,
+  Inbox,
 } from "lucide-react";
 
 type StepStatus = "pending" | "configured" | "verified" | "error" | "skipped";
@@ -133,6 +134,8 @@ interface OnboardingStatus {
   summaryEmailsCount: number;
   hasNurturingEmails: boolean;
   nurturingEmailsCount: number;
+  hasEmailHubAccount: boolean;
+  emailHubAccountsCount: number;
   instagramStatus: StepStatus;
   instagramTestedAt?: string;
   instagramErrorMessage?: string;
@@ -889,8 +892,19 @@ export default function ConsultantSetupWizard() {
           countLabel: "email",
         },
         {
-          id: "video_meeting",
+          id: "email_hub",
           stepNumber: 20,
+          title: "Email Hub",
+          description: "Collega il tuo account email per gestire inbox, invii automatici e risposte AI",
+          icon: <Inbox className="h-4 w-4" />,
+          status: status?.hasEmailHubAccount ? "verified" : "pending",
+          configLink: "/consultant/email-hub",
+          count: status?.emailHubAccountsCount,
+          countLabel: "account",
+        },
+        {
+          id: "video_meeting",
+          stepNumber: 21,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -902,7 +916,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 21,
+          stepNumber: 22,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -951,6 +965,7 @@ export default function ConsultantSetupWizard() {
     knowledge_base: "Knowledge Base",
     first_summary_email: "Prima Email Riassuntiva",
     nurturing_emails: "Email Nurturing 365",
+    email_hub: "Email Hub",
     video_meeting: "Video Meeting",
     lead_import: "Lead Import",
   };

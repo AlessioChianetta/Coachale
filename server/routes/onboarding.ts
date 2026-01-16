@@ -25,6 +25,7 @@ import {
   consultantInstagramConfig,
   consultantLicenses,
   leadNurturingTemplates,
+  emailAccounts,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
@@ -166,6 +167,13 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const nurturingEmailsCount = Number(nurturingEmailsResult[0]?.count || 0);
     const hasNurturingEmails = nurturingEmailsCount >= 365;
     
+    // Count Email Hub accounts
+    const emailHubAccountsResult = await db.select({ count: count() })
+      .from(emailAccounts)
+      .where(eq(emailAccounts.consultantId, consultantId));
+    const emailHubAccountsCount = Number(emailHubAccountsResult[0]?.count || 0);
+    const hasEmailHubAccount = emailHubAccountsCount > 0;
+    
     // Count custom WhatsApp templates
     const customTemplatesResult = await db.select({ count: count() })
       .from(whatsappCustomTemplates)
@@ -250,6 +258,8 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       summaryEmailsCount,
       hasNurturingEmails,
       nurturingEmailsCount,
+      hasEmailHubAccount,
+      emailHubAccountsCount,
       hasCustomTemplate,
       customTemplatesCount,
       hasApprovedTemplate,
