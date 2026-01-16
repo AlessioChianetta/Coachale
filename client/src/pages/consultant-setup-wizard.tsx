@@ -1053,7 +1053,7 @@ export default function ConsultantSetupWizard() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
                   >
-                    Completa tutti i 17 step per sbloccare le funzionalità complete ✨
+                    Completa tutti i 23 step per sbloccare le funzionalità complete ✨
                   </motion.p>
                 </div>
                 <Button
@@ -1293,20 +1293,26 @@ export default function ConsultantSetupWizard() {
                                 vertex_ai: "Aiutami a configurare Vertex AI per la mia piattaforma. Come ottengo le credenziali Google Cloud?",
                                 smtp: "Come configuro il server SMTP per inviare email automatiche ai clienti?",
                                 google_calendar: "Aiutami a collegare Google Calendar per sincronizzare gli appuntamenti.",
+                                twilio_config: "Come configuro Twilio per WhatsApp Business?",
+                                instagram_dm: "Come collego Instagram per ricevere e rispondere ai messaggi diretti con l'AI?",
+                                whatsapp_template: "Come creo template WhatsApp personalizzati per i messaggi automatici?",
+                                first_campaign: "Come creo la mia prima campagna marketing collegando fonti lead, template e agente AI?",
+                                stripe_connect: "Come collego Stripe per ricevere pagamenti e gestire le licenze dei clienti?",
+                                email_journey: "Come configuro l'automazione email journey per i miei clienti? Quali sono i template disponibili?",
+                                nurturing_emails: "Come funziona Email Nurturing 365? Come genero le 365 email automatiche per nutrire i lead?",
+                                email_hub: "Come configuro l'Email Hub per gestire inbox, invii automatici e risposte AI?",
                                 whatsapp_ai: "Spiegami come configurare credenziali AI separate per gli agenti WhatsApp.",
                                 inbound_agent: "Come creo un agente Inbound efficace per gestire le richieste dei clienti?",
                                 outbound_agent: "Come configuro un agente Outbound per le campagne proattive?",
                                 consultative_agent: "Come funziona l'agente Consulenziale e come posso configurarlo?",
                                 public_agent_link: "Come genero e condivido un link pubblico per i miei agenti WhatsApp?",
                                 ai_ideas: "Come posso usare l'AI per generare idee creative per i miei agenti?",
-                                whatsapp_template: "Come creo template WhatsApp personalizzati per i messaggi automatici?",
                                 first_course: "Aiutami a creare il mio primo corso formativo per i clienti.",
                                 first_exercise: "Come creo un esercizio pratico efficace per i miei clienti?",
                                 knowledge_base: "Come carico documenti nella Knowledge Base per migliorare le risposte dell'AI?",
                                 first_summary_email: "Come invio email riassuntive dopo le consulenze?",
                                 video_meeting: "Come configuro le credenziali TURN di Metered.ca per le videochiamate?",
                                 lead_import: "Come posso importare lead automaticamente da API esterne?",
-                                twilio_config: "Come configuro Twilio per WhatsApp Business?",
                               };
                               const message = stepMessages[activeStep] || "Aiutami con la configurazione della piattaforma.";
                               window.dispatchEvent(new CustomEvent('ai:open-and-ask', { 

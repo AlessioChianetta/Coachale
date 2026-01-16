@@ -129,6 +129,42 @@ export const consultantGuides: ConsultantGuides = {
             actionHref: "/consultant/campaigns",
             tips: ["Scegli un nome descrittivo per la campagna", "Seleziona l'agente WhatsApp che gestirà le conversazioni", "Scegli il template approvato per il primo messaggio", "Definisci l'uncino e la descrizione per personalizzare i messaggi"],
             warnings: ["Richiede almeno un template approvato", "L'agente deve avere Twilio configurato"]
+          },
+          {
+            title: "1.7 Instagram Direct Messaging (Opzionale)",
+            content: "Collega Instagram per ricevere e rispondere ai messaggi diretti con l'AI. Richiede una pagina Facebook collegata a un account Instagram Business.",
+            actionText: "Configura Instagram",
+            actionHref: "/consultant/api-keys-unified?tab=instagram",
+            tips: ["Richiede account Instagram Business", "Collega tramite Meta Business Suite", "L'AI può rispondere automaticamente ai DM"]
+          },
+          {
+            title: "1.8 Stripe Connect (Opzionale)",
+            content: "Collega il tuo account Stripe per ricevere pagamenti dagli abbonamenti dei clienti. Attiva la monetizzazione con revenue sharing.",
+            actionText: "Collega Stripe",
+            actionHref: "/consultant/whatsapp?tab=licenses",
+            tips: ["Completa l'onboarding Stripe per ricevere pagamenti", "Gestisci le licenze dei tuoi clienti", "Traccia i guadagni dalla dashboard"]
+          },
+          {
+            title: "1.9 Email Journey (ESSENZIALE)",
+            content: "Configura l'automazione email per i tuoi clienti. Scegli tra modalità bozza (approvazione manuale) o invio automatico. Personalizza i template con l'AI.",
+            actionText: "Configura Email Journey",
+            actionHref: "/consultant/ai-config?tab=ai-email",
+            tips: ["Attiva 'Automation Generale' per abilitare l'invio", "Imposta la frequenza in giorni", "Modifica i 31 template con l'AI per personalizzarli"],
+            warnings: ["Richiede SMTP configurato"]
+          },
+          {
+            title: "1.10 Email Nurturing 365 (Opzionale)",
+            content: "Genera 365 email automatiche per nutrire i tuoi lead proattivi nel tempo. L'AI crea contenuti personalizzati basati sul tuo brand.",
+            actionText: "Configura Nurturing",
+            actionHref: "/consultant/ai-config?tab=lead-nurturing",
+            tips: ["Genera tutte le 365 email con un click", "Personalizza topic e tono del brand", "Le email partono automaticamente ogni giorno"]
+          },
+          {
+            title: "1.11 Email Hub (Opzionale)",
+            content: "Collega il tuo account email (IMAP/SMTP) per gestire inbox, invii automatici e risposte AI. Un hub centralizzato per tutte le email.",
+            actionText: "Configura Email Hub",
+            actionHref: "/consultant/email-hub",
+            tips: ["Supporta IMAP per ricevere email", "L'AI può rispondere usando la Knowledge Base", "Sincronizzazione automatica in background"]
           }
         ]
       },
