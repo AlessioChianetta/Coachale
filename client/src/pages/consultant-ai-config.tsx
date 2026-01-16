@@ -6658,7 +6658,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           className="bg-emerald-600 hover:bg-emerald-700"
                           onClick={() => bulkNurturingMutation.mutate({ 
                             enable: true, 
-                            excludeStatuses: ["converted", "inactive"] 
+                            excludeStatuses: ["inactive"] 
                           })}
                           disabled={bulkNurturingMutation.isPending}
                         >
