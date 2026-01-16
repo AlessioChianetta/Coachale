@@ -1540,6 +1540,16 @@ export default function ConsultantAIConfigPage() {
   const [isGeneratingWeek, setIsGeneratingWeek] = useState(false);
   const [weekGenerationErrors, setWeekGenerationErrors] = useState<string[]>([]);
   
+  // Template selection and bulk action states
+  const [selectedTemplateDays, setSelectedTemplateDays] = useState<number[]>([]);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
+  const [showRegenerateSelectedConfirm, setShowRegenerateSelectedConfirm] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState<string>("");
+  const [rangeTo, setRangeTo] = useState<string>("");
+  const [isDeletingTemplates, setIsDeletingTemplates] = useState(false);
+  const [isRegeneratingTemplates, setIsRegeneratingTemplates] = useState(false);
+  
   // Brand Voice states per Nurturing
   const [brandVoiceData, setBrandVoiceData] = useState<{
     consultantDisplayName?: string;
@@ -1645,7 +1655,8 @@ export default function ConsultantAIConfigPage() {
       if (!res.ok) return { success: false, totalGenerated: 0, nextDay: 1, isComplete: false, lastGeneratedDay: 0 };
       return res.json();
     },
-    enabled: showWeekGenerationUI || showPreviewConfirmDialog,
+    enabled: showWeekGenerationUI || showPreviewConfirmDialog || isGeneratingWeek,
+    refetchInterval: isGeneratingWeek ? 2000 : false, // Poll every 2 seconds while generating
   });
 
   const { data: nurturingTemplatesData, isLoading: nurturingTemplatesLoading } = useQuery<{
@@ -1976,6 +1987,75 @@ export default function ConsultantAIConfigPage() {
       toast({ title: "Configurazione salvata!" });
     },
     onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete templates mutation
+  const deleteTemplatesMutation = useMutation({
+    mutationFn: async (params: { days?: number[]; range?: { from: number; to: number }; all?: boolean }) => {
+      setIsDeletingTemplates(true);
+      const res = await fetch("/api/lead-nurturing/templates", {
+        method: "DELETE",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore durante l'eliminazione");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setIsDeletingTemplates(false);
+      setSelectedTemplateDays([]);
+      setShowDeleteAllConfirm(false);
+      setShowDeleteSelectedConfirm(false);
+      setRangeFrom("");
+      setRangeTo("");
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/generation-status"] });
+      toast({ title: "Template eliminati", description: `${data.deletedCount || 0} template eliminati con successo` });
+    },
+    onError: (error: any) => {
+      setIsDeletingTemplates(false);
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Regenerate templates mutation
+  const regenerateTemplatesMutation = useMutation({
+    mutationFn: async (params: { days?: number[]; range?: { from: number; to: number } }) => {
+      setIsRegeneratingTemplates(true);
+      const res = await fetch("/api/lead-nurturing/templates/regenerate", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...params,
+          businessDescription: brandVoiceData?.businessDescription || businessDescription || "Servizi di consulenza professionale",
+          targetAudience: brandVoiceData?.whoWeHelp || "Clienti interessati ai nostri servizi",
+          tone: preferredTone,
+          companyName: brandVoiceData?.businessName || nurturingVariables?.variables?.companyName,
+          senderName: brandVoiceData?.consultantDisplayName,
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore durante la rigenerazione");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setIsRegeneratingTemplates(false);
+      setSelectedTemplateDays([]);
+      setShowRegenerateSelectedConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-nurturing/config"] });
+      toast({ title: "Template rigenerati", description: `${data.regeneratedCount || 0} template rigenerati con successo` });
+    },
+    onError: (error: any) => {
+      setIsRegeneratingTemplates(false);
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
@@ -5432,7 +5512,18 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     <Alert className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
                       <CheckCircle className="h-4 w-4 text-emerald-600" />
                       <AlertDescription className="text-emerald-800 dark:text-emerald-200">
-                        <strong>{nurturingConfig.config.templatesGenerated || 365} templates già generati!</strong> 
+                        <strong>{nurturingConfig.config.templatesCount || 0} templates già generati!</strong> 
+                        {nurturingConfig.config.templatesCount < 365 && (
+                          <span className="ml-2 text-amber-600">
+                            (Mancano {365 - (nurturingConfig.config.templatesCount || 0)} - 
+                            <button 
+                              onClick={() => setShowPreviewConfirmDialog(true)}
+                              className="underline hover:text-amber-700 ml-1"
+                            >
+                              continua generazione
+                            </button>)
+                          </span>
+                        )}
                         {' '}Puoi visualizzarli e modificarli nella sezione Templates qui sotto.
                       </AlertDescription>
                     </Alert>
@@ -5623,6 +5714,123 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Bulk Actions Bar */}
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+                      {/* Selection buttons row */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const allDays = nurturingTemplatesData?.templates?.map((t: any) => t.dayNumber) || [];
+                            if (selectedTemplateDays.length === allDays.length) {
+                              setSelectedTemplateDays([]);
+                            } else {
+                              setSelectedTemplateDays(allDays);
+                            }
+                          }}
+                        >
+                          {selectedTemplateDays.length === (nurturingTemplatesData?.templates?.length || 0) && selectedTemplateDays.length > 0
+                            ? "Deseleziona tutti"
+                            : "Seleziona tutti"}
+                        </Button>
+                        
+                        {selectedTemplateDays.length > 0 && (
+                          <Badge variant="secondary" className="py-1">
+                            {selectedTemplateDays.length} selezionati
+                          </Badge>
+                        )}
+                        
+                        <div className="flex-1" />
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                          disabled={selectedTemplateDays.length === 0 || isRegeneratingTemplates}
+                          onClick={() => setShowRegenerateSelectedConfirm(true)}
+                        >
+                          {isRegeneratingTemplates ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                          )}
+                          Rigenera selezionati
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          disabled={selectedTemplateDays.length === 0 || isDeletingTemplates}
+                          onClick={() => setShowDeleteSelectedConfirm(true)}
+                        >
+                          {isDeletingTemplates ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3 mr-1" />
+                          )}
+                          Elimina selezionati
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          onClick={() => setShowDeleteAllConfirm(true)}
+                          disabled={isDeletingTemplates}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Cancella tutto
+                        </Button>
+                      </div>
+                      
+                      {/* Range delete row */}
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-600">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Elimina range:</span>
+                        <span className="text-sm">da giorno</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={365}
+                          placeholder="1"
+                          className="w-20 h-8"
+                          value={rangeFrom}
+                          onChange={(e) => setRangeFrom(e.target.value)}
+                        />
+                        <span className="text-sm">a giorno</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={365}
+                          placeholder="365"
+                          className="w-20 h-8"
+                          value={rangeTo}
+                          onChange={(e) => setRangeTo(e.target.value)}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          disabled={!rangeFrom || !rangeTo || parseInt(rangeFrom) > parseInt(rangeTo) || isDeletingTemplates}
+                          onClick={() => {
+                            const from = parseInt(rangeFrom);
+                            const to = parseInt(rangeTo);
+                            if (from && to && from <= to) {
+                              deleteTemplatesMutation.mutate({ range: { from, to } });
+                            }
+                          }}
+                        >
+                          {isDeletingTemplates ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3 mr-1" />
+                          )}
+                          Elimina range
+                        </Button>
+                      </div>
+                    </div>
+
                     {/* Filters */}
                     <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1">
@@ -5665,6 +5873,20 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           >
                             <AccordionTrigger className="hover:no-underline">
                               <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTemplateDays.includes(template.dayNumber)}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    if (e.target.checked) {
+                                      setSelectedTemplateDays(prev => [...prev, template.dayNumber]);
+                                    } else {
+                                      setSelectedTemplateDays(prev => prev.filter(d => d !== template.dayNumber));
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-4 h-4 rounded border-gray-300 text-violet-600 accent-violet-600 cursor-pointer"
+                                />
                                 <Badge variant="outline" className="bg-white dark:bg-slate-700">
                                   Giorno {template.dayNumber}
                                 </Badge>
@@ -5686,10 +5908,10 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                 </div>
                                 <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border">
                                   <p className="text-sm font-medium mb-1">Corpo:</p>
-                                  <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
-                                    {template.body?.substring(0, 500)}
-                                    {template.body?.length > 500 && '...'}
-                                  </p>
+                                  <div 
+                                    className="text-sm text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none max-h-96 overflow-y-auto"
+                                    dangerouslySetInnerHTML={{ __html: template.body || '' }}
+                                  />
                                 </div>
                                 <div className="flex gap-2">
                                   <Button variant="outline" size="sm">
@@ -5699,6 +5921,26 @@ Non limitarti a stato attuale/ideale. Attingi da:
                                   <Button variant="outline" size="sm">
                                     <Eye className="h-3 w-3 mr-1" />
                                     Anteprima
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                                    disabled={isRegeneratingTemplates}
+                                    onClick={() => regenerateTemplatesMutation.mutate({ days: [template.dayNumber] })}
+                                  >
+                                    <RefreshCw className="h-3 w-3 mr-1" />
+                                    Rigenera
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-red-600 border-red-300 hover:bg-red-50"
+                                    disabled={isDeletingTemplates}
+                                    onClick={() => deleteTemplatesMutation.mutate({ days: [template.dayNumber] })}
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Elimina
                                   </Button>
                                 </div>
                               </div>
@@ -5735,6 +5977,129 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </CardContent>
                 </Card>
               )}
+              
+              {/* Delete All Confirmation Dialog */}
+              <Dialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-red-600">
+                      <AlertTriangle className="h-5 w-5" />
+                      Conferma eliminazione totale
+                    </DialogTitle>
+                    <DialogDescription>
+                      Sei sicuro di voler cancellare tutti i 365 template? Questa azione non può essere annullata.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeleteAllConfirm(false)}
+                      disabled={isDeletingTemplates}
+                    >
+                      Annulla
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={isDeletingTemplates}
+                      onClick={() => deleteTemplatesMutation.mutate({ all: true })}
+                    >
+                      {isDeletingTemplates ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Eliminazione...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Elimina tutto
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
+              {/* Delete Selected Confirmation Dialog */}
+              <Dialog open={showDeleteSelectedConfirm} onOpenChange={setShowDeleteSelectedConfirm}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-red-600">
+                      <AlertTriangle className="h-5 w-5" />
+                      Conferma eliminazione
+                    </DialogTitle>
+                    <DialogDescription>
+                      Sei sicuro di voler eliminare {selectedTemplateDays.length} template selezionati? Questa azione non può essere annullata.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeleteSelectedConfirm(false)}
+                      disabled={isDeletingTemplates}
+                    >
+                      Annulla
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={isDeletingTemplates}
+                      onClick={() => deleteTemplatesMutation.mutate({ days: selectedTemplateDays })}
+                    >
+                      {isDeletingTemplates ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Eliminazione...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Elimina {selectedTemplateDays.length} template
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
+              {/* Regenerate Selected Confirmation Dialog */}
+              <Dialog open={showRegenerateSelectedConfirm} onOpenChange={setShowRegenerateSelectedConfirm}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-amber-600">
+                      <RefreshCw className="h-5 w-5" />
+                      Conferma rigenerazione
+                    </DialogTitle>
+                    <DialogDescription>
+                      Sei sicuro di voler rigenerare {selectedTemplateDays.length} template selezionati? I template esistenti verranno sovrascritti con nuovi contenuti generati dall'AI.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowRegenerateSelectedConfirm(false)}
+                      disabled={isRegeneratingTemplates}
+                    >
+                      Annulla
+                    </Button>
+                    <Button
+                      className="bg-amber-600 hover:bg-amber-700"
+                      disabled={isRegeneratingTemplates}
+                      onClick={() => regenerateTemplatesMutation.mutate({ days: selectedTemplateDays })}
+                    >
+                      {isRegeneratingTemplates ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Rigenerazione...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Rigenera {selectedTemplateDays.length} template
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Impostazioni Invio Card */}
               <Card className="border border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
@@ -6122,6 +6487,23 @@ Non limitarti a stato attuale/ideale. Attingi da:
                   </Alert>
                 )}
 
+                {/* Live generation indicator */}
+                {isGeneratingWeek && (
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                      <div className="flex-1">
+                        <p className="font-medium text-blue-800 dark:text-blue-200">
+                          ⏳ Generando giorno {generationStatus?.nextDay || '...'}...
+                        </p>
+                        <p className="text-sm text-blue-600 dark:text-blue-300">
+                          {generationStatus?.totalGenerated || 0} template generati finora
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {generationStatus?.isComplete ? (
                   <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
                     <CheckCircle className="h-4 w-4 text-green-600" />
@@ -6140,7 +6522,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           referenceEmail,
                           preferredTone,
                           startDay,
-                          // Pass preview template if we're starting from day 1 and have a preview
                           previewTemplate: startDay === 1 && previewTemplate ? {
                             subject: previewTemplate.subject,
                             body: previewTemplate.body,
@@ -6180,7 +6561,10 @@ Non limitarti a stato attuale/ideale. Attingi da:
                               <Badge variant="secondary" className="shrink-0">
                                 Giorno {template.dayNumber}
                               </Badge>
-                              <span className="text-sm truncate max-w-[300px]">
+                              <Badge variant="outline" className="shrink-0 capitalize text-xs">
+                                {template.category}
+                              </Badge>
+                              <span className="text-sm truncate max-w-[250px]">
                                 {template.subject}
                               </span>
                             </div>
@@ -6188,20 +6572,14 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           <AccordionContent className="px-4 pb-4">
                             <div className="space-y-3">
                               <div>
-                                <Label className="text-xs text-muted-foreground">Categoria:</Label>
-                                <Badge variant="outline" className="ml-2 capitalize">
-                                  {template.category}
-                                </Badge>
-                              </div>
-                              <div>
                                 <Label className="text-xs text-muted-foreground">Oggetto:</Label>
                                 <p className="font-medium">{template.subject}</p>
                               </div>
                               <div>
-                                <Label className="text-xs text-muted-foreground">Anteprima corpo:</Label>
+                                <Label className="text-xs text-muted-foreground">Corpo email:</Label>
                                 <div 
-                                  className="mt-2 prose prose-sm dark:prose-invert max-w-none bg-slate-50 dark:bg-slate-800 p-3 rounded border max-h-40 overflow-y-auto"
-                                  dangerouslySetInnerHTML={{ __html: template.body.substring(0, 500) + (template.body.length > 500 ? '...' : '') }}
+                                  className="mt-2 prose prose-sm dark:prose-invert max-w-none bg-slate-50 dark:bg-slate-800 p-3 rounded border max-h-64 overflow-y-auto"
+                                  dangerouslySetInnerHTML={{ __html: template.body }}
                                 />
                               </div>
                             </div>

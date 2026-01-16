@@ -635,10 +635,15 @@ export async function getGenerationStatus(consultantId: string): Promise<{
   return { totalGenerated, nextDay, isComplete, lastGeneratedDay, missingDays };
 }
 
-// NEW: Generate a block of 7 days (one week)
+export interface TemplateGeneratedCallback {
+  (template: { dayNumber: number; subject: string; body: string; category: string }, progress: { current: number; total: number }): void;
+}
+
+// NEW: Generate a block of 7 days (one week) with optional streaming callback
 export async function generateWeekBlock(
   config: GenerationConfig,
-  startDay: number
+  startDay: number,
+  onTemplateGenerated?: TemplateGeneratedCallback
 ): Promise<{ 
   success: boolean; 
   generated: number; 
@@ -655,6 +660,7 @@ export async function generateWeekBlock(
   // Calculate end day (don't go past 365)
   const endDay = Math.min(startDay + WEEK_SIZE - 1, 365);
   const days = Array.from({ length: endDay - startDay + 1 }, (_, i) => i + startDay);
+  const totalDays = days.length;
   
   console.log(`[NURTURING GENERATION] Generating week block: days ${startDay}-${endDay} for consultant ${consultantId}`);
   
@@ -662,7 +668,8 @@ export async function generateWeekBlock(
     const knowledgeBaseContext = await fetchNurturingKnowledgeItems(consultantId);
     
     // Generate templates sequentially to avoid rate limits
-    for (const day of days) {
+    for (let i = 0; i < days.length; i++) {
+      const day = days[i];
       try {
         const template = await generateTemplateForDay(day, config, consultantId, knowledgeBaseContext);
         
@@ -703,14 +710,21 @@ export async function generateWeekBlock(
           });
         }
         
-        generatedTemplates.push({
+        const templateData = {
           dayNumber: day,
           subject: template.subject,
           body: template.body,
           category: template.category,
-        });
+        };
+        
+        generatedTemplates.push(templateData);
         
         console.log(`[NURTURING GENERATION] Day ${day} saved successfully`);
+        
+        // Call the callback to stream progress to client
+        if (onTemplateGenerated) {
+          onTemplateGenerated(templateData, { current: i + 1, total: totalDays });
+        }
         
         // Small delay between requests to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -724,7 +738,9 @@ export async function generateWeekBlock(
     const status = await getGenerationStatus(consultantId);
     await db.update(schema.leadNurturingConfig)
       .set({
-        templatesGenerated: status.totalGenerated,
+        templatesGenerated: true, // boolean flag
+        templatesCount: status.totalGenerated, // actual count (integer)
+        templatesGeneratedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(schema.leadNurturingConfig.consultantId, consultantId));

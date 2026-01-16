@@ -3,7 +3,7 @@ import { authenticateToken, requireRole, type AuthRequest } from "../middleware/
 import { upload } from "../middleware/upload";
 import { storage } from "../storage";
 import { db } from "../db";
-import { eq, and, desc, asc, inArray, sql, notInArray } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, sql, notInArray, gte, lte } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { generateNurturingTemplates, regenerateTemplate, getTemplateCount, generatePreviewTemplate, generateRemainingTemplates, getGenerationStatus, generateWeekBlock } from "../services/lead-nurturing-generation-service";
 import { validateTemplate } from "../services/template-compiler";
@@ -576,6 +576,169 @@ router.post("/lead-nurturing/generate-week", authenticateToken, requireRole("con
     });
   } catch (error: any) {
     console.error("[NURTURING] Error generating week block:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE templates - single, range, or all
+router.delete("/lead-nurturing/templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { days, range, all } = req.body as { 
+      days?: number[];
+      range?: { from: number; to: number };
+      all?: boolean;
+    };
+    
+    let deletedCount = 0;
+    
+    if (all) {
+      // Delete all templates for this consultant
+      const result = await db.delete(schema.leadNurturingTemplates)
+        .where(eq(schema.leadNurturingTemplates.consultantId, consultantId))
+        .returning();
+      deletedCount = result.length;
+      
+      // Reset config
+      await db.update(schema.leadNurturingConfig)
+        .set({
+          templatesGenerated: false,
+          templatesCount: 0,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+        
+    } else if (range && range.from && range.to) {
+      // Delete templates in range
+      const result = await db.delete(schema.leadNurturingTemplates)
+        .where(
+          and(
+            eq(schema.leadNurturingTemplates.consultantId, consultantId),
+            gte(schema.leadNurturingTemplates.dayNumber, range.from),
+            lte(schema.leadNurturingTemplates.dayNumber, range.to)
+          )
+        )
+        .returning();
+      deletedCount = result.length;
+      
+    } else if (days && days.length > 0) {
+      // Delete specific days
+      const result = await db.delete(schema.leadNurturingTemplates)
+        .where(
+          and(
+            eq(schema.leadNurturingTemplates.consultantId, consultantId),
+            inArray(schema.leadNurturingTemplates.dayNumber, days)
+          )
+        )
+        .returning();
+      deletedCount = result.length;
+    } else {
+      return res.status(400).json({ success: false, error: "Specificare days, range, o all" });
+    }
+    
+    // Update templates count
+    const status = await getGenerationStatus(consultantId);
+    await db.update(schema.leadNurturingConfig)
+      .set({
+        templatesGenerated: status.totalGenerated > 0,
+        templatesCount: status.totalGenerated,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+    
+    console.log(`[NURTURING] Deleted ${deletedCount} templates for consultant ${consultantId}`);
+    
+    res.json({ 
+      success: true, 
+      deletedCount,  // Match frontend expected field name
+      remaining: status.totalGenerated,
+      nextDay: status.nextDay,
+    });
+  } catch (error: any) {
+    console.error("[NURTURING] Error deleting templates:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// REGENERATE templates for specific days
+router.post("/lead-nurturing/templates/regenerate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { days, range } = req.body as { 
+      days?: number[];
+      range?: { from: number; to: number };
+    };
+    
+    // Get config for generation params
+    const config = await storage.getNurturingConfig(consultantId);
+    if (!config) {
+      return res.status(400).json({ success: false, error: "Configurazione nurturing non trovata" });
+    }
+    
+    // Determine which days to regenerate
+    let daysToRegenerate: number[] = [];
+    
+    if (range && range.from && range.to) {
+      daysToRegenerate = Array.from({ length: range.to - range.from + 1 }, (_, i) => i + range.from);
+    } else if (days && days.length > 0) {
+      daysToRegenerate = days;
+    } else {
+      return res.status(400).json({ success: false, error: "Specificare days o range" });
+    }
+    
+    // Delete existing templates for these days first
+    await db.delete(schema.leadNurturingTemplates)
+      .where(
+        and(
+          eq(schema.leadNurturingTemplates.consultantId, consultantId),
+          inArray(schema.leadNurturingTemplates.dayNumber, daysToRegenerate)
+        )
+      );
+    
+    // Regenerate each requested day (not just a 7-day block)
+    const generationConfig = {
+      consultantId,
+      businessDescription: config.businessDescription || "",
+      targetAudience: "Clienti interessati ai nostri servizi",
+      tone: config.preferredTone || "professionale ma amichevole",
+      brandVoiceData: config.brandVoiceData || undefined,
+    };
+    
+    // Generate templates for all requested days in 7-day chunks
+    const allTemplates: any[] = [];
+    const allErrors: string[] = [];
+    
+    // Sort days and process in chunks of 7
+    const sortedDays = [...daysToRegenerate].sort((a, b) => a - b);
+    
+    for (let i = 0; i < sortedDays.length; i += 7) {
+      const chunkStart = sortedDays[i];
+      const result = await generateWeekBlock(generationConfig, chunkStart);
+      
+      // Filter to only include templates for days we actually requested
+      const relevantTemplates = result.templates.filter(t => sortedDays.includes(t.dayNumber));
+      allTemplates.push(...relevantTemplates);
+      allErrors.push(...result.errors);
+    }
+    
+    // Update config count
+    const status = await getGenerationStatus(consultantId);
+    await db.update(schema.leadNurturingConfig)
+      .set({
+        templatesGenerated: status.totalGenerated > 0,
+        templatesCount: status.totalGenerated,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
+    
+    res.json({
+      success: allErrors.length === 0,
+      regeneratedCount: allTemplates.length,  // Match frontend expected field name
+      templates: allTemplates,
+      errors: allErrors,
+    });
+  } catch (error: any) {
+    console.error("[NURTURING] Error regenerating templates:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
