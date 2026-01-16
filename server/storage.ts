@@ -4442,8 +4442,20 @@ export class DatabaseStorage implements IStorage {
   // Proactive Leads operations
   async createProactiveLead(data: schema.InsertProactiveLead): Promise<schema.ProactiveLead> {
     try {
+      // Check if consultant has nurturing enabled - auto-enable for new leads
+      let finalData = { ...data };
+      
+      if (data.consultantId && !data.nurturingEnabled) {
+        const nurturingConfig = await this.getNurturingConfig(data.consultantId);
+        if (nurturingConfig?.isActive) {
+          console.log(`📧 [NURTURING AUTO] Enabling nurturing for new lead (consultant has nurturing active)`);
+          finalData.nurturingEnabled = true;
+          finalData.nurturingStartDate = new Date();
+        }
+      }
+      
       const [lead] = await db.insert(schema.proactiveLeads)
-        .values(data)
+        .values(finalData)
         .returning();
       return lead;
     } catch (error: any) {
