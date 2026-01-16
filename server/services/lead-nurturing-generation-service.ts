@@ -325,6 +325,134 @@ async function fetchPreviousEmails(consultantId: string, beforeDay: number, limi
   }
 }
 
+// ============================================================
+// PROMPT V2 - HELPER FUNCTIONS FOR VARIETY
+// ============================================================
+
+// Determina il tipo di CTA basato sul giorno (per varietà)
+function getCTATypeForDay(day: number): { type: string; instruction: string } {
+  // 40% CTA diretta, 30% soft, 15% riflessiva, 15% nessuna
+  const mod = day % 20;
+  
+  if (mod >= 0 && mod < 8) {
+    // 40% - CTA diretta (giorni 0-7 di ogni ciclo di 20)
+    return {
+      type: "diretta",
+      instruction: `CHIUSURA: Termina con un invito diretto all'azione. Usa UNA di queste formule (VARIA, non usare sempre la stessa):
+- "Rispondimi su WhatsApp al {{whatsapp}} per fissare un appuntamento"
+- "Scrivimi al {{whatsapp}} se vuoi approfondire"
+- "Prenota una chiamata: {{linkCalendario}}"
+- "Hai domande? Sono qui: {{whatsapp}}"`
+    };
+  } else if (mod >= 8 && mod < 14) {
+    // 30% - CTA soft (giorni 8-13)
+    return {
+      type: "soft",
+      instruction: `CHIUSURA: Termina con un invito morbido, non pressante. Esempi:
+- "Se ti va, fammi sapere cosa ne pensi"
+- "Ci sentiamo presto"
+- "A domani con un nuovo spunto"`
+    };
+  } else if (mod >= 14 && mod < 17) {
+    // 15% - Riflessiva (giorni 14-16)
+    return {
+      type: "riflessiva",
+      instruction: `CHIUSURA: Termina con una domanda riflessiva o un pensiero aperto. NON inserire CTA. Esempi:
+- "Pensaci: cosa cambierebbe per te se...?"
+- "La vera domanda è: sei pronto a...?"
+- Lascia il lettore con una riflessione personale`
+    };
+  } else {
+    // 15% - Nessuna CTA (giorni 17-19)
+    return {
+      type: "nessuna",
+      instruction: `CHIUSURA: Termina in modo naturale SENZA call-to-action. Questa è un'email di puro valore/nurturing.
+- Concludi con un pensiero ispirante
+- Oppure con un'anticipazione per la prossima email
+- NON chiedere di rispondere o contattarti`
+    };
+  }
+}
+
+// Determina la struttura dell'email basata sul giorno
+function getStructureForDay(day: number): { type: string; instruction: string } {
+  if (day % 10 === 0) {
+    // Ogni 10° giorno: email BREVE
+    return {
+      type: "breve",
+      instruction: `📝 STRUTTURA OBBLIGATORIA: EMAIL BREVE
+- Massimo 100-150 parole
+- Un solo concetto chiaro
+- Niente liste puntate
+- Tono diretto e incisivo`
+    };
+  } else if (day % 7 === 0) {
+    // Ogni 7° giorno: storytelling
+    return {
+      type: "storytelling",
+      instruction: `📖 STRUTTURA OBBLIGATORIA: STORYTELLING
+- Racconta una storia vera (tua o di un cliente)
+- Struttura: situazione iniziale → sfida → soluzione → risultato
+- Rendi il lettore protagonista emotivo
+- Evita liste puntate, usa narrazione fluida`
+    };
+  } else if (day % 5 === 0) {
+    // Ogni 5° giorno: caso studio mini
+    return {
+      type: "caso_studio",
+      instruction: `💼 STRUTTURA OBBLIGATORIA: MINI CASO STUDIO
+- Presenta un caso reale in modo sintetico
+- Problema → Azione → Risultato (con numeri se possibile)
+- Max 250 parole
+- Conclude con la lezione appresa`
+    };
+  } else if (day % 3 === 0) {
+    // Ogni 3° giorno: domanda iniziale
+    return {
+      type: "domanda",
+      instruction: `❓ STRUTTURA OBBLIGATORIA: INIZIA CON DOMANDA
+- Apri con una domanda provocatoria o riflessiva
+- La domanda deve creare curiosità immediata
+- Il resto dell'email risponde/esplora la domanda`
+    };
+  } else if (day % 2 === 0) {
+    // Giorni pari: lista puntata
+    return {
+      type: "lista",
+      instruction: `📋 STRUTTURA CONSIGLIATA: USA ELENCHI
+- Organizza i punti chiave in lista puntata
+- 3-5 punti massimo
+- Ogni punto breve e chiaro`
+    };
+  } else {
+    // Giorni dispari: paragrafi narrativi
+    return {
+      type: "narrativa",
+      instruction: `✍️ STRUTTURA: PARAGRAFI NARRATIVI
+- Usa paragrafi brevi e scorrevoli
+- Evita liste puntate
+- Tono conversazionale`
+    };
+  }
+}
+
+// Determina come usare il brand voice (con moderazione)
+function getBrandVoiceInstruction(day: number): string {
+  const mod = day % 5;
+  
+  if (mod === 0) {
+    return `🏷️ BRAND VOICE: Se pertinente, cita UN case study specifico con nome e risultato. Non citare libro o software.`;
+  } else if (mod === 1) {
+    return `🏷️ BRAND VOICE: Se pertinente, menziona brevemente il libro/pubblicazione come prova di autorevolezza. Non citare software o case study.`;
+  } else if (mod === 2) {
+    return `🏷️ BRAND VOICE: Se pertinente, cita il software/tool come risorsa pratica. Non citare libro o case study.`;
+  } else if (mod === 3) {
+    return `🏷️ BRAND VOICE: Usa i numeri reali (anni esperienza, clienti aiutati) se naturale nel contesto. Non citare libro, software o case study specifici.`;
+  } else {
+    return `🏷️ BRAND VOICE: In questa email NON citare elementi specifici del brand (libro, software, case study, numeri). Concentrati solo sul valore del contenuto.`;
+  }
+}
+
 async function generateTemplateForDay(
   day: number,
   config: GenerationConfig,
@@ -411,7 +539,13 @@ ${bodyText}
 `;
   }
   
-  const prompt = `Sei un esperto di email marketing B2C. Genera UN'UNICA email di nurturing per il giorno ${day} di un percorso di 365 giorni.
+  // Get variety helpers
+  const ctaType = getCTATypeForDay(day);
+  const structureType = getStructureForDay(day);
+  const brandVoiceInstruction = getBrandVoiceInstruction(day);
+
+  const prompt = `Sei un copywriter esperto di email marketing. Genera UN'UNICA email di nurturing per il giorno ${day} di un percorso di 365 giorni.
+
 ${previousEmailsContext}
 ${topicContext}
 
@@ -423,10 +557,6 @@ ${topicDescription ? `Descrizione: ${topicDescription}` : ""}
 ${emailType.icon} ${emailType.type.toUpperCase()}
 Obiettivo: ${emailType.description}
 
-=== CTA ===
-Ogni email DEVE terminare con un invito all'azione WhatsApp:
-"Rispondimi su WhatsApp al {{whatsapp}} per fissare un appuntamento"
-
 === CONTESTO BUSINESS ===
 - Descrizione: ${config.businessDescription}
 - Target: ${config.targetAudience}
@@ -436,45 +566,41 @@ Ogni email DEVE terminare con un invito all'azione WhatsApp:
 ${brandVoiceContext}
 ${knowledgeBaseContext}
 
-=== REGOLA PRESENTAZIONE (CRITICA) ===
-${day === 1 ? `⭐ QUESTA È L'EMAIL DI PRESENTAZIONE (Giorno 1).
-- Presentati brevemente: chi sei, cosa fai
-- Spiega cosa aspettarsi dal percorso email
-- Dai il benvenuto al lettore
-- Costruisci curiosità per le email successive` : `⛔ NON presentarti MAI. Il lettore ti conosce già dal giorno 1.
-- Vai dritto al valore
-- Non dire "sono [nome]" o "mi presento"
-- Il lettore sa già chi sei, parla direttamente dell'argomento`}
+=== ${structureType.instruction} ===
 
-=== ISTRUZIONI SPECIFICHE ===
-1. ARGOMENTO: L'email DEVE trattare ESATTAMENTE l'argomento "${topicTitle}"
-2. VALORE: L'email deve dare valore e formazione concreta, non essere promozionale
-3. BRAND VOICE: USA ATTIVAMENTE i dati del brand voice:
-   - Se ci sono case study, citane uno specifico con nomi e risultati
-   - Se ci sono libri pubblicati, menzionali come prova di autorevolezza
-   - Se ci sono software/tool creati, parlane come risorsa
-   - Usa i numeri reali (anni esperienza, clienti aiutati, risultati)
-4. VARIAZIONE: NON usare frasi generiche. Sii specifico e concreto.
-5. CTA FINALE: SEMPRE invito WhatsApp per appuntamento
-6. TONO: ${config.tone}
-7. PRESENTAZIONE: ${day === 1 ? "Questa È l'unica email dove ti presenti" : "NON presentarti, vai dritto al contenuto"}
+=== ${brandVoiceInstruction} ===
+
+=== ${ctaType.instruction} ===
+
+=== REGOLA PRESENTAZIONE ===
+${day === 1 ? `⭐ QUESTA È L'EMAIL DI BENVENUTO (Giorno 1).
+- Presentati brevemente: chi sei, cosa fai
+- Spiega cosa aspettarsi dal percorso
+- Costruisci curiosità` : `⛔ NON presentarti. Il lettore ti conosce già.
+- Vai dritto al valore
+- Parla direttamente dell'argomento`}
+
+=== REGOLE FONDAMENTALI ===
+1. L'email DEVE trattare l'argomento "${topicTitle}"
+2. Dai valore concreto, NON essere promozionale
+3. Tono: ${config.tone}
+4. VARIA rispetto alle email precedenti (apertura, struttura, chiusura)
 
 === VARIABILI DISPONIBILI ===
 {{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
 
 === REGOLE FORMATO ===
-1. Subject: max 60 caratteri, accattivante, deve riflettere l'argomento "${topicTitle}"
-2. Body: HTML semplice (p, strong, em, a, ul, li), max 500 parole
-3. DEVE includere {{linkUnsubscribe}} nel footer per GDPR
+1. Subject: max 60 caratteri, accattivante, riflette "${topicTitle}"
+2. Body: HTML semplice (p, strong, em, a, ul, li)
+3. OBBLIGATORIO: {{linkUnsubscribe}} nel footer per GDPR
 4. NO immagini, NO allegati
 
-=== FORMATO OUTPUT (JSON PURO) ===
-IMPORTANTE: Rispondi SOLO con JSON valido. NON scrivere pensieri, ragionamenti o commenti. Solo JSON.
+=== OUTPUT JSON ===
+Rispondi SOLO con JSON valido:
 {
-  "subject": "Subject max 60 char, deve riflettere l'argomento ${topicTitle}",
-  "body": "<p>HTML email completa...</p><p>Rispondimi su WhatsApp al {{whatsapp}} per fissare un appuntamento.</p><p style='font-size:12px;color:#666;margin-top:30px;'><a href='{{linkUnsubscribe}}'>Disiscriviti</a></p>"
-}
-Rispondi SOLO con il JSON sopra, nient'altro.`;
+  "subject": "Subject accattivante max 60 char",
+  "body": "<p>Email completa in HTML...</p><p style='font-size:12px;color:#666;margin-top:30px;'><a href='{{linkUnsubscribe}}'>Disiscriviti</a></p>"
+}`;
 
   console.log(`[NURTURING GENERATION] Day ${day} - Calling AI with model: ${GEMINI_3_MODEL}`);
   console.log(`[NURTURING GENERATION] Day ${day} - Provider type: ${provider.metadata?.name || 'unknown'}`);
@@ -486,7 +612,7 @@ Rispondi SOLO con il JSON sopra, nient'altro.`;
       model: GEMINI_3_MODEL,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.7,
+        temperature: 1.0,
         maxOutputTokens: 4096,
       },
     });
