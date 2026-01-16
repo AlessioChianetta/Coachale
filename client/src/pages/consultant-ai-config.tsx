@@ -6971,8 +6971,9 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     <Button
                       onClick={() => {
                         const startDay = generationStatus?.nextDay || 1;
+                        const effectiveBusinessDescription = nurturingConfig?.config?.businessDescription || businessDescription || "Servizi di consulenza professionale";
                         generateWeekMutation.mutate({
-                          businessDescription,
+                          businessDescription: effectiveBusinessDescription,
                           referenceEmail,
                           preferredTone,
                           startDay,
