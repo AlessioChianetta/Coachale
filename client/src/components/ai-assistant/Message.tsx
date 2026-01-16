@@ -665,7 +665,7 @@ export function Message({ message, onActionClick }: MessageProps) {
         let tableHtml = '<div class="my-6 overflow-x-auto"><table class="min-w-full border-collapse border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">';
 
         // Header
-        tableHtml += '<thead class="bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-900/40 dark:to-indigo-900/40"><tr>';
+        tableHtml += '<thead class="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700"><tr>';
         headerCells.forEach(cell => {
           tableHtml += `<th class="border border-gray-300 dark:border-gray-700 px-4 py-3 text-left text-sm font-bold text-gray-900 dark:text-white">${cell}</th>`;
         });
@@ -677,7 +677,7 @@ export function Message({ message, onActionClick }: MessageProps) {
           const bgClass = idx % 2 === 0 
             ? 'bg-white dark:bg-gray-800' 
             : 'bg-gray-50 dark:bg-gray-800/50';
-          tableHtml += `<tr class="${bgClass} hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">`;
+          tableHtml += `<tr class="${bgClass} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">`;
           row.forEach(cell => {
             tableHtml += `<td class="border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm text-gray-800 dark:text-gray-200 leading-relaxed">${cell}</td>`;
           });
@@ -783,7 +783,7 @@ export function Message({ message, onActionClick }: MessageProps) {
       // Quotes
       if (trimmedLine.startsWith('>')) {
         const quoteText = trimmedLine.substring(1).trim();
-        result.push(`<div class="border-l-4 border-purple-400 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/20 pl-5 pr-4 py-3 my-4 italic text-gray-700 dark:text-gray-300 rounded-r-lg leading-relaxed">${quoteText}</div>`);
+        result.push(`<div class="border-l-4 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/30 pl-4 pr-3 py-2.5 my-3 italic text-gray-700 dark:text-gray-300 rounded-r-lg leading-relaxed">${quoteText}</div>`);
         continue;
       }
 
@@ -791,10 +791,10 @@ export function Message({ message, onActionClick }: MessageProps) {
       if (trimmedLine.endsWith(':') && trimmedLine.length < 100 && !trimmedLine.includes('🔹') && !/^\d+\./.test(trimmedLine)) {
         sectionCounter++;
         subsectionCounter = 0;
-        result.push(`<div class="mt-6 mb-3 pb-2 border-b border-gray-300 dark:border-gray-700">
+        result.push(`<div class="mt-5 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
           <div class="flex items-center gap-2">
-            <span class="flex-shrink-0 w-6 h-6 rounded bg-gradient-to-br from-purple-500 to-purple-600 text-white text-xs font-bold flex items-center justify-center">${sectionCounter}</span>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">${line.replace(':', '')}</h3>
+            <span class="flex-shrink-0 w-5 h-5 rounded bg-gradient-to-br from-slate-500 to-slate-600 text-white text-xs font-bold flex items-center justify-center">${sectionCounter}</span>
+            <h3 class="text-base font-bold text-gray-900 dark:text-white">${line.replace(':', '')}</h3>
           </div>
         </div>`);
         continue;
@@ -833,8 +833,8 @@ export function Message({ message, onActionClick }: MessageProps) {
             <span class="flex-1 text-gray-800 dark:text-gray-200 leading-relaxed text-sm ${isChecked ? 'line-through opacity-60' : ''}">${bulletText}</span>
           </div>`);
         } else {
-          result.push(`<div class="flex items-start gap-2.5 ${marginLeft} mb-2">
-            <span class="text-purple-500 dark:text-purple-400 flex-shrink-0 mt-1.5 text-xs">●</span>
+          result.push(`<div class="flex items-start gap-2 ${marginLeft} mb-1.5">
+            <span class="text-slate-400 dark:text-slate-500 flex-shrink-0 mt-1.5 text-xs">●</span>
             <span class="flex-1 text-gray-800 dark:text-gray-200 leading-relaxed text-sm">${bulletText}</span>
           </div>`);
         }
@@ -846,9 +846,9 @@ export function Message({ message, onActionClick }: MessageProps) {
         const number = trimmedLine.match(/^(\d+)/)![1];
         const text = trimmedLine.replace(/^\d+[\.)]\s/, '');
         subsectionCounter++;
-        result.push(`<div class="flex items-start gap-3 ml-0 mb-3">
-          <span class="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/50 dark:to-purple-800/50 flex items-center justify-center text-sm font-bold text-purple-700 dark:text-purple-300 shadow-sm">${number}</span>
-          <span class="flex-1 text-gray-800 dark:text-gray-200 pt-0.5 leading-relaxed text-sm">${text}</span>
+        result.push(`<div class="flex items-start gap-2 ml-0 mb-1.5">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-semibold text-slate-600 dark:text-slate-200">${number}</span>
+          <span class="flex-1 text-gray-800 dark:text-gray-200 leading-relaxed text-sm">${text}</span>
         </div>`);
         continue;
       }
