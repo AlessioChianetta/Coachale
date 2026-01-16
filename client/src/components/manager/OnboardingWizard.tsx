@@ -54,7 +54,7 @@ export function OnboardingWizard({
   const [explanation, setExplanation] = useState<string>("");
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
   const [preferences, setPreferences] = useState({
-    writingStyle: "default" as "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom",
+    writingStyle: "eccentric" as "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom",
     responseLength: "balanced" as "short" | "balanced" | "comprehensive",
     customInstructions: "",
   });

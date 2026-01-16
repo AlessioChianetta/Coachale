@@ -525,7 +525,7 @@ router.get(
       const share = req.share!;
 
       const defaultPreferences = {
-        writingStyle: "default",
+        writingStyle: "eccentric",
         responseLength: "balanced",
         customInstructions: null,
         aiModel: null,
@@ -546,7 +546,7 @@ router.get(
         if (bronzeData) {
           return res.json({
             ...defaultPreferences,
-            writingStyle: bronzeData.writingStyle || "default",
+            writingStyle: bronzeData.writingStyle || "eccentric",
             responseLength: bronzeData.responseLength || "balanced",
             customInstructions: bronzeData.customInstructions || null,
           });
@@ -568,7 +568,7 @@ router.get(
         if (subscriptionData) {
           return res.json({
             ...defaultPreferences,
-            writingStyle: subscriptionData.writingStyle || "default",
+            writingStyle: subscriptionData.writingStyle || "eccentric",
             responseLength: subscriptionData.responseLength || "balanced",
             customInstructions: subscriptionData.customInstructions || null,
           });

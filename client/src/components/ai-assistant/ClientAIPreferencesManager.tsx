@@ -45,7 +45,7 @@ interface ClientWithPreferences {
 }
 
 const DEFAULT_PREFERENCES: AIPreferences = {
-  writingStyle: "professional",
+  writingStyle: "eccentric",
   responseLength: "balanced",
   customInstructions: null,
 };

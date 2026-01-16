@@ -32,7 +32,7 @@ interface AIPreferences {
 }
 
 const DEFAULT_PREFERENCES: AIPreferences = {
-  writingStyle: "default",
+  writingStyle: "eccentric",
   responseLength: "balanced",
   customInstructions: null,
   defaultSystemInstructions: null,

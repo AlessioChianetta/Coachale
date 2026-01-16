@@ -120,7 +120,7 @@ interface ManagerPreferences {
 }
 
 const DEFAULT_PREFERENCES: ManagerPreferences = {
-  writingStyle: "default",
+  writingStyle: "eccentric",
   responseLength: "balanced",
   customInstructions: null,
   aiModel: "gemini-3-flash-preview",

@@ -2773,7 +2773,7 @@ export type InsertAgentClientAssignment = typeof agentClientAssignments.$inferIn
 export const aiAssistantPreferences = pgTable("ai_assistant_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
-  writingStyle: text("writing_style").$type<"default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom">().default("default").notNull(),
+  writingStyle: text("writing_style").$type<"default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom">().default("eccentric").notNull(),
   responseLength: text("response_length").$type<"short" | "balanced" | "comprehensive">().default("balanced").notNull(),
   customInstructions: text("custom_instructions"),
   defaultSystemInstructions: text("default_system_instructions"),
