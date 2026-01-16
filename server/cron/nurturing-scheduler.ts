@@ -46,9 +46,10 @@ let cleanupJob: cron.ScheduledTask | null = null;
 const EMAILS_PER_BATCH = 50;
 const BATCH_DELAY_MS = 2000;
 
-function calculateCurrentDay(startDate: Date): number {
+function calculateCurrentDay(startDate: Date | string): number {
   const now = new Date();
-  const diffTime = Math.abs(now.getTime() - startDate.getTime());
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  const diffTime = Math.abs(now.getTime() - start.getTime());
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   return Math.min(diffDays + 1, 365);
 }
