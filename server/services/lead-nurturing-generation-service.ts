@@ -483,13 +483,23 @@ Categoria: ${category} - ${categoryDesc}
   
   let parsed: { subject: string; body: string };
   try {
-    // Remove markdown code blocks if present
+    // Remove markdown code blocks more aggressively
     let cleanText = text;
-    if (cleanText.includes('```json')) {
-      cleanText = cleanText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    } else if (cleanText.includes('```')) {
-      cleanText = cleanText.replace(/```\s*/g, '');
-    }
+    
+    // Remove ```json or ``` at start
+    cleanText = cleanText.replace(/^```json\s*/i, '');
+    cleanText = cleanText.replace(/^```\s*/i, '');
+    
+    // Remove ``` at end
+    cleanText = cleanText.replace(/```\s*$/i, '');
+    
+    // Also handle inline code blocks
+    cleanText = cleanText.replace(/```json\n?/gi, '');
+    cleanText = cleanText.replace(/```\n?/gi, '');
+    
+    cleanText = cleanText.trim();
+    
+    console.log(`[NURTURING GENERATION] Day ${day} - Clean text preview: ${cleanText.substring(0, 100)}...`);
     
     const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -498,8 +508,9 @@ Categoria: ${category} - ${categoryDesc}
     }
     parsed = JSON.parse(jsonMatch[0]);
     console.log(`[NURTURING GENERATION] Day ${day} - Successfully parsed JSON with subject: "${parsed.subject?.substring(0, 50)}..."`);
-  } catch (e) {
-    console.error(`[NURTURING GENERATION] Failed to parse response for day ${day}:`, text.substring(0, 200));
+  } catch (e: any) {
+    console.error(`[NURTURING GENERATION] Failed to parse response for day ${day}:`, e.message);
+    console.error(`[NURTURING GENERATION] Raw text (first 500):`, text.substring(0, 500));
     parsed = {
       subject: `Giorno ${day}: Un messaggio per te, {{nome}}`,
       body: `<p>Ciao {{nome}},</p><p>Ecco il tuo aggiornamento del giorno ${day}.</p><p>{{firmaEmail}}</p><p style="font-size:12px;color:#666;margin-top:30px;">Non vuoi più ricevere queste email? <a href="{{linkUnsubscribe}}">Disiscriviti qui</a></p>`,
