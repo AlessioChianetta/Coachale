@@ -2083,6 +2083,30 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       }
     }
     
+    // ========== EARLY DETECTION: Tabular Documents for Code Execution ==========
+    // Detect calculation intent early to exclude tabular doc content from system prompt
+    // (content will be uploaded via File API instead - saving tokens)
+    const calculationIntent = detectCalculationIntent(message);
+    let tabularDocIds = new Set<string>();
+    
+    if (calculationIntent.isCalculation && clientId) {
+      try {
+        const tabularDocs = await getClientTabularDocuments(clientId);
+        if (tabularDocs.length > 0) {
+          console.log(`🧮 [CALC INTENT] Detected calculation - found ${tabularDocs.length} tabular doc(s)`);
+          // Add tabular doc IDs to exclusion set to prevent inline content in prompt
+          for (const doc of tabularDocs) {
+            tabularDocIds.add(doc.id);
+            indexedKnowledgeDocIds.add(doc.id); // Exclude from inline prompt
+          }
+          console.log(`📊 [TABULAR] Excluded ${tabularDocIds.size} tabular doc(s) from inline prompt`);
+        }
+      } catch (tabularPreError) {
+        console.error(`⚠️ [TABULAR] Error pre-checking tabular docs:`, tabularPreError);
+      }
+    }
+    // ==========================================================================
+    
     let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
     
     // Append agent context if available
@@ -2186,60 +2210,53 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     
     // ========== CODE EXECUTION WITH TABULAR DATA (FILE API) ==========
-    // Detect if user is asking for calculations on tabular data
-    const calculationIntent = detectCalculationIntent(message);
+    // Upload tabular documents via File API (calculationIntent already detected above)
     let fileDataParts: FileDataPart[] = [];
     let codeExecutionSystemAddendum = '';
     
-    // Only check for tabular data if we have a valid clientId and detected calculation intent
-    if (calculationIntent.isCalculation && clientId) {
-      console.log(`\n🧮 [CALC INTENT] Detected calculation request`);
+    // Only upload tabular data if calculation intent was detected and we have tabular docs
+    if (calculationIntent.isCalculation && clientId && tabularDocIds.size > 0) {
+      console.log(`\n🧮 [CALC INTENT] Processing calculation request`);
       console.log(`   📅 Has date filter: ${calculationIntent.hasDateFilter}`);
       if (calculationIntent.suggestedDateFilter) {
         console.log(`   🗓️  Suggested filter: ${calculationIntent.suggestedDateFilter}`);
       }
       
       try {
-        // Get tabular documents for this client
+        // Get tabular documents for this client (already identified above)
         const tabularDocs = await getClientTabularDocuments(clientId);
         
-        if (tabularDocs.length > 0) {
-          console.log(`📊 [TABULAR DATA] Found ${tabularDocs.length} tabular document(s) for Code Execution`);
+        console.log(`📊 [TABULAR DATA] Uploading ${tabularDocs.length} tabular document(s) via File API`);
+        
+        // Get API key for file upload (use SuperAdmin keys)
+        const superAdminKeys = await getSuperAdminGeminiKeys();
+        const apiKey = superAdminKeys?.keys?.[0];
+        
+        if (apiKey) {
+          // Upload CSV files via File API (doesn't consume tokens!)
+          const uploadResult = await uploadTabularDataForCodeExecution(tabularDocs, apiKey);
           
-          // Get API key for file upload (use SuperAdmin keys)
-          const superAdminKeys = await getSuperAdminGeminiKeys();
-          const apiKey = superAdminKeys?.keys?.[0];
-          
-          if (apiKey) {
-            // Upload CSV files via File API (doesn't consume tokens!)
-            const uploadResult = await uploadTabularDataForCodeExecution(tabularDocs, apiKey);
+          if (uploadResult.success && uploadResult.parts.length > 0) {
+            fileDataParts = uploadResult.parts;
             
-            if (uploadResult.success && uploadResult.parts.length > 0) {
-              fileDataParts = uploadResult.parts;
-              
-              // Build system prompt addendum with instructions for Code Execution
-              codeExecutionSystemAddendum = buildFileApiCodeExecutionInstruction(fileDataParts);
-              
-              console.log(`📦 [FILE API] Uploaded ${fileDataParts.length} CSV file(s) for Code Execution:`);
-              for (const part of fileDataParts) {
-                console.log(`   📄 ${part.fileName}: ${part.rowCount} rows, ${part.headers.length} columns`);
-                console.log(`      URI: ${part.fileData.fileUri.substring(0, 60)}...`);
-              }
-            } else if (uploadResult.errors.length > 0) {
-              console.log(`⚠️ [FILE API] Upload errors: ${uploadResult.errors.join(', ')}`);
+            // Build system prompt addendum with instructions for Code Execution
+            codeExecutionSystemAddendum = buildFileApiCodeExecutionInstruction(fileDataParts);
+            
+            console.log(`📦 [FILE API] Uploaded ${fileDataParts.length} CSV file(s) for Code Execution:`);
+            for (const part of fileDataParts) {
+              console.log(`   📄 ${part.fileName}: ${part.rowCount} rows, ${part.headers.length} columns`);
+              console.log(`      URI: ${part.fileData.fileUri.substring(0, 60)}...`);
             }
-          } else {
-            console.log(`⚠️ [FILE API] No API key available for file upload`);
+          } else if (uploadResult.errors.length > 0) {
+            console.log(`⚠️ [FILE API] Upload errors: ${uploadResult.errors.join(', ')}`);
           }
         } else {
-          console.log(`⚠️ [TABULAR DATA] No tabular documents found for client`);
+          console.log(`⚠️ [FILE API] No API key available for file upload`);
         }
       } catch (tabularError) {
         console.error(`❌ [TABULAR DATA] Error loading/uploading tabular documents:`, tabularError);
         // Continue without tabular data - don't break the chat
       }
-    } else if (calculationIntent.isCalculation && !clientId) {
-      console.log(`⚠️ [CALC INTENT] Calculation detected but no clientId - skipping tabular data`);
     }
     // =======================================================
     

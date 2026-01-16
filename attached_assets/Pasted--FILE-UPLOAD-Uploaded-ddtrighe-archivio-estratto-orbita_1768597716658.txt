@@ -1,0 +1,38 @@
+✅ [FILE UPLOAD] Uploaded "ddtrighe_archivio_-_estratto_orbitale_a68be1ff.csv": 67245 rows
+   📎 URI: https://generativelanguage.googleapis.com/v1beta/files/s53kgfjwns60...
+   📄 Name: files/s53kgfjwns60
+📤 [FILE UPLOAD] Uploading "prodottimisura_archivio_-_estratto_orbitale_659ae2af.csv" (6.0KB)...
+✅ [FILE UPLOAD] Uploaded "prodottimisura_archivio_-_estratto_orbitale_659ae2af.csv": 316 rows
+   📎 URI: https://generativelanguage.googleapis.com/v1beta/files/h1ikhkal7z44...
+   📄 Name: files/h1ikhkal7z44
+📤 [FILE UPLOAD] Uploading "prodotti_archivio_-_estratto_orbitale_46c223c8.csv" (76.6KB)...
+✅ [FILE UPLOAD] Uploaded "prodotti_archivio_-_estratto_orbitale_46c223c8.csv": 681 rows
+   📎 URI: https://generativelanguage.googleapis.com/v1beta/files/ua0xkvczlqy1...
+   📄 Name: files/ua0xkvczlqy1
+📦 [FILE UPLOAD] Total: 4 file(s), 4.19MB
+📦 [FILE API] Uploaded 4 CSV file(s) for Code Execution:
+   📄 prodotticampi_archivio_-_estratto_orbitale_4e1a6f57.csv: 22 rows, 29 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/po2ej...
+   📄 ddtrighe_archivio_-_estratto_orbitale_a68be1ff.csv: 67244 rows, 27 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/s53kg...
+   📄 prodottimisura_archivio_-_estratto_orbitale_659ae2af.csv: 315 rows, 7 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/h1ikh...
+   📄 prodotti_archivio_-_estratto_orbitale_46c223c8.csv: 674 rows, 76 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/ua0xk...
+🔄 AI stream attempt 1/6...
+❌ AI streaming error on attempt 1: {"error":{"message":"{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"The input token count exceeds the maximum number of tokens allowed 1048576.\",\n    \"status\": \"INVALID_ARGUMENT\"\n  }\n}\n","code":400,"status":"Bad Request"}}
+❌ Errore nel processing AI streaming: ApiError: {"error":{"message":"{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"The input token count exceeds the maximum number of tokens allowed 1048576.\",\n    \"status\": \"INVALID_ARGUMENT\"\n  }\n}\n","code":400,"status":"Bad Request"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:860:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:515:9)
+    at async Models.Models.generateContentStream (/home/runner/workspace/node_modules/@google/genai/src/models.ts:201:14)
+    at async GeminiClientAdapter.generateContentStream (/home/runner/workspace/server/ai/provider-factory.ts:363:29)
+    at async streamWithBackoff (/home/runner/workspace/server/ai/retry-manager.ts:338:30)
+    at async streamWithRetriesAdapter (/home/runner/workspace/server/ai-service.ts:131:20)
+    at async Module.sendChatMessageStream (/home/runner/workspace/server/ai-service.ts:2305:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:10610:26) {
+  status: 400
+}
+9:08:26 PM [express] POST /api/ai/chat 200 in 16073ms
+9:08:26 PM [express] GET /api/ai/conversations 200 in 337ms :: [{"id":"51517d88-d1fe-4107-966f-68f42…
+9:08:28 PM [express] GET /api/ai/conversations/51517d88-d1fe-4107-966f-68f42efffdf8 200 in 1869ms ::…
