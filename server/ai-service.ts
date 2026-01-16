@@ -39,12 +39,13 @@ import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboardi
 import {
   detectCalculationIntent,
   getClientTabularDocuments,
-  buildInlineDataParts,
-  buildTabularDataSummary,
-  buildCodeExecutionInstruction,
   TabularDocument,
-  InlineDataPartWithMeta
 } from "./services/code-execution-helper";
+import {
+  uploadTabularDataForCodeExecution,
+  buildFileApiCodeExecutionInstruction,
+  FileDataPart,
+} from "./services/code-execution-file-manager";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -2184,11 +2185,10 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     
-    // ========== CODE EXECUTION WITH TABULAR DATA ==========
+    // ========== CODE EXECUTION WITH TABULAR DATA (FILE API) ==========
     // Detect if user is asking for calculations on tabular data
     const calculationIntent = detectCalculationIntent(message);
-    let tabularDocs: TabularDocument[] = [];
-    let inlineDataParts: InlineDataPartWithMeta[] = [];
+    let fileDataParts: FileDataPart[] = [];
     let codeExecutionSystemAddendum = '';
     
     // Only check for tabular data if we have a valid clientId and detected calculation intent
@@ -2201,29 +2201,41 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       
       try {
         // Get tabular documents for this client
-        tabularDocs = await getClientTabularDocuments(clientId);
+        const tabularDocs = await getClientTabularDocuments(clientId);
         
         if (tabularDocs.length > 0) {
           console.log(`📊 [TABULAR DATA] Found ${tabularDocs.length} tabular document(s) for Code Execution`);
           
-          // Build inline data parts (CSV files as base64) with metadata
-          inlineDataParts = buildInlineDataParts(tabularDocs);
+          // Get API key for file upload (use SuperAdmin keys)
+          const superAdminKeys = await getSuperAdminGeminiKeys();
+          const apiKey = superAdminKeys?.keys?.[0];
           
-          if (inlineDataParts.length > 0) {
-            // Build system prompt addendum with instructions for Code Execution
-            // Now uses the inline parts metadata for accurate file descriptions
-            codeExecutionSystemAddendum = buildCodeExecutionInstruction(inlineDataParts);
+          if (apiKey) {
+            // Upload CSV files via File API (doesn't consume tokens!)
+            const uploadResult = await uploadTabularDataForCodeExecution(tabularDocs, apiKey);
             
-            console.log(`📦 [INLINE DATA] Prepared ${inlineDataParts.length} CSV file(s) for Code Execution:`);
-            for (const part of inlineDataParts) {
-              console.log(`   📄 ${part.fileName}: ${part.rowCount} rows, ${part.headers.length} columns`);
+            if (uploadResult.success && uploadResult.parts.length > 0) {
+              fileDataParts = uploadResult.parts;
+              
+              // Build system prompt addendum with instructions for Code Execution
+              codeExecutionSystemAddendum = buildFileApiCodeExecutionInstruction(fileDataParts);
+              
+              console.log(`📦 [FILE API] Uploaded ${fileDataParts.length} CSV file(s) for Code Execution:`);
+              for (const part of fileDataParts) {
+                console.log(`   📄 ${part.fileName}: ${part.rowCount} rows, ${part.headers.length} columns`);
+                console.log(`      URI: ${part.fileData.fileUri.substring(0, 60)}...`);
+              }
+            } else if (uploadResult.errors.length > 0) {
+              console.log(`⚠️ [FILE API] Upload errors: ${uploadResult.errors.join(', ')}`);
             }
+          } else {
+            console.log(`⚠️ [FILE API] No API key available for file upload`);
           }
         } else {
           console.log(`⚠️ [TABULAR DATA] No tabular documents found for client`);
         }
       } catch (tabularError) {
-        console.error(`❌ [TABULAR DATA] Error loading tabular documents:`, tabularError);
+        console.error(`❌ [TABULAR DATA] Error loading/uploading tabular documents:`, tabularError);
         // Continue without tabular data - don't break the chat
       }
     } else if (calculationIntent.isCalculation && !clientId) {
@@ -2231,28 +2243,28 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     // =======================================================
     
-    // Build contents with optional inline data for Code Execution
+    // Build contents with optional file data for Code Execution (File API)
     const buildContents = () => {
       return geminiMessages.map((msg, idx) => {
         const isLastUserMessage = msg.role === "user" && idx === geminiMessages.length - 1;
         
-        // For the last user message, include inline data if we have tabular docs for calculation
-        if (isLastUserMessage && inlineDataParts.length > 0) {
+        // For the last user message, include file references if we have uploaded files
+        if (isLastUserMessage && fileDataParts.length > 0) {
           const parts: any[] = [{ text: msg.content }];
           
-          // Build file list description for inline instruction
-          const fileListDesc = inlineDataParts.map(p => 
+          // Build file list description for instruction
+          const fileListDesc = fileDataParts.map(p => 
             `"${p.fileName}" (${p.rowCount} righe, colonne: ${p.headers.slice(0, 5).join(', ')}${p.headers.length > 5 ? '...' : ''})`
           ).join(', ');
           
-          // Add CSV files as inline data with correct Gemini API shape
-          for (const inlinePart of inlineDataParts) {
-            parts.push({ inlineData: inlinePart.inlineData });
+          // Add CSV files as fileData references (File API - doesn't consume tokens!)
+          for (const filePart of fileDataParts) {
+            parts.push({ fileData: filePart.fileData });
           }
           
           // Add clear instruction with file names
           parts.push({ 
-            text: `\n\n[DATI CSV ALLEGATI: ${fileListDesc}. DEVI usare Code Execution Python con pandas per calcoli precisi. I dati CSV sono già disponibili sopra - leggili con pd.read_csv(io.StringIO(csv_content))]` 
+            text: `\n\n[FILE CSV CARICATI: ${fileListDesc}. DEVI usare Code Execution Python con pandas per calcoli precisi. I file sono nella sandbox - leggi con pd.read_csv()]` 
           });
           
           return {
