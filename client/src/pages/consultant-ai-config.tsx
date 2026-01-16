@@ -5962,7 +5962,11 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           <span className="ml-2 text-amber-600">
                             (Mancano {365 - (nurturingConfig.config.templatesCount || 0)} - 
                             <button 
-                              onClick={() => setShowPreviewConfirmDialog(true)}
+                              onClick={() => {
+                                setShowPreviewConfirmDialog(true);
+                                setShowWeekGenerationUI(true);
+                                refetchGenerationStatus();
+                              }}
                               className="underline hover:text-amber-700 ml-1"
                             >
                               continua generazione
