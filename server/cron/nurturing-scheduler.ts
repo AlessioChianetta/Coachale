@@ -6,6 +6,7 @@ import { sendEmail } from "../services/email-scheduler";
 import { compileTemplate, buildTemplateVariables } from "../services/template-compiler";
 import { storage } from "../storage";
 import { generateUnsubscribeToken } from "../routes/public-unsubscribe";
+import { createSmtpService } from "../services/email-hub/smtp-service";
 
 async function logNurturingEmailActivity(
   leadId: string,
@@ -180,12 +181,76 @@ async function sendNurturingEmail(
   }
   
   try {
-    await sendEmail({
-      to: leadEmail,
-      subject: compiled.subject,
-      html: compiled.body,
-      consultantId: config.consultantId,
-    });
+    // Try to find a configured Email Hub account
+    const [emailAccount] = await db
+      .select()
+      .from(schema.emailAccounts)
+      .where(eq(schema.emailAccounts.consultantId, config.consultantId))
+      .limit(1);
+    
+    let messageId: string | undefined;
+    
+    if (emailAccount && emailAccount.smtpHost && emailAccount.smtpUser && emailAccount.smtpPassword) {
+      // Use Email Hub account SMTP - email will appear in "Sent" folder
+      console.log(`📧 [NURTURING] Using Email Hub account: ${emailAccount.emailAddress}`);
+      
+      const smtpService = createSmtpService({
+        host: emailAccount.smtpHost,
+        port: emailAccount.smtpPort || 587,
+        user: emailAccount.smtpUser,
+        password: emailAccount.smtpPassword,
+        tls: emailAccount.smtpTls ?? true,
+      });
+      
+      const sendResult = await smtpService.sendEmail({
+        from: emailAccount.emailAddress,
+        fromName: emailAccount.displayName || emailVars?.consultantName || "Consulente",
+        to: leadEmail,
+        subject: compiled.subject,
+        html: compiled.body,
+      });
+      
+      if (!sendResult.success) {
+        throw new Error(`SMTP invio fallito: ${sendResult.error}`);
+      }
+      
+      messageId = sendResult.messageId;
+      
+      // Save email to Email Hub for visibility in "Sent" folder
+      const generatedMessageId = messageId || `nurturing-day${currentDay}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      
+      await db.insert(schema.hubEmails).values({
+        accountId: emailAccount.id,
+        consultantId: config.consultantId,
+        messageId: generatedMessageId,
+        subject: compiled.subject,
+        fromName: emailAccount.displayName || emailVars?.consultantName || "Consulente",
+        fromEmail: emailAccount.emailAddress,
+        toRecipients: [leadEmail],
+        bodyHtml: compiled.body,
+        bodyText: compiled.body.replace(/<[^>]*>/g, '').substring(0, 500),
+        snippet: compiled.body.replace(/<[^>]*>/g, '').substring(0, 200),
+        direction: "outbound",
+        folder: "sent",
+        isRead: true,
+        sentAt: new Date(),
+        receivedAt: new Date(),
+        processingStatus: "sent",
+      });
+      
+      console.log(`📧 [NURTURING] Saved to Email Hub with messageId: ${generatedMessageId}`);
+      
+    } else {
+      // Fallback to global SMTP settings (won't appear in Email Hub)
+      console.log(`📧 [NURTURING] No Email Hub account with SMTP, using global SMTP settings`);
+      
+      await sendEmail({
+        to: leadEmail,
+        subject: compiled.subject,
+        html: compiled.body,
+        consultantId: config.consultantId,
+      });
+    }
     
     await db.insert(schema.leadNurturingLogs).values({
       leadId: lead.id,
