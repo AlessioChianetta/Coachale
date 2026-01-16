@@ -289,8 +289,185 @@ export async function extractTextFromCSV(filePath: string): Promise<string> {
 }
 
 /**
+ * Detect related sheets that can be JOINed (e.g., TESTATA + RIGHE)
+ * Returns ALL detected relations (not just the first one)
+ * Primary = fewer rows (header/testata), Related = more rows (detail/righe)
+ */
+interface SheetRelation {
+  primarySheetName: string;
+  relatedSheetName: string;
+  joinColumn: string;
+  primaryRowCount: number;
+  relatedRowCount: number;
+}
+
+function detectAllRelatedSheets(sheets: StructuredTableData['sheets']): SheetRelation[] {
+  const relations: SheetRelation[] = [];
+  
+  if (sheets.length < 2) {
+    console.log('🔗 [JOIN] Single sheet, no join needed');
+    return relations;
+  }
+
+  // Common join column patterns (case-insensitive)
+  const commonJoinPatterns = [
+    'numero', 'id', 'codice', 'code', 'number', 'nr', 'n.',
+    'documento', 'doc', 'fattura', 'invoice', 'ordine', 'order',
+    'riferimento', 'ref', 'reference', 'rif'
+  ];
+
+  // Track detail sheets already used - a detail sheet can only be in one relation
+  // BUT a primary (master) sheet can participate in multiple relations
+  const usedDetailSheets = new Set<string>();
+
+  for (let i = 0; i < sheets.length; i++) {
+    for (let j = i + 1; j < sheets.length; j++) {
+      const sheet1 = sheets[i];
+      const sheet2 = sheets[j];
+
+      // Determine which would be detail (more rows)
+      const [primary, detail] = sheet1.rowCount <= sheet2.rowCount 
+        ? [sheet1, sheet2] 
+        : [sheet2, sheet1];
+
+      // Skip if detail sheet already used in another relation
+      if (usedDetailSheets.has(detail.name)) continue;
+
+      // Skip empty sheets
+      if (primary.rowCount === 0 || detail.rowCount === 0) continue;
+
+      // Find columns with same name (case-insensitive)
+      const primaryHeadersLower = primary.headers.map(h => h.toLowerCase().trim());
+      const detailHeadersLower = detail.headers.map(h => h.toLowerCase().trim());
+
+      const commonColumns: string[] = [];
+      for (let k = 0; k < primary.headers.length; k++) {
+        const headerLower = primaryHeadersLower[k];
+        const matchIndex = detailHeadersLower.indexOf(headerLower);
+        if (matchIndex !== -1) {
+          commonColumns.push(primary.headers[k]);
+        }
+      }
+
+      if (commonColumns.length === 0) continue;
+
+      // Sort common columns to prioritize likely join columns
+      const sortedColumns = commonColumns.sort((a, b) => {
+        const aLower = a.toLowerCase();
+        const bLower = b.toLowerCase();
+        const aScore = commonJoinPatterns.findIndex(p => aLower.includes(p));
+        const bScore = commonJoinPatterns.findIndex(p => bLower.includes(p));
+        if (aScore === -1 && bScore === -1) return 0;
+        if (aScore === -1) return 1;
+        if (bScore === -1) return -1;
+        return aScore - bScore;
+      });
+
+      const joinColumn = sortedColumns[0];
+
+      // Verify the ratio makes sense (detail should have >= rows than primary)
+      if (detail.rowCount >= primary.rowCount) {
+        console.log(`🔗 [JOIN] Found relation: "${primary.name}" (${primary.rowCount} rows) ↔ "${detail.name}" (${detail.rowCount} rows) via column "${joinColumn}"`);
+        relations.push({
+          primarySheetName: primary.name,
+          relatedSheetName: detail.name,
+          joinColumn,
+          primaryRowCount: primary.rowCount,
+          relatedRowCount: detail.rowCount
+        });
+        
+        // Only mark detail sheet as used (primary can join with multiple details)
+        usedDetailSheets.add(detail.name);
+      }
+    }
+  }
+
+  if (relations.length === 0) {
+    console.log('🔗 [JOIN] No related sheets detected');
+  } else {
+    console.log(`🔗 [JOIN] Detected ${relations.length} sheet relation(s)`);
+  }
+  
+  return relations;
+}
+
+/**
+ * JOIN related sheets into a single flat table
+ * Performs LEFT JOIN: all rows from related (detail) sheet, matching columns from primary (master) sheet
+ */
+function joinRelatedSheets(
+  sheets: StructuredTableData['sheets'],
+  relation: SheetRelation
+): StructuredTableData['sheets'][0] {
+  const primary = sheets.find(s => s.name === relation.primarySheetName)!;
+  const related = sheets.find(s => s.name === relation.relatedSheetName)!;
+
+  console.log(`🔗 [JOIN] Joining "${primary.name}" + "${related.name}" on column "${relation.joinColumn}"`);
+
+  // Find join column indices
+  const primaryJoinColIndex = primary.headers.findIndex(
+    h => h.toLowerCase().trim() === relation.joinColumn.toLowerCase().trim()
+  );
+  const relatedJoinColIndex = related.headers.findIndex(
+    h => h.toLowerCase().trim() === relation.joinColumn.toLowerCase().trim()
+  );
+
+  if (primaryJoinColIndex === -1 || relatedJoinColIndex === -1) {
+    console.error('🔗 [JOIN] Join column not found, returning original sheets');
+    return related; // Fallback: return detail sheet as-is
+  }
+
+  // Create lookup map from primary sheet: joinValue -> row data
+  const primaryLookup = new Map<string, any[]>();
+  for (const row of primary.rows) {
+    const joinValue = String(row[primaryJoinColIndex] ?? '').trim();
+    if (joinValue) {
+      primaryLookup.set(joinValue, row);
+    }
+  }
+
+  // Build merged headers: primary headers (excluding join col) + related headers
+  const primaryHeadersExcludingJoin = primary.headers.filter((_, i) => i !== primaryJoinColIndex);
+  const mergedHeaders = [...related.headers, ...primaryHeadersExcludingJoin];
+
+  // Perform LEFT JOIN
+  const mergedRows: any[][] = [];
+  let matchedCount = 0;
+  let unmatchedCount = 0;
+
+  for (const relatedRow of related.rows) {
+    const joinValue = String(relatedRow[relatedJoinColIndex] ?? '').trim();
+    const primaryRow = primaryLookup.get(joinValue);
+
+    if (primaryRow) {
+      // Found match: append primary columns (excluding join column)
+      const primaryValuesExcludingJoin = primaryRow.filter((_, i) => i !== primaryJoinColIndex);
+      mergedRows.push([...relatedRow, ...primaryValuesExcludingJoin]);
+      matchedCount++;
+    } else {
+      // No match: append empty values for primary columns
+      const emptyPrimaryValues = primaryHeadersExcludingJoin.map(() => '');
+      mergedRows.push([...relatedRow, ...emptyPrimaryValues]);
+      unmatchedCount++;
+    }
+  }
+
+  console.log(`✅ [JOIN] Merged ${mergedRows.length} rows (${matchedCount} matched, ${unmatchedCount} unmatched)`);
+  console.log(`✅ [JOIN] Result: ${mergedHeaders.length} columns = ${related.headers.length} (detail) + ${primaryHeadersExcludingJoin.length} (master)`);
+
+  return {
+    name: `${related.name}_JOINED`,
+    headers: mergedHeaders,
+    rows: mergedRows,
+    rowCount: mergedRows.length,
+    columnCount: mergedHeaders.length
+  };
+}
+
+/**
  * Extract structured data from Excel files (XLSX, XLS)
  * Returns both text for AI and structured data for preview
+ * Automatically JOINs related sheets (e.g., TESTATA + RIGHE) when detected
  */
 export async function extractStructuredDataFromExcel(filePath: string): Promise<{ text: string; structured: StructuredTableData }> {
   console.log(`📄 [EXCEL] Reading spreadsheet with structured extraction: ${filePath}`);
@@ -299,13 +476,11 @@ export async function extractStructuredDataFromExcel(filePath: string): Promise<
     // Read file as buffer and use XLSX.read() for better ES module compatibility
     const fileBuffer = await fs.readFile(filePath);
     const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-    let extractedText = '';
-    let totalRows = 0;
-    let maxColumns = 0;
     
-    const sheets: StructuredTableData['sheets'] = [];
+    // STEP 1: Read all sheets into memory FIRST (before generating text)
+    const originalSheets: StructuredTableData['sheets'] = [];
     
-    workbook.SheetNames.forEach((sheetName, sheetIndex) => {
+    workbook.SheetNames.forEach((sheetName) => {
       const sheet = workbook.Sheets[sheetName];
       const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as any[][];
       
@@ -314,26 +489,66 @@ export async function extractStructuredDataFromExcel(filePath: string): Promise<
       const headers = (data[0] as any[]).map((h, i) => h !== undefined && h !== '' ? String(h) : `Col${i + 1}`);
       const rows = data.slice(1);
       
-      // Add to structured data
-      sheets.push({
+      originalSheets.push({
         name: sheetName,
         headers: headers,
         rows: rows,
         rowCount: rows.length,
         columnCount: headers.length,
       });
+    });
+
+    // STEP 2: Detect and JOIN all related sheet pairs (e.g., TESTATA + RIGHE)
+    let finalSheets: StructuredTableData['sheets'] = [];
+    let joinApplied = false;
+    const allInvolvedSheetNames = new Set<string>();
+
+    if (originalSheets.length >= 2) {
+      const relations = detectAllRelatedSheets(originalSheets);
       
-      totalRows += rows.length;
-      maxColumns = Math.max(maxColumns, headers.length);
+      if (relations.length > 0) {
+        // Perform all JOINs
+        for (const relation of relations) {
+          const joinedSheet = joinRelatedSheets(originalSheets, relation);
+          finalSheets.push(joinedSheet);
+          allInvolvedSheetNames.add(relation.primarySheetName);
+          allInvolvedSheetNames.add(relation.relatedSheetName);
+          console.log(`🔗 [JOIN] Applied JOIN: "${relation.primarySheetName}" + "${relation.relatedSheetName}" → "${joinedSheet.name}"`);
+        }
+        
+        joinApplied = true;
+      }
+    }
+    
+    // Add sheets that weren't involved in any JOIN
+    const uninvolvedSheets = originalSheets.filter(s => !allInvolvedSheetNames.has(s.name));
+    finalSheets = [...finalSheets, ...uninvolvedSheets];
+    
+    // If no JOINs were performed, use original sheets
+    if (finalSheets.length === 0) {
+      finalSheets = originalSheets;
+    }
+
+    // STEP 3: Generate text from final sheets (after potential JOIN)
+    let extractedText = '';
+    let totalRows = 0;
+    let maxColumns = 0;
+
+    finalSheets.forEach((sheetData, sheetIndex) => {
+      totalRows += sheetData.rowCount;
+      maxColumns = Math.max(maxColumns, sheetData.columnCount);
       
       // Create text for AI - optimized pipe-separated format
-      extractedText += `=== FOGLIO ${sheetIndex + 1}: ${sheetName} ===\n`;
-      extractedText += `Totale: ${rows.length} righe x ${headers.length} colonne\n\n`;
-      extractedText += `INTESTAZIONI: ${headers.join(' | ')}\n\n`;
+      // Mark sheets that were created via JOIN (they end with "_JOINED")
+      const isJoinedSheet = sheetData.name.endsWith('_JOINED');
+      const joinTag = isJoinedSheet ? ' (DATI UNIFICATI - JOIN AUTOMATICO)' : '';
+      extractedText += `=== FOGLIO ${sheetIndex + 1}: ${sheetData.name}${joinTag} ===\n`;
+      extractedText += `Totale: ${sheetData.rowCount} righe x ${sheetData.columnCount} colonne\n\n`;
+      extractedText += `INTESTAZIONI: ${sheetData.headers.join(' | ')}\n\n`;
       extractedText += `DATI:\n`;
       
-      rows.forEach((row, rowIndex) => {
-        const rowValues = headers.map((_, cellIndex) => {
+      sheetData.rows.forEach((row, rowIndex) => {
+        const rowValues = sheetData.headers.map((_, cellIndex) => {
           const val = row[cellIndex];
           if (val === null || val === undefined || val === '') return '-';
           return String(val).replace(/\|/g, '/').replace(/\n/g, ' ');
@@ -345,13 +560,14 @@ export async function extractStructuredDataFromExcel(filePath: string): Promise<
     });
     
     const structured: StructuredTableData = {
-      sheets,
+      sheets: finalSheets,
       totalRows,
       totalColumns: maxColumns,
       fileType: 'xlsx',
     };
     
-    console.log(`✅ [EXCEL] Extracted ${workbook.SheetNames.length} sheets, ${totalRows} total rows (${extractedText.length} chars)`);
+    const joinInfo = joinApplied ? ' (with auto-JOIN)' : '';
+    console.log(`✅ [EXCEL] Extracted ${finalSheets.length} sheets${joinInfo}, ${totalRows} total rows (${extractedText.length} chars)`);
     
     if (!extractedText.trim()) {
       throw new Error('Excel file appears to be empty');

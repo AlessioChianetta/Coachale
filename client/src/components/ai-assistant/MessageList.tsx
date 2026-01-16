@@ -2,6 +2,13 @@ import { useEffect, useRef, useCallback } from "react";
 import { Message } from "./Message";
 import { motion } from "framer-motion";
 
+interface CodeExecution {
+  language: string;
+  code: string;
+  outcome?: string;
+  output?: string;
+}
+
 interface MessageListProps {
   messages: Array<{
     id: string;
@@ -16,6 +23,7 @@ interface MessageListProps {
       label: string;
       data?: any;
     }>;
+    codeExecutions?: CodeExecution[];
   }>;
   isTyping: boolean;
   onActionClick?: () => void;

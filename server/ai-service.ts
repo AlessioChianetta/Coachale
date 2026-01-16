@@ -194,6 +194,28 @@ async function* streamWithRetriesAdapter(
           content: event.error,
         };
         break;
+
+      case 'code_execution':
+        // Map code execution event (Gemini generated Python code)
+        yield {
+          type: 'code_execution',
+          conversationId: event.conversationId,
+          provider: event.provider,
+          language: event.language,
+          code: event.code,
+        };
+        break;
+
+      case 'code_execution_result':
+        // Map code execution result event (Python output)
+        yield {
+          type: 'code_execution_result',
+          conversationId: event.conversationId,
+          provider: event.provider,
+          outcome: event.outcome,
+          output: event.output,
+        };
+        break;
     }
   }
 }
@@ -701,7 +723,7 @@ export interface ChatResponse {
 }
 
 export interface ChatStreamChunk {
-  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat" | "thinking";
+  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat" | "thinking" | "code_execution" | "code_execution_result";
   conversationId: string;
   messageId?: string;
   content?: string;
@@ -718,6 +740,11 @@ export interface ChatStreamChunk {
     label: string;
     data?: any;
   }>;
+  // Code Execution fields
+  language?: string;
+  code?: string;
+  outcome?: string;
+  output?: string;
 }
 
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
@@ -2140,7 +2167,14 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`[AI] Using model: ${dynamicConfig.model} with thinking_level: ${dynamicConfig.thinkingLevel || 'N/A'} [CLIENT STREAMING]`);
     console.log(`[AI] Provider: ${providerMetadata.name}, User-selected: ${requestedModel ? 'YES' : 'NO'}`);
 
-    // Create stream factory function with optional FileSearch tool
+    // Create stream factory function with FileSearch + Code Execution tools
+    // Code Execution enables Gemini to write and run Python for precise calculations
+    const clientTools: any[] = [{ codeExecution: {} }];
+    if (fileSearchTool) {
+      clientTools.push(fileSearchTool);
+    }
+    console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
+    
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: dynamicConfig.model,
       contents: geminiMessages.map(msg => ({
@@ -2156,7 +2190,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           }
         }),
       },
-      ...(fileSearchTool && { tools: [fileSearchTool] }),
+      tools: clientTools,
     });
 
     // Stream with automatic retry and heartbeat using unified retry manager
@@ -3330,7 +3364,14 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`[AI] Using model: ${consultantDynamicConfig.model} with thinking_level: ${consultantDynamicConfig.thinkingLevel || 'N/A'} [CONSULTANT STREAMING]`);
     console.log(`[AI] Provider: ${providerMetadata.name}, User-selected: ${model ? 'YES' : 'NO'}`);
 
-    // Create stream factory function with optional FileSearch tool
+    // Create stream factory function with FileSearch + Code Execution tools
+    // Code Execution enables Gemini to write and run Python for precise calculations
+    const consultantTools: any[] = [{ codeExecution: {} }];
+    if (consultantFileSearchTool) {
+      consultantTools.push(consultantFileSearchTool);
+    }
+    console.log(`🛠️  [TOOLS] Consultant chat: codeExecution=YES, fileSearch=${consultantFileSearchTool ? 'YES' : 'NO'}`);
+    
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: consultantDynamicConfig.model,
       contents: geminiMessages.map(msg => ({
@@ -3346,7 +3387,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           }
         }),
       },
-      ...(consultantFileSearchTool && { tools: [consultantFileSearchTool] }),
+      tools: consultantTools,
     });
 
     // Stream with automatic retry and heartbeat using unified retry manager

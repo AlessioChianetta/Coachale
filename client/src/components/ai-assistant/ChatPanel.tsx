@@ -21,6 +21,13 @@ import { PageContext } from "@/hooks/use-page-context";
 import { ConsultantPageContext } from "@/hooks/use-consultant-page-context";
 import { useDocumentFocus } from "@/hooks/use-document-focus";
 
+interface CodeExecution {
+  language: string;
+  code: string;
+  outcome?: string;
+  output?: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -32,6 +39,7 @@ interface Message {
     label: string;
     data?: any;
   }>;
+  codeExecutions?: CodeExecution[];
 }
 
 interface OnboardingStepStatus {
@@ -336,6 +344,8 @@ export function ChatPanel({
 
       let buffer = "";
       let accumulatedContent = "";
+      let accumulatedCodeExecutions: CodeExecution[] = [];
+      let currentCodeExecution: Partial<CodeExecution> | null = null;
       let finalConversationId = currentConversationId;
       let finalMessageId = assistantMessageId;
       let finalSuggestedActions: any[] = [];
@@ -400,6 +410,46 @@ export function ChatPanel({
                     )
                   );
                 }
+              } else if (data.type === "code_execution" && data.code) {
+                // Gemini is executing Python code - start a new code execution block
+                console.log(`🐍 [CODE EXEC] Received Python code (${data.code.length} chars)`);
+                currentCodeExecution = {
+                  language: data.language || 'PYTHON',
+                  code: data.code,
+                };
+                // Update message to show code execution in progress
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? { 
+                          ...msg, 
+                          content: accumulatedContent,
+                          codeExecutions: [...accumulatedCodeExecutions, currentCodeExecution as CodeExecution],
+                          status: "processing" 
+                        }
+                      : msg
+                  )
+                );
+              } else if (data.type === "code_execution_result" && currentCodeExecution) {
+                // Received result of code execution - complete the block
+                console.log(`📊 [CODE EXEC] Received result: ${data.outcome} (${data.output?.length || 0} chars)`);
+                currentCodeExecution.outcome = data.outcome;
+                currentCodeExecution.output = data.output;
+                accumulatedCodeExecutions.push(currentCodeExecution as CodeExecution);
+                currentCodeExecution = null;
+                // Update message with completed code execution
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? { 
+                          ...msg, 
+                          content: accumulatedContent,
+                          codeExecutions: [...accumulatedCodeExecutions],
+                          status: "processing" 
+                        }
+                      : msg
+                  )
+                );
               } else if (data.type === "complete") {
                 finalConversationId = data.conversationId;
                 finalMessageId = data.messageId;
@@ -446,6 +496,7 @@ export function ChatPanel({
                         content: accumulatedContent,
                         status: "completed",
                         suggestedActions: finalSuggestedActions,
+                        codeExecutions: accumulatedCodeExecutions.length > 0 ? accumulatedCodeExecutions : undefined,
                         timestamp: new Date(),
                       }
                       : msg

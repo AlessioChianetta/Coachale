@@ -2,6 +2,14 @@ import { Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { ThinkingBubble } from "./ThinkingBubble";
+import { CodeExecutionBlock } from "./CodeExecutionBlock";
+
+interface CodeExecution {
+  language: string;
+  code: string;
+  outcome?: string;
+  output?: string;
+}
 
 interface MessageProps {
   message: {
@@ -18,6 +26,7 @@ interface MessageProps {
       label: string;
       data?: any;
     }>;
+    codeExecutions?: CodeExecution[];
   };
   onActionClick?: () => void;
 }
@@ -869,6 +878,9 @@ export function Message({ message, onActionClick }: MessageProps) {
             thinkingLevel={message.thinkingLevel}
             className="mb-3"
           />
+        )}
+        {message.codeExecutions && message.codeExecutions.length > 0 && (
+          <CodeExecutionBlock codeExecutions={message.codeExecutions} />
         )}
         {!isPlaceholder && (
           <div 
