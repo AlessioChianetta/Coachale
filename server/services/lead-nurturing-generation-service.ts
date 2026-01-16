@@ -323,8 +323,8 @@ async function generateTemplateForDay(
   knowledgeBaseContext: string = "",
   previousEmails: PreviousEmail[] = []
 ): Promise<{ subject: string; body: string; category: string }> {
+  // Category is kept for internal labeling only, NOT passed to AI prompt
   const category = getCategoryForDay(day);
-  const categoryDesc = getCategoryDescription(day);
   
   const provider = await getAIProvider(consultantId, consultantId);
   
@@ -427,8 +427,15 @@ Ogni email DEVE terminare con un invito all'azione WhatsApp:
 ${brandVoiceContext}
 ${knowledgeBaseContext}
 
-=== FASE DEL PERCORSO ===
-Categoria: ${category} - ${categoryDesc}
+=== REGOLA PRESENTAZIONE (CRITICA) ===
+${day === 1 ? `⭐ QUESTA È L'EMAIL DI PRESENTAZIONE (Giorno 1).
+- Presentati brevemente: chi sei, cosa fai
+- Spiega cosa aspettarsi dal percorso email
+- Dai il benvenuto al lettore
+- Costruisci curiosità per le email successive` : `⛔ NON presentarti MAI. Il lettore ti conosce già dal giorno 1.
+- Vai dritto al valore
+- Non dire "sono [nome]" o "mi presento"
+- Il lettore sa già chi sei, parla direttamente dell'argomento`}
 
 === ISTRUZIONI SPECIFICHE ===
 1. ARGOMENTO: L'email DEVE trattare ESATTAMENTE l'argomento "${topicTitle}"
@@ -441,6 +448,7 @@ Categoria: ${category} - ${categoryDesc}
 4. VARIAZIONE: NON usare frasi generiche. Sii specifico e concreto.
 5. CTA FINALE: SEMPRE invito WhatsApp per appuntamento
 6. TONO: ${config.tone}
+7. PRESENTAZIONE: ${day === 1 ? "Questa È l'unica email dove ti presenti" : "NON presentarti, vai dritto al contenuto"}
 
 === VARIABILI DISPONIBILI ===
 {{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
@@ -1091,23 +1099,36 @@ export async function generateTopicsOutline(
         previousContext += previousTopics.map(t => `Giorno ${t.day}: ${t.title}`).join("\n");
       }
       
+      // Build special instruction for day 1 if this batch includes it
+      const day1Instruction = batchStart === 1 ? `
+⭐ REGOLA SPECIALE GIORNO 1:
+Il giorno 1 DEVE avere ESATTAMENTE:
+- title: "Presentazione e Benvenuto"
+- description: "Chi sei, cosa fai, cosa aspettarsi dal percorso email"
+NON cambiare questo argomento per il giorno 1!
+
+` : "";
+
       const prompt = `Sei un esperto di email marketing. Genera gli ARGOMENTI (solo titoli e brevi descrizioni) per le email dal giorno ${batchStart} al giorno ${batchEnd} di un percorso di 365 giorni.
 
 CONTESTO BUSINESS:${brandContext || "\nConsulente professionale italiano"}
 ${previousContext}
-
+${day1Instruction}
 REGOLE:
 1. Ogni email deve dare VALORE e FORMAZIONE
 2. Tutte le email portano verso un appuntamento WhatsApp
-3. Il giorno 1 è l'UNICA presentazione - mai più ripetere chi sei
-4. Progressione logica come un libro: ogni giorno si costruisce sul precedente
-5. Varietà: alterna storie, consigli pratici, errori comuni, case study, domande
-6. MAI ripetere argomenti già generati
-7. Argomenti specifici e concreti, non generici
+3. Il giorno 1 è l'UNICA presentazione ("Presentazione e Benvenuto") - mai più ripetere chi sei
+4. Dai giorni 2 in poi: MAI usare parole come "presentazione", "benvenuto", "chi sono", "mi presento"
+5. Progressione logica come un libro: ogni giorno si costruisce sul precedente
+6. Varietà: alterna storie, consigli pratici, errori comuni, case study, domande
+7. MAI ripetere argomenti già generati
+8. Argomenti specifici e concreti, non generici
+9. Ogni argomento deve essere UNICO e diverso dai precedenti
 
 FORMATO OUTPUT (JSON array):
 [
-  {"day": ${batchStart}, "title": "Titolo conciso dell'argomento", "description": "Una frase che descrive cosa tratta l'email"},
+  ${batchStart === 1 ? `{"day": 1, "title": "Presentazione e Benvenuto", "description": "Chi sei, cosa fai, cosa aspettarsi dal percorso email"},
+  {"day": 2, "title": "...", "description": "..."},` : `{"day": ${batchStart}, "title": "Titolo conciso dell'argomento", "description": "Una frase che descrive cosa tratta l'email"},`}
   ...
 ]
 
