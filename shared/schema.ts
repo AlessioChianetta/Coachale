@@ -3724,6 +3724,13 @@ export const leadNurturingConfig = pgTable("lead_nurturing_config", {
   // Stato sistema nurturing
   isActive: boolean("is_active").default(false).notNull(),
   
+  // Stato generazione topics (per polling)
+  topicsGenerationStatus: text("topics_generation_status").$type<
+    "idle" | "running" | "completed" | "error"
+  >().default("idle"),
+  topicsGenerationProgress: integer("topics_generation_progress").default(0),
+  topicsGenerationError: text("topics_generation_error"),
+  
   // Brand Voice Data (dati per generazione AI personalizzata)
   brandVoiceData: jsonb("brand_voice_data").$type<{
     consultantDisplayName?: string;

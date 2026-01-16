@@ -1224,6 +1224,36 @@ router.delete("/lead-nurturing/topics", authenticateToken, requireRole("consulta
   }
 });
 
+// GET /lead-nurturing/topics-generation-status - Ottieni stato generazione topics (per polling)
+router.get("/lead-nurturing/topics-generation-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const config = await storage.getNurturingConfig(consultantId);
+    
+    if (!config) {
+      return res.json({
+        success: true,
+        status: "idle",
+        progress: 0,
+        total: 365,
+        error: null,
+      });
+    }
+    
+    res.json({
+      success: true,
+      status: config.topicsGenerationStatus || "idle",
+      progress: config.topicsGenerationProgress || 0,
+      total: 365,
+      error: config.topicsGenerationError || null,
+    });
+  } catch (error: any) {
+    console.error("[TOPICS STATUS] Error getting status:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /lead-nurturing/generate-outline - Genera 365 argomenti con AI
 router.post("/lead-nurturing/generate-outline", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
@@ -1236,12 +1266,23 @@ router.post("/lead-nurturing/generate-outline", authenticateToken, requireRole("
     // Importa il servizio di generazione argomenti
     const { generateTopicsOutline } = await import("../services/lead-nurturing-generation-service");
     
-    // Genera gli argomenti
-    const result = await generateTopicsOutline(consultantId, brandVoiceData, res);
+    // Avvia la generazione in background (non aspettiamo il completamento)
+    generateTopicsOutline(consultantId, brandVoiceData)
+      .then(result => {
+        console.log(`[TOPICS GENERATION] Background generation completed: ${result.generated} topics`);
+      })
+      .catch(err => {
+        console.error("[TOPICS GENERATION] Background generation error:", err);
+      });
     
-    res.json(result);
+    // Rispondi subito - il frontend userà polling per seguire il progresso
+    res.json({ 
+      success: true, 
+      message: "Generazione avviata in background",
+      status: "running"
+    });
   } catch (error: any) {
-    console.error("[NURTURING TOPICS] Error generating outline:", error);
+    console.error("[NURTURING TOPICS] Error starting outline generation:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

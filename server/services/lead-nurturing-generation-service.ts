@@ -1041,15 +1041,50 @@ export async function generateWeekBlock(
 
 export async function generateTopicsOutline(
   consultantId: string,
-  brandVoiceData: BrandVoiceData,
-  res?: Response
+  brandVoiceData: BrandVoiceData
 ): Promise<{ success: boolean; generated: number; errors: string[] }> {
   console.log(`[TOPICS GENERATION] Starting outline generation for consultant ${consultantId}`);
   
   const errors: string[] = [];
   let generated = 0;
   
+  // Helper to update progress in database (with upsert to ensure row exists)
+  async function updateProgress(progress: number, status: "running" | "completed" | "error", error?: string) {
+    const result = await db.update(schema.leadNurturingConfig)
+      .set({
+        topicsGenerationStatus: status,
+        topicsGenerationProgress: progress,
+        topicsGenerationError: error || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.leadNurturingConfig.consultantId, consultantId))
+      .returning();
+    
+    // If no row was updated, create one
+    if (result.length === 0) {
+      await db.insert(schema.leadNurturingConfig)
+        .values({
+          consultantId,
+          topicsGenerationStatus: status,
+          topicsGenerationProgress: progress,
+          topicsGenerationError: error || null,
+        })
+        .onConflictDoUpdate({
+          target: schema.leadNurturingConfig.consultantId,
+          set: {
+            topicsGenerationStatus: status,
+            topicsGenerationProgress: progress,
+            topicsGenerationError: error || null,
+            updatedAt: new Date(),
+          },
+        });
+    }
+  }
+  
   try {
+    // Set initial status (this also ensures config row exists)
+    await updateProgress(0, "running");
+    
     // Delete existing topics for this consultant
     await db.delete(schema.leadNurturingTopics)
       .where(eq(schema.leadNurturingTopics.consultantId, consultantId));
@@ -1081,20 +1116,8 @@ export async function generateTopicsOutline(
       
       console.log(`[TOPICS GENERATION] Generating batch: days ${batchStart}-${batchEnd}`);
       
-      // Send SSE progress if response available
-      if (res && !res.headersSent) {
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-      }
-      if (res) {
-        res.write(`data: ${JSON.stringify({ 
-          type: 'progress', 
-          current: batchStart, 
-          total: TOTAL_DAYS,
-          message: `Generando argomenti ${batchStart}-${batchEnd}...`
-        })}\n\n`);
-      }
+      // Update progress in database for polling
+      await updateProgress(batchStart - 1, "running");
       
       // Get previously generated topics for context (avoid repetition)
       const previousTopics = await db.select()
@@ -1210,15 +1233,8 @@ Genera ESATTAMENTE ${daysInBatch} argomenti per i giorni ${batchStart}-${batchEn
       }
     }
     
-    // Send completion
-    if (res) {
-      res.write(`data: ${JSON.stringify({ 
-        type: 'complete', 
-        generated,
-        errors 
-      })}\n\n`);
-      res.end();
-    }
+    // Update progress to completed
+    await updateProgress(365, "completed");
     
     console.log(`[TOPICS GENERATION] Complete: ${generated} topics generated, ${errors.length} errors`);
     
@@ -1228,10 +1244,14 @@ Genera ESATTAMENTE ${daysInBatch} argomenti per i giorni ${batchStart}-${batchEn
     console.error("[TOPICS GENERATION] Fatal error:", error);
     errors.push(error.message);
     
-    if (res) {
-      res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
-      res.end();
-    }
+    // Update progress to error
+    await db.update(schema.leadNurturingConfig)
+      .set({
+        topicsGenerationStatus: "error",
+        topicsGenerationError: error.message,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.leadNurturingConfig.consultantId, consultantId));
     
     return { success: false, generated, errors };
   }

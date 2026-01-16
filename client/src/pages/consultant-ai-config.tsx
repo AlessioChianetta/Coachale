@@ -1590,6 +1590,7 @@ export default function ConsultantAIConfigPage() {
   // Topics Outline states (365 argomenti)
   const [generatingOutline, setGeneratingOutline] = useState(false);
   const [outlineProgress, setOutlineProgress] = useState(0);
+  const outlinePollingRef = useRef<NodeJS.Timeout | null>(null);
   const [editingTopic, setEditingTopic] = useState<any>(null);
   const [localBusinessDesc, setLocalBusinessDesc] = useState("");
   const [localTargetAudience, setLocalTargetAudience] = useState("");
@@ -1788,12 +1789,29 @@ export default function ConsultantAIConfigPage() {
     },
   });
 
-  // Generate Outline SSE Handler
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (outlinePollingRef.current) {
+        clearInterval(outlinePollingRef.current);
+        outlinePollingRef.current = null;
+      }
+    };
+  }, []);
+
+  // Generate Outline with Polling
   const handleGenerateOutline = async () => {
+    // Clear any existing polling
+    if (outlinePollingRef.current) {
+      clearInterval(outlinePollingRef.current);
+      outlinePollingRef.current = null;
+    }
+    
     setGeneratingOutline(true);
     setOutlineProgress(0);
     
     try {
+      // Avvia la generazione in background
       const res = await fetch("/api/lead-nurturing/generate-outline", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
@@ -1804,45 +1822,58 @@ export default function ConsultantAIConfigPage() {
         throw new Error(err.error || "Errore generazione outline");
       }
       
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      // Inizia polling per il progresso
+      outlinePollingRef.current = setInterval(async () => {
+        try {
+          const statusRes = await fetch("/api/lead-nurturing/topics-generation-status", {
+            headers: getAuthHeaders(),
+          });
           
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
+          if (!statusRes.ok) {
+            if (outlinePollingRef.current) {
+              clearInterval(outlinePollingRef.current);
+              outlinePollingRef.current = null;
+            }
+            setGeneratingOutline(false);
+            return;
+          }
           
-          for (const line of lines) {
-            try {
-              const data = JSON.parse(line.replace("data: ", ""));
-              if (data.progress) {
-                setOutlineProgress(data.progress);
+          const statusData = await statusRes.json();
+          
+          if (statusData.success) {
+            // Aggiorna progresso (0-100%)
+            const percent = (statusData.progress / statusData.total) * 100;
+            setOutlineProgress(percent);
+            
+            if (statusData.status === "completed") {
+              if (outlinePollingRef.current) {
+                clearInterval(outlinePollingRef.current);
+                outlinePollingRef.current = null;
               }
-              if (data.completed || data.status === "completed") {
-                toast({ title: "Outline generato!", description: `${data.count || 365} argomenti creati con successo` });
-                refetchTopics();
+              setGeneratingOutline(false);
+              setOutlineProgress(100);
+              toast({ title: "Outline generato!", description: "365 argomenti creati con successo" });
+              refetchTopics();
+            } else if (statusData.status === "error") {
+              if (outlinePollingRef.current) {
+                clearInterval(outlinePollingRef.current);
+                outlinePollingRef.current = null;
               }
-              if (data.error) {
-                throw new Error(data.error);
-              }
-            } catch (e) {
-              // Ignore parse errors for incomplete chunks
+              setGeneratingOutline(false);
+              toast({ 
+                title: "Errore generazione", 
+                description: statusData.error || "Si è verificato un errore", 
+                variant: "destructive" 
+              });
             }
           }
+        } catch (pollError) {
+          console.error("Polling error:", pollError);
         }
-      } else {
-        const data = await res.json();
-        if (data.success) {
-          toast({ title: "Outline generato!", description: `${data.count || 365} argomenti creati` });
-          refetchTopics();
-        }
-      }
+      }, 2000); // Poll ogni 2 secondi
+      
     } catch (error: any) {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
-    } finally {
       setGeneratingOutline(false);
       setOutlineProgress(0);
     }
@@ -5120,7 +5151,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                       <div className="flex items-center justify-between text-sm">
                         <span>Generazione argomenti in corso...</span>
-                        <span className="font-mono">{Math.round(outlineProgress)}%</span>
+                        <span className="font-mono">{Math.round((outlineProgress / 100) * 365)} su 365 ({Math.round(outlineProgress)}%)</span>
                       </div>
                       <Progress value={outlineProgress} className="h-2" />
                       <p className="text-xs text-slate-500">
