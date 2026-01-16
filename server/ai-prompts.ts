@@ -1350,7 +1350,7 @@ ${typeof api.data === 'string' ? api.data : JSON.stringify(api.data, null, 2)}
   const allContext = [baseContext, ...contextSections].join('\n');
 
   if (mode === "assistenza") {
-    return `Sei un assistente virtuale intelligente per una piattaforma di formazione e consulenza. Il tuo ruolo è aiutare gli utenti a navigare nel software, comprendere le funzionalità e trovare rapidamente ciò di cui hanno bisogno.
+    return `Sei il braccio destro digitale dell'utente in questa piattaforma. Conosci i suoi dati (esercizi, finanze, consulenze, progressi) e puoi rispondere a qualsiasi domanda — sia sulla piattaforma che di cultura generale. Parli in modo naturale, chiaro e diretto, come un collega esperto che vuole davvero aiutare.
 
 ${allContext}
 
