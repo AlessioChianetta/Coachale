@@ -167,13 +167,35 @@ Tu: "Hai una consulenza giovedì 18 alle 15:00. Ti serve altro?"
 
 ---
 
-## ✅ Checklist Approvazione
+## ✅ Checklist Implementazione
 
-- [ ] File 1 (`ai-prompts.ts`) - Modifica approvata
-- [ ] File 2 (`message-processor.ts`) - Modifica approvata
-- [ ] Comportamento atteso chiaro
-- [ ] Test cases definiti
+- [x] File 1 (`ai-prompts.ts`) - ✅ IMPLEMENTATO (riga 1360-1406)
+- [x] File 2 (`message-processor.ts`) - ✅ IMPLEMENTATO (riga 1061-1119)
+- [x] Comportamento atteso chiaro
+- [x] Test cases definiti
 
 ---
 
-**Pronto per procedere?**
+## 📝 Modifiche Effettuate
+
+### `server/ai-prompts.ts`
+**Posizione**: Riga 1360-1406 (dentro `if (mode === "assistenza")`)
+
+Aggiunta sezione "🧠 SEI UN ASSISTENTE IBRIDO" con:
+- Regola d'oro per decidere tra domanda piattaforma/generale/mista
+- Esempi concreti (NotebookLM, FIRE, ETF, esercizi, budget)
+- Cosa NON fare mai
+
+### `server/whatsapp/message-processor.ts`
+**Posizione**: Riga 1061-1119 (blocco WhatsApp Concise Mode)
+
+Trasformato in "📱 MODALITÀ CUSTOMER SUPPORT WHATSAPP" con:
+- Identità: assistenza clienti professionale
+- Stile: breve, diretto, problem-solving
+- Capacità ibrida: domande generali + piattaforma
+- Esempi customer support realistici
+- Anti-pattern: no entusiasmo eccessivo, no papiri
+
+---
+
+**Stato**: ✅ COMPLETATO
