@@ -1323,4 +1323,99 @@ router.put("/lead-nurturing/save-config", authenticateToken, requireRole("consul
   }
 });
 
+// POST /lead-nurturing/send-now - Trigger manual send for testing (ignores 20h cooldown)
+router.post("/lead-nurturing/send-now", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { triggerNurturingNow } = await import("../cron/nurturing-scheduler");
+    
+    console.log(`📧 [NURTURING MANUAL] Test trigger requested by consultant ${consultantId}`);
+    
+    const result = await triggerNurturingNow(consultantId);
+    
+    res.json({
+      success: result.success,
+      message: result.success 
+        ? `Inviate ${result.sent} email su ${result.processed} lead processati`
+        : "Errore durante l'invio",
+      processed: result.processed,
+      sent: result.sent,
+      errors: result.errors.slice(0, 10), // Limit errors returned
+    });
+  } catch (error: any) {
+    console.error("[NURTURING MANUAL] Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Simple email validation helper - basic format check only
+// Only blocks RFC 2606 reserved domains
+function isValidEmail(email: string): boolean {
+  if (!email || typeof email !== "string") return false;
+  const trimmed = email.trim().toLowerCase();
+  // Basic format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmed)) return false;
+  // Only filter RFC 2606 reserved domains
+  const invalidPatterns = [
+    /@example\.com$/i,           // RFC 2606 reserved
+    /@example\.org$/i,           // RFC 2606 reserved
+    /@example\.net$/i,           // RFC 2606 reserved
+    /\.invalid$/i,               // RFC 2606 reserved TLD
+    /\.test$/i,                  // RFC 2606 reserved TLD
+    /\.localhost$/i,             // RFC 2606 reserved TLD
+  ];
+  return !invalidPatterns.some(pattern => pattern.test(trimmed));
+}
+
+// POST /lead-nurturing/validate-emails - Validate and mark invalid emails
+router.post("/lead-nurturing/validate-emails", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const leads = await db.select()
+      .from(schema.proactiveLeads)
+      .where(
+        and(
+          eq(schema.proactiveLeads.consultantId, consultantId),
+          eq(schema.proactiveLeads.nurturingEnabled, true)
+        )
+      );
+    
+    let validCount = 0;
+    let invalidCount = 0;
+    const invalidEmails: string[] = [];
+    
+    for (const lead of leads) {
+      const email = lead.email || (lead.qualificationData as any)?.email;
+      
+      if (!email || !isValidEmail(email)) {
+        // Disable nurturing for invalid emails
+        await db.update(schema.proactiveLeads)
+          .set({ nurturingEnabled: false, updatedAt: new Date() })
+          .where(eq(schema.proactiveLeads.id, lead.id));
+        invalidCount++;
+        if (email) {
+          invalidEmails.push(`${lead.firstName || "N/A"}: ${email}`);
+        } else {
+          invalidEmails.push(`${lead.firstName || "N/A"}: (nessuna email)`);
+        }
+      } else {
+        validCount++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Validazione completata: ${validCount} valide, ${invalidCount} non valide (nurturing disabilitato)`,
+      valid: validCount,
+      invalid: invalidCount,
+      invalidEmails: invalidEmails.slice(0, 20), // Limit list
+    });
+  } catch (error: any) {
+    console.error("[NURTURING VALIDATE] Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

@@ -2189,6 +2189,55 @@ export default function ConsultantAIConfigPage() {
     },
   });
 
+  // Manual send now mutation for testing
+  const sendNowMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/lead-nurturing/send-now", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore durante l'invio");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: data.success ? "Invio completato!" : "Attenzione",
+        description: data.message,
+        variant: data.sent > 0 ? "default" : "destructive"
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Validate emails mutation
+  const validateEmailsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/lead-nurturing/validate-emails", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore durante la validazione");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Validazione completata!",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Delete templates mutation
   const deleteTemplatesMutation = useMutation({
     mutationFn: async (params: { days?: number[]; range?: { from: number; to: number }; all?: boolean }) => {
@@ -6648,7 +6697,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           Attiva Nurturing su Tutti i Lead
                         </Label>
                         <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
-                          Abilita il nurturing per tutti i lead che hanno un'email e non sono clienti o inattivi
+                          Abilita il nurturing per tutti i lead che hanno un'email (esclusi solo gli inattivi)
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -6686,6 +6735,63 @@ Non limitarti a stato attuale/ideale. Attingi da:
                           Disattiva per Tutti
                         </Button>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Test and validation section */}
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-base font-semibold text-blue-800 dark:text-blue-200">
+                          Test e Validazione
+                        </Label>
+                        <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                          Invia subito le email di test o verifica la validità delle email dei lead
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={() => sendNowMutation.mutate()}
+                          disabled={sendNowMutation.isPending}
+                        >
+                          {sendNowMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Invio in corso...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-2" />
+                              Invia Ora (Test)
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => validateEmailsMutation.mutate()}
+                          disabled={validateEmailsMutation.isPending}
+                        >
+                          {validateEmailsMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Validazione...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Valida Email
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-blue-500 dark:text-blue-400">
+                        "Invia Ora" manda subito le email di nurturing senza aspettare le 09:00.
+                        "Valida Email" disabilita il nurturing per email non valide.
+                      </p>
                     </div>
                   </div>
                 </CardContent>

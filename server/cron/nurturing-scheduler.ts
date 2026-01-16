@@ -119,7 +119,8 @@ async function processConsultantNurturing(config: schema.LeadNurturingConfig): P
 async function sendNurturingEmail(
   lead: schema.ProactiveLead,
   config: schema.LeadNurturingConfig,
-  emailVars: schema.ConsultantEmailVariables | null
+  emailVars: schema.ConsultantEmailVariables | null,
+  options?: { skipCooldown?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
   const leadEmail = storage.getLeadEmail(lead);
   if (!leadEmail) {
@@ -139,11 +140,14 @@ async function sendNurturingEmail(
     return { success: false, error: "Nurturing completed (365 days)" };
   }
   
-  const lastSent = lead.nurturingLastEmailAt;
-  if (lastSent) {
-    const hoursSinceLastEmail = (Date.now() - new Date(lastSent).getTime()) / (1000 * 60 * 60);
-    if (hoursSinceLastEmail < 20) {
-      return { success: false, error: "Email sent recently" };
+  // Skip cooldown check if manual test trigger
+  if (!options?.skipCooldown) {
+    const lastSent = lead.nurturingLastEmailAt;
+    if (lastSent) {
+      const hoursSinceLastEmail = (Date.now() - new Date(lastSent).getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastEmail < 20) {
+        return { success: false, error: "Email sent recently" };
+      }
     }
   }
   
@@ -286,4 +290,64 @@ export function stopNurturingScheduler(): void {
     cleanupJob = null;
   }
   console.log(`⏹️ [NURTURING SCHEDULER] Stopped`);
+}
+
+// Export for manual test trigger
+export async function triggerNurturingNow(consultantId: string): Promise<{
+  success: boolean;
+  processed: number;
+  sent: number;
+  errors: string[];
+}> {
+  console.log(`📧 [NURTURING MANUAL] Manual trigger for consultant ${consultantId}`);
+  
+  const errors: string[] = [];
+  let processed = 0;
+  let sent = 0;
+  
+  try {
+    const [config] = await db.select()
+      .from(schema.leadNurturingConfig)
+      .where(eq(schema.leadNurturingConfig.consultantId, consultantId))
+      .limit(1);
+    
+    if (!config) {
+      return { success: false, processed: 0, sent: 0, errors: ["Configurazione nurturing non trovata"] };
+    }
+    
+    const leads = await db.select()
+      .from(schema.proactiveLeads)
+      .where(
+        and(
+          eq(schema.proactiveLeads.consultantId, consultantId),
+          eq(schema.proactiveLeads.nurturingEnabled, true),
+          isNull(schema.proactiveLeads.nurturingOptOutAt)
+        )
+      );
+    
+    console.log(`📧 [NURTURING MANUAL] Found ${leads.length} leads with nurturing enabled`);
+    
+    const emailVars = await storage.getEmailVariables(consultantId);
+    
+    for (const lead of leads) {
+      processed++;
+      try {
+        // Skip cooldown for manual test triggers
+        const result = await sendNurturingEmail(lead, config, emailVars, { skipCooldown: true });
+        if (result.success) {
+          sent++;
+        } else if (result.error) {
+          errors.push(`Lead ${lead.firstName || lead.id}: ${result.error}`);
+        }
+      } catch (error: any) {
+        errors.push(`Lead ${lead.firstName || lead.id}: ${error.message}`);
+      }
+    }
+    
+    console.log(`📧 [NURTURING MANUAL] Completed: ${sent}/${processed} emails sent`);
+    return { success: true, processed, sent, errors };
+  } catch (error: any) {
+    console.error(`❌ [NURTURING MANUAL] Error:`, error);
+    return { success: false, processed, sent, errors: [error.message] };
+  }
 }
