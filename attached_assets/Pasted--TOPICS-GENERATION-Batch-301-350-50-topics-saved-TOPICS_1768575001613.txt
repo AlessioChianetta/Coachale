@@ -1,0 +1,44 @@
+[TOPICS GENERATION] Batch 301-350: 50 topics saved
+[TOPICS GENERATION] Generating batch: days 351-365
+
+[SHEETS POLLING] Starting polling cycle (ExecID: n9em4m)...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-16T14:47:00.024Z
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 1 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: n9em4m)
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+❌ [WHATSAPP POLLING] Error for agent Receptionist Principale: Authenticate
+   Error code: 20003
+[TOPICS GENERATION] Batch 351-365: 15 topics saved
+[TOPICS GENERATION] Complete: 365 topics generated, 0 errors
+[NURTURING TOPICS] Error generating outline: Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:655:11)
+    at ServerResponse.header (/home/runner/workspace/node_modules/express/lib/response.js:794:10)
+    at ServerResponse.send (/home/runner/workspace/node_modules/express/lib/response.js:174:12)
+    at ServerResponse.json (/home/runner/workspace/node_modules/express/lib/response.js:278:15)
+    at ServerResponse.res.json (/home/runner/workspace/server/index.ts:82:28)
+    at <anonymous> (/home/runner/workspace/server/routes/lead-nurturing.ts:1242:9) {
+  code: 'ERR_HTTP_HEADERS_SENT'
+}
+2:47:08 PM [express] POST /api/lead-nurturing/generate-outline 500 in 271095ms :: {"success":false,"…
+node:_http_outgoing:655
+    throw new ERR_HTTP_HEADERS_SENT('set');
+          ^
+
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:655:11)
+    at ServerResponse.header (/home/runner/workspace/node_modules/express/lib/response.js:794:10)
+    at ServerResponse.send (/home/runner/workspace/node_modules/express/lib/response.js:174:12)
+    at ServerResponse.json (/home/runner/workspace/node_modules/express/lib/response.js:278:15)
+    at ServerResponse.res.json (/home/runner/workspace/server/index.ts:82:28)
+    at <anonymous> (/home/runner/workspace/server/routes/lead-nurturing.ts:1245:21) {
+  code: 'ERR_HTTP_HEADERS_SENT'
+}
+
+Node.js v20.20.0
