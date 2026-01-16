@@ -331,21 +331,23 @@ async function fetchPreviousEmails(consultantId: string, beforeDay: number, limi
 
 // Determina il tipo di CTA basato sul giorno (per varietà)
 function getCTATypeForDay(day: number): { type: string; instruction: string } {
-  // 40% CTA diretta, 30% soft, 15% riflessiva, 15% nessuna
-  const mod = day % 20;
+  // 80% CTA diretta (WhatsApp/calendario), 10% soft, 10% riflessiva/nessuna
+  const mod = day % 10;
   
   if (mod >= 0 && mod < 8) {
-    // 40% - CTA diretta (giorni 0-7 di ogni ciclo di 20)
+    // 80% - CTA diretta (giorni 0-7 di ogni ciclo di 10)
     return {
       type: "diretta",
       instruction: `CHIUSURA: Termina con un invito diretto all'azione. Usa UNA di queste formule (VARIA, non usare sempre la stessa):
+- "Scrivimi su WhatsApp al {{whatsapp}}"
 - "Rispondimi su WhatsApp al {{whatsapp}} per fissare un appuntamento"
 - "Scrivimi al {{whatsapp}} se vuoi approfondire"
 - "Prenota una chiamata: {{linkCalendario}}"
-- "Hai domande? Sono qui: {{whatsapp}}"`
+- "Hai domande? Sono qui: {{whatsapp}}"
+- "Vuoi parlarne? {{linkCalendario}}"`
     };
-  } else if (mod >= 8 && mod < 14) {
-    // 30% - CTA soft (giorni 8-13)
+  } else if (mod === 8) {
+    // 10% - CTA soft (giorno 8)
     return {
       type: "soft",
       instruction: `CHIUSURA: Termina con un invito morbido, non pressante. Esempi:
@@ -353,23 +355,15 @@ function getCTATypeForDay(day: number): { type: string; instruction: string } {
 - "Ci sentiamo presto"
 - "A domani con un nuovo spunto"`
     };
-  } else if (mod >= 14 && mod < 17) {
-    // 15% - Riflessiva (giorni 14-16)
+  } else {
+    // 10% - Riflessiva/nessuna (giorno 9)
     return {
       type: "riflessiva",
-      instruction: `CHIUSURA: Termina con una domanda riflessiva o un pensiero aperto. NON inserire CTA. Esempi:
+      instruction: `CHIUSURA: Termina con una domanda riflessiva o un pensiero aperto. NON inserire CTA dirette (no WhatsApp, no calendario). Esempi:
 - "Pensaci: cosa cambierebbe per te se...?"
 - "La vera domanda è: sei pronto a...?"
-- Lascia il lettore con una riflessione personale`
-    };
-  } else {
-    // 15% - Nessuna CTA (giorni 17-19)
-    return {
-      type: "nessuna",
-      instruction: `CHIUSURA: Termina in modo naturale SENZA call-to-action. Questa è un'email di puro valore/nurturing.
 - Concludi con un pensiero ispirante
-- Oppure con un'anticipazione per la prossima email
-- NON chiedere di rispondere o contattarti`
+⛔ VIETATO: link WhatsApp, link calendario, inviti a contattare`
     };
   }
 }
@@ -589,9 +583,27 @@ ${day === 1 ? `⭐ QUESTA È L'EMAIL DI BENVENUTO (Giorno 1).
 === VARIABILI DISPONIBILI ===
 {{nome}}, {{nomeCompleto}}, {{linkCalendario}}, {{nomeAzienda}}, {{whatsapp}}, {{firmaEmail}}, {{linkUnsubscribe}}, {{giorno}}
 
+=== STILE COPYWRITING "A CASCATA" (OBBLIGATORIO) ===
+Scrivi in stile copywriting moderno dove ogni riga aggancia la successiva:
+1. FRASI BREVI: max 10-15 parole per frase
+2. UNA FRASE = UN PARAGRAFO: ogni frase va a capo (usa <p> separati)
+3. RITMO INCALZANTE: ogni riga crea curiosità per la successiva
+4. GANCI EMOTIVI: usa domande retoriche, anticipazioni, pause strategiche
+5. NO MURI DI TESTO: mai più di 2 righe consecutive senza andare a capo
+
+Esempio struttura narrativa:
+<p>Ciao {{nome}},</p>
+<p>Oggi ti racconto una cosa.</p>
+<p>Qualcosa che ho scoperto dopo anni.</p>
+<p>E che cambia tutto.</p>
+
+NOTA: Se la struttura richiede ELENCHI PUNTATI, usali comunque ma con frasi brevi:
+<ul><li>Punto 1 breve</li><li>Punto 2 breve</li></ul>
+Lo stile cascata si applica ai paragrafi, non sostituisce le liste quando richieste.
+
 === REGOLE FORMATO ===
 1. Subject: max 60 caratteri, accattivante, riflette "${topicTitle}"
-2. Body: HTML semplice (p, strong, em, a, ul, li)
+2. Body: HTML semplice (p, strong, em, a, ul, li) - USA MOLTI <p> SEPARATI
 3. OBBLIGATORIO: {{linkUnsubscribe}} nel footer per GDPR
 4. NO immagini, NO allegati
 
