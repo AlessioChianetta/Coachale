@@ -36,16 +36,6 @@ import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch }
 import { fileSearchService } from "./ai/file-search-service";
 import { conversationContextBuilder } from "./services/conversation-memory";
 import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
-import {
-  detectCalculationIntent,
-  getClientTabularDocuments,
-  TabularDocument,
-} from "./services/code-execution-helper";
-import {
-  uploadTabularDataForCodeExecution,
-  buildFileApiCodeExecutionInstruction,
-  FileDataPart,
-} from "./services/code-execution-file-manager";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -2083,50 +2073,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       }
     }
     
-    // ========== EARLY DETECTION: Tabular Documents for Code Execution ==========
-    // Detect calculation intent early to exclude tabular doc content from system prompt
-    // (content will be uploaded via File API instead - saving tokens)
-    const calculationIntent = detectCalculationIntent(message);
-    let tabularDocIds = new Set<string>();
-    
-    console.log(`\n🔍 [DEBUG] Pre-prompt state:`);
-    console.log(`   - hasFileSearch: ${hasFileSearch}`);
-    console.log(`   - indexedKnowledgeDocIds.size BEFORE tabular: ${indexedKnowledgeDocIds.size}`);
-    console.log(`   - userContext.knowledgeBase.documents.length: ${userContext.knowledgeBase?.documents?.length || 0}`);
-    
-    if (calculationIntent.isCalculation && clientId) {
-      try {
-        const tabularDocs = await getClientTabularDocuments(clientId);
-        console.log(`   - calculationIntent.isCalculation: true`);
-        console.log(`   - tabularDocs found: ${tabularDocs.length}`);
-        
-        if (tabularDocs.length > 0) {
-          console.log(`🧮 [CALC INTENT] Detected calculation - found ${tabularDocs.length} tabular doc(s)`);
-          // Add tabular doc IDs to exclusion set to prevent inline content in prompt
-          for (const doc of tabularDocs) {
-            console.log(`   - Adding tabular doc to exclusion: ${doc.id} (${doc.title})`);
-            tabularDocIds.add(doc.id);
-            indexedKnowledgeDocIds.add(doc.id); // Exclude from inline prompt
-          }
-          console.log(`📊 [TABULAR] Excluded ${tabularDocIds.size} tabular doc(s) from inline prompt`);
-          console.log(`   - indexedKnowledgeDocIds.size AFTER tabular: ${indexedKnowledgeDocIds.size}`);
-        }
-      } catch (tabularPreError) {
-        console.error(`⚠️ [TABULAR] Error pre-checking tabular docs:`, tabularPreError);
-      }
-    } else {
-      console.log(`   - calculationIntent.isCalculation: ${calculationIntent.isCalculation}`);
-      console.log(`   - clientId: ${clientId ? 'present' : 'missing'}`);
-    }
-    // ==========================================================================
-    
     let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
-    
-    // DEBUG: Log actual system prompt size
-    const systemPromptLength = systemPrompt.length;
-    console.log(`\n📏 [DEBUG] System prompt after buildSystemPrompt:`);
-    console.log(`   - Character count: ${systemPromptLength.toLocaleString()}`);
-    console.log(`   - Estimated tokens: ~${Math.round(systemPromptLength / 4).toLocaleString()}`);
     
     // Append agent context if available
     if (agentContext) {
@@ -2228,104 +2175,14 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     
-    // ========== CODE EXECUTION WITH TABULAR DATA (FILE API) ==========
-    // Upload tabular documents via File API (calculationIntent already detected above)
-    let fileDataParts: FileDataPart[] = [];
-    let codeExecutionSystemAddendum = '';
-    
-    // Only upload tabular data if calculation intent was detected and we have tabular docs
-    if (calculationIntent.isCalculation && clientId && tabularDocIds.size > 0) {
-      console.log(`\n🧮 [CALC INTENT] Processing calculation request`);
-      console.log(`   📅 Has date filter: ${calculationIntent.hasDateFilter}`);
-      if (calculationIntent.suggestedDateFilter) {
-        console.log(`   🗓️  Suggested filter: ${calculationIntent.suggestedDateFilter}`);
-      }
-      
-      try {
-        // Get tabular documents for this client (already identified above)
-        const tabularDocs = await getClientTabularDocuments(clientId);
-        
-        console.log(`📊 [TABULAR DATA] Uploading ${tabularDocs.length} tabular document(s) via File API`);
-        
-        // Get API key for file upload (use SuperAdmin keys)
-        const superAdminKeys = await getSuperAdminGeminiKeys();
-        const apiKey = superAdminKeys?.keys?.[0];
-        
-        if (apiKey) {
-          // Upload CSV files via File API (doesn't consume tokens!)
-          const uploadResult = await uploadTabularDataForCodeExecution(tabularDocs, apiKey);
-          
-          if (uploadResult.success && uploadResult.parts.length > 0) {
-            fileDataParts = uploadResult.parts;
-            
-            // Build system prompt addendum with instructions for Code Execution
-            codeExecutionSystemAddendum = buildFileApiCodeExecutionInstruction(fileDataParts);
-            
-            console.log(`📦 [FILE API] Uploaded ${fileDataParts.length} CSV file(s) for Code Execution:`);
-            for (const part of fileDataParts) {
-              console.log(`   📄 ${part.fileName}: ${part.rowCount} rows, ${part.headers.length} columns`);
-              console.log(`      URI: ${part.fileData.fileUri.substring(0, 60)}...`);
-            }
-          } else if (uploadResult.errors.length > 0) {
-            console.log(`⚠️ [FILE API] Upload errors: ${uploadResult.errors.join(', ')}`);
-          }
-        } else {
-          console.log(`⚠️ [FILE API] No API key available for file upload`);
-        }
-      } catch (tabularError) {
-        console.error(`❌ [TABULAR DATA] Error loading/uploading tabular documents:`, tabularError);
-        // Continue without tabular data - don't break the chat
-      }
-    }
-    // =======================================================
-    
-    // Build contents with optional file data for Code Execution (File API)
-    const buildContents = () => {
-      return geminiMessages.map((msg, idx) => {
-        const isLastUserMessage = msg.role === "user" && idx === geminiMessages.length - 1;
-        
-        // For the last user message, include file references if we have uploaded files
-        if (isLastUserMessage && fileDataParts.length > 0) {
-          const parts: any[] = [{ text: msg.content }];
-          
-          // Build file list description for instruction
-          const fileListDesc = fileDataParts.map(p => 
-            `"${p.fileName}" (${p.rowCount} righe, colonne: ${p.headers.slice(0, 5).join(', ')}${p.headers.length > 5 ? '...' : ''})`
-          ).join(', ');
-          
-          // Add CSV files as fileData references (File API - doesn't consume tokens!)
-          for (const filePart of fileDataParts) {
-            parts.push({ fileData: filePart.fileData });
-          }
-          
-          // Add clear instruction with file names
-          parts.push({ 
-            text: `\n\n[FILE CSV CARICATI: ${fileListDesc}. DEVI usare Code Execution Python con pandas per calcoli precisi. I file sono nella sandbox - leggi con pd.read_csv()]` 
-          });
-          
-          return {
-            role: "user",
-            parts
-          };
-        }
-        
-        return {
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: msg.content }],
-        };
-      });
-    };
-    
-    // Add Code Execution instructions to system prompt if we have tabular data
-    const finalSystemPrompt = codeExecutionSystemAddendum 
-      ? systemPrompt + '\n\n' + codeExecutionSystemAddendum
-      : systemPrompt;
-    
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: dynamicConfig.model,
-      contents: buildContents(),
+      contents: geminiMessages.map(msg => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      })),
       generationConfig: {
-        systemInstruction: finalSystemPrompt,
+        systemInstruction: systemPrompt,
         ...(dynamicConfig.useThinking && dynamicConfig.thinkingLevel && {
           thinkingConfig: {
             thinkingLevel: dynamicConfig.thinkingLevel,

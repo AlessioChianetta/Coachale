@@ -1259,11 +1259,10 @@ ${userContext.calendar.upcomingEvents.slice(0, 5).map((e: any) => {
   }
 
   // Knowledge Base Section for CLIENT - Mirror of consultant implementation
-  // Filter out indexed docs (File Search) and tabular docs (Code Execution via File API)
+  // When File Search is active, only include documents that are NOT indexed (fallback)
   if (userContext.knowledgeBase && (userContext.knowledgeBase.documents.length > 0 || userContext.knowledgeBase.apiData.length > 0)) {
-    // Filter documents: ALWAYS exclude docs in indexedKnowledgeDocIds (File Search + tabular docs for Code Execution)
-    // This prevents inline content for: 1) docs in File Search index, 2) tabular docs uploaded via File API
-    const docsToInclude = indexedKnowledgeDocIds.size > 0
+    // Filter documents: if File Search is active, only include non-indexed docs
+    const docsToInclude = hasFileSearch 
       ? userContext.knowledgeBase.documents.filter((doc: any) => !indexedKnowledgeDocIds.has(doc.id))
       : userContext.knowledgeBase.documents;
     
