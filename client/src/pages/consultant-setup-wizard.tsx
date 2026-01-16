@@ -50,6 +50,7 @@ import {
   BookOpen,
   ClipboardList,
   MailCheck,
+  MailPlus,
   Phone,
   Instagram,
   CreditCard,
@@ -130,6 +131,8 @@ interface OnboardingStatus {
   exercisesCount: number;
   hasFirstSummaryEmail: boolean;
   summaryEmailsCount: number;
+  hasNurturingEmails: boolean;
+  nurturingEmailsCount: number;
   instagramStatus: StepStatus;
   instagramTestedAt?: string;
   instagramErrorMessage?: string;
@@ -875,8 +878,19 @@ export default function ConsultantSetupWizard() {
           countLabel: "email",
         },
         {
-          id: "video_meeting",
+          id: "nurturing_emails",
           stepNumber: 19,
+          title: "Email Nurturing 365",
+          description: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo",
+          icon: <MailPlus className="h-4 w-4" />,
+          status: status?.hasNurturingEmails ? "verified" : "pending",
+          configLink: "/consultant/ai-config?tab=lead-nurturing",
+          count: status?.nurturingEmailsCount,
+          countLabel: "email",
+        },
+        {
+          id: "video_meeting",
+          stepNumber: 20,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -888,7 +902,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 20,
+          stepNumber: 21,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -936,6 +950,7 @@ export default function ConsultantSetupWizard() {
     first_exercise: "Primo Esercizio",
     knowledge_base: "Knowledge Base",
     first_summary_email: "Prima Email Riassuntiva",
+    nurturing_emails: "Email Nurturing 365",
     video_meeting: "Video Meeting",
     lead_import: "Lead Import",
   };
