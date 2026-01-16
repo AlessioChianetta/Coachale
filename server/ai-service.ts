@@ -2089,25 +2089,44 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     const calculationIntent = detectCalculationIntent(message);
     let tabularDocIds = new Set<string>();
     
+    console.log(`\n🔍 [DEBUG] Pre-prompt state:`);
+    console.log(`   - hasFileSearch: ${hasFileSearch}`);
+    console.log(`   - indexedKnowledgeDocIds.size BEFORE tabular: ${indexedKnowledgeDocIds.size}`);
+    console.log(`   - userContext.knowledgeBase.documents.length: ${userContext.knowledgeBase?.documents?.length || 0}`);
+    
     if (calculationIntent.isCalculation && clientId) {
       try {
         const tabularDocs = await getClientTabularDocuments(clientId);
+        console.log(`   - calculationIntent.isCalculation: true`);
+        console.log(`   - tabularDocs found: ${tabularDocs.length}`);
+        
         if (tabularDocs.length > 0) {
           console.log(`🧮 [CALC INTENT] Detected calculation - found ${tabularDocs.length} tabular doc(s)`);
           // Add tabular doc IDs to exclusion set to prevent inline content in prompt
           for (const doc of tabularDocs) {
+            console.log(`   - Adding tabular doc to exclusion: ${doc.id} (${doc.title})`);
             tabularDocIds.add(doc.id);
             indexedKnowledgeDocIds.add(doc.id); // Exclude from inline prompt
           }
           console.log(`📊 [TABULAR] Excluded ${tabularDocIds.size} tabular doc(s) from inline prompt`);
+          console.log(`   - indexedKnowledgeDocIds.size AFTER tabular: ${indexedKnowledgeDocIds.size}`);
         }
       } catch (tabularPreError) {
         console.error(`⚠️ [TABULAR] Error pre-checking tabular docs:`, tabularPreError);
       }
+    } else {
+      console.log(`   - calculationIntent.isCalculation: ${calculationIntent.isCalculation}`);
+      console.log(`   - clientId: ${clientId ? 'present' : 'missing'}`);
     }
     // ==========================================================================
     
     let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
+    
+    // DEBUG: Log actual system prompt size
+    const systemPromptLength = systemPrompt.length;
+    console.log(`\n📏 [DEBUG] System prompt after buildSystemPrompt:`);
+    console.log(`   - Character count: ${systemPromptLength.toLocaleString()}`);
+    console.log(`   - Estimated tokens: ~${Math.round(systemPromptLength / 4).toLocaleString()}`);
     
     // Append agent context if available
     if (agentContext) {

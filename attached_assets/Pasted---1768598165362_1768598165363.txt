@@ -1,0 +1,70 @@
+════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-19ed24-7vc3z6n39pxe
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client 19ed2469 (270 documenti):
+      📄 client_knowledge: 270
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~2,410,797 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~2,415,597 a ~4,800 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-pro-preview with thinking_level: high [CLIENT STREAMING]
+[AI] Provider: Google AI Studio, User-selected: YES
+🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=YES
+
+🧮 [CALC INTENT] Processing calculation request
+   📅 Has date filter: true
+   🗓️  Suggested filter: dicembre
+📊 [TABULAR DATA] Uploading 4 tabular document(s) via File API
+📤 [FILE UPLOAD] Uploading "prodotticampi_archivio_-_estratto_orbitale_d2eba30b.csv" (1.5KB)...
+✅ [FILE UPLOAD] Uploaded "prodotticampi_archivio_-_estratto_orbitale_d2eba30b.csv": 23 rows
+   📎 URI: https://generativelanguage.googleapis.com/v1beta/files/ab811s2lqtg0...
+   📄 Name: files/ab811s2lqtg0
+📤 [FILE UPLOAD] Uploading "ddtrighe_archivio_-_estratto_orbitale_02dca45a.csv" (4202.1KB)...
+✅ [FILE UPLOAD] Uploaded "ddtrighe_archivio_-_estratto_orbitale_02dca45a.csv": 67245 rows
+   📎 URI: https://generativelanguage.googleapis.com/v1beta/files/16ahda484c5m...
+   📄 Name: files/16ahda484c5m
+📤 [FILE UPLOAD] Uploading "prodottimisura_archivio_-_estratto_orbitale_45a9c21c.csv" (6.0KB)...
+✅ [FILE UPLOAD] Uploaded "prodottimisura_archivio_-_estratto_orbitale_45a9c21c.csv": 316 rows
+   📎 URI: https://generativelanguage.googleapis.com/v1beta/files/ocznupyz1cte...
+   📄 Name: files/ocznupyz1cte
+📤 [FILE UPLOAD] Uploading "prodotti_archivio_-_estratto_orbitale_b4114a8d.csv" (76.6KB)...
+✅ [FILE UPLOAD] Uploaded "prodotti_archivio_-_estratto_orbitale_b4114a8d.csv": 681 rows
+   📎 URI: https://generativelanguage.googleapis.com/v1beta/files/ut1kbyu5bjxq...
+   📄 Name: files/ut1kbyu5bjxq
+📦 [FILE UPLOAD] Total: 4 file(s), 4.19MB
+📦 [FILE API] Uploaded 4 CSV file(s) for Code Execution:
+   📄 prodotticampi_archivio_-_estratto_orbitale_d2eba30b.csv: 22 rows, 29 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/ab811...
+   📄 ddtrighe_archivio_-_estratto_orbitale_02dca45a.csv: 67244 rows, 27 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/16ahd...
+   📄 prodottimisura_archivio_-_estratto_orbitale_45a9c21c.csv: 315 rows, 7 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/ocznu...
+   📄 prodotti_archivio_-_estratto_orbitale_b4114a8d.csv: 674 rows, 76 columns
+      URI: https://generativelanguage.googleapis.com/v1beta/files/ut1kb...
+🔄 AI stream attempt 1/6...
+❌ AI streaming error on attempt 1: {"error":{"message":"{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"The input token count exceeds the maximum number of tokens allowed 1048576.\",\n    \"status\": \"INVALID_ARGUMENT\"\n  }\n}\n","code":400,"status":"Bad Request"}}
+❌ Errore nel processing AI streaming: ApiError: {"error":{"message":"{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"The input token count exceeds the maximum number of tokens allowed 1048576.\",\n    \"status\": \"INVALID_ARGUMENT\"\n  }\n}\n","code":400,"status":"Bad Request"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:860:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:515:9)
+    at async Models.Models.generateContentStream (/home/runner/workspace/node_modules/@google/genai/src/models.ts:201:14)
+    at async GeminiClientAdapter.generateContentStream (/home/runner/workspace/server/ai/provider-factory.ts:363:29)
+    at async streamWithBackoff (/home/runner/workspace/server/ai/retry-manager.ts:338:30)
+    at async streamWithRetriesAdapter (/home/runner/workspace/server/ai-service.ts:131:20)
+    at async Module.sendChatMessageStream (/home/runner/workspace/server/ai-service.ts:2322:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:10610:26) {
+  status: 400
+}
+9:15:49 PM [express] POST /api/ai/chat 200 in 15711ms
+9:15:49 PM [express] GET /api/ai/conversations 200 in 338ms :: [{"id":"a6a341d4-595f-4ea3-82a8-9c6d7…
+9:15:51 PM [express] GET /api/ai/conve
