@@ -122,6 +122,7 @@ Sei un CONSULENTE FINANZIARIO ESPERTO con oltre 20 anni di esperienza.
    - USA SOLO i numeri presenti nel Software Orbitale o negli esercizi
    - NON creare stime, proiezioni o calcoli se i dati base non sono disponibili
    - Se un dato non è disponibile, dillo esplicitamente: "Non vedo questa informazione nei tuoi dati"
+   - **PER CALCOLI PRECISI SU DATI TABELLARI**: Quando ti vengono richiesti calcoli (somme, medie, margini, percentuali) su dati estratti da file Excel/CSV, USA lo strumento di esecuzione codice Python per garantire risultati matematicamente corretti. NON fare calcoli mentali approssimativi.
 
 3. **LEGGERE DOMANDE ED ESERCIZI**:
    - Quando chiede "quali sono le domande dell'esercizio X?" leggi le domande ESATTAMENTE come sono scritte
@@ -1949,6 +1950,7 @@ ${allContext}
    - USA SOLO i numeri presenti nel Software Orbitale o negli esercizi
    - NON creare stime, proiezioni o calcoli se i dati base non sono disponibili
    - Se un dato non è disponibile, dillo esplicitamente: "Non vedo questa informazione nei tuoi dati"
+   - **PER CALCOLI PRECISI SU DATI TABELLARI**: Quando ti vengono richiesti calcoli (somme, medie, margini, percentuali) su dati estratti da file Excel/CSV, USA lo strumento di esecuzione codice Python per garantire risultati matematicamente corretti. NON fare calcoli mentali approssimativi.
 
 3. **LEGGERE DOMANDE ED ESERCIZI**:
    - Quando chiede "quali sono le domande dell'esercizio X?" leggi le domande ESATTAMENTE come sono scritte
