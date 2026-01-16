@@ -142,6 +142,7 @@ interface OnboardingStatus {
   hasInstagramConfigured: boolean;
   hasStripeAccount?: boolean;
   stripeAccountStatus?: string | null;
+  hasEmailJourneyConfigured?: boolean;
 }
 
 const statusConfig = {
@@ -757,6 +758,15 @@ export default function ConsultantSetupWizard() {
           status: getStripeStatus(status?.stripeAccountStatus, status?.hasStripeAccount),
           configLink: "/consultant/whatsapp?tab=licenses",
         },
+        {
+          id: "email_journey",
+          stepNumber: 9,
+          title: "Email Journey",
+          description: "Configura l'automazione email per i tuoi clienti: scegli tra bozze o invio automatico e personalizza i template con l'AI",
+          icon: <MailPlus className="h-4 w-4" />,
+          status: status?.hasEmailJourneyConfigured ? "verified" : "pending",
+          configLink: "/consultant/ai-config?tab=ai-email",
+        },
       ],
     },
     {
@@ -765,7 +775,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "inbound_agent",
-          stepNumber: 9,
+          stepNumber: 10,
           title: "Agente Inbound",
           description: "Crea un agente per gestire le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -774,7 +784,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "outbound_agent",
-          stepNumber: 10,
+          stepNumber: 11,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -783,7 +793,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "consultative_agent",
-          stepNumber: 11,
+          stepNumber: 12,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -792,7 +802,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "public_agent_link",
-          stepNumber: 12,
+          stepNumber: 13,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -803,7 +813,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "ai_ideas",
-          stepNumber: 13,
+          stepNumber: 14,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -814,7 +824,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 14,
+          stepNumber: 15,
           title: "Altri Template WhatsApp",
           description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -831,7 +841,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 15,
+          stepNumber: 16,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -842,7 +852,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 16,
+          stepNumber: 17,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -853,7 +863,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 17,
+          stepNumber: 18,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -871,7 +881,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 18,
+          stepNumber: 19,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -882,7 +892,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "nurturing_emails",
-          stepNumber: 19,
+          stepNumber: 20,
           title: "Email Nurturing 365",
           description: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo",
           icon: <MailPlus className="h-4 w-4" />,
@@ -893,7 +903,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "email_hub",
-          stepNumber: 20,
+          stepNumber: 21,
           title: "Email Hub",
           description: "Collega il tuo account email per gestire inbox, invii automatici e risposte AI",
           icon: <Inbox className="h-4 w-4" />,
@@ -904,7 +914,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "video_meeting",
-          stepNumber: 21,
+          stepNumber: 22,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -916,7 +926,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 22,
+          stepNumber: 23,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -954,6 +964,8 @@ export default function ConsultantSetupWizard() {
     twilio_config: "Configurazione Twilio + WhatsApp",
     approved_template: "Template WhatsApp Approvato",
     first_campaign: "Prima Campagna",
+    stripe_connect: "Stripe Connect",
+    email_journey: "Email Journey",
     inbound_agent: "Agente Inbound",
     outbound_agent: "Agente Outbound",
     consultative_agent: "Agente Consulenziale",

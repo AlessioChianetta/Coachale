@@ -216,6 +216,11 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const hasStripeAccount = !!license?.stripeAccountId;
     const stripeAccountStatus = license?.stripeAccountStatus || null;
     
+    // Check Email Journey configuration
+    // Consider configured if: automation is set up OR custom templates exist
+    const hasEmailJourneyConfigured = smtpSettings?.automationEnabled === true || 
+      (smtpSettings?.emailFrequencyDays !== null && smtpSettings?.emailFrequencyDays !== undefined);
+    
     // Update the status record with calculated values
     await db.update(consultantOnboardingStatus)
       .set({
@@ -270,6 +275,7 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       instagramStatus: hasInstagramConfigured ? 'verified' : 'pending',
       hasStripeAccount,
       stripeAccountStatus,
+      hasEmailJourneyConfigured,
     };
     
     res.json({
