@@ -1594,6 +1594,7 @@ export default function ConsultantAIConfigPage() {
   const [localBusinessDesc, setLocalBusinessDesc] = useState("");
   const [localTargetAudience, setLocalTargetAudience] = useState("");
   const [localTone, setLocalTone] = useState<"professionale" | "amichevole" | "motivazionale">("professionale");
+  const [localReferenceEmail, setLocalReferenceEmail] = useState("");
   const [topicsPage, setTopicsPage] = useState(1);
   const topicsPerPage = 30;
   
@@ -1740,12 +1741,15 @@ export default function ConsultantAIConfigPage() {
       if (nurturingConfig.config.preferredTone && localTone === "professionale") {
         setLocalTone(nurturingConfig.config.preferredTone);
       }
+      if (nurturingConfig.config.referenceEmail && !localReferenceEmail) {
+        setLocalReferenceEmail(nurturingConfig.config.referenceEmail);
+      }
     }
   }, [nurturingConfig]);
 
   // Save Nurturing Config Mutation
   const saveNurturingConfigMutation = useMutation({
-    mutationFn: async (data: { businessDescription: string; targetAudience: string; preferredTone: string }) => {
+    mutationFn: async (data: { businessDescription: string; targetAudience: string; preferredTone: string; referenceEmail?: string }) => {
       const res = await fetch("/api/lead-nurturing/save-config", {
         method: "PUT",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
@@ -5025,6 +5029,20 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="local-reference-email">Email di Riferimento (opzionale)</Label>
+                    <Textarea
+                      id="local-reference-email"
+                      placeholder="Incolla un esempio di email che rappresenta il tuo stile comunicativo..."
+                      rows={3}
+                      value={localReferenceEmail}
+                      onChange={(e) => setLocalReferenceEmail(e.target.value)}
+                      className="resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Questa email di esempio aiuterà l'AI a replicare il tuo stile di scrittura
+                    </p>
+                  </div>
                   <div className="flex items-end gap-4">
                     <div className="space-y-2 flex-1">
                       <Label htmlFor="local-tone">Tono Preferito</Label>
@@ -5044,6 +5062,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         businessDescription: localBusinessDesc,
                         targetAudience: localTargetAudience,
                         preferredTone: localTone,
+                        referenceEmail: localReferenceEmail,
                       })}
                       disabled={saveNurturingConfigMutation.isPending}
                       className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
@@ -5924,102 +5943,111 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </Alert>
                   ) : (
                     <>
-                      <div className="space-y-2">
-                        <Label htmlFor="business-desc">Descrizione del tuo Business</Label>
-                        <Textarea
-                          id="business-desc"
-                          placeholder="Descrivi il tuo business, i servizi che offri, il tuo target di clienti..."
-                          rows={4}
-                          value={businessDescription}
-                          onChange={(e) => setBusinessDescription(e.target.value)}
-                          className="resize-none"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="reference-email">Email di Riferimento (opzionale)</Label>
-                        <Textarea
-                          id="reference-email"
-                          placeholder="Incolla un esempio di email che rappresenta il tuo stile comunicativo..."
-                          rows={3}
-                          value={referenceEmail}
-                          onChange={(e) => setReferenceEmail(e.target.value)}
-                          className="resize-none"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Tono delle Email</Label>
-                        <div className="flex gap-4">
-                          {(["professionale", "amichevole", "motivazionale"] as const).map((tone) => (
-                            <label key={tone} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                name="tone"
-                                checked={preferredTone === tone}
-                                onChange={() => setPreferredTone(tone)}
-                                className="w-4 h-4 text-emerald-600 accent-emerald-600"
-                              />
-                              <span className="text-sm capitalize">{tone}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {isGenerating && (
-                        <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                          <div className="flex items-center justify-between text-sm">
-                            <span>Generazione in corso...</span>
-                            <span className="font-mono">{generationProgress.current}/{generationProgress.total}</span>
+                      {(!nurturingTopics?.count || nurturingTopics.count === 0) ? (
+                        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-amber-800 dark:text-amber-200">
+                            <strong>Prima devi generare l'Indice degli Argomenti.</strong>{' '}
+                            Vai alla sezione "Indice 365 Argomenti" qui sopra e clicca su "Genera Indice" per creare gli argomenti delle email.
+                          </AlertDescription>
+                        </Alert>
+                      ) : !nurturingConfig?.config?.businessDescription ? (
+                        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-amber-800 dark:text-amber-200">
+                            <strong>Configura prima il tuo business.</strong>{' '}
+                            Compila la sezione "Configurazione Nurturing" qui sopra con la descrizione del tuo business, target audience e tono preferito, poi salva.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <>
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3">
+                            <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Riepilogo Configurazione</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Business:</span>{' '}
+                                <span className="text-slate-900 dark:text-slate-100">
+                                  {nurturingConfig.config.businessDescription?.substring(0, 100)}
+                                  {(nurturingConfig.config.businessDescription?.length || 0) > 100 && '...'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Tono:</span>{' '}
+                                <Badge variant="outline" className="capitalize">
+                                  {nurturingConfig.config.preferredTone || 'professionale'}
+                                </Badge>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Argomenti:</span>{' '}
+                                <Badge variant="secondary">{nurturingTopics?.count || 0} generati</Badge>
+                              </div>
+                              {nurturingConfig.config.referenceEmail && (
+                                <div>
+                                  <span className="text-muted-foreground">Email di riferimento:</span>{' '}
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Configurata</Badge>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <Progress value={generationProgress.percent} className="h-2" />
-                          <p className="text-xs text-slate-500">
-                            Questo processo può richiedere alcuni minuti. Non chiudere questa pagina.
-                          </p>
-                        </div>
-                      )}
 
-                      <Button
-                        onClick={() => {
-                          const savedBrandVoice = nurturingConfig?.config?.brandVoiceData;
-                          const hasBrandVoice = savedBrandVoice && Object.keys(savedBrandVoice).some(key => {
-                            const val = (savedBrandVoice as any)[key];
-                            return val !== undefined && val !== null && val !== "" && 
-                                   !(Array.isArray(val) && val.length === 0);
-                          });
-                          
-                          if (!hasBrandVoice) {
-                            setShowBrandVoiceWarningDialog(true);
-                          } else {
-                            generatePreviewMutation.mutate({
-                              businessDescription,
-                              referenceEmail,
-                              preferredTone,
-                            });
-                          }
-                        }}
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                        size="lg"
-                        disabled={!businessDescription || isGenerating || isGeneratingPreview || generatePreviewMutation.isPending}
-                      >
-                        {isGeneratingPreview ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Generazione anteprima...
-                          </>
-                        ) : isGenerating ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Generazione in corso...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="mr-2 h-5 w-5" />
-                            Genera Template di Prova
-                          </>
-                        )}
-                      </Button>
-                      <p className="text-xs text-center text-muted-foreground">
-                        Prima generiamo 1 email di esempio, poi decidi se continuare con tutte le 365
-                      </p>
+                          {isGenerating && (
+                            <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                              <div className="flex items-center justify-between text-sm">
+                                <span>Generazione in corso...</span>
+                                <span className="font-mono">{generationProgress.current}/{generationProgress.total}</span>
+                              </div>
+                              <Progress value={generationProgress.percent} className="h-2" />
+                              <p className="text-xs text-slate-500">
+                                Questo processo può richiedere alcuni minuti. Non chiudere questa pagina.
+                              </p>
+                            </div>
+                          )}
+
+                          <Button
+                            onClick={() => {
+                              const savedBrandVoice = nurturingConfig?.config?.brandVoiceData;
+                              const hasBrandVoice = savedBrandVoice && Object.keys(savedBrandVoice).some(key => {
+                                const val = (savedBrandVoice as any)[key];
+                                return val !== undefined && val !== null && val !== "" && 
+                                       !(Array.isArray(val) && val.length === 0);
+                              });
+                              
+                              if (!hasBrandVoice) {
+                                setShowBrandVoiceWarningDialog(true);
+                              } else {
+                                generatePreviewMutation.mutate({
+                                  businessDescription: nurturingConfig.config.businessDescription || localBusinessDesc,
+                                  referenceEmail: nurturingConfig.config.referenceEmail || localReferenceEmail,
+                                  preferredTone: nurturingConfig.config.preferredTone || localTone,
+                                });
+                              }
+                            }}
+                            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                            size="lg"
+                            disabled={isGenerating || isGeneratingPreview || generatePreviewMutation.isPending}
+                          >
+                            {isGeneratingPreview ? (
+                              <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Generazione anteprima...
+                              </>
+                            ) : isGenerating ? (
+                              <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Generazione in corso...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="mr-2 h-5 w-5" />
+                                Genera Template di Prova
+                              </>
+                            )}
+                          </Button>
+                          <p className="text-xs text-center text-muted-foreground">
+                            Prima generiamo 1 email di esempio, poi decidi se continuare con tutte le 365
+                          </p>
+                        </>
+                      )}
                     </>
                   )}
                 </CardContent>
