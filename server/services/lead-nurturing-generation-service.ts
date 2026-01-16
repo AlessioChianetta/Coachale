@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { getAIProvider, GEMINI_3_MODEL, GEMINI_3_THINKING_LEVEL } from "../ai/provider-factory";
 import { Response } from "express";
@@ -284,11 +284,44 @@ function buildBrandVoiceContext(brandVoice?: BrandVoiceData): string {
   return context;
 }
 
+interface PreviousEmail {
+  subject: string;
+  body: string;
+  dayNumber: number;
+}
+
+// Fetch last N templates from database to avoid repetition
+async function fetchPreviousEmails(consultantId: string, beforeDay: number, limit: number = 180): Promise<PreviousEmail[]> {
+  try {
+    const templates = await db
+      .select({
+        subject: schema.leadNurturingTemplates.subject,
+        body: schema.leadNurturingTemplates.body,
+        dayNumber: schema.leadNurturingTemplates.dayNumber,
+      })
+      .from(schema.leadNurturingTemplates)
+      .where(
+        and(
+          eq(schema.leadNurturingTemplates.consultantId, consultantId),
+          sql`${schema.leadNurturingTemplates.dayNumber} < ${beforeDay}`
+        )
+      )
+      .orderBy(desc(schema.leadNurturingTemplates.dayNumber))
+      .limit(limit);
+    
+    return templates;
+  } catch (error) {
+    console.error("[NURTURING GENERATION] Error fetching previous emails:", error);
+    return [];
+  }
+}
+
 async function generateTemplateForDay(
   day: number,
   config: GenerationConfig,
   consultantId: string,
-  knowledgeBaseContext: string = ""
+  knowledgeBaseContext: string = "",
+  previousEmails: PreviousEmail[] = []
 ): Promise<{ subject: string; body: string; category: string }> {
   const category = getCategoryForDay(day);
   const categoryDesc = getCategoryDescription(day);
@@ -301,7 +334,47 @@ async function generateTemplateForDay(
   const emailType = getEmailType(day);
   const suggestedCTA = getCTAForDay(day, emailType);
   
+  // Build previous emails context for anti-repetition
+  let previousEmailsContext = "";
+  if (previousEmails.length > 0) {
+    previousEmailsContext = `
+
+=== ⚠️ EMAIL PRECEDENTI - VIETATO RIPETERE! ===
+Queste email sono GIÀ state inviate. L'email di oggi DEVE essere COMPLETAMENTE DIVERSA.
+
+`;
+    // Show ALL subjects from last 180 emails
+    previousEmailsContext += `📋 SUBJECT GIÀ USATI (${previousEmails.length} email):\n`;
+    for (const prev of previousEmails) {
+      previousEmailsContext += `- Giorno ${prev.dayNumber}: "${prev.subject}"\n`;
+    }
+    
+    // Show FULL content of last 5 emails for deeper context
+    const recentEmails = previousEmails.slice(0, 5);
+    previousEmailsContext += `\n📧 CONTENUTO COMPLETO ULTIME ${recentEmails.length} EMAIL:\n`;
+    for (const prev of recentEmails) {
+      const bodyText = prev.body.replace(/<[^>]*>/g, ''); // Strip HTML
+      previousEmailsContext += `
+--- GIORNO ${prev.dayNumber} ---
+Subject: "${prev.subject}"
+Contenuto:
+${bodyText}
+---
+`;
+    }
+    
+    previousEmailsContext += `
+⛔ REGOLE ANTI-RIPETIZIONE PER GIORNO ${day}:
+1. Subject COMPLETAMENTE DIVERSO - NON usare parole già presenti nei subject sopra
+2. Apertura DIVERSA - Se le email iniziano con "Ciao {{nome}}", usa altro: "{{nome}}," o "Buongiorno," o inizia direttamente col contenuto
+3. Argomento NUOVO - Parla di qualcosa NON ancora trattato
+4. Struttura DIVERSA - Se le altre usano paragrafi, usa elenchi puntati. Se usano domande, usa affermazioni.
+5. Tono VARIATO - Alterna tra formale/informale, diretto/riflessivo
+`;
+  }
+  
   const prompt = `Sei un esperto di email marketing B2C. Genera UN'UNICA email di nurturing per il giorno ${day} di un percorso di 365 giorni.
+${previousEmailsContext}
 
 === TEMA SETTIMANA ${getWeekNumber(day)} ===
 Tema: ${weekInfo.theme}
@@ -797,7 +870,11 @@ export async function generateWeekBlock(
     for (let i = 0; i < days.length; i++) {
       const day = days[i];
       try {
-        const template = await generateTemplateForDay(day, config, consultantId, knowledgeBaseContext);
+        // Fetch last 180 emails to avoid repetition
+        const previousEmails = await fetchPreviousEmails(consultantId, day, 180);
+        console.log(`[NURTURING GENERATION] Day ${day} - Loaded ${previousEmails.length} previous emails for anti-repetition`);
+        
+        const template = await generateTemplateForDay(day, config, consultantId, knowledgeBaseContext, previousEmails);
         
         // Check if template already exists
         const existing = await db.select()
