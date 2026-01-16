@@ -1957,6 +1957,7 @@ export default function ConsultantAIConfigPage() {
       setIsGeneratingPreview(false);
       if (data.success && data.template) {
         setPreviewTemplate(data.template);
+        setShowWeekGenerationUI(false);
         setShowPreviewConfirmDialog(true);
       } else {
         toast({ title: "Errore", description: data.error || "Errore generazione", variant: "destructive" });
