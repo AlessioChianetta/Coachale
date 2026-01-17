@@ -1,0 +1,56 @@
+3…
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 5000ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+✅ response.text is a property - using it...
+📝 Extracted text length: 1126
+📝 Extracted text preview: Mi piace questo entusiasmo, Giusy! 🙌 Si sente che sei sul pezzo e carica per far decollare la tua attività.
+
+Vedere i progressi che stai facendo — tra la creazione della tua tecnica unica, l'uso dei 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Marco setter":
+   ├── System Prompt: 231,947 tokens
+   ├── Conversation History: 2,496 tokens
+   ├── User Message: 2 tokens
+   └── TOTAL INPUT: 234,445 tokens
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~282 tokens (1,126 chars)
+   🔢 TOTALE (input + output): ~234,512 tokens
+   ⏱️  Tempo di risposta: 4999ms
+   💰 Costo stimato: $0.469024 (input + output)
+
+✅ [STEP 8] Gemini response received: "Mi piace questo entusiasmo, Giusy! 🙌 Si sente che sei sul pezzo e carica per far decollare la tua a..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: a394ecae-a6b3-4cb2-9ae1-2ae659e4f1a8 (timing: 4999ms Gemini, 9660ms total)
+🎛️ [AUDIO DECISION] Mode: always_text, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=false, mode=always_text, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393890566422324
+✅ Using agent from existing conversation: Marco setter (760bb513-098f-4722-b02a-a700160c2fc3)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Marco setter
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+3935002201299 (Agent: Marco setter)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+3935002201299
+   To: whatsapp:+393890566422324
+   Text length: 831 chars
+
+📝 Message content:
