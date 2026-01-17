@@ -4445,6 +4445,16 @@ export class DatabaseStorage implements IStorage {
       // Check if consultant has nurturing enabled - auto-enable for new leads
       let finalData = { ...data };
       
+      // Extract email from leadInfo if not already set in the main email field
+      // This ensures webhook-imported leads with email in leadInfo get nurturing support
+      if (!finalData.email && finalData.leadInfo && typeof finalData.leadInfo === 'object') {
+        const leadInfoEmail = (finalData.leadInfo as any).email;
+        if (leadInfoEmail && typeof leadInfoEmail === 'string' && leadInfoEmail.includes('@')) {
+          console.log(`📧 [EMAIL EXTRACTION] Copying email from leadInfo to main field: ${leadInfoEmail}`);
+          finalData.email = leadInfoEmail;
+        }
+      }
+      
       if (data.consultantId && !data.nurturingEnabled) {
         const nurturingConfig = await this.getNurturingConfig(data.consultantId);
         if (nurturingConfig?.isActive) {
@@ -4505,8 +4515,19 @@ export class DatabaseStorage implements IStorage {
     updates: schema.UpdateProactiveLead
   ): Promise<schema.ProactiveLead | null> {
     try {
+      let finalUpdates = { ...updates };
+      
+      // Extract email from leadInfo if updating leadInfo and email is not set
+      if (!finalUpdates.email && finalUpdates.leadInfo && typeof finalUpdates.leadInfo === 'object') {
+        const leadInfoEmail = (finalUpdates.leadInfo as any).email;
+        if (leadInfoEmail && typeof leadInfoEmail === 'string' && leadInfoEmail.includes('@')) {
+          console.log(`📧 [EMAIL EXTRACTION] Copying email from leadInfo to main field on update: ${leadInfoEmail}`);
+          finalUpdates.email = leadInfoEmail;
+        }
+      }
+      
       const [updated] = await db.update(schema.proactiveLeads)
-        .set({ ...updates, updatedAt: new Date() })
+        .set({ ...finalUpdates, updatedAt: new Date() })
         .where(
           and(
             eq(schema.proactiveLeads.id, id),
