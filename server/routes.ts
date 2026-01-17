@@ -452,11 +452,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tierType = userTierInfo.tier || undefined;
         
         const tokenPayload: any = { userId: user.id, profileId: activeProfile.id };
-        if (subscriptionId) {
+        if (subscriptionId && tierType) {
           tokenPayload.subscriptionId = subscriptionId;
-          tokenPayload.consultantId = user.consultantId;
+          tokenPayload.consultantId = userTierInfo.consultantId || user.consultantId;
           tokenPayload.email = user.email;
-          tokenPayload.type = "gold";
+          tokenPayload.type = tierType; // Use actual tier from getUserTier() (gold, silver, or bronze)
         }
         
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
