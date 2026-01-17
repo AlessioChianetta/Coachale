@@ -41,9 +41,10 @@ An automated user provisioning system that creates users when Stripe payments ar
 - **Webhook Integration**: Per-consultant webhook endpoints (`/api/webhooks/stripe/:consultantId`) with signature verification
 - **Automatic User Creation**: Parses Stripe checkout session data to create users with cryptographically secure passwords
 - **Role Assignment**: Configurable creation as client or consultant with Bronze/Silver/Gold level assignment
-- **Welcome Emails**: Customizable email templates with variable substitution for credentials delivery
+- **Password Management**: Temporary passwords are stored in `tempPassword` field until user changes them; retrieved for existing users who haven't changed password yet
+- **Welcome Emails**: Step-by-step email templates with clear instructions (Step 1: go to site, Step 2: login with temp password, Step 3: set new password); password shown if user hasn't changed it yet
 - **Audit Logging**: Complete history of all provisioned users with success/failure tracking
-- **UI Management**: Dedicated page for managing automations with webhook URL display and log viewer
+- **UI Management**: Dedicated page with descriptive tooltips explaining Client/Consultant roles and Bronze/Silver/Gold levels
 
 ## Referral System
 A comprehensive "Invita un Amico" referral system for clients and consultants features unique codes, tracking, customizable landing pages with AI, dynamic qualification fields, automated emails, CRM lead creation, and bonus tracking.
