@@ -475,9 +475,22 @@ async function processPaymentAutomation(
 ) {
   const customerEmail = session.customer_details?.email || session.customer_email;
   const customerName = session.customer_details?.name || "";
-  const customerPhone = session.customer_details?.phone || "";
+  
+  // Get phone from customer_details or from custom_fields (if user added phone field to Payment Link)
+  let customerPhone = session.customer_details?.phone || "";
+  if (!customerPhone && (session as any).custom_fields) {
+    const customFields = (session as any).custom_fields as Array<{key: string; text?: {value: string}}>;
+    const phoneField = customFields.find(f => 
+      f.key?.toLowerCase().includes('phone') || 
+      f.key?.toLowerCase().includes('telefono') ||
+      f.key?.toLowerCase().includes('tel')
+    );
+    if (phoneField?.text?.value) {
+      customerPhone = phoneField.text.value;
+    }
+  }
 
-  console.log(`[STRIPE AUTOMATION] Processing for email: ${customerEmail}`);
+  console.log(`[STRIPE AUTOMATION] Processing for email: ${customerEmail}, phone: ${customerPhone}`);
 
   // Create log entry
   const [log] = await db
@@ -567,6 +580,9 @@ async function processPaymentAutomation(
       const roles: string[] = [];
       if (automation.createAsClient) roles.push("client");
       if (automation.createAsConsultant) roles.push("consultant");
+      
+      // Primary role (required field)
+      const primaryRole = automation.createAsClient ? "client" : "consultant";
 
       const [newUser] = await db
         .insert(schema.users)
@@ -576,8 +592,10 @@ async function processPaymentAutomation(
           password: hashedPassword,
           firstName,
           lastName,
+          role: primaryRole,
           roles,
           phoneNumber: customerPhone || null,
+          mustChangePassword: true, // Force password change on first login
         })
         .returning();
 
@@ -612,6 +630,7 @@ async function processPaymentAutomation(
         consultantId,
         recipientEmail: customerEmail,
         recipientName: customerName,
+        recipientPhone: customerPhone || undefined,
         password,
         tier: automation.clientLevel || "bronze",
         customSubject: automation.welcomeEmailSubject || undefined,
@@ -658,12 +677,13 @@ async function sendProvisioningEmail(params: {
   consultantId: string;
   recipientEmail: string;
   recipientName: string;
+  recipientPhone?: string;
   password: string | null;
   tier: string;
   customSubject?: string;
   customTemplate?: string;
 }) {
-  const { consultantId, recipientEmail, recipientName, password, tier, customSubject, customTemplate } = params;
+  const { consultantId, recipientEmail, recipientName, recipientPhone, password, tier, customSubject, customTemplate } = params;
 
   // Get consultant info
   const [consultant] = await db
@@ -680,11 +700,8 @@ async function sendProvisioningEmail(params: {
     ? `${consultant.firstName} ${consultant.lastName}`.trim() 
     : "Il tuo consulente";
 
-  const replitDomain = process.env.REPLIT_DOMAINS?.split(",")[0];
-  const baseUrl = replitDomain 
-    ? (replitDomain.startsWith("http") ? replitDomain : `https://${replitDomain}`)
-    : "https://app.example.com";
-  const loginUrl = `${baseUrl}/login`;
+  // Fixed login URL
+  const loginUrl = "https://www.conorbitale.it/login";
 
   // Get tier name from config
   const config = consultant?.pricingPageConfig || {};
@@ -705,26 +722,36 @@ async function sendProvisioningEmail(params: {
     emailHtml = customTemplate
       .replace(/\{\{name\}\}/g, recipientName || "")
       .replace(/\{\{email\}\}/g, recipientEmail)
+      .replace(/\{\{phone\}\}/g, recipientPhone || "")
       .replace(/\{\{password\}\}/g, password || "(usa la password esistente)")
       .replace(/\{\{tier\}\}/g, tierName)
       .replace(/\{\{consultant\}\}/g, consultantName)
       .replace(/\{\{loginUrl\}\}/g, loginUrl);
   } else {
-    // Default email template
+    // Default email template with enthusiastic copy
+    const phoneSection = recipientPhone 
+      ? `<p style="margin: 4px 0;"><strong>Telefono:</strong> ${recipientPhone}</p>`
+      : "";
+    
     const credentialsSection = password 
       ? `
         <div style="background-color: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin: 20px 0;">
-          <p style="margin: 0 0 8px 0; font-weight: 600;">Le tue credenziali di accesso:</p>
+          <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 15px;">I tuoi dati:</p>
           <p style="margin: 4px 0;"><strong>Email:</strong> ${recipientEmail}</p>
-          <p style="margin: 4px 0;"><strong>Password:</strong> ${password}</p>
-          <p style="color: #92400e; font-size: 14px; margin: 12px 0 0 0;">
-            ⚠️ Conserva questa email e cambia la password al primo accesso per sicurezza.
+          ${phoneSection}
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #fbbf24;">
+            <p style="margin: 0 0 8px 0; font-weight: 600;">Le tue credenziali di accesso:</p>
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${recipientEmail}</p>
+            <p style="margin: 4px 0;"><strong>Password temporanea:</strong> <code style="background: #fff; padding: 2px 8px; border-radius: 4px; font-family: monospace;">${password}</code></p>
+          </div>
+          <p style="color: #92400e; font-size: 14px; margin: 16px 0 0 0; padding: 12px; background: #fef9c3; border-radius: 6px;">
+            Al primo accesso ti verra' chiesto di scegliere una nuova password personale.
           </p>
         </div>
       `
       : `
         <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 20px 0;">
-          <p style="margin: 0;">Il tuo account è già attivo. Accedi con le tue credenziali esistenti.</p>
+          <p style="margin: 0;">Il tuo account e' gia' attivo. Accedi con le tue credenziali esistenti.</p>
         </div>
       `;
 
@@ -739,31 +766,44 @@ async function sendProvisioningEmail(params: {
         <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
           <div style="background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
             <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 32px; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">Benvenuto!</h1>
-              <p style="color: #dbeafe; margin: 8px 0 0 0;">Il tuo accesso ${tierName} è pronto</p>
+              <h1 style="color: white; margin: 0; font-size: 28px;">Benvenuto a bordo!</h1>
+              <p style="color: #dbeafe; margin: 8px 0 0 0; font-size: 16px;">Il tuo accesso ${tierName} e' pronto</p>
             </div>
             
             <div style="padding: 32px;">
-              <p style="font-size: 16px; color: #334155; margin: 0 0 16px 0;">
-                Ciao${recipientName ? ` ${recipientName}` : ""},
+              <p style="font-size: 18px; color: #334155; margin: 0 0 16px 0;">
+                Ciao${recipientName ? ` ${recipientName}` : ""}!
+              </p>
+              
+              <p style="font-size: 16px; color: #334155; margin: 0 0 8px 0;">
+                Sono super contento di averti con noi!
               </p>
               
               <p style="font-size: 16px; color: #334155; margin: 0 0 16px 0;">
-                Grazie per il tuo acquisto! Il tuo account è stato creato automaticamente e puoi accedere subito alla piattaforma.
+                Il tuo account su ConOrbitale e' stato creato con successo e sei pronto per iniziare il tuo percorso verso i tuoi obiettivi finanziari.
               </p>
               
               ${credentialsSection}
               
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${loginUrl}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                  Accedi alla Piattaforma
+                <a href="${loginUrl}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);">
+                  Accedi Subito
                 </a>
               </div>
               
-              <p style="font-size: 14px; color: #64748b; margin: 24px 0 0 0;">
-                Un saluto,<br>
-                <strong>${consultantName}</strong>
+              <p style="font-size: 14px; color: #64748b; text-align: center; margin: 16px 0 0 0;">
+                Link diretto: <a href="${loginUrl}" style="color: #3b82f6;">www.conorbitale.it/login</a>
               </p>
+              
+              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                <p style="font-size: 16px; color: #334155; margin: 0 0 8px 0;">
+                  Non vedo l'ora di iniziare a lavorare insieme!
+                </p>
+                <p style="font-size: 14px; color: #64748b; margin: 0;">
+                  Un caro saluto,<br>
+                  <strong>${consultantName}</strong>
+                </p>
+              </div>
             </div>
           </div>
         </div>

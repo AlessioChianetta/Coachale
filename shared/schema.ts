@@ -151,6 +151,8 @@ export const users = pgTable("users", {
 
   memoryGenerationHour: integer("memory_generation_hour").default(3), // Hour (0-23) for automatic memory generation, defaults to 3 AM
 
+  mustChangePassword: boolean("must_change_password").default(false), // Force password change on first login (used by Stripe payment automations)
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
