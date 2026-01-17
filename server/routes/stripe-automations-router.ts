@@ -398,27 +398,27 @@ export async function handleStripeWebhook(req: Request, res: Response) {
   console.log(`[STRIPE WEBHOOK] Received webhook for consultant: ${consultantId}`);
 
   try {
-    // Get consultant's webhook secret
-    const [apiKeys] = await db
+    // Get consultant's webhook secret from users table
+    const [consultant] = await db
       .select({ 
-        stripeWebhookSecret: schema.externalApiKeys.stripeWebhookSecret,
-        stripeSecretKey: schema.externalApiKeys.stripeSecretKey 
+        stripeWebhookSecret: schema.users.stripeWebhookSecret,
+        stripeSecretKey: schema.users.stripeSecretKey 
       })
-      .from(schema.externalApiKeys)
-      .where(eq(schema.externalApiKeys.consultantId, consultantId))
+      .from(schema.users)
+      .where(eq(schema.users.id, consultantId))
       .limit(1);
 
-    if (!apiKeys?.stripeWebhookSecret || !apiKeys?.stripeSecretKey) {
+    if (!consultant?.stripeWebhookSecret || !consultant?.stripeSecretKey) {
       console.error(`[STRIPE WEBHOOK] Missing Stripe config for consultant: ${consultantId}`);
       return res.status(400).json({ error: "Configurazione Stripe mancante" });
     }
 
-    const stripe = new Stripe(apiKeys.stripeSecretKey, { apiVersion: "2024-12-18.acacia" });
+    const stripe = new Stripe(consultant.stripeSecretKey, { apiVersion: "2024-12-18.acacia" });
 
     // Verify webhook signature
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, apiKeys.stripeWebhookSecret);
+      event = stripe.webhooks.constructEvent(req.body, sig, consultant.stripeWebhookSecret);
     } catch (err: any) {
       console.error(`[STRIPE WEBHOOK] Signature verification failed:`, err.message);
       return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
