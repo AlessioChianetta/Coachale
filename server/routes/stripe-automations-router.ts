@@ -539,20 +539,45 @@ async function processPaymentAutomation(
       }
       console.log(`[STRIPE AUTOMATION] User already exists: ${userId}, mustChangePassword: ${existingUser.mustChangePassword}`);
 
+      // IMPORTANT: Gold level ALWAYS requires client role - force it
+      const effectiveCreateAsClientExisting = automation.createAsClient || automation.clientLevel === "gold";
+      
       // Check if this is subscription-only (no roles, just level)
-      const isSubscriptionOnly = !automation.createAsConsultant && !automation.createAsClient && automation.clientLevel;
+      // Note: Gold is never subscription-only because we force client role above
+      const isSubscriptionOnlyExisting = !automation.createAsConsultant && !effectiveCreateAsClientExisting && automation.clientLevel;
 
       // Add client relationship by setting consultantId on user (when client role OR subscription-only)
-      if (automation.createAsClient || isSubscriptionOnly) {
+      if (effectiveCreateAsClientExisting || isSubscriptionOnlyExisting) {
         await db
           .update(schema.users)
-          .set({ consultantId })
+          .set({ consultantId, role: effectiveCreateAsClientExisting ? "client" : existingUser.role })
           .where(eq(schema.users.id, userId));
         
-        if (automation.createAsClient) {
+        if (effectiveCreateAsClientExisting) {
+          // Also create client role profile if it doesn't exist
+          const [existingClientProfile] = await db
+            .select({ id: schema.userRoleProfiles.id })
+            .from(schema.userRoleProfiles)
+            .where(and(
+              eq(schema.userRoleProfiles.userId, userId),
+              eq(schema.userRoleProfiles.role, "client"),
+              eq(schema.userRoleProfiles.consultantId, consultantId)
+            ))
+            .limit(1);
+          
+          if (!existingClientProfile) {
+            await db.insert(schema.userRoleProfiles).values({
+              userId,
+              role: "client",
+              consultantId,
+              isDefault: true,
+              isActive: true,
+            });
+            console.log(`[STRIPE AUTOMATION] Created client profile for existing user`);
+          }
           rolesAssigned.push("client");
         }
-        console.log(`[STRIPE AUTOMATION] Updated consultantId for existing user`);
+        console.log(`[STRIPE AUTOMATION] Updated consultantId for existing user${automation.clientLevel === "gold" && !automation.createAsClient ? " [Gold forced client]" : ""}`);
       }
 
       // Create/update subscription for Silver/Gold levels (works with or without roles)
@@ -639,8 +664,13 @@ async function processPaymentAutomation(
       const randomSuffix = Math.random().toString(36).substring(2, 6);
       const username = `${emailPrefix}_${randomSuffix}`;
 
+      // IMPORTANT: Gold level ALWAYS requires client role - force it
+      // Silver can be subscription-only, but Gold must have client access
+      const effectiveCreateAsClient = automation.createAsClient || automation.clientLevel === "gold";
+      
       // Check if this is a subscription-only user (no roles, just level)
-      const isSubscriptionOnly = !automation.createAsConsultant && !automation.createAsClient && automation.clientLevel;
+      // Note: Gold is never subscription-only because we force client role above
+      const isSubscriptionOnly = !automation.createAsConsultant && !effectiveCreateAsClient && automation.clientLevel;
       
       // For Bronze-only users (no roles), create in bronzeUsers table instead of users
       if (isSubscriptionOnly && automation.clientLevel === "bronze") {
@@ -672,8 +702,9 @@ async function processPaymentAutomation(
         
         // Set consultantId on user when:
         // 1. Creating as client only (not consultant)
-        // 2. OR subscription-only (Silver/Gold without roles) - they need to be linked to the consultant
-        const userConsultantId = (automation.createAsClient && !automation.createAsConsultant) || isSubscriptionOnly 
+        // 2. OR subscription-only (Silver without roles) - they need to be linked to the consultant
+        // Note: Gold always has effectiveCreateAsClient=true, so it's covered by case 1
+        const userConsultantId = (effectiveCreateAsClient && !automation.createAsConsultant) || isSubscriptionOnly 
           ? consultantId 
           : null;
 
@@ -710,7 +741,7 @@ async function processPaymentAutomation(
           console.log(`[STRIPE AUTOMATION] Created consultant profile for user`);
         }
 
-        if (automation.createAsClient) {
+        if (effectiveCreateAsClient) {
           await db.insert(schema.userRoleProfiles).values({
             userId,
             role: "client",
@@ -719,7 +750,7 @@ async function processPaymentAutomation(
             isActive: true,
           });
           rolesAssigned.push("client");
-          console.log(`[STRIPE AUTOMATION] Created client profile for user (linked to consultant ${consultantId})`);
+          console.log(`[STRIPE AUTOMATION] Created client profile for user (linked to consultant ${consultantId})${automation.clientLevel === "gold" && !automation.createAsClient ? " [Gold forced client]" : ""}`);
         }
 
         // Create subscription for Silver/Gold (Level 2/3) - works with or without roles

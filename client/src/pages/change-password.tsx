@@ -135,23 +135,39 @@ export default function ChangePassword() {
         const tier = user?.tier;
         const bronzeToken = localStorage.getItem("bronzeToken");
         
-        // Subscription-only users (Bronze/Silver/Gold without role) go to manager
-        if (bronzeToken || tier === "bronze" || tier === "1" || tier === "silver" || tier === "gold" || tier === "2" || tier === "3") {
-          // Get consultant slug for redirect
-          const consultantSlug = user?.consultantSlug || localStorage.getItem("consultantSlug");
+        // Get consultant slug for redirect (check multiple storage keys)
+        const consultantSlug = user?.consultantSlug || 
+                               localStorage.getItem("consultantSlug") || 
+                               localStorage.getItem("bronzePublicSlug");
+        
+        // Gold with client role goes to /client
+        if ((tier === "gold" || tier === "3") && user?.role === "client") {
+          setLocation("/client");
+        }
+        // Bronze/Silver subscription-only users go to select-agent
+        else if (bronzeToken || tier === "bronze" || tier === "1" || tier === "silver" || tier === "2") {
           if (consultantSlug) {
             setLocation(`/c/${consultantSlug}/select-agent`);
           } else {
             setLocation("/select-agent");
           }
-        } else if (user?.role === "super_admin") {
+        }
+        // Gold without client role (subscription-only) also goes to select-agent
+        else if (tier === "gold" || tier === "3") {
+          if (consultantSlug) {
+            setLocation(`/c/${consultantSlug}/select-agent`);
+          } else {
+            setLocation("/select-agent");
+          }
+        }
+        else if (user?.role === "super_admin") {
           setLocation("/admin");
         } else if (user?.role === "consultant") {
           setLocation("/consultant");
         } else if (user?.role === "client") {
           setLocation("/client");
         } else {
-          // Fallback for users with both role and subscription
+          // Fallback
           setLocation("/");
         }
       }, 100);
