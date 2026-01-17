@@ -581,12 +581,12 @@ async function processPaymentAutomation(
       const randomSuffix = Math.random().toString(36).substring(2, 6);
       const username = `${emailPrefix}_${randomSuffix}`;
 
-      const roles: string[] = [];
-      if (automation.createAsClient) roles.push("client");
-      if (automation.createAsConsultant) roles.push("consultant");
+      // Determine primary role: consultant takes precedence if both are selected
+      const primaryRole = automation.createAsConsultant ? "consultant" : "client";
       
-      // Primary role (required field)
-      const primaryRole = automation.createAsClient ? "client" : "consultant";
+      // If creating as consultant, don't set consultantId on user (they ARE a consultant)
+      // If creating only as client, set consultantId to link them to this consultant
+      const userConsultantId = (automation.createAsClient && !automation.createAsConsultant) ? consultantId : null;
 
       const [newUser] = await db
         .insert(schema.users)
@@ -597,26 +597,49 @@ async function processPaymentAutomation(
           firstName,
           lastName,
           role: primaryRole,
-          roles,
           phoneNumber: customerPhone || null,
           mustChangePassword: true,
-          consultantId: automation.createAsClient ? consultantId : null,
+          consultantId: userConsultantId,
         })
         .returning();
 
       userId = newUser.id;
-      rolesAssigned.push(...roles);
-      console.log(`[STRIPE AUTOMATION] Created new user: ${userId}`);
+      console.log(`[STRIPE AUTOMATION] Created new user: ${userId} with role: ${primaryRole}`);
 
-      // Create client level subscription if creating as client
-      if (automation.createAsClient && automation.clientLevel) {
-        const levelMap: Record<string, number> = { bronze: 1, silver: 2, gold: 3 };
-        await db.insert(schema.clientLevelSubscriptions).values({
-          clientId: userId,
-          consultantId,
-          level: levelMap[automation.clientLevel],
+      // Create user role profiles for multi-role support (like Fernando)
+      if (automation.createAsConsultant) {
+        await db.insert(schema.userRoleProfiles).values({
+          userId,
+          role: "consultant",
+          consultantId: null, // They are the consultant
+          isDefault: !automation.createAsClient, // Default only if not also a client
           isActive: true,
         });
+        rolesAssigned.push("consultant");
+        console.log(`[STRIPE AUTOMATION] Created consultant profile for user`);
+      }
+
+      if (automation.createAsClient) {
+        await db.insert(schema.userRoleProfiles).values({
+          userId,
+          role: "client",
+          consultantId, // Associated to the consultant who owns this automation
+          isDefault: true, // Client profile is default when both roles exist
+          isActive: true,
+        });
+        rolesAssigned.push("client");
+        console.log(`[STRIPE AUTOMATION] Created client profile for user (linked to consultant ${consultantId})`);
+
+        // Create client level subscription if specified
+        if (automation.clientLevel) {
+          const levelMap: Record<string, number> = { bronze: 1, silver: 2, gold: 3 };
+          await db.insert(schema.clientLevelSubscriptions).values({
+            clientId: userId,
+            consultantId,
+            level: levelMap[automation.clientLevel],
+            isActive: true,
+          });
+        }
       }
     }
 
