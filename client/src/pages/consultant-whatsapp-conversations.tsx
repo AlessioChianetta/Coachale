@@ -896,15 +896,28 @@ export default function ConsultantWhatsAppConversationsPage() {
           />
         )}
 
-        {selectedConversation.testModeOverride && (
+        {isDryRun && (
           <div className="px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900/30">
-                  <Beaker className="h-3 w-3 mr-1" />
-                  Test Mode: {selectedConversation.testModeOverride === "lead" ? "Lead" : selectedConversation.testModeOverride === "consulente" ? "Consulente" : "Cliente"}
-                </Badge>
+                {selectedConversation.testModeOverride ? (
+                  <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900/30">
+                    <Beaker className="h-3 w-3 mr-1" />
+                    Test Mode: {selectedConversation.testModeOverride === "lead" ? "Lead" : selectedConversation.testModeOverride === "consulente" ? "Consulente" : "Cliente"}
+                  </Badge>
+                ) : (
+                  <span className="text-xs text-yellow-700 dark:text-yellow-300">Nessuna modalità test attiva</span>
+                )}
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTestModeDialogOpen(true)}
+                className="h-7 text-xs bg-yellow-100 hover:bg-yellow-200 border-yellow-300"
+              >
+                <Beaker className="h-3 w-3 mr-1" />
+                Cambia Modalità
+              </Button>
             </div>
           </div>
         )}
@@ -1410,6 +1423,89 @@ export default function ConsultantWhatsAppConversationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={testModeDialogOpen} onOpenChange={setTestModeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Beaker className="h-5 w-5 text-orange-500" />
+              Modalità Test
+            </DialogTitle>
+            <DialogDescription>
+              Simula questa conversazione come se fosse un Cliente, Lead o Consulente per testare le risposte AI.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tipo di utente</label>
+              <Select
+                value={testModeOverride || "none"}
+                onValueChange={(value) => setTestModeOverride(value === "none" ? null : value as "client" | "lead" | "consulente")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona modalità" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nessuna (usa rilevamento automatico)</SelectItem>
+                  <SelectItem value="client">Cliente</SelectItem>
+                  <SelectItem value="lead">Lead</SelectItem>
+                  <SelectItem value="consulente">Consulente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {testModeOverride === "client" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Cerca cliente da impersonare</label>
+                <Input
+                  placeholder="Cerca per email o nome..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                />
+                {users.length > 0 && (
+                  <div className="border rounded-md max-h-32 overflow-y-auto">
+                    {users.map((user: any) => (
+                      <div
+                        key={user.id}
+                        onClick={() => {
+                          setTestModeUserId(user.id);
+                          setUserSearchQuery(user.email || user.name || "");
+                        }}
+                        className={cn(
+                          "p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-sm",
+                          testModeUserId === user.id && "bg-blue-50 dark:bg-blue-900/20"
+                        )}
+                      >
+                        {user.email || user.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestModeDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedConversationId) {
+                  testModeMutation.mutate({
+                    conversationId: selectedConversationId,
+                    testModeOverride: testModeOverride,
+                    testModeUserId: testModeOverride === "client" ? testModeUserId : undefined,
+                  });
+                }
+              }}
+              disabled={testModeMutation.isPending}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              {testModeMutation.isPending ? "Salvando..." : "Applica Modalità Test"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </WhatsAppLayout>
   );
 }
