@@ -539,7 +539,7 @@ export default function ConsultantPaymentAutomations() {
                   </div>
                 ) : (
                   <>
-                    {(["bronze", "silver", "gold"] as const).map((tier) => (
+                    {(["silver", "gold"] as const).map((tier) => (
                       <div key={tier} className="border rounded-lg p-4 space-y-4">
                         <div className="flex items-center gap-3">
                           {getTierBadge(tier)}
