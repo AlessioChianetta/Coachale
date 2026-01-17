@@ -68,7 +68,23 @@ export default function ChangePassword() {
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: ChangePasswordFormData) => {
-      return await apiRequest("POST", "/api/auth/change-password", {
+      // Determine the correct endpoint based on user tier
+      // Bronze users: /api/bronze-auth/change-password
+      // Silver/Gold users: /api/auth/subscription/change-password  
+      // Regular users (in users table): /api/auth/change-password
+      const tier = user?.tier;
+      const bronzeToken = localStorage.getItem("bronzeToken");
+      
+      let endpoint = "/api/auth/change-password";
+      if (bronzeToken || tier === "bronze" || tier === "1") {
+        endpoint = "/api/bronze-auth/change-password";
+      } else if (tier === "silver" || tier === "gold" || tier === "2" || tier === "3") {
+        endpoint = "/api/auth/subscription/change-password";
+      }
+      
+      console.log("[CHANGE-PASSWORD] Using endpoint:", endpoint, "tier:", tier, "hasBronzeToken:", !!bronzeToken);
+      
+      return await apiRequest("POST", endpoint, {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
@@ -84,12 +100,27 @@ export default function ChangePassword() {
       }
 
       setTimeout(() => {
-        if (user?.role === "super_admin") {
+        const tier = user?.tier;
+        const bronzeToken = localStorage.getItem("bronzeToken");
+        
+        // Subscription-only users (Bronze/Silver/Gold without role) go to manager
+        if (bronzeToken || tier === "bronze" || tier === "1" || tier === "silver" || tier === "gold" || tier === "2" || tier === "3") {
+          // Get consultant slug for redirect
+          const consultantSlug = user?.consultantSlug || localStorage.getItem("consultantSlug");
+          if (consultantSlug) {
+            setLocation(`/c/${consultantSlug}/select-agent`);
+          } else {
+            setLocation("/select-agent");
+          }
+        } else if (user?.role === "super_admin") {
           setLocation("/admin");
         } else if (user?.role === "consultant") {
           setLocation("/consultant");
-        } else {
+        } else if (user?.role === "client") {
           setLocation("/client");
+        } else {
+          // Fallback for users with both role and subscription
+          setLocation("/");
         }
       }, 100);
     },
