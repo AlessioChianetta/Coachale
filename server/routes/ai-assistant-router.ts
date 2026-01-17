@@ -238,7 +238,7 @@ router.get("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
 
     if (!prefs) {
       return res.json({
-        writingStyle: "professional",
+        writingStyle: "eccentric",
         responseLength: "balanced",
         customInstructions: null,
         defaultSystemInstructions: null,
@@ -276,7 +276,7 @@ router.put("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
     if (existing) {
       await db.update(aiAssistantPreferences)
         .set({
-          writingStyle: writingStyle || "professional",
+          writingStyle: writingStyle || "eccentric",
           responseLength: responseLength || "balanced",
           customInstructions: customInstructions || null,
           defaultSystemInstructions: defaultSystemInstructions !== undefined ? defaultSystemInstructions : existing.defaultSystemInstructions,
@@ -288,7 +288,7 @@ router.put("/preferences", authenticateToken, async (req: AuthRequest, res: Resp
     } else {
       await db.insert(aiAssistantPreferences).values({
         userId,
-        writingStyle: writingStyle || "professional",
+        writingStyle: writingStyle || "eccentric",
         responseLength: responseLength || "balanced",
         customInstructions: customInstructions || null,
         defaultSystemInstructions: defaultSystemInstructions || null,
@@ -360,7 +360,7 @@ router.get("/consultant/client/:clientId/preferences", authenticateToken, requir
 
     if (!prefs) {
       return res.json({
-        writingStyle: "professional",
+        writingStyle: "eccentric",
         responseLength: "balanced",
         customInstructions: null,
       });
@@ -406,7 +406,7 @@ router.put("/consultant/client/:clientId/preferences", authenticateToken, requir
     if (existing) {
       await db.update(aiAssistantPreferences)
         .set({
-          writingStyle: writingStyle || "professional",
+          writingStyle: writingStyle || "eccentric",
           responseLength: responseLength || "balanced",
           customInstructions: customInstructions || null,
           updatedAt: new Date(),
@@ -415,7 +415,7 @@ router.put("/consultant/client/:clientId/preferences", authenticateToken, requir
     } else {
       await db.insert(aiAssistantPreferences).values({
         userId: clientId,
-        writingStyle: writingStyle || "professional",
+        writingStyle: writingStyle || "eccentric",
         responseLength: responseLength || "balanced",
         customInstructions: customInstructions || null,
       });
@@ -468,7 +468,7 @@ router.get("/consultant/clients-with-preferences", authenticateToken, requireRol
           responseLength: prefs.responseLength,
           customInstructions: prefs.customInstructions,
         } : {
-          writingStyle: "professional",
+          writingStyle: "eccentric",
           responseLength: "balanced",
           customInstructions: null,
         },
