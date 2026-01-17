@@ -3135,10 +3135,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(updatedUser);
       }
 
-      // Allow consultant to update their clients
-      if (req.user!.role === "consultant" && targetUser.role === "client" && targetUser.consultantId === req.user!.id) {
-        const updatedUser = await storage.updateUser(id, updates);
-        return res.json(updatedUser);
+      // Allow consultant to update their clients (check both users table AND user_role_profiles)
+      if (req.user!.role === "consultant") {
+        // Check via users table
+        const ownsViaUsersTable = targetUser.role === "client" && targetUser.consultantId === req.user!.id;
+        
+        // Check via user_role_profiles (multi-profile system)
+        const targetProfiles = await storage.getUserRoleProfiles(id);
+        const ownsViaProfile = targetProfiles.some(p => p.role === 'client' && p.consultantId === req.user!.id);
+        
+        if (ownsViaUsersTable || ownsViaProfile) {
+          const updatedUser = await storage.updateUser(id, updates);
+          return res.json(updatedUser);
+        }
       }
 
       return res.status(403).json({ message: "Access denied" });
