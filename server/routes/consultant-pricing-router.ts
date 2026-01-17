@@ -268,6 +268,7 @@ router.get("/consultant/pricing/users/silver", authenticateToken, requireRole("c
       endDate: clientLevelSubscriptions.endDate,
       stripeSubscriptionId: clientLevelSubscriptions.stripeSubscriptionId,
       clientId: clientLevelSubscriptions.clientId,
+      paymentSource: clientLevelSubscriptions.paymentSource,
     })
       .from(clientLevelSubscriptions)
       .where(
@@ -311,6 +312,7 @@ router.get("/consultant/pricing/users/gold", authenticateToken, requireRole("con
       endDate: clientLevelSubscriptions.endDate,
       stripeSubscriptionId: clientLevelSubscriptions.stripeSubscriptionId,
       clientId: clientLevelSubscriptions.clientId,
+      paymentSource: clientLevelSubscriptions.paymentSource,
     })
       .from(clientLevelSubscriptions)
       .where(

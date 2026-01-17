@@ -400,6 +400,7 @@ export default function ConsultantWhatsAppPage() {
   const [bronzeCurrentPage, setBronzeCurrentPage] = useState(1);
   const [userManagementTab, setUserManagementTab] = useState<"bronze" | "silver" | "gold">("bronze");
   const [userToDelete, setUserToDelete] = useState<{ id: string; email: string } | null>(null);
+  const [subscriptionSourceTab, setSubscriptionSourceTab] = useState<"stripe_connect" | "direct_link">("stripe_connect");
 
   // Stati per dialog reset password manuale
   const [passwordResetTarget, setPasswordResetTarget] = useState<{ type: "bronze" | "silver", id: string, email: string } | null>(null);
@@ -2454,6 +2455,165 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Sottoscrizioni Attive per Origine */}
+            <Card className="border-2 border-emerald-200 dark:border-emerald-800">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-emerald-600" />
+                      Sottoscrizioni Attive
+                    </CardTitle>
+                    <CardDescription>
+                      Visualizza le sottoscrizioni Silver/Gold divise per origine pagamento
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-blue-100 text-blue-700 border-blue-300">
+                      Stripe Connect: {
+                        [...(silverUsersQuery.data?.users || []), ...(goldUsersQuery.data?.users || [])]
+                          .filter((u: any) => u.paymentSource === "stripe_connect" || !u.paymentSource).length
+                      }
+                    </Badge>
+                    <Badge className="bg-green-100 text-green-700 border-green-300">
+                      Link Diretto: {
+                        [...(silverUsersQuery.data?.users || []), ...(goldUsersQuery.data?.users || [])]
+                          .filter((u: any) => u.paymentSource === "direct_link").length
+                      }
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={subscriptionSourceTab} onValueChange={(v) => setSubscriptionSourceTab(v as "stripe_connect" | "direct_link")}>
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="stripe_connect" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Stripe Connect (Revenue Share)
+                    </TabsTrigger>
+                    <TabsTrigger value="direct_link" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-800">
+                      <Link className="h-4 w-4 mr-2" />
+                      Link Diretto (100% Tuo)
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Stripe Connect Subscriptions */}
+                  <TabsContent value="stripe_connect" className="space-y-4">
+                    {silverUsersQuery.isLoading || goldUsersQuery.isLoading ? (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                      </div>
+                    ) : (() => {
+                      const stripeConnectUsers = [
+                        ...(silverUsersQuery.data?.users || []).map((u: any) => ({ ...u, tier: "silver" })),
+                        ...(goldUsersQuery.data?.users || []).map((u: any) => ({ ...u, tier: "gold" }))
+                      ].filter((u: any) => u.paymentSource === "stripe_connect" || !u.paymentSource);
+                      
+                      return stripeConnectUsers.length === 0 ? (
+                        <div className="text-center py-8">
+                          <CreditCard className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-sm font-medium text-gray-500">Nessuna sottoscrizione via Stripe Connect</p>
+                          <p className="text-xs text-gray-400 mt-1">Le sottoscrizioni dalla pagina prezzi pubblica appariranno qui</p>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Tier</TableHead>
+                                <TableHead>Stato</TableHead>
+                                <TableHead>Data Inizio</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {stripeConnectUsers.map((user: any) => (
+                                <TableRow key={user.id}>
+                                  <TableCell className="font-medium">{user.clientEmail}</TableCell>
+                                  <TableCell>{user.clientName || "—"}</TableCell>
+                                  <TableCell>
+                                    <Badge className={user.tier === "gold" ? "bg-yellow-100 text-yellow-700" : "bg-slate-100 text-slate-700"}>
+                                      {user.tier === "gold" ? "Oro" : "Argento"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                      {user.status === "active" ? "Attivo" : user.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-gray-500">
+                                    {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      );
+                    })()}
+                  </TabsContent>
+
+                  {/* Direct Link Subscriptions */}
+                  <TabsContent value="direct_link" className="space-y-4">
+                    {silverUsersQuery.isLoading || goldUsersQuery.isLoading ? (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-green-500" />
+                      </div>
+                    ) : (() => {
+                      const directLinkUsers = [
+                        ...(silverUsersQuery.data?.users || []).map((u: any) => ({ ...u, tier: "silver" })),
+                        ...(goldUsersQuery.data?.users || []).map((u: any) => ({ ...u, tier: "gold" }))
+                      ].filter((u: any) => u.paymentSource === "direct_link");
+                      
+                      return directLinkUsers.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Link className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-sm font-medium text-gray-500">Nessuna sottoscrizione via Link Diretto</p>
+                          <p className="text-xs text-gray-400 mt-1">Le sottoscrizioni dalle automazioni Stripe appariranno qui (100% commissione tua)</p>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Tier</TableHead>
+                                <TableHead>Stato</TableHead>
+                                <TableHead>Data Inizio</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {directLinkUsers.map((user: any) => (
+                                <TableRow key={user.id}>
+                                  <TableCell className="font-medium">{user.clientEmail}</TableCell>
+                                  <TableCell>{user.clientName || "—"}</TableCell>
+                                  <TableCell>
+                                    <Badge className={user.tier === "gold" ? "bg-yellow-100 text-yellow-700" : "bg-slate-100 text-slate-700"}>
+                                      {user.tier === "gold" ? "Oro" : "Argento"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                      {user.status === "active" ? "Attivo" : user.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-gray-500">
+                                    {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      );
+                    })()}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
 
             {/* Gestione Utenti Registrati */}
             <Card className="border-2 border-violet-200 dark:border-violet-800">

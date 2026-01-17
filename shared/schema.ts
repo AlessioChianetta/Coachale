@@ -864,6 +864,7 @@ export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
   writingStyle: text("writing_style").$type<"formale" | "amichevole" | "tecnico" | "casual">(),
   responseLength: text("response_length").$type<"breve" | "media" | "dettagliata">(),
   customInstructions: text("custom_instructions"),
+  paymentSource: text("payment_source").$type<"stripe_connect" | "direct_link">().default("stripe_connect"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

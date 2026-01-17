@@ -974,6 +974,7 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           stripeSubscriptionId: session.subscription || null,
           tempPassword: null, // NEVER store or send plain text passwords
           passwordHash: hashedPassword,
+          paymentSource: "stripe_connect", // Track origin for revenue sharing vs 100% commission
           // Migrate onboarding state from Bronze or initialize fresh
           ...migratedPreferences,
         }).returning();

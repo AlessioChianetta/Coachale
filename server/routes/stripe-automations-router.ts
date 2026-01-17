@@ -538,43 +538,86 @@ async function processPaymentAutomation(
       }
       console.log(`[STRIPE AUTOMATION] User already exists: ${userId}, mustChangePassword: ${existingUser.mustChangePassword}`);
 
-      // Add client relationship by setting consultantId on user
-      if (automation.createAsClient) {
+      // Check if this is subscription-only (no roles, just level)
+      const isSubscriptionOnly = !automation.createAsConsultant && !automation.createAsClient && automation.clientLevel;
+
+      // Add client relationship by setting consultantId on user (when client role OR subscription-only)
+      if (automation.createAsClient || isSubscriptionOnly) {
         await db
           .update(schema.users)
           .set({ consultantId })
           .where(eq(schema.users.id, userId));
-        rolesAssigned.push("client");
+        
+        if (automation.createAsClient) {
+          rolesAssigned.push("client");
+        }
         console.log(`[STRIPE AUTOMATION] Updated consultantId for existing user`);
+      }
 
-        // Update or create client level subscription if specified
-        if (automation.clientLevel) {
-          const levelMap: Record<string, number> = { bronze: 1, silver: 2, gold: 3 };
-          const [existingSub] = await db
-            .select({ id: schema.clientLevelSubscriptions.id })
-            .from(schema.clientLevelSubscriptions)
-            .where(and(
-              eq(schema.clientLevelSubscriptions.clientId, userId),
-              eq(schema.clientLevelSubscriptions.consultantId, consultantId)
-            ))
-            .limit(1);
+      // Create/update subscription for Silver/Gold levels (works with or without roles)
+      if (automation.clientLevel && (automation.clientLevel === "silver" || automation.clientLevel === "gold")) {
+        const levelMap: Record<string, "2" | "3"> = { silver: "2", gold: "3" };
+        const [existingSub] = await db
+          .select({ id: schema.clientLevelSubscriptions.id })
+          .from(schema.clientLevelSubscriptions)
+          .where(and(
+            eq(schema.clientLevelSubscriptions.clientId, userId),
+            eq(schema.clientLevelSubscriptions.consultantId, consultantId)
+          ))
+          .limit(1);
 
-          if (existingSub) {
-            await db
-              .update(schema.clientLevelSubscriptions)
-              .set({ 
-                level: levelMap[automation.clientLevel],
-                isActive: true,
-              })
-              .where(eq(schema.clientLevelSubscriptions.id, existingSub.id));
-          } else {
-            await db.insert(schema.clientLevelSubscriptions).values({
-              clientId: userId,
-              consultantId,
+        if (existingSub) {
+          await db
+            .update(schema.clientLevelSubscriptions)
+            .set({ 
               level: levelMap[automation.clientLevel],
-              isActive: true,
-            });
-          }
+              status: "active",
+              paymentSource: "direct_link", // Mark as direct link for 100% commission
+            })
+            .where(eq(schema.clientLevelSubscriptions.id, existingSub.id));
+        } else {
+          await db.insert(schema.clientLevelSubscriptions).values({
+            clientId: userId,
+            consultantId,
+            clientEmail: customerEmail.toLowerCase(),
+            clientName: customerName || null,
+            phone: customerPhone || null,
+            level: levelMap[automation.clientLevel],
+            status: "active",
+            startDate: new Date(),
+            paymentSource: "direct_link", // Mark as direct link for 100% commission
+          });
+        }
+        rolesAssigned.push(`${automation.clientLevel}_subscriber`);
+        console.log(`[STRIPE AUTOMATION] Created/updated ${automation.clientLevel} subscription with paymentSource: direct_link`);
+      }
+      
+      // Handle Bronze for existing user - add to bronzeUsers if not already there
+      if (automation.clientLevel === "bronze") {
+        const [existingBronze] = await db
+          .select({ id: schema.bronzeUsers.id })
+          .from(schema.bronzeUsers)
+          .where(and(
+            eq(schema.bronzeUsers.email, customerEmail.toLowerCase()),
+            eq(schema.bronzeUsers.consultantId, consultantId)
+          ))
+          .limit(1);
+        
+        if (!existingBronze) {
+          // Create bronze user record linked to this consultant
+          const tempPassword = generatePassword();
+          const hashedPassword = await bcrypt.hash(tempPassword, 10);
+          await db.insert(schema.bronzeUsers).values({
+            consultantId,
+            email: customerEmail.toLowerCase(),
+            passwordHash: hashedPassword,
+            firstName: customerName.split(" ")[0] || "",
+            lastName: customerName.split(" ").slice(1).join(" ") || "",
+            phone: customerPhone || null,
+            isActive: true,
+          });
+          rolesAssigned.push("bronze_subscriber");
+          console.log(`[STRIPE AUTOMATION] Created Bronze record for existing user`);
         }
       }
     } else {
@@ -591,67 +634,103 @@ async function processPaymentAutomation(
       const randomSuffix = Math.random().toString(36).substring(2, 6);
       const username = `${emailPrefix}_${randomSuffix}`;
 
-      // Determine primary role: consultant takes precedence if both are selected
-      const primaryRole = automation.createAsConsultant ? "consultant" : "client";
+      // Check if this is a subscription-only user (no roles, just level)
+      const isSubscriptionOnly = !automation.createAsConsultant && !automation.createAsClient && automation.clientLevel;
       
-      // If creating as consultant, don't set consultantId on user (they ARE a consultant)
-      // If creating only as client, set consultantId to link them to this consultant
-      const userConsultantId = (automation.createAsClient && !automation.createAsConsultant) ? consultantId : null;
-
-      const [newUser] = await db
-        .insert(schema.users)
-        .values({
-          username,
+      // For Bronze-only users (no roles), create in bronzeUsers table instead of users
+      if (isSubscriptionOnly && automation.clientLevel === "bronze") {
+        // Create Bronze user directly in bronzeUsers table
+        const [bronzeUser] = await db.insert(schema.bronzeUsers).values({
+          consultantId,
           email: customerEmail.toLowerCase(),
-          password: hashedPassword,
-          tempPassword: password, // Store plain text password for email reminders until user changes it
+          passwordHash: hashedPassword,
           firstName,
           lastName,
-          role: primaryRole,
-          phoneNumber: customerPhone || null,
-          mustChangePassword: true,
-          consultantId: userConsultantId,
-        })
-        .returning();
-      
-      userMustChangePassword = true;
-
-      userId = newUser.id;
-      console.log(`[STRIPE AUTOMATION] Created new user: ${userId} with role: ${primaryRole}`);
-
-      // Create user role profiles for multi-role support (like Fernando)
-      if (automation.createAsConsultant) {
-        await db.insert(schema.userRoleProfiles).values({
-          userId,
-          role: "consultant",
-          consultantId: null, // They are the consultant
-          isDefault: !automation.createAsClient, // Default only if not also a client
+          phone: customerPhone || null,
           isActive: true,
-        });
-        rolesAssigned.push("consultant");
-        console.log(`[STRIPE AUTOMATION] Created consultant profile for user`);
-      }
+        }).returning();
+        
+        userId = bronzeUser.id;
+        userMustChangePassword = true;
+        rolesAssigned.push("bronze_subscriber");
+        console.log(`[STRIPE AUTOMATION] Created Bronze subscriber (no roles): ${userId}`);
+      } else {
+        // Determine primary role: consultant takes precedence, then client, then default to client for Silver/Gold
+        let primaryRole: "consultant" | "client" = "client";
+        if (automation.createAsConsultant) {
+          primaryRole = "consultant";
+        }
+        
+        // Set consultantId on user when:
+        // 1. Creating as client only (not consultant)
+        // 2. OR subscription-only (Silver/Gold without roles) - they need to be linked to the consultant
+        const userConsultantId = (automation.createAsClient && !automation.createAsConsultant) || isSubscriptionOnly 
+          ? consultantId 
+          : null;
 
-      if (automation.createAsClient) {
-        await db.insert(schema.userRoleProfiles).values({
-          userId,
-          role: "client",
-          consultantId, // Associated to the consultant who owns this automation
-          isDefault: true, // Client profile is default when both roles exist
-          isActive: true,
-        });
-        rolesAssigned.push("client");
-        console.log(`[STRIPE AUTOMATION] Created client profile for user (linked to consultant ${consultantId})`);
+        const [newUser] = await db
+          .insert(schema.users)
+          .values({
+            username,
+            email: customerEmail.toLowerCase(),
+            password: hashedPassword,
+            tempPassword: password, // Store plain text password for email reminders until user changes it
+            firstName,
+            lastName,
+            role: primaryRole,
+            phoneNumber: customerPhone || null,
+            mustChangePassword: true,
+            consultantId: userConsultantId,
+          })
+          .returning();
+        
+        userMustChangePassword = true;
+        userId = newUser.id;
+        console.log(`[STRIPE AUTOMATION] Created new user: ${userId} with role: ${primaryRole}, consultantId: ${userConsultantId}`);
 
-        // Create client level subscription if specified
-        if (automation.clientLevel) {
-          const levelMap: Record<string, number> = { bronze: 1, silver: 2, gold: 3 };
+        // Create user role profiles for multi-role support (like Fernando)
+        if (automation.createAsConsultant) {
+          await db.insert(schema.userRoleProfiles).values({
+            userId,
+            role: "consultant",
+            consultantId: null, // They are the consultant
+            isDefault: !automation.createAsClient, // Default only if not also a client
+            isActive: true,
+          });
+          rolesAssigned.push("consultant");
+          console.log(`[STRIPE AUTOMATION] Created consultant profile for user`);
+        }
+
+        if (automation.createAsClient) {
+          await db.insert(schema.userRoleProfiles).values({
+            userId,
+            role: "client",
+            consultantId, // Associated to the consultant who owns this automation
+            isDefault: true, // Client profile is default when both roles exist
+            isActive: true,
+          });
+          rolesAssigned.push("client");
+          console.log(`[STRIPE AUTOMATION] Created client profile for user (linked to consultant ${consultantId})`);
+        }
+
+        // Create subscription for Silver/Gold (Level 2/3) - works with or without roles
+        if (automation.clientLevel && (automation.clientLevel === "silver" || automation.clientLevel === "gold")) {
+          const levelMap: Record<string, "2" | "3"> = { silver: "2", gold: "3" };
           await db.insert(schema.clientLevelSubscriptions).values({
             clientId: userId,
             consultantId,
+            clientEmail: customerEmail.toLowerCase(),
+            clientName: customerName || null,
+            phone: customerPhone || null,
             level: levelMap[automation.clientLevel],
-            isActive: true,
+            status: "active",
+            startDate: new Date(),
+            passwordHash: hashedPassword,
+            tempPassword: password,
+            paymentSource: "direct_link", // Track that this came from consultant's direct link (100% commission)
           });
+          rolesAssigned.push(`${automation.clientLevel}_subscriber`);
+          console.log(`[STRIPE AUTOMATION] Created ${automation.clientLevel} subscription with paymentSource: direct_link`);
         }
       }
     }
