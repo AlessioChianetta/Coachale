@@ -121,10 +121,10 @@ export function ActivityFeed() {
   const activities = data || [];
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-slate-200/80 shadow-xl shadow-slate-200/50 h-full flex flex-col overflow-hidden">
-      <CardHeader className="pb-3 flex-row items-center justify-between bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
-        <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-300/30">
+    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-lg h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-3 flex-row items-center justify-between bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-100 dark:border-gray-800">
+        <CardTitle className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-300/30">
             <Activity className="h-5 w-5 text-white" />
           </div>
           Attivita Recenti
@@ -133,11 +133,11 @@ export function ActivityFeed() {
           onClick={() => refetch()}
           disabled={isFetching}
           className={cn(
-            "p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-all",
+            "p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all",
             isFetching && "animate-spin"
           )}
         >
-          <RefreshCw className="h-4 w-4 text-slate-600" />
+          <RefreshCw className="h-4 w-4 text-gray-600 dark:text-gray-400" />
         </button>
       </CardHeader>
       

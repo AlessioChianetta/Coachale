@@ -1420,6 +1420,19 @@ export default function ConsultantWhatsAppPage() {
               </Card>
             ) : (
               <div className="space-y-6">
+                {/* Hero Header - Team Style */}
+                <div className="text-center space-y-3 py-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/25">
+                    <Bot className="h-8 w-8 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    I Miei Agenti
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+                    Gestisci e monitora le performance dei tuoi assistenti WhatsApp
+                  </p>
+                </div>
+
                 {/* Enterprise Dashboard Header con KPI */}
                 <AgentDashboardHeader />
                 

@@ -35,30 +35,32 @@ interface KPITileProps {
 
 function KPITile({ title, value, subtitle, icon, trend, accentColor }: KPITileProps) {
   return (
-    <Card className="bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-500">{title}</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900">{value}</span>
+              <span className="text-3xl font-bold text-gray-900 dark:text-white">{value}</span>
               {subtitle && (
-                <span className="text-xs text-slate-400">{subtitle}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{subtitle}</span>
               )}
             </div>
             {trend && (
-              <div className="flex items-center gap-1">
-                <TrendingUp 
-                  className={`h-3 w-3 ${trend.isPositive ? 'text-green-500' : 'text-red-500 rotate-180'}`} 
-                />
-                <span className={`text-xs font-medium ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                  {trend.isPositive ? '+' : ''}{trend.value}%
-                </span>
-                <span className="text-xs text-slate-400">vs ieri</span>
+              <div className="flex items-center gap-1.5">
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${trend.isPositive ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                  <TrendingUp 
+                    className={`h-3 w-3 ${trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400 rotate-180'}`} 
+                  />
+                  <span className={`text-xs font-semibold ${trend.isPositive ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                    {trend.isPositive ? '+' : ''}{trend.value}%
+                  </span>
+                </div>
+                <span className="text-xs text-gray-400">vs ieri</span>
               </div>
             )}
           </div>
-          <div className={`p-3 rounded-xl ${accentColor}`}>
+          <div className={`p-3 rounded-xl ${accentColor} dark:opacity-80`}>
             {icon}
           </div>
         </div>
@@ -69,15 +71,15 @@ function KPITile({ title, value, subtitle, icon, trend, accentColor }: KPITilePr
 
 function KPITileSkeleton() {
   return (
-    <Card className="bg-white border border-slate-200">
+    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-16" />
-            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-gray-700" />
+            <Skeleton className="h-8 w-16 bg-gray-200 dark:bg-gray-700" />
+            <Skeleton className="h-3 w-20 bg-gray-200 dark:bg-gray-700" />
           </div>
-          <Skeleton className="h-12 w-12 rounded-xl" />
+          <Skeleton className="h-12 w-12 rounded-xl bg-gray-200 dark:bg-gray-700" />
         </div>
       </CardContent>
     </Card>
@@ -120,13 +122,9 @@ export function AgentDashboardHeader() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Dashboard Agenti</h2>
-          <p className="text-sm text-slate-500">Panoramica in tempo reale delle performance</p>
-        </div>
+      <div className="flex items-center justify-end">
         <Link href="/consultant/whatsapp-conversations">
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2 rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
             <MessageSquare className="h-4 w-4" />
             Tutte le Conversazioni
             <ExternalLink className="h-3 w-3" />

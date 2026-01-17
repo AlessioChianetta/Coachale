@@ -190,16 +190,16 @@ export function AgentLeaderboard({ agents, isLoading, onSelectAgent }: AgentLead
   const sortedAgents = [...agents].sort((a, b) => b.performanceScore - a.performanceScore);
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-slate-200/80 shadow-xl shadow-slate-200/50 overflow-hidden">
-      <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-lg overflow-hidden">
+      <CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-300/30">
+          <CardTitle className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-300/30">
               <Trophy className="h-5 w-5 text-white" />
             </div>
             Classifica Agenti
           </CardTitle>
-          <Badge className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-0 shadow-sm">
+          <Badge className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-0 shadow-sm rounded-lg">
             <Zap className="h-3 w-3 mr-1" />
             Top {Math.min(agents.length, 5)}
           </Badge>

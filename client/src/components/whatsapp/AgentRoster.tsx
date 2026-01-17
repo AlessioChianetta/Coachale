@@ -93,17 +93,17 @@ function AgentCard({
     <div
       onClick={onClick}
       className={cn(
-        "p-3 rounded-lg border cursor-pointer transition-all",
-        "hover:border-blue-300 hover:bg-blue-50/50",
+        "p-4 rounded-xl border cursor-pointer transition-all duration-200",
+        "hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md hover:-translate-y-0.5",
         isSelected 
-          ? "border-blue-500 bg-blue-50 shadow-sm" 
-          : "border-slate-200 bg-white"
+          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm" 
+          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
       )}
     >
       <div className="flex items-start gap-3">
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm",
-          isSelected ? "bg-blue-600" : "bg-slate-600"
+          "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm",
+          isSelected ? "bg-gradient-to-br from-blue-500 to-blue-600" : "bg-gradient-to-br from-gray-500 to-gray-600"
         )}>
           {agent.name.charAt(0).toUpperCase()}
         </div>
@@ -112,14 +112,14 @@ function AgentCard({
           <div className="flex items-center gap-2 mb-1">
             <span className={cn(
               "font-medium text-sm truncate",
-              isSelected ? "text-blue-900" : "text-slate-900"
+              isSelected ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-gray-100"
             )}>
               {agent.name}
             </span>
-            <div className={cn("w-2 h-2 rounded-full", status.dotColor)} />
+            <div className={cn("w-2 h-2 rounded-full ring-2 ring-white dark:ring-gray-800", status.dotColor)} />
           </div>
           
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span>{agentTypeLabels[agent.agentType] || agent.agentType}</span>
             {agent.levels && agent.levels.length > 0 && <LevelBadges levels={agent.levels} />}
           </div>
@@ -234,26 +234,28 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
   }
 
   return (
-    <Card className="bg-white border border-slate-200 h-full flex flex-col">
+    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-          <Bot className="h-5 w-5 text-blue-600" />
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+            <Bot className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
           Roster Agenti
         </CardTitle>
         
         <div className="space-y-2 mt-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Cerca agente..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-slate-50 border-slate-200"
+              className="pl-9 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
             />
           </div>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="bg-slate-50 border-slate-200">
+            <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl">
               <SelectValue placeholder="Filtra per stato" />
             </SelectTrigger>
             <SelectContent>
