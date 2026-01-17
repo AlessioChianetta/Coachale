@@ -8378,6 +8378,7 @@ export const stripeAutomationLogs = pgTable("stripe_automation_logs", {
   customerName: varchar("customer_name"),
   customerPhone: varchar("customer_phone"),
   createdUserId: varchar("created_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdBronzeUserId: varchar("created_bronze_user_id").references(() => bronzeUsers.id, { onDelete: "set null" }),
   rolesAssigned: jsonb("roles_assigned").default([]).$type<string[]>(),
   status: varchar("status").$type<"success" | "failed" | "pending">().default("pending").notNull(),
   errorMessage: text("error_message"),

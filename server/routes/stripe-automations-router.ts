@@ -526,6 +526,7 @@ async function processPaymentAutomation(
     let userId: string;
     let password: string | null = null;
     let userMustChangePassword = false;
+    let createdInBronzeUsers = false; // Track if user was created in bronze_users table
     const rolesAssigned: string[] = [];
 
     if (existingUser) {
@@ -652,6 +653,7 @@ async function processPaymentAutomation(
         
         userId = bronzeUser.id;
         userMustChangePassword = true;
+        createdInBronzeUsers = true; // Mark as created in bronze_users table
         rolesAssigned.push("bronze_subscriber");
         console.log(`[STRIPE AUTOMATION] Created Bronze subscriber (no roles): ${userId}`);
       } else {
@@ -750,12 +752,13 @@ async function processPaymentAutomation(
       });
     }
 
-    // Update log as success
+    // Update log as success - use correct field based on where user was created
     await db
       .update(schema.stripeAutomationLogs)
       .set({
         status: "success",
-        createdUserId: userId,
+        createdUserId: createdInBronzeUsers ? null : userId,
+        createdBronzeUserId: createdInBronzeUsers ? userId : null,
         rolesAssigned,
       })
       .where(eq(schema.stripeAutomationLogs.id, log.id));

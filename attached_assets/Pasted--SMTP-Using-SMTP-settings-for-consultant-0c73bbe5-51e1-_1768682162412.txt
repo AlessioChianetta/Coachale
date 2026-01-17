@@ -1,0 +1,53 @@
+🔧 [SMTP] Using SMTP settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   Host: email-smtp.eu-central-1.amazonaws.com:587
+   Secure: false
+   User: AKIA2PN6H7JDMJPO764W
+   From: no-reply@alessiochianetta.it
+✓ [SMTP] Transporter created successfully
+📨 [SMTP] Sending email via SMTP...
+[getStripeInstance] Stripe config found, key length: 409
+[getStripeInstance] Key appears encrypted, attempting decryption...
+[getStripeInstance] Decryption successful, decrypted key length: 107
+[getStripeInstance] Key prefix: sk_test_
+[getStripeInstance] Stripe instance created successfully
+[Stripe Webhook] Received event: invoice.payment_succeeded
+[Stripe Webhook] Unhandled event type: invoice.payment_succeeded
+8:35:56 PM [express] POST /api/stripe/webhook 200 in 1227ms :: {"received":true}
+✅ [SMTP] Email sent successfully to mehigit661@dretnar.com
+   Message ID: <7f1285b9-6dfd-1b64-29e2-344e5d57a223@alessiochianetta.it>
+   Response: 250 Ok 0107019bcdabf56d-ba668dab-fd11-4544-8325-2398a19e833f-000000
+[STRIPE AUTOMATION] Welcome email sent to: mehigit661@dretnar.com
+[STRIPE AUTOMATION] Error: error: insert or update on table "stripe_automation_logs" violates foreign key constraint "stripe_automation_logs_created_user_id_fkey"
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async processPaymentAutomation (/home/runner/workspace/server/routes/stripe-automations-router.ts:754:5)
+    at async handleStripeWebhook (/home/runner/workspace/server/routes/stripe-automations-router.ts:458:7) {
+  length: 369,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (created_user_id)=(b15c071c-da68-4ab8-a443-6451625a8e5d) is not present in table "users".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'stripe_automation_logs',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'stripe_automation_logs_created_user_id_fkey',
+  file: 'ri_triggers.c',
+  line: '2599',
+  routine: 'ri_ReportViolation'
+}
+8:35:57 PM [express] POST /api/webhooks/stripe/0c73bbe5-51e1-4108-866b-6be7a52fce3b 200 in 3797ms ::…
+
+[SHEETS POLLING] Starting polling cycle (ExecID: 6tlgd7)...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-17T20:36:00.023Z
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Processing job ca427ee2-05d4-4614-b7bf-c10af25d5953 (Campagna Euro Space)
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
