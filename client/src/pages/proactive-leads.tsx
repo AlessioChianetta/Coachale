@@ -219,6 +219,13 @@ const emptyFormData: FormData = {
   nurturingEnabled: false,
 };
 
+// Helper to get lead email with fallback to leadInfo.email
+const getLeadEmail = (lead: ProactiveLead): string | null => {
+  if (lead.email) return lead.email;
+  if (lead.leadInfo?.email) return lead.leadInfo.email;
+  return null;
+};
+
 const statusConfig = {
   pending: {
     color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600",
@@ -772,7 +779,7 @@ export default function ProactiveLeadsPage() {
       firstName: lead.firstName,
       lastName: lead.lastName,
       phoneNumber: lead.phoneNumber,
-      email: lead.email || "",
+      email: getLeadEmail(lead) || "",
       agentConfigId: lead.agentConfigId,
       leadInfo: appliedLeadInfo,
       idealState: appliedIdealState,
@@ -1717,7 +1724,7 @@ export default function ProactiveLeadsPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="w-20">
-                                {lead.email ? (
+                                {getLeadEmail(lead) ? (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
