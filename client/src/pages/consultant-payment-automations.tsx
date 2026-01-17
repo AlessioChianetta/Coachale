@@ -16,7 +16,6 @@ import {
   AlertCircle, Users, RefreshCw, History, Zap, Mail, CheckCircle, XCircle, Settings
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -199,11 +198,10 @@ export default function ConsultantPaymentAutomations() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar onMenuClick={() => setSidebarOpen(true)} />
       <div className="flex">
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         
-        <main className={`flex-1 p-4 md:p-8 pt-20 ${!isMobile ? "md:ml-16" : ""}`}>
+        <main className={`flex-1 p-4 md:p-8 pt-6 ${!isMobile ? "md:ml-16" : ""}`}>
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
