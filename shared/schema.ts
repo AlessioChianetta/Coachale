@@ -894,6 +894,7 @@ export const bronzeUsers = pgTable("bronze_users", {
   writingStyle: text("writing_style").$type<"formale" | "amichevole" | "tecnico" | "casual">(),
   responseLength: text("response_length").$type<"breve" | "media" | "dettagliata">(),
   customInstructions: text("custom_instructions"),
+  paymentSource: text("payment_source").$type<"stripe_connect" | "direct_link">(), // Track origin for commission
   createdAt: timestamp("created_at").default(sql`now()`),
   lastLoginAt: timestamp("last_login_at"),
 }, (table) => ({

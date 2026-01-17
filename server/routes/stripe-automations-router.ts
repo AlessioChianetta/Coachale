@@ -617,9 +617,12 @@ async function processPaymentAutomation(
             lastName: customerName.split(" ").slice(1).join(" ") || "",
             phone: customerPhone || null,
             isActive: true,
+            paymentSource: "direct_link", // Track origin for 100% commission
+            mustChangePassword: true,
+            tempPassword: password, // Store for welcome email
           });
           rolesAssigned.push("bronze_subscriber");
-          console.log(`[STRIPE AUTOMATION] Created Bronze record for existing user`);
+          console.log(`[STRIPE AUTOMATION] Created Bronze record for existing user with paymentSource: direct_link`);
         }
       }
     } else {
@@ -652,6 +655,7 @@ async function processPaymentAutomation(
           isActive: true,
           mustChangePassword: true,
           tempPassword: password, // Store for welcome email until user changes it
+          paymentSource: "direct_link", // Track origin for 100% commission
         }).returning();
         
         userId = bronzeUser.id;
