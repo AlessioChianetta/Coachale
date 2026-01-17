@@ -1,0 +1,70 @@
+normal, age: 133s)
+⏱️  [TIMING] Context building: 4ms
+3:32:27 AM [express] GET /api/instagram/conversations 304 in 334ms :: {"conversations":[{"id":"97788…
+🔍 [FileSearch] Exercises indexed check: 10/10 checked, using FileSearch: true
+⏱️  [TIMING] Exercise scraping: 1109ms
+🔍 [KB Fallback Debug] Querying indexed docs for clientId: 7e40b56c-2cc8-4515-b843-dc105e478f38, consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📚 [KB Fallback] 0 KB docs indexed, 0 will be in prompt
+⏱️  [TIMING] Prompt building: 232ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~9,167 tokens
+  - 🧠 Conversation Memory: ~4,613 tokens (included in System Prompt)
+  - User Message: ~1 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~9,168 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~9,167 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (9,167 tokens):
+   👤 User Profile & Base: ~9,167 tokens
+   ℹ️  (Include: data/ora, profilo utente, istruzioni AI, metadata esercizi)
+
+🔍 VIA FILE SEARCH RAG (indicizzati, cercati su richiesta):
+   📚 Exercises: 87,570 tokens (129/203 documenti)
+   📖 Library: 169,189 tokens (86/9 documenti)
+   💬 Consultations: 52,058 tokens (13/178 documenti)
+   🎓 University: 173,725 tokens (188/13 documenti)
+
+   💰 TOTALE FILE SEARCH: 652,716 tokens (490 documenti indicizzati)
+
+⚠️  NON DISPONIBILI ALL'AI (non sincronizzati in File Search):
+   📚 Exercises: ~37,000 tokens (74 documenti)
+   💬 Consultations: ~49,500 tokens (165 documenti)
+   💡 TIP: Sincronizza questi documenti in File Search per renderli disponibili all'AI
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client 7e40b56c (490 documenti):
+      🎓 Lezioni: 188
+      🏋️ Esercizi: 129
+      📖 Libreria: 86
+      📧 Email Journey: 48
+      📄 exercise_external_doc: 22
+      💬 Consulenze: 13
+      💰 Dati Finanziari: 1
+      ✅ Task: 1
+      ❤️ Riflessioni: 1
+      📚 Progr. Libreria: 1
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~163,514 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~172,681 a ~9,167 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CLIENT STREAMING]
+[AI] Provider: Google AI Studio, User-selected: YES
+🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=YES
+🔄 AI stream attempt 1/6...

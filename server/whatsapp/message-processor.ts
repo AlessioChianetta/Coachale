@@ -1095,11 +1095,13 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
 
       // ⏱️ Prompt Building Timing
       timings.promptBuildStart = performance.now();
-      console.log(`📝 Building system prompt for client...`);
+      console.log(`📝 Building system prompt for client...${willUseFileSearch ? ' (File Search mode - lightweight prompt)' : ''}`);
       systemPrompt = buildSystemPrompt(
         "assistenza",
         "finanziario",
-        userContext
+        userContext,
+        undefined, // pageContext
+        { hasFileSearch: willUseFileSearch } // Pass file search flag to omit heavy content
       );
       timings.promptBuildEnd = performance.now();
       const promptBuildTime = Math.round(timings.promptBuildEnd - timings.promptBuildStart);
