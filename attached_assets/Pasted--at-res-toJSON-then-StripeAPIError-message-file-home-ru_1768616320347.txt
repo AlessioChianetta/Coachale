@@ -1,0 +1,241 @@
+    at res.toJSON.then.StripeAPIError.message (file:///home/runner/workspace/node_modules/stripe/esm/RequestSender.js:102:31)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  type: 'StripePermissionError',
+  raw: {
+    code: 'secret_key_required',
+    doc_url: 'https://stripe.com/docs/error-codes/secret-key-required',
+    message: 'This API call cannot be made with a publishable API key. Please use a secret API key. You can find a list of your API keys at https://dashboard.stripe.com/account/apikeys.',
+    request_log_url: 'https://dashboard.stripe.com/acct_1NivfiJdVgQ319Pi/test/workbench/logs?object=req_k6SfRftkwJBCWI',
+    type: 'invalid_request_error',
+    headers: {
+      server: 'nginx',
+      date: 'Sat, 17 Jan 2026 02:17:57 GMT',
+      'content-type': 'application/json',
+      'content-length': '479',
+      connection: 'keep-alive',
+      'access-control-allow-credentials': 'true',
+      'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+      'access-control-allow-origin': '*',
+      'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+      'access-control-max-age': '300',
+      'cache-control': 'no-cache, no-store',
+      'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=8xUNh1bFGP-4XlSYctlFX2dZUi4yrZYgF2dptnwOAyddl8rAiAOnJdYcFgyM-YS5W_l_sq_heITot4lg",
+      'request-id': 'req_k6SfRftkwJBCWI',
+      'stripe-version': '2024-12-18.acacia',
+      vary: 'Origin',
+      'x-stripe-priority-routing-enabled': 'true',
+      'x-stripe-routing-context-priority-tier': 'api-testmode',
+      'x-wc': 'ABGHIJ',
+      'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+    },
+    statusCode: 403,
+    requestId: 'req_k6SfRftkwJBCWI'
+  },
+  rawType: 'invalid_request_error',
+  code: 'secret_key_required',
+  doc_url: 'https://stripe.com/docs/error-codes/secret-key-required',
+  param: undefined,
+  detail: undefined,
+  headers: {
+    server: 'nginx',
+    date: 'Sat, 17 Jan 2026 02:17:57 GMT',
+    'content-type': 'application/json',
+    'content-length': '479',
+    connection: 'keep-alive',
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+    'access-control-allow-origin': '*',
+    'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+    'access-control-max-age': '300',
+    'cache-control': 'no-cache, no-store',
+    'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=8xUNh1bFGP-4XlSYctlFX2dZUi4yrZYgF2dptnwOAyddl8rAiAOnJdYcFgyM-YS5W_l_sq_heITot4lg",
+    'request-id': 'req_k6SfRftkwJBCWI',
+    'stripe-version': '2024-12-18.acacia',
+    vary: 'Origin',
+    'x-stripe-priority-routing-enabled': 'true',
+    'x-stripe-routing-context-priority-tier': 'api-testmode',
+    'x-wc': 'ABGHIJ',
+    'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+  },
+  requestId: 'req_k6SfRftkwJBCWI',
+  statusCode: 403,
+  userMessage: undefined,
+  charge: undefined,
+  decline_code: undefined,
+  payment_intent: undefined,
+  payment_method: undefined,
+  payment_method_type: undefined,
+  setup_intent: undefined,
+  source: undefined
+}
+2:17:57 AM [express] GET /api/stripe-automations/payment-links 500 in 1223ms :: {"error":"Errore nel…
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-17T02:18:00.033Z
+
+[SHEETS POLLING] Starting polling cycle (ExecID: c2n76j)...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Processing job ca427ee2-05d4-4614-b7bf-c10af25d5953 (Campagna Euro Space)
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+Duplicate headers found and renamed.
+[SHEETS POLLING] Date filter applied: 235 -> 23 rows (from 2026-01-11)
+[SHEETS POLLING] Processing 23 rows for job ca427ee2-05d4-4614-b7bf-c10af25d5953 (checking database for each)
+[SHEETS POLLING] Using campaign "Campagna Euro Space Massimo" for import
+2:18:02 AM [express] GET /api/stripe-automations/webhook-url 304 in 227ms :: {"webhookUrl":"https://…
+2:18:02 AM [express] GET /api/auth/my-profiles 304 in 341ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+2:18:02 AM [express] GET /api/stripe-automations 304 in 338ms :: []
+[STRIPE] Error fetching payment links: StripePermissionError: This API call cannot be made with a publishable API key. Please use a secret API key. You can find a list of your API keys at https://dashboard.stripe.com/account/apikeys.
+    at res.toJSON.then.StripeAPIError.message (file:///home/runner/workspace/node_modules/stripe/esm/RequestSender.js:102:31)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  type: 'StripePermissionError',
+  raw: {
+    code: 'secret_key_required',
+    doc_url: 'https://stripe.com/docs/error-codes/secret-key-required',
+    message: 'This API call cannot be made with a publishable API key. Please use a secret API key. You can find a list of your API keys at https://dashboard.stripe.com/account/apikeys.',
+    request_log_url: 'https://dashboard.stripe.com/acct_1NivfiJdVgQ319Pi/test/workbench/logs?object=req_WyIJ70GaUGEXSy',
+    type: 'invalid_request_error',
+    headers: {
+      server: 'nginx',
+      date: 'Sat, 17 Jan 2026 02:18:02 GMT',
+      'content-type': 'application/json',
+      'content-length': '479',
+      connection: 'keep-alive',
+      'access-control-allow-credentials': 'true',
+      'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+      'access-control-allow-origin': '*',
+      'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+      'access-control-max-age': '300',
+      'cache-control': 'no-cache, no-store',
+      'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=8xUNh1bFGP-4XlSYctlFX2dZUi4yrZYgF2dptnwOAyddl8rAiAOnJdYcFgyM-YS5W_l_sq_heITot4lg",
+      'request-id': 'req_WyIJ70GaUGEXSy',
+      'stripe-version': '2024-12-18.acacia',
+      vary: 'Origin',
+      'x-stripe-priority-routing-enabled': 'true',
+      'x-stripe-routing-context-priority-tier': 'api-testmode',
+      'x-wc': 'ABGHIJ',
+      'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+    },
+    statusCode: 403,
+    requestId: 'req_WyIJ70GaUGEXSy'
+  },
+  rawType: 'invalid_request_error',
+  code: 'secret_key_required',
+  doc_url: 'https://stripe.com/docs/error-codes/secret-key-required',
+  param: undefined,
+  detail: undefined,
+  headers: {
+    server: 'nginx',
+    date: 'Sat, 17 Jan 2026 02:18:02 GMT',
+    'content-type': 'application/json',
+    'content-length': '479',
+    connection: 'keep-alive',
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+    'access-control-allow-origin': '*',
+    'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+    'access-control-max-age': '300',
+    'cache-control': 'no-cache, no-store',
+    'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=8xUNh1bFGP-4XlSYctlFX2dZUi4yrZYgF2dptnwOAyddl8rAiAOnJdYcFgyM-YS5W_l_sq_heITot4lg",
+    'request-id': 'req_WyIJ70GaUGEXSy',
+    'stripe-version': '2024-12-18.acacia',
+    vary: 'Origin',
+    'x-stripe-priority-routing-enabled': 'true',
+    'x-stripe-routing-context-priority-tier': 'api-testmode',
+    'x-wc': 'ABGHIJ',
+    'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+  },
+  requestId: 'req_WyIJ70GaUGEXSy',
+  statusCode: 403,
+  userMessage: undefined,
+  charge: undefined,
+  decline_code: undefined,
+  payment_intent: undefined,
+  payment_method: undefined,
+  payment_method_type: undefined,
+  setup_intent: undefined,
+  source: undefined
+}
+2:18:03 AM [express] GET /api/stripe-automations/payment-links 500 in 459ms :: {"error":"Errore nel …
+[SHEETS POLLING] Completed import for job ca427ee2-05d4-4614-b7bf-c10af25d5953: 0 imported, 23 duplicates, 0 skipped, 0 errors
+[SHEETS POLLING] Polling cycle completed (ExecID: c2n76j)
+🔒 [CIRCUIT BREAKER] Skipping agent fe95f393-b8c9-4fc0-80d7-2035dcba305a (Receptionist Principale) - circuit breaker is open
+2:18:29 AM [express] GET /api/stripe-automations/webhook-url 304 in 895ms :: {"webhookUrl":"https://…
+2:18:29 AM [express] GET /api/stripe-automations 304 in 1004ms :: []
+2:18:29 AM [express] GET /api/auth/my-profiles 304 in 1048ms :: {"profiles":[{"id":"fd732f27-d63b-4e…
+[STRIPE] Error fetching payment links: StripePermissionError: This API call cannot be made with a publishable API key. Please use a secret API key. You can find a list of your API keys at https://dashboard.stripe.com/account/apikeys.
+    at res.toJSON.then.StripeAPIError.message (file:///home/runner/workspace/node_modules/stripe/esm/RequestSender.js:102:31)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  type: 'StripePermissionError',
+  raw: {
+    code: 'secret_key_required',
+    doc_url: 'https://stripe.com/docs/error-codes/secret-key-required',
+    message: 'This API call cannot be made with a publishable API key. Please use a secret API key. You can find a list of your API keys at https://dashboard.stripe.com/account/apikeys.',
+    request_log_url: 'https://dashboard.stripe.com/acct_1NivfiJdVgQ319Pi/test/workbench/logs?object=req_blYmgca0xXf7mf',
+    type: 'invalid_request_error',
+    headers: {
+      server: 'nginx',
+      date: 'Sat, 17 Jan 2026 02:18:29 GMT',
+      'content-type': 'application/json',
+      'content-length': '479',
+      connection: 'keep-alive',
+      'access-control-allow-credentials': 'true',
+      'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+      'access-control-allow-origin': '*',
+      'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+      'access-control-max-age': '300',
+      'cache-control': 'no-cache, no-store',
+      'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=8xUNh1bFGP-4XlSYctlFX2dZUi4yrZYgF2dptnwOAyddl8rAiAOnJdYcFgyM-YS5W_l_sq_heITot4lg",
+      'request-id': 'req_blYmgca0xXf7mf',
+      'stripe-version': '2024-12-18.acacia',
+      vary: 'Origin',
+      'x-stripe-priority-routing-enabled': 'true',
+      'x-stripe-routing-context-priority-tier': 'api-testmode',
+      'x-wc': 'ABGHIJ',
+      'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+    },
+    statusCode: 403,
+    requestId: 'req_blYmgca0xXf7mf'
+  },
+  rawType: 'invalid_request_error',
+  code: 'secret_key_required',
+  doc_url: 'https://stripe.com/docs/error-codes/secret-key-required',
+  param: undefined,
+  detail: undefined,
+  headers: {
+    server: 'nginx',
+    date: 'Sat, 17 Jan 2026 02:18:29 GMT',
+    'content-type': 'application/json',
+    'content-length': '479',
+    connection: 'keep-alive',
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+    'access-control-allow-origin': '*',
+    'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+    'access-control-max-age': '300',
+    'cache-control': 'no-cache, no-store',
+    'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=8xUNh1bFGP-4XlSYctlFX2dZUi4yrZYgF2dptnwOAyddl8rAiAOnJdYcFgyM-YS5W_l_sq_heITot4lg",
+    'request-id': 'req_blYmgca0xXf7mf',
+    'stripe-version': '2024-12-18.acacia',
+    vary: 'Origin',
+    'x-stripe-priority-routing-enabled': 'true',
+    'x-stripe-routing-context-priority-tier': 'api-testmode',
+    'x-wc': 'ABGHIJ',
+    'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+  },
+  requestId: 'req_blYmgca0xXf7mf',
+  statusCode: 403,
+  userMessage: undefined,
+  charge: undefined,
+  decline_code: undefined,
+  payment_intent: undefined,
+  payment_method: undefined,
+  payment_method_type: undefined,
+  setup_intent: undefined,
+  source: undefined
+}
+2:18:29 AM [express] GET /api/stripe-automations/payment-links 500 in 1132ms :: {"error":"Errore nel…
+🔒 [CIRCUIT BREAKER] Skipping agent fe95f393-b8c

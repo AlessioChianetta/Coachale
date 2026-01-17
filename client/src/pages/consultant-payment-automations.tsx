@@ -102,15 +102,16 @@ export default function ConsultantPaymentAutomations() {
     enabled: !!selectedAutomation && isLogsDialogOpen,
   });
 
-  const { data: paymentLinksData, isLoading: loadingPaymentLinks, refetch: refetchPaymentLinks } = useQuery({
+  const { data: paymentLinksData, isLoading: loadingPaymentLinks, refetch: refetchPaymentLinks, error: paymentLinksError } = useQuery({
     queryKey: ["/api/stripe-automations/payment-links"],
     queryFn: async () => {
       const res = await fetch("/api/stripe-automations/payment-links", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Errore");
+        const errorData = await res.json();
+        // Return error data instead of throwing so we can show specific messages
+        return { error: true, ...errorData };
       }
       return res.json();
     },
@@ -250,7 +251,19 @@ export default function ConsultantPaymentAutomations() {
                   <div className="flex justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
-                ) : !paymentLinksData?.hasApiKey ? (
+                ) : paymentLinksData?.needsSecretKey ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-4 text-amber-500" />
+                    <p className="font-medium text-amber-700">Chiave pubblica invece di segreta</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Hai configurato una chiave <strong>pubblica</strong> (pk_...).
+                      <br />Serve la chiave <strong>SEGRETA</strong> (sk_test_... o sk_live_...).
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Vai su <strong>Impostazioni → Chiavi API → tab Stripe</strong> e inserisci la Secret Key.
+                    </p>
+                  </div>
+                ) : paymentLinksData?.error || !paymentLinksData?.hasApiKey ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Chiavi API Stripe non configurate</p>

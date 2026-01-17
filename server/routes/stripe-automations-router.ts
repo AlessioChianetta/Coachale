@@ -143,6 +143,14 @@ router.get("/payment-links", authenticateToken, requireRole("consultant"), async
       });
     }
     
+    if (error.type === "StripePermissionError" || error.code === "secret_key_required") {
+      return res.status(400).json({ 
+        error: "Chiave pubblica invece di segreta",
+        message: "Hai configurato una chiave PUBBLICA (pk_...). Serve la chiave SEGRETA (sk_test_... o sk_live_...). Vai su Impostazioni → Chiavi API e inserisci la Secret Key.",
+        needsSecretKey: true
+      });
+    }
+    
     res.status(500).json({ error: "Errore nel recupero dei Payment Links" });
   }
 });

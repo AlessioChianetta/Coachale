@@ -13845,6 +13845,22 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
       console.log("[Stripe Settings] Saving for consultant:", consultantId);
 
+      // Validate that it's a secret key, not a publishable key
+      if (stripeSecretKey) {
+        if (stripeSecretKey.startsWith("pk_")) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "Hai inserito una chiave pubblica (pk_...). Serve la chiave SEGRETA che inizia con sk_test_ o sk_live_" 
+          });
+        }
+        if (!stripeSecretKey.startsWith("sk_")) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "La chiave Stripe deve iniziare con sk_test_ (test mode) o sk_live_ (produzione)" 
+          });
+        }
+      }
+
       const updateData: any = {};
       if (stripeSecretKey) updateData.stripeSecretKey = stripeSecretKey;
       if (stripeWebhookSecret) updateData.stripeWebhookSecret = stripeWebhookSecret;
