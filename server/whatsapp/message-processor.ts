@@ -16,6 +16,7 @@ import {
   consultantVertexAccess,
   vertexAiSettings,
   conversationStates,
+  clientLevelSubscriptions,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
@@ -1568,38 +1569,107 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
     console.log(`   🔢 TOTALE INPUT: ~${estimatedTotalInput.toLocaleString()} tokens\n`);
 
     // Check if agent has File Search Store for RAG-powered responses
-    // SECURITY: ONLY Level 3 (Deluxe) agents can access consultant's full store
-    // All other levels (null, "1", "2") can ONLY access agent-specific store
+    // NEW LOGIC: Check client subscription level when effectiveUserId is present
     const agentLevel = consultantConfig.level; // "1" = Bronze, "2" = Silver, "3" = Deluxe, null = internal/public
-    const canAccessConsultantStore = agentLevel === "3"; // STRICT: Only explicit Level 3
+    let canAccessConsultantStore = agentLevel === "3"; // Default: Only explicit Level 3 agents
+    let fileSearchSource = "agent"; // Track source for logging
+    let clientIsGold = false;
+    let clientFileSearchEnabled = true; // Default to enabled
     
-    console.log(`🔐 [FILE SEARCH] Access check - Agent level: ${agentLevel}, canAccessConsultantStore: ${canAccessConsultantStore}`);
+    // NEW: If we have a client (effectiveUserId), check their subscription level
+    if (effectiveUserId) {
+      try {
+        // Check if client is Gold (level 3) with active subscription
+        const clientSubscription = await db.query.clientLevelSubscriptions.findFirst({
+          where: and(
+            eq(clientLevelSubscriptions.clientId, effectiveUserId),
+            eq(clientLevelSubscriptions.level, "3"),
+            eq(clientLevelSubscriptions.status, "active")
+          ),
+        });
+        
+        if (clientSubscription) {
+          clientIsGold = true;
+          canAccessConsultantStore = true;
+          fileSearchSource = "client_gold";
+          console.log(`👑 [FILE SEARCH] Client is GOLD (subscription: ${clientSubscription.id}) - enabling consultant store access`);
+        }
+        
+        // Also check user's fileSearchEnabled flag
+        const clientUser = await db.query.users.findFirst({
+          where: eq(users.id, effectiveUserId),
+          columns: { fileSearchEnabled: true, firstName: true, lastName: true },
+        });
+        
+        if (clientUser) {
+          clientFileSearchEnabled = clientUser.fileSearchEnabled !== false;
+          if (!clientFileSearchEnabled) {
+            console.log(`🚫 [FILE SEARCH] File Search DISABLED for client ${clientUser.firstName} ${clientUser.lastName} by consultant`);
+          }
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [FILE SEARCH] Error checking client subscription: ${err.message}`);
+      }
+    }
+    
+    console.log(`🔐 [FILE SEARCH] Access check - Agent level: ${agentLevel}, Client Gold: ${clientIsGold}, Source: ${fileSearchSource}`);
     
     let fileSearchTool: any = null;
+    let fileSearchStoreNames: string[] = [];
+    
     try {
-      // First try agent-specific store (safe for all users)
-      const agentStore = await fileSearchSyncService.getWhatsappAgentStore(consultantConfig.id);
-      if (agentStore && agentStore.documentCount > 0) {
-        fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
-        console.log(`🔍 [FILE SEARCH] WhatsApp agent has FileSearchStore: ${agentStore.displayName}`);
-        console.log(`   📦 Store: ${agentStore.googleStoreName}`);
-        console.log(`   📄 Documents: ${agentStore.documentCount}`);
-      } else if (canAccessConsultantStore) {
-        // ONLY Level 3 (Deluxe) can fallback to consultant's store
-        // All other levels (null, "1", "2") are blocked from CRM data
-        const consultantStore = await fileSearchSyncService.getConsultantStore(consultantConfig.consultantId);
-        if (consultantStore && consultantStore.documentCount > 0) {
-          fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
-          console.log(`🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: ${consultantStore.displayName}`);
-          console.log(`   📦 Store: ${consultantStore.googleStoreName}`);
-          console.log(`   📄 Documents: ${consultantStore.documentCount}`);
-        } else if (consultantStore) {
-          console.log(`ℹ️ [FILE SEARCH] Consultant store exists but has no documents`);
+      // NEW: For Gold clients, use the same logic as AI Assistant
+      if (effectiveUserId && clientIsGold && clientFileSearchEnabled) {
+        // Use fileSearchService.getStoreBreakdownForGeneration like AI Service does
+        const { storeNames, breakdown } = await fileSearchService.getStoreBreakdownForGeneration(
+          effectiveUserId,
+          'client',
+          consultantConfig.consultantId
+        );
+        
+        const totalDocsInStores = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+        
+        if (storeNames.length > 0 && totalDocsInStores > 0) {
+          fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
+          fileSearchStoreNames = storeNames;
+          console.log(`👑 [FILE SEARCH] Gold client using semantic search (like AI Assistant)`);
+          console.log(`   📦 Stores: ${storeNames.length}`);
+          storeNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
+          console.log(`   📄 Total documents: ${totalDocsInStores}`);
+          breakdown.forEach(store => {
+            console.log(`   📊 ${store.storeDisplayName}: ${store.totalDocs} docs`);
+          });
         } else {
-          console.log(`ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)`);
+          console.log(`ℹ️ [FILE SEARCH] Gold client has no indexed documents - falling back to context injection`);
         }
       } else {
-        console.log(`🔐 [FILE SEARCH] Non-Deluxe agent (Level ${agentLevel ?? 'null'}) - consultant store BLOCKED for security`);
+        // Original logic for leads/non-Gold clients: agent-specific store or Deluxe agent fallback
+        const agentStore = await fileSearchSyncService.getWhatsappAgentStore(consultantConfig.id);
+        if (agentStore && agentStore.documentCount > 0) {
+          fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
+          fileSearchStoreNames = [agentStore.googleStoreName];
+          console.log(`🔍 [FILE SEARCH] WhatsApp agent has FileSearchStore: ${agentStore.displayName}`);
+          console.log(`   📦 Store: ${agentStore.googleStoreName}`);
+          console.log(`   📄 Documents: ${agentStore.documentCount}`);
+        } else if (canAccessConsultantStore) {
+          // ONLY Level 3 (Deluxe) agents can fallback to consultant's store
+          const consultantStore = await fileSearchSyncService.getConsultantStore(consultantConfig.consultantId);
+          if (consultantStore && consultantStore.documentCount > 0) {
+            fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
+            fileSearchStoreNames = [consultantStore.googleStoreName];
+            console.log(`🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: ${consultantStore.displayName}`);
+            console.log(`   📦 Store: ${consultantStore.googleStoreName}`);
+            console.log(`   📄 Documents: ${consultantStore.documentCount}`);
+          } else if (consultantStore) {
+            console.log(`ℹ️ [FILE SEARCH] Consultant store exists but has no documents`);
+          } else {
+            console.log(`ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)`);
+          }
+        } else if (!effectiveUserId) {
+          console.log(`🔐 [FILE SEARCH] Lead/unknown user - using agent store only (no consultant access)`);
+        } else {
+          console.log(`🔐 [FILE SEARCH] Non-Gold client (Level ${agentLevel ?? 'null'}) - consultant store requires Gold subscription`);
+        }
       }
     } catch (fsError: any) {
       console.warn(`⚠️ [FILE SEARCH] Error checking stores: ${fsError.message}`);
