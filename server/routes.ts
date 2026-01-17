@@ -13806,6 +13806,81 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // ============================================================
+  // Stripe API Keys Settings (for Payment Automations)
+  // ============================================================
+  app.get("/api/consultant/stripe-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const [apiKeys] = await db
+        .select({
+          stripeSecretKey: schema.externalApiKeys.stripeSecretKey,
+          stripeWebhookSecret: schema.externalApiKeys.stripeWebhookSecret,
+        })
+        .from(schema.externalApiKeys)
+        .where(eq(schema.externalApiKeys.consultantId, consultantId))
+        .limit(1);
+
+      res.json({
+        success: true,
+        settings: {
+          hasSecretKey: !!apiKeys?.stripeSecretKey,
+          hasWebhookSecret: !!apiKeys?.stripeWebhookSecret,
+          secretKeyPreview: apiKeys?.stripeSecretKey 
+            ? `${apiKeys.stripeSecretKey.slice(0, 8)}...${apiKeys.stripeSecretKey.slice(-4)}` 
+            : null,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching Stripe settings:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.post("/api/consultant/stripe-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { stripeSecretKey, stripeWebhookSecret } = req.body;
+
+      console.log("[Stripe Settings] Saving for consultant:", consultantId);
+
+      // Check if record exists
+      const [existing] = await db
+        .select({ id: schema.externalApiKeys.id })
+        .from(schema.externalApiKeys)
+        .where(eq(schema.externalApiKeys.consultantId, consultantId))
+        .limit(1);
+
+      const updateData: any = {};
+      if (stripeSecretKey) updateData.stripeSecretKey = stripeSecretKey;
+      if (stripeWebhookSecret) updateData.stripeWebhookSecret = stripeWebhookSecret;
+
+      if (existing) {
+        await db
+          .update(schema.externalApiKeys)
+          .set(updateData)
+          .where(eq(schema.externalApiKeys.consultantId, consultantId));
+      } else {
+        await db
+          .insert(schema.externalApiKeys)
+          .values({
+            consultantId,
+            ...updateData,
+          });
+      }
+
+      console.log("[Stripe Settings] Saved successfully");
+      res.json({
+        success: true,
+        message: "Chiavi Stripe salvate con successo",
+      });
+    } catch (error: any) {
+      console.error("Error saving Stripe settings:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // WhatsApp configuration endpoints for consultants
   app.get("/api/whatsapp/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {

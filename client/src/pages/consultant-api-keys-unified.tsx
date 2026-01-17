@@ -690,6 +690,19 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
+  // Stripe API Keys Settings query (for Payment Automations)
+  const { data: stripeApiSettings, isLoading: stripeApiLoading } = useQuery({
+    queryKey: ["/api/consultant/stripe-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/stripe-settings", { 
+        headers: getAuthHeaders() 
+      });
+      if (!response.ok) throw new Error("Failed to fetch Stripe API settings");
+      return response.json();
+    },
+    enabled: activeTab === "stripe",
+  });
+
   // Consultant Subscriptions query
   const { data: mySubscriptions, isLoading: subscriptionsLoading } = useQuery({
     queryKey: ["/api/consultant/subscriptions"],
@@ -759,6 +772,13 @@ export default function ConsultantApiKeysUnified() {
 
   // Stripe disconnect confirmation state
   const [showStripeDisconnectConfirm, setShowStripeDisconnectConfirm] = useState(false);
+
+  // Stripe API Keys state (for Payment Automations)
+  const [stripeSecretKey, setStripeSecretKey] = useState("");
+  const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
+  const [showStripeSecretKey, setShowStripeSecretKey] = useState(false);
+  const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
+  const [isSavingStripeKeys, setIsSavingStripeKeys] = useState(false);
 
   // Lead Import queries and mutations
   const { data: leadImportConfigs } = useExternalApiConfigs();
@@ -8072,6 +8092,148 @@ export default function ConsultantApiKeysUnified() {
                         </Alert>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Chiavi API Stripe (per Automazioni Pagamento) */}
+                <Card className="mt-6 border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl">
+                        <Key className="h-6 w-6 text-emerald-600" />
+                      </div>
+                      <div>
+                        <CardTitle>Chiavi API Stripe</CardTitle>
+                        <CardDescription>
+                          Configura le chiavi API per le Automazioni Pagamento
+                        </CardDescription>
+                      </div>
+                    </div>
+                    {stripeApiLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                    ) : stripeApiSettings?.settings?.hasSecretKey ? (
+                      <Badge className="bg-green-100 text-green-700 border-green-300">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Configurato
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-gray-100 text-gray-600 border-gray-300">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Non configurato
+                      </Badge>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Alert className="bg-emerald-50 border-emerald-200">
+                      <AlertCircle className="h-4 w-4 text-emerald-600" />
+                      <AlertDescription className="text-emerald-800">
+                        <strong>Per le Automazioni Pagamento</strong> hai bisogno delle chiavi API dirette di Stripe, diverse da Stripe Connect.
+                        <br />Le trovi nella dashboard Stripe: <strong>Sviluppatori → Chiavi API</strong>
+                      </AlertDescription>
+                    </Alert>
+
+                    {stripeApiSettings?.settings?.hasSecretKey && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+                        <span className="text-green-700">
+                          Secret Key salvata: <code className="bg-green-100 px-1 rounded">{stripeApiSettings.settings.secretKeyPreview}</code>
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="stripe-secret-key">Stripe Secret Key</Label>
+                      <div className="relative">
+                        <Input
+                          id="stripe-secret-key"
+                          type={showStripeSecretKey ? "text" : "password"}
+                          placeholder="sk_test_... o sk_live_..."
+                          value={stripeSecretKey}
+                          onChange={(e) => setStripeSecretKey(e.target.value)}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowStripeSecretKey(!showStripeSecretKey)}
+                        >
+                          {showStripeSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Inizia con sk_test_ (test) o sk_live_ (produzione)
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="stripe-webhook-secret">Stripe Webhook Secret</Label>
+                      <div className="relative">
+                        <Input
+                          id="stripe-webhook-secret"
+                          type={showStripeWebhookSecret ? "text" : "password"}
+                          placeholder="whsec_..."
+                          value={stripeWebhookSecret}
+                          onChange={(e) => setStripeWebhookSecret(e.target.value)}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)}
+                        >
+                          {showStripeWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Lo ottieni quando crei un webhook nella dashboard Stripe
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={async () => {
+                        if (!stripeSecretKey && !stripeWebhookSecret) {
+                          toast({ title: "Errore", description: "Inserisci almeno una chiave", variant: "destructive" });
+                          return;
+                        }
+                        setIsSavingStripeKeys(true);
+                        try {
+                          const response = await fetch("/api/consultant/stripe-settings", {
+                            method: "POST",
+                            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                            body: JSON.stringify({ 
+                              stripeSecretKey: stripeSecretKey || undefined, 
+                              stripeWebhookSecret: stripeWebhookSecret || undefined 
+                            }),
+                          });
+                          if (!response.ok) throw new Error("Failed to save");
+                          toast({ title: "Salvato!", description: "Chiavi Stripe salvate con successo" });
+                          setStripeSecretKey("");
+                          setStripeWebhookSecret("");
+                          queryClient.invalidateQueries({ queryKey: ["/api/consultant/stripe-settings"] });
+                        } catch (error) {
+                          toast({ title: "Errore", description: "Impossibile salvare le chiavi", variant: "destructive" });
+                        } finally {
+                          setIsSavingStripeKeys(false);
+                        }
+                      }}
+                      disabled={isSavingStripeKeys || (!stripeSecretKey && !stripeWebhookSecret)}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {isSavingStripeKeys ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Salvataggio...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Salva Chiavi Stripe
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
 
