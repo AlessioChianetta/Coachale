@@ -50,11 +50,24 @@ When a user purchases via Direct Link (paymentSource=direct_link), all future up
 
 ### Direct Links Feature
 Consultants can configure auto-generated upgrade payment links in `/consultant/payment-automations`:
-- Set prices (monthly/yearly) for Bronze, Silver, Gold tiers
+- Set prices (monthly/yearly) for Silver, Gold tiers (Bronze is free registration)
 - Configure temporary discounts with expiration dates
 - System auto-creates Stripe Product/Price/PaymentLink using consultant's keys
 - Links stored in `consultant_direct_links` table
 - Public endpoint for fetching upgrade links: `/api/stripe-automations/direct-links/public/:consultantId`
+
+**Auto-Automation Creation (January 2026):**
+When creating a direct link, the system automatically creates an associated payment automation:
+- **Silver**: `createAsClient=false`, `clientLevel="silver"`, `sendWelcomeEmail=true` (tier only, no client role)
+- **Gold**: `createAsClient=true`, `clientLevel="gold"`, `sendWelcomeEmail=true` (tier + client role)
+- Automations are linked via `directLinkId` field and marked `showOnPricingPage=true`
+
+**Public Pricing Page Integration:**
+The public pricing page (`/c/:slug/pricing`) now integrates with direct links:
+- Endpoint `/api/public/consultant/:slug/pricing` returns `paymentLinks` object
+- Frontend (`public-pricing.tsx`) checks for direct Stripe links before showing registration form
+- If direct link exists: redirects directly to Stripe payment (100% commission)
+- If no direct link: fallback to registration form + Stripe Connect checkout (revenue sharing)
 
 ### Key Features
 - **Webhook Integration**: Per-consultant webhook endpoints (`/api/webhooks/stripe/:consultantId`) with signature verification
