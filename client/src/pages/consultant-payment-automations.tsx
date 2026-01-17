@@ -14,8 +14,11 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   CreditCard, Plus, Trash2, Copy, Check, ExternalLink, Loader2, 
   AlertCircle, Users, RefreshCw, History, Zap, Mail, CheckCircle, XCircle, Settings,
-  Key, Link as LinkIcon, Pencil
+  Key, Link as LinkIcon, Pencil, TrendingUp, Euro, Percent, Calendar, Info
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -51,6 +54,26 @@ interface AutomationLog {
   createdAt: string;
 }
 
+interface DirectLink {
+  id: string;
+  tier: "bronze" | "silver" | "gold";
+  billingInterval: "monthly" | "yearly";
+  priceCents: number;
+  originalPriceCents: number | null;
+  discountPercent: number;
+  discountExpiresAt: string | null;
+  paymentLinkUrl: string | null;
+  isActive: boolean;
+}
+
+interface DirectLinkFormState {
+  [key: string]: {
+    priceEuros: string;
+    discountPercent: string;
+    discountExpiresAt: Date | null;
+  };
+}
+
 export default function ConsultantPaymentAutomations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -62,6 +85,9 @@ export default function ConsultantPaymentAutomations() {
   const [selectedAutomation, setSelectedAutomation] = useState<StripePaymentAutomation | null>(null);
   const [editingAutomation, setEditingAutomation] = useState<StripePaymentAutomation | null>(null);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [copiedDirectLink, setCopiedDirectLink] = useState<string | null>(null);
+
+  const [directLinkForm, setDirectLinkForm] = useState<DirectLinkFormState>({});
 
   const [formData, setFormData] = useState({
     stripePaymentLinkId: "",
@@ -111,10 +137,40 @@ export default function ConsultantPaymentAutomations() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        // Return error data instead of throwing so we can show specific messages
         return { error: true, ...errorData };
       }
       return res.json();
+    },
+  });
+
+  const { data: directLinks = [], isLoading: loadingDirectLinks } = useQuery<DirectLink[]>({
+    queryKey: ["/api/stripe-automations/direct-links"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe-automations/direct-links", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch direct links");
+      return res.json();
+    },
+  });
+
+  const directLinkMutation = useMutation({
+    mutationFn: async (data: { tier: string; billingInterval: string; priceEuros: number; discountPercent?: number; discountExpiresAt?: string | null }) => {
+      const res = await fetch("/api/stripe-automations/direct-links", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create/update direct link");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stripe-automations/direct-links"] });
+      toast({ title: "Link creato/aggiornato!", description: "Il payment link e' stato generato con successo." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
 
@@ -257,6 +313,76 @@ export default function ConsultantPaymentAutomations() {
     }
   };
 
+  const getTierBadge = (tier: "bronze" | "silver" | "gold") => {
+    switch (tier) {
+      case "bronze":
+        return <Badge className="bg-amber-700 text-white text-sm px-3 py-1">Bronze</Badge>;
+      case "silver":
+        return <Badge className="bg-slate-400 text-white text-sm px-3 py-1">Silver</Badge>;
+      case "gold":
+        return <Badge className="bg-yellow-500 text-black text-sm px-3 py-1">Gold</Badge>;
+    }
+  };
+
+  const getDirectLinkFormKey = (tier: string, interval: string) => `${tier}-${interval}`;
+
+  const getDirectLink = (tier: "bronze" | "silver" | "gold", interval: "monthly" | "yearly") => {
+    return directLinks.find(link => link.tier === tier && link.billingInterval === interval);
+  };
+
+  const getFormValue = (tier: string, interval: string) => {
+    const key = getDirectLinkFormKey(tier, interval);
+    return directLinkForm[key] || { priceEuros: "", discountPercent: "", discountExpiresAt: null };
+  };
+
+  const setFormValue = (tier: string, interval: string, field: "priceEuros" | "discountPercent" | "discountExpiresAt", value: string | Date | null) => {
+    const key = getDirectLinkFormKey(tier, interval);
+    setDirectLinkForm(prev => ({
+      ...prev,
+      [key]: {
+        ...getFormValue(tier, interval),
+        [field]: value,
+      }
+    }));
+  };
+
+  const handleGenerateDirectLink = (tier: "bronze" | "silver" | "gold", interval: "monthly" | "yearly") => {
+    const form = getFormValue(tier, interval);
+    const priceEuros = parseFloat(form.priceEuros);
+    if (isNaN(priceEuros) || priceEuros <= 0) {
+      toast({ title: "Errore", description: "Inserisci un prezzo valido", variant: "destructive" });
+      return;
+    }
+
+    const discountPercent = form.discountPercent ? parseFloat(form.discountPercent) : undefined;
+    const discountExpiresAt = form.discountExpiresAt ? form.discountExpiresAt.toISOString() : null;
+
+    directLinkMutation.mutate({
+      tier,
+      billingInterval: interval,
+      priceEuros,
+      discountPercent: discountPercent && !isNaN(discountPercent) ? discountPercent : undefined,
+      discountExpiresAt,
+    });
+  };
+
+  const copyDirectLinkUrl = (url: string, key: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedDirectLink(key);
+    setTimeout(() => setCopiedDirectLink(null), 2000);
+    toast({ title: "Link copiato!" });
+  };
+
+  const needsUpdate = (tier: "bronze" | "silver" | "gold", interval: "monthly" | "yearly") => {
+    const existingLink = getDirectLink(tier, interval);
+    const form = getFormValue(tier, interval);
+    if (!existingLink || !existingLink.paymentLinkUrl) return false;
+    const formPrice = parseFloat(form.priceEuros);
+    if (isNaN(formPrice)) return false;
+    const existingPriceEuros = existingLink.priceCents / 100;
+    return formPrice !== existingPriceEuros;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
@@ -391,6 +517,161 @@ export default function ConsultantPaymentAutomations() {
                       ))}
                     </div>
                   </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Link Upgrade Diretti */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  Link Upgrade Diretti
+                </CardTitle>
+                <CardDescription>
+                  Crea link di pagamento per gli upgrade (100% commissione)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {loadingDirectLinks ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    {(["bronze", "silver", "gold"] as const).map((tier) => (
+                      <div key={tier} className="border rounded-lg p-4 space-y-4">
+                        <div className="flex items-center gap-3">
+                          {getTierBadge(tier)}
+                        </div>
+                        
+                        {(["monthly", "yearly"] as const).map((interval) => {
+                          const existingLink = getDirectLink(tier, interval);
+                          const form = getFormValue(tier, interval);
+                          const linkKey = getDirectLinkFormKey(tier, interval);
+                          const hasExistingLink = existingLink && existingLink.paymentLinkUrl;
+                          const showUpdateButton = needsUpdate(tier, interval);
+
+                          return (
+                            <div key={interval} className="flex flex-col md:flex-row md:items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                              <div className="flex items-center gap-2 min-w-[100px]">
+                                <Badge variant="outline" className="text-xs">
+                                  {interval === "monthly" ? "Mensile" : "Annuale"}
+                                </Badge>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 flex-1">
+                                <div className="flex items-center gap-1">
+                                  <Euro className="h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    type="number"
+                                    placeholder="Prezzo"
+                                    className="w-24"
+                                    value={form.priceEuros || (existingLink ? String(existingLink.priceCents / 100) : "")}
+                                    onChange={(e) => setFormValue(tier, interval, "priceEuros", e.target.value)}
+                                  />
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <Percent className="h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    type="number"
+                                    placeholder="Sconto %"
+                                    className="w-20"
+                                    value={form.discountPercent}
+                                    onChange={(e) => setFormValue(tier, interval, "discountPercent", e.target.value)}
+                                  />
+                                </div>
+
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="w-auto gap-1">
+                                      <Calendar className="h-4 w-4" />
+                                      {form.discountExpiresAt 
+                                        ? format(form.discountExpiresAt, "dd/MM/yyyy")
+                                        : "Scadenza"
+                                      }
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <CalendarComponent
+                                      mode="single"
+                                      selected={form.discountExpiresAt || undefined}
+                                      onSelect={(date) => setFormValue(tier, interval, "discountExpiresAt", date || null)}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+
+                                {hasExistingLink && (
+                                  <>
+                                    <Badge className="bg-green-100 text-green-700">Attivo</Badge>
+                                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                                      <Input
+                                        value={existingLink.paymentLinkUrl || ""}
+                                        readOnly
+                                        className="text-xs font-mono flex-1"
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => copyDirectLinkUrl(existingLink.paymentLinkUrl!, linkKey)}
+                                      >
+                                        {copiedDirectLink === linkKey ? (
+                                          <Check className="h-4 w-4 text-green-500" />
+                                        ) : (
+                                          <Copy className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </>
+                                )}
+
+                                {!hasExistingLink ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleGenerateDirectLink(tier, interval)}
+                                    disabled={directLinkMutation.isPending}
+                                    className="gap-1"
+                                  >
+                                    {directLinkMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Plus className="h-4 w-4" />
+                                    )}
+                                    Genera Link
+                                  </Button>
+                                ) : showUpdateButton ? (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => handleGenerateDirectLink(tier, interval)}
+                                    disabled={directLinkMutation.isPending}
+                                    className="gap-1"
+                                  >
+                                    {directLinkMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="h-4 w-4" />
+                                    )}
+                                    Aggiorna Link
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        Questi link vengono usati per gli upgrade in-app quando un utente ha acquistato da Direct Link. 
+                        Ricevi il 100% della commissione su questi pagamenti.
+                      </AlertDescription>
+                    </Alert>
+                  </>
                 )}
               </CardContent>
             </Card>

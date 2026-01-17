@@ -121,7 +121,7 @@ export default function BronzeAuth() {
     }
   }, [pendingNavigation, data, isLoading, slug, navigate, toast]);
 
-  const handleAuthSuccess = async (token: string, userName?: string) => {
+  const handleAuthSuccess = async (token: string, userName?: string, paymentSource?: string, consultantId?: string) => {
     // Save token in multiple locations for compatibility with different auth systems
     localStorage.setItem(BRONZE_TOKEN_KEY, token);
     localStorage.setItem("bronzeAuthToken", token); // For select-agent compatibility
@@ -131,6 +131,14 @@ export default function BronzeAuth() {
     if (userName) {
       localStorage.setItem("bronzeUserName", userName);
       pendingUserNameRef.current = userName;
+    }
+    
+    // Save payment source and consultant info for upgrade flow
+    if (paymentSource) {
+      localStorage.setItem("paymentSource", paymentSource);
+    }
+    if (consultantId) {
+      localStorage.setItem("consultantId", consultantId);
     }
     
     // Small delay to ensure localStorage is synced before navigation
@@ -164,8 +172,8 @@ export default function BronzeAuth() {
         title: "Registrazione completata!",
         description: "Benvenuto nel piano Bronze.",
       });
-      // Pass firstName for the select-agent page greeting
-      handleAuthSuccess(result.token, registerForm.firstName || result.firstName);
+      // Pass firstName, paymentSource, and consultantId for the select-agent page and upgrade flow
+      handleAuthSuccess(result.token, registerForm.firstName || result.firstName, result.paymentSource, result.consultantId);
     },
     onError: (error: Error) => {
       toast({
@@ -194,8 +202,8 @@ export default function BronzeAuth() {
         title: "Accesso effettuato!",
         description: "Bentornato.",
       });
-      // Pass firstName from API response if available
-      handleAuthSuccess(result.token, result.user?.firstName);
+      // Pass firstName, paymentSource, and consultantId from API response
+      handleAuthSuccess(result.token, result.user?.firstName, result.paymentSource, result.consultantId);
     },
     onError: (error: Error) => {
       toast({

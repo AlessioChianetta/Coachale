@@ -185,6 +185,351 @@ router.get("/payment-links", authenticateToken, requireRole("consultant"), async
 });
 
 // ============================================================
+// GET /api/stripe-automations/direct-links - Get consultant's auto-generated upgrade links
+// ============================================================
+router.get("/direct-links", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const links = await db
+      .select()
+      .from(schema.consultantDirectLinks)
+      .where(eq(schema.consultantDirectLinks.consultantId, consultantId))
+      .orderBy(schema.consultantDirectLinks.tier, schema.consultantDirectLinks.billingInterval);
+
+    res.json(links);
+  } catch (error) {
+    console.error("[DIRECT LINKS] Error fetching links:", error);
+    res.status(500).json({ error: "Errore nel recupero dei link" });
+  }
+});
+
+// ============================================================
+// POST /api/stripe-automations/direct-links - Create/Update direct payment link
+// ============================================================
+router.post("/direct-links", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { 
+      tier, 
+      billingInterval, 
+      priceEuros,
+      discountPercent = 0,
+      discountExpiresAt 
+    } = req.body;
+
+    if (!tier || !billingInterval || !priceEuros) {
+      return res.status(400).json({ error: "Tier, intervallo e prezzo sono obbligatori" });
+    }
+
+    if (!["bronze", "silver", "gold"].includes(tier)) {
+      return res.status(400).json({ error: "Tier non valido" });
+    }
+
+    if (!["monthly", "yearly"].includes(billingInterval)) {
+      return res.status(400).json({ error: "Intervallo non valido" });
+    }
+
+    const stripe = await getStripeForConsultant(consultantId);
+    if (!stripe) {
+      return res.status(400).json({ 
+        error: "Chiavi Stripe non configurate",
+        message: "Configura le tue chiavi API Stripe in Impostazioni → Chiavi API"
+      });
+    }
+
+    // Get consultant info for product name
+    const [consultant] = await db
+      .select({ firstName: schema.users.firstName, lastName: schema.users.lastName })
+      .from(schema.users)
+      .where(eq(schema.users.id, consultantId))
+      .limit(1);
+
+    const consultantName = consultant ? `${consultant.firstName || ""} ${consultant.lastName || ""}`.trim() || "Consulente" : "Consulente";
+    const tierNames: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold" };
+    const intervalNames: Record<string, string> = { monthly: "Mensile", yearly: "Annuale" };
+
+    const priceCents = Math.round(parseFloat(priceEuros) * 100);
+    const originalPriceCents = discountPercent > 0 ? priceCents : null;
+    const finalPriceCents = discountPercent > 0 ? Math.round(priceCents * (1 - discountPercent / 100)) : priceCents;
+
+    // Check if link already exists
+    const [existingLink] = await db
+      .select()
+      .from(schema.consultantDirectLinks)
+      .where(and(
+        eq(schema.consultantDirectLinks.consultantId, consultantId),
+        eq(schema.consultantDirectLinks.tier, tier),
+        eq(schema.consultantDirectLinks.billingInterval, billingInterval)
+      ))
+      .limit(1);
+
+    let stripeProductId = existingLink?.stripeProductId;
+    let stripePriceId: string;
+    let stripePaymentLinkId: string;
+    let paymentLinkUrl: string;
+
+    // Create or reuse product
+    if (!stripeProductId) {
+      const product = await stripe.products.create({
+        name: `Abbonamento ${tierNames[tier]} - ${consultantName}`,
+        description: `Piano ${tierNames[tier]} ${intervalNames[billingInterval]}`,
+        metadata: {
+          tier,
+          billingInterval,
+          consultantId,
+          source: "direct_link"
+        }
+      });
+      stripeProductId = product.id;
+      console.log(`[DIRECT LINKS] Created Stripe product: ${stripeProductId}`);
+    }
+
+    // Always create new price (Stripe prices are immutable)
+    const price = await stripe.prices.create({
+      product: stripeProductId,
+      unit_amount: finalPriceCents,
+      currency: "eur",
+      recurring: {
+        interval: billingInterval === "monthly" ? "month" : "year"
+      },
+      metadata: {
+        tier,
+        billingInterval,
+        consultantId,
+        originalPriceCents: originalPriceCents?.toString() || "",
+        discountPercent: discountPercent.toString()
+      }
+    });
+    stripePriceId = price.id;
+    console.log(`[DIRECT LINKS] Created Stripe price: ${stripePriceId}`);
+
+    // Deactivate old payment link if exists
+    if (existingLink?.stripePaymentLinkId) {
+      try {
+        await stripe.paymentLinks.update(existingLink.stripePaymentLinkId, { active: false });
+        console.log(`[DIRECT LINKS] Deactivated old payment link: ${existingLink.stripePaymentLinkId}`);
+      } catch (e) {
+        console.log(`[DIRECT LINKS] Could not deactivate old link (may not exist)`);
+      }
+    }
+
+    // Create new payment link
+    const paymentLink = await stripe.paymentLinks.create({
+      line_items: [{ price: stripePriceId, quantity: 1 }],
+      metadata: {
+        tier,
+        billingInterval,
+        consultantId,
+        source: "direct_link",
+        isUpgrade: "true"
+      },
+      after_completion: {
+        type: "redirect",
+        redirect: {
+          url: `${process.env.REPLIT_DOMAINS?.split(",")[0] ? `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}` : ""}/upgrade-success?tier=${tier}`
+        }
+      }
+    });
+    stripePaymentLinkId = paymentLink.id;
+    paymentLinkUrl = paymentLink.url;
+    console.log(`[DIRECT LINKS] Created payment link: ${stripePaymentLinkId}`);
+
+    // Upsert in database
+    if (existingLink) {
+      await db
+        .update(schema.consultantDirectLinks)
+        .set({
+          priceCents: finalPriceCents,
+          originalPriceCents,
+          discountPercent,
+          discountExpiresAt: discountExpiresAt ? new Date(discountExpiresAt) : null,
+          stripeProductId,
+          stripePriceId,
+          stripePaymentLinkId,
+          paymentLinkUrl,
+          isActive: true,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.consultantDirectLinks.id, existingLink.id));
+      
+      res.json({ 
+        success: true, 
+        message: "Link aggiornato",
+        link: { ...existingLink, priceCents: finalPriceCents, paymentLinkUrl, stripePaymentLinkId }
+      });
+    } else {
+      const [newLink] = await db
+        .insert(schema.consultantDirectLinks)
+        .values({
+          consultantId,
+          tier,
+          billingInterval,
+          priceCents: finalPriceCents,
+          originalPriceCents,
+          discountPercent,
+          discountExpiresAt: discountExpiresAt ? new Date(discountExpiresAt) : null,
+          stripeProductId,
+          stripePriceId,
+          stripePaymentLinkId,
+          paymentLinkUrl,
+          isActive: true
+        })
+        .returning();
+      
+      res.json({ success: true, message: "Link creato", link: newLink });
+    }
+  } catch (error: any) {
+    console.error("[DIRECT LINKS] Error creating link:", error);
+    
+    if (error.type === "StripeAuthenticationError") {
+      return res.status(401).json({ error: "Chiave Stripe non valida" });
+    }
+    
+    res.status(500).json({ error: error.message || "Errore nella creazione del link" });
+  }
+});
+
+// ============================================================
+// PUT /api/stripe-automations/direct-links/:id - Update discount on existing link
+// ============================================================
+router.put("/direct-links/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { id } = req.params;
+    const { discountPercent, discountExpiresAt, priceEuros } = req.body;
+
+    const [existingLink] = await db
+      .select()
+      .from(schema.consultantDirectLinks)
+      .where(and(
+        eq(schema.consultantDirectLinks.id, id),
+        eq(schema.consultantDirectLinks.consultantId, consultantId)
+      ))
+      .limit(1);
+
+    if (!existingLink) {
+      return res.status(404).json({ error: "Link non trovato" });
+    }
+
+    // If price changed, need to recreate everything
+    if (priceEuros) {
+      const priceCents = Math.round(parseFloat(priceEuros) * 100);
+      if (priceCents !== existingLink.priceCents) {
+        // Redirect to POST endpoint for full recreation
+        req.body.tier = existingLink.tier;
+        req.body.billingInterval = existingLink.billingInterval;
+        return router.handle(req, res, () => {});
+      }
+    }
+
+    // Just update discount info in DB (no Stripe changes needed for discount tracking)
+    await db
+      .update(schema.consultantDirectLinks)
+      .set({
+        discountPercent: discountPercent ?? existingLink.discountPercent,
+        discountExpiresAt: discountExpiresAt ? new Date(discountExpiresAt) : existingLink.discountExpiresAt,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.consultantDirectLinks.id, id));
+
+    res.json({ success: true, message: "Sconto aggiornato" });
+  } catch (error) {
+    console.error("[DIRECT LINKS] Error updating link:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento" });
+  }
+});
+
+// ============================================================
+// DELETE /api/stripe-automations/direct-links/:id - Deactivate link
+// ============================================================
+router.delete("/direct-links/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { id } = req.params;
+
+    const [existingLink] = await db
+      .select()
+      .from(schema.consultantDirectLinks)
+      .where(and(
+        eq(schema.consultantDirectLinks.id, id),
+        eq(schema.consultantDirectLinks.consultantId, consultantId)
+      ))
+      .limit(1);
+
+    if (!existingLink) {
+      return res.status(404).json({ error: "Link non trovato" });
+    }
+
+    // Deactivate in Stripe
+    if (existingLink.stripePaymentLinkId) {
+      const stripe = await getStripeForConsultant(consultantId);
+      if (stripe) {
+        try {
+          await stripe.paymentLinks.update(existingLink.stripePaymentLinkId, { active: false });
+        } catch (e) {
+          console.log(`[DIRECT LINKS] Could not deactivate Stripe link`);
+        }
+      }
+    }
+
+    // Mark as inactive in DB
+    await db
+      .update(schema.consultantDirectLinks)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(schema.consultantDirectLinks.id, id));
+
+    res.json({ success: true, message: "Link disattivato" });
+  } catch (error) {
+    console.error("[DIRECT LINKS] Error deleting link:", error);
+    res.status(500).json({ error: "Errore nella disattivazione" });
+  }
+});
+
+// ============================================================
+// GET /api/stripe-automations/direct-links/public/:consultantId - Public endpoint for upgrade links
+// ============================================================
+router.get("/direct-links/public/:consultantId", async (req: Request, res: Response) => {
+  try {
+    const { consultantId } = req.params;
+    const { tier, interval } = req.query;
+
+    let query = db
+      .select({
+        tier: schema.consultantDirectLinks.tier,
+        billingInterval: schema.consultantDirectLinks.billingInterval,
+        priceCents: schema.consultantDirectLinks.priceCents,
+        originalPriceCents: schema.consultantDirectLinks.originalPriceCents,
+        discountPercent: schema.consultantDirectLinks.discountPercent,
+        discountExpiresAt: schema.consultantDirectLinks.discountExpiresAt,
+        paymentLinkUrl: schema.consultantDirectLinks.paymentLinkUrl,
+        isActive: schema.consultantDirectLinks.isActive
+      })
+      .from(schema.consultantDirectLinks)
+      .where(and(
+        eq(schema.consultantDirectLinks.consultantId, consultantId),
+        eq(schema.consultantDirectLinks.isActive, true)
+      ));
+
+    const links = await query;
+
+    // Filter by tier/interval if provided
+    let filteredLinks = links;
+    if (tier) {
+      filteredLinks = filteredLinks.filter(l => l.tier === tier);
+    }
+    if (interval) {
+      filteredLinks = filteredLinks.filter(l => l.billingInterval === interval);
+    }
+
+    res.json(filteredLinks);
+  } catch (error) {
+    console.error("[DIRECT LINKS] Error fetching public links:", error);
+    res.status(500).json({ error: "Errore" });
+  }
+});
+
+// ============================================================
 // POST /api/stripe-automations - Create new automation
 // ============================================================
 router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {

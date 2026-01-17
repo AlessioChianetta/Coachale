@@ -8395,3 +8395,30 @@ export const stripeAutomationLogs = pgTable("stripe_automation_logs", {
 
 export type StripeAutomationLog = typeof stripeAutomationLogs.$inferSelect;
 export type InsertStripeAutomationLog = typeof stripeAutomationLogs.$inferInsert;
+
+// ============================================================
+// CONSULTANT DIRECT LINKS - Auto-generated payment links for upgrades (100% commission)
+// ============================================================
+
+export const consultantDirectLinks = pgTable("consultant_direct_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull(),
+  tier: varchar("tier", { length: 20 }).$type<"bronze" | "silver" | "gold">().notNull(),
+  billingInterval: varchar("billing_interval", { length: 20 }).$type<"monthly" | "yearly">().notNull(),
+  priceCents: integer("price_cents").notNull(),
+  originalPriceCents: integer("original_price_cents"),
+  discountPercent: integer("discount_percent").default(0),
+  discountExpiresAt: timestamp("discount_expires_at"),
+  stripeProductId: varchar("stripe_product_id"),
+  stripePriceId: varchar("stripe_price_id"),
+  stripePaymentLinkId: varchar("stripe_payment_link_id"),
+  paymentLinkUrl: text("payment_link_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantTierIdx: index("idx_direct_links_consultant_tier").on(table.consultantId, table.tier, table.billingInterval),
+}));
+
+export type ConsultantDirectLink = typeof consultantDirectLinks.$inferSelect;
+export type InsertConsultantDirectLink = typeof consultantDirectLinks.$inferInsert;

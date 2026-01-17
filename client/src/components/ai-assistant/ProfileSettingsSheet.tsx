@@ -107,7 +107,39 @@ export function ProfileSettingsSheet({
       if (!token) {
         throw new Error("Token di autenticazione non trovato");
       }
+
+      // First check if user came from direct link and if consultant has direct upgrade links
+      const paymentSource = localStorage.getItem("paymentSource");
       
+      if (paymentSource === "direct_link") {
+        // Try to get consultant's direct links for this tier
+        try {
+          const consultantId = localStorage.getItem("consultantId");
+          if (consultantId) {
+            const directLinksRes = await fetch(`/api/stripe-automations/direct-links/public/${consultantId}?tier=${targetLevel}&interval=monthly`);
+            if (directLinksRes.ok) {
+              const directLinks = await directLinksRes.json();
+              if (directLinks.length > 0 && directLinks[0].paymentLinkUrl) {
+                // Use direct link for 100% commission
+                console.log("[UPGRADE] Using direct link for upgrade:", directLinks[0].paymentLinkUrl);
+                window.open(directLinks[0].paymentLinkUrl, '_blank', 'noopener');
+                toast({
+                  title: "Checkout aperto",
+                  description: "Completa il pagamento nella nuova scheda. Questa pagina si aggiornerà automaticamente.",
+                });
+                
+                // Start polling for upgrade completion
+                startUpgradePolling(targetLevel);
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.log("[UPGRADE] Direct link not available, falling back to Stripe Connect");
+        }
+      }
+      
+      // Fallback to Stripe Connect
       const response = await fetch(`/api/stripe/upgrade-subscription`, {
         method: "POST",
         headers: {
@@ -124,38 +156,14 @@ export function ProfileSettingsSheet({
 
       if (data.checkoutUrl) {
         // Open Stripe checkout in new tab to preserve chat state
-        const checkoutWindow = window.open(data.checkoutUrl, '_blank', 'noopener');
+        window.open(data.checkoutUrl, '_blank', 'noopener');
         toast({
           title: "Checkout aperto",
           description: "Completa il pagamento nella nuova scheda. Questa pagina si aggiornerà automaticamente.",
         });
         
         // Start polling to detect when upgrade is completed
-        const pollInterval = setInterval(async () => {
-          try {
-            const checkResponse = await fetch(`/api/public/agent/${slug}/manager/me`, {
-              headers: { Authorization: `Bearer ${getToken()}` },
-            });
-            if (checkResponse.ok) {
-              const userData = await checkResponse.json();
-              // If user is no longer Bronze, upgrade succeeded
-              if (!userData.isBronze) {
-                clearInterval(pollInterval);
-                toast({
-                  title: "Upgrade completato!",
-                  description: `Benvenuto nel piano ${targetLevel === "silver" ? "Argento" : "Oro"}! Goditi i nuovi vantaggi.`,
-                });
-                // Reload to refresh UI with new subscription status
-                window.location.reload();
-              }
-            }
-          } catch {
-            // Ignore polling errors
-          }
-        }, 3000); // Poll every 3 seconds
-        
-        // Stop polling after 10 minutes (timeout)
-        setTimeout(() => clearInterval(pollInterval), 600000);
+        startUpgradePolling(targetLevel);
       } else if (data.success) {
         toast({
           title: "Upgrade completato!",
@@ -174,6 +182,34 @@ export function ProfileSettingsSheet({
     } finally {
       setIsUpgrading(false);
     }
+  };
+
+  const startUpgradePolling = (targetLevel: "silver" | "gold") => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const checkResponse = await fetch(`/api/public/agent/${slug}/manager/me`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        if (checkResponse.ok) {
+          const userData = await checkResponse.json();
+          // If user is no longer Bronze, upgrade succeeded
+          if (!userData.isBronze) {
+            clearInterval(pollInterval);
+            toast({
+              title: "Upgrade completato!",
+              description: `Benvenuto nel piano ${targetLevel === "silver" ? silverName : goldName}! Goditi i nuovi vantaggi.`,
+            });
+            // Reload to refresh UI with new subscription status
+            window.location.reload();
+          }
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    }, 3000); // Poll every 3 seconds
+    
+    // Stop polling after 10 minutes (timeout)
+    setTimeout(() => clearInterval(pollInterval), 600000);
   };
 
   const parseName = (fullName: string) => {

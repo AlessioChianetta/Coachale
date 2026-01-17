@@ -227,6 +227,8 @@ router.post("/:slug/register", async (req: Request, res: Response) => {
     res.status(201).json({
       success: true,
       token,
+      paymentSource: "organic",
+      consultantId: consultant.id,
       user: {
         id: newBronzeUser.id,
         email: newBronzeUser.email,
@@ -321,6 +323,8 @@ router.post("/:slug/login", async (req: Request, res: Response) => {
       success: true,
       token,
       mustChangePassword: bronzeUser.mustChangePassword,
+      paymentSource: bronzeUser.paymentSource || "organic",
+      consultantId: consultant.id,
       user: {
         id: bronzeUser.id,
         email: bronzeUser.email,

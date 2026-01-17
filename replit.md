@@ -37,12 +37,32 @@ The platform heavily leverages AI for diverse functionalities:
 A multi-tier subscription system ("Dipendenti AI Subscription System") offers AI agent subscriptions with consultant license tracking, revenue sharing, and AI credits. An employee licensing system tracks team member licenses. Public and consultant-specific pricing pages are configurable. A unified login with Stripe integration manages subscriptions, automatic provisioning, webhooks, and Stripe Connect for Italian consultants. A seamless upgrade flow (Bronze/Silver to Gold) is implemented.
 
 ## Stripe Payment Automations
-An automated user provisioning system that creates users when Stripe payments are received. Each consultant configures their own Stripe API keys and Payment Links. Key features:
+An automated user provisioning system that creates users when Stripe payments are received. The system supports dual payment channels with commission consistency.
+
+### Dual Payment Channels
+1. **Stripe Connect**: Revenue sharing with platform, uses superadmin Stripe keys
+2. **Direct Links**: 100% consultant commission, uses consultant's personal Stripe keys
+
+### Payment Channel Consistency
+When a user purchases via Direct Link (paymentSource=direct_link), all future upgrades use Direct Links to preserve the 100% commission. The system tracks:
+- `paymentSource` field on bronzeUsers (organic, stripe_connect, direct_link)
+- `consultantId` stored in localStorage during login for upgrade link resolution
+
+### Direct Links Feature
+Consultants can configure auto-generated upgrade payment links in `/consultant/payment-automations`:
+- Set prices (monthly/yearly) for Bronze, Silver, Gold tiers
+- Configure temporary discounts with expiration dates
+- System auto-creates Stripe Product/Price/PaymentLink using consultant's keys
+- Links stored in `consultant_direct_links` table
+- Public endpoint for fetching upgrade links: `/api/stripe-automations/direct-links/public/:consultantId`
+
+### Key Features
 - **Webhook Integration**: Per-consultant webhook endpoints (`/api/webhooks/stripe/:consultantId`) with signature verification
 - **Automatic User Creation**: Parses Stripe checkout session data to create users with cryptographically secure passwords
 - **Role Assignment**: Configurable creation as client or consultant with Bronze/Silver/Gold level assignment
-- **Password Management**: Temporary passwords are stored in `tempPassword` field until user changes them; retrieved for existing users who haven't changed password yet
-- **Welcome Emails**: Step-by-step email templates with clear instructions (Step 1: go to site, Step 2: login with temp password, Step 3: set new password); password shown if user hasn't changed it yet
+- **Gold = Client Rule**: Gold tier ALWAYS creates client role (enforced in both stripe-automations-router and stripe-connect-router webhooks)
+- **Password Management**: Temporary passwords stored until user changes them; change-password redirects Gold clients to /client, Bronze/Silver to /c/{slug}/select-agent
+- **Welcome Emails**: Step-by-step email templates with clear instructions
 - **Audit Logging**: Complete history of all provisioned users with success/failure tracking
 - **UI Management**: Dedicated page with descriptive tooltips explaining Client/Consultant roles and Bronze/Silver/Gold levels
 
