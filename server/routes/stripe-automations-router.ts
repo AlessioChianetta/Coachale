@@ -27,17 +27,17 @@ function generatePassword(length = 16): string {
 // HELPER: Get consultant's Stripe instance
 // ============================================================
 async function getStripeForConsultant(consultantId: string): Promise<Stripe | null> {
-  const [apiKeys] = await db
-    .select({ stripeSecretKey: schema.externalApiKeys.stripeSecretKey })
-    .from(schema.externalApiKeys)
-    .where(eq(schema.externalApiKeys.consultantId, consultantId))
+  const [user] = await db
+    .select({ stripeSecretKey: schema.users.stripeSecretKey })
+    .from(schema.users)
+    .where(eq(schema.users.id, consultantId))
     .limit(1);
 
-  if (!apiKeys?.stripeSecretKey) {
+  if (!user?.stripeSecretKey) {
     return null;
   }
 
-  return new Stripe(apiKeys.stripeSecretKey, { apiVersion: "2024-12-18.acacia" });
+  return new Stripe(user.stripeSecretKey, { apiVersion: "2024-12-18.acacia" });
 }
 
 // ============================================================

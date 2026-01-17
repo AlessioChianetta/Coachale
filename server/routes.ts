@@ -13813,22 +13813,22 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     try {
       const consultantId = req.user!.id;
 
-      const [apiKeys] = await db
+      const [user] = await db
         .select({
-          stripeSecretKey: schema.externalApiKeys.stripeSecretKey,
-          stripeWebhookSecret: schema.externalApiKeys.stripeWebhookSecret,
+          stripeSecretKey: schema.users.stripeSecretKey,
+          stripeWebhookSecret: schema.users.stripeWebhookSecret,
         })
-        .from(schema.externalApiKeys)
-        .where(eq(schema.externalApiKeys.consultantId, consultantId))
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId))
         .limit(1);
 
       res.json({
         success: true,
         settings: {
-          hasSecretKey: !!apiKeys?.stripeSecretKey,
-          hasWebhookSecret: !!apiKeys?.stripeWebhookSecret,
-          secretKeyPreview: apiKeys?.stripeSecretKey 
-            ? `${apiKeys.stripeSecretKey.slice(0, 8)}...${apiKeys.stripeSecretKey.slice(-4)}` 
+          hasSecretKey: !!user?.stripeSecretKey,
+          hasWebhookSecret: !!user?.stripeWebhookSecret,
+          secretKeyPreview: user?.stripeSecretKey 
+            ? `${user.stripeSecretKey.slice(0, 8)}...${user.stripeSecretKey.slice(-4)}` 
             : null,
         },
       });
@@ -13845,30 +13845,14 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
       console.log("[Stripe Settings] Saving for consultant:", consultantId);
 
-      // Check if record exists
-      const [existing] = await db
-        .select({ id: schema.externalApiKeys.id })
-        .from(schema.externalApiKeys)
-        .where(eq(schema.externalApiKeys.consultantId, consultantId))
-        .limit(1);
-
       const updateData: any = {};
       if (stripeSecretKey) updateData.stripeSecretKey = stripeSecretKey;
       if (stripeWebhookSecret) updateData.stripeWebhookSecret = stripeWebhookSecret;
 
-      if (existing) {
-        await db
-          .update(schema.externalApiKeys)
-          .set(updateData)
-          .where(eq(schema.externalApiKeys.consultantId, consultantId));
-      } else {
-        await db
-          .insert(schema.externalApiKeys)
-          .values({
-            consultantId,
-            ...updateData,
-          });
-      }
+      await db
+        .update(schema.users)
+        .set(updateData)
+        .where(eq(schema.users.id, consultantId));
 
       console.log("[Stripe Settings] Saved successfully");
       res.json({
