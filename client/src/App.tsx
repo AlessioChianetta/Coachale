@@ -19,6 +19,7 @@ import { getAuthUser } from "@/lib/auth";
 const AIAssistant = lazy(() => import("@/components/ai-assistant/AIAssistant").then(m => ({ default: m.AIAssistant })));
 const Login = lazy(() => import("@/pages/login"));
 const Register = lazy(() => import("@/pages/register"));
+const ChangePassword = lazy(() => import("@/pages/change-password"));
 
 const Home = lazy(() => import("@/pages/home"));
 const ConsultantLanding = lazy(() => import("@/pages/consultant-landing"));
@@ -168,6 +169,7 @@ function Router() {
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
+          <Route path="/change-password" component={ChangePassword} />
 
           {/* Public agent share - no auth required */}
           <Route path="/share/:slug" component={PublicAgentShare} />
@@ -882,7 +884,7 @@ function Router() {
 function App() {
   const [location] = useLocation();
   const user = getAuthUser();
-  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/meet/') || location.startsWith('/live-consultation') || location.startsWith('/agent/') || location === '/login' || location === '/register' || location === '/' || location === '/consulenti';
+  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/meet/') || location.startsWith('/live-consultation') || location.startsWith('/agent/') || location === '/login' || location === '/register' || location === '/change-password' || location === '/' || location === '/consulenti';
 
   // Only track activity for authenticated users on non-public routes
   const { logPageView } = useActivityTracker({ disabled: !user || isPublicRoute });

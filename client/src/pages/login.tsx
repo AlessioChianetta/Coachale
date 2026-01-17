@@ -60,6 +60,12 @@ export default function Login() {
     // Mark this as a successful login for activity tracking
     localStorage.setItem('loginSuccess', 'true');
     
+    // Check if user must change password first
+    if (data.user.mustChangePassword === true) {
+      setLocation("/change-password");
+      return;
+    }
+    
     // Small delay before redirect to ensure login flag is processed
     setTimeout(() => {
       // Redirect based on user role and tier

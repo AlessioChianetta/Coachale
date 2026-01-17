@@ -444,6 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             subscriptionId: subscriptionId,
             siteUrl: user.siteUrl,
             tier: tierType || (user.role === "client" ? "gold" : undefined),
+            mustChangePassword: user.mustChangePassword || false,
           },
         });
       }
@@ -848,6 +849,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/auth/change-password", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Password attuale e nuova password sono richieste" });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "La nuova password deve avere almeno 8 caratteri" });
+      }
+
+      const user = await storage.getUser(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ message: "Utente non trovato" });
+      }
+
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Password attuale non corretta" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await db.update(schema.users)
+        .set({
+          password: hashedPassword,
+          mustChangePassword: false,
+        })
+        .where(eq(schema.users.id, user.id));
+
+      res.json({ message: "Password aggiornata con successo" });
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: error.message || "Errore durante il cambio password" });
     }
   });
 
