@@ -50,6 +50,7 @@ import {
   Image,
   LayoutGrid,
   PenLine,
+  CreditCard,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -174,7 +175,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     defaultExpanded: false,
     items: [
     
-      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-teal-500" },  
+      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-teal-500" },
+      { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard, color: "text-emerald-500" },  
     ]
   },
   {

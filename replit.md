@@ -36,6 +36,15 @@ The platform heavily leverages AI for diverse functionalities:
 ## Subscription & Licensing
 A multi-tier subscription system ("Dipendenti AI Subscription System") offers AI agent subscriptions with consultant license tracking, revenue sharing, and AI credits. An employee licensing system tracks team member licenses. Public and consultant-specific pricing pages are configurable. A unified login with Stripe integration manages subscriptions, automatic provisioning, webhooks, and Stripe Connect for Italian consultants. A seamless upgrade flow (Bronze/Silver to Gold) is implemented.
 
+## Stripe Payment Automations
+An automated user provisioning system that creates users when Stripe payments are received. Each consultant configures their own Stripe API keys and Payment Links. Key features:
+- **Webhook Integration**: Per-consultant webhook endpoints (`/api/webhooks/stripe/:consultantId`) with signature verification
+- **Automatic User Creation**: Parses Stripe checkout session data to create users with cryptographically secure passwords
+- **Role Assignment**: Configurable creation as client or consultant with Bronze/Silver/Gold level assignment
+- **Welcome Emails**: Customizable email templates with variable substitution for credentials delivery
+- **Audit Logging**: Complete history of all provisioned users with success/failure tracking
+- **UI Management**: Dedicated page for managing automations with webhook URL display and log viewer
+
 ## Referral System
 A comprehensive "Invita un Amico" referral system for clients and consultants features unique codes, tracking, customizable landing pages with AI, dynamic qualification fields, automated emails, CRM lead creation, and bonus tracking.
 

@@ -58,7 +58,7 @@ app.use(express.json({
   limit: '50mb',
   verify: (req: express.Request, res, buf) => {
     // Capture raw body for webhook signature verification
-    if (req.path === '/api/instagram/webhook' || req.path === '/api/stripe/webhook') {
+    if (req.path === '/api/instagram/webhook' || req.path === '/api/stripe/webhook' || req.path.startsWith('/api/webhooks/stripe/')) {
       req.rawBody = buf;
     }
   }

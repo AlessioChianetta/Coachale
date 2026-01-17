@@ -123,6 +123,7 @@ import bronzeAuthRouter from "./routes/bronze-auth-router";
 import referralRouter from "./routes/referral-router";
 import emailHubRouter, { initializeEmailHubIdle } from "./routes/email-hub-router";
 import contentStudioRouter from "./routes/content-studio";
+import stripeAutomationsRouter, { handleStripeWebhook } from "./routes/stripe-automations-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -12261,6 +12262,18 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Stripe Connect routes (for consultant onboarding to Stripe Connect)
   app.use("/api", stripeConnectRouter);
+
+  // Stripe Payment Automations routes (authenticated CRUD)
+  app.use("/api/stripe-automations", stripeAutomationsRouter);
+  
+  // Stripe Automation Webhook (public - receives Stripe events per consultant)
+  app.post("/api/webhooks/stripe/:consultantId", (req, res) => {
+    // Pass rawBody for signature verification
+    if (req.rawBody) {
+      req.body = req.rawBody;
+    }
+    handleStripeWebhook(req, res);
+  });
 
   // Consultant Pricing Page Configuration routes
   app.use("/api", consultantPricingRouter);

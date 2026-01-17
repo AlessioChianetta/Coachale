@@ -8329,3 +8329,60 @@ export const insertAdCampaignSchema = createInsertSchema(adCampaigns).omit({ id:
 export const insertContentCalendarSchema = createInsertSchema(contentCalendar).omit({ id: true, createdAt: true });
 export const insertGeneratedImageSchema = createInsertSchema(generatedImages).omit({ id: true, createdAt: true });
 export const insertContentTemplateSchema = createInsertSchema(contentTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+
+// ============================================================
+// STRIPE PAYMENT AUTOMATIONS - Auto-provision users from Stripe payments
+// ============================================================
+
+export const stripePaymentAutomations = pgTable("stripe_payment_automations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  stripePaymentLinkId: varchar("stripe_payment_link_id").notNull(),
+  linkName: varchar("link_name").notNull(),
+  createAsClient: boolean("create_as_client").default(true).notNull(),
+  createAsConsultant: boolean("create_as_consultant").default(false).notNull(),
+  clientLevel: varchar("client_level").$type<"bronze" | "silver" | "gold">(),
+  assignToAgents: jsonb("assign_to_agents").default([]).$type<string[]>(),
+  sendWelcomeEmail: boolean("send_welcome_email").default(true).notNull(),
+  welcomeEmailSubject: varchar("welcome_email_subject"),
+  welcomeEmailTemplate: text("welcome_email_template"),
+  isActive: boolean("is_active").default(true).notNull(),
+  usersCreatedCount: integer("users_created_count").default(0).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantLinkIdx: index("idx_stripe_automations_consultant").on(table.consultantId, table.stripePaymentLinkId),
+}));
+
+export type StripePaymentAutomation = typeof stripePaymentAutomations.$inferSelect;
+export type InsertStripePaymentAutomation = typeof stripePaymentAutomations.$inferInsert;
+
+export const insertStripePaymentAutomationSchema = createInsertSchema(stripePaymentAutomations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  usersCreatedCount: true,
+});
+
+// Stripe Automation Logs - Track provisioned users
+export const stripeAutomationLogs = pgTable("stripe_automation_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  automationId: varchar("automation_id").references(() => stripePaymentAutomations.id, { onDelete: "cascade" }).notNull(),
+  stripeSessionId: varchar("stripe_session_id"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  customerEmail: varchar("customer_email").notNull(),
+  customerName: varchar("customer_name"),
+  customerPhone: varchar("customer_phone"),
+  createdUserId: varchar("created_user_id").references(() => users.id, { onDelete: "set null" }),
+  rolesAssigned: jsonb("roles_assigned").default([]).$type<string[]>(),
+  status: varchar("status").$type<"success" | "failed" | "pending">().default("pending").notNull(),
+  errorMessage: text("error_message"),
+  stripeEventData: jsonb("stripe_event_data"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  automationIdx: index("idx_stripe_logs_automation").on(table.automationId),
+  createdAtIdx: index("idx_stripe_logs_created").on(table.createdAt),
+}));
+
+export type StripeAutomationLog = typeof stripeAutomationLogs.$inferSelect;
+export type InsertStripeAutomationLog = typeof stripeAutomationLogs.$inferInsert;

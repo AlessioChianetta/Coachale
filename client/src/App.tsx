@@ -123,6 +123,7 @@ const ClientKnowledgeApis = lazy(() => import("./pages/client-knowledge-apis"));
 const ClientFileSearchDocuments = lazy(() => import("./pages/client-file-search-documents"));
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 const ManagerLogin = lazy(() => import("@/pages/manager-login"));
+const ConsultantPaymentAutomations = lazy(() => import("@/pages/consultant-payment-automations"));
 const ManagerChat = lazy(() => import("@/pages/manager-chat"));
 const PublicAIChat = lazy(() => import("@/pages/public-ai-chat"));
 const PublicPricing = lazy(() => import("@/pages/public-pricing"));
@@ -446,6 +447,12 @@ function Router() {
           <Route path="/consultant/api-keys-unified">
             <AuthGuard requiredRole="consultant">
               <ConsultantApiKeysUnified />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/payment-automations">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantPaymentAutomations />
             </AuthGuard>
           </Route>
 
