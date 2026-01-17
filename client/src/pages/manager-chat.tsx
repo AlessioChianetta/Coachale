@@ -577,7 +577,10 @@ interface MemorySummary {
 }
 
 function formatDateLabel(dateStr: string): string {
+  if (!dateStr) return "Data sconosciuta";
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Data sconosciuta";
+  
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -589,7 +592,10 @@ function formatDateLabel(dateStr: string): string {
 }
 
 function getDateBadgeStyle(dateStr: string): string {
+  if (!dateStr) return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700";
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700";
+  
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -622,7 +628,15 @@ function groupSummariesByPeriod(summaries: MemorySummary[]): Record<string, Memo
   const thisYear = today.getFullYear();
 
   for (const summary of summaries) {
+    if (!summary.date) {
+      groups["precedenti"].push(summary);
+      continue;
+    }
     const date = new Date(summary.date);
+    if (isNaN(date.getTime())) {
+      groups["precedenti"].push(summary);
+      continue;
+    }
     if (date.toDateString() === today.toDateString()) {
       groups["oggi"].push(summary);
     } else if (date.toDateString() === yesterday.toDateString()) {
