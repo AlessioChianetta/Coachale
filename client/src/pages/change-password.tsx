@@ -84,10 +84,42 @@ export default function ChangePassword() {
       
       console.log("[CHANGE-PASSWORD] Using endpoint:", endpoint, "tier:", tier, "hasBronzeToken:", !!bronzeToken);
       
-      return await apiRequest("POST", endpoint, {
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
+      const token = localStorage.getItem('token');
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
+        }),
       });
+
+      console.log("[CHANGE-PASSWORD] Response status:", response.status);
+      
+      const text = await response.text();
+      console.log("[CHANGE-PASSWORD] Response body:", text);
+      
+      if (!response.ok) {
+        let errorMessage = 'Errore durante il cambio password';
+        try {
+          const errorJson = JSON.parse(text);
+          errorMessage = errorJson.error || errorJson.message || errorMessage;
+        } catch (e) {
+          console.error("[CHANGE-PASSWORD] Failed to parse error response:", text);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error("[CHANGE-PASSWORD] Failed to parse success response:", text);
+        // If parsing fails but status was OK, treat as success
+        return { success: true, message: text || "Password aggiornata con successo" };
+      }
     },
     onSuccess: (data) => {
       toast({
