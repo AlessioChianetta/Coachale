@@ -836,6 +836,7 @@ async function sendProvisioningEmail(params: {
       to: recipientEmail,
       subject,
       html: emailHtml,
+      consultantId,
     });
     console.log(`[STRIPE AUTOMATION] Welcome email sent to: ${recipientEmail}`);
   } catch (error) {
