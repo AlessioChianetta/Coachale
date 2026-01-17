@@ -45,24 +45,78 @@ async function authenticateBronzeToken(req: BronzeAuthRequest, res: Response, ne
 
   try {
     const decoded = jwt.verify(token, getJwtSecret()) as {
-      bronzeUserId: string;
-      consultantId: string;
-      email: string;
-      type: string;
+      bronzeUserId?: string;
+      userId?: string;
+      subscriptionId?: string;
+      consultantId?: string;
+      email?: string;
+      type?: string;
     };
 
     if (decoded.type !== "bronze") {
       return res.status(401).json({ error: "Token non valido per utenti Bronze" });
     }
 
-    req.bronzeUser = {
-      bronzeUserId: decoded.bronzeUserId,
-      consultantId: decoded.consultantId,
-      email: decoded.email,
-      type: "bronze",
-    };
+    // Case 1: Direct Bronze token with bronzeUserId
+    if (decoded.bronzeUserId) {
+      req.bronzeUser = {
+        bronzeUserId: decoded.bronzeUserId,
+        consultantId: decoded.consultantId || "",
+        email: decoded.email || "",
+        type: "bronze",
+      };
+      return next();
+    }
 
-    next();
+    // Case 2: Token from normal login flow with userId - need to find Bronze user by email
+    // This happens when user logs in via /api/auth/login and getUserTier() returns bronze
+    if (decoded.subscriptionId && decoded.email) {
+      // subscriptionId for bronze tier points to bronzeUsers.id
+      const [bronzeUser] = await db
+        .select({ id: bronzeUsers.id, consultantId: bronzeUsers.consultantId, email: bronzeUsers.email })
+        .from(bronzeUsers)
+        .where(eq(bronzeUsers.id, decoded.subscriptionId))
+        .limit(1);
+
+      if (bronzeUser) {
+        req.bronzeUser = {
+          bronzeUserId: bronzeUser.id,
+          consultantId: bronzeUser.consultantId,
+          email: bronzeUser.email,
+          type: "bronze",
+        };
+        return next();
+      }
+    }
+
+    // Case 3: Fallback - try to find Bronze user by email from users table
+    if (decoded.userId) {
+      const [user] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, decoded.userId))
+        .limit(1);
+
+      if (user?.email) {
+        const [bronzeUser] = await db
+          .select({ id: bronzeUsers.id, consultantId: bronzeUsers.consultantId, email: bronzeUsers.email })
+          .from(bronzeUsers)
+          .where(eq(bronzeUsers.email, user.email.toLowerCase()))
+          .limit(1);
+
+        if (bronzeUser) {
+          req.bronzeUser = {
+            bronzeUserId: bronzeUser.id,
+            consultantId: bronzeUser.consultantId,
+            email: bronzeUser.email,
+            type: "bronze",
+          };
+          return next();
+        }
+      }
+    }
+
+    return res.status(401).json({ error: "Utente Bronze non trovato per questo token" });
   } catch (error) {
     return res.status(401).json({ error: "Token non valido o scaduto" });
   }
