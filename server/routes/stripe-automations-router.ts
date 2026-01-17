@@ -43,7 +43,7 @@ async function getStripeForConsultant(consultantId: string): Promise<Stripe | nu
 // ============================================================
 // GET /api/stripe-automations - List all automations for consultant
 // ============================================================
-router.get("/", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.get("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
 
@@ -63,7 +63,7 @@ router.get("/", authenticateToken, requireRole(["consultant"]), async (req: Auth
 // ============================================================
 // GET /api/stripe-automations/webhook-url - Get webhook URL for consultant
 // ============================================================
-router.get("/webhook-url", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.get("/webhook-url", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const replitDomain = process.env.REPLIT_DOMAINS?.split(",")[0];
@@ -92,7 +92,7 @@ router.get("/webhook-url", authenticateToken, requireRole(["consultant"]), async
 // ============================================================
 // POST /api/stripe-automations - Create new automation
 // ============================================================
-router.post("/", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const {
@@ -151,7 +151,7 @@ router.post("/", authenticateToken, requireRole(["consultant"]), async (req: Aut
 // ============================================================
 // PATCH /api/stripe-automations/:id - Update automation
 // ============================================================
-router.patch("/:id", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.patch("/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const automationId = req.params.id;
@@ -190,7 +190,7 @@ router.patch("/:id", authenticateToken, requireRole(["consultant"]), async (req:
 // ============================================================
 // DELETE /api/stripe-automations/:id - Delete automation
 // ============================================================
-router.delete("/:id", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.delete("/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const automationId = req.params.id;
@@ -217,7 +217,7 @@ router.delete("/:id", authenticateToken, requireRole(["consultant"]), async (req
 // ============================================================
 // GET /api/stripe-automations/:id/logs - Get logs for automation
 // ============================================================
-router.get("/:id/logs", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.get("/:id/logs", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const automationId = req.params.id;
@@ -261,7 +261,7 @@ router.get("/:id/logs", authenticateToken, requireRole(["consultant"]), async (r
 // ============================================================
 // GET /api/stripe-automations/payment-links - Fetch Payment Links from Stripe
 // ============================================================
-router.get("/payment-links", authenticateToken, requireRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+router.get("/payment-links", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const stripe = await getStripeForConsultant(consultantId);

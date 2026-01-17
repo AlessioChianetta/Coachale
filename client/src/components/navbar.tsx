@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Menu, RotateCcw, Sun, Moon, User, Briefcase, Crown, ChevronDown, Check } from "lucide-react";
+import { Menu, RotateCcw, User, Briefcase, Crown, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTour } from "@/contexts/TourContext";
 import { getAuthUser, setToken, setAuthUser, getToken } from "@/lib/auth";
-import { useTheme } from "next-themes";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -37,7 +36,6 @@ export default function Navbar({ onToggleSidebar, onMenuClick }: NavbarProps) {
   const isMobile = useIsMobile();
   const user = getAuthUser();
   const { startTour } = useTour();
-  const { theme, setTheme } = useTheme();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const isClient = user?.role === "client";
@@ -181,20 +179,6 @@ export default function Navbar({ onToggleSidebar, onMenuClick }: NavbarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-
-        {/* Theme Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-        >
-          {theme === 'dark' ? (
-            <Sun className="h-5 w-5 text-yellow-400" />
-          ) : (
-            <Moon className="h-5 w-5 text-gray-600" />
-          )}
-        </Button>
 
         {isClient && (
           <Button 
