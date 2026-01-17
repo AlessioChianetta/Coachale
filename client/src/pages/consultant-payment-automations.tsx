@@ -68,7 +68,7 @@ export default function ConsultantPaymentAutomations() {
     linkName: "",
     createAsClient: true,
     createAsConsultant: false,
-    clientLevel: "" as "bronze" | "silver" | "gold" | "",
+    clientLevel: "none" as "bronze" | "silver" | "gold" | "none",
     sendWelcomeEmail: true,
     welcomeEmailSubject: "",
     welcomeEmailTemplate: "",
@@ -125,7 +125,7 @@ export default function ConsultantPaymentAutomations() {
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          clientLevel: data.clientLevel || null,
+          clientLevel: data.clientLevel && data.clientLevel !== "none" ? data.clientLevel : null,
         }),
       });
       if (!res.ok) {
@@ -186,7 +186,7 @@ export default function ConsultantPaymentAutomations() {
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({
           ...updates,
-          clientLevel: updates.clientLevel || null,
+          clientLevel: updates.clientLevel && updates.clientLevel !== "none" ? updates.clientLevel : null,
         }),
       });
       if (!res.ok) {
@@ -214,7 +214,7 @@ export default function ConsultantPaymentAutomations() {
       linkName: automation.linkName,
       createAsClient: automation.createAsClient,
       createAsConsultant: automation.createAsConsultant,
-      clientLevel: automation.clientLevel || "",
+      clientLevel: automation.clientLevel || "none",
       sendWelcomeEmail: automation.sendWelcomeEmail,
       welcomeEmailSubject: automation.welcomeEmailSubject || "",
       welcomeEmailTemplate: automation.welcomeEmailTemplate || "",
@@ -228,7 +228,7 @@ export default function ConsultantPaymentAutomations() {
       linkName: "",
       createAsClient: true,
       createAsConsultant: false,
-      clientLevel: "",
+      clientLevel: "none",
       sendWelcomeEmail: true,
       welcomeEmailSubject: "",
       welcomeEmailTemplate: "",
@@ -636,44 +636,56 @@ export default function ConsultantPaymentAutomations() {
               </div>
             </div>
 
-            {formData.createAsClient && (
-              <div className="space-y-2 border rounded-lg p-4 bg-muted/30">
-                <Label>Livello Cliente</Label>
-                <p className="text-xs text-muted-foreground">
-                  Determina quali funzionalita' il cliente potra' utilizzare nella sua area riservata.
-                </p>
-                <Select 
-                  value={formData.clientLevel} 
-                  onValueChange={(value) => setFormData({ ...formData, clientLevel: value as typeof formData.clientLevel })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona livello..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bronze">
-                      <div className="flex flex-col">
-                        <span>Bronze (Base)</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="silver">
-                      <div className="flex flex-col">
-                        <span>Silver (Intermedio)</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="gold">
-                      <div className="flex flex-col">
-                        <span>Gold (Completo)</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-muted-foreground space-y-1 mt-2 p-2 bg-background rounded border">
-                  <p><strong>Bronze:</strong> Accesso base alla dashboard cliente (gratuito/entry level)</p>
-                  <p><strong>Silver:</strong> Bronze + messaggi illimitati ai tuoi dipendenti/assistenti</p>
-                  <p><strong>Gold:</strong> Tutte le funzionalita' complete della piattaforma</p>
-                </div>
+            <div className="space-y-2 border rounded-lg p-4 bg-muted/30">
+              <Label>Livello Abbonamento</Label>
+              <p className="text-xs text-muted-foreground">
+                {formData.createAsClient || formData.createAsConsultant
+                  ? "Determina quali funzionalita' l'utente potra' utilizzare nella sua area riservata."
+                  : "Puoi assegnare solo un livello senza ruoli. L'utente avra' accesso alla pagina Manager per gestire i dipendenti AI."
+                }
+              </p>
+              <Select 
+                value={formData.clientLevel} 
+                onValueChange={(value) => setFormData({ ...formData, clientLevel: value as typeof formData.clientLevel })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona livello..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <div className="flex flex-col">
+                      <span>Nessun livello</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bronze">
+                    <div className="flex flex-col">
+                      <span>Bronze (Base)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="silver">
+                    <div className="flex flex-col">
+                      <span>Silver (Intermedio)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="gold">
+                    <div className="flex flex-col">
+                      <span>Gold (Completo)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="text-xs text-muted-foreground space-y-1 mt-2 p-2 bg-background rounded border">
+                <p><strong>Nessun livello:</strong> Solo i ruoli assegnati sopra, senza abbonamento AI</p>
+                <p><strong>Bronze:</strong> Accesso base alla dashboard cliente (gratuito/entry level)</p>
+                <p><strong>Silver:</strong> Bronze + messaggi illimitati ai tuoi dipendenti/assistenti</p>
+                <p><strong>Gold:</strong> Tutte le funzionalita' complete della piattaforma</p>
+                {!formData.createAsClient && !formData.createAsConsultant && formData.clientLevel && formData.clientLevel !== "none" && (
+                  <p className="mt-2 pt-2 border-t text-amber-600 dark:text-amber-400">
+                    <strong>Nota:</strong> Senza ruoli, l'utente avra' accesso solo alla pagina Manager per gestire i dipendenti AI.
+                  </p>
+                )}
               </div>
-            )}
+            </div>
 
             <div className="space-y-3 border rounded-lg p-4">
               <div className="flex items-center justify-between">
