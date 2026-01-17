@@ -587,6 +587,7 @@ async function processPaymentAutomation(
             status: "active",
             startDate: new Date(),
             paymentSource: "direct_link", // Mark as direct link for 100% commission
+            mustChangePassword: true,
           });
         }
         rolesAssigned.push(`${automation.clientLevel}_subscriber`);
@@ -649,6 +650,8 @@ async function processPaymentAutomation(
           lastName,
           phone: customerPhone || null,
           isActive: true,
+          mustChangePassword: true,
+          tempPassword: password, // Store for welcome email until user changes it
         }).returning();
         
         userId = bronzeUser.id;
@@ -730,6 +733,7 @@ async function processPaymentAutomation(
             passwordHash: hashedPassword,
             tempPassword: password,
             paymentSource: "direct_link", // Track that this came from consultant's direct link (100% commission)
+            mustChangePassword: true,
           });
           rolesAssigned.push(`${automation.clientLevel}_subscriber`);
           console.log(`[STRIPE AUTOMATION] Created ${automation.clientLevel} subscription with paymentSource: direct_link`);

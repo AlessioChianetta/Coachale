@@ -858,6 +858,7 @@ export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
   phone: text("phone"), // Phone number collected during checkout
   tempPassword: text("temp_password"), // Temporary password for auto-created accounts
   passwordHash: text("password_hash"), // Hashed password for login
+  mustChangePassword: boolean("must_change_password").default(true).notNull(),
   // Onboarding & AI Preferences
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
   onboardingExplanation: text("onboarding_explanation"), // AI-generated explanation cached
@@ -885,6 +886,8 @@ export const bronzeUsers = pgTable("bronze_users", {
   dailyMessageLimit: integer("daily_message_limit").default(15).notNull(), // Customizable limit per user
   lastMessageResetAt: timestamp("last_message_reset_at").default(sql`now()`),
   isActive: boolean("is_active").default(true).notNull(),
+  mustChangePassword: boolean("must_change_password").default(true).notNull(),
+  tempPassword: varchar("temp_password"), // Store temp password until user changes it
   // Onboarding & AI Preferences
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
   onboardingExplanation: text("onboarding_explanation"), // AI-generated explanation cached

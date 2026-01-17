@@ -130,6 +130,7 @@ router.post("/:slug/register", async (req: Request, res: Response) => {
         dailyMessagesUsed: 0,
         dailyMessageLimit: 15,
         isActive: true,
+        mustChangePassword: false, // User chose their own password, no need to change
       })
       .returning();
 
@@ -265,6 +266,7 @@ router.post("/:slug/login", async (req: Request, res: Response) => {
     res.json({
       success: true,
       token,
+      mustChangePassword: bronzeUser.mustChangePassword,
       user: {
         id: bronzeUser.id,
         email: bronzeUser.email,
@@ -384,6 +386,59 @@ router.post("/increment-message", authenticateBronzeToken, async (req: BronzeAut
   } catch (error: any) {
     console.error("[BRONZE AUTH] Increment message error:", error);
     res.status(500).json({ error: "Errore interno del server", allowed: false, remaining: 0 });
+  }
+});
+
+// Change password endpoint for Bronze users
+router.post("/change-password", authenticateBronzeToken, async (req: BronzeAuthRequest, res: Response) => {
+  try {
+    const { bronzeUserId } = req.bronzeUser!;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Password attuale e nuova password sono obbligatorie" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "La nuova password deve essere di almeno 6 caratteri" });
+    }
+
+    const [bronzeUser] = await db
+      .select()
+      .from(bronzeUsers)
+      .where(eq(bronzeUsers.id, bronzeUserId))
+      .limit(1);
+
+    if (!bronzeUser) {
+      return res.status(404).json({ error: "Utente non trovato" });
+    }
+
+    // Verify current password
+    const validPassword = await bcrypt.compare(currentPassword, bronzeUser.passwordHash);
+    if (!validPassword) {
+      return res.status(401).json({ error: "Password attuale non valida" });
+    }
+
+    // Hash new password and update
+    const newPasswordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await db
+      .update(bronzeUsers)
+      .set({
+        passwordHash: newPasswordHash,
+        mustChangePassword: false,
+        tempPassword: null, // Clear temp password after change
+      })
+      .where(eq(bronzeUsers.id, bronzeUserId));
+
+    console.log(`[BRONZE AUTH] Password changed for user: ${bronzeUserId}`);
+
+    res.json({
+      success: true,
+      message: "Password aggiornata con successo",
+    });
+  } catch (error: any) {
+    console.error("[BRONZE AUTH] Change password error:", error);
+    res.status(500).json({ error: "Errore interno del server" });
   }
 });
 

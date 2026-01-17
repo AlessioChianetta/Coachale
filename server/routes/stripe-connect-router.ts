@@ -975,6 +975,9 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           tempPassword: null, // NEVER store or send plain text passwords
           passwordHash: hashedPassword,
           paymentSource: "stripe_connect", // Track origin for revenue sharing vs 100% commission
+          // If upgrading from Bronze or user provided password, they don't need to change
+          // Otherwise they need to change the auto-generated password
+          mustChangePassword: !isUpgrade && !userProvidedPassword,
           // Migrate onboarding state from Bronze or initialize fresh
           ...migratedPreferences,
         }).returning();
@@ -1925,6 +1928,7 @@ router.post("/verify-upgrade-session", async (req: Request, res: Response) => {
         stripeCustomerId,
         status: "active",
         startDate: new Date(),
+        mustChangePassword: true, // Fallback creation needs password change
         // Initialize onboarding state for new subscriptions
         hasCompletedOnboarding: false,
         writingStyle: null,

@@ -152,6 +152,56 @@ import { getTurnCredentialsForMeeting } from "./services/turn-config-service";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
+// Helper function to determine user's actual subscription tier
+// Priority: Gold (level 3) > Silver (level 2) > Bronze > No tier
+async function getUserTier(email: string): Promise<{ tier: "bronze" | "silver" | "gold" | undefined; subscriptionId?: string; consultantId?: string }> {
+  const emailLower = email.toLowerCase();
+  
+  // 1. Check Gold subscription (level 3)
+  const [goldSub] = await db
+    .select({ id: schema.clientLevelSubscriptions.id, consultantId: schema.clientLevelSubscriptions.consultantId })
+    .from(schema.clientLevelSubscriptions)
+    .where(and(
+      eq(schema.clientLevelSubscriptions.clientEmail, emailLower),
+      eq(schema.clientLevelSubscriptions.status, "active"),
+      eq(schema.clientLevelSubscriptions.level, "3")
+    ))
+    .limit(1);
+  
+  if (goldSub) {
+    return { tier: "gold", subscriptionId: goldSub.id, consultantId: goldSub.consultantId };
+  }
+  
+  // 2. Check Silver subscription (level 2)
+  const [silverSub] = await db
+    .select({ id: schema.clientLevelSubscriptions.id, consultantId: schema.clientLevelSubscriptions.consultantId })
+    .from(schema.clientLevelSubscriptions)
+    .where(and(
+      eq(schema.clientLevelSubscriptions.clientEmail, emailLower),
+      eq(schema.clientLevelSubscriptions.status, "active"),
+      eq(schema.clientLevelSubscriptions.level, "2")
+    ))
+    .limit(1);
+  
+  if (silverSub) {
+    return { tier: "silver", subscriptionId: silverSub.id, consultantId: silverSub.consultantId };
+  }
+  
+  // 3. Check Bronze user
+  const [bronzeUser] = await db
+    .select({ id: schema.bronzeUsers.id, consultantId: schema.bronzeUsers.consultantId, isActive: schema.bronzeUsers.isActive })
+    .from(schema.bronzeUsers)
+    .where(eq(schema.bronzeUsers.email, emailLower))
+    .limit(1);
+  
+  if (bronzeUser && bronzeUser.isActive) {
+    return { tier: "bronze", subscriptionId: bronzeUser.id, consultantId: bronzeUser.consultantId };
+  }
+  
+  // 4. No subscription tier
+  return { tier: undefined };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Ensure uploads directory exists
   const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -395,26 +445,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Single profile: use that profile's role
         const activeProfile = profiles[0];
         
-        // For Gold clients, look up their subscription to include subscriptionId for conversation/preference compatibility
-        let subscriptionId: string | null = null;
-        let tierType: "gold" | null = null;
-        if (user.role === "client" && user.consultantId) {
-          const [goldSub] = await db.select({ id: schema.clientLevelSubscriptions.id })
-            .from(schema.clientLevelSubscriptions)
-            .where(
-              and(
-                eq(schema.clientLevelSubscriptions.clientEmail, emailLower),
-                eq(schema.clientLevelSubscriptions.status, "active"),
-                eq(schema.clientLevelSubscriptions.level, "3")
-              )
-            )
-            .limit(1);
-          
-          if (goldSub) {
-            subscriptionId = goldSub.id;
-            tierType = "gold";
-          }
-        }
+        // Use getUserTier() to determine actual subscription tier for this user
+        // This checks Gold > Silver > Bronze subscriptions to avoid incorrectly assuming Gold
+        const userTierInfo = await getUserTier(user.email);
+        const subscriptionId = userTierInfo.subscriptionId || null;
+        const tierType = userTierInfo.tier || undefined;
         
         const tokenPayload: any = { userId: user.id, profileId: activeProfile.id };
         if (subscriptionId) {
@@ -443,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             consultantId: activeProfile.consultantId || user.consultantId,
             subscriptionId: subscriptionId,
             siteUrl: user.siteUrl,
-            tier: tierType || (user.role === "client" ? "gold" : undefined),
+            tier: tierType, // Now correctly determined via getUserTier()
             mustChangePassword: user.mustChangePassword || false,
           },
         });
@@ -494,6 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({
             message: "Login successful",
             token,
+            mustChangePassword: silverUser.mustChangePassword || false,
             user: {
               id: silverUser.id,
               email: silverUser.clientEmail,
@@ -504,6 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               consultantId: silverUser.consultantId,
               subscriptionId: silverUser.id,
               agentSlug: silverAgent?.publicSlug || null,
+              mustChangePassword: silverUser.mustChangePassword || false,
             },
             publicSlug: consultant?.pricingPageSlug || consultant?.username || null,
           });
@@ -583,6 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({
             message: "Login successful",
             token,
+            mustChangePassword: goldSubscription.mustChangePassword || false,
             user: {
               id: goldUser.id,
               username: goldUser.username,
@@ -596,6 +634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               consultantId: activeProfile.consultantId || goldUser.consultantId,
               subscriptionId: goldSubscription.id,
               tier: "gold",
+              mustChangePassword: goldSubscription.mustChangePassword || false,
             },
           });
         }
@@ -706,6 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({
             message: "Login successful",
             token,
+            mustChangePassword: bronzeUser.mustChangePassword || false,
             user: {
               id: bronzeUser.id,
               email: bronzeUser.email,
@@ -717,6 +757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dailyMessagesUsed,
               dailyMessageLimit: bronzeUser.dailyMessageLimit,
               agentSlug: bronzeAgent?.publicSlug || null,
+              mustChangePassword: bronzeUser.mustChangePassword || false,
             },
             publicSlug: consultantForBronze?.pricingPageSlug || consultantForBronze?.username || null,
           });
@@ -888,6 +929,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Password aggiornata con successo" });
     } catch (error: any) {
       console.error("Error changing password:", error);
+      res.status(500).json({ message: error.message || "Errore durante il cambio password" });
+    }
+  });
+
+  // Change password for Silver/Gold subscription users (stored in clientLevelSubscriptions)
+  app.post("/api/auth/subscription/change-password", async (req, res) => {
+    try {
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1];
+
+      if (!token) {
+        return res.status(401).json({ message: 'Token richiesto' });
+      }
+
+      let decoded: any;
+      try {
+        decoded = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        return res.status(401).json({ message: 'Token non valido o scaduto' });
+      }
+
+      // This endpoint only works for Silver/Gold users with subscriptionId
+      if (!decoded.subscriptionId || !['silver', 'gold'].includes(decoded.type)) {
+        return res.status(400).json({ message: 'Questo endpoint è solo per utenti Silver/Gold' });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Password attuale e nuova password sono richieste" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "La nuova password deve avere almeno 6 caratteri" });
+      }
+
+      // Get subscription
+      const [subscription] = await db
+        .select()
+        .from(schema.clientLevelSubscriptions)
+        .where(eq(schema.clientLevelSubscriptions.id, decoded.subscriptionId))
+        .limit(1);
+
+      if (!subscription) {
+        return res.status(404).json({ message: "Abbonamento non trovato" });
+      }
+
+      if (!subscription.passwordHash) {
+        return res.status(400).json({ message: "Password non configurata per questo account" });
+      }
+
+      const isValidPassword = await bcrypt.compare(currentPassword, subscription.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Password attuale non corretta" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await db
+        .update(schema.clientLevelSubscriptions)
+        .set({
+          passwordHash: hashedPassword,
+          mustChangePassword: false,
+          tempPassword: null, // Clear temporary password
+        })
+        .where(eq(schema.clientLevelSubscriptions.id, subscription.id));
+
+      console.log(`[AUTH] Password changed for ${decoded.type} subscription: ${subscription.id}`);
+
+      res.json({ message: "Password aggiornata con successo" });
+    } catch (error: any) {
+      console.error("Error changing subscription password:", error);
       res.status(500).json({ message: error.message || "Errore durante il cambio password" });
     }
   });
