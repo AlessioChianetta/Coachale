@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { authenticateToken, requireRole, AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import Stripe from "stripe";
 import bcrypt from "bcrypt";
@@ -578,6 +578,179 @@ router.get("/direct-links/public/:consultantId", async (req: Request, res: Respo
   } catch (error) {
     console.error("[DIRECT LINKS] Error fetching public links:", error);
     res.status(500).json({ error: "Errore" });
+  }
+});
+
+// ============================================================
+// GET /api/stripe-automations/pricing/:slug - Public pricing page data
+// Returns all tiers (Bronze free + Silver/Gold direct links + Deluxe/Exclusive automations)
+// ============================================================
+router.get("/pricing/:slug", async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+
+    // Find consultant by slug or username
+    const [consultant] = await db
+      .select({
+        id: schema.users.id,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        companyName: schema.users.companyName,
+        profileImageUrl: schema.users.profileImageUrl,
+        pricingPageSlug: schema.users.pricingPageSlug
+      })
+      .from(schema.users)
+      .where(or(
+        eq(schema.users.pricingPageSlug, slug),
+        eq(schema.users.username, slug)
+      ))
+      .limit(1);
+
+    if (!consultant) {
+      return res.status(404).json({ error: "Consulente non trovato" });
+    }
+
+    // Get direct links for Silver/Gold
+    const directLinks = await db
+      .select()
+      .from(schema.consultantDirectLinks)
+      .where(and(
+        eq(schema.consultantDirectLinks.consultantId, consultant.id),
+        eq(schema.consultantDirectLinks.isActive, true)
+      ));
+
+    // Get custom automations (Deluxe/Exclusive) that should show on pricing page
+    const customAutomations = await db
+      .select()
+      .from(schema.stripePaymentAutomations)
+      .where(and(
+        eq(schema.stripePaymentAutomations.consultantId, consultant.id),
+        eq(schema.stripePaymentAutomations.showOnPricingPage, true),
+        eq(schema.stripePaymentAutomations.isActive, true)
+      ));
+
+    // Build tier response
+    interface PricingTier {
+      id: string;
+      tier: string;
+      displayName: string;
+      isFree: boolean;
+      monthly?: { priceCents: number; originalPriceCents?: number | null; discountPercent?: number; paymentUrl: string };
+      yearly?: { priceCents: number; originalPriceCents?: number | null; discountPercent?: number; paymentUrl: string };
+      features: string[];
+      isPopular: boolean;
+      order: number;
+    }
+
+    const tiers: PricingTier[] = [];
+
+    // Bronze (always free)
+    tiers.push({
+      id: "bronze",
+      tier: "bronze",
+      displayName: "Bronze",
+      isFree: true,
+      features: ["Accesso base alla piattaforma", "Supporto email"],
+      isPopular: false,
+      order: 1
+    });
+
+    // Silver from direct links
+    const silverMonthly = directLinks.find(l => l.tier === "silver" && l.billingInterval === "monthly");
+    const silverYearly = directLinks.find(l => l.tier === "silver" && l.billingInterval === "yearly");
+    if (silverMonthly || silverYearly) {
+      tiers.push({
+        id: "silver",
+        tier: "silver",
+        displayName: "Silver",
+        isFree: false,
+        monthly: silverMonthly ? {
+          priceCents: silverMonthly.priceCents,
+          originalPriceCents: silverMonthly.originalPriceCents,
+          discountPercent: silverMonthly.discountPercent || 0,
+          paymentUrl: silverMonthly.paymentLinkUrl || ""
+        } : undefined,
+        yearly: silverYearly ? {
+          priceCents: silverYearly.priceCents,
+          originalPriceCents: silverYearly.originalPriceCents,
+          discountPercent: silverYearly.discountPercent || 0,
+          paymentUrl: silverYearly.paymentLinkUrl || ""
+        } : undefined,
+        features: ["Tutte le funzionalità Bronze", "Accesso prioritario"],
+        isPopular: false,
+        order: 2
+      });
+    }
+
+    // Gold from direct links
+    const goldMonthly = directLinks.find(l => l.tier === "gold" && l.billingInterval === "monthly");
+    const goldYearly = directLinks.find(l => l.tier === "gold" && l.billingInterval === "yearly");
+    if (goldMonthly || goldYearly) {
+      tiers.push({
+        id: "gold",
+        tier: "gold",
+        displayName: "Gold",
+        isFree: false,
+        monthly: goldMonthly ? {
+          priceCents: goldMonthly.priceCents,
+          originalPriceCents: goldMonthly.originalPriceCents,
+          discountPercent: goldMonthly.discountPercent || 0,
+          paymentUrl: goldMonthly.paymentLinkUrl || ""
+        } : undefined,
+        yearly: goldYearly ? {
+          priceCents: goldYearly.priceCents,
+          originalPriceCents: goldYearly.originalPriceCents,
+          discountPercent: goldYearly.discountPercent || 0,
+          paymentUrl: goldYearly.paymentLinkUrl || ""
+        } : undefined,
+        features: ["Tutte le funzionalità Silver", "Accesso diretto al consulente", "Esercizi personalizzati"],
+        isPopular: true,
+        order: 3
+      });
+    }
+
+    // Custom tiers from automations (Deluxe/Exclusive)
+    let customOrder = 4;
+    for (const automation of customAutomations) {
+      // Skip if it's a direct link automation (already handled above)
+      if (automation.directLinkId) continue;
+
+      const displayTier = automation.displayTier || automation.linkName;
+      tiers.push({
+        id: automation.id,
+        tier: automation.clientLevel || "custom",
+        displayName: displayTier,
+        isFree: false,
+        monthly: automation.priceCents ? {
+          priceCents: automation.priceCents,
+          paymentUrl: `https://buy.stripe.com/${automation.stripePaymentLinkId}`
+        } : undefined,
+        yearly: automation.priceCentsYearly ? {
+          priceCents: automation.priceCentsYearly,
+          paymentUrl: `https://buy.stripe.com/${automation.stripePaymentLinkId}`
+        } : undefined,
+        features: (automation.tierFeatures as string[]) || [],
+        isPopular: false,
+        order: customOrder++
+      });
+    }
+
+    // Sort by order
+    tiers.sort((a, b) => a.order - b.order);
+
+    res.json({
+      consultant: {
+        id: consultant.id,
+        name: `${consultant.firstName || ""} ${consultant.lastName || ""}`.trim(),
+        companyName: consultant.companyName,
+        profileImageUrl: consultant.profileImageUrl,
+        slug: consultant.pricingPageSlug || slug
+      },
+      tiers
+    });
+  } catch (error) {
+    console.error("[PRICING] Error fetching pricing data:", error);
+    res.status(500).json({ error: "Errore nel caricamento dei prezzi" });
   }
 });
 

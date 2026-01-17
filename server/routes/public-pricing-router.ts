@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { eq, and, isNotNull, or, sql, inArray } from "drizzle-orm";
-import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions } from "@shared/schema";
+import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions, consultantDirectLinks } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
@@ -62,6 +62,34 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
     if (availableAgents.length === 0) {
       return res.status(404).json({ error: "Nessun agente disponibile" });
     }
+
+    // Get direct payment links for Silver/Gold (100% commission links)
+    const directLinks = await db.select({
+      tier: consultantDirectLinks.tier,
+      billingInterval: consultantDirectLinks.billingInterval,
+      priceCents: consultantDirectLinks.priceCents,
+      originalPriceCents: consultantDirectLinks.originalPriceCents,
+      discountPercent: consultantDirectLinks.discountPercent,
+      discountExpiresAt: consultantDirectLinks.discountExpiresAt,
+      paymentLinkUrl: consultantDirectLinks.paymentLinkUrl,
+    })
+      .from(consultantDirectLinks)
+      .where(and(
+        eq(consultantDirectLinks.consultantId, consultant.id),
+        eq(consultantDirectLinks.isActive, true)
+      ));
+
+    // Organize direct links by tier and interval
+    const paymentLinks = {
+      silver: {
+        monthly: directLinks.find(l => l.tier === "silver" && l.billingInterval === "monthly"),
+        yearly: directLinks.find(l => l.tier === "silver" && l.billingInterval === "yearly"),
+      },
+      gold: {
+        monthly: directLinks.find(l => l.tier === "gold" && l.billingInterval === "monthly"),
+        yearly: directLinks.find(l => l.tier === "gold" && l.billingInterval === "yearly"),
+      }
+    };
 
     const config = consultant.pricingPageConfig as any || {};
     
@@ -168,8 +196,10 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
     res.json({
       consultantName: `${consultant.firstName} ${consultant.lastName}`.trim(),
       consultantSlug: consultant.pricingPageSlug || consultant.username,
+      consultantId: consultant.id,
       agents,
       pricing,
+      paymentLinks,
     });
   } catch (error: any) {
     console.error("[PUBLIC PRICING] Get pricing error:", error);

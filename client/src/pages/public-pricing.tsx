@@ -90,10 +90,25 @@ interface ComparisonFeature {
   gold: boolean | string;
 }
 
+interface PaymentLink {
+  tier: string;
+  billingInterval: string;
+  priceCents: number;
+  originalPriceCents: number | null;
+  discountPercent: number | null;
+  discountExpiresAt: string | null;
+  paymentLinkUrl: string | null;
+}
+
 interface PricingData {
   consultantName: string;
   consultantSlug: string;
+  consultantId?: string;
   agents: Agent[];
+  paymentLinks?: {
+    silver: { monthly?: PaymentLink; yearly?: PaymentLink };
+    gold: { monthly?: PaymentLink; yearly?: PaymentLink };
+  };
   pricing: {
     heroTitle: string | null;
     heroSubtitle: string | null;
@@ -394,6 +409,17 @@ export default function PublicPricing() {
   });
 
   const handlePurchase = (level: "2" | "3") => {
+    // Check if direct payment links are available for this tier
+    const tier = level === "2" ? "silver" : "gold";
+    const paymentLink = data?.paymentLinks?.[tier]?.[isAnnual ? "yearly" : "monthly"];
+    
+    if (paymentLink?.paymentLinkUrl) {
+      // Redirect directly to Stripe payment link (consultant's direct link with 100% commission)
+      window.location.href = paymentLink.paymentLinkUrl;
+      return;
+    }
+    
+    // Fallback to registration form + Stripe Connect checkout
     setSelectedLevel(level);
     setRegistrationForm({
       email: "",
