@@ -8356,6 +8356,12 @@ export const stripePaymentAutomations = pgTable("stripe_payment_automations", {
   welcomeEmailTemplate: text("welcome_email_template"),
   isActive: boolean("is_active").default(true).notNull(),
   usersCreatedCount: integer("users_created_count").default(0).notNull(),
+  displayTier: varchar("display_tier", { length: 50 }), // Custom tier name for pricing page (e.g., "deluxe", "exclusive")
+  showOnPricingPage: boolean("show_on_pricing_page").default(false), // Show this tier on the public pricing page
+  priceCents: integer("price_cents"), // Monthly price for pricing page display
+  priceCentsYearly: integer("price_cents_yearly"), // Yearly price for pricing page display
+  tierFeatures: jsonb("tier_features").default([]).$type<string[]>(), // Feature list for this tier
+  directLinkId: varchar("direct_link_id"), // Reference to auto-generated direct link
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({

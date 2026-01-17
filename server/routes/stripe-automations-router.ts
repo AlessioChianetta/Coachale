@@ -336,6 +336,8 @@ router.post("/direct-links", authenticateToken, requireRole("consultant"), async
     console.log(`[DIRECT LINKS] Created payment link: ${stripePaymentLinkId}`);
 
     // Upsert in database
+    let directLinkId: string;
+    
     if (existingLink) {
       await db
         .update(schema.consultantDirectLinks)
@@ -353,11 +355,7 @@ router.post("/direct-links", authenticateToken, requireRole("consultant"), async
         })
         .where(eq(schema.consultantDirectLinks.id, existingLink.id));
       
-      res.json({ 
-        success: true, 
-        message: "Link aggiornato",
-        link: { ...existingLink, priceCents: finalPriceCents, paymentLinkUrl, stripePaymentLinkId }
-      });
+      directLinkId = existingLink.id;
     } else {
       const [newLink] = await db
         .insert(schema.consultantDirectLinks)
@@ -377,8 +375,62 @@ router.post("/direct-links", authenticateToken, requireRole("consultant"), async
         })
         .returning();
       
-      res.json({ success: true, message: "Link creato", link: newLink });
+      directLinkId = newLink.id;
     }
+
+    // Auto-create/update associated automation for Silver and Gold tiers
+    // Silver = only tier (no client role), Gold = tier + client role
+    if (tier === "silver" || tier === "gold") {
+      const automationName = `${tierNames[tier]} ${intervalNames[billingInterval]} (Auto)`;
+      
+      // Check if automation already exists for this payment link
+      const [existingAutomation] = await db
+        .select()
+        .from(schema.stripePaymentAutomations)
+        .where(and(
+          eq(schema.stripePaymentAutomations.consultantId, consultantId),
+          eq(schema.stripePaymentAutomations.directLinkId, directLinkId)
+        ))
+        .limit(1);
+
+      const automationData = {
+        stripePaymentLinkId,
+        linkName: automationName,
+        createAsClient: tier === "gold", // Gold = client role, Silver = no client role
+        createAsConsultant: false,
+        clientLevel: tier as "silver" | "gold",
+        sendWelcomeEmail: true,
+        isActive: true,
+        showOnPricingPage: true,
+        priceCents: finalPriceCents,
+        priceCentsYearly: billingInterval === "yearly" ? finalPriceCents : null,
+        directLinkId,
+        updatedAt: new Date()
+      };
+
+      if (existingAutomation) {
+        await db
+          .update(schema.stripePaymentAutomations)
+          .set(automationData)
+          .where(eq(schema.stripePaymentAutomations.id, existingAutomation.id));
+        console.log(`[DIRECT LINKS] Updated automation for ${tier}: ${existingAutomation.id}`);
+      } else {
+        const [newAutomation] = await db
+          .insert(schema.stripePaymentAutomations)
+          .values({
+            consultantId,
+            ...automationData
+          })
+          .returning();
+        console.log(`[DIRECT LINKS] Created automation for ${tier}: ${newAutomation.id}`);
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: existingLink ? "Link aggiornato" : "Link creato",
+      link: { id: directLinkId, priceCents: finalPriceCents, paymentLinkUrl, stripePaymentLinkId }
+    });
   } catch (error: any) {
     console.error("[DIRECT LINKS] Error creating link:", error);
     
