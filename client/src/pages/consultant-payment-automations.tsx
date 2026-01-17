@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   CreditCard, Plus, Trash2, Copy, Check, ExternalLink, Loader2, 
   AlertCircle, Users, RefreshCw, History, Zap, Mail, CheckCircle, XCircle, Settings,
-  Key, Link as LinkIcon
+  Key, Link as LinkIcon, Pencil
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Sidebar from "@/components/sidebar";
@@ -60,6 +60,7 @@ export default function ConsultantPaymentAutomations() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isLogsDialogOpen, setIsLogsDialogOpen] = useState(false);
   const [selectedAutomation, setSelectedAutomation] = useState<StripePaymentAutomation | null>(null);
+  const [editingAutomation, setEditingAutomation] = useState<StripePaymentAutomation | null>(null);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -176,6 +177,50 @@ export default function ConsultantPaymentAutomations() {
       toast({ title: "Errore", description: "Impossibile eliminare l'automazione", variant: "destructive" });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string } & typeof formData) => {
+      const { id, ...updates } = data;
+      const res = await fetch(`/api/stripe-automations/${id}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...updates,
+          clientLevel: updates.clientLevel || null,
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update automation");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stripe-automations"] });
+      setIsCreateDialogOpen(false);
+      setEditingAutomation(null);
+      resetForm();
+      toast({ title: "Automazione aggiornata!", description: "Le modifiche sono state salvate." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const openEditDialog = (automation: StripePaymentAutomation) => {
+    setEditingAutomation(automation);
+    setFormData({
+      stripePaymentLinkId: automation.stripePaymentLinkId,
+      linkName: automation.linkName,
+      createAsClient: automation.createAsClient,
+      createAsConsultant: automation.createAsConsultant,
+      clientLevel: automation.clientLevel || "",
+      sendWelcomeEmail: automation.sendWelcomeEmail,
+      welcomeEmailSubject: automation.welcomeEmailSubject || "",
+      welcomeEmailTemplate: automation.welcomeEmailTemplate || "",
+    });
+    setIsCreateDialogOpen(true);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -458,6 +503,14 @@ export default function ConsultantPaymentAutomations() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                onClick={() => openEditDialog(automation)}
+                                title="Modifica"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => {
                                   setSelectedAutomation(automation);
                                   setIsLogsDialogOpen(true);
@@ -492,15 +545,33 @@ export default function ConsultantPaymentAutomations() {
         </main>
       </div>
 
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+        setIsCreateDialogOpen(open);
+        if (!open) {
+          setEditingAutomation(null);
+          resetForm();
+        }
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Nuova Automazione
+              {editingAutomation ? (
+                <>
+                  <Pencil className="h-5 w-5" />
+                  Modifica Automazione
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5" />
+                  Nuova Automazione
+                </>
+              )}
             </DialogTitle>
             <DialogDescription>
-              Configura come creare automaticamente gli utenti quando ricevi un pagamento
+              {editingAutomation 
+                ? "Modifica le impostazioni dell'automazione"
+                : "Configura come creare automaticamente gli utenti quando ricevi un pagamento"
+              }
             </DialogDescription>
           </DialogHeader>
 
@@ -650,18 +721,33 @@ export default function ConsultantPaymentAutomations() {
               Annulla
             </Button>
             <Button 
-              onClick={() => createMutation.mutate(formData)}
-              disabled={!formData.linkName || !formData.stripePaymentLinkId || createMutation.isPending}
+              onClick={() => {
+                if (editingAutomation) {
+                  updateMutation.mutate({ id: editingAutomation.id, ...formData });
+                } else {
+                  createMutation.mutate(formData);
+                }
+              }}
+              disabled={!formData.linkName || !formData.stripePaymentLinkId || createMutation.isPending || updateMutation.isPending}
             >
-              {createMutation.isPending ? (
+              {(createMutation.isPending || updateMutation.isPending) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creazione...
+                  {editingAutomation ? "Salvataggio..." : "Creazione..."}
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crea Automazione
+                  {editingAutomation ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Salva Modifiche
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crea Automazione
+                    </>
+                  )}
                 </>
               )}
             </Button>
