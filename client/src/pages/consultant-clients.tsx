@@ -309,13 +309,13 @@ export default function ConsultantClientsPage() {
       client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.username?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const clientAssignments = assignments.filter((a: any) => a.clientId === client.id);
-    const isActive = clientAssignments.some((a: any) => a.status === 'in_progress' || a.status === 'completed');
+    // Use isActive field from user (the toggle switch), default to true if not set
+    const clientIsActive = client.isActive !== false;
     
     const matchesStatus = 
       statusFilter === "all" ? true :
-      statusFilter === "active" ? isActive :
-      !isActive;
+      statusFilter === "active" ? clientIsActive :
+      !clientIsActive;
     
     return matchesSearch && matchesStatus;
   });
