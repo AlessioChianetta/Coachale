@@ -1586,6 +1586,87 @@ export default function ConsultantWhatsAppPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Card 4 - Stella (AI Customer Support WhatsApp) */}
+              <Card className="relative overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 via-teal-50 to-white dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-gray-900 hover:shadow-2xl hover:shadow-emerald-200/50 dark:hover:shadow-emerald-900/50 hover:-translate-y-2 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all duration-300 rounded-2xl">
+                <CardHeader className="text-center pt-6 pb-3">
+                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
+                    Stella
+                  </CardTitle>
+                  <p className="text-base font-bold text-emerald-700 dark:text-emerald-400 mb-4">
+                    Assistenza Clienti WhatsApp
+                  </p>
+                  <div className="flex justify-center mb-4">
+                    <div className="relative">
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center shadow-lg">
+                        <MessageCircle className="h-16 w-16 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <Badge className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs px-2 py-0.5">
+                        Sistema - Non Modificabile
+                      </Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pb-6 px-6">
+                  <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/80 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-5 mb-5 border border-emerald-100 dark:border-emerald-800/30 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-1 w-1 rounded-full bg-emerald-500"></div>
+                      <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300 tracking-wide uppercase">
+                        Cosa posso fare
+                      </p>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-200">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          ✓ Risposte Automatiche WhatsApp
+                        </p>
+                      </div>
+                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-200">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          ✓ Supporto Clienti 24/7
+                        </p>
+                      </div>
+                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-200">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                          ✓ Qualificazione Lead
+                        </p>
+                      </div>
+                      <div className="text-xs text-center text-emerald-700 dark:text-emerald-400 font-medium italic mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-700/30">
+                        e centinaia di altre funzioni.
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                    onClick={() => window.location.href = '/consultant/whatsapp?tab=agents'}
+                  >
+                    Gestisci Agenti WhatsApp
+                  </Button>
+
+                  {/* Chi sono section */}
+                  <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-900/10 dark:to-teal-900/10 rounded-lg p-4">
+                    <p className="text-center text-base font-bold text-emerald-900 dark:text-emerald-100 mb-2">
+                      🙋‍♀️ Chi sono
+                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                        Sono <span className="font-bold text-emerald-600 dark:text-emerald-400">Stella</span>, la tua assistente AI per WhatsApp.
+                      </p>
+                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
+                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Clienti e lead che ti contattano su WhatsApp e hanno bisogno di risposte rapide e professionali
+                        </p>
+                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                          <span className="font-semibold">🎯 Cosa faccio:</span> Rispondo istantaneamente alle domande dei clienti, qualifico i nuovi lead, fornisco informazioni sui tuoi servizi e prenoto appuntamenti
+                        </p>
+                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                          <span className="font-semibold">✨ Come lo faccio:</span> Sono collegata direttamente al tuo WhatsApp Business, uso l'AI per capire le richieste e rispondo con il tuo tono di voce, sempre disponibile giorno e notte
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

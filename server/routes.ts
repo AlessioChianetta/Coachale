@@ -792,6 +792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileId: profile.id,
           consultantId: profile.consultantId || user.consultantId,
           siteUrl: user.siteUrl,
+          mustChangePassword: user.mustChangePassword,
         },
       });
     } catch (error: any) {
