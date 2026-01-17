@@ -104,10 +104,10 @@ router.get("/payment-links", authenticateToken, requireRole("consultant"), async
       });
     }
 
-    // Fetch payment links from Stripe
+    // Fetch payment links from Stripe with line items expanded
     const paymentLinks = await stripe.paymentLinks.list({
       limit: 100,
-      active: undefined, // Get both active and inactive
+      expand: ['data.line_items'],
     });
 
     // Get existing automations for this consultant
@@ -118,7 +118,7 @@ router.get("/payment-links", authenticateToken, requireRole("consultant"), async
     
     const automatedLinkIds = new Set(existingAutomations.map(a => a.stripePaymentLinkId));
 
-    // Map payment links with automation status
+    // Map payment links with automation status and product names
     const links = paymentLinks.data.map(link => {
       let createdAt = null;
       try {
@@ -128,10 +128,29 @@ router.get("/payment-links", authenticateToken, requireRole("consultant"), async
       } catch (e) {
         // Ignore date parsing errors
       }
+      
+      // Extract product name from line items
+      let productName = null;
+      try {
+        const lineItems = (link as any).line_items?.data;
+        if (lineItems && lineItems.length > 0) {
+          // Get the first product's name
+          productName = lineItems[0]?.price?.product?.name || 
+                        lineItems[0]?.description ||
+                        (lineItems.length > 1 ? `${lineItems.length} prodotti` : null);
+        }
+      } catch (e) {
+        // Ignore line item parsing errors
+      }
+      
+      // Also check metadata for a custom name
+      const customName = link.metadata?.name || link.metadata?.title || link.metadata?.description;
+      
       return {
         id: link.id,
         url: link.url,
         active: link.active,
+        name: customName || productName,
         metadata: link.metadata,
         hasAutomation: automatedLinkIds.has(link.id),
         createdAt,
