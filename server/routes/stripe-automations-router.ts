@@ -558,6 +558,11 @@ async function processPaymentAutomation(
       const nameParts = customerName.split(" ");
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
+      
+      // Generate username from email (part before @) + random suffix
+      const emailPrefix = customerEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+      const randomSuffix = Math.random().toString(36).substring(2, 6);
+      const username = `${emailPrefix}_${randomSuffix}`;
 
       const roles: string[] = [];
       if (automation.createAsClient) roles.push("client");
@@ -566,6 +571,7 @@ async function processPaymentAutomation(
       const [newUser] = await db
         .insert(schema.users)
         .values({
+          username,
           email: customerEmail.toLowerCase(),
           password: hashedPassword,
           firstName,
