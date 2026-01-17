@@ -17,6 +17,7 @@ import {
   vertexAiSettings,
   conversationStates,
   clientLevelSubscriptions,
+  userRoleProfiles,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
@@ -1576,39 +1577,57 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
     let clientIsGold = false;
     let clientFileSearchEnabled = true; // Default to enabled
     
-    // NEW: If we have a client (effectiveUserId), check their subscription level
+    // NEW: If we have a client (effectiveUserId), check if they are a client of the consultant
     if (effectiveUserId) {
       try {
-        // Check if client is Gold (level 3) with active subscription
-        const clientSubscription = await db.query.clientLevelSubscriptions.findFirst({
-          where: and(
-            eq(clientLevelSubscriptions.clientId, effectiveUserId),
-            eq(clientLevelSubscriptions.level, "3"),
-            eq(clientLevelSubscriptions.status, "active")
-          ),
-        });
-        
-        if (clientSubscription) {
-          clientIsGold = true;
-          canAccessConsultantStore = true;
-          fileSearchSource = "client_gold";
-          console.log(`👑 [FILE SEARCH] Client is GOLD (subscription: ${clientSubscription.id}) - enabling consultant store access`);
-        }
-        
-        // Also check user's fileSearchEnabled flag
+        // Check if user is a client of this consultant (by role or consultantId)
         const clientUser = await db.query.users.findFirst({
           where: eq(users.id, effectiveUserId),
-          columns: { fileSearchEnabled: true, firstName: true, lastName: true },
+          columns: { 
+            id: true,
+            role: true, 
+            consultantId: true, 
+            fileSearchEnabled: true, 
+            firstName: true, 
+            lastName: true 
+          },
         });
         
         if (clientUser) {
+          // Client can use file search if:
+          // 1. They are a client (role = 'client') linked to this consultant
+          // 2. OR they have a user_role_profile as client for this consultant
+          const isClientOfConsultant = clientUser.role === 'client' && 
+            (clientUser.consultantId === consultantConfig.consultantId || !clientUser.consultantId);
+          
+          // Also check user_role_profiles for multi-role users
+          let hasClientProfile = false;
+          if (!isClientOfConsultant) {
+            const clientProfile = await db.query.userRoleProfiles.findFirst({
+              where: and(
+                eq(userRoleProfiles.userId, effectiveUserId),
+                eq(userRoleProfiles.role, 'client'),
+                eq(userRoleProfiles.consultantId, consultantConfig.consultantId)
+              ),
+            });
+            hasClientProfile = !!clientProfile;
+          }
+          
+          if (isClientOfConsultant || hasClientProfile) {
+            clientIsGold = true; // Treat all clients as having file search access
+            canAccessConsultantStore = true;
+            fileSearchSource = "client";
+            console.log(`👤 [FILE SEARCH] User ${clientUser.firstName} ${clientUser.lastName} is a CLIENT - enabling consultant store access`);
+          }
+          
+          // Check fileSearchEnabled flag
           clientFileSearchEnabled = clientUser.fileSearchEnabled !== false;
           if (!clientFileSearchEnabled) {
             console.log(`🚫 [FILE SEARCH] File Search DISABLED for client ${clientUser.firstName} ${clientUser.lastName} by consultant`);
           }
         }
       } catch (err: any) {
-        console.warn(`⚠️ [FILE SEARCH] Error checking client subscription: ${err.message}`);
+        console.warn(`⚠️ [FILE SEARCH] Error checking client status: ${err.message}`);
       }
     }
     
