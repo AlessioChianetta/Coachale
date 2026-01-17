@@ -1022,7 +1022,60 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       const intent = detectIntent(batchedText);
       console.log(`✅ Intent detected: ${intent}`);
 
-      console.log(`📚 Building user context...`);
+      // PRE-CHECK: Determine if file search will be enabled for this client
+      // This allows us to skip loading heavy content in buildUserContext when file search is active
+      let willUseFileSearch = false;
+      try {
+        const clientUser = await db.query.users.findFirst({
+          where: eq(users.id, effectiveUserId),
+          columns: { 
+            id: true,
+            role: true, 
+            consultantId: true, 
+            fileSearchEnabled: true, 
+            firstName: true, 
+            lastName: true 
+          },
+        });
+        
+        if (clientUser) {
+          const isClientOfConsultant = clientUser.role === 'client' && 
+            (clientUser.consultantId === consultantConfig.consultantId || !clientUser.consultantId);
+          
+          let hasClientProfile = false;
+          if (!isClientOfConsultant) {
+            const clientProfile = await db.query.userRoleProfiles.findFirst({
+              where: and(
+                eq(userRoleProfiles.userId, effectiveUserId),
+                eq(userRoleProfiles.role, 'client'),
+                eq(userRoleProfiles.consultantId, consultantConfig.consultantId)
+              ),
+            });
+            hasClientProfile = !!clientProfile;
+          }
+          
+          const clientFileSearchEnabled = clientUser.fileSearchEnabled !== false;
+          
+          if ((isClientOfConsultant || hasClientProfile) && clientFileSearchEnabled) {
+            // Check if the client has documents in file search stores
+            const { storeNames, breakdown } = await fileSearchService.getStoreBreakdownForGeneration(
+              effectiveUserId,
+              'client',
+              consultantConfig.consultantId
+            );
+            const totalDocsInStores = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+            willUseFileSearch = storeNames.length > 0 && totalDocsInStores > 0;
+            
+            if (willUseFileSearch) {
+              console.log(`📚 [FILE SEARCH PRE-CHECK] Client has ${totalDocsInStores} docs - using lightweight context`);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [FILE SEARCH PRE-CHECK] Error: ${err.message} - using full context`);
+      }
+
+      console.log(`📚 Building user context...${willUseFileSearch ? ' (lightweight mode - File Search active)' : ''}`);
       const userContext = await buildUserContext(effectiveUserId, {
         message: batchedText,
         intent,
@@ -1032,6 +1085,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           isLead: conversation.isLead,
           messageCount: conversation.messageCount,
         },
+        useFileSearch: willUseFileSearch,
       });
       console.log(`✅ User context built successfully`);
 
