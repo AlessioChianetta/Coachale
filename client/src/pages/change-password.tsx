@@ -77,7 +77,7 @@ export default function ChangePassword() {
       
       let endpoint = "/api/auth/change-password";
       if (bronzeToken || tier === "bronze" || tier === "1") {
-        endpoint = "/api/bronze-auth/change-password";
+        endpoint = "/api/bronze/change-password"; // Router mounted at /api/bronze
       } else if (tier === "silver" || tier === "gold" || tier === "2" || tier === "3") {
         endpoint = "/api/auth/subscription/change-password";
       }
