@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+
+const OWNER_CONSULTANT_ID = "0c73bbe5-51e1-4108-866b-6be7a52fce3b";
+const OWNER_SLUG = "orbitale";
 import { 
   Brain, 
   Zap, 
@@ -63,6 +66,7 @@ export default function SasLanding() {
         body: JSON.stringify({
           ...data,
           source: "sas-landing",
+          consultantId: OWNER_CONSULTANT_ID,
           capturedAt: new Date().toISOString(),
         }),
       });
@@ -177,16 +181,25 @@ export default function SasLanding() {
                 <Sparkles className="text-white" size={20} />
               </div>
               <span className="text-xl font-bold text-slate-800">
-                Consulente AI
+                Alessio Chianetta
               </span>
             </div>
-            <Button 
-              onClick={() => setLocation("/login")}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-full px-6 shadow-lg shadow-slate-200"
-            >
-              Accedi
-              <ArrowRight className="ml-2" size={16} />
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost"
+                onClick={() => setLocation(`/c/${OWNER_SLUG}/pricing`)}
+                className="text-slate-600 hover:text-slate-900 font-medium"
+              >
+                Prezzi
+              </Button>
+              <Button 
+                onClick={() => setLocation("/login")}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-full px-6 shadow-lg shadow-slate-200"
+              >
+                Accedi
+                <ArrowRight className="ml-2" size={16} />
+              </Button>
+            </div>
           </div>
         </div>
       </nav>
@@ -584,10 +597,10 @@ export default function SasLanding() {
               <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-200">
                 <Sparkles className="text-white" size={20} />
               </div>
-              <span className="text-lg font-bold text-slate-800">Consulente AI</span>
+              <span className="text-lg font-bold text-slate-800">Alessio Chianetta</span>
             </div>
             <div className="text-center md:text-right">
-              <p className="text-sm text-slate-500">© 2025 Consulente AI. Tutti i diritti riservati.</p>
+              <p className="text-sm text-slate-500">© 2026 Alessio Chianetta. Tutti i diritti riservati.</p>
             </div>
           </div>
         </div>
