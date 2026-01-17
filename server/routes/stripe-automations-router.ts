@@ -524,43 +524,47 @@ async function processPaymentAutomation(
     const rolesAssigned: string[] = [];
 
     if (existingUser) {
-      // User exists - update roles if needed
+      // User exists - update consultantId relationship if needed
       userId = existingUser.id;
       console.log(`[STRIPE AUTOMATION] User already exists: ${userId}`);
 
-      // Add client relationship if needed
+      // Add client relationship by setting consultantId on user
       if (automation.createAsClient) {
-        const [existingRelation] = await db
-          .select({ id: schema.consultantClients.id })
-          .from(schema.consultantClients)
-          .where(and(
-            eq(schema.consultantClients.consultantId, consultantId),
-            eq(schema.consultantClients.clientId, userId)
-          ))
-          .limit(1);
+        await db
+          .update(schema.users)
+          .set({ consultantId })
+          .where(eq(schema.users.id, userId));
+        rolesAssigned.push("client");
+        console.log(`[STRIPE AUTOMATION] Updated consultantId for existing user`);
 
-        if (!existingRelation) {
-          await db.insert(schema.consultantClients).values({
-            consultantId,
-            clientId: userId,
-            status: "active",
-          });
-          rolesAssigned.push("client");
-        }
-
-        // Update client level if specified
+        // Update or create client level subscription if specified
         if (automation.clientLevel) {
-          const levelMap = { bronze: 1, silver: 2, gold: 3 };
-          await db
-            .update(schema.clientLevelSubscriptions)
-            .set({ 
-              level: levelMap[automation.clientLevel],
-              isActive: true,
-            })
+          const levelMap: Record<string, number> = { bronze: 1, silver: 2, gold: 3 };
+          const [existingSub] = await db
+            .select({ id: schema.clientLevelSubscriptions.id })
+            .from(schema.clientLevelSubscriptions)
             .where(and(
               eq(schema.clientLevelSubscriptions.clientId, userId),
               eq(schema.clientLevelSubscriptions.consultantId, consultantId)
-            ));
+            ))
+            .limit(1);
+
+          if (existingSub) {
+            await db
+              .update(schema.clientLevelSubscriptions)
+              .set({ 
+                level: levelMap[automation.clientLevel],
+                isActive: true,
+              })
+              .where(eq(schema.clientLevelSubscriptions.id, existingSub.id));
+          } else {
+            await db.insert(schema.clientLevelSubscriptions).values({
+              clientId: userId,
+              consultantId,
+              level: levelMap[automation.clientLevel],
+              isActive: true,
+            });
+          }
         }
       }
     } else {
@@ -595,7 +599,8 @@ async function processPaymentAutomation(
           role: primaryRole,
           roles,
           phoneNumber: customerPhone || null,
-          mustChangePassword: true, // Force password change on first login
+          mustChangePassword: true,
+          consultantId: automation.createAsClient ? consultantId : null,
         })
         .returning();
 
@@ -603,24 +608,15 @@ async function processPaymentAutomation(
       rolesAssigned.push(...roles);
       console.log(`[STRIPE AUTOMATION] Created new user: ${userId}`);
 
-      // Create client relationship
-      if (automation.createAsClient) {
-        await db.insert(schema.consultantClients).values({
-          consultantId,
+      // Create client level subscription if creating as client
+      if (automation.createAsClient && automation.clientLevel) {
+        const levelMap: Record<string, number> = { bronze: 1, silver: 2, gold: 3 };
+        await db.insert(schema.clientLevelSubscriptions).values({
           clientId: userId,
-          status: "active",
+          consultantId,
+          level: levelMap[automation.clientLevel],
+          isActive: true,
         });
-
-        // Create client level subscription
-        if (automation.clientLevel) {
-          const levelMap = { bronze: 1, silver: 2, gold: 3 };
-          await db.insert(schema.clientLevelSubscriptions).values({
-            clientId: userId,
-            consultantId,
-            level: levelMap[automation.clientLevel],
-            isActive: true,
-          });
-        }
       }
     }
 
