@@ -946,6 +946,11 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
     let objectionDetection: any = null;
     let clientProfile: any = null;
     let recentObjections: any[] = [];
+    
+    // Pre-check results for File Search (shared across client path and file search setup)
+    let preCheckStoreNames: string[] = [];
+    let preCheckBreakdown: Array<{ storeDisplayName: string; totalDocs: number }> = [];
+    let preCheckTotalDocs = 0;
 
     // Check if consultant is writing - give full data access
     // SECURITY: Double-check that participantUserId matches consultantId to prevent cross-tenant access
@@ -1066,6 +1071,11 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
             const totalDocsInStores = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
             willUseFileSearch = storeNames.length > 0 && totalDocsInStores > 0;
             
+            // Save pre-check results for reuse later (avoid duplicate API call)
+            preCheckStoreNames = storeNames;
+            preCheckBreakdown = breakdown;
+            preCheckTotalDocs = totalDocsInStores;
+            
             if (willUseFileSearch) {
               console.log(`📚 [FILE SEARCH PRE-CHECK] Client has ${totalDocsInStores} docs - using lightweight context`);
             }
@@ -1096,12 +1106,17 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       // ⏱️ Prompt Building Timing
       timings.promptBuildStart = performance.now();
       console.log(`📝 Building system prompt for client...${willUseFileSearch ? ' (File Search mode - lightweight prompt)' : ''}`);
+      
+      // Build indexedKnowledgeDocIds Set (empty for now since KB is retrieved via File Search)
+      // This aligns with AI Service behavior where indexed KB docs are excluded from prompt
+      const indexedKnowledgeDocIds = new Set<string>();
+      
       systemPrompt = buildSystemPrompt(
         "assistenza",
         "finanziario",
         userContext,
         undefined, // pageContext
-        { hasFileSearch: willUseFileSearch } // Pass file search flag to omit heavy content
+        { hasFileSearch: willUseFileSearch, indexedKnowledgeDocIds } // Pass file search flag to omit heavy content
       );
       timings.promptBuildEnd = performance.now();
       const promptBuildTime = Math.round(timings.promptBuildEnd - timings.promptBuildStart);
@@ -1695,14 +1710,22 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
     try {
       // NEW: For Gold clients, use the same logic as AI Assistant
       if (effectiveUserId && clientIsGold && clientFileSearchEnabled) {
-        // Use fileSearchService.getStoreBreakdownForGeneration like AI Service does
-        const { storeNames, breakdown } = await fileSearchService.getStoreBreakdownForGeneration(
-          effectiveUserId,
-          'client',
-          consultantConfig.consultantId
-        );
+        // Reuse pre-check results if available (avoid duplicate API call)
+        let storeNames = preCheckStoreNames;
+        let breakdown = preCheckBreakdown;
+        let totalDocsInStores = preCheckTotalDocs;
         
-        const totalDocsInStores = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+        // Only call API if pre-check didn't run (e.g., different code path)
+        if (storeNames.length === 0 && totalDocsInStores === 0) {
+          const result = await fileSearchService.getStoreBreakdownForGeneration(
+            effectiveUserId,
+            'client',
+            consultantConfig.consultantId
+          );
+          storeNames = result.storeNames;
+          breakdown = result.breakdown;
+          totalDocsInStores = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+        }
         
         if (storeNames.length > 0 && totalDocsInStores > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
