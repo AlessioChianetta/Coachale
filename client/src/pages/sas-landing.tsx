@@ -206,7 +206,7 @@ export default function SasLanding() {
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-900 mb-8 leading-[1.1] tracking-tight">
               Trasforma la tua
               <span className="block bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-600 bg-clip-text text-transparent mt-3">
-                consulenza in un business
+                Attività in un business
               </span>
               <span className="block text-slate-900 mt-3">che scala da solo</span>
             </h1>
