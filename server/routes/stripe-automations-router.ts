@@ -90,6 +90,64 @@ router.get("/webhook-url", authenticateToken, requireRole("consultant"), async (
 });
 
 // ============================================================
+// GET /api/stripe-automations/payment-links - Get all payment links from Stripe
+// ============================================================
+router.get("/payment-links", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const stripe = await getStripeForConsultant(consultantId);
+    if (!stripe) {
+      return res.status(400).json({ 
+        error: "Chiavi Stripe non configurate",
+        message: "Configura le tue chiavi API Stripe nella pagina Impostazioni → Chiavi API"
+      });
+    }
+
+    // Fetch payment links from Stripe
+    const paymentLinks = await stripe.paymentLinks.list({
+      limit: 100,
+      active: undefined, // Get both active and inactive
+    });
+
+    // Get existing automations for this consultant
+    const existingAutomations = await db
+      .select({ stripePaymentLinkId: schema.stripePaymentAutomations.stripePaymentLinkId })
+      .from(schema.stripePaymentAutomations)
+      .where(eq(schema.stripePaymentAutomations.consultantId, consultantId));
+    
+    const automatedLinkIds = new Set(existingAutomations.map(a => a.stripePaymentLinkId));
+
+    // Map payment links with automation status
+    const links = paymentLinks.data.map(link => ({
+      id: link.id,
+      url: link.url,
+      active: link.active,
+      metadata: link.metadata,
+      hasAutomation: automatedLinkIds.has(link.id),
+      createdAt: new Date(link.created * 1000).toISOString(),
+    }));
+
+    res.json({ 
+      links,
+      total: links.length,
+      hasApiKey: true
+    });
+  } catch (error: any) {
+    console.error("[STRIPE] Error fetching payment links:", error);
+    
+    if (error.type === "StripeAuthenticationError") {
+      return res.status(401).json({ 
+        error: "Chiave Stripe non valida",
+        message: "La chiave API Stripe configurata non è valida. Verifica le tue credenziali."
+      });
+    }
+    
+    res.status(500).json({ error: "Errore nel recupero dei Payment Links" });
+  }
+});
+
+// ============================================================
 // POST /api/stripe-automations - Create new automation
 // ============================================================
 router.post("/", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {

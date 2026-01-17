@@ -13,7 +13,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { 
   CreditCard, Plus, Trash2, Copy, Check, ExternalLink, Loader2, 
-  AlertCircle, Users, RefreshCw, History, Zap, Mail, CheckCircle, XCircle, Settings
+  AlertCircle, Users, RefreshCw, History, Zap, Mail, CheckCircle, XCircle, Settings,
+  Key, Link as LinkIcon
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Sidebar from "@/components/sidebar";
@@ -99,6 +100,20 @@ export default function ConsultantPaymentAutomations() {
       return res.json();
     },
     enabled: !!selectedAutomation && isLogsDialogOpen,
+  });
+
+  const { data: paymentLinksData, isLoading: loadingPaymentLinks, refetch: refetchPaymentLinks } = useQuery({
+    queryKey: ["/api/stripe-automations/payment-links"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe-automations/payment-links", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore");
+      }
+      return res.json();
+    },
   });
 
   const createMutation = useMutation({
@@ -218,6 +233,106 @@ export default function ConsultantPaymentAutomations() {
                 Nuova Automazione
               </Button>
             </div>
+
+            {/* Payment Links da Stripe */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ExternalLink className="h-5 w-5 text-blue-500" />
+                  I tuoi Payment Links
+                </CardTitle>
+                <CardDescription>
+                  Payment Links creati nel tuo account Stripe
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingPaymentLinks ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !paymentLinksData?.hasApiKey ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Chiavi API Stripe non configurate</p>
+                    <p className="text-sm">Vai su Impostazioni → Chiavi API per configurare le tue chiavi Stripe</p>
+                  </div>
+                ) : paymentLinksData?.links?.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <LinkIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nessun Payment Link trovato</p>
+                    <p className="text-sm">Crea Payment Links nella dashboard Stripe</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-sm text-muted-foreground">
+                        {paymentLinksData.total} link trovati
+                      </span>
+                      <Button variant="outline" size="sm" onClick={() => refetchPaymentLinks()}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Aggiorna
+                      </Button>
+                    </div>
+                    <div className="border rounded-lg divide-y">
+                      {paymentLinksData.links.map((link: any) => (
+                        <div key={link.id} className="p-4 flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{link.id}</code>
+                              {link.active ? (
+                                <Badge variant="secondary" className="bg-green-100 text-green-700">Attivo</Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-600">Inattivo</Badge>
+                              )}
+                              {link.hasAutomation && (
+                                <Badge className="bg-blue-100 text-blue-700">
+                                  <Zap className="h-3 w-3 mr-1" />
+                                  Automazione attiva
+                                </Badge>
+                              )}
+                            </div>
+                            <a 
+                              href={link.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline truncate block"
+                            >
+                              {link.url}
+                            </a>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                navigator.clipboard.writeText(link.id);
+                                toast({ title: "Copiato!", description: "ID copiato negli appunti" });
+                              }}
+                              title="Copia ID"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            {!link.hasAutomation && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setFormData({ ...formData, stripePaymentLinkId: link.id });
+                                  setIsCreateDialogOpen(true);
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Crea Automazione
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
