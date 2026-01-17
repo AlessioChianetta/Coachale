@@ -29,14 +29,32 @@ export default function ChangePassword() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const user = getAuthUser();
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      setLocation("/login");
-    }
+    // Small delay to allow auth storage to be populated after login redirect
+    const checkAuth = () => {
+      const authUser = getAuthUser();
+      if (!isAuthenticated() || !authUser) {
+        // Check again after a short delay in case login just happened
+        setTimeout(() => {
+          const retryUser = getAuthUser();
+          if (!isAuthenticated() || !retryUser) {
+            setLocation("/login");
+          } else {
+            setUser(retryUser);
+            setIsLoading(false);
+          }
+        }, 100);
+      } else {
+        setUser(authUser);
+        setIsLoading(false);
+      }
+    };
+    checkAuth();
   }, [setLocation]);
 
   const form = useForm<ChangePasswordFormData>({
@@ -87,6 +105,17 @@ export default function ChangePassword() {
   const onSubmit = (data: ChangePasswordFormData) => {
     changePasswordMutation.mutate(data);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex" data-testid="change-password-page">
