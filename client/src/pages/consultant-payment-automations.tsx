@@ -530,31 +530,47 @@ export default function ConsultantPaymentAutomations() {
 
             <div className="space-y-3 border rounded-lg p-4">
               <Label className="font-medium">Ruoli da assegnare</Label>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Crea come Cliente</span>
+              <p className="text-xs text-muted-foreground">
+                Puoi selezionare uno o entrambi i ruoli. Se selezioni entrambi, l'utente potra' passare da una modalita' all'altra.
+              </p>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Crea come Cliente</span>
+                  </div>
+                  <Switch
+                    checked={formData.createAsClient}
+                    onCheckedChange={(checked) => setFormData({ ...formData, createAsClient: checked })}
+                  />
                 </div>
-                <Switch
-                  checked={formData.createAsClient}
-                  onCheckedChange={(checked) => setFormData({ ...formData, createAsClient: checked })}
-                />
+                <p className="text-xs text-muted-foreground ml-6">
+                  L'utente diventa tuo cliente e vedra' la dashboard cliente con esercizi, libreria, AI assistant, ecc.
+                </p>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Crea come Consulente</span>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Crea come Consulente</span>
+                  </div>
+                  <Switch
+                    checked={formData.createAsConsultant}
+                    onCheckedChange={(checked) => setFormData({ ...formData, createAsConsultant: checked })}
+                  />
                 </div>
-                <Switch
-                  checked={formData.createAsConsultant}
-                  onCheckedChange={(checked) => setFormData({ ...formData, createAsConsultant: checked })}
-                />
+                <p className="text-xs text-muted-foreground ml-6">
+                  L'utente diventa un consulente indipendente con la propria dashboard per gestire i suoi clienti.
+                </p>
               </div>
             </div>
 
             {formData.createAsClient && (
-              <div className="space-y-2">
+              <div className="space-y-2 border rounded-lg p-4 bg-muted/30">
                 <Label>Livello Cliente</Label>
+                <p className="text-xs text-muted-foreground">
+                  Determina quali funzionalita' il cliente potra' utilizzare nella sua area riservata.
+                </p>
                 <Select 
                   value={formData.clientLevel} 
                   onValueChange={(value) => setFormData({ ...formData, clientLevel: value as typeof formData.clientLevel })}
@@ -563,11 +579,28 @@ export default function ConsultantPaymentAutomations() {
                     <SelectValue placeholder="Seleziona livello..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bronze">Bronze</SelectItem>
-                    <SelectItem value="silver">Silver</SelectItem>
-                    <SelectItem value="gold">Gold</SelectItem>
+                    <SelectItem value="bronze">
+                      <div className="flex flex-col">
+                        <span>Bronze (Base)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="silver">
+                      <div className="flex flex-col">
+                        <span>Silver (Intermedio)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="gold">
+                      <div className="flex flex-col">
+                        <span>Gold (Completo)</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="text-xs text-muted-foreground space-y-1 mt-2 p-2 bg-background rounded border">
+                  <p><strong>Bronze:</strong> Accesso base alla dashboard cliente (gratuito/entry level)</p>
+                  <p><strong>Silver:</strong> Bronze + messaggi illimitati ai tuoi dipendenti/assistenti</p>
+                  <p><strong>Gold:</strong> Tutte le funzionalita' complete della piattaforma</p>
+                </div>
               </div>
             )}
 

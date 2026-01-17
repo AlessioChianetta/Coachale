@@ -881,6 +881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .set({
           password: hashedPassword,
           mustChangePassword: false,
+          tempPassword: null, // Clear temporary password after user sets their own
         })
         .where(eq(schema.users.id, user.id));
 

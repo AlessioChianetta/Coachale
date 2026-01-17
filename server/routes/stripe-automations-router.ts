@@ -512,21 +512,31 @@ async function processPaymentAutomation(
       throw new Error("Email cliente mancante nella sessione Stripe");
     }
 
-    // Check if user already exists
+    // Check if user already exists - also get tempPassword and mustChangePassword for email
     const [existingUser] = await db
-      .select({ id: schema.users.id })
+      .select({ 
+        id: schema.users.id,
+        tempPassword: schema.users.tempPassword,
+        mustChangePassword: schema.users.mustChangePassword,
+      })
       .from(schema.users)
       .where(eq(schema.users.email, customerEmail.toLowerCase()))
       .limit(1);
 
     let userId: string;
     let password: string | null = null;
+    let userMustChangePassword = false;
     const rolesAssigned: string[] = [];
 
     if (existingUser) {
       // User exists - update consultantId relationship if needed
       userId = existingUser.id;
-      console.log(`[STRIPE AUTOMATION] User already exists: ${userId}`);
+      // If user never changed password, we can show the temp password in email
+      if (existingUser.mustChangePassword && existingUser.tempPassword) {
+        password = existingUser.tempPassword;
+        userMustChangePassword = true;
+      }
+      console.log(`[STRIPE AUTOMATION] User already exists: ${userId}, mustChangePassword: ${existingUser.mustChangePassword}`);
 
       // Add client relationship by setting consultantId on user
       if (automation.createAsClient) {
@@ -594,6 +604,7 @@ async function processPaymentAutomation(
           username,
           email: customerEmail.toLowerCase(),
           password: hashedPassword,
+          tempPassword: password, // Store plain text password for email reminders until user changes it
           firstName,
           lastName,
           role: primaryRole,
@@ -602,6 +613,8 @@ async function processPaymentAutomation(
           consultantId: userConsultantId,
         })
         .returning();
+      
+      userMustChangePassword = true;
 
       userId = newUser.id;
       console.log(`[STRIPE AUTOMATION] Created new user: ${userId} with role: ${primaryRole}`);
@@ -651,6 +664,7 @@ async function processPaymentAutomation(
         recipientName: customerName,
         recipientPhone: customerPhone || undefined,
         password,
+        mustChangePassword: userMustChangePassword,
         tier: automation.clientLevel || "bronze",
         customSubject: automation.welcomeEmailSubject || undefined,
         customTemplate: automation.welcomeEmailTemplate || undefined,
@@ -698,11 +712,12 @@ async function sendProvisioningEmail(params: {
   recipientName: string;
   recipientPhone?: string;
   password: string | null;
+  mustChangePassword: boolean;
   tier: string;
   customSubject?: string;
   customTemplate?: string;
 }) {
-  const { consultantId, recipientEmail, recipientName, recipientPhone, password, tier, customSubject, customTemplate } = params;
+  const { consultantId, recipientEmail, recipientName, recipientPhone, password, mustChangePassword, tier, customSubject, customTemplate } = params;
 
   // Get consultant info
   const [consultant] = await db
@@ -747,32 +762,62 @@ async function sendProvisioningEmail(params: {
       .replace(/\{\{consultant\}\}/g, consultantName)
       .replace(/\{\{loginUrl\}\}/g, loginUrl);
   } else {
-    // Default email template with enthusiastic copy
+    // Default email template with enthusiastic copy and step-by-step instructions
     const phoneSection = recipientPhone 
       ? `<p style="margin: 4px 0;"><strong>Telefono:</strong> ${recipientPhone}</p>`
       : "";
     
-    const credentialsSection = password 
-      ? `
-        <div style="background-color: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin: 20px 0;">
-          <p style="margin: 0 0 12px 0; font-weight: 600; font-size: 15px;">I tuoi dati:</p>
-          <p style="margin: 4px 0;"><strong>Email:</strong> ${recipientEmail}</p>
-          ${phoneSection}
-          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #fbbf24;">
-            <p style="margin: 0 0 8px 0; font-weight: 600;">Le tue credenziali di accesso:</p>
+    // Build credentials section based on whether password is available and if user must change it
+    let credentialsSection: string;
+    
+    if (password && mustChangePassword) {
+      // New user or user who never changed password - show password and step-by-step
+      credentialsSection = `
+        <div style="background-color: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="margin: 0 0 16px 0; font-weight: 700; font-size: 16px; color: #92400e;">Le tue credenziali di accesso:</p>
+          <div style="background: white; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
             <p style="margin: 4px 0;"><strong>Email:</strong> ${recipientEmail}</p>
-            <p style="margin: 4px 0;"><strong>Password temporanea:</strong> <code style="background: #fff; padding: 2px 8px; border-radius: 4px; font-family: monospace;">${password}</code></p>
+            ${phoneSection}
+            <p style="margin: 8px 0 0 0;"><strong>Password temporanea:</strong></p>
+            <p style="margin: 4px 0;"><code style="background: #fef9c3; padding: 8px 16px; border-radius: 4px; font-family: monospace; font-size: 16px; display: inline-block; letter-spacing: 1px; border: 1px dashed #fbbf24;">${password}</code></p>
           </div>
-          <p style="color: #92400e; font-size: 14px; margin: 16px 0 0 0; padding: 12px; background: #fef9c3; border-radius: 6px;">
-            Al primo accesso ti verra' chiesto di scegliere una nuova password personale.
+          
+          <div style="background: #fffbeb; border-radius: 6px; padding: 16px;">
+            <p style="margin: 0 0 12px 0; font-weight: 700; font-size: 15px; color: #92400e;">Come accedere - 3 semplici passi:</p>
+            <div style="margin: 8px 0;">
+              <p style="margin: 4px 0; font-size: 14px;"><strong style="color: #3b82f6;">STEP 1:</strong> Vai su <a href="${loginUrl}" style="color: #3b82f6; font-weight: 600;">www.conorbitale.it/login</a></p>
+            </div>
+            <div style="margin: 8px 0;">
+              <p style="margin: 4px 0; font-size: 14px;"><strong style="color: #3b82f6;">STEP 2:</strong> Inserisci la tua email e la password temporanea qui sopra</p>
+            </div>
+            <div style="margin: 8px 0;">
+              <p style="margin: 4px 0; font-size: 14px;"><strong style="color: #3b82f6;">STEP 3:</strong> Ti verra' chiesto di scegliere la tua nuova password personale</p>
+            </div>
+          </div>
+          
+          <p style="color: #b45309; font-size: 13px; margin: 16px 0 0 0; font-style: italic;">
+            Conserva questa email! Contiene la password temporanea necessaria per il primo accesso.
           </p>
         </div>
-      `
-      : `
-        <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 20px 0;">
-          <p style="margin: 0;">Il tuo account e' gia' attivo. Accedi con le tue credenziali esistenti.</p>
+      `;
+    } else {
+      // User already has their own password
+      credentialsSection = `
+        <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="margin: 0 0 12px 0; font-weight: 700; font-size: 16px; color: #166534;">Il tuo account e' gia' attivo!</p>
+          <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155;">
+            Accedi con la password che hai gia' impostato in precedenza.
+          </p>
+          <div style="background: white; border-radius: 6px; padding: 12px;">
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${recipientEmail}</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Password:</strong> quella che hai scelto tu</p>
+          </div>
+          <p style="color: #166534; font-size: 13px; margin: 12px 0 0 0;">
+            Se hai dimenticato la password, puoi reimpostarla dalla pagina di login.
+          </p>
         </div>
       `;
+    }
 
     emailHtml = `
       <!DOCTYPE html>
