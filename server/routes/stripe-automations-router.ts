@@ -119,14 +119,24 @@ router.get("/payment-links", authenticateToken, requireRole("consultant"), async
     const automatedLinkIds = new Set(existingAutomations.map(a => a.stripePaymentLinkId));
 
     // Map payment links with automation status
-    const links = paymentLinks.data.map(link => ({
-      id: link.id,
-      url: link.url,
-      active: link.active,
-      metadata: link.metadata,
-      hasAutomation: automatedLinkIds.has(link.id),
-      createdAt: new Date(link.created * 1000).toISOString(),
-    }));
+    const links = paymentLinks.data.map(link => {
+      let createdAt = null;
+      try {
+        if (link.created && typeof link.created === 'number') {
+          createdAt = new Date(link.created * 1000).toISOString();
+        }
+      } catch (e) {
+        // Ignore date parsing errors
+      }
+      return {
+        id: link.id,
+        url: link.url,
+        active: link.active,
+        metadata: link.metadata,
+        hasAutomation: automatedLinkIds.has(link.id),
+        createdAt,
+      };
+    });
 
     res.json({ 
       links,
