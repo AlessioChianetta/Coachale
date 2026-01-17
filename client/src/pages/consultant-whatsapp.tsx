@@ -80,6 +80,7 @@ import {
   Copy,
   Lightbulb,
   ChevronRight,
+  ChevronDown,
   Info,
   Mail,
   ClipboardCheck,
@@ -125,6 +126,10 @@ import { AgentLeaderboard } from "@/components/whatsapp/AgentLeaderboard";
 import { ActivityFeed } from "@/components/whatsapp/ActivityFeed";
 import { LevelBadge } from "@/components/whatsapp/LevelBadge";
 import { Progress } from "@/components/ui/progress";
+import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_avatar.png";
+import echoAvatar from "@assets/generated_images/echo_ai_summarizer_avatar.png";
+import specAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
+import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
 import {
   Table,
   TableBody,
@@ -180,6 +185,130 @@ interface WhatsAppConfig {
   agentInstructions?: string | null;
   agentInstructionsEnabled?: boolean;
   selectedTemplate?: "receptionist" | "marco_setter" | "custom";
+}
+
+interface TeamMemberCardProps {
+  name: string;
+  role: string;
+  avatar: string;
+  quote: string;
+  accentColor: "purple" | "orange" | "cyan" | "emerald";
+  features: Array<{ icon: React.ComponentType<{ className?: string }>; label: string }>;
+  details: {
+    audience: string;
+    whatIDo: string;
+    howIDoIt: string;
+  };
+  ctaLabel: string;
+  ctaHref: string;
+}
+
+const accentColors = {
+  purple: {
+    border: "border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600",
+    ring: "ring-purple-500/20",
+    badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+    button: "bg-purple-600 hover:bg-purple-700 text-white",
+    text: "text-purple-600 dark:text-purple-400",
+    iconBg: "bg-purple-50 dark:bg-purple-900/20",
+  },
+  orange: {
+    border: "border-orange-200 dark:border-orange-800 hover:border-orange-400 dark:hover:border-orange-600",
+    ring: "ring-orange-500/20",
+    badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+    button: "bg-orange-600 hover:bg-orange-700 text-white",
+    text: "text-orange-600 dark:text-orange-400",
+    iconBg: "bg-orange-50 dark:bg-orange-900/20",
+  },
+  cyan: {
+    border: "border-cyan-200 dark:border-cyan-800 hover:border-cyan-400 dark:hover:border-cyan-600",
+    ring: "ring-cyan-500/20",
+    badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
+    button: "bg-cyan-600 hover:bg-cyan-700 text-white",
+    text: "text-cyan-600 dark:text-cyan-400",
+    iconBg: "bg-cyan-50 dark:bg-cyan-900/20",
+  },
+  emerald: {
+    border: "border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600",
+    ring: "ring-emerald-500/20",
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    button: "bg-emerald-600 hover:bg-emerald-700 text-white",
+    text: "text-emerald-600 dark:text-emerald-400",
+    iconBg: "bg-emerald-50 dark:bg-emerald-900/20",
+  },
+};
+
+function TeamMemberCard({ name, role, avatar, quote, accentColor, features, details, ctaLabel, ctaHref }: TeamMemberCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const colors = accentColors[accentColor];
+
+  return (
+    <Card className={`relative bg-white dark:bg-gray-900 border ${colors.border} rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
+      <CardContent className="p-6">
+        {/* Avatar */}
+        <div className="flex justify-center mb-4">
+          <div className={`relative w-24 h-24 rounded-full overflow-hidden ring-4 ${colors.ring} shadow-lg`}>
+            <img src={avatar} alt={name} className="w-full h-full object-cover" />
+          </div>
+        </div>
+
+        {/* Name & Role */}
+        <div className="text-center mb-4">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{name}</h3>
+          <Badge className={`mt-1 ${colors.badge}`}>{role}</Badge>
+        </div>
+
+        {/* Quote */}
+        <p className="text-sm text-gray-600 dark:text-gray-400 text-center italic mb-5 leading-relaxed">
+          "{quote}"
+        </p>
+
+        {/* Features */}
+        <div className="space-y-2 mb-5">
+          {features.map((feature, idx) => (
+            <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <div className={`p-1.5 rounded-md ${colors.iconBg}`}>
+                <feature.icon className={`h-4 w-4 ${colors.text}`} />
+              </div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{feature.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Expandable Details */}
+        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-2 transition-colors">
+              <span>{isExpanded ? "Nascondi dettagli" : "Scopri di più"}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="space-y-2">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                <span className="font-semibold text-gray-800 dark:text-gray-200">A chi mi rivolgo:</span> {details.audience}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                <span className="font-semibold text-gray-800 dark:text-gray-200">Cosa faccio:</span> {details.whatIDo}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                <span className="font-semibold text-gray-800 dark:text-gray-200">Come lo faccio:</span> {details.howIDoIt}
+              </p>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* CTA Button */}
+        <Button
+          className={`w-full mt-4 ${colors.button} shadow-md hover:shadow-lg transition-all duration-200`}
+          onClick={() => window.location.href = ctaHref}
+        >
+          {ctaLabel}
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
 const emptyConfig: WhatsAppConfig = {
@@ -1335,338 +1464,103 @@ export default function ConsultantWhatsAppPage() {
           </TabsContent>
 
           <TabsContent value="system" className="space-y-6">
-            <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
-              <Info className="h-5 w-5 text-blue-600" />
-              <AlertDescription>
-                <strong>Agenti AI di Sistema</strong><br />
-                Questi agenti sono preconfigurati e gestiti automaticamente dal sistema. Non possono essere modificati o eliminati.
-              </AlertDescription>
-            </Alert>
+            {/* Hero Header - Team Style */}
+            <div className="text-center space-y-3 py-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
+                <Users className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Il Mio Team AI
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+                Conosci i tuoi assistenti virtuali che lavorano per te 24/7
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {/* Card 1 - Millie (AI Email Writer) */}
-              <Card className="relative overflow-hidden border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 via-pink-50 to-white dark:from-purple-950/30 dark:via-pink-950/30 dark:to-gray-900 hover:shadow-2xl hover:shadow-purple-200/50 dark:hover:shadow-purple-900/50 hover:-translate-y-2 hover:border-purple-400 dark:hover:border-purple-600 transition-all duration-300 rounded-2xl">
-                <CardHeader className="text-center pt-6 pb-3">
-                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                    Millie
-                  </CardTitle>
-                  <p className="text-base font-bold text-purple-700 dark:text-purple-400 mb-4">
-                    AI Email Writer
-                  </p>
-                  <div className="flex justify-center mb-4">
-                    <div className="relative">
-                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center shadow-lg">
-                        <Mail className="h-16 w-16 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <Badge className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs px-2 py-0.5">
-                        Sistema - Non Modificabile
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-6 px-6">
-                  <div className="bg-gradient-to-br from-purple-50/80 to-pink-50/80 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-5 mb-5 border border-purple-100 dark:border-purple-800/30 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-1 w-1 rounded-full bg-purple-500"></div>
-                      <p className="text-sm font-bold text-purple-800 dark:text-purple-300 tracking-wide uppercase">
-                        Cosa posso fare
-                      </p>
-                    </div>
-                    <div className="space-y-2.5">
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-purple-200/50 dark:border-purple-700/30 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Email Giornaliere AI
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-purple-200/50 dark:border-purple-700/30 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Personalizzate per Cliente
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-purple-200/50 dark:border-purple-700/30 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Journey Automatico
-                        </p>
-                      </div>
-                      <div className="text-xs text-center text-purple-700 dark:text-purple-400 font-medium italic mt-3 pt-3 border-t border-purple-200/50 dark:border-purple-700/30">
-                        e centinaia di altre funzioni.
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                    onClick={() => window.location.href = '/consultant/ai-config'}
-                  >
-                    Gestisci Email Journey
-                  </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Card 1 - Millie */}
+              <TeamMemberCard
+                name="Millie"
+                role="Email Writer"
+                avatar={millieAvatar}
+                quote="Creo email personalizzate ogni giorno per mantenere viva la relazione con i tuoi clienti."
+                accentColor="purple"
+                features={[
+                  { icon: Mail, label: "Email Giornaliere AI" },
+                  { icon: User, label: "Personalizzate per Cliente" },
+                  { icon: Target, label: "Journey Automatico" },
+                ]}
+                details={{
+                  audience: "Consulenti, coach e professionisti che vogliono mantenere un contatto costante con i loro clienti",
+                  whatIDo: "Creo e invio email personalizzate automaticamente ogni giorno, mantenendo viva la relazione con ogni cliente senza che tu debba pensarci",
+                  howIDoIt: "Usando l'intelligenza artificiale, analizzo il percorso di ogni cliente e genero contenuti su misura che arrivano al momento giusto, con il tono giusto"
+                }}
+                ctaLabel="Gestisci Email Journey"
+                ctaHref="/consultant/ai-config"
+              />
 
-                  {/* Chi sono section */}
-                  <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-900/10 dark:to-pink-900/10 rounded-lg p-4">
-                    <p className="text-center text-base font-bold text-purple-900 dark:text-purple-100 mb-2">
-                      🙋‍♀️ Chi sono
-                    </p>
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-800 dark:text-purple-200">
-                        Sono <span className="font-bold text-purple-600 dark:text-purple-400">Millie</span>, la tua assistente AI per le email giornaliere.
-                      </p>
-                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
-                        <p className="text-xs text-purple-700 dark:text-purple-300">
-                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Consulenti, coach e professionisti che vogliono mantenere un contatto costante con i loro clienti
-                        </p>
-                        <p className="text-xs text-purple-700 dark:text-purple-300">
-                          <span className="font-semibold">🎯 Cosa faccio:</span> Creo e invio email personalizzate automaticamente ogni giorno, mantenendo viva la relazione con ogni cliente senza che tu debba pensarci
-                        </p>
-                        <p className="text-xs text-purple-700 dark:text-purple-300">
-                          <span className="font-semibold">✨ Come lo faccio:</span> Usando l'intelligenza artificiale, analizzo il percorso di ogni cliente e genero contenuti su misura che arrivano al momento giusto, con il tono giusto
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Card 2 - Echo */}
+              <TeamMemberCard
+                name="Echo"
+                role="Summarizer"
+                avatar={echoAvatar}
+                quote="Trasformo le tue consulenze in riepiloghi strutturati e email professionali."
+                accentColor="orange"
+                features={[
+                  { icon: ClipboardCheck, label: "Riepiloghi Consulenze AI" },
+                  { icon: Mail, label: "Email Personalizzate" },
+                  { icon: FileText, label: "Da Trascrizioni Fathom" },
+                ]}
+                details={{
+                  audience: "Consulenti e professionisti che tengono sessioni one-to-one con i clienti e vogliono documentare ogni incontro",
+                  whatIDo: "Trasformo le tue consulenze in riepiloghi strutturati e personalizzati, evidenziando progressi, insight chiave e prossimi passi da seguire",
+                  howIDoIt: "Analizzo le trascrizioni delle tue chiamate Fathom con l'AI, estraggo i punti salienti e creo email professionali che invio automaticamente al cliente dopo ogni sessione"
+                }}
+                ctaLabel="Gestisci Consulenze"
+                ctaHref="/consultant/appointments"
+              />
 
-              {/* Card 2 - Echo (AI Consultation Summarizer) */}
-              <Card className="relative overflow-hidden border-2 border-orange-200 dark:border-orange-800 bg-gradient-to-br from-orange-50 via-amber-50 to-white dark:from-orange-950/30 dark:via-amber-950/30 dark:to-gray-900 hover:shadow-2xl hover:shadow-orange-200/50 dark:hover:shadow-orange-900/50 hover:-translate-y-2 hover:border-orange-400 dark:hover:border-orange-600 transition-all duration-300 rounded-2xl">
-                <CardHeader className="text-center pt-6 pb-3">
-                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent mb-2">
-                    Echo
-                  </CardTitle>
-                  <p className="text-base font-bold text-orange-700 dark:text-orange-400 mb-4">
-                    AI Consultation Summarizer
-                  </p>
-                  <div className="flex justify-center mb-4">
-                    <div className="relative">
-                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 flex items-center justify-center shadow-lg">
-                        <ClipboardCheck className="h-16 w-16 text-orange-600 dark:text-orange-400" />
-                      </div>
-                      <Badge className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs px-2 py-0.5">
-                        Sistema - Non Modificabile
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-6 px-6">
-                  <div className="bg-gradient-to-br from-orange-50/80 to-amber-50/80 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl p-5 mb-5 border border-orange-100 dark:border-orange-800/30 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-1 w-1 rounded-full bg-orange-500"></div>
-                      <p className="text-sm font-bold text-orange-800 dark:text-orange-300 tracking-wide uppercase">
-                        Cosa posso fare
-                      </p>
-                    </div>
-                    <div className="space-y-2.5">
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-orange-200/50 dark:border-orange-700/30 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Riepiloghi Consulenze AI
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-orange-200/50 dark:border-orange-700/30 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Email Personalizzate
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-orange-200/50 dark:border-orange-700/30 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Da Trascrizioni Fathom
-                        </p>
-                      </div>
-                      <div className="text-xs text-center text-orange-700 dark:text-orange-400 font-medium italic mt-3 pt-3 border-t border-orange-200/50 dark:border-orange-700/30">
-                        e centinaia di altre funzioni.
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                    onClick={() => window.location.href = '/consultant/appointments'}
-                  >
-                    Gestisci Consulenze
-                  </Button>
+              {/* Card 3 - Spec */}
+              <TeamMemberCard
+                name="Spec"
+                role="Researcher"
+                avatar={specAvatar}
+                quote="Supporto i clienti 24/7 con risposte precise su esercizi e materiali."
+                accentColor="cyan"
+                features={[
+                  { icon: MessageCircle, label: "Supporto Clienti 24/7" },
+                  { icon: BookOpen, label: "Risposte su Esercizi" },
+                  { icon: Database, label: "Guida ai Materiali" },
+                ]}
+                details={{
+                  audience: "Clienti attivi in un percorso di formazione o coaching che hanno bisogno di supporto continuo tra una sessione e l'altra",
+                  whatIDo: "Fornisco risposte immediate su esercizi, dubbi e domande, guidando i clienti attraverso i materiali formativi senza che debbano aspettare la prossima consulenza",
+                  howIDoIt: "Sono attivo 24/7 via chat, ho accesso completo alla biblioteca di documenti e ai corsi dell'università, e uso l'AI per dare risposte precise e contestualizzate al percorso di ogni cliente"
+                }}
+                ctaLabel="Area Clienti"
+                ctaHref="/client/ai-assistant"
+              />
 
-                  {/* Chi sono section */}
-                  <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800 bg-gradient-to-br from-orange-50/50 to-amber-50/50 dark:from-orange-900/10 dark:to-amber-900/10 rounded-lg p-4">
-                    <p className="text-center text-base font-bold text-orange-900 dark:text-orange-100 mb-2">
-                      🙋‍♂️ Chi sono
-                    </p>
-                    <div className="space-y-2">
-                      <p className="text-sm text-orange-800 dark:text-orange-200">
-                        Sono <span className="font-bold text-orange-600 dark:text-orange-400">Echo</span>, il tuo assistente AI per le consulenze.
-                      </p>
-                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
-                        <p className="text-xs text-orange-700 dark:text-orange-300">
-                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Consulenti e professionisti che tengono sessioni one-to-one con i clienti e vogliono documentare ogni incontro
-                        </p>
-                        <p className="text-xs text-orange-700 dark:text-orange-300">
-                          <span className="font-semibold">🎯 Cosa faccio:</span> Trasformo le tue consulenze in riepiloghi strutturati e personalizzati, evidenziando progressi, insight chiave e prossimi passi da seguire
-                        </p>
-                        <p className="text-xs text-orange-700 dark:text-orange-300">
-                          <span className="font-semibold">✨ Come lo faccio:</span> Analizzo le trascrizioni delle tue chiamate Fathom con l'AI, estraggo i punti salienti e creo email professionali che invio automaticamente al cliente dopo ogni sessione
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Card 3 - Spec (AI Researcher) */}
-              <Card className="relative overflow-hidden border-2 border-cyan-200 dark:border-cyan-800 bg-gradient-to-br from-cyan-50 via-blue-50 to-white dark:from-cyan-950/30 dark:via-blue-950/30 dark:to-gray-900 hover:shadow-2xl hover:shadow-cyan-200/50 dark:hover:shadow-cyan-900/50 hover:-translate-y-2 hover:border-cyan-400 dark:hover:border-cyan-600 transition-all duration-300 rounded-2xl">
-                <CardHeader className="text-center pt-6 pb-3">
-                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent mb-2">
-                    Spec
-                  </CardTitle>
-                  <p className="text-base font-bold text-cyan-700 dark:text-cyan-400 mb-4">
-                    AI Researcher
-                  </p>
-                  <div className="flex justify-center mb-4">
-                    <div className="relative">
-                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-100 to-blue-100 dark:from-cyan-900/30 dark:to-blue-900/30 flex items-center justify-center shadow-lg">
-                        <Bot className="h-16 w-16 text-cyan-600 dark:text-cyan-400" />
-                      </div>
-                      <Badge className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs px-2 py-0.5">
-                        Sistema - Non Modificabile
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-6 px-6">
-                  <div className="bg-gradient-to-br from-cyan-50/80 to-blue-50/80 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-xl p-5 mb-5 border border-cyan-100 dark:border-cyan-800/30 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-1 w-1 rounded-full bg-cyan-500"></div>
-                      <p className="text-sm font-bold text-cyan-800 dark:text-cyan-300 tracking-wide uppercase">
-                        Cosa posso fare
-                      </p>
-                    </div>
-                    <div className="space-y-2.5">
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-cyan-200/50 dark:border-cyan-700/30 shadow-sm hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Supporto Clienti 24/7
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-cyan-200/50 dark:border-cyan-700/30 shadow-sm hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Risposte su Esercizi
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-cyan-200/50 dark:border-cyan-700/30 shadow-sm hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Guida ai Materiali
-                        </p>
-                      </div>
-                      <div className="text-xs text-center text-cyan-700 dark:text-cyan-400 font-medium italic mt-3 pt-3 border-t border-cyan-200/50 dark:border-cyan-700/30">
-                        e centinaia di altre funzioni.
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                    onClick={() => window.location.href = '/client/ai-assistant'}
-                  >
-                    Area Clienti
-                  </Button>
-
-                  {/* Chi sono section */}
-                  <div className="mt-4 pt-4 border-t border-cyan-200 dark:border-cyan-800 bg-gradient-to-br from-cyan-50/50 to-blue-50/50 dark:from-cyan-900/10 dark:to-blue-900/10 rounded-lg p-4">
-                    <p className="text-center text-base font-bold text-cyan-900 dark:text-cyan-100 mb-2">
-                      🙋‍♂️ Chi sono
-                    </p>
-                    <div className="space-y-2">
-                      <p className="text-sm text-cyan-800 dark:text-cyan-200">
-                        Sono <span className="font-bold text-cyan-600 dark:text-cyan-400">Spec</span>, il tuo assistente AI sempre disponibile.
-                      </p>
-                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
-                        <p className="text-xs text-cyan-700 dark:text-cyan-300">
-                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Clienti attivi in un percorso di formazione o coaching che hanno bisogno di supporto continuo tra una sessione e l'altra
-                        </p>
-                        <p className="text-xs text-cyan-700 dark:text-cyan-300">
-                          <span className="font-semibold">🎯 Cosa faccio:</span> Fornisco risposte immediate su esercizi, dubbi e domande, guidando i clienti attraverso i materiali formativi senza che debbano aspettare la prossima consulenza
-                        </p>
-                        <p className="text-xs text-cyan-700 dark:text-cyan-300">
-                          <span className="font-semibold">✨ Come lo faccio:</span> Sono attivo 24/7 via chat, ho accesso completo alla biblioteca di documenti e ai corsi dell'università, e uso l'AI per dare risposte precise e contestualizzate al percorso di ogni cliente
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Card 4 - Stella (AI Customer Support WhatsApp) */}
-              <Card className="relative overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 via-teal-50 to-white dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-gray-900 hover:shadow-2xl hover:shadow-emerald-200/50 dark:hover:shadow-emerald-900/50 hover:-translate-y-2 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all duration-300 rounded-2xl">
-                <CardHeader className="text-center pt-6 pb-3">
-                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
-                    Stella
-                  </CardTitle>
-                  <p className="text-base font-bold text-emerald-700 dark:text-emerald-400 mb-4">
-                    Assistenza Clienti WhatsApp
-                  </p>
-                  <div className="flex justify-center mb-4">
-                    <div className="relative">
-                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center shadow-lg">
-                        <MessageCircle className="h-16 w-16 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <Badge className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs px-2 py-0.5">
-                        Sistema - Non Modificabile
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-6 px-6">
-                  <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/80 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-5 mb-5 border border-emerald-100 dark:border-emerald-800/30 shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-1 w-1 rounded-full bg-emerald-500"></div>
-                      <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300 tracking-wide uppercase">
-                        Cosa posso fare
-                      </p>
-                    </div>
-                    <div className="space-y-2.5">
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Risposte Automatiche WhatsApp
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Supporto Clienti 24/7
-                        </p>
-                      </div>
-                      <div className="group bg-white dark:bg-gray-800/80 rounded-lg px-4 py-3 border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-200">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                          ✓ Qualificazione Lead
-                        </p>
-                      </div>
-                      <div className="text-xs text-center text-emerald-700 dark:text-emerald-400 font-medium italic mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-700/30">
-                        e centinaia di altre funzioni.
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                    onClick={() => window.location.href = '/consultant/whatsapp?tab=agents'}
-                  >
-                    Gestisci Agenti WhatsApp
-                  </Button>
-
-                  {/* Chi sono section */}
-                  <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-900/10 dark:to-teal-900/10 rounded-lg p-4">
-                    <p className="text-center text-base font-bold text-emerald-900 dark:text-emerald-100 mb-2">
-                      🙋‍♀️ Chi sono
-                    </p>
-                    <div className="space-y-2">
-                      <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                        Sono <span className="font-bold text-emerald-600 dark:text-emerald-400">Stella</span>, la tua assistente AI per WhatsApp.
-                      </p>
-                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
-                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Clienti e lead che ti contattano su WhatsApp e hanno bisogno di risposte rapide e professionali
-                        </p>
-                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                          <span className="font-semibold">🎯 Cosa faccio:</span> Rispondo istantaneamente alle domande dei clienti, qualifico i nuovi lead, fornisco informazioni sui tuoi servizi e prenoto appuntamenti
-                        </p>
-                        <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                          <span className="font-semibold">✨ Come lo faccio:</span> Sono collegata direttamente al tuo WhatsApp Business, uso l'AI per capire le richieste e rispondo con il tuo tono di voce, sempre disponibile giorno e notte
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Card 4 - Stella */}
+              <TeamMemberCard
+                name="Stella"
+                role="WhatsApp Assistant"
+                avatar={stellaAvatar}
+                quote="Rispondo istantaneamente su WhatsApp, qualificando lead e supportando clienti."
+                accentColor="emerald"
+                features={[
+                  { icon: MessageCircle, label: "Risposte WhatsApp" },
+                  { icon: Clock, label: "Supporto 24/7" },
+                  { icon: Target, label: "Qualificazione Lead" },
+                ]}
+                details={{
+                  audience: "Clienti e lead che ti contattano su WhatsApp e hanno bisogno di risposte rapide e professionali",
+                  whatIDo: "Rispondo istantaneamente alle domande dei clienti, qualifico i nuovi lead, fornisco informazioni sui tuoi servizi e prenoto appuntamenti",
+                  howIDoIt: "Sono collegata direttamente al tuo WhatsApp Business, uso l'AI per capire le richieste e rispondo con il tuo tono di voce, sempre disponibile giorno e notte"
+                }}
+                ctaLabel="Gestisci Agenti"
+                ctaHref="/consultant/whatsapp?tab=agents"
+              />
             </div>
           </TabsContent>
 
