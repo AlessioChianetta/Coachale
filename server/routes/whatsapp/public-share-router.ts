@@ -2220,13 +2220,22 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                           }
                           
                           // Send booking notification to configured WhatsApp number
-                          const notificationFormattedDate = formatAppointmentDate(extractionResult.date, extractionResult.time);
-                          await sendBookingNotification(agentConfig.id, {
-                            clientName: extractionResult.name || `Visitor ${visitorId.slice(0, 8)}`,
-                            date: notificationFormattedDate,
-                            time: extractionResult.time,
-                            meetLink: calendarResult.googleMeetLink,
-                          });
+                          try {
+                            const notificationFormattedDate = formatAppointmentDate(extractionResult.date, extractionResult.time);
+                            const notifResult = await sendBookingNotification(agentConfig.id, {
+                              clientName: extractionResult.name || `Visitor ${visitorId.slice(0, 8)}`,
+                              date: notificationFormattedDate,
+                              time: extractionResult.time,
+                              meetLink: calendarResult.googleMeetLink,
+                            });
+                            if (notifResult.success) {
+                              console.log(`   📱 [BOOKING NOTIFICATION] ✅ Sent successfully`);
+                            } else {
+                              console.log(`   ⚠️ [BOOKING NOTIFICATION] Not sent: ${notifResult.error || 'Unknown reason'}`);
+                            }
+                          } catch (notifError: any) {
+                            console.log(`   ❌ [BOOKING NOTIFICATION] Error: ${notifError?.message || notifError}`);
+                          }
                           
                           // Invia email di conferma al cliente
                           const emailResult = await sendBookingConfirmationEmail(

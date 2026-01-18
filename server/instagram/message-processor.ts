@@ -931,13 +931,22 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                         }
                         
                         // Send booking notification to configured WhatsApp number
-                        const formattedDate = formatAppointmentDate(newExtracted.date, newExtracted.time);
-                        await sendBookingNotification(linkedAgent.id, {
-                          clientName: clientName,
-                          date: formattedDate,
-                          time: newExtracted.time,
-                          meetLink: googleMeetLink,
-                        });
+                        try {
+                          const formattedDate = formatAppointmentDate(newExtracted.date, newExtracted.time);
+                          const notifResult = await sendBookingNotification(linkedAgent.id, {
+                            clientName: clientName,
+                            date: formattedDate,
+                            time: newExtracted.time,
+                            meetLink: googleMeetLink,
+                          });
+                          if (notifResult.success) {
+                            console.log(`   📱 [BOOKING NOTIFICATION] ✅ Sent successfully`);
+                          } else {
+                            console.log(`   ⚠️ [BOOKING NOTIFICATION] Not sent: ${notifResult.error || 'Unknown reason'}`);
+                          }
+                        } catch (notifError: any) {
+                          console.log(`   ❌ [BOOKING NOTIFICATION] Error: ${notifError?.message || notifError}`);
+                        }
                       } catch (calError) {
                         console.log(`   ⚠️ Google Calendar error: ${calError}`);
                       }
@@ -1070,13 +1079,22 @@ Ti ho inviato un invito calendario! 📬`;
                   }
                   
                   // Send booking notification to configured WhatsApp number
-                  const notificationFormattedDate = formatAppointmentDate(extracted.date, extracted.time);
-                  await sendBookingNotification(linkedAgent.id, {
-                    clientName: clientName,
-                    date: notificationFormattedDate,
-                    time: extracted.time,
-                    meetLink: googleMeetLink,
-                  });
+                  try {
+                    const notificationFormattedDate = formatAppointmentDate(extracted.date, extracted.time);
+                    const notifResult = await sendBookingNotification(linkedAgent.id, {
+                      clientName: clientName,
+                      date: notificationFormattedDate,
+                      time: extracted.time,
+                      meetLink: googleMeetLink,
+                    });
+                    if (notifResult.success) {
+                      console.log(`   📱 [BOOKING NOTIFICATION] ✅ Sent successfully`);
+                    } else {
+                      console.log(`   ⚠️ [BOOKING NOTIFICATION] Not sent: ${notifResult.error || 'Unknown reason'}`);
+                    }
+                  } catch (notifError: any) {
+                    console.log(`   ❌ [BOOKING NOTIFICATION] Error: ${notifError?.message || notifError}`);
+                  }
                 } catch (calError) {
                   console.log(`   ⚠️ Google Calendar not configured or error: ${calError}`);
                 }
