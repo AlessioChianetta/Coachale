@@ -341,6 +341,43 @@ router.get(
           return res.status(404).json({ message: "User not found" });
         }
 
+        // Check if Bronze user has been upgraded to Silver/Gold via subscription
+        const [upgradedSubscription] = await db.select()
+          .from(clientLevelSubscriptions)
+          .where(and(
+            eq(clientLevelSubscriptions.clientEmail, bronzeUser.email.toLowerCase()),
+            eq(clientLevelSubscriptions.consultantId, req.bronzeUser.consultantId),
+            eq(clientLevelSubscriptions.status, "active")
+          ))
+          .limit(1);
+
+        if (upgradedSubscription) {
+          // User has been upgraded! Return the upgraded tier info
+          const tier = upgradedSubscription.level === "3" ? "gold" : "silver";
+          console.log(`[PUBLIC AGENT] Bronze user ${bronzeUser.email} has active ${tier} subscription - returning upgraded status`);
+          
+          // Get consultant's pricing page slug
+          const [consultant] = await db.select({
+            pricingPageSlug: users.pricingPageSlug,
+          })
+            .from(users)
+            .where(eq(users.id, req.bronzeUser.consultantId))
+            .limit(1);
+
+          return res.json({
+            id: upgradedSubscription.id,
+            name: upgradedSubscription.clientName || [bronzeUser.firstName, bronzeUser.lastName].filter(Boolean).join(" ") || "User",
+            email: bronzeUser.email,
+            status: "active",
+            isBronze: false,
+            tier,
+            level: upgradedSubscription.level,
+            hasCompletedOnboarding: upgradedSubscription.hasCompletedOnboarding || bronzeUser.hasCompletedOnboarding || false,
+            consultantSlug: consultant?.pricingPageSlug || null,
+            upgradedFromBronze: true,
+          });
+        }
+
         // Check if we need to reset the daily counter (new day)
         let dailyUsed = bronzeUser.dailyMessagesUsed;
         const dailyLimit = bronzeUser.dailyMessageLimit;
