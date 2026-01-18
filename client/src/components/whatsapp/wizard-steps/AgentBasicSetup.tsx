@@ -108,61 +108,62 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     });
   }, [allTemplatesData, formData.whatsappTemplates]);
 
-  // Booking notification templates: include custom templates + approved Twilio templates
+  // Booking notification templates: include ONLY APPROVED custom templates + approved Twilio templates
+  // Also ensure the currently selected template is always included (for persistence)
   const bookingNotificationTemplates = React.useMemo(() => {
     const result: any[] = [];
     const addedIds = new Set<string>();
+    const selectedId = formData.bookingNotificationTemplateId;
     
-    // Debug: log raw data
     const customTemplates = customTemplatesData?.data || [];
     const twilioTemplates = allTemplatesData?.templates || [];
     
-    console.log('[BOOKING DEBUG] customTemplates count:', customTemplates.length);
-    console.log('[BOOKING DEBUG] twilioTemplates count:', twilioTemplates.length);
-    
-    // Add custom templates (especially booking_notification type)
-    customTemplates.forEach((t: any, idx: number) => {
-      console.log(`[BOOKING DEBUG] Custom template ${idx}:`, { id: t.id, name: t.templateName, isActive: t.isActive, twilioContentSid: t.twilioContentSid });
-      if (t.isActive && t.id && !addedIds.has(t.id)) {
+    // Add custom templates ONLY if approved by Meta (twilioStatus === 'approved')
+    // OR if it's the currently selected template (to preserve selection)
+    customTemplates.forEach((t: any) => {
+      const twilioStatus = t.activeVersion?.twilioStatus?.toLowerCase();
+      const isApproved = twilioStatus === 'approved';
+      const isSelected = t.id === selectedId;
+      
+      // Include if approved OR if it's the currently selected template
+      if (t.isActive && (isApproved || isSelected) && t.id && !addedIds.has(t.id)) {
         addedIds.add(t.id);
-        // Also track twilioContentSid to avoid duplicates from Twilio list
-        if (t.twilioContentSid) {
-          addedIds.add(t.twilioContentSid);
+        const twilioContentSid = t.activeVersion?.twilioContentSid;
+        if (twilioContentSid) {
+          addedIds.add(twilioContentSid);
         }
         result.push({
           id: t.id,
-          templateName: t.templateName,
+          templateName: t.templateName + (isApproved ? '' : ' [Bozza]'),
           templateType: t.templateType,
           isCustom: true,
-          twilioSid: t.twilioContentSid,
-          approvalStatus: t.twilioApprovalStatus || 'draft',
+          twilioSid: twilioContentSid,
+          approvalStatus: isApproved ? 'approved' : 'pending',
         });
       }
     });
     
     // Add approved Twilio templates (only if not already added via custom templates)
-    // Note: Twilio API returns "sid" field, not "contentSid"
-    twilioTemplates.forEach((t: any, idx: number) => {
+    twilioTemplates.forEach((t: any) => {
       const isApproved = t.approvalStatus?.toLowerCase() === 'approved';
-      const templateSid = t.sid || t.contentSid; // Use sid (Twilio API) or contentSid (fallback)
-      if (idx < 3) {
-        console.log(`[BOOKING DEBUG] Twilio template ${idx}:`, { sid: templateSid, name: t.friendlyName, approvalStatus: t.approvalStatus, isApproved });
-      }
-      if (isApproved && templateSid && !addedIds.has(templateSid)) {
+      const templateSid = t.sid || t.contentSid;
+      const isSelected = templateSid === selectedId;
+      
+      // Include if approved OR if it's the currently selected template
+      if ((isApproved || isSelected) && templateSid && !addedIds.has(templateSid)) {
         addedIds.add(templateSid);
         result.push({
           id: templateSid,
-          templateName: t.friendlyName || t.name,
+          templateName: (t.friendlyName || t.name) + (isApproved ? '' : ' [Bozza]'),
           isCustom: false,
           twilioSid: templateSid,
-          approvalStatus: 'approved',
+          approvalStatus: isApproved ? 'approved' : 'pending',
         });
       }
     });
     
-    console.log('[BOOKING TEMPLATES] Final result:', result.map(r => ({ id: r.id, name: r.templateName })));
     return result;
-  }, [customTemplatesData, allTemplatesData]);
+  }, [customTemplatesData, allTemplatesData, formData.bookingNotificationTemplateId]);
 
   // Check if selected template has booking variables
   const { data: templateVariables } = useQuery({
