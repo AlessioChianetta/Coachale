@@ -847,7 +847,8 @@ export const clientLevelSubscriptions = pgTable("client_level_subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  level: text("level").$type<"2" | "3">().notNull(),
+  bronzeUserId: varchar("bronze_user_id"), // Link to original bronze user if upgraded
+  level: text("level").$type<"2" | "3" | "4">().notNull(), // 2=Silver, 3=Gold, 4=Deluxe
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripeCustomerId: text("stripe_customer_id"),
   status: text("status").$type<"pending" | "active" | "canceled" | "expired" | "past_due">().default("pending").notNull(),
