@@ -558,7 +558,8 @@ router.post("/:slug/register-bronze", async (req: Request, res: Response) => {
       { 
         bronzeUserId: newBronzeUser.id,
         consultantId: consultant.id,
-        tier: "bronze"
+        tier: "bronze",
+        type: "bronze" // Required for downstream auth checks
       }, 
       JWT_SECRET, 
       { expiresIn: "7d" }
