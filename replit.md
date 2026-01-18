@@ -79,6 +79,23 @@ Two distinct pricing pages to maintain clear separation of payment flows:
 - **Audit Logging**: Complete history of all provisioned users with success/failure tracking
 - **UI Management**: Dedicated page with descriptive tooltips explaining Client/Consultant roles and Bronze/Silver/Gold levels
 
+### Secure Bronze Upgrade Flow (January 2026)
+Bronze users can upgrade to Silver/Gold/Deluxe via Direct Links with cryptographically secure token-based authentication:
+
+**Token Generation:**
+- `POST /api/public/upgrade-token` generates a signed JWT (30-min expiry) containing `bronzeUserId`, `consultantId`, `targetTier`
+- Token is appended to Stripe Payment Link URL as `client_reference_id` parameter
+
+**Webhook Validation:**
+- Stripe webhook extracts `client_reference_id` and validates JWT signature, expiration, type, and consultantId match
+- If valid, webhook updates `bronzeUsers` with `upgradedAt`, `upgradedToLevel`, `upgradedSubscriptionId`
+- `clientLevelSubscriptions` receives `bronzeUserId` foreign key for secure linking
+
+**Upgrade Detection (Two-Priority System):**
+- Priority 1: Check `bronzeUsers.upgradedAt` and `upgradedSubscriptionId` (secure bronzeUserId link)
+- Priority 2: Fallback to email matching for backwards compatibility with legacy upgrades
+- Polling in UI detects upgrade within seconds, auto-refreshes without logout
+
 ## Referral System
 A comprehensive "Invita un Amico" referral system for clients and consultants features unique codes, tracking, customizable landing pages with AI, dynamic qualification fields, automated emails, CRM lead creation, and bonus tracking.
 
