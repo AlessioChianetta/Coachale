@@ -128,6 +128,7 @@ const ConsultantPaymentAutomations = lazy(() => import("@/pages/consultant-payme
 const ManagerChat = lazy(() => import("@/pages/manager-chat"));
 const PublicAIChat = lazy(() => import("@/pages/public-ai-chat"));
 const PublicPricing = lazy(() => import("@/pages/public-pricing"));
+const PublicPricingDirect = lazy(() => import("@/pages/public-pricing-direct"));
 const PricingSuccess = lazy(() => import("@/pages/pricing-success"));
 const BronzeAuth = lazy(() => import("@/pages/bronze-auth"));
 const SelectAgent = lazy(() => import("@/pages/select-agent"));
@@ -213,6 +214,9 @@ function Router() {
 
           {/* Public Pricing Page - no auth required */}
           <Route path="/c/:slug/pricing" component={PublicPricing} />
+
+          {/* Public Pricing Direct Links - no auth required */}
+          <Route path="/c/:slug/direct" component={PublicPricingDirect} />
 
           {/* Pricing Success Page - no auth required */}
           <Route path="/c/:slug/pricing/success" component={PricingSuccess} />
