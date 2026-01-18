@@ -1582,31 +1582,11 @@ async function processPaymentAutomation(
             
             // Migrate Bronze conversations to new subscription ID
             try {
-              // Find the agent's share to update shareId (needed for conversation queries)
-              const consultantAgents = await db
-                .select({ id: schema.consultantWhatsappConfig.id })
-                .from(schema.consultantWhatsappConfig)
-                .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
-              
-              let agentShare: { id: string } | undefined;
-              if (consultantAgents.length > 0) {
-                const [share] = await db.select({ id: schema.whatsappAgentShares.id })
-                  .from(schema.whatsappAgentShares)
-                  .where(eq(schema.whatsappAgentShares.agentConfigId, consultantAgents[0].id))
-                  .limit(1);
-                agentShare = share;
-              }
-              
-              console.log(`[STRIPE AUTOMATION] Migration lookup - bronzeUserId: ${upgradeToken.bronzeUserId}, agentShare found: ${!!agentShare}`);
+              console.log(`[STRIPE AUTOMATION] Migration lookup - bronzeUserId: ${upgradeToken.bronzeUserId}`);
               
               // MIGRATION 1: Migrate from managerConversations (legacy)
-              const updateData: { managerId: string; shareId?: string } = { managerId: newSub.id };
-              if (agentShare) {
-                updateData.shareId = agentShare.id;
-              }
-              
               const migratedManagerConversations = await db.update(schema.managerConversations)
-                .set(updateData)
+                .set({ managerId: newSub.id })
                 .where(eq(schema.managerConversations.managerId, upgradeToken.bronzeUserId))
                 .returning({ id: schema.managerConversations.id });
               
@@ -1614,9 +1594,11 @@ async function processPaymentAutomation(
               
               // MIGRATION 2: Migrate from whatsappAgentConsultantConversations (actual Bronze conversations)
               // Bronze conversations have externalVisitorId format: manager_${bronzeUserId}_${timestamp}
+              // IMPORTANT: We need to find the correct shareId for EACH conversation based on its agentConfigId
               const bronzeConversations = await db.select({ 
                   id: schema.whatsappAgentConsultantConversations.id, 
-                  externalVisitorId: schema.whatsappAgentConsultantConversations.externalVisitorId 
+                  externalVisitorId: schema.whatsappAgentConsultantConversations.externalVisitorId,
+                  agentConfigId: schema.whatsappAgentConsultantConversations.agentConfigId
                 })
                 .from(schema.whatsappAgentConsultantConversations)
                 .where(
@@ -1626,24 +1608,59 @@ async function processPaymentAutomation(
                   )
                 );
               
-              if (bronzeConversations.length > 0 && agentShare) {
-                // Update shareId AND externalVisitorId to link conversations to the new Silver/Gold subscription
+              if (bronzeConversations.length > 0) {
+                // Get all unique agentConfigIds from the conversations
+                const uniqueAgentConfigIds = [...new Set(bronzeConversations.map(c => c.agentConfigId).filter(Boolean))];
+                
+                // Fetch the correct shareId for each agentConfigId
+                const agentShares = await db.select({ 
+                    id: schema.whatsappAgentShares.id, 
+                    agentConfigId: schema.whatsappAgentShares.agentConfigId 
+                  })
+                  .from(schema.whatsappAgentShares)
+                  .where(sql`${schema.whatsappAgentShares.agentConfigId} IN (${sql.join(uniqueAgentConfigIds.map(id => sql`${id}`), sql`, `)})`);
+                
+                // Create a map of agentConfigId -> shareId
+                const shareIdByAgentConfig = new Map<string, string>();
+                for (const share of agentShares) {
+                  if (share.agentConfigId) {
+                    shareIdByAgentConfig.set(share.agentConfigId, share.id);
+                  }
+                }
+                
+                console.log(`[STRIPE AUTOMATION] Found ${agentShares.length} shares for ${uniqueAgentConfigIds.length} unique agents`);
+                
+                // Update shareId AND externalVisitorId for each conversation using its correct shareId
+                let migratedCount = 0;
                 for (const conv of bronzeConversations) {
+                  const correctShareId = conv.agentConfigId ? shareIdByAgentConfig.get(conv.agentConfigId) : undefined;
+                  
                   const newExternalVisitorId = conv.externalVisitorId.replace(
                     `manager_${upgradeToken.bronzeUserId}`,
                     `manager_${newSub.id}`
                   );
-                  await db.update(schema.whatsappAgentConsultantConversations)
-                    .set({ 
-                      shareId: agentShare.id,
-                      externalVisitorId: newExternalVisitorId
-                    })
-                    .where(eq(schema.whatsappAgentConsultantConversations.id, conv.id));
+                  
+                  if (correctShareId) {
+                    await db.update(schema.whatsappAgentConsultantConversations)
+                      .set({ 
+                        shareId: correctShareId,
+                        externalVisitorId: newExternalVisitorId
+                      })
+                      .where(eq(schema.whatsappAgentConsultantConversations.id, conv.id));
+                    migratedCount++;
+                    console.log(`[STRIPE AUTOMATION] Migrated conversation ${conv.id} with shareId ${correctShareId} (agent: ${conv.agentConfigId})`);
+                  } else {
+                    // No share found - just update externalVisitorId
+                    await db.update(schema.whatsappAgentConsultantConversations)
+                      .set({ externalVisitorId: newExternalVisitorId })
+                      .where(eq(schema.whatsappAgentConsultantConversations.id, conv.id));
+                    console.log(`[STRIPE AUTOMATION] Warning: No share found for conversation ${conv.id} (agent: ${conv.agentConfigId}), only updated externalVisitorId`);
+                  }
                 }
                 
-                console.log(`[STRIPE AUTOMATION] Migrated ${bronzeConversations.length} whatsapp_conversations from Bronze ${upgradeToken.bronzeUserId} to Silver/Gold ${newSub.id} with shareId ${agentShare.id}`);
+                console.log(`[STRIPE AUTOMATION] Migrated ${migratedCount}/${bronzeConversations.length} whatsapp_conversations from Bronze ${upgradeToken.bronzeUserId} to Silver/Gold ${newSub.id}`);
               } else {
-                console.log(`[STRIPE AUTOMATION] No Bronze whatsapp_conversations found for ${upgradeToken.bronzeUserId} (agentShare: ${!!agentShare}, conversations: ${bronzeConversations.length})`);
+                console.log(`[STRIPE AUTOMATION] No Bronze whatsapp_conversations found for ${upgradeToken.bronzeUserId}`);
               }
             } catch (migrationError: any) {
               console.error(`[STRIPE AUTOMATION] Failed to migrate conversations:`, migrationError.message);
