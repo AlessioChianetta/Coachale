@@ -91,7 +91,14 @@ export function ProfileSettingsSheet({
         .then(links => {
           console.log("[DIRECT LINKS] Fetched links:", links);
           console.log("[DIRECT LINKS] Links count:", Array.isArray(links) ? links.length : "not an array");
-          setDirectLinks(Array.isArray(links) ? links : []);
+          // Normalize tier and billingInterval to lowercase trimmed strings
+          const normalizedLinks = Array.isArray(links) ? links.map((link: DirectLink) => ({
+            ...link,
+            tier: link.tier?.toLowerCase().trim(),
+            billingInterval: link.billingInterval?.toLowerCase().trim() as "monthly" | "yearly"
+          })) : [];
+          console.log("[DIRECT LINKS] Normalized links:", normalizedLinks);
+          setDirectLinks(normalizedLinks);
         })
         .catch(err => {
           console.error("[DIRECT LINKS] Error:", err);
@@ -165,12 +172,32 @@ export function ProfileSettingsSheet({
 
       // First check if user came from direct link and if we have pre-loaded direct links
       if (isDirectLinkUser && directLinks.length > 0) {
-        // Find the matching direct link for this tier and interval
+        // Find the matching direct link for this tier and interval (normalized comparison)
+        const normalizedTarget = targetLevel.toLowerCase().trim();
+        const normalizedInterval = billingInterval.toLowerCase().trim();
+        
+        console.log("[UPGRADE] Looking for direct link:", { 
+          targetLevel, 
+          normalizedTarget,
+          billingInterval, 
+          normalizedInterval 
+        });
+        
+        // Log each link for debugging
+        directLinks.forEach((link, idx) => {
+          console.log(`[UPGRADE] Link ${idx}:`, {
+            tier: link.tier,
+            tierMatch: link.tier === normalizedTarget,
+            billingInterval: link.billingInterval,
+            intervalMatch: link.billingInterval === normalizedInterval,
+            hasUrl: !!link.paymentLinkUrl
+          });
+        });
+        
         const matchingLink = directLinks.find(
-          link => link.tier === targetLevel && link.billingInterval === billingInterval
+          link => link.tier === normalizedTarget && link.billingInterval === normalizedInterval
         );
         
-        console.log("[UPGRADE] Looking for direct link:", { targetLevel, billingInterval });
         console.log("[UPGRADE] Available direct links:", directLinks);
         console.log("[UPGRADE] Matching link:", matchingLink);
         

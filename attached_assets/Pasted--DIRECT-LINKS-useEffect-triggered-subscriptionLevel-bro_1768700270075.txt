@@ -1,0 +1,14 @@
+[DIRECT LINKS] useEffect triggered, subscriptionLevel: bronze
+ProfileSettingsSheet.tsx:81 [DIRECT LINKS] paymentSource: direct_link consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+ProfileSettingsSheet.tsx:85 [DIRECT LINKS] Fetching from: /api/stripe-automations/direct-links/public/0c73bbe5-51e1-4108-866b-6be7a52fce3b
+ProfileSettingsSheet.tsx:88 [DIRECT LINKS] Response status: 200
+ProfileSettingsSheet.tsx:92 [DIRECT LINKS] Fetched links: (6) [{…}, {…}, {…}, {…}, {…}, {…}]
+ProfileSettingsSheet.tsx:93 [DIRECT LINKS] Links count: 6
+ProfileSettingsSheet.tsx:148 [UPGRADE] BUTTON CLICKED! targetLevel: silver
+ProfileSettingsSheet.tsx:149 [UPGRADE] isUpgrading: false isLoadingLinks: false
+ProfileSettingsSheet.tsx:150 [UPGRADE] Current directLinks state: (6) [{…}, {…}, {…}, {…}, {…}, {…}]0: {tier: 'deluxe', billingInterval: 'monthly', priceCents: 29700, originalPriceCents: null, discountPercent: 0, …}1: {tier: 'deluxe', billingInterval: 'yearly', priceCents: 299700, originalPriceCents: null, discountPercent: 0, …}2: {tier: 'gold', billingInterval: 'monthly', priceCents: 9900, originalPriceCents: null, discountPercent: 0, …}3: {tier: 'gold', billingInterval: 'yearly', priceCents: 99900, originalPriceCents: null, discountPercent: 0, …}4: {tier: 'silver', billingInterval: 'monthly', priceCents: 4900, originalPriceCents: null, discountPercent: 0, …}5: {tier: 'silver', billingInterval: 'yearly', priceCents: 49700, originalPriceCents: null, discountPercent: 0, …}length: 6[[Prototype]]: Array(0)
+ProfileSettingsSheet.tsx:151 [UPGRADE] Current billingInterval state: monthly
+ProfileSettingsSheet.tsx:148 [UPGRADE] BUTTON CLICKED! targetLevel: silver
+ProfileSettingsSheet.tsx:149 [UPGRADE] isUpgrading: false isLoadingLinks: false
+ProfileSettingsSheet.tsx:150 [UPGRADE] Current directLinks state: (6) [{…}, {…}, {…}, {…}, {…}, {…}]0: {tier: 'deluxe', billingInterval: 'monthly', priceCents: 29700, originalPriceCents: null, discountPercent: 0, …}1: {tier: 'deluxe', billingInterval: 'yearly', priceCents: 299700, originalPriceCents: null, discountPercent: 0, …}2: {tier: 'gold', billingInterval: 'monthly', priceCents: 9900, originalPriceCents: null, discountPercent: 0, …}3: {tier: 'gold', billingInterval: 'yearly', priceCents: 99900, originalPriceCents: null, discountPercent: 0, …}4: {tier: 'silver', billingInterval: 'monthly', priceCents: 4900, originalPriceCents: null, discountPercent: 0, …}5: {tier: 'silver', billingInterval: 'yearly', priceCents: 49700, originalPriceCents: null, discountPercent: 0, …}length: 6[[Prototype]]: Array(0)
+ProfileSettingsSheet.tsx:151 [UPGRADE] Current billingInterval state: monthly
