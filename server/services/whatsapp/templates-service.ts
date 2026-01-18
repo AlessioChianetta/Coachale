@@ -24,6 +24,7 @@ export interface TemplateListItem {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
+  isActive: boolean;
   isSystemTemplate?: boolean;
   targetAgentType?: string;
   activeVersion?: {
@@ -243,7 +244,7 @@ export async function listTemplates(
       description: template.description,
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
-      // NEW: Include system template fields
+      isActive: template.isActive,
       isSystemTemplate: template.isSystemTemplate,
       targetAgentType: template.targetAgentType,
       activeVersion: activeVersion ? {
