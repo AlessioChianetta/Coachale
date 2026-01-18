@@ -1,0 +1,26 @@
+consultant-whatsapp.tsx:1548 Uncaught ReferenceError: Zap is not defined
+    at ConsultantWhatsAppPage (consultant-whatsapp.tsx:1548:28)
+
+consultant-whatsapp.tsx:1548 Uncaught ReferenceError: Zap is not defined
+    at ConsultantWhatsAppPage (consultant-whatsapp.tsx:1548:28)
+injected.js:37 The above error occurred in the <ConsultantWhatsAppPage> component:
+
+    at ConsultantWhatsAppPage (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.dev/src/pages/consultant-whatsapp.tsx:412:24)
+    at AuthGuard (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ad919c:226:16)
+    at Switch (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=74ad919c:283:17)
+    at Suspense
+    at Router (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.dev/src/App.tsx?v=jDrZU8jH2rkQb_KgNfuS0:296:35)
+    at Provider (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=74ad919c:44:15)
+    at TooltipProvider (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=74ad919c:158:5)
+    at TourProvider (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=74ad919c:3096:3)
+    at V (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ad919c:44:25)
+    at J (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=74ad919c:42:18)
+    at App (https://e9a21e0d-0de2-46b2-83ad-de9161257b5c-00-30l810d0z6gzz.kirk.replit.dev/src/App.tsx?v=jDrZU8jH2rkQb_KgNfuS0:1862:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=74ad919c:19413 Uncaught ReferenceError: Zap is not defined
+    at ConsultantWhatsAppPage (consultant-whatsapp.tsx:1548:28)

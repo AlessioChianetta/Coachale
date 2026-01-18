@@ -109,7 +109,8 @@ import {
   RefreshCw,
   Target,
   Heart,
-  Brain
+  Brain,
+  Zap
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
