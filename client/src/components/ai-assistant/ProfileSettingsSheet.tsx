@@ -41,6 +41,13 @@ interface ProfileSettingsSheetProps {
   };
 }
 
+interface DirectLink {
+  tier: string;
+  billingInterval: "monthly" | "yearly";
+  priceCents: number;
+  paymentLinkUrl: string;
+}
+
 export function ProfileSettingsSheet({
   trigger,
   managerInfo,
@@ -57,10 +64,31 @@ export function ProfileSettingsSheet({
   const [isUpgrading, setIsUpgrading] = useState(false);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const [directLinks, setDirectLinks] = useState<DirectLink[]>([]);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
 
   useEffect(() => {
     setActiveTab(defaultTab);
   }, [defaultTab]);
+
+  // Fetch direct links from consultant if user is a direct link user
+  useEffect(() => {
+    const paymentSource = localStorage.getItem("paymentSource");
+    const consultantId = localStorage.getItem("consultantId");
+    
+    if (paymentSource === "direct_link" && consultantId && subscriptionLevel === "bronze") {
+      setIsLoadingLinks(true);
+      fetch(`/api/stripe-automations/direct-links/public/${consultantId}`)
+        .then(res => res.ok ? res.json() : [])
+        .then(links => {
+          console.log("[DIRECT LINKS] Fetched links:", links);
+          setDirectLinks(links);
+        })
+        .catch(err => console.error("[DIRECT LINKS] Error:", err))
+        .finally(() => setIsLoadingLinks(false));
+    }
+  }, [subscriptionLevel]);
 
   const getToken = () => {
     return localStorage.getItem("manager_token") || localStorage.getItem("token");
@@ -119,34 +147,33 @@ export function ProfileSettingsSheet({
       console.log("[UPGRADE] consultantId:", storedConsultantId);
       console.log("[UPGRADE] isDirectLinkUser:", isDirectLinkUser);
 
-      // First check if user came from direct link and if consultant has direct upgrade links
-      if (isDirectLinkUser) {
-        // Try to get consultant's direct links for this tier
-        try {
-          console.log("[UPGRADE] Fetching direct links for consultant:", storedConsultantId);
-          const directLinksRes = await fetch(`/api/stripe-automations/direct-links/public/${storedConsultantId}?tier=${targetLevel}&interval=monthly`);
-          console.log("[UPGRADE] Direct links response status:", directLinksRes.status);
-          if (directLinksRes.ok) {
-            const directLinks = await directLinksRes.json();
-            console.log("[UPGRADE] Direct links found:", directLinks.length, directLinks);
-            if (directLinks.length > 0 && directLinks[0].paymentLinkUrl) {
-              // Use direct link for 100% commission
-              console.log("[UPGRADE] SUCCESS: Using direct link for upgrade:", directLinks[0].paymentLinkUrl);
-              window.open(directLinks[0].paymentLinkUrl, '_blank', 'noopener');
-              toast({
-                title: "Checkout aperto (Direct Link)",
-                description: "100% commissione al consulente. Completa il pagamento nella nuova scheda.",
-              });
-              
-              // Start polling for upgrade completion
-              startUpgradePolling(targetLevel);
-              return;
-            }
-          }
-        } catch (e) {
-          console.log("[UPGRADE] Direct link error:", e);
-          console.log("[UPGRADE] Falling back to Stripe Connect");
+      // First check if user came from direct link and if we have pre-loaded direct links
+      if (isDirectLinkUser && directLinks.length > 0) {
+        // Find the matching direct link for this tier and interval
+        const matchingLink = directLinks.find(
+          link => link.tier === targetLevel && link.billingInterval === billingInterval
+        );
+        
+        console.log("[UPGRADE] Looking for direct link:", { targetLevel, billingInterval });
+        console.log("[UPGRADE] Available direct links:", directLinks);
+        console.log("[UPGRADE] Matching link:", matchingLink);
+        
+        if (matchingLink?.paymentLinkUrl) {
+          console.log("[UPGRADE] SUCCESS: Using direct link for upgrade:", matchingLink.paymentLinkUrl);
+          window.open(matchingLink.paymentLinkUrl, '_blank', 'noopener');
+          toast({
+            title: "Checkout aperto (Direct Link)",
+            description: `100% commissione al consulente. €${(matchingLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`,
+          });
+          
+          // Start polling for upgrade completion
+          startUpgradePolling(targetLevel);
+          return;
+        } else {
+          console.log("[UPGRADE] No matching direct link found, falling back to Stripe Connect");
         }
+      } else if (isDirectLinkUser) {
+        console.log("[UPGRADE] Direct link user but no links loaded yet");
       } else {
         console.log("[UPGRADE] Not a direct link user, using Stripe Connect");
       }
@@ -376,74 +403,141 @@ export function ProfileSettingsSheet({
                       ? "(100% al consulente)" 
                       : "(revenue sharing)"}
                   </span>
-                </div>
-                
-                <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Medal className="h-5 w-5 text-slate-500" />
-                    <span className="font-medium">{silverName}</span>
-                    <span className="text-sm text-muted-foreground">- €{silverPrice}/mese</span>
-                  </div>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span>Messaggi illimitati</span>
-                    </li>
-                    {pricing?.level2Features?.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div className="p-4 rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Crown className="h-5 w-5 text-yellow-500" />
-                    <span className="font-medium">{goldName}</span>
-                    <span className="text-sm text-muted-foreground">- €{goldPrice}/mese</span>
-                  </div>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span>Tutto di {silverName} +</span>
-                    </li>
-                    {pricing?.level3Features?.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {isLoadingLinks && <Loader2 className="h-3 w-3 animate-spin ml-auto" />}
                 </div>
 
-                <div className="space-y-3">
-                  <Button
-                    onClick={() => handleUpgrade("silver")}
-                    disabled={isUpgrading}
-                    className="w-full bg-gradient-to-r from-slate-400 to-slate-500 hover:from-slate-500 hover:to-slate-600 text-white"
-                  >
-                    {isUpgrading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Medal className="h-4 w-4 mr-2" />
-                    )}
-                    Passa a {silverName} - €{silverPrice}/mese
-                  </Button>
+                {/* Billing interval toggle - only show for direct link users with links */}
+                {isDirectLinkUser && directLinks.length > 0 && (
+                  <div className="flex items-center justify-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <button
+                      onClick={() => setBillingInterval("monthly")}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        billingInterval === "monthly"
+                          ? "bg-white dark:bg-slate-700 shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Mensile
+                    </button>
+                    <button
+                      onClick={() => setBillingInterval("yearly")}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                        billingInterval === "yearly"
+                          ? "bg-white dark:bg-slate-700 shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Annuale
+                      <span className="text-xs text-green-600 dark:text-green-400">-15%</span>
+                    </button>
+                  </div>
+                )}
+                
+                {/* Silver plan card */}
+                {(() => {
+                  const silverLink = directLinks.find(l => l.tier === "silver" && l.billingInterval === billingInterval);
+                  const displaySilverPrice = silverLink 
+                    ? `€${(silverLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`
+                    : `€${silverPrice}/mese`;
                   
-                  <Button
-                    onClick={() => handleUpgrade("gold")}
-                    disabled={isUpgrading}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
-                  >
-                    {isUpgrading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Crown className="h-4 w-4 mr-2" />
-                    )}
-                    Passa a {goldName} - €{goldPrice}/mese
-                  </Button>
+                  return (
+                    <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Medal className="h-5 w-5 text-slate-500" />
+                        <span className="font-medium">{silverName}</span>
+                        <span className="text-sm text-muted-foreground">- {displaySilverPrice}</span>
+                      </div>
+                      <ul className="space-y-2 text-sm">
+                        <li className="flex items-start gap-2">
+                          <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span>Messaggi illimitati</span>
+                        </li>
+                        {pricing?.level2Features?.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
+                
+                {/* Gold plan card */}
+                {(() => {
+                  const goldLink = directLinks.find(l => l.tier === "gold" && l.billingInterval === billingInterval);
+                  const displayGoldPrice = goldLink 
+                    ? `€${(goldLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`
+                    : `€${goldPrice}/mese`;
+                  
+                  return (
+                    <div className="p-4 rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Crown className="h-5 w-5 text-yellow-500" />
+                        <span className="font-medium">{goldName}</span>
+                        <span className="text-sm text-muted-foreground">- {displayGoldPrice}</span>
+                      </div>
+                      <ul className="space-y-2 text-sm">
+                        <li className="flex items-start gap-2">
+                          <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span>Tutto di {silverName} +</span>
+                        </li>
+                        {pricing?.level3Features?.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
+
+                {/* Upgrade buttons */}
+                <div className="space-y-3">
+                  {(() => {
+                    const silverLink = directLinks.find(l => l.tier === "silver" && l.billingInterval === billingInterval);
+                    const buttonSilverPrice = silverLink 
+                      ? `€${(silverLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`
+                      : `€${silverPrice}/mese`;
+                    
+                    return (
+                      <Button
+                        onClick={() => handleUpgrade("silver")}
+                        disabled={isUpgrading || isLoadingLinks}
+                        className="w-full bg-gradient-to-r from-slate-400 to-slate-500 hover:from-slate-500 hover:to-slate-600 text-white"
+                      >
+                        {isUpgrading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Medal className="h-4 w-4 mr-2" />
+                        )}
+                        Passa a {silverName} - {buttonSilverPrice}
+                      </Button>
+                    );
+                  })()}
+                  
+                  {(() => {
+                    const goldLink = directLinks.find(l => l.tier === "gold" && l.billingInterval === billingInterval);
+                    const buttonGoldPrice = goldLink 
+                      ? `€${(goldLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`
+                      : `€${goldPrice}/mese`;
+                    
+                    return (
+                      <Button
+                        onClick={() => handleUpgrade("gold")}
+                        disabled={isUpgrading || isLoadingLinks}
+                        className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
+                      >
+                        {isUpgrading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Crown className="h-4 w-4 mr-2" />
+                        )}
+                        Passa a {goldName} - {buttonGoldPrice}
+                      </Button>
+                    );
+                  })()}
                 </div>
               </div>
             )}
