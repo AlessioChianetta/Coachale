@@ -1,0 +1,86 @@
+Step 4: Frontend - Aggiungo la UI per configurare le notifiche:
+
+Optimized Agent memory
+Ho visto la struttura del componente. Devo aggiungere una sezione per la configurazione delle notifiche di booking. Leggo l'inizio del file per vedere le import e la struttura dei form data.
+
+Ho visto la struttura del componente. Vedo che formData ha più proprietà. Devo aggiungere una nuova card per la configurazione delle notifiche di booking.Devo anche verificare se esiste un endpoint per ottenere i template approvati in modo che l'utente possa selezionare quale template usare. Aggiungo la Card subito prima dell'alert finale.
+
+Ora devo aggiungere una query per ottenere i template approvati e poi aggiungere la Card per la configurazione delle notifiche.
+
+Ho bisogno di aggiungere una query per i template approvati e la Card per la configurazione delle notifiche. Aggiungo la query dopo quella di twilioSettings e poi aggiungo la Card prima dell'alert finale.
+
+Ora aggiungo la Card per la configurazione delle notifiche di booking. Prima leggo dove finisce l'ultima Card prima dell'alert finale:
+
+Ho trovato il punto. Devo aggiungere una nuova Card per la configurazione delle notifiche di booking subito dopo la Card delle opzioni avanzate (riga 530) e prima dell'Alert finale (riga 532).
+
+Frontend UI aggiunta. Ora devo verificare che:
+
+L'endpoint /api/whatsapp/templates/approved esiste
+Le nuove proprietà del formData vengano inviate correttamente al backend
+Il backend salvi correttamente le impostazioni
+Prima controllo se esiste l'endpoint per i template approvati:
+
+Ora verifico l'endpoint dei template e controllo i log:
+
+Checked console and system logs
+L'endpoint /templates/approved non esiste. Devo crearlo o usare un endpoint esistente. Vediamo se c'è un endpoint che elenca i template:
+
+Devo creare l'endpoint per i template approvati. Cerco quelli esistenti:
+
+Trovo il file custom-templates.ts per aggiungere l'endpoint per i template approvati.
+
+Ho visto la struttura del file. Devo aggiungere un endpoint che restituisce i template approvati (quelli con twilioContentSid impostato). Lo aggiungo vicino agli altri GET.
+
+Aggiungo l'endpoint per i template approvati:
+
+Ottimo! Ho aggiunto l'endpoint per i template approvati. Ora devo verificare che il backend salvi correttamente le impostazioni delle notifiche. Devo controllare se:1. Lo schema drizzle include le nuove colonne (bookingNotificationEnabled, bookingNotificationPhone, bookingNotificationTemplateId)
+2. Le routes agent salvano questi campi
+
+Prima verifico lo schema e le routes per aggiornare/creare gli agenti:
+
+Ora verifico che il salvataggio degli agenti includa i nuovi campi:
+
+Lo schema è a posto. Ora devo verificare le routes per il salvataggio dell'agente e aggiungere i nuovi campi.
+
+Schema ok. Cerco il router per update agent:
+
+Vedo che ci sono due file che contengono isProactiveAgent o isDryRun. Devo trovare dove viene creato/aggiornato l'agente. Cerco più specificamente l'endpoint di update:
+
+Devo trovare dove viene eseguito l'update dell'agente. Cerco nel file agent-instructions-router.ts:
+
+Ho visto che questo endpoint aggiorna solo i campi delle istruzioni dell'agente, non quelli del form di configurazione base. Devo trovare dove viene eseguito l'update completo dell'agente dal wizard. Cerco la creazione/aggiornamento dell'agente:
+
+Cerco l'endpoint principale di creazione/update agent:
+
+Non trovo l'endpoint principale per creare/aggiornare l'agente. Devo cercare in un altro file:
+
+Forse l'endpoint per salvare l'agente è in consultant-router o un file con un nome diverso. Cerco più genericamente:
+
+L'analista ha ragione - devo usare search_codebase per trovare l'endpoint corretto.
+
+Searched for "Where is the API endpoint that creates or updates WhatsApp agent configuration (consultantWhatsappConfig) from the wizard? Looking for POST or PUT route that handles form data with fields like agentName, twilioAccountSid, isDryRun, isProactiveAgent"
+Devo trovare il file consultant-whatsapp-config.controller.ts. Cerco questo file:
+
+I file trovati sono frontend, non backend. Cerco meglio nel backend:
+
+Sembra che l'endpoint per creare/aggiornare l'agente non sia nei routes. Devo cercare nel frontend per vedere quale API viene chiamata.
+
+Devo trovare dove viene chiamato l'API per salvare la configurazione dell'agente. Cercherò nel frontend per vedere l'endpoint esatto usato.
+
+Searched for "Find the API fetch call in the frontend wizard that saves/creates WhatsApp agent configuration - looking for the mutation that submits form data with fields like agentName, isDryRun, isProactiveAgent to the backend"
+Devo trovare il file agent.ts che contiene il hook useCreateWhatsAppAgent:
+
+Vedo che non ci sono corrispondenze. Cerco in un altro modo per trovare come viene salvato l'agente:
+
+Il file non contiene questi campi. Devo cercare nel file dove vengono salvati gli agenti. Cerco la chiamata API di salvataggio dell'agente:
+
+Ha ragione il feedback, devo usare search_codebase per trovare l'endpoint API per salvare l'agente.
+
+Searched for "Find where WhatsApp agent configuration is saved to backend - look for fetch or axios POST/PUT call that sends agentName, twilioAccountSid and other agent form fields to create or update consultantWhatsappConfig"
+Non ho trovato il file corretto. Leggo direttamente il file wizard per vedere come viene salvato l'agente:
+
+Vedo l'endpoint /api/whatsapp/config/${agentId}. Devo trovare questo endpoint nel backend e aggiungere i campi delle notifiche. Cerco questo endpoint:
+
+Devo trovare l'endpoint /whatsapp/config/:agentId. Provo a cercare in modo diverso:
+
+Ho trovato i file. Leggo il routes.ts principale per vedere dove è definito l'endpoint:

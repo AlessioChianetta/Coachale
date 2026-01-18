@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState, consultantWhatsappConfig, whatsappTemplateVersions, whatsappTemplateVariables, whatsappVariableCatalog, centralizedTwilioConfig } from "../../shared/schema";
+import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState, consultantWhatsappConfig, whatsappTemplateVersions, whatsappTemplateVariables, whatsappVariableCatalog } from "../../shared/schema";
 import { eq, and, or, isNull, sql, desc } from "drizzle-orm";
 import { createGoogleCalendarEvent } from "../google-calendar-service";
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
@@ -1264,13 +1264,15 @@ export async function sendBookingNotification(
   console.log(`   Agent Config ID: ${agentConfigId}`);
   
   try {
-    // 1. Fetch agent config with notification settings
+    // 1. Fetch agent config with notification settings and Twilio credentials
     const [agentConfig] = await db
       .select({
         notificationEnabled: consultantWhatsappConfig.bookingNotificationEnabled,
         notificationPhone: consultantWhatsappConfig.bookingNotificationPhone,
         notificationTemplateId: consultantWhatsappConfig.bookingNotificationTemplateId,
         twilioWhatsappNumber: consultantWhatsappConfig.twilioWhatsappNumber,
+        twilioAccountSid: consultantWhatsappConfig.twilioAccountSid,
+        twilioAuthToken: consultantWhatsappConfig.twilioAuthToken,
         consultantId: consultantWhatsappConfig.consultantId,
       })
       .from(consultantWhatsappConfig)
@@ -1362,18 +1364,9 @@ export async function sendBookingNotification(
     
     console.log(`   📝 Content variables:`, contentVariables);
     
-    // 5. Get Twilio credentials (centralized or per-agent)
-    const [twilioConfig] = await db
-      .select({
-        accountSid: centralizedTwilioConfig.accountSid,
-        authToken: centralizedTwilioConfig.authToken,
-      })
-      .from(centralizedTwilioConfig)
-      .where(eq(centralizedTwilioConfig.consultantId, agentConfig.consultantId))
-      .limit(1);
-    
-    if (!twilioConfig || !twilioConfig.accountSid || !twilioConfig.authToken) {
-      console.log(`   ⚠️ Twilio not configured for consultant`);
+    // 5. Validate Twilio credentials from agent config
+    if (!agentConfig.twilioAccountSid || !agentConfig.twilioAuthToken) {
+      console.log(`   ⚠️ Twilio not configured for agent`);
       return { success: false, error: "Twilio not configured" };
     }
     
@@ -1383,7 +1376,7 @@ export async function sendBookingNotification(
     }
     
     // 6. Send WhatsApp message via Twilio
-    const client = twilio(twilioConfig.accountSid, twilioConfig.authToken);
+    const client = twilio(agentConfig.twilioAccountSid, agentConfig.twilioAuthToken);
     
     const toNumber = agentConfig.notificationPhone.startsWith("whatsapp:") 
       ? agentConfig.notificationPhone 
