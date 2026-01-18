@@ -1025,7 +1025,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
 
       // Process the automation
-      await processPaymentAutomation(automation, session, consultantId);
+      await processPaymentAutomation(automation, session, consultantId, consultant.stripeSecretKey);
     }
 
     res.json({ received: true });
@@ -1124,7 +1124,8 @@ async function markUpgradeTokenUsed(tokenId: string, subscriptionId: string): Pr
 async function processPaymentAutomation(
   automation: schema.StripePaymentAutomation,
   session: Stripe.Checkout.Session,
-  consultantId: string
+  consultantId: string,
+  stripeSecretKey?: string
 ) {
   const customerEmail = session.customer_details?.email || session.customer_email;
   const customerName = session.customer_details?.name || "";
@@ -1194,23 +1195,36 @@ async function processPaymentAutomation(
         // This is a Silver→Gold upgrade via Direct Link!
         console.log(`[STRIPE AUTOMATION] Silver→Gold upgrade detected - subscription ID: ${existingSilverSub.id}`);
         
-        // Get Stripe subscription ID - try session.subscription first, then invoice
+        // Get Stripe subscription ID - try session.subscription first, then fetch invoice if needed
         let stripeSubId: string | null = null;
         if (session.subscription) {
           stripeSubId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
           console.log(`[STRIPE AUTOMATION] Got subscription ID from session: ${stripeSubId}`);
         } else if (session.invoice) {
           // For Payment Links, subscription might be on the invoice
-          const invoiceObj = session.invoice as any;
-          if (typeof invoiceObj === "object" && invoiceObj?.subscription) {
-            stripeSubId = typeof invoiceObj.subscription === "string" ? invoiceObj.subscription : invoiceObj.subscription.id;
+          const invoiceData = session.invoice;
+          if (typeof invoiceData === "object" && invoiceData?.subscription) {
+            stripeSubId = typeof invoiceData.subscription === "string" ? invoiceData.subscription : invoiceData.subscription.id;
             console.log(`[STRIPE AUTOMATION] Got subscription ID from invoice object: ${stripeSubId}`);
+          } else if (typeof invoiceData === "string" && stripeSecretKey) {
+            // Invoice is just an ID - fetch it from Stripe to get subscription
+            try {
+              const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-12-18.acacia" });
+              const invoice = await stripe.invoices.retrieve(invoiceData);
+              if (invoice.subscription) {
+                stripeSubId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription.id;
+                console.log(`[STRIPE AUTOMATION] Fetched subscription ID from invoice: ${stripeSubId}`);
+              }
+            } catch (fetchErr: any) {
+              console.warn(`[STRIPE AUTOMATION] Could not fetch invoice ${invoiceData}:`, fetchErr.message);
+            }
           }
         }
         
-        // Log if subscription ID is still missing - webhook for invoice.payment_succeeded may backfill later
+        // Log if subscription ID is still missing
         if (!stripeSubId) {
-          console.warn(`[STRIPE AUTOMATION] No stripeSubscriptionId available for Silver→Gold upgrade - may be populated by later webhook`);
+          console.warn(`[STRIPE AUTOMATION] No stripeSubscriptionId available for Silver→Gold upgrade`);
+          console.warn(`[STRIPE AUTOMATION] Upgrade will proceed but subscription may need manual backfill for billing management`);
         }
         
         // Update the existing subscription to Gold level
