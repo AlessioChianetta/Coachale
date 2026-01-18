@@ -363,6 +363,7 @@ export default function PublicPricingDirect() {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
           firstName: formData.firstName,
           lastName: formData.lastName,
           phone: formData.phone,
