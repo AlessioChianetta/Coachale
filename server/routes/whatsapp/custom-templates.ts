@@ -320,8 +320,10 @@ router.post(
       const consultantId = req.user!.id;
 
       // Validate request body
+      console.log("📝 [CUSTOM TEMPLATES] Create request body:", JSON.stringify(req.body, null, 2));
       const validationResult = createTemplateSchema.safeParse(req.body);
       if (!validationResult.success) {
+        console.error("❌ [CUSTOM TEMPLATES] Validation errors:", JSON.stringify(validationResult.error.errors, null, 2));
         return res.status(400).json({
           success: false,
           error: "Validation failed",
