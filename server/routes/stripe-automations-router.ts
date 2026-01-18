@@ -1038,6 +1038,46 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 // ============================================================
 // PROCESS PAYMENT AUTOMATION - Create user and send email
 // ============================================================
+
+// Interface for upgrade token payload
+interface UpgradeTokenPayload {
+  bronzeUserId: string;
+  consultantId: string;
+  targetTier: "silver" | "gold" | "deluxe";
+  type: "upgrade";
+  iat: number;
+  exp: number;
+}
+
+// Validate upgrade token from client_reference_id
+function validateUpgradeToken(token: string): UpgradeTokenPayload | null {
+  try {
+    const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+    if (!secret) {
+      console.warn("[STRIPE AUTOMATION] No JWT_SECRET available for token validation");
+      return null;
+    }
+    
+    const decoded = jwt.verify(token, secret) as UpgradeTokenPayload;
+    
+    // Validate token type
+    if (decoded.type !== "upgrade") {
+      console.warn("[STRIPE AUTOMATION] Invalid token type:", decoded.type);
+      return null;
+    }
+    
+    console.log(`[STRIPE AUTOMATION] Valid upgrade token for bronzeUserId: ${decoded.bronzeUserId}, tier: ${decoded.targetTier}`);
+    return decoded;
+  } catch (error: any) {
+    if (error.name === "TokenExpiredError") {
+      console.warn("[STRIPE AUTOMATION] Upgrade token expired");
+    } else {
+      console.warn("[STRIPE AUTOMATION] Invalid upgrade token:", error.message);
+    }
+    return null;
+  }
+}
+
 async function processPaymentAutomation(
   automation: schema.StripePaymentAutomation,
   session: Stripe.Checkout.Session,
@@ -1060,7 +1100,20 @@ async function processPaymentAutomation(
     }
   }
 
-  console.log(`[STRIPE AUTOMATION] Processing for email: ${customerEmail}, phone: ${customerPhone}`);
+  // Check for upgrade token in client_reference_id
+  let upgradeToken: UpgradeTokenPayload | null = null;
+  if (session.client_reference_id) {
+    console.log(`[STRIPE AUTOMATION] Found client_reference_id, validating upgrade token...`);
+    upgradeToken = validateUpgradeToken(session.client_reference_id);
+    
+    // Validate consultantId matches
+    if (upgradeToken && upgradeToken.consultantId !== consultantId) {
+      console.warn(`[STRIPE AUTOMATION] Token consultantId mismatch: ${upgradeToken.consultantId} vs ${consultantId}`);
+      upgradeToken = null;
+    }
+  }
+
+  console.log(`[STRIPE AUTOMATION] Processing for email: ${customerEmail}, phone: ${customerPhone}, upgradeToken: ${upgradeToken ? 'valid' : 'none'}`);
 
   // Create log entry
   const [log] = await db
@@ -1162,17 +1215,20 @@ async function processPaymentAutomation(
           ))
           .limit(1);
 
+        let subscriptionId: string;
         if (existingSub) {
           await db
             .update(schema.clientLevelSubscriptions)
             .set({ 
               level: levelMap[automation.clientLevel],
               status: "active",
-              paymentSource: "direct_link", // Mark as direct link for 100% commission
+              paymentSource: "direct_link",
+              bronzeUserId: upgradeToken?.bronzeUserId || null,
             })
             .where(eq(schema.clientLevelSubscriptions.id, existingSub.id));
+          subscriptionId = existingSub.id;
         } else {
-          await db.insert(schema.clientLevelSubscriptions).values({
+          const [newSub] = await db.insert(schema.clientLevelSubscriptions).values({
             clientId: userId,
             consultantId,
             clientEmail: customerEmail.toLowerCase(),
@@ -1181,10 +1237,26 @@ async function processPaymentAutomation(
             level: levelMap[automation.clientLevel],
             status: "active",
             startDate: new Date(),
-            paymentSource: "direct_link", // Mark as direct link for 100% commission
+            paymentSource: "direct_link",
             mustChangePassword: true,
-          });
+            bronzeUserId: upgradeToken?.bronzeUserId || null,
+          }).returning({ id: schema.clientLevelSubscriptions.id });
+          subscriptionId = newSub.id;
         }
+        
+        // If this is an upgrade from Bronze, mark the bronze user as upgraded
+        if (upgradeToken?.bronzeUserId) {
+          await db
+            .update(schema.bronzeUsers)
+            .set({
+              upgradedAt: new Date(),
+              upgradedToLevel: automation.clientLevel as "silver" | "gold",
+              upgradedSubscriptionId: subscriptionId,
+            })
+            .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId));
+          console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel}`);
+        }
+        
         rolesAssigned.push(`${automation.clientLevel}_subscriber`);
         console.log(`[STRIPE AUTOMATION] Created/updated ${automation.clientLevel} subscription with paymentSource: direct_link`);
       }
@@ -1326,7 +1398,7 @@ async function processPaymentAutomation(
         // Create subscription for Silver/Gold (Level 2/3) - works with or without roles
         if (automation.clientLevel && (automation.clientLevel === "silver" || automation.clientLevel === "gold")) {
           const levelMap: Record<string, "2" | "3"> = { silver: "2", gold: "3" };
-          await db.insert(schema.clientLevelSubscriptions).values({
+          const [newSub] = await db.insert(schema.clientLevelSubscriptions).values({
             clientId: userId,
             consultantId,
             clientEmail: customerEmail.toLowerCase(),
@@ -1337,9 +1409,24 @@ async function processPaymentAutomation(
             startDate: new Date(),
             passwordHash: hashedPassword,
             tempPassword: password,
-            paymentSource: "direct_link", // Track that this came from consultant's direct link (100% commission)
+            paymentSource: "direct_link",
             mustChangePassword: true,
-          });
+            bronzeUserId: upgradeToken?.bronzeUserId || null,
+          }).returning({ id: schema.clientLevelSubscriptions.id });
+          
+          // If this is an upgrade from Bronze, mark the bronze user as upgraded
+          if (upgradeToken?.bronzeUserId) {
+            await db
+              .update(schema.bronzeUsers)
+              .set({
+                upgradedAt: new Date(),
+                upgradedToLevel: automation.clientLevel as "silver" | "gold",
+                upgradedSubscriptionId: newSub.id,
+              })
+              .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId));
+            console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel}`);
+          }
+          
           rolesAssigned.push(`${automation.clientLevel}_subscriber`);
           console.log(`[STRIPE AUTOMATION] Created ${automation.clientLevel} subscription with paymentSource: direct_link`);
         }

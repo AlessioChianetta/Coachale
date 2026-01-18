@@ -332,6 +332,9 @@ router.get(
           dailyMessageLimit: bronzeUsers.dailyMessageLimit,
           lastMessageResetAt: bronzeUsers.lastMessageResetAt,
           hasCompletedOnboarding: bronzeUsers.hasCompletedOnboarding,
+          upgradedAt: bronzeUsers.upgradedAt,
+          upgradedToLevel: bronzeUsers.upgradedToLevel,
+          upgradedSubscriptionId: bronzeUsers.upgradedSubscriptionId,
         })
           .from(bronzeUsers)
           .where(eq(bronzeUsers.id, req.bronzeUser.bronzeUserId))
@@ -341,7 +344,41 @@ router.get(
           return res.status(404).json({ message: "User not found" });
         }
 
-        // Check if Bronze user has been upgraded to Silver/Gold via subscription
+        // PRIORITY 1: Check if bronzeUser has been directly marked as upgraded (most secure - uses bronzeUserId link)
+        if (bronzeUser.upgradedAt && bronzeUser.upgradedToLevel && bronzeUser.upgradedSubscriptionId) {
+          const tier = bronzeUser.upgradedToLevel;
+          const level = tier === "gold" ? "3" : tier === "deluxe" ? "4" : "2";
+          console.log(`[PUBLIC AGENT] Bronze user ${bronzeUser.email} marked as upgraded to ${tier} - returning upgraded status (secure)`);
+          
+          // Get subscription details
+          const [subscription] = await db.select()
+            .from(clientLevelSubscriptions)
+            .where(eq(clientLevelSubscriptions.id, bronzeUser.upgradedSubscriptionId))
+            .limit(1);
+          
+          // Get consultant's pricing page slug
+          const [consultant] = await db.select({
+            pricingPageSlug: users.pricingPageSlug,
+          })
+            .from(users)
+            .where(eq(users.id, req.bronzeUser.consultantId))
+            .limit(1);
+
+          return res.json({
+            id: bronzeUser.upgradedSubscriptionId,
+            name: subscription?.clientName || [bronzeUser.firstName, bronzeUser.lastName].filter(Boolean).join(" ") || "User",
+            email: bronzeUser.email,
+            status: "active",
+            isBronze: false,
+            tier,
+            level,
+            hasCompletedOnboarding: subscription?.hasCompletedOnboarding || bronzeUser.hasCompletedOnboarding || false,
+            consultantSlug: consultant?.pricingPageSlug || null,
+            upgradedFromBronze: true,
+          });
+        }
+
+        // PRIORITY 2: Fallback - Check by email matching (for backwards compatibility with older upgrades)
         const [upgradedSubscription] = await db.select()
           .from(clientLevelSubscriptions)
           .where(and(
@@ -352,9 +389,9 @@ router.get(
           .limit(1);
 
         if (upgradedSubscription) {
-          // User has been upgraded! Return the upgraded tier info
-          const tier = upgradedSubscription.level === "3" ? "gold" : "silver";
-          console.log(`[PUBLIC AGENT] Bronze user ${bronzeUser.email} has active ${tier} subscription - returning upgraded status`);
+          // User has been upgraded via email match (legacy flow)
+          const tier = upgradedSubscription.level === "3" ? "gold" : upgradedSubscription.level === "4" ? "deluxe" : "silver";
+          console.log(`[PUBLIC AGENT] Bronze user ${bronzeUser.email} has active ${tier} subscription (email match) - returning upgraded status`);
           
           // Get consultant's pricing page slug
           const [consultant] = await db.select({
