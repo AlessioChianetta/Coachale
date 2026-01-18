@@ -44,6 +44,10 @@ router.get("/consultant/agents-for-assistant", authenticateToken, requireRole("c
 router.get("/client/agents-for-assistant", authenticateToken, requireRole("client"), async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
+    const userType = (req.user as any)?.type;
+    const subscriptionId = (req.user as any)?.subscriptionId;
+    
+    console.log(`[AI Assistant] Fetching agents for client - clientId: ${clientId}, type: ${userType}, subscriptionId: ${subscriptionId}`);
     
     const assignments = await db.select({
       agentId: agentClientAssignments.agentConfigId,
@@ -54,7 +58,10 @@ router.get("/client/agents-for-assistant", authenticateToken, requireRole("clien
       eq(agentClientAssignments.isActive, true)
     ));
 
+    console.log(`[AI Assistant] Found ${assignments.length} assignments for clientId: ${clientId}`);
+
     if (assignments.length === 0) {
+      console.log(`[AI Assistant] No assignments found - returning empty array`);
       return res.json([]);
     }
 
