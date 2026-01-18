@@ -112,6 +112,96 @@ router.get(
 );
 
 /**
+ * GET /api/whatsapp/custom-templates/:templateId/variables
+ * Fetch variables associated with a specific template (by ID or contentSid)
+ */
+router.get(
+  "/whatsapp/custom-templates/:templateId/variables",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { templateId } = req.params;
+
+      // Find template by ID or contentSid
+      const [template] = await db
+        .select({
+          id: schema.whatsappCustomTemplates.id,
+          twilioContentSid: schema.whatsappCustomTemplates.twilioContentSid,
+        })
+        .from(schema.whatsappCustomTemplates)
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            sql`(${schema.whatsappCustomTemplates.id} = ${templateId} OR ${schema.whatsappCustomTemplates.twilioContentSid} = ${templateId})`
+          )
+        )
+        .limit(1);
+
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          error: "Template non trovato",
+          data: [],
+        });
+      }
+
+      // Get active version for this template
+      const [activeVersion] = await db
+        .select({
+          id: whatsappTemplateVersions.id,
+        })
+        .from(whatsappTemplateVersions)
+        .where(
+          and(
+            eq(whatsappTemplateVersions.templateId, template.id),
+            eq(whatsappTemplateVersions.isActive, true)
+          )
+        )
+        .limit(1);
+
+      if (!activeVersion) {
+        return res.json({
+          success: true,
+          data: [],
+          message: "Nessuna versione attiva trovata",
+        });
+      }
+
+      // Get variables for this version
+      const variables = await db
+        .select({
+          id: whatsappTemplateVariables.id,
+          position: whatsappTemplateVariables.position,
+          variableKey: whatsappVariableCatalog.variableKey,
+          variableName: whatsappVariableCatalog.variableName,
+          description: whatsappVariableCatalog.description,
+        })
+        .from(whatsappTemplateVariables)
+        .innerJoin(
+          whatsappVariableCatalog,
+          eq(whatsappTemplateVariables.variableCatalogId, whatsappVariableCatalog.id)
+        )
+        .where(eq(whatsappTemplateVariables.templateVersionId, activeVersion.id))
+        .orderBy(whatsappTemplateVariables.position);
+
+      res.json({
+        success: true,
+        data: variables,
+        count: variables.length,
+      });
+    } catch (error: any) {
+      console.error("❌ [CUSTOM TEMPLATES] Error fetching template variables:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch template variables",
+      });
+    }
+  }
+);
+
+/**
  * POST /api/whatsapp/custom-templates/generate-ai-message
  * Generate a WhatsApp template message using AI
  */

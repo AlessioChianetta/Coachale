@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,18 +62,65 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     },
   });
 
-  const { data: approvedTemplates } = useQuery({
-    queryKey: ["/api/whatsapp/templates/approved"],
+  // Fetch all templates and filter for approved ones assigned to this agent
+  const { data: allTemplatesData } = useQuery({
+    queryKey: ["/api/whatsapp/templates"],
     queryFn: async () => {
-      const response = await fetch("/api/whatsapp/templates/approved", {
+      const response = await fetch("/api/whatsapp/templates", {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
-        return [];
+        return { templates: [] };
       }
       return response.json();
     },
   });
+
+  // Filter templates: approved status and assigned to current agent (via whatsappTemplates config)
+  const approvedTemplates = React.useMemo(() => {
+    const templates = allTemplatesData?.templates || [];
+    // Get assigned template SIDs from formData.whatsappTemplates
+    const assignedSids = new Set<string>();
+    if (formData.whatsappTemplates) {
+      Object.values(formData.whatsappTemplates).forEach((sid: any) => {
+        if (sid) assignedSids.add(sid);
+      });
+    }
+    // Filter for approved templates that are assigned to this agent
+    return templates.filter((t: any) => {
+      const isApproved = t.approvalStatus?.toLowerCase() === 'approved';
+      const isAssigned = assignedSids.size === 0 || assignedSids.has(t.contentSid);
+      return isApproved && (assignedSids.size === 0 || isAssigned);
+    });
+  }, [allTemplatesData, formData.whatsappTemplates]);
+
+  // Check if selected template has booking variables
+  const { data: templateVariables } = useQuery({
+    queryKey: ["/api/whatsapp/custom-templates/variables", formData.bookingNotificationTemplateId],
+    queryFn: async () => {
+      if (!formData.bookingNotificationTemplateId) return null;
+      const response = await fetch(`/api/whatsapp/custom-templates/${formData.bookingNotificationTemplateId}/variables`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!formData.bookingNotificationTemplateId,
+  });
+
+  // Check if template has all required booking variables
+  const requiredBookingVars = ['booking_client_name', 'booking_date', 'booking_time', 'booking_meet_link'];
+  const templateHasBookingVars = React.useMemo(() => {
+    if (!templateVariables?.data) return null; // unknown
+    const varKeys = templateVariables.data.map((v: any) => v.variableKey);
+    return requiredBookingVars.every(key => varKeys.includes(key));
+  }, [templateVariables]);
+
+  const missingBookingVars = React.useMemo(() => {
+    if (!templateVariables?.data) return requiredBookingVars;
+    const varKeys = templateVariables.data.map((v: any) => v.variableKey);
+    return requiredBookingVars.filter(key => !varKeys.includes(key));
+  }, [templateVariables]);
 
   // FIX: Backend returns { settings: { accountSid, hasAuthToken, whatsappNumber } }
   const hasTwilioConfigured = !!(twilioSettings?.settings?.accountSid && twilioSettings?.settings?.hasAuthToken);
@@ -98,6 +145,17 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
       onChange("useCentralCredentials", false);
     }
   }, [twilioSettings, hasTwilioConfigured, formData.integrationMode]);
+
+  // Pre-populate booking notification phone from consultant WhatsApp number when enabled
+  useEffect(() => {
+    if (formData.bookingNotificationEnabled && !formData.bookingNotificationPhone) {
+      // Use the consultant's WhatsApp number as default
+      const consultantWhatsappNumber = twilioSettings?.settings?.whatsappNumber;
+      if (consultantWhatsappNumber) {
+        onChange("bookingNotificationPhone", consultantWhatsappNumber);
+      }
+    }
+  }, [formData.bookingNotificationEnabled, twilioSettings]);
 
   return (
     <div className="space-y-6">
@@ -587,17 +645,37 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
                     <SelectValue placeholder="Seleziona un template approvato" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(approvedTemplates || []).map((template: any) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
+                    {approvedTemplates.length === 0 ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        Nessun template approvato disponibile
+                      </div>
+                    ) : (
+                      approvedTemplates.map((template: any) => (
+                        <SelectItem key={template.contentSid || template.id} value={template.contentSid || template.id}>
+                          {template.friendlyName || template.templateName || template.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Seleziona un template approvato da Twilio. Variabili disponibili: nome cliente, data, ora, link Meet
+                  Seleziona un template approvato da Twilio. Variabili richieste: nome cliente, data, ora, link Meet
                 </p>
               </div>
+
+              {/* Alert if selected template is missing booking variables */}
+              {formData.bookingNotificationTemplateId && templateHasBookingVars === false && (
+                <Alert className="border-amber-200 bg-amber-50">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800">
+                    <span className="font-semibold">Variabili mancanti nel template:</span>{" "}
+                    {missingBookingVars.map(v => v.replace('booking_', '').replace('_', ' ')).join(', ')}.
+                    <Link href="/consultant/whatsapp-custom-templates" className="ml-2 text-amber-700 underline hover:text-amber-900">
+                      Vai a configurare le variabili →
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
         </CardContent>
