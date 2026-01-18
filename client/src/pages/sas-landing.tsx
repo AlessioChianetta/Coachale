@@ -187,7 +187,7 @@ export default function SasLanding() {
             <div className="flex items-center gap-3">
               <Button 
                 variant="ghost"
-                onClick={() => setLocation(`/c/${OWNER_SLUG}/pricing`)}
+                onClick={() => setLocation(`/c/${OWNER_SLUG}/direct`)}
                 className="text-slate-600 hover:text-slate-900 font-medium"
               >
                 Prezzi
