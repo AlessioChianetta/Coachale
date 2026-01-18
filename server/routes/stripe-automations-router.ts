@@ -1055,50 +1055,48 @@ async function validateUpgradeToken(tokenId: string, expectedConsultantId: strin
       return null;
     }
     
-    // Use Drizzle select instead of raw execute for proper result handling
-    const [tokenRecord] = await db
-      .select({
-        bronzeUserId: schema.upgradeTokens.bronzeUserId,
-        consultantId: schema.upgradeTokens.consultantId,
-        targetTier: schema.upgradeTokens.targetTier,
-        expiresAt: schema.upgradeTokens.expiresAt,
-        usedAt: schema.upgradeTokens.usedAt,
-      })
-      .from(schema.upgradeTokens)
-      .where(eq(schema.upgradeTokens.id, tokenId))
-      .limit(1);
+    // Use raw SQL query with proper result extraction
+    const result = await db.execute(sql`
+      SELECT bronze_user_id, consultant_id, target_tier, expires_at, used_at
+      FROM upgrade_tokens
+      WHERE id = ${tokenId}
+      LIMIT 1
+    `);
     
-    if (!tokenRecord) {
+    // db.execute returns { rows: [...] } for postgres driver
+    const rows = (result as any).rows || result;
+    if (!rows || rows.length === 0) {
       console.warn(`[STRIPE AUTOMATION] Upgrade token not found: ${tokenId}`);
       return null;
     }
     
-    const token = tokenRecord;
+    const token = rows[0];
+    console.log(`[STRIPE AUTOMATION] Found token in DB:`, JSON.stringify(token));
     
     // Check if already used
-    if (token.usedAt) {
+    if (token.used_at) {
       console.warn(`[STRIPE AUTOMATION] Upgrade token already used: ${tokenId}`);
       return null;
     }
     
     // Check expiration
-    if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
+    if (token.expires_at && new Date(token.expires_at) < new Date()) {
       console.warn(`[STRIPE AUTOMATION] Upgrade token expired: ${tokenId}`);
       return null;
     }
     
     // Validate consultantId matches
-    if (token.consultantId !== expectedConsultantId) {
-      console.warn(`[STRIPE AUTOMATION] Token consultantId mismatch: ${token.consultantId} vs ${expectedConsultantId}`);
+    if (token.consultant_id !== expectedConsultantId) {
+      console.warn(`[STRIPE AUTOMATION] Token consultantId mismatch: ${token.consultant_id} vs ${expectedConsultantId}`);
       return null;
     }
     
-    console.log(`[STRIPE AUTOMATION] Valid upgrade token: ${tokenId} for bronzeUserId: ${token.bronzeUserId}, tier: ${token.targetTier}`);
+    console.log(`[STRIPE AUTOMATION] Valid upgrade token: ${tokenId} for bronzeUserId: ${token.bronze_user_id}, tier: ${token.target_tier}`);
     
     return {
-      bronzeUserId: token.bronzeUserId,
-      consultantId: token.consultantId,
-      targetTier: token.targetTier as "silver" | "gold" | "deluxe",
+      bronzeUserId: token.bronze_user_id,
+      consultantId: token.consultant_id,
+      targetTier: token.target_tier as "silver" | "gold" | "deluxe",
     };
   } catch (error: any) {
     console.error("[STRIPE AUTOMATION] Error validating upgrade token:", error.message);
