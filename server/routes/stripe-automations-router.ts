@@ -1044,6 +1044,7 @@ interface UpgradeTokenData {
   bronzeUserId: string;
   consultantId: string;
   targetTier: "silver" | "gold" | "deluxe";
+  sourceType: "bronze_user" | "subscription";
 }
 
 // Validate upgrade token from database (client_reference_id is a short UUID, not JWT)
@@ -1057,7 +1058,7 @@ async function validateUpgradeToken(tokenId: string, expectedConsultantId: strin
     
     // Use raw SQL query with proper result extraction
     const result = await db.execute(sql`
-      SELECT bronze_user_id, consultant_id, target_tier, expires_at, used_at
+      SELECT bronze_user_id, consultant_id, target_tier, expires_at, used_at, source_type
       FROM upgrade_tokens
       WHERE id = ${tokenId}
       LIMIT 1
@@ -1091,12 +1092,14 @@ async function validateUpgradeToken(tokenId: string, expectedConsultantId: strin
       return null;
     }
     
-    console.log(`[STRIPE AUTOMATION] Valid upgrade token: ${tokenId} for bronzeUserId: ${token.bronze_user_id}, tier: ${token.target_tier}`);
+    const sourceType = (token.source_type || "bronze_user") as "bronze_user" | "subscription";
+    console.log(`[STRIPE AUTOMATION] Valid upgrade token: ${tokenId} for bronzeUserId: ${token.bronze_user_id}, tier: ${token.target_tier}, sourceType: ${sourceType}`);
     
     return {
       bronzeUserId: token.bronze_user_id,
       consultantId: token.consultant_id,
       targetTier: token.target_tier as "silver" | "gold" | "deluxe",
+      sourceType,
     };
   } catch (error: any) {
     console.error("[STRIPE AUTOMATION] Error validating upgrade token:", error.message);
@@ -1170,6 +1173,131 @@ async function processPaymentAutomation(
     if (!customerEmail) {
       throw new Error("Email cliente mancante nella sessione Stripe");
     }
+
+    // ========== HANDLE SILVER→GOLD UPGRADE (DIRECT LINK) ==========
+    // Check if this is an upgrade from Silver subscription (not Bronze user)
+    // This must happen BEFORE user lookup to properly handle the upgrade path
+    // sourceType="subscription" indicates Silver→Gold upgrade (Direct Link)
+    if (upgradeToken?.sourceType === "subscription" && automation.clientLevel === "gold") {
+      const [existingSilverSub] = await db
+        .select({
+          id: schema.clientLevelSubscriptions.id,
+          clientId: schema.clientLevelSubscriptions.clientId,
+          level: schema.clientLevelSubscriptions.level,
+          consultantId: schema.clientLevelSubscriptions.consultantId,
+        })
+        .from(schema.clientLevelSubscriptions)
+        .where(eq(schema.clientLevelSubscriptions.id, upgradeToken.bronzeUserId))
+        .limit(1);
+      
+      if (existingSilverSub && existingSilverSub.level === "2") {
+        // This is a Silver→Gold upgrade via Direct Link!
+        console.log(`[STRIPE AUTOMATION] Silver→Gold upgrade detected - subscription ID: ${existingSilverSub.id}`);
+        
+        // Get Stripe subscription ID - try session.subscription first, then invoice
+        let stripeSubId: string | null = null;
+        if (session.subscription) {
+          stripeSubId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
+          console.log(`[STRIPE AUTOMATION] Got subscription ID from session: ${stripeSubId}`);
+        } else if (session.invoice) {
+          // For Payment Links, subscription might be on the invoice
+          const invoiceObj = session.invoice as any;
+          if (typeof invoiceObj === "object" && invoiceObj?.subscription) {
+            stripeSubId = typeof invoiceObj.subscription === "string" ? invoiceObj.subscription : invoiceObj.subscription.id;
+            console.log(`[STRIPE AUTOMATION] Got subscription ID from invoice object: ${stripeSubId}`);
+          }
+        }
+        
+        // Log if subscription ID is still missing - webhook for invoice.payment_succeeded may backfill later
+        if (!stripeSubId) {
+          console.warn(`[STRIPE AUTOMATION] No stripeSubscriptionId available for Silver→Gold upgrade - may be populated by later webhook`);
+        }
+        
+        // Update the existing subscription to Gold level
+        await db.update(schema.clientLevelSubscriptions)
+          .set({
+            level: "3", // Gold
+            stripeSubscriptionId: stripeSubId,
+          })
+          .where(eq(schema.clientLevelSubscriptions.id, existingSilverSub.id));
+        
+        console.log(`[STRIPE AUTOMATION] Upgraded subscription ${existingSilverSub.id} from Silver to Gold`);
+        
+        // Update user for Gold access (consultantId + client role)
+        // CRITICAL: Gold users MUST have role="client" to appear in consultant's client list
+        if (existingSilverSub.clientId) {
+          await db.update(schema.users)
+            .set({ consultantId, role: "client" })
+            .where(eq(schema.users.id, existingSilverSub.clientId));
+          console.log(`[STRIPE AUTOMATION] Updated user ${existingSilverSub.clientId} with role=client for Gold`);
+          
+          // Create client role profile if missing
+          const [existingProfile] = await db.select({ id: schema.userRoleProfiles.id })
+            .from(schema.userRoleProfiles)
+            .where(and(
+              eq(schema.userRoleProfiles.userId, existingSilverSub.clientId),
+              eq(schema.userRoleProfiles.role, "client")
+            ))
+            .limit(1);
+          
+          if (!existingProfile) {
+            await db.insert(schema.userRoleProfiles).values({
+              userId: existingSilverSub.clientId,
+              role: "client",
+              consultantId,
+              isDefault: true,
+              isActive: true,
+            });
+            console.log(`[STRIPE AUTOMATION] Created client profile for Gold upgrade`);
+          }
+        }
+        
+        // Mark upgrade token as used
+        if (upgradeTokenId) {
+          await markUpgradeTokenUsed(upgradeTokenId, existingSilverSub.id);
+        }
+        
+        // Update automation log
+        await db.update(schema.stripeAutomationLogs)
+          .set({
+            status: "success",
+            userId: existingSilverSub.clientId,
+            processedAt: new Date(),
+          })
+          .where(eq(schema.stripeAutomationLogs.id, log.id));
+        
+        // Send welcome email for Gold upgrade if enabled
+        if (automation.sendWelcomeEmail && customerEmail) {
+          try {
+            await sendWelcomeEmail({
+              consultantId,
+              recipientEmail: customerEmail,
+              recipientName: customerName || "Cliente",
+              tempPassword: null,
+              loginUrl: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000"}/login`,
+              isUpgrade: true,
+              upgradeTier: "gold",
+            });
+            console.log(`[STRIPE AUTOMATION] Gold upgrade email sent to: ${customerEmail}`);
+          } catch (emailError: any) {
+            console.error(`[STRIPE AUTOMATION] Failed to send Gold upgrade email:`, emailError.message);
+          }
+        }
+        
+        console.log(`[STRIPE AUTOMATION] Silver→Gold upgrade completed successfully`);
+        return; // Exit early - upgrade complete
+      }
+      // sourceType=subscription but subscription not found or not Silver - this is an error
+      if (!existingSilverSub) {
+        console.error(`[STRIPE AUTOMATION] ERROR: sourceType=subscription but subscription ${upgradeToken.bronzeUserId} not found`);
+        throw new Error(`Upgrade token references non-existent subscription: ${upgradeToken.bronzeUserId}`);
+      }
+      if (existingSilverSub.level !== "2") {
+        console.error(`[STRIPE AUTOMATION] ERROR: sourceType=subscription but subscription is level ${existingSilverSub.level}, not Silver (2)`);
+        throw new Error(`Upgrade token references non-Silver subscription (level ${existingSilverSub.level})`);
+      }
+    }
+    // ========== END SILVER→GOLD UPGRADE HANDLING ==========
 
     // Check if user already exists - also get tempPassword and mustChangePassword for email
     const [existingUser] = await db
@@ -1388,7 +1516,8 @@ async function processPaymentAutomation(
         customInstructions: string | null;
       } | null = null;
       
-      // If upgrading from Bronze, fetch existing password hash and onboarding data to preserve
+      // If upgrading from Bronze, fetch existing data to preserve
+      // Note: Silver→Gold upgrades are handled earlier in the pre-flight section
       if (upgradeToken?.bronzeUserId) {
         const [existingBronzeUser] = await db
           .select({

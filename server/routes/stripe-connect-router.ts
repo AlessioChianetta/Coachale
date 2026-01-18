@@ -1,6 +1,7 @@
 import express, { Router, Request, Response } from "express";
+import crypto from "crypto";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages, whatsappAgentConsultantConversations } from "@shared/schema";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages, whatsappAgentConsultantConversations, consultantDirectLinks } from "@shared/schema";
 import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
@@ -580,6 +581,55 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
     const baseUrl = process.env.REPLIT_DEV_DOMAIN 
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : "http://localhost:5000";
+    
+    // Check if user originally paid via Direct Link - if so, use Direct Links for upgrade too
+    const isDirectLinkUser = existingSubscription?.paymentSource === "direct_link";
+    console.log("[Stripe Upgrade] paymentSource check:", {
+      paymentSource: existingSubscription?.paymentSource,
+      isDirectLinkUser,
+      existingLevel: existingSubscription?.level,
+      targetLevel
+    });
+    
+    if (isDirectLinkUser && existingSubscription) {
+      // Use Direct Links for upgrade to preserve 100% consultant commission
+      const targetTier = targetLevel === "2" ? "silver" : "gold";
+      
+      // Find the consultant's Direct Link for the target tier
+      const [directLink] = await db.select()
+        .from(consultantDirectLinks)
+        .where(and(
+          eq(consultantDirectLinks.consultantId, consultantId),
+          eq(consultantDirectLinks.tier, targetTier),
+          eq(consultantDirectLinks.isActive, true)
+        ))
+        .limit(1);
+      
+      if (directLink?.paymentLinkUrl) {
+        console.log("[Stripe Upgrade] Using Direct Link for upgrade:", {
+          tier: targetTier,
+          paymentLinkUrl: directLink.paymentLinkUrl.substring(0, 50) + "..."
+        });
+        
+        // Generate upgrade token to link the payment to this subscription
+        const upgradeToken = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        
+        // Store upgrade token in database with source_type to distinguish from Bronze upgrades
+        await db.execute(sql`
+          INSERT INTO upgrade_tokens (id, bronze_user_id, consultant_id, target_tier, expires_at, source_type)
+          VALUES (${upgradeToken}, ${existingSubscription.id}, ${consultantId}, ${targetTier}, ${expiresAt}, 'subscription')
+        `);
+        
+        // Append upgrade token to Direct Link URL
+        const upgradeUrl = `${directLink.paymentLinkUrl}?client_reference_id=${upgradeToken}`;
+        
+        console.log("[Stripe Upgrade] Direct Link upgrade URL generated for Silver→Gold");
+        return res.json({ checkoutUrl: upgradeUrl });
+      } else {
+        console.log("[Stripe Upgrade] No Direct Link found for tier:", targetTier, "- falling back to Stripe Connect");
+      }
+    }
     
     if (!existingSubscription || !existingSubscription.stripeSubscriptionId) {
       const price = targetLevel === "2" 
