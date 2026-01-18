@@ -146,10 +146,10 @@ export function ProfileSettingsSheet({
 
   const currentLevel = levelConfig[subscriptionLevel];
 
-  // Check payment source for upgrade flow indicator
-  const paymentSource = localStorage.getItem("paymentSource");
-  const storedConsultantId = localStorage.getItem("consultantId");
-  const isDirectLinkUser = paymentSource === "direct_link" && !!storedConsultantId;
+  // Check payment source for upgrade flow indicator (for UI display)
+  const paymentSourceForUI = localStorage.getItem("paymentSource");
+  const consultantIdForUI = localStorage.getItem("consultantId");
+  const isDirectLinkUser = paymentSourceForUI === "direct_link" && !!consultantIdForUI;
 
   const handleUpgrade = async (targetLevel: "silver" | "gold") => {
     console.log("[UPGRADE] BUTTON CLICKED! targetLevel:", targetLevel);
@@ -164,14 +164,20 @@ export function ProfileSettingsSheet({
         throw new Error("Token di autenticazione non trovato");
       }
 
+      // Read localStorage values fresh inside the function
+      const paymentSource = localStorage.getItem("paymentSource");
+      const storedConsultantId = localStorage.getItem("consultantId");
+      const isDirectLinkUserNow = paymentSource === "direct_link" && !!storedConsultantId;
+
       // Debug logging for upgrade flow
       console.log("[UPGRADE] Starting upgrade to:", targetLevel);
       console.log("[UPGRADE] paymentSource:", paymentSource);
       console.log("[UPGRADE] consultantId:", storedConsultantId);
-      console.log("[UPGRADE] isDirectLinkUser:", isDirectLinkUser);
+      console.log("[UPGRADE] isDirectLinkUserNow:", isDirectLinkUserNow);
+      console.log("[UPGRADE] directLinks.length:", directLinks.length);
 
       // First check if user came from direct link and if we have pre-loaded direct links
-      if (isDirectLinkUser && directLinks.length > 0) {
+      if (isDirectLinkUserNow && directLinks.length > 0) {
         // Find the matching direct link for this tier and interval (normalized comparison)
         const normalizedTarget = targetLevel.toLowerCase().trim();
         const normalizedInterval = billingInterval.toLowerCase().trim();
@@ -215,7 +221,7 @@ export function ProfileSettingsSheet({
         } else {
           console.log("[UPGRADE] No matching direct link found, falling back to Stripe Connect");
         }
-      } else if (isDirectLinkUser) {
+      } else if (isDirectLinkUserNow) {
         console.log("[UPGRADE] Direct link user but no links loaded yet");
       } else {
         console.log("[UPGRADE] Not a direct link user, using Stripe Connect");
