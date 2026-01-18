@@ -204,23 +204,63 @@ export function ProfileSettingsSheet({
         console.log("[UPGRADE] Matching link:", matchingLink);
         
         if (matchingLink?.paymentLinkUrl) {
-          // Build URL with prefilled email if available
-          let upgradeUrl = matchingLink.paymentLinkUrl;
-          if (managerInfo?.email) {
-            const separator = upgradeUrl.includes('?') ? '&' : '?';
-            upgradeUrl = `${upgradeUrl}${separator}prefilled_email=${encodeURIComponent(managerInfo.email)}`;
+          try {
+            // Step 1: Get upgrade token for better matching and tracking
+            const token = getToken();
+            console.log("[UPGRADE] Fetching upgrade token with token present:", !!token);
+            
+            let upgradeUrl = matchingLink.paymentLinkUrl;
+            
+            // Try to get the upgrade token
+            try {
+              const upgradeTokenResponse = await fetch('/api/public/upgrade-token', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  targetTier: targetLevel,
+                }),
+              });
+
+              if (upgradeTokenResponse.ok) {
+                const upgradeTokenData = await upgradeTokenResponse.json();
+                const upgradeToken = upgradeTokenData.upgradeToken || upgradeTokenData.token;
+                
+                if (upgradeToken) {
+                  console.log("[UPGRADE] Successfully obtained upgrade token, appending to URL");
+                  const separator = upgradeUrl.includes('?') ? '&' : '?';
+                  upgradeUrl = `${upgradeUrl}${separator}client_reference_id=${encodeURIComponent(upgradeToken)}`;
+                }
+              } else {
+                console.warn("[UPGRADE] Failed to get upgrade token, response status:", upgradeTokenResponse.status);
+              }
+            } catch (tokenError) {
+              console.warn("[UPGRADE] Error fetching upgrade token, proceeding without it:", tokenError);
+              // Continue with the payment URL without the upgrade token (graceful fallback)
+            }
+            
+            // Step 2: Add prefilled email if available
+            if (managerInfo?.email) {
+              const separator = upgradeUrl.includes('?') ? '&' : '?';
+              upgradeUrl = `${upgradeUrl}${separator}prefilled_email=${encodeURIComponent(managerInfo.email)}`;
+            }
+            
+            console.log("[UPGRADE] SUCCESS: Using direct link for upgrade:", upgradeUrl);
+            window.open(upgradeUrl, '_blank', 'noopener');
+            toast({
+              title: "Checkout aperto (Direct Link)",
+              description: `100% commissione al consulente. €${(matchingLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`,
+            });
+            
+            // Start polling for upgrade completion
+            startUpgradePolling(targetLevel);
+            return;
+          } catch (error) {
+            console.error("[UPGRADE] Error in direct link flow:", error);
+            throw error;
           }
-          
-          console.log("[UPGRADE] SUCCESS: Using direct link for upgrade:", upgradeUrl);
-          window.open(upgradeUrl, '_blank', 'noopener');
-          toast({
-            title: "Checkout aperto (Direct Link)",
-            description: `100% commissione al consulente. €${(matchingLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`,
-          });
-          
-          // Start polling for upgrade completion
-          startUpgradePolling(targetLevel);
-          return;
         } else {
           console.log("[UPGRADE] No matching direct link found, falling back to Stripe Connect");
         }
