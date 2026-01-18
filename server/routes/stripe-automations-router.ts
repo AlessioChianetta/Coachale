@@ -1513,6 +1513,41 @@ async function processPaymentAutomation(
           
           rolesAssigned.push(`${automation.clientLevel}_subscriber`);
           console.log(`[STRIPE AUTOMATION] Created ${automation.clientLevel} subscription with paymentSource: direct_link`);
+          
+          // Auto-assign client to all consultant's agents for AI Assistant access
+          try {
+            const consultantAgents = await db
+              .select({ id: schema.consultantWhatsappConfig.id })
+              .from(schema.consultantWhatsappConfig)
+              .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
+            
+            if (consultantAgents.length > 0) {
+              // Check existing assignments to avoid duplicates
+              const existingAssignments = await db
+                .select({ agentConfigId: schema.agentClientAssignments.agentConfigId })
+                .from(schema.agentClientAssignments)
+                .where(eq(schema.agentClientAssignments.clientId, userId));
+              
+              const existingAgentIds = new Set(existingAssignments.map(a => a.agentConfigId));
+              
+              const newAssignments = consultantAgents
+                .filter(agent => !existingAgentIds.has(agent.id))
+                .map(agent => ({
+                  agentConfigId: agent.id,
+                  clientId: userId,
+                  assignedAt: new Date(),
+                  isActive: true,
+                }));
+              
+              if (newAssignments.length > 0) {
+                await db.insert(schema.agentClientAssignments).values(newAssignments);
+                console.log(`[STRIPE AUTOMATION] Auto-assigned client to ${newAssignments.length} agents`);
+              }
+            }
+          } catch (assignError: any) {
+            console.error(`[STRIPE AUTOMATION] Warning: Could not auto-assign agents:`, assignError.message);
+            // Don't fail the main flow if agent assignment fails
+          }
         }
       }
     }
