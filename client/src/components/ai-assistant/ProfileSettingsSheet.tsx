@@ -109,7 +109,7 @@ export function ProfileSettingsSheet({
   }, [subscriptionLevel]);
 
   const getToken = () => {
-    return localStorage.getItem("manager_token") || localStorage.getItem("token");
+    return localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token") || localStorage.getItem("token");
   };
 
   const silverPrice = pricing?.level2MonthlyPrice ?? 29;
@@ -159,11 +159,6 @@ export function ProfileSettingsSheet({
     
     setIsUpgrading(true);
     try {
-      const token = getToken();
-      if (!token) {
-        throw new Error("Token di autenticazione non trovato");
-      }
-
       // Read localStorage values fresh inside the function
       const paymentSource = localStorage.getItem("paymentSource");
       const storedConsultantId = localStorage.getItem("consultantId");
@@ -177,6 +172,7 @@ export function ProfileSettingsSheet({
       console.log("[UPGRADE] directLinks.length:", directLinks.length);
 
       // First check if user came from direct link and if we have pre-loaded direct links
+      // Direct Links don't require authentication token - just open the payment URL
       if (isDirectLinkUserNow && directLinks.length > 0) {
         // Find the matching direct link for this tier and interval (normalized comparison)
         const normalizedTarget = targetLevel.toLowerCase().trim();
@@ -227,7 +223,12 @@ export function ProfileSettingsSheet({
         console.log("[UPGRADE] Not a direct link user, using Stripe Connect");
       }
       
-      // Fallback to Stripe Connect
+      // Fallback to Stripe Connect - requires authentication token
+      const token = getToken();
+      if (!token) {
+        throw new Error("Token di autenticazione non trovato per Stripe Connect");
+      }
+      
       const response = await fetch(`/api/stripe/upgrade-subscription`, {
         method: "POST",
         headers: {
