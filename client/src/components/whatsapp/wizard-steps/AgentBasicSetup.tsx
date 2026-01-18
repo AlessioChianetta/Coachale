@@ -24,8 +24,11 @@ import {
   ClipboardList,
   CheckCircle,
   ExternalLink,
-  Loader2
+  Loader2,
+  Bell,
+  CalendarCheck
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { getAuthHeaders } from "@/lib/auth";
 import { Link } from "wouter";
@@ -54,6 +57,19 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
       });
       if (!response.ok) {
         return null;
+      }
+      return response.json();
+    },
+  });
+
+  const { data: approvedTemplates } = useQuery({
+    queryKey: ["/api/whatsapp/templates/approved"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/templates/approved", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        return [];
       }
       return response.json();
     },
@@ -510,6 +526,80 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
               onCheckedChange={(checked) => onChange("isProactiveAgent", checked)}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-2 border-orange-500/20 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-orange-500/5 to-orange-500/10">
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-orange-500" />
+            Notifiche Appuntamenti
+          </CardTitle>
+          <CardDescription>
+            Ricevi una notifica WhatsApp quando viene prenotato un appuntamento
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+            <div className="space-y-0.5 flex-1">
+              <Label htmlFor="bookingNotificationEnabled" className="text-base font-semibold cursor-pointer flex items-center gap-2">
+                <CalendarCheck className="h-4 w-4 text-orange-500" />
+                Abilita Notifiche
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Invia un messaggio WhatsApp quando viene confermato un nuovo appuntamento
+              </p>
+            </div>
+            <Switch
+              id="bookingNotificationEnabled"
+              checked={formData.bookingNotificationEnabled}
+              onCheckedChange={(checked) => onChange("bookingNotificationEnabled", checked)}
+            />
+          </div>
+
+          {formData.bookingNotificationEnabled && (
+            <div className="space-y-4 pt-2">
+              <div>
+                <Label htmlFor="bookingNotificationPhone" className="text-base">
+                  Numero WhatsApp destinatario
+                </Label>
+                <Input
+                  id="bookingNotificationPhone"
+                  value={formData.bookingNotificationPhone || ""}
+                  onChange={(e) => onChange("bookingNotificationPhone", e.target.value)}
+                  placeholder="Es: +39 333 1234567"
+                  className="mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Inserisci il numero con prefisso internazionale (es: +39)
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="bookingNotificationTemplateId" className="text-base">
+                  Template Messaggio
+                </Label>
+                <Select
+                  value={formData.bookingNotificationTemplateId || ""}
+                  onValueChange={(value) => onChange("bookingNotificationTemplateId", value)}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Seleziona un template approvato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(approvedTemplates || []).map((template: any) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Seleziona un template approvato da Twilio. Variabili disponibili: nome cliente, data, ora, link Meet
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

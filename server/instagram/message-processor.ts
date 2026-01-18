@@ -43,6 +43,8 @@ import {
   validateBookingData,
   createBookingRecord,
   createGoogleCalendarBooking,
+  sendBookingNotification,
+  formatAppointmentDate,
   ConversationMessage,
   BookingExtractionResult,
   BookingModificationResult,
@@ -927,6 +929,15 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                           googleMeetLink = calendarResult.googleMeetLink || null;
                           console.log(`   📅 Google Calendar event: ${googleEventId}`);
                         }
+                        
+                        // Send booking notification to configured WhatsApp number
+                        const formattedDate = formatAppointmentDate(newExtracted.date, newExtracted.time);
+                        await sendBookingNotification(linkedAgent.id, {
+                          clientName: clientName,
+                          date: formattedDate,
+                          time: newExtracted.time,
+                          meetLink: googleMeetLink,
+                        });
                       } catch (calError) {
                         console.log(`   ⚠️ Google Calendar error: ${calError}`);
                       }
@@ -1057,6 +1068,15 @@ Ti ho inviato un invito calendario! 📬`;
                     console.log(`   📅 Google Calendar event: ${googleEventId}`);
                     console.log(`   🎥 Meet Link: ${googleMeetLink ? '✅ Generated' : '❌ Not available'}`);
                   }
+                  
+                  // Send booking notification to configured WhatsApp number
+                  const notificationFormattedDate = formatAppointmentDate(extracted.date, extracted.time);
+                  await sendBookingNotification(linkedAgent.id, {
+                    clientName: clientName,
+                    date: notificationFormattedDate,
+                    time: extracted.time,
+                    meetLink: googleMeetLink,
+                  });
                 } catch (calError) {
                   console.log(`   ⚠️ Google Calendar not configured or error: ${calError}`);
                 }

@@ -2762,6 +2762,11 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     gradient: string;
   }>>(),
 
+  // Booking Notification Configuration - Send WhatsApp message when appointment is booked
+  bookingNotificationEnabled: boolean("booking_notification_enabled").default(false).notNull(),
+  bookingNotificationPhone: text("booking_notification_phone"),
+  bookingNotificationTemplateId: varchar("booking_notification_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

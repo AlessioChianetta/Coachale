@@ -1,9 +1,10 @@
 import { db } from "../db";
-import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState } from "../../shared/schema";
-import { eq, and, or, isNull, sql } from "drizzle-orm";
+import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState, consultantWhatsappConfig, whatsappTemplateVersions, whatsappTemplateVariables, whatsappVariableCatalog, centralizedTwilioConfig } from "../../shared/schema";
+import { eq, and, or, isNull, sql, desc } from "drizzle-orm";
 import { createGoogleCalendarEvent } from "../google-calendar-service";
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
 import { sendEmail } from "../services/email-scheduler";
+import twilio from "twilio";
 
 export interface BookingExtractionResult {
   isConfirming: boolean;
@@ -1062,6 +1063,17 @@ export async function processFullBooking(
   // NEW: Pass agentConfigId to use agent's calendar if available
   const calendarResult = await createGoogleCalendarBooking(consultantId, booking, data.email, agentConfigId);
 
+  // Send booking notification to configured WhatsApp number (if enabled)
+  if (agentConfigId) {
+    const formattedDate = formatAppointmentDate(data.date, data.time);
+    await sendBookingNotification(agentConfigId, {
+      clientName: data.name || data.clientName || data.email,
+      date: formattedDate,
+      time: data.time,
+      meetLink: calendarResult.googleMeetLink,
+    });
+  }
+
   return {
     success: true,
     bookingId: booking.id,
@@ -1230,5 +1242,173 @@ export async function sendBookingConfirmationEmail(
   } catch (error: any) {
     console.error(`   ❌ Failed to send confirmation email: ${error.message}`);
     return { success: false, errorMessage: error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BOOKING NOTIFICATION - Send WhatsApp message when appointment is booked
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface BookingNotificationData {
+  clientName: string;
+  date: string;
+  time: string;
+  meetLink: string | null;
+}
+
+export async function sendBookingNotification(
+  agentConfigId: string,
+  bookingData: BookingNotificationData
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`\n📱 [BOOKING NOTIFICATION] Sending booking notification`);
+  console.log(`   Agent Config ID: ${agentConfigId}`);
+  
+  try {
+    // 1. Fetch agent config with notification settings
+    const [agentConfig] = await db
+      .select({
+        notificationEnabled: consultantWhatsappConfig.bookingNotificationEnabled,
+        notificationPhone: consultantWhatsappConfig.bookingNotificationPhone,
+        notificationTemplateId: consultantWhatsappConfig.bookingNotificationTemplateId,
+        twilioWhatsappNumber: consultantWhatsappConfig.twilioWhatsappNumber,
+        consultantId: consultantWhatsappConfig.consultantId,
+      })
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.id, agentConfigId))
+      .limit(1);
+    
+    if (!agentConfig) {
+      console.log(`   ⚠️ Agent config not found`);
+      return { success: false, error: "Agent config not found" };
+    }
+    
+    if (!agentConfig.notificationEnabled) {
+      console.log(`   ⏭️ Notifications disabled for this agent`);
+      return { success: true }; // Not an error, just disabled
+    }
+    
+    if (!agentConfig.notificationPhone) {
+      console.log(`   ⚠️ No notification phone configured`);
+      return { success: false, error: "No notification phone configured" };
+    }
+    
+    if (!agentConfig.notificationTemplateId) {
+      console.log(`   ⚠️ No notification template configured`);
+      return { success: false, error: "No notification template configured" };
+    }
+    
+    // 2. Fetch active template version with twilioContentSid
+    const [templateVersion] = await db
+      .select({
+        twilioContentSid: whatsappTemplateVersions.twilioContentSid,
+        bodyText: whatsappTemplateVersions.bodyText,
+        id: whatsappTemplateVersions.id,
+      })
+      .from(whatsappTemplateVersions)
+      .where(and(
+        eq(whatsappTemplateVersions.templateId, agentConfig.notificationTemplateId),
+        eq(whatsappTemplateVersions.isActive, true),
+        eq(whatsappTemplateVersions.twilioStatus, 'approved')
+      ))
+      .orderBy(desc(whatsappTemplateVersions.versionNumber))
+      .limit(1);
+    
+    if (!templateVersion) {
+      console.log(`   ⚠️ No approved active template version found`);
+      return { success: false, error: "No approved template found" };
+    }
+    
+    if (!templateVersion.twilioContentSid) {
+      console.log(`   ⚠️ Template not synced to Twilio (missing ContentSid)`);
+      return { success: false, error: "Template not synced to Twilio" };
+    }
+    
+    // 3. Fetch template variables with their catalog mappings
+    const templateVariables = await db
+      .select({
+        position: whatsappTemplateVariables.position,
+        variableKey: whatsappVariableCatalog.variableKey,
+      })
+      .from(whatsappTemplateVariables)
+      .innerJoin(whatsappVariableCatalog, eq(whatsappTemplateVariables.variableCatalogId, whatsappVariableCatalog.id))
+      .where(eq(whatsappTemplateVariables.templateVersionId, templateVersion.id))
+      .orderBy(whatsappTemplateVariables.position);
+    
+    // 4. Build content variables based on catalog keys
+    const contentVariables: Record<string, string> = {};
+    
+    for (const variable of templateVariables) {
+      let value = "";
+      
+      switch (variable.variableKey) {
+        case "booking_client_name":
+          value = bookingData.clientName || "Cliente";
+          break;
+        case "booking_date":
+          value = bookingData.date || "";
+          break;
+        case "booking_time":
+          value = bookingData.time || "";
+          break;
+        case "booking_meet_link":
+          value = bookingData.meetLink || "Link non disponibile";
+          break;
+        default:
+          value = `{${variable.variableKey}}`;
+      }
+      
+      contentVariables[String(variable.position)] = value;
+    }
+    
+    console.log(`   📝 Content variables:`, contentVariables);
+    
+    // 5. Get Twilio credentials (centralized or per-agent)
+    const [twilioConfig] = await db
+      .select({
+        accountSid: centralizedTwilioConfig.accountSid,
+        authToken: centralizedTwilioConfig.authToken,
+      })
+      .from(centralizedTwilioConfig)
+      .where(eq(centralizedTwilioConfig.consultantId, agentConfig.consultantId))
+      .limit(1);
+    
+    if (!twilioConfig || !twilioConfig.accountSid || !twilioConfig.authToken) {
+      console.log(`   ⚠️ Twilio not configured for consultant`);
+      return { success: false, error: "Twilio not configured" };
+    }
+    
+    if (!agentConfig.twilioWhatsappNumber) {
+      console.log(`   ⚠️ No WhatsApp number configured for agent`);
+      return { success: false, error: "No WhatsApp number for agent" };
+    }
+    
+    // 6. Send WhatsApp message via Twilio
+    const client = twilio(twilioConfig.accountSid, twilioConfig.authToken);
+    
+    const toNumber = agentConfig.notificationPhone.startsWith("whatsapp:") 
+      ? agentConfig.notificationPhone 
+      : `whatsapp:${agentConfig.notificationPhone}`;
+    
+    const fromNumber = agentConfig.twilioWhatsappNumber.startsWith("whatsapp:")
+      ? agentConfig.twilioWhatsappNumber
+      : `whatsapp:${agentConfig.twilioWhatsappNumber}`;
+    
+    console.log(`   📤 Sending to: ${toNumber}`);
+    console.log(`   📤 From: ${fromNumber}`);
+    console.log(`   📤 ContentSid: ${templateVersion.twilioContentSid}`);
+    
+    const message = await client.messages.create({
+      contentSid: templateVersion.twilioContentSid,
+      contentVariables: JSON.stringify(contentVariables),
+      from: fromNumber,
+      to: toNumber,
+    });
+    
+    console.log(`   ✅ Booking notification sent! SID: ${message.sid}`);
+    return { success: true };
+    
+  } catch (error: any) {
+    console.error(`   ❌ Failed to send booking notification: ${error.message}`);
+    return { success: false, error: error.message };
   }
 }

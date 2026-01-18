@@ -38,6 +38,42 @@ import { encryptForConsultant, decryptForConsultant, generateEncryptionSalt } fr
 const router = Router();
 
 /**
+ * GET /api/whatsapp/templates/approved
+ * Fetch all templates that have a Twilio Content SID (approved for sending)
+ */
+router.get(
+  "/whatsapp/templates/approved",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const approvedTemplates = await db
+        .select({
+          id: schema.whatsappCustomTemplates.id,
+          name: schema.whatsappCustomTemplates.name,
+          twilioContentSid: schema.whatsappCustomTemplates.twilioContentSid,
+          scenario: schema.whatsappCustomTemplates.scenario,
+        })
+        .from(schema.whatsappCustomTemplates)
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            sql`${schema.whatsappCustomTemplates.twilioContentSid} IS NOT NULL AND ${schema.whatsappCustomTemplates.twilioContentSid} != ''`
+          )
+        )
+        .orderBy(schema.whatsappCustomTemplates.name);
+
+      res.json(approvedTemplates);
+    } catch (error: any) {
+      console.error("Error fetching approved templates:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch approved templates" });
+    }
+  }
+);
+
+/**
  * GET /api/whatsapp/custom-templates/catalog
  * Fetch all available variables from the catalog
  */
