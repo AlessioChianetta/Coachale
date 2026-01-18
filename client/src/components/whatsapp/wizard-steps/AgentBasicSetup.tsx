@@ -62,7 +62,7 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     },
   });
 
-  // Fetch all templates and filter for approved ones assigned to this agent
+  // Fetch all Twilio templates
   const { data: allTemplatesData } = useQuery({
     queryKey: ["/api/whatsapp/templates"],
     queryFn: async () => {
@@ -71,6 +71,20 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
       });
       if (!response.ok) {
         return { templates: [] };
+      }
+      return response.json();
+    },
+  });
+
+  // Fetch custom templates for booking notifications
+  const { data: customTemplatesData } = useQuery({
+    queryKey: ["/api/whatsapp/custom-templates"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/custom-templates", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        return { data: [] };
       }
       return response.json();
     },
@@ -93,6 +107,46 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
       return isApproved && (assignedSids.size === 0 || isAssigned);
     });
   }, [allTemplatesData, formData.whatsappTemplates]);
+
+  // Booking notification templates: include custom templates + approved Twilio templates
+  const bookingNotificationTemplates = React.useMemo(() => {
+    const result: any[] = [];
+    
+    // Add custom templates (especially booking_notification type)
+    const customTemplates = customTemplatesData?.data || [];
+    customTemplates.forEach((t: any) => {
+      if (t.isActive) {
+        result.push({
+          id: t.id,
+          templateName: t.templateName,
+          templateType: t.templateType,
+          isCustom: true,
+          twilioSid: t.twilioContentSid, // if exported to Twilio
+          approvalStatus: t.twilioApprovalStatus || 'draft',
+        });
+      }
+    });
+    
+    // Add approved Twilio templates
+    const twilioTemplates = allTemplatesData?.templates || [];
+    twilioTemplates.forEach((t: any) => {
+      if (t.approvalStatus?.toLowerCase() === 'approved') {
+        // Avoid duplicates if already added from custom templates
+        const alreadyAdded = result.some(r => r.twilioSid === t.contentSid);
+        if (!alreadyAdded) {
+          result.push({
+            id: t.contentSid,
+            templateName: t.friendlyName || t.name,
+            isCustom: false,
+            twilioSid: t.contentSid,
+            approvalStatus: 'approved',
+          });
+        }
+      }
+    });
+    
+    return result;
+  }, [customTemplatesData, allTemplatesData]);
 
   // Check if selected template has booking variables
   const { data: templateVariables } = useQuery({
@@ -642,24 +696,33 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
                   onValueChange={(value) => onChange("bookingNotificationTemplateId", value)}
                 >
                   <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Seleziona un template approvato" />
+                    <SelectValue placeholder="Seleziona un template" />
                   </SelectTrigger>
                   <SelectContent>
-                    {approvedTemplates.length === 0 ? (
+                    {bookingNotificationTemplates.length === 0 ? (
                       <div className="p-3 text-sm text-muted-foreground text-center">
-                        Nessun template approvato disponibile
+                        Nessun template disponibile. Importa il template Booking dalla pagina Template Custom.
                       </div>
                     ) : (
-                      approvedTemplates.map((template: any) => (
-                        <SelectItem key={template.contentSid || template.id} value={template.contentSid || template.id}>
-                          {template.friendlyName || template.templateName || template.name}
+                      bookingNotificationTemplates.map((template: any) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{template.templateName}</span>
+                            {template.approvalStatus === 'approved' ? (
+                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Approvato</span>
+                            ) : template.twilioSid ? (
+                              <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">In attesa</span>
+                            ) : (
+                              <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Bozza</span>
+                            )}
+                          </div>
                         </SelectItem>
                       ))
                     )}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Seleziona un template approvato da Twilio. Variabili richieste: nome cliente, data, ora, link Meet
+                  Seleziona un template con le variabili booking. Deve essere approvato da Meta per inviare notifiche.
                 </p>
               </div>
 
