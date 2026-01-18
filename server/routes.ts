@@ -12594,6 +12594,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.use("/api/public/consultant", publicPricingRouter);
 
   // Public Upgrade Token route (Bronze user tier upgrade)
+  // Uses database storage instead of JWT to keep client_reference_id under Stripe's 200 char limit
   app.post("/api/public/upgrade-token", authenticateBronzeToken, async (req: BronzeAuthRequest, res: Response) => {
     try {
       const { bronzeUserId, consultantId } = req.bronzeUser!;
@@ -12624,20 +12625,19 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         return res.status(403).json({ error: "Account disattivato" });
       }
 
-      // Generate upgrade token with 30 minutes expiry
-      const upgradeToken = jwt.sign(
-        {
-          bronzeUserId,
-          consultantId,
-          targetTier: targetTier.toLowerCase(),
-          type: "upgrade",
-        },
-        process.env.JWT_SECRET || process.env.SESSION_SECRET || "",
-        { expiresIn: "30m" }
-      );
+      // Create upgrade token in database (30 min expiry) - keeps client_reference_id short (36 chars UUID)
+      // Stripe has a 200 char limit for client_reference_id, JWT tokens are ~350 chars
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+      const [token] = await db.execute(sql`
+        INSERT INTO upgrade_tokens (bronze_user_id, consultant_id, target_tier, expires_at)
+        VALUES (${bronzeUserId}, ${consultantId}, ${targetTier.toLowerCase()}, ${expiresAt})
+        RETURNING id
+      `);
+      
+      const upgradeToken = (token as any).id;
 
       console.log(
-        `[BRONZE AUTH] Upgrade token generated for user: ${bronzeUserId}, target tier: ${targetTier}`
+        `[BRONZE AUTH] Upgrade token created in DB: ${upgradeToken} for user: ${bronzeUserId}, target tier: ${targetTier}`
       );
 
       res.json({

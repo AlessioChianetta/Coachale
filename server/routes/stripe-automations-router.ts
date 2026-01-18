@@ -1039,42 +1039,77 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 // PROCESS PAYMENT AUTOMATION - Create user and send email
 // ============================================================
 
-// Interface for upgrade token payload
-interface UpgradeTokenPayload {
+// Interface for upgrade token from database
+interface UpgradeTokenData {
   bronzeUserId: string;
   consultantId: string;
   targetTier: "silver" | "gold" | "deluxe";
-  type: "upgrade";
-  iat: number;
-  exp: number;
 }
 
-// Validate upgrade token from client_reference_id
-function validateUpgradeToken(token: string): UpgradeTokenPayload | null {
+// Validate upgrade token from database (client_reference_id is a short UUID, not JWT)
+async function validateUpgradeToken(tokenId: string, expectedConsultantId: string): Promise<UpgradeTokenData | null> {
   try {
-    const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-    if (!secret) {
-      console.warn("[STRIPE AUTOMATION] No JWT_SECRET available for token validation");
+    // Token should be a UUID (36 chars)
+    if (!tokenId || tokenId.length !== 36) {
+      console.log(`[STRIPE AUTOMATION] client_reference_id is not a valid UUID: ${tokenId?.substring(0, 50)}...`);
       return null;
     }
     
-    const decoded = jwt.verify(token, secret) as UpgradeTokenPayload;
+    const result = await db.execute(sql`
+      SELECT bronze_user_id, consultant_id, target_tier, expires_at, used_at
+      FROM upgrade_tokens
+      WHERE id = ${tokenId}
+    `);
     
-    // Validate token type
-    if (decoded.type !== "upgrade") {
-      console.warn("[STRIPE AUTOMATION] Invalid token type:", decoded.type);
+    if (!result.length) {
+      console.warn(`[STRIPE AUTOMATION] Upgrade token not found: ${tokenId}`);
       return null;
     }
     
-    console.log(`[STRIPE AUTOMATION] Valid upgrade token for bronzeUserId: ${decoded.bronzeUserId}, tier: ${decoded.targetTier}`);
-    return decoded;
+    const token = result[0] as any;
+    
+    // Check if already used
+    if (token.used_at) {
+      console.warn(`[STRIPE AUTOMATION] Upgrade token already used: ${tokenId}`);
+      return null;
+    }
+    
+    // Check expiration
+    if (new Date(token.expires_at) < new Date()) {
+      console.warn(`[STRIPE AUTOMATION] Upgrade token expired: ${tokenId}`);
+      return null;
+    }
+    
+    // Validate consultantId matches
+    if (token.consultant_id !== expectedConsultantId) {
+      console.warn(`[STRIPE AUTOMATION] Token consultantId mismatch: ${token.consultant_id} vs ${expectedConsultantId}`);
+      return null;
+    }
+    
+    console.log(`[STRIPE AUTOMATION] Valid upgrade token: ${tokenId} for bronzeUserId: ${token.bronze_user_id}, tier: ${token.target_tier}`);
+    
+    return {
+      bronzeUserId: token.bronze_user_id,
+      consultantId: token.consultant_id,
+      targetTier: token.target_tier,
+    };
   } catch (error: any) {
-    if (error.name === "TokenExpiredError") {
-      console.warn("[STRIPE AUTOMATION] Upgrade token expired");
-    } else {
-      console.warn("[STRIPE AUTOMATION] Invalid upgrade token:", error.message);
-    }
+    console.error("[STRIPE AUTOMATION] Error validating upgrade token:", error.message);
     return null;
+  }
+}
+
+// Mark upgrade token as used
+async function markUpgradeTokenUsed(tokenId: string, subscriptionId: string): Promise<void> {
+  try {
+    await db.execute(sql`
+      UPDATE upgrade_tokens
+      SET used_at = NOW(), subscription_id = ${subscriptionId}
+      WHERE id = ${tokenId}
+    `);
+    console.log(`[STRIPE AUTOMATION] Marked upgrade token as used: ${tokenId}`);
+  } catch (error: any) {
+    console.error("[STRIPE AUTOMATION] Error marking token as used:", error.message);
   }
 }
 
@@ -1100,17 +1135,13 @@ async function processPaymentAutomation(
     }
   }
 
-  // Check for upgrade token in client_reference_id
-  let upgradeToken: UpgradeTokenPayload | null = null;
+  // Check for upgrade token in client_reference_id (now a short UUID stored in database)
+  let upgradeToken: UpgradeTokenData | null = null;
+  let upgradeTokenId: string | null = null;
   if (session.client_reference_id) {
-    console.log(`[STRIPE AUTOMATION] Found client_reference_id, validating upgrade token...`);
-    upgradeToken = validateUpgradeToken(session.client_reference_id);
-    
-    // Validate consultantId matches
-    if (upgradeToken && upgradeToken.consultantId !== consultantId) {
-      console.warn(`[STRIPE AUTOMATION] Token consultantId mismatch: ${upgradeToken.consultantId} vs ${consultantId}`);
-      upgradeToken = null;
-    }
+    console.log(`[STRIPE AUTOMATION] Found client_reference_id: ${session.client_reference_id}, validating...`);
+    upgradeTokenId = session.client_reference_id;
+    upgradeToken = await validateUpgradeToken(session.client_reference_id, consultantId);
   }
 
   console.log(`[STRIPE AUTOMATION] Processing for email: ${customerEmail}, phone: ${customerPhone}, upgradeToken: ${upgradeToken ? 'valid' : 'none'}`);
@@ -1244,7 +1275,7 @@ async function processPaymentAutomation(
           subscriptionId = newSub.id;
         }
         
-        // If this is an upgrade from Bronze, mark the bronze user as upgraded
+        // If this is an upgrade from Bronze, mark the bronze user as upgraded and mark token as used
         if (upgradeToken?.bronzeUserId) {
           await db
             .update(schema.bronzeUsers)
@@ -1255,6 +1286,11 @@ async function processPaymentAutomation(
             })
             .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId));
           console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel}`);
+          
+          // Mark the upgrade token as used
+          if (upgradeTokenId) {
+            await markUpgradeTokenUsed(upgradeTokenId, subscriptionId);
+          }
         }
         
         rolesAssigned.push(`${automation.clientLevel}_subscriber`);
@@ -1414,7 +1450,7 @@ async function processPaymentAutomation(
             bronzeUserId: upgradeToken?.bronzeUserId || null,
           }).returning({ id: schema.clientLevelSubscriptions.id });
           
-          // If this is an upgrade from Bronze, mark the bronze user as upgraded
+          // If this is an upgrade from Bronze, mark the bronze user as upgraded and mark token as used
           if (upgradeToken?.bronzeUserId) {
             await db
               .update(schema.bronzeUsers)
@@ -1425,6 +1461,11 @@ async function processPaymentAutomation(
               })
               .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId));
             console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel}`);
+            
+            // Mark the upgrade token as used
+            if (upgradeTokenId) {
+              await markUpgradeTokenUsed(upgradeTokenId, newSub.id);
+            }
           }
           
           rolesAssigned.push(`${automation.clientLevel}_subscriber`);
