@@ -99,8 +99,9 @@ const variableMappingSchema = z.object({
  */
 const baseTemplateSchema = z.object({
   templateName: z.string().min(1, "Template name is required").max(255),
-  templateType: z.enum(["opening", "followup_gentle", "followup_value", "followup_final"]),
+  templateType: z.enum(["opening", "followup_gentle", "followup_value", "followup_final", "booking_notification"]),
   description: z.string().optional(),
+  useCase: z.string().optional(),
 });
 
 /**

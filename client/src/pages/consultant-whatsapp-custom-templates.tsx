@@ -733,9 +733,17 @@ export default function ConsultantWhatsAppCustomTemplates() {
       return;
     }
 
+    const getTemplateType = (uc: string) => {
+      if (uc === "conferma-appuntamento") return "booking_notification";
+      if (uc === "primo-contatto-freddo") return "opening";
+      if (uc.includes("followup")) return "followup_gentle";
+      return "opening";
+    };
+
     if (isEditMode) {
       updateTemplateMutation.mutate({
         templateId: templateId!,
+        templateType: getTemplateType(useCase),
         useCase: useCase || undefined,
         description: description || undefined,
         bodyText,
@@ -747,6 +755,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
     } else {
       createTemplateMutation.mutate({
         templateName,
+        templateType: getTemplateType(useCase),
         useCase: useCase || undefined,
         description: description || undefined,
         bodyText,
