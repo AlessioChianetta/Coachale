@@ -1509,6 +1509,75 @@ async function processPaymentAutomation(
             if (upgradeTokenId) {
               await markUpgradeTokenUsed(upgradeTokenId, newSub.id);
             }
+            
+            // Migrate Bronze conversations to new subscription ID
+            try {
+              // Find the agent's share to update shareId (needed for conversation queries)
+              const consultantAgents = await db
+                .select({ id: schema.consultantWhatsappConfig.id })
+                .from(schema.consultantWhatsappConfig)
+                .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
+              
+              let agentShare: { id: string } | undefined;
+              if (consultantAgents.length > 0) {
+                const [share] = await db.select({ id: schema.whatsappAgentShares.id })
+                  .from(schema.whatsappAgentShares)
+                  .where(eq(schema.whatsappAgentShares.agentConfigId, consultantAgents[0].id))
+                  .limit(1);
+                agentShare = share;
+              }
+              
+              console.log(`[STRIPE AUTOMATION] Migration lookup - bronzeUserId: ${upgradeToken.bronzeUserId}, agentShare found: ${!!agentShare}`);
+              
+              // MIGRATION 1: Migrate from managerConversations (legacy)
+              const updateData: { managerId: string; shareId?: string } = { managerId: newSub.id };
+              if (agentShare) {
+                updateData.shareId = agentShare.id;
+              }
+              
+              const migratedManagerConversations = await db.update(schema.managerConversations)
+                .set(updateData)
+                .where(eq(schema.managerConversations.managerId, upgradeToken.bronzeUserId))
+                .returning({ id: schema.managerConversations.id });
+              
+              console.log(`[STRIPE AUTOMATION] Migrated ${migratedManagerConversations.length} manager_conversations from Bronze ${upgradeToken.bronzeUserId} to Silver/Gold ${newSub.id}`);
+              
+              // MIGRATION 2: Migrate from whatsappAgentConsultantConversations (actual Bronze conversations)
+              // Bronze conversations have externalVisitorId format: manager_${bronzeUserId}_${timestamp}
+              const bronzeConversations = await db.select({ 
+                  id: schema.whatsappAgentConsultantConversations.id, 
+                  externalVisitorId: schema.whatsappAgentConsultantConversations.externalVisitorId 
+                })
+                .from(schema.whatsappAgentConsultantConversations)
+                .where(
+                  and(
+                    sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${'manager_' + upgradeToken.bronzeUserId + '_%'}`,
+                    sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`
+                  )
+                );
+              
+              if (bronzeConversations.length > 0 && agentShare) {
+                // Update shareId AND externalVisitorId to link conversations to the new Silver/Gold subscription
+                for (const conv of bronzeConversations) {
+                  const newExternalVisitorId = conv.externalVisitorId.replace(
+                    `manager_${upgradeToken.bronzeUserId}`,
+                    `manager_${newSub.id}`
+                  );
+                  await db.update(schema.whatsappAgentConsultantConversations)
+                    .set({ 
+                      shareId: agentShare.id,
+                      externalVisitorId: newExternalVisitorId
+                    })
+                    .where(eq(schema.whatsappAgentConsultantConversations.id, conv.id));
+                }
+                
+                console.log(`[STRIPE AUTOMATION] Migrated ${bronzeConversations.length} whatsapp_conversations from Bronze ${upgradeToken.bronzeUserId} to Silver/Gold ${newSub.id} with shareId ${agentShare.id}`);
+              } else {
+                console.log(`[STRIPE AUTOMATION] No Bronze whatsapp_conversations found for ${upgradeToken.bronzeUserId} (agentShare: ${!!agentShare}, conversations: ${bronzeConversations.length})`);
+              }
+            } catch (migrationError: any) {
+              console.error(`[STRIPE AUTOMATION] Failed to migrate conversations:`, migrationError.message);
+            }
           }
           
           rolesAssigned.push(`${automation.clientLevel}_subscriber`);
