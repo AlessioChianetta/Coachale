@@ -8409,7 +8409,7 @@ export type InsertStripeAutomationLog = typeof stripeAutomationLogs.$inferInsert
 export const consultantDirectLinks = pgTable("consultant_direct_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").notNull(),
-  tier: varchar("tier", { length: 20 }).$type<"bronze" | "silver" | "gold">().notNull(),
+  tier: varchar("tier", { length: 20 }).$type<"bronze" | "silver" | "gold" | "deluxe">().notNull(),
   billingInterval: varchar("billing_interval", { length: 20 }).$type<"monthly" | "yearly">().notNull(),
   priceCents: integer("price_cents").notNull(),
   originalPriceCents: integer("original_price_cents"),

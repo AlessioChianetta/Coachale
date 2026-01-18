@@ -222,7 +222,7 @@ router.post("/direct-links", authenticateToken, requireRole("consultant"), async
       return res.status(400).json({ error: "Tier, intervallo e prezzo sono obbligatori" });
     }
 
-    if (!["bronze", "silver", "gold"].includes(tier)) {
+    if (!["bronze", "silver", "gold", "deluxe"].includes(tier)) {
       return res.status(400).json({ error: "Tier non valido" });
     }
 
@@ -246,7 +246,7 @@ router.post("/direct-links", authenticateToken, requireRole("consultant"), async
       .limit(1);
 
     const consultantName = consultant ? `${consultant.firstName || ""} ${consultant.lastName || ""}`.trim() || "Consulente" : "Consulente";
-    const tierNames: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold" };
+    const tierNames: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold", deluxe: "Deluxe" };
     const intervalNames: Record<string, string> = { monthly: "Mensile", yearly: "Annuale" };
 
     const priceCents = Math.round(parseFloat(priceEuros) * 100);
@@ -378,9 +378,9 @@ router.post("/direct-links", authenticateToken, requireRole("consultant"), async
       directLinkId = newLink.id;
     }
 
-    // Auto-create/update associated automation for Silver and Gold tiers
-    // Silver = only tier (no client role), Gold = tier + client role
-    if (tier === "silver" || tier === "gold") {
+    // Auto-create/update associated automation for Silver, Gold and Deluxe tiers
+    // Silver = only tier (no client role), Gold = tier + client role, Deluxe = client + consultant roles
+    if (tier === "silver" || tier === "gold" || tier === "deluxe") {
       const automationName = `${tierNames[tier]} ${intervalNames[billingInterval]} (Auto)`;
       
       // Check if automation already exists for this payment link
@@ -396,9 +396,9 @@ router.post("/direct-links", authenticateToken, requireRole("consultant"), async
       const automationData = {
         stripePaymentLinkId,
         linkName: automationName,
-        createAsClient: tier === "gold", // Gold = client role, Silver = no client role
-        createAsConsultant: false,
-        clientLevel: tier as "silver" | "gold",
+        createAsClient: tier === "gold" || tier === "deluxe", // Gold and Deluxe = client role
+        createAsConsultant: tier === "deluxe", // Deluxe = also consultant role
+        clientLevel: tier as "silver" | "gold" | "deluxe",
         sendWelcomeEmail: true,
         isActive: true,
         showOnPricingPage: true,

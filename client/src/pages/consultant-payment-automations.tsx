@@ -308,12 +308,14 @@ export default function ConsultantPaymentAutomations() {
         return <Badge className="bg-slate-400 text-white">Silver</Badge>;
       case "gold":
         return <Badge className="bg-yellow-500 text-black">Gold</Badge>;
+      case "deluxe":
+        return <Badge className="bg-purple-600 text-white">Deluxe</Badge>;
       default:
         return <Badge variant="outline">Nessuno</Badge>;
     }
   };
 
-  const getTierBadge = (tier: "bronze" | "silver" | "gold") => {
+  const getTierBadge = (tier: "bronze" | "silver" | "gold" | "deluxe") => {
     switch (tier) {
       case "bronze":
         return <Badge className="bg-amber-700 text-white text-sm px-3 py-1">Bronze</Badge>;
@@ -321,12 +323,14 @@ export default function ConsultantPaymentAutomations() {
         return <Badge className="bg-slate-400 text-white text-sm px-3 py-1">Silver</Badge>;
       case "gold":
         return <Badge className="bg-yellow-500 text-black text-sm px-3 py-1">Gold</Badge>;
+      case "deluxe":
+        return <Badge className="bg-purple-600 text-white text-sm px-3 py-1">Deluxe (Cliente + Consulente)</Badge>;
     }
   };
 
   const getDirectLinkFormKey = (tier: string, interval: string) => `${tier}-${interval}`;
 
-  const getDirectLink = (tier: "bronze" | "silver" | "gold", interval: "monthly" | "yearly") => {
+  const getDirectLink = (tier: "bronze" | "silver" | "gold" | "deluxe", interval: "monthly" | "yearly") => {
     return directLinks.find(link => link.tier === tier && link.billingInterval === interval);
   };
 
@@ -346,7 +350,7 @@ export default function ConsultantPaymentAutomations() {
     }));
   };
 
-  const handleGenerateDirectLink = (tier: "bronze" | "silver" | "gold", interval: "monthly" | "yearly") => {
+  const handleGenerateDirectLink = (tier: "bronze" | "silver" | "gold" | "deluxe", interval: "monthly" | "yearly") => {
     const form = getFormValue(tier, interval);
     const priceEuros = parseFloat(form.priceEuros);
     if (isNaN(priceEuros) || priceEuros <= 0) {
@@ -373,7 +377,7 @@ export default function ConsultantPaymentAutomations() {
     toast({ title: "Link copiato!" });
   };
 
-  const needsUpdate = (tier: "bronze" | "silver" | "gold", interval: "monthly" | "yearly") => {
+  const needsUpdate = (tier: "bronze" | "silver" | "gold" | "deluxe", interval: "monthly" | "yearly") => {
     const existingLink = getDirectLink(tier, interval);
     const form = getFormValue(tier, interval);
     if (!existingLink || !existingLink.paymentLinkUrl) return false;
@@ -450,7 +454,7 @@ export default function ConsultantPaymentAutomations() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-sm text-muted-foreground">
-                        {paymentLinksData.total} link trovati
+                        {paymentLinksData.links.filter((l: any) => l.active).length} link attivi
                       </span>
                       <Button variant="outline" size="sm" onClick={() => refetchPaymentLinks()}>
                         <RefreshCw className="h-4 w-4 mr-2" />
@@ -458,7 +462,7 @@ export default function ConsultantPaymentAutomations() {
                       </Button>
                     </div>
                     <div className="border rounded-lg divide-y">
-                      {paymentLinksData.links.map((link: any) => (
+                      {paymentLinksData.links.filter((link: any) => link.active).map((link: any) => (
                         <div key={link.id} className="p-4 flex items-center justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
@@ -539,7 +543,7 @@ export default function ConsultantPaymentAutomations() {
                   </div>
                 ) : (
                   <>
-                    {(["silver", "gold"] as const).map((tier) => (
+                    {(["silver", "gold", "deluxe"] as const).map((tier) => (
                       <div key={tier} className="border rounded-lg p-4 space-y-4">
                         <div className="flex items-center gap-3">
                           {getTierBadge(tier)}
