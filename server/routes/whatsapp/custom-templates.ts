@@ -241,11 +241,12 @@ router.post(
 Genera un messaggio WhatsApp in italiano basato sulla richiesta dell'utente.
 
 REGOLE FONDAMENTALI:
-1. Il messaggio deve essere BREVE (massimo 160 caratteri idealmente, max 200)
+1. Il messaggio deve essere conciso ma COMPLETO (massimo 500 caratteri)
 2. Usa un tono professionale ma amichevole
-3. Includi le variabili dinamiche disponibili nel formato {nome_variabile}
+3. Includi TUTTE le variabili dinamiche richieste nel formato {nome_variabile}
 4. Non usare emoji eccessive (max 1-2)
 5. Il messaggio deve essere pronto per essere inviato su WhatsApp Business
+6. Se richieste variabili booking (booking_client_name, booking_date, booking_time, booking_meet_link), INCLUDILE TUTTE
 
 VARIABILI DISPONIBILI (usa SOLO queste):
 ${availableVariables}
