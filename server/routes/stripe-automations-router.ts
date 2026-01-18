@@ -1242,6 +1242,39 @@ async function processPaymentAutomation(
       // Create/update subscription for Silver/Gold levels (works with or without roles)
       if (automation.clientLevel && (automation.clientLevel === "silver" || automation.clientLevel === "gold")) {
         const levelMap: Record<string, "2" | "3"> = { silver: "2", gold: "3" };
+        
+        // If upgrading from Bronze, get preserved name/phone/onboarding
+        let bronzeData: {
+          firstName: string | null;
+          lastName: string | null;
+          phone: string | null;
+          hasCompletedOnboarding: boolean | null;
+          onboardingExplanation: string | null;
+          writingStyle: string | null;
+          responseLength: string | null;
+          customInstructions: string | null;
+        } | null = null;
+        if (upgradeToken?.bronzeUserId) {
+          const [data] = await db
+            .select({ 
+              firstName: schema.bronzeUsers.firstName, 
+              lastName: schema.bronzeUsers.lastName, 
+              phone: schema.bronzeUsers.phone,
+              hasCompletedOnboarding: schema.bronzeUsers.hasCompletedOnboarding,
+              onboardingExplanation: schema.bronzeUsers.onboardingExplanation,
+              writingStyle: schema.bronzeUsers.writingStyle,
+              responseLength: schema.bronzeUsers.responseLength,
+              customInstructions: schema.bronzeUsers.customInstructions,
+            })
+            .from(schema.bronzeUsers)
+            .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId))
+            .limit(1);
+          bronzeData = data || null;
+        }
+        const preservedName = (bronzeData?.firstName || bronzeData?.lastName) 
+          ? `${bronzeData?.firstName || ''} ${bronzeData?.lastName || ''}`.trim() 
+          : customerName;
+        
         const [existingSub] = await db
           .select({ id: schema.clientLevelSubscriptions.id })
           .from(schema.clientLevelSubscriptions)
@@ -1268,14 +1301,19 @@ async function processPaymentAutomation(
             clientId: userId,
             consultantId,
             clientEmail: customerEmail.toLowerCase(),
-            clientName: customerName || null,
-            phone: customerPhone || null,
+            clientName: preservedName || null,
+            phone: bronzeData?.phone || customerPhone || null,
             level: levelMap[automation.clientLevel],
             status: "active",
             startDate: new Date(),
             paymentSource: "direct_link",
-            mustChangePassword: true,
+            mustChangePassword: upgradeToken?.bronzeUserId ? false : true,
             bronzeUserId: upgradeToken?.bronzeUserId || null,
+            hasCompletedOnboarding: bronzeData?.hasCompletedOnboarding ?? false,
+            onboardingExplanation: bronzeData?.onboardingExplanation || null,
+            writingStyle: bronzeData?.writingStyle as any || null,
+            responseLength: bronzeData?.responseLength as any || null,
+            customInstructions: bronzeData?.customInstructions || null,
           }).returning({ id: schema.clientLevelSubscriptions.id });
           subscriptionId = newSub.id;
         }
@@ -1337,9 +1375,20 @@ async function processPaymentAutomation(
       // Create new user - but check if this is an upgrade from Bronze first
       let hashedPassword: string;
       let isUpgradeFromBronze = false;
-      let bronzeUserData: { passwordHash: string; firstName: string | null; lastName: string | null; phone: string | null; mustChangePassword: boolean | null } | null = null;
+      let bronzeUserData: { 
+        passwordHash: string; 
+        firstName: string | null; 
+        lastName: string | null; 
+        phone: string | null; 
+        mustChangePassword: boolean | null;
+        hasCompletedOnboarding: boolean | null;
+        onboardingExplanation: string | null;
+        writingStyle: string | null;
+        responseLength: string | null;
+        customInstructions: string | null;
+      } | null = null;
       
-      // If upgrading from Bronze, fetch existing password hash to preserve credentials
+      // If upgrading from Bronze, fetch existing password hash and onboarding data to preserve
       if (upgradeToken?.bronzeUserId) {
         const [existingBronzeUser] = await db
           .select({
@@ -1348,6 +1397,11 @@ async function processPaymentAutomation(
             lastName: schema.bronzeUsers.lastName,
             phone: schema.bronzeUsers.phone,
             mustChangePassword: schema.bronzeUsers.mustChangePassword,
+            hasCompletedOnboarding: schema.bronzeUsers.hasCompletedOnboarding,
+            onboardingExplanation: schema.bronzeUsers.onboardingExplanation,
+            writingStyle: schema.bronzeUsers.writingStyle,
+            responseLength: schema.bronzeUsers.responseLength,
+            customInstructions: schema.bronzeUsers.customInstructions,
           })
           .from(schema.bronzeUsers)
           .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId))
@@ -1358,7 +1412,7 @@ async function processPaymentAutomation(
           hashedPassword = existingBronzeUser.passwordHash;
           isUpgradeFromBronze = true;
           password = null as any; // No temp password needed - user keeps their existing password
-          console.log(`[STRIPE AUTOMATION] Upgrade from Bronze detected - preserving existing password for user ${upgradeToken.bronzeUserId}`);
+          console.log(`[STRIPE AUTOMATION] Upgrade from Bronze detected - preserving password and onboarding for user ${upgradeToken.bronzeUserId}`);
         } else {
           // Fallback: generate new password if Bronze user not found (shouldn't happen)
           password = generatePassword();
@@ -1477,20 +1531,28 @@ async function processPaymentAutomation(
         // Create subscription for Silver/Gold (Level 2/3) - works with or without roles
         if (automation.clientLevel && (automation.clientLevel === "silver" || automation.clientLevel === "gold")) {
           const levelMap: Record<string, "2" | "3"> = { silver: "2", gold: "3" };
+          // Use preserved Bronze name if upgrading, otherwise use Stripe name
+          const preservedFullName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : customerName;
           const [newSub] = await db.insert(schema.clientLevelSubscriptions).values({
             clientId: userId,
             consultantId,
             clientEmail: customerEmail.toLowerCase(),
-            clientName: customerName || null,
-            phone: customerPhone || null,
+            clientName: preservedFullName || null,
+            phone: bronzeUserData?.phone || customerPhone || null,
             level: levelMap[automation.clientLevel],
             status: "active",
             startDate: new Date(),
             passwordHash: hashedPassword,
             tempPassword: password,
             paymentSource: "direct_link",
-            mustChangePassword: true,
+            mustChangePassword: isUpgradeFromBronze ? (bronzeUserData?.mustChangePassword ?? false) : true,
             bronzeUserId: upgradeToken?.bronzeUserId || null,
+            // Preserve onboarding state from Bronze user
+            hasCompletedOnboarding: bronzeUserData?.hasCompletedOnboarding ?? false,
+            onboardingExplanation: bronzeUserData?.onboardingExplanation || null,
+            writingStyle: bronzeUserData?.writingStyle as any || null,
+            responseLength: bronzeUserData?.responseLength as any || null,
+            customInstructions: bronzeUserData?.customInstructions || null,
           }).returning({ id: schema.clientLevelSubscriptions.id });
           
           // If this is an upgrade from Bronze, mark the bronze user as upgraded and mark token as used
