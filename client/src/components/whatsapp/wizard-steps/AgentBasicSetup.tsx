@@ -141,18 +141,20 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     });
     
     // Add approved Twilio templates (only if not already added via custom templates)
+    // Note: Twilio API returns "sid" field, not "contentSid"
     twilioTemplates.forEach((t: any, idx: number) => {
       const isApproved = t.approvalStatus?.toLowerCase() === 'approved';
+      const templateSid = t.sid || t.contentSid; // Use sid (Twilio API) or contentSid (fallback)
       if (idx < 3) {
-        console.log(`[BOOKING DEBUG] Twilio template ${idx}:`, { sid: t.contentSid, name: t.friendlyName, approvalStatus: t.approvalStatus, isApproved });
+        console.log(`[BOOKING DEBUG] Twilio template ${idx}:`, { sid: templateSid, name: t.friendlyName, approvalStatus: t.approvalStatus, isApproved });
       }
-      if (isApproved && t.contentSid && !addedIds.has(t.contentSid)) {
-        addedIds.add(t.contentSid);
+      if (isApproved && templateSid && !addedIds.has(templateSid)) {
+        addedIds.add(templateSid);
         result.push({
-          id: t.contentSid,
+          id: templateSid,
           templateName: t.friendlyName || t.name,
           isCustom: false,
-          twilioSid: t.contentSid,
+          twilioSid: templateSid,
           approvalStatus: 'approved',
         });
       }
