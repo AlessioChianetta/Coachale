@@ -571,37 +571,8 @@ export default function PublicPricingDirect() {
 
   const accentColor = data?.pricing.accentColor;
 
-  if (!isLoading && !hasPaymentLinks) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full shadow-xl">
-          <CardContent className="pt-8 pb-8 text-center">
-            <div className="mb-6 flex justify-center">
-              <ExternalLink className="h-16 w-16 text-amber-500" />
-            </div>
-            <h2 className="text-2xl font-bold mb-3 text-slate-900">
-              Link di pagamento non configurati
-            </h2>
-            <p className="text-muted-foreground mb-8 leading-relaxed">
-              I link di pagamento diretti non sono ancora configurati per questo consulente.
-            </p>
-            <Button 
-              onClick={() => navigate(`/c/${slug}/pricing`)} 
-              size="lg"
-              className="gap-2"
-              style={accentColor ? {
-                backgroundColor: accentColor,
-                color: "white",
-              } : undefined}
-            >
-              Vai alla pagina prezzi standard
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Bronze (free) and Exclusive (contact form) are always available
+  // Silver, Gold, Deluxe show only when payment links are configured
 
   const silverInfo = getDiscountInfo("silver");
   const goldInfo = getDiscountInfo("gold");

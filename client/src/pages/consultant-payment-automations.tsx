@@ -33,7 +33,7 @@ interface StripePaymentAutomation {
   linkName: string;
   createAsClient: boolean;
   createAsConsultant: boolean;
-  clientLevel: "bronze" | "silver" | "gold" | null;
+  clientLevel: "bronze" | "silver" | "gold" | "deluxe" | null;
   assignToAgents: string[];
   sendWelcomeEmail: boolean;
   welcomeEmailSubject: string | null;
@@ -56,7 +56,7 @@ interface AutomationLog {
 
 interface DirectLink {
   id: string;
-  tier: "bronze" | "silver" | "gold";
+  tier: "bronze" | "silver" | "gold" | "deluxe";
   billingInterval: "monthly" | "yearly";
   priceCents: number;
   originalPriceCents: number | null;
@@ -94,7 +94,7 @@ export default function ConsultantPaymentAutomations() {
     linkName: "",
     createAsClient: true,
     createAsConsultant: false,
-    clientLevel: "none" as "bronze" | "silver" | "gold" | "none",
+    clientLevel: "none" as "bronze" | "silver" | "gold" | "deluxe" | "none",
     sendWelcomeEmail: true,
     welcomeEmailSubject: "",
     welcomeEmailTemplate: "",
