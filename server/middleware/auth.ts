@@ -44,13 +44,14 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     
     // Handle Silver tier tokens
     if (decoded.type === "silver" && decoded.subscriptionId) {
-      console.log(`[AUTH] Silver token detected for subscription: ${decoded.subscriptionId}`);
+      console.log(`[AUTH] Silver token detected for subscription: ${decoded.subscriptionId}, userId: ${decoded.userId || 'none'}`);
       req.user = {
-        id: decoded.subscriptionId,
+        id: decoded.userId || decoded.subscriptionId, // Prefer userId from users table if available
         email: decoded.email || "",
         role: "client" as const,
         consultantId: decoded.consultantId,
         type: "silver",
+        subscriptionId: decoded.subscriptionId, // Keep subscriptionId for tier-specific queries
       };
       return next();
     }

@@ -519,11 +519,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(schema.users.id, silverUser.consultantId))
             .limit(1);
 
+          // Check if user exists in users table (for client features)
+          const [existingUser] = await db
+            .select({ id: schema.users.id })
+            .from(schema.users)
+            .where(eq(schema.users.email, emailLower))
+            .limit(1);
+
           const token = jwt.sign({ 
             subscriptionId: silverUser.id, 
             consultantId: silverUser.consultantId,
             email: silverUser.clientEmail,
-            type: "silver" 
+            type: "silver",
+            userId: existingUser?.id || null, // Include userId if user exists in users table
           }, JWT_SECRET, { expiresIn: '30d' });
 
           return res.json({
@@ -531,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             token,
             mustChangePassword: silverUser.mustChangePassword || false,
             user: {
-              id: silverUser.id,
+              id: existingUser?.id || silverUser.id, // Use users.id if available
               email: silverUser.clientEmail,
               firstName: silverUser.clientName?.split(' ')[0] || '',
               lastName: silverUser.clientName?.split(' ').slice(1).join(' ') || '',
