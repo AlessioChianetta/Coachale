@@ -84,7 +84,7 @@ function validateDomainAccess(
  * Also handles manager JWT tokens and Bronze tokens for any share type
  */
 async function validateVisitorSession(
-  req: Request & { share?: schema.WhatsappAgentShare; managerId?: string; bronzeUserId?: string },
+  req: Request & { share?: schema.WhatsappAgentShare; managerId?: string; bronzeUserId?: string; tokenType?: 'bronze' | 'silver' | 'gold' | 'manager' },
   res: Response,
   next: NextFunction
 ) {
@@ -169,6 +169,7 @@ async function validateVisitorSession(
             
             req.bronzeUserId = decoded.bronzeUserId;
             req.managerId = decoded.bronzeUserId; // Use bronzeUserId as managerId for compatibility
+            req.tokenType = 'bronze';
             console.log(`✅ [BRONZE AUTH] Valid bronze token for share ${share.slug}, bronzeUserId: ${decoded.bronzeUserId}`);
             return next();
           } else {
@@ -217,6 +218,7 @@ async function validateVisitorSession(
             }
             
             req.managerId = decoded.subscriptionId; // Use subscriptionId as managerId for compatibility
+            req.tokenType = 'silver';
             console.log(`✅ [SILVER AUTH] Valid silver token for share ${share.slug}, subscriptionId: ${decoded.subscriptionId}`);
             return next();
           } else {
@@ -228,6 +230,7 @@ async function validateVisitorSession(
         if (decoded.role === 'manager' && decoded.shareId === share.id && decoded.managerId) {
           // Valid manager token - attach managerId to request and proceed
           req.managerId = decoded.managerId;
+          req.tokenType = 'manager';
           console.log(`✅ [MANAGER AUTH] Valid manager token for share ${share.slug}, managerId: ${decoded.managerId}`);
           return next();
         }
@@ -273,6 +276,7 @@ async function validateVisitorSession(
             
             // Use subscriptionId as managerId for conversation queries (to find previous conversations)
             req.managerId = decoded.subscriptionId;
+            req.tokenType = 'gold';
             console.log(`✅ [GOLD AUTH] Valid gold client token for share ${share.slug}, userId: ${decoded.userId}, subscriptionId: ${decoded.subscriptionId}`);
             return next();
           } else {
@@ -323,6 +327,7 @@ async function validateVisitorSession(
             }
             
             req.managerId = decoded.userId; // Use userId as managerId for compatibility
+            req.tokenType = 'gold';
             console.log(`✅ [GOLD AUTH] Valid gold client token for share ${share.slug}, userId: ${decoded.userId}`);
             return next();
           } else {
@@ -783,12 +788,13 @@ router.get(
   validateShareExists,
   validateDomainAccess,
   validateVisitorSession,
-  async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string }, res) => {
+  async (req: Request & { share?: schema.WhatsappAgentShare; managerId?: string; tokenType?: 'bronze' | 'silver' | 'gold' | 'manager' }, res) => {
     try {
       const managerId = req.managerId;
       const visitorId = req.query.visitorId as string;
       const conversationId = req.query.conversationId as string;
       const share = req.share!;
+      const tokenType = (req as any).tokenType as 'bronze' | 'silver' | 'gold' | 'manager' | undefined;
       
       // For managers, get ALL their conversations (they can have multiple)
       if (managerId) {
@@ -797,48 +803,71 @@ router.get(
         // Check if this is a Bronze virtual share (ID starts with "bronze-")
         const isBronzeShare = share.id.startsWith('bronze-');
         
-        // For Silver/Gold users accessing via Bronze slug, we need to find the real share
-        // and search for conversations with either NULL shareId (old Bronze) or the real shareId (migrated)
-        let realShareId: string | null = null;
-        if (isBronzeShare) {
+        // For Silver/Gold users, we need to search for conversations with ANY shareId
+        // because their conversations may have been migrated from Bronze (NULL shareId) to a real shareId
+        const isSilverOrGold = tokenType === 'silver' || tokenType === 'gold';
+        
+        console.log(`[CONV DEBUG] managerId: ${managerId}, shareId: ${share.id}, agentConfigId: ${share.agentConfigId}, isBronzeShare: ${isBronzeShare}, tokenType: ${tokenType}, isSilverOrGold: ${isSilverOrGold}, pattern: ${managerVisitorPattern}`);
+        
+        // Get all conversations for this manager
+        // For Silver/Gold users: search by agentConfigId and externalVisitorId ONLY (ignore shareId)
+        //   This finds both old Bronze conversations (NULL shareId) and migrated ones (any shareId)
+        // For Bronze users on virtual shares: search NULL shareId only
+        // For real shares (password-protected etc): search by that specific shareId
+        let conversations;
+        
+        if (isSilverOrGold) {
+          // Silver/Gold: Find conversations with NULL shareId (old Bronze) OR real shareId (migrated)
+          // This is more restrictive than removing shareId filter entirely - only allows same agent's conversations
           const [realShare] = await db
             .select({ id: schema.whatsappAgentShares.id })
             .from(schema.whatsappAgentShares)
             .where(eq(schema.whatsappAgentShares.agentConfigId, share.agentConfigId))
             .limit(1);
-          realShareId = realShare?.id || null;
+          const realShareId = realShare?.id || null;
+          
+          console.log(`[CONV DEBUG] Silver/Gold query - realShareId: ${realShareId}`);
+          
+          conversations = await db
+            .select()
+            .from(schema.whatsappAgentConsultantConversations)
+            .where(
+              and(
+                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                realShareId 
+                  ? sql`(${schema.whatsappAgentConsultantConversations.shareId} IS NULL OR ${schema.whatsappAgentConsultantConversations.shareId} = ${realShareId})`
+                  : sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+              )
+            )
+            .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+        } else if (isBronzeShare) {
+          // Bronze on virtual share: search only NULL shareId (Bronze conversations are not assigned to real shares)
+          conversations = await db
+            .select()
+            .from(schema.whatsappAgentConsultantConversations)
+            .where(
+              and(
+                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+              )
+            )
+            .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+        } else {
+          // Real share (password-protected, manager link, etc): search by specific shareId
+          conversations = await db
+            .select()
+            .from(schema.whatsappAgentConsultantConversations)
+            .where(
+              and(
+                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
+                sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+              )
+            )
+            .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
         }
-        
-        console.log(`[CONV DEBUG] managerId: ${managerId}, shareId: ${share.id}, agentConfigId: ${share.agentConfigId}, isBronzeShare: ${isBronzeShare}, realShareId: ${realShareId}, pattern: ${managerVisitorPattern}`);
-        
-        // Get all conversations for this manager
-        // For Bronze virtual shares: search both NULL shareId (old) and real shareId (migrated)
-        // For real shares: search only by that shareId
-        const conversations = isBronzeShare
-          ? await db
-              .select()
-              .from(schema.whatsappAgentConsultantConversations)
-              .where(
-                and(
-                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-                  realShareId 
-                    ? sql`(${schema.whatsappAgentConsultantConversations.shareId} IS NULL OR ${schema.whatsappAgentConsultantConversations.shareId} = ${realShareId})`
-                    : sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
-                  sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
-                )
-              )
-              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt))
-          : await db
-              .select()
-              .from(schema.whatsappAgentConsultantConversations)
-              .where(
-                and(
-                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-                  eq(schema.whatsappAgentConsultantConversations.shareId, share.id),
-                  sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
-                )
-              )
-              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
         
         console.log(`[CONV DEBUG] Found ${conversations.length} conversations`);
         

@@ -397,13 +397,48 @@ export default function SelectAgent() {
         }
         
         console.log("[SELECT-AGENT] AuthUser resolved:", authUser?.role, authUser?.firstName);
+        
+        // Check if this is a real Gold client or just a Silver user with role=client
+        // PRIORITY: Server-provided subscriptionLevel is AUTHORITATIVE, not localStorage
         if (authUser && authUser.role === "client") {
+          const subscriptionLevel = authUser.subscriptionLevel;
+          const bronzeTier = localStorage.getItem("bronzeUserTier"); // Fallback only
+          
+          console.log("[SELECT-AGENT] Client role detected, subscriptionLevel:", subscriptionLevel, "bronzeTier fallback:", bronzeTier);
+          
+          // subscriptionLevel from API is authoritative: 2=Silver, 3=Gold, 4=Deluxe
+          // Use localStorage bronzeTier ONLY as fallback when server doesn't have subscriptionLevel
+          if (subscriptionLevel === 2) {
+            console.log("[SELECT-AGENT] Silver user (subscriptionLevel=2)");
+            setUserName(authUser.firstName || authUser.username || "Utente");
+            setUserTier("2"); // Silver tier
+            setIsAuthenticated(true);
+            setIsGoldClient(false);
+            return;
+          } else if (subscriptionLevel === 3 || subscriptionLevel === 4) {
+            console.log("[SELECT-AGENT] Gold/Deluxe client (subscriptionLevel=" + subscriptionLevel + ")");
+            setUserName(authUser.firstName || authUser.username || "Utente");
+            setUserTier("3"); // Gold/Deluxe tier
+            setIsAuthenticated(true);
+            setIsGoldClient(true);
+            return;
+          } else if (bronzeTier === "2") {
+            // Fallback: localStorage indicates Silver but server doesn't have subscriptionLevel
+            console.log("[SELECT-AGENT] Silver user (localStorage fallback)");
+            setUserName(authUser.firstName || authUser.username || "Utente");
+            setUserTier("2"); // Silver tier
+            setIsAuthenticated(true);
+            setIsGoldClient(false);
+            return;
+          }
+          
+          // Default: assume Gold if role=client but no specific level found
           setUserName(authUser.firstName || authUser.username || "Utente");
           setUserTier("3"); // Gold/Deluxe tier
           setIsAuthenticated(true);
           setIsGoldClient(true);
-          console.log("[SELECT-AGENT] Gold client authenticated");
-          return; // Exit early, Gold takes priority
+          console.log("[SELECT-AGENT] Gold client authenticated (default for role=client)");
+          return;
         }
       }
       

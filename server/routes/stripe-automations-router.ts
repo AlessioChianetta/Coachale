@@ -1471,10 +1471,11 @@ async function processPaymentAutomation(
         }
         
         // Set consultantId on user when:
-        // 1. Creating as client only (not consultant)
-        // 2. OR subscription-only (Silver without roles) - they need to be linked to the consultant
+        // 1. Creating as client only (not consultant) AND it's Gold tier
+        // 2. Silver should NOT have consultantId on users table - they use clientLevelSubscriptions for association
+        // This prevents Silver from appearing in the client list (getClientsByConsultant uses users.consultantId)
         // Note: Gold always has effectiveCreateAsClient=true, so it's covered by case 1
-        const userConsultantId = (effectiveCreateAsClient && !automation.createAsConsultant) || isSubscriptionOnly 
+        const userConsultantId = (effectiveCreateAsClient && !automation.createAsConsultant && automation.clientLevel !== "silver")
           ? consultantId 
           : null;
 
@@ -1516,7 +1517,12 @@ async function processPaymentAutomation(
           console.log(`[STRIPE AUTOMATION] Created consultant profile for user`);
         }
 
-        if (effectiveCreateAsClient) {
+        // IMPORTANT: Only create client profile for Gold tier, NOT Silver
+        // Silver users should NOT appear in client lists - they are subscription-only
+        // effectiveCreateAsClient is true for Gold (forced) but we need to check automation.clientLevel
+        const shouldCreateClientProfile = effectiveCreateAsClient && automation.clientLevel !== "silver";
+        
+        if (shouldCreateClientProfile) {
           await db.insert(schema.userRoleProfiles).values({
             userId,
             role: "client",
@@ -1526,6 +1532,8 @@ async function processPaymentAutomation(
           });
           rolesAssigned.push("client");
           console.log(`[STRIPE AUTOMATION] Created client profile for user (linked to consultant ${consultantId})${automation.clientLevel === "gold" && !automation.createAsClient ? " [Gold forced client]" : ""}`);
+        } else if (automation.clientLevel === "silver") {
+          console.log(`[STRIPE AUTOMATION] Skipped client profile for Silver user (subscription-only, won't appear in client list)`);
         }
 
         // Create subscription for Silver/Gold (Level 2/3) - works with or without roles

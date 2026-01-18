@@ -906,6 +906,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Get subscription level for Silver/Gold users
+      let subscriptionLevel: number | null = null;
+      const [subscription] = await db.select({ level: schema.clientLevelSubscriptions.level })
+        .from(schema.clientLevelSubscriptions)
+        .where(eq(schema.clientLevelSubscriptions.userId, user.id))
+        .limit(1);
+      if (subscription) {
+        subscriptionLevel = subscription.level;
+      }
+
       res.json({
         id: user.id,
         username: user.username,
@@ -915,6 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role,
         avatar: user.avatar,
         geminiApiKeys: user.geminiApiKeys,
+        subscriptionLevel,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
