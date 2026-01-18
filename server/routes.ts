@@ -14642,16 +14642,16 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         if (bookingNotificationTemplateId && bookingNotificationTemplateId.startsWith('HX')) {
           console.log(`📥 [BOOKING] Auto-importing Twilio template ${bookingNotificationTemplateId}...`);
           
-          // Check if already exists in custom_templates with this twilioContentSid
-          const [existingCustom] = await db
-            .select({ id: schema.whatsappCustomTemplates.id })
-            .from(schema.whatsappCustomTemplates)
-            .where(eq(schema.whatsappCustomTemplates.twilioContentSid, bookingNotificationTemplateId))
+          // Check if already exists in template_versions with this twilioContentSid
+          const [existingVersion] = await db
+            .select({ templateId: schema.whatsappTemplateVersions.templateId })
+            .from(schema.whatsappTemplateVersions)
+            .where(eq(schema.whatsappTemplateVersions.twilioContentSid, bookingNotificationTemplateId))
             .limit(1);
           
-          if (existingCustom) {
-            // Already imported, use the custom template ID
-            finalTemplateId = existingCustom.id;
+          if (existingVersion) {
+            // Already imported, use the template ID from version
+            finalTemplateId = existingVersion.templateId;
             console.log(`✅ [BOOKING] Template already imported, using custom ID: ${finalTemplateId}`);
           } else {
             // Need to import from Twilio
@@ -14672,7 +14672,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
                   bodyText = bodyComponent?.text || '';
                 }
                 
-                // Create custom template record
+                // Create custom template record (using only existing fields)
                 const [newTemplate] = await db
                   .insert(schema.whatsappCustomTemplates)
                   .values({
@@ -14681,9 +14681,6 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
                     description: `Auto-imported from Twilio (${bookingNotificationTemplateId})`,
                     body: bodyText,
                     useCase: 'booking-notification',
-                    templateType: 'booking_notification',
-                    twilioContentSid: bookingNotificationTemplateId,
-                    twilioApprovalStatus: 'approved',
                     isSystemTemplate: false,
                     isActive: true,
                   })
