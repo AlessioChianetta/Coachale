@@ -113,9 +113,16 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     const result: any[] = [];
     const addedIds = new Set<string>();
     
-    // Add custom templates (especially booking_notification type)
+    // Debug: log raw data
     const customTemplates = customTemplatesData?.data || [];
-    customTemplates.forEach((t: any) => {
+    const twilioTemplates = allTemplatesData?.templates || [];
+    
+    console.log('[BOOKING DEBUG] customTemplates count:', customTemplates.length);
+    console.log('[BOOKING DEBUG] twilioTemplates count:', twilioTemplates.length);
+    
+    // Add custom templates (especially booking_notification type)
+    customTemplates.forEach((t: any, idx: number) => {
+      console.log(`[BOOKING DEBUG] Custom template ${idx}:`, { id: t.id, name: t.templateName, isActive: t.isActive, twilioContentSid: t.twilioContentSid });
       if (t.isActive && t.id && !addedIds.has(t.id)) {
         addedIds.add(t.id);
         // Also track twilioContentSid to avoid duplicates from Twilio list
@@ -134,9 +141,12 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     });
     
     // Add approved Twilio templates (only if not already added via custom templates)
-    const twilioTemplates = allTemplatesData?.templates || [];
-    twilioTemplates.forEach((t: any) => {
-      if (t.approvalStatus?.toLowerCase() === 'approved' && t.contentSid && !addedIds.has(t.contentSid)) {
+    twilioTemplates.forEach((t: any, idx: number) => {
+      const isApproved = t.approvalStatus?.toLowerCase() === 'approved';
+      if (idx < 3) {
+        console.log(`[BOOKING DEBUG] Twilio template ${idx}:`, { sid: t.contentSid, name: t.friendlyName, approvalStatus: t.approvalStatus, isApproved });
+      }
+      if (isApproved && t.contentSid && !addedIds.has(t.contentSid)) {
         addedIds.add(t.contentSid);
         result.push({
           id: t.contentSid,
@@ -148,7 +158,7 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
       }
     });
     
-    console.log('[BOOKING TEMPLATES]', result.map(r => ({ id: r.id, name: r.templateName })));
+    console.log('[BOOKING TEMPLATES] Final result:', result.map(r => ({ id: r.id, name: r.templateName })));
     return result;
   }, [customTemplatesData, allTemplatesData]);
 
