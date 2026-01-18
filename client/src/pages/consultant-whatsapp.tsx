@@ -132,7 +132,7 @@ import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_ava
 import echoAvatar from "@assets/generated_images/echo_ai_summarizer_avatar.png";
 import specAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
-import ceoAvatar from "@assets/generated_images/male_ceo_ai_executive_avatar.png";
+import ceoAvatar from "@assets/generated_images/realistic_ceo_businessman_headshot.png";
 import {
   Table,
   TableBody,
