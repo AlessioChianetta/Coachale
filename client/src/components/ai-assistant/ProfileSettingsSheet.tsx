@@ -77,15 +77,26 @@ export function ProfileSettingsSheet({
     const paymentSource = localStorage.getItem("paymentSource");
     const consultantId = localStorage.getItem("consultantId");
     
+    console.log("[DIRECT LINKS] useEffect triggered, subscriptionLevel:", subscriptionLevel);
+    console.log("[DIRECT LINKS] paymentSource:", paymentSource, "consultantId:", consultantId);
+    
     if (paymentSource === "direct_link" && consultantId && subscriptionLevel === "bronze") {
       setIsLoadingLinks(true);
+      console.log("[DIRECT LINKS] Fetching from:", `/api/stripe-automations/direct-links/public/${consultantId}`);
       fetch(`/api/stripe-automations/direct-links/public/${consultantId}`)
-        .then(res => res.ok ? res.json() : [])
+        .then(res => {
+          console.log("[DIRECT LINKS] Response status:", res.status);
+          return res.ok ? res.json() : [];
+        })
         .then(links => {
           console.log("[DIRECT LINKS] Fetched links:", links);
-          setDirectLinks(links);
+          console.log("[DIRECT LINKS] Links count:", Array.isArray(links) ? links.length : "not an array");
+          setDirectLinks(Array.isArray(links) ? links : []);
         })
-        .catch(err => console.error("[DIRECT LINKS] Error:", err))
+        .catch(err => {
+          console.error("[DIRECT LINKS] Error:", err);
+          setDirectLinks([]);
+        })
         .finally(() => setIsLoadingLinks(false));
     }
   }, [subscriptionLevel]);
@@ -134,6 +145,11 @@ export function ProfileSettingsSheet({
   const isDirectLinkUser = paymentSource === "direct_link" && !!storedConsultantId;
 
   const handleUpgrade = async (targetLevel: "silver" | "gold") => {
+    console.log("[UPGRADE] BUTTON CLICKED! targetLevel:", targetLevel);
+    console.log("[UPGRADE] isUpgrading:", isUpgrading, "isLoadingLinks:", isLoadingLinks);
+    console.log("[UPGRADE] Current directLinks state:", directLinks);
+    console.log("[UPGRADE] Current billingInterval state:", billingInterval);
+    
     setIsUpgrading(true);
     try {
       const token = getToken();
