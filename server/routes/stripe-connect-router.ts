@@ -621,10 +621,11 @@ router.post("/stripe/upgrade-subscription", async (req: Request, res: Response) 
           VALUES (${upgradeToken}, ${existingSubscription.id}, ${consultantId}, ${targetTier}, ${expiresAt}, 'subscription')
         `);
         
-        // Append upgrade token to Direct Link URL
-        const upgradeUrl = `${directLink.paymentLinkUrl}?client_reference_id=${upgradeToken}`;
+        // Append upgrade token and prefilled email to Direct Link URL
+        const emailParam = userEmail ? `&prefilled_email=${encodeURIComponent(userEmail)}` : "";
+        const upgradeUrl = `${directLink.paymentLinkUrl}?client_reference_id=${upgradeToken}${emailParam}`;
         
-        console.log("[Stripe Upgrade] Direct Link upgrade URL generated for Silver→Gold");
+        console.log("[Stripe Upgrade] Direct Link upgrade URL generated for Silver→Gold with email:", userEmail);
         return res.json({ checkoutUrl: upgradeUrl });
       } else {
         console.log("[Stripe Upgrade] No Direct Link found for tier:", targetTier, "- falling back to Stripe Connect");
