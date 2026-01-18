@@ -14375,6 +14375,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           levels: config.levels,
           publicSlug: config.publicSlug,
           dailyMessageLimit: config.dailyMessageLimit,
+          // Booking Notification Configuration
+          bookingNotificationEnabled: config.bookingNotificationEnabled,
+          bookingNotificationPhone: config.bookingNotificationPhone,
+          bookingNotificationTemplateId: config.bookingNotificationTemplateId,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         },
@@ -14457,7 +14461,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         level,
         levels,
         publicSlug,
-        dailyMessageLimit
+        dailyMessageLimit,
+        // Booking Notification Configuration
+        bookingNotificationEnabled,
+        bookingNotificationPhone,
+        bookingNotificationTemplateId
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -14621,6 +14629,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       }
       if (publicSlug !== undefined) updateData.publicSlug = publicSlug;
       if (dailyMessageLimit !== undefined) updateData.dailyMessageLimit = dailyMessageLimit;
+
+      // Booking Notification Configuration
+      if (bookingNotificationEnabled !== undefined) updateData.bookingNotificationEnabled = bookingNotificationEnabled;
+      if (bookingNotificationPhone !== undefined) updateData.bookingNotificationPhone = bookingNotificationPhone;
+      if (bookingNotificationTemplateId !== undefined) updateData.bookingNotificationTemplateId = bookingNotificationTemplateId;
 
       // Handle useCentralCredentials - copy Twilio credentials from users table
       const { useCentralCredentials } = req.body;
@@ -14987,7 +15000,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         level,
         levels,
         publicSlug,
-        dailyMessageLimit
+        dailyMessageLimit,
+        // Booking Notification Configuration
+        bookingNotificationEnabled,
+        bookingNotificationPhone,
+        bookingNotificationTemplateId
       } = req.body;
 
       console.log("📝 [WHATSAPP CONFIG] POST request received:", {
@@ -15202,6 +15219,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           })(),
           publicSlug: publicSlug !== undefined ? publicSlug : existingConfig.publicSlug,
           dailyMessageLimit: dailyMessageLimit ?? existingConfig.dailyMessageLimit ?? 15,
+          // Booking Notification Configuration
+          bookingNotificationEnabled: bookingNotificationEnabled ?? existingConfig.bookingNotificationEnabled ?? false,
+          bookingNotificationPhone: bookingNotificationPhone !== undefined ? bookingNotificationPhone : existingConfig.bookingNotificationPhone,
+          bookingNotificationTemplateId: bookingNotificationTemplateId !== undefined ? bookingNotificationTemplateId : existingConfig.bookingNotificationTemplateId,
         };
 
         // Only update twilioAuthToken if explicitly provided and not "KEEP_EXISTING"
@@ -15327,6 +15348,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
               : (level || null),
             publicSlug: publicSlug || null,
             dailyMessageLimit: dailyMessageLimit ?? 15,
+            // Booking Notification Configuration
+            bookingNotificationEnabled: bookingNotificationEnabled ?? false,
+            bookingNotificationPhone: bookingNotificationPhone || null,
+            bookingNotificationTemplateId: bookingNotificationTemplateId || null,
           })
           .returning();
 
@@ -15381,6 +15406,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           level: config.level,
           publicSlug: config.publicSlug,
           dailyMessageLimit: config.dailyMessageLimit,
+          // Booking Notification Configuration
+          bookingNotificationEnabled: config.bookingNotificationEnabled,
+          bookingNotificationPhone: config.bookingNotificationPhone,
+          bookingNotificationTemplateId: config.bookingNotificationTemplateId,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         },
