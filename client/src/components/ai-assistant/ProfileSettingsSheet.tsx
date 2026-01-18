@@ -204,8 +204,15 @@ export function ProfileSettingsSheet({
         console.log("[UPGRADE] Matching link:", matchingLink);
         
         if (matchingLink?.paymentLinkUrl) {
-          console.log("[UPGRADE] SUCCESS: Using direct link for upgrade:", matchingLink.paymentLinkUrl);
-          window.open(matchingLink.paymentLinkUrl, '_blank', 'noopener');
+          // Build URL with prefilled email if available
+          let upgradeUrl = matchingLink.paymentLinkUrl;
+          if (managerInfo?.email) {
+            const separator = upgradeUrl.includes('?') ? '&' : '?';
+            upgradeUrl = `${upgradeUrl}${separator}prefilled_email=${encodeURIComponent(managerInfo.email)}`;
+          }
+          
+          console.log("[UPGRADE] SUCCESS: Using direct link for upgrade:", upgradeUrl);
+          window.open(upgradeUrl, '_blank', 'noopener');
           toast({
             title: "Checkout aperto (Direct Link)",
             description: `100% commissione al consulente. €${(matchingLink.priceCents / 100).toFixed(0)}/${billingInterval === "monthly" ? "mese" : "anno"}`,
