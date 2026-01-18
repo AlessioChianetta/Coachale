@@ -389,6 +389,9 @@ export default function PublicPricingDirect() {
         localStorage.setItem("bronzePublicSlug", slug || "");
         localStorage.setItem("bronzeUserId", data.user.id);
         localStorage.setItem("bronzeConsultantId", data.user.consultantId);
+        // Required for upgrade flow to use Direct Links (100% commission)
+        localStorage.setItem("paymentSource", "direct_link");
+        localStorage.setItem("consultantId", data.user.consultantId);
       }
       navigate(`/c/${slug}/select-agent`);
     },

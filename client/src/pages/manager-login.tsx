@@ -111,6 +111,15 @@ export default function ManagerLogin() {
           localStorage.setItem("bronzeUserTier", data.user.tier === "bronze" ? "1" : "2");
           localStorage.setItem("bronzeUserName", `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim());
           localStorage.setItem("agentSlug", slug || "");
+          localStorage.setItem("bronzeAuthToken", data.token);
+          // Required for upgrade flow to use Direct Links (100% commission)
+          // paymentSource and consultantId are at root level in response, not inside user object
+          if (data.paymentSource) {
+            localStorage.setItem("paymentSource", data.paymentSource);
+          }
+          if (data.consultantId) {
+            localStorage.setItem("consultantId", data.consultantId);
+          }
         }
       }
       
