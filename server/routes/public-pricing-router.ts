@@ -1,8 +1,9 @@
 import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import { db } from "../db";
 import { eq, and, isNotNull, or, sql, inArray } from "drizzle-orm";
-import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions, consultantDirectLinks, landingLeads } from "@shared/schema";
+import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions, consultantDirectLinks, landingLeads, bronzeUsers } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
@@ -461,6 +462,123 @@ router.post("/:slug/contact-request", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("[PUBLIC PRICING] Contact request error:", error);
+    res.status(500).json({ success: false, error: "Errore interno del server" });
+  }
+});
+
+// Bronze tier registration - creates user in bronzeUsers table (tier only, no client role)
+router.post("/:slug/register-bronze", async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const { email, password, firstName, lastName, phone, paymentSource } = req.body;
+
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Email, password, nome e cognome sono obbligatori" 
+      });
+    }
+
+    // Find consultant by slug
+    const [consultant] = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "consultant"),
+          or(
+            eq(users.pricingPageSlug, slug),
+            eq(users.username, slug)
+          )
+        )
+      )
+      .limit(1);
+
+    if (!consultant) {
+      return res.status(404).json({ error: "Consulente non trovato" });
+    }
+
+    // Check if Bronze user already exists for this consultant
+    const [existingBronzeUser] = await db.select({ id: bronzeUsers.id })
+      .from(bronzeUsers)
+      .where(
+        and(
+          eq(bronzeUsers.consultantId, consultant.id),
+          eq(bronzeUsers.email, email.toLowerCase())
+        )
+      )
+      .limit(1);
+
+    if (existingBronzeUser) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Un utente con questa email esiste già per questo consulente" 
+      });
+    }
+
+    // Also check if email exists in main users table
+    const [existingUser] = await db.select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email.toLowerCase()))
+      .limit(1);
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Un utente con questa email esiste già. Prova ad accedere." 
+      });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create Bronze user
+    const [newBronzeUser] = await db.insert(bronzeUsers)
+      .values({
+        consultantId: consultant.id,
+        email: email.toLowerCase(),
+        passwordHash,
+        firstName,
+        lastName,
+        phone: phone || null,
+        paymentSource: paymentSource === "direct_link" ? "direct_link" : "stripe_connect",
+        mustChangePassword: false, // User chose their own password
+        dailyMessageLimit: 15,
+        isActive: true,
+      })
+      .returning();
+
+    console.log(`[PUBLIC PRICING] Bronze user registered: ${newBronzeUser.id} for consultant ${consultant.id}`);
+
+    // Generate JWT token for immediate login
+    const token = jwt.sign(
+      { 
+        bronzeUserId: newBronzeUser.id,
+        consultantId: consultant.id,
+        tier: "bronze"
+      }, 
+      JWT_SECRET, 
+      { expiresIn: "7d" }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Registrazione completata con successo!",
+      token,
+      user: {
+        id: newBronzeUser.id,
+        email: newBronzeUser.email,
+        firstName: newBronzeUser.firstName,
+        lastName: newBronzeUser.lastName,
+        tier: "bronze",
+        consultantId: consultant.id,
+      },
+    });
+  } catch (error: any) {
+    console.error("[PUBLIC PRICING] Bronze registration error:", error);
     res.status(500).json({ success: false, error: "Errore interno del server" });
   }
 });

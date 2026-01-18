@@ -357,21 +357,16 @@ export default function PublicPricingDirect() {
 
   const registerMutation = useMutation({
     mutationFn: async (formData: RegistrationForm) => {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch(`/api/public/consultant/${slug}/register-bronze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formData.email,
-          username: formData.email.split("@")[0] + "_" + Date.now().toString(36),
           password: formData.password,
-          confirmPassword: formData.confirmPassword,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          phoneNumber: formData.phone,
-          role: "client",
+          phone: formData.phone,
           paymentSource: "direct_link",
-          consultantId: data?.consultantId,
-          consultantSlug: slug,
         }),
       });
       if (!response.ok) {
@@ -380,13 +375,18 @@ export default function PublicPricingDirect() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Registrazione completata!",
-        description: "Il tuo account è stato creato. Ora puoi accedere.",
+        description: "Il tuo account Bronze è stato creato. Ora puoi accedere.",
       });
       setBronzeDialogOpen(false);
-      navigate("/login");
+      // Store token and redirect to manager page
+      if (data.token) {
+        localStorage.setItem("bronzeToken", data.token);
+        localStorage.setItem("bronzeUser", JSON.stringify(data.user));
+      }
+      navigate(`/c/${slug}/select-agent`);
     },
     onError: (error: Error) => {
       toast({
