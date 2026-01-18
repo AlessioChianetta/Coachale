@@ -93,19 +93,23 @@ router.get("/client/agents-for-assistant", authenticateToken, requireRole("clien
     .from(consultantWhatsappConfig)
     .where(inArray(consultantWhatsappConfig.id, agentIds));
 
-    // Filter agents by tier: Gold/Deluxe sees all agents (including those without levels for backwards compatibility)
-    // Bronze/Silver see only agents with their tier level configured
+    // Filter agents by tier: only agents with levels configured are visible
+    // Gold/Deluxe sees all agents with levels, Bronze/Silver only their tier
     const filteredAgents = agents.filter(agent => {
-      // Gold/Deluxe sees all assigned agents (fallback for legacy agents without levels)
+      // Agents without levels are not visible to anyone
+      if (!agent.levels || agent.levels.length === 0) {
+        return false;
+      }
+      // Gold/Deluxe sees all agents with levels configured
       if (tierLevel === "3" || tierLevel === "4") {
         return true;
       }
       // Silver sees agents with level "2" configured
       if (tierLevel === "2") {
-        return agent.levels && agent.levels.includes("2");
+        return agent.levels.includes("2");
       }
       // Bronze sees agents with level "1" configured
-      return agent.levels && agent.levels.includes("1");
+      return agent.levels.includes("1");
     });
     
     console.log(`[AI Assistant] Tier ${tierLevel}: filtered ${filteredAgents.length}/${agents.length} agents`);

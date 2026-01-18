@@ -1824,16 +1824,18 @@ async function processPaymentAutomation(
               .from(schema.consultantWhatsappConfig)
               .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
             
-            // Filter agents by tier: Gold/Deluxe sees all agents (including legacy without levels), Bronze/Silver only their tier
+            // Filter agents by tier: only agents with levels configured are visible
+            // Gold/Deluxe sees all agents with levels, Bronze/Silver only their tier
             const tierFilteredAgents = consultantAgents.filter(agent => {
-              // Gold/Deluxe sees all consultant agents (fallback for legacy agents without levels)
-              if (tierLevel === "3" || tierLevel === "4") {
-                return true;
-              }
-              // Bronze/Silver need agents with their tier level configured
+              // Agents without levels are not visible to anyone
               if (!agent.levels || agent.levels.length === 0) {
                 return false;
               }
+              // Gold/Deluxe sees all agents with levels configured
+              if (tierLevel === "3" || tierLevel === "4") {
+                return true;
+              }
+              // Bronze/Silver need their tier level configured
               return agent.levels.includes(tierLevel as "1" | "2");
             });
             
