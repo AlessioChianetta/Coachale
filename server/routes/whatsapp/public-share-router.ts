@@ -817,30 +817,44 @@ router.get(
         let conversations;
         
         if (isSilverOrGold) {
-          // Silver/Gold: Find conversations with NULL shareId (old Bronze) OR real shareId (migrated)
-          // This is more restrictive than removing shareId filter entirely - only allows same agent's conversations
-          const [realShare] = await db
+          // Silver/Gold: Find conversations with NULL shareId (old Bronze) OR ANY real shareId for this agent
+          // Get ALL shares for this agent to search across all of them
+          const agentShares = await db
             .select({ id: schema.whatsappAgentShares.id })
             .from(schema.whatsappAgentShares)
-            .where(eq(schema.whatsappAgentShares.agentConfigId, share.agentConfigId))
-            .limit(1);
-          const realShareId = realShare?.id || null;
+            .where(eq(schema.whatsappAgentShares.agentConfigId, share.agentConfigId));
           
-          console.log(`[CONV DEBUG] Silver/Gold query - realShareId: ${realShareId}`);
+          const shareIds = agentShares.map(s => s.id);
+          console.log(`[CONV DEBUG] Silver/Gold query - found ${shareIds.length} shares for agent: ${shareIds.join(', ')}`);
           
-          conversations = await db
-            .select()
-            .from(schema.whatsappAgentConsultantConversations)
-            .where(
-              and(
-                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-                realShareId 
-                  ? sql`(${schema.whatsappAgentConsultantConversations.shareId} IS NULL OR ${schema.whatsappAgentConsultantConversations.shareId} = ${realShareId})`
-                  : sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
-                sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+          // Build query: NULL shareId (old Bronze) OR any of the agent's shareIds
+          if (shareIds.length === 0) {
+            // No real shares, only search NULL
+            conversations = await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                  sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+                )
               )
-            )
-            .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+          } else {
+            // Search NULL OR any of the agent's shares
+            conversations = await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  sql`(${schema.whatsappAgentConsultantConversations.shareId} IS NULL OR ${schema.whatsappAgentConsultantConversations.shareId} IN (${sql.join(shareIds.map(id => sql`${id}`), sql`, `)}))`,
+                  sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+                )
+              )
+              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+          }
         } else if (isBronzeShare) {
           // Bronze on virtual share: search NULL shareId
           // FALLBACK: Also check if this Bronze user was upgraded - search for migrated conversations too
