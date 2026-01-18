@@ -108,7 +108,8 @@ import {
   FileDown,
   RefreshCw,
   Target,
-  Heart
+  Heart,
+  Brain
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -130,6 +131,7 @@ import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_ava
 import echoAvatar from "@assets/generated_images/echo_ai_summarizer_avatar.png";
 import specAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
+import ceoAvatar from "@assets/generated_images/male_ceo_ai_executive_avatar.png";
 import {
   Table,
   TableBody,
@@ -192,7 +194,7 @@ interface TeamMemberCardProps {
   role: string;
   avatar: string;
   quote: string;
-  accentColor: "purple" | "orange" | "cyan" | "emerald";
+  accentColor: "purple" | "orange" | "cyan" | "emerald" | "gold";
   features: Array<{ icon: React.ComponentType<{ className?: string }>; label: string }>;
   details: {
     audience: string;
@@ -235,6 +237,14 @@ const accentColors = {
     button: "bg-emerald-600 hover:bg-emerald-700 text-white",
     text: "text-emerald-600 dark:text-emerald-400",
     iconBg: "bg-emerald-50 dark:bg-emerald-900/20",
+  },
+  gold: {
+    border: "border-amber-300 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-500",
+    ring: "ring-amber-400/30",
+    badge: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 dark:from-amber-900/50 dark:to-yellow-900/50 dark:text-amber-200",
+    button: "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white shadow-lg shadow-amber-500/25",
+    text: "text-amber-600 dark:text-amber-400",
+    iconBg: "bg-amber-50 dark:bg-amber-900/20",
   },
 };
 
@@ -1491,6 +1501,80 @@ export default function ConsultantWhatsAppPage() {
               </p>
             </div>
 
+            {/* CEO Hero Card - Il Consulente del Consulente */}
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl blur-xl" />
+              <Card className="relative bg-gradient-to-br from-white via-amber-50/30 to-yellow-50/30 dark:from-gray-900 dark:via-amber-950/20 dark:to-yellow-950/20 border-2 border-amber-300 dark:border-amber-700 rounded-3xl shadow-xl shadow-amber-500/10 overflow-hidden">
+                <CardContent className="p-8">
+                  <div className="flex flex-col lg:flex-row items-center gap-8">
+                    {/* Avatar grande */}
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full blur-lg opacity-40" />
+                        <div className="relative w-40 h-40 rounded-full overflow-hidden ring-4 ring-amber-400/40 shadow-2xl">
+                          <img src={ceoAvatar} alt="Marco - CEO" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full p-2 shadow-lg">
+                          <Crown className="h-6 w-6 text-white" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 text-center lg:text-left space-y-4">
+                      <div>
+                        <div className="flex items-center justify-center lg:justify-start gap-3 mb-2">
+                          <h3 className="text-3xl font-bold text-gray-900 dark:text-white">Marco</h3>
+                          <Badge className="bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 dark:from-amber-900/50 dark:to-yellow-900/50 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                            CEO & Consulente Personale
+                          </Badge>
+                        </div>
+                        <p className="text-lg text-gray-600 dark:text-gray-300 italic">
+                          "Sono il tuo consulente personale. Scrivi su WhatsApp a qualsiasi dipendente AI che hai creato e ti rispondo io, proprio come se fossi nella piattaforma."
+                        </p>
+                      </div>
+
+                      {/* Features in row */}
+                      <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
+                          <Brain className="h-4 w-4" />
+                          <span className="text-sm font-medium">Supervisiona ogni AI</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
+                          <MessageCircle className="h-4 w-4" />
+                          <span className="text-sm font-medium">Risponde su WhatsApp</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
+                          <Zap className="h-4 w-4" />
+                          <span className="text-sm font-medium">Aggiorna strategie in tempo reale</span>
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <div className="flex flex-wrap justify-center lg:justify-start gap-3 pt-2">
+                        <Button
+                          className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white shadow-lg shadow-amber-500/25"
+                          onClick={() => window.location.href = "/consultant/ai-assistant"}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Parla con Marco
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                          onClick={() => window.location.href = "/consultant/whatsapp?tab=agents"}
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Gestisci Team AI
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Team AI Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Card 1 - Millie */}
               <TeamMemberCard
