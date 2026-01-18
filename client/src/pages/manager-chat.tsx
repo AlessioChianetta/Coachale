@@ -1178,7 +1178,49 @@ export default function ManagerChat() {
         }
         throw new Error("Failed to fetch manager info");
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Handle upgrade detection - if the backend returns a new token, update localStorage
+      // This is CRITICAL for conversation migration to work after Bronze→Silver upgrade
+      if (data.success && data.upgraded && data.newToken) {
+        console.log("[MANAGER-CHAT] Upgrade detected, updating token for tier:", data.tierType);
+        
+        // Save the new token (this is the subscriptionId-based token for Silver/Gold)
+        localStorage.setItem("manager_token", data.newToken);
+        localStorage.setItem("bronzeAuthToken", data.newToken); // Also update bronzeAuthToken for compatibility
+        
+        // Update tier in localStorage
+        localStorage.setItem("bronzeUserTier", data.level);
+        
+        // Update user info
+        const userStr = localStorage.getItem("manager_user");
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            user.tier = data.tierType;
+            user.level = data.level;
+            user.id = data.id; // Update to subscriptionId
+            localStorage.setItem("manager_user", JSON.stringify(user));
+          } catch {
+            // Ignore parse errors
+          }
+        }
+        
+        // Dispatch event for UI refresh
+        window.dispatchEvent(new CustomEvent("manager-tier-updated", {
+          detail: { tier: data.tierType, level: data.level }
+        }));
+        
+        // Invalidate conversation queries to reload with new token
+        queryClient.invalidateQueries({ queryKey: ["conversations", slug] });
+        
+        toast({
+          title: "Upgrade attivato!",
+          description: `Sei ora un utente ${data.tierType}. Le tue conversazioni sono state migrate.`,
+        });
+      }
+      
+      return data;
     },
     enabled: !!slug && !!getManagerToken() && (agentInfo?.requiresLogin === true || isBronzeSilver),
   });

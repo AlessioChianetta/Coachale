@@ -364,7 +364,24 @@ router.get(
             .where(eq(users.id, req.bronzeUser.consultantId))
             .limit(1);
 
+          // Generate new token for Silver/Gold user with subscriptionId as managerId
+          // This is CRITICAL for conversation migration to work properly
+          const tokenType = tier === "gold" || tier === "deluxe" ? "gold" : "silver";
+          const newToken = jwt.sign({
+            subscriptionId: bronzeUser.upgradedSubscriptionId,
+            consultantId: req.bronzeUser.consultantId,
+            email: bronzeUser.email,
+            type: tokenType,
+            level,
+          }, JWT_SECRET, { expiresIn: '30d' });
+
+          console.log(`[PUBLIC AGENT] Generated new ${tokenType} token for upgraded user ${bronzeUser.email}, subscriptionId: ${bronzeUser.upgradedSubscriptionId}`);
+
           return res.json({
+            success: true,
+            upgraded: true,
+            newToken,
+            tierType: tier,
             id: bronzeUser.upgradedSubscriptionId,
             name: subscription?.clientName || [bronzeUser.firstName, bronzeUser.lastName].filter(Boolean).join(" ") || "User",
             email: bronzeUser.email,
@@ -401,7 +418,23 @@ router.get(
             .where(eq(users.id, req.bronzeUser.consultantId))
             .limit(1);
 
+          // Generate new token for Silver/Gold user with subscriptionId as managerId
+          const tokenType = tier === "gold" || tier === "deluxe" ? "gold" : "silver";
+          const newToken = jwt.sign({
+            subscriptionId: upgradedSubscription.id,
+            consultantId: req.bronzeUser.consultantId,
+            email: bronzeUser.email,
+            type: tokenType,
+            level: upgradedSubscription.level,
+          }, JWT_SECRET, { expiresIn: '30d' });
+
+          console.log(`[PUBLIC AGENT] Generated new ${tokenType} token for upgraded user ${bronzeUser.email} (email match), subscriptionId: ${upgradedSubscription.id}`);
+
           return res.json({
+            success: true,
+            upgraded: true,
+            newToken,
+            tierType: tier,
             id: upgradedSubscription.id,
             name: upgradedSubscription.clientName || [bronzeUser.firstName, bronzeUser.lastName].filter(Boolean).join(" ") || "User",
             email: bronzeUser.email,

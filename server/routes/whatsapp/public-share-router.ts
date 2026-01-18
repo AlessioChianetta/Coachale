@@ -842,18 +842,66 @@ router.get(
             )
             .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
         } else if (isBronzeShare) {
-          // Bronze on virtual share: search only NULL shareId (Bronze conversations are not assigned to real shares)
-          conversations = await db
-            .select()
-            .from(schema.whatsappAgentConsultantConversations)
-            .where(
-              and(
-                eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
-                sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
-                sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${managerVisitorPattern}`
+          // Bronze on virtual share: search NULL shareId
+          // FALLBACK: Also check if this Bronze user was upgraded - search for migrated conversations too
+          const bronzeUserId = managerId;
+          let migratedSubscriptionId: string | null = null;
+          
+          // Check if this Bronze user was upgraded to Silver/Gold
+          const [bronzeUserData] = await db.select({
+            upgradedSubscriptionId: schema.bronzeUsers.upgradedSubscriptionId,
+          })
+            .from(schema.bronzeUsers)
+            .where(eq(schema.bronzeUsers.id, bronzeUserId))
+            .limit(1);
+          
+          if (bronzeUserData?.upgradedSubscriptionId) {
+            migratedSubscriptionId = bronzeUserData.upgradedSubscriptionId;
+            console.log(`[CONV DEBUG] Bronze user ${bronzeUserId} was upgraded, also searching for subscriptionId ${migratedSubscriptionId}`);
+          }
+          
+          // Build pattern(s) for search - include both bronzeUserId and subscriptionId if upgraded
+          const patterns = [`manager_${bronzeUserId}%`];
+          if (migratedSubscriptionId) {
+            patterns.push(`manager_${migratedSubscriptionId}%`);
+          }
+          
+          // Search for conversations matching any pattern
+          if (patterns.length === 1) {
+            conversations = await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                  sql`${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${patterns[0]}`
+                )
               )
-            )
-            .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+          } else {
+            // Search for both patterns (bronzeUserId OR subscriptionId)
+            const [realShare] = await db
+              .select({ id: schema.whatsappAgentShares.id })
+              .from(schema.whatsappAgentShares)
+              .where(eq(schema.whatsappAgentShares.agentConfigId, share.agentConfigId))
+              .limit(1);
+            const realShareId = realShare?.id || null;
+            
+            conversations = await db
+              .select()
+              .from(schema.whatsappAgentConsultantConversations)
+              .where(
+                and(
+                  eq(schema.whatsappAgentConsultantConversations.agentConfigId, share.agentConfigId),
+                  realShareId
+                    ? sql`(${schema.whatsappAgentConsultantConversations.shareId} IS NULL OR ${schema.whatsappAgentConsultantConversations.shareId} = ${realShareId})`
+                    : sql`${schema.whatsappAgentConsultantConversations.shareId} IS NULL`,
+                  sql`(${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${patterns[0]} OR ${schema.whatsappAgentConsultantConversations.externalVisitorId} LIKE ${patterns[1]})`
+                )
+              )
+              .orderBy(desc(schema.whatsappAgentConsultantConversations.lastMessageAt));
+          }
         } else {
           // Real share (password-protected, manager link, etc): search by specific shareId
           conversations = await db
