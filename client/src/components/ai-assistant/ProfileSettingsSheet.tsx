@@ -100,6 +100,11 @@ export function ProfileSettingsSheet({
 
   const currentLevel = levelConfig[subscriptionLevel];
 
+  // Check payment source for upgrade flow indicator
+  const paymentSource = localStorage.getItem("paymentSource");
+  const storedConsultantId = localStorage.getItem("consultantId");
+  const isDirectLinkUser = paymentSource === "direct_link" && !!storedConsultantId;
+
   const handleUpgrade = async (targetLevel: "silver" | "gold") => {
     setIsUpgrading(true);
     try {
@@ -108,35 +113,42 @@ export function ProfileSettingsSheet({
         throw new Error("Token di autenticazione non trovato");
       }
 
+      // Debug logging for upgrade flow
+      console.log("[UPGRADE] Starting upgrade to:", targetLevel);
+      console.log("[UPGRADE] paymentSource:", paymentSource);
+      console.log("[UPGRADE] consultantId:", storedConsultantId);
+      console.log("[UPGRADE] isDirectLinkUser:", isDirectLinkUser);
+
       // First check if user came from direct link and if consultant has direct upgrade links
-      const paymentSource = localStorage.getItem("paymentSource");
-      
-      if (paymentSource === "direct_link") {
+      if (isDirectLinkUser) {
         // Try to get consultant's direct links for this tier
         try {
-          const consultantId = localStorage.getItem("consultantId");
-          if (consultantId) {
-            const directLinksRes = await fetch(`/api/stripe-automations/direct-links/public/${consultantId}?tier=${targetLevel}&interval=monthly`);
-            if (directLinksRes.ok) {
-              const directLinks = await directLinksRes.json();
-              if (directLinks.length > 0 && directLinks[0].paymentLinkUrl) {
-                // Use direct link for 100% commission
-                console.log("[UPGRADE] Using direct link for upgrade:", directLinks[0].paymentLinkUrl);
-                window.open(directLinks[0].paymentLinkUrl, '_blank', 'noopener');
-                toast({
-                  title: "Checkout aperto",
-                  description: "Completa il pagamento nella nuova scheda. Questa pagina si aggiornerà automaticamente.",
-                });
-                
-                // Start polling for upgrade completion
-                startUpgradePolling(targetLevel);
-                return;
-              }
+          console.log("[UPGRADE] Fetching direct links for consultant:", storedConsultantId);
+          const directLinksRes = await fetch(`/api/stripe-automations/direct-links/public/${storedConsultantId}?tier=${targetLevel}&interval=monthly`);
+          console.log("[UPGRADE] Direct links response status:", directLinksRes.status);
+          if (directLinksRes.ok) {
+            const directLinks = await directLinksRes.json();
+            console.log("[UPGRADE] Direct links found:", directLinks.length, directLinks);
+            if (directLinks.length > 0 && directLinks[0].paymentLinkUrl) {
+              // Use direct link for 100% commission
+              console.log("[UPGRADE] SUCCESS: Using direct link for upgrade:", directLinks[0].paymentLinkUrl);
+              window.open(directLinks[0].paymentLinkUrl, '_blank', 'noopener');
+              toast({
+                title: "Checkout aperto (Direct Link)",
+                description: "100% commissione al consulente. Completa il pagamento nella nuova scheda.",
+              });
+              
+              // Start polling for upgrade completion
+              startUpgradePolling(targetLevel);
+              return;
             }
           }
         } catch (e) {
-          console.log("[UPGRADE] Direct link not available, falling back to Stripe Connect");
+          console.log("[UPGRADE] Direct link error:", e);
+          console.log("[UPGRADE] Falling back to Stripe Connect");
         }
+      } else {
+        console.log("[UPGRADE] Not a direct link user, using Stripe Connect");
       }
       
       // Fallback to Stripe Connect
@@ -350,6 +362,22 @@ export function ProfileSettingsSheet({
 
             {subscriptionLevel === "bronze" && (
               <div className="space-y-4">
+                {/* Payment flow indicator */}
+                <div className={`p-2 rounded-lg text-xs flex items-center gap-2 ${
+                  isDirectLinkUser 
+                    ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700" 
+                    : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700"
+                }`}>
+                  <span className="font-medium">
+                    {isDirectLinkUser ? "🔗 Direct Link" : "💳 Stripe Connect"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {isDirectLinkUser 
+                      ? "(100% al consulente)" 
+                      : "(revenue sharing)"}
+                  </span>
+                </div>
+                
                 <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center gap-2 mb-3">
                     <Medal className="h-5 w-5 text-slate-500" />
