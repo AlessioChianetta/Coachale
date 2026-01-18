@@ -55,6 +55,8 @@ import {
   createGoogleCalendarBooking,
   sendBookingConfirmationEmail,
   markExtractionStateCompleted,
+  sendBookingNotification,
+  formatAppointmentDate,
   BookingExtractionResult,
   ConversationMessage,
 } from "../booking/booking-service";
@@ -3429,6 +3431,26 @@ Ci vediamo online! 🚀`;
                       console.log(`   📧 Calendar Invite: ✅ Sent to ${extracted.email}`);
                       console.log(`   📱 WhatsApp Confirmation: ✅ Sent to ${phoneNumber}`);
                       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+                      // Send booking notification to configured WhatsApp number (if enabled for this agent)
+                      if (conversation.agentConfigId) {
+                        try {
+                          const notifFormattedDate = formatAppointmentDate(extracted.date, extracted.time);
+                          const notifResult = await sendBookingNotification(conversation.agentConfigId, {
+                            clientName: extracted.name || extracted.email,
+                            date: notifFormattedDate,
+                            time: extracted.time,
+                            meetLink: googleEvent.googleMeetLink,
+                          });
+                          if (notifResult.success) {
+                            console.log(`   📱 [BOOKING NOTIFICATION] ✅ Sent successfully`);
+                          } else {
+                            console.log(`   ⚠️ [BOOKING NOTIFICATION] Not sent: ${notifResult.error || 'Unknown reason'}`);
+                          }
+                        } catch (notifError: any) {
+                          console.log(`   ❌ [BOOKING NOTIFICATION] Error: ${notifError?.message || notifError}`);
+                        }
+                      }
 
                     } catch (gcalError: any) {
                       console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
