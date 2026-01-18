@@ -898,6 +898,10 @@ export const bronzeUsers = pgTable("bronze_users", {
   paymentSource: text("payment_source").$type<"stripe_connect" | "direct_link">(), // Track origin for commission
   createdAt: timestamp("created_at").default(sql`now()`),
   lastLoginAt: timestamp("last_login_at"),
+  // Upgrade tracking
+  upgradedAt: timestamp("upgraded_at"), // When user upgraded to paid tier
+  upgradedToLevel: text("upgraded_to_level").$type<"silver" | "gold" | "deluxe">(), // Target tier after upgrade
+  upgradedSubscriptionId: varchar("upgraded_subscription_id"), // Link to clientLevelSubscriptions.id
 }, (table) => ({
   uniqueConsultantEmail: unique().on(table.consultantId, table.email),
 }));
