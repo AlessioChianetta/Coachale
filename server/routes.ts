@@ -119,7 +119,7 @@ import agentInstagramRouter from "./routes/instagram/agent-instagram-router";
 import leadImportRouter from "./routes/lead-import-router";
 import stripeConnectRouter from "./routes/stripe-connect-router";
 import consultantPricingRouter from "./routes/consultant-pricing-router";
-import bronzeAuthRouter from "./routes/bronze-auth-router";
+import bronzeAuthRouter, { authenticateBronzeToken, type BronzeAuthRequest } from "./routes/bronze-auth-router";
 import referralRouter from "./routes/referral-router";
 import emailHubRouter, { initializeEmailHubIdle } from "./routes/email-hub-router";
 import contentStudioRouter from "./routes/content-studio";
@@ -12592,6 +12592,62 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Public Pricing routes (consultant pricing pages)
   app.use("/api/public/consultant", publicPricingRouter);
+
+  // Public Upgrade Token route (Bronze user tier upgrade)
+  app.post("/api/public/upgrade-token", authenticateBronzeToken, async (req: BronzeAuthRequest, res: Response) => {
+    try {
+      const { bronzeUserId, consultantId } = req.bronzeUser!;
+      const { targetTier } = req.body;
+
+      // Validate targetTier
+      const validTiers = ["silver", "gold", "deluxe"];
+      if (!targetTier || !validTiers.includes(targetTier.toLowerCase())) {
+        return res.status(400).json({
+          error: "targetTier deve essere uno di: silver, gold, deluxe",
+        });
+      }
+
+      // Verify Bronze user exists and is active
+      const [bronzeUser] = await db
+        .select({ id: schema.bronzeUsers.id, isActive: schema.bronzeUsers.isActive })
+        .from(schema.bronzeUsers)
+        .where(eq(schema.bronzeUsers.id, bronzeUserId))
+        .limit(1);
+
+      if (!bronzeUser) {
+        console.warn(`[BRONZE AUTH] Upgrade token requested for non-existent user: ${bronzeUserId}`);
+        return res.status(404).json({ error: "Utente non trovato" });
+      }
+
+      if (!bronzeUser.isActive) {
+        console.warn(`[BRONZE AUTH] Upgrade token requested for inactive user: ${bronzeUserId}`);
+        return res.status(403).json({ error: "Account disattivato" });
+      }
+
+      // Generate upgrade token with 30 minutes expiry
+      const upgradeToken = jwt.sign(
+        {
+          bronzeUserId,
+          consultantId,
+          targetTier: targetTier.toLowerCase(),
+          type: "upgrade",
+        },
+        process.env.JWT_SECRET || process.env.SESSION_SECRET || "",
+        { expiresIn: "30m" }
+      );
+
+      console.log(
+        `[BRONZE AUTH] Upgrade token generated for user: ${bronzeUserId}, target tier: ${targetTier}`
+      );
+
+      res.json({
+        upgradeToken,
+      });
+    } catch (error: any) {
+      console.error("[BRONZE AUTH] Upgrade token generation error:", error);
+      res.status(500).json({ error: "Errore interno del server" });
+    }
+  });
 
   // Bronze Auth routes (Level 1 user authentication)
   app.use("/api/bronze", bronzeAuthRouter);

@@ -19,7 +19,7 @@ const getJwtSecret = (): string => {
 const SALT_ROUNDS = 10;
 const TOKEN_EXPIRY = "30d";
 
-interface BronzeAuthRequest extends Request {
+export interface BronzeAuthRequest extends Request {
   bronzeUser?: {
     bronzeUserId: string;
     consultantId: string;
@@ -35,7 +35,7 @@ function isNewDay(lastResetAt: Date | null): boolean {
   return now.toDateString() !== lastReset.toDateString();
 }
 
-async function authenticateBronzeToken(req: BronzeAuthRequest, res: Response, next: Function) {
+export async function authenticateBronzeToken(req: BronzeAuthRequest, res: Response, next: Function) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
