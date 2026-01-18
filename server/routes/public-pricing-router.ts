@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { eq, and, isNotNull, or, sql, inArray } from "drizzle-orm";
-import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions, consultantDirectLinks } from "@shared/schema";
+import { users, consultantWhatsappConfig, bronzeUserAgentAccess, clientLevelSubscriptions, consultantDirectLinks, landingLeads } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
@@ -88,6 +88,10 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
       gold: {
         monthly: directLinks.find(l => l.tier === "gold" && l.billingInterval === "monthly"),
         yearly: directLinks.find(l => l.tier === "gold" && l.billingInterval === "yearly"),
+      },
+      deluxe: {
+        monthly: directLinks.find(l => l.tier === "deluxe" && l.billingInterval === "monthly"),
+        yearly: directLinks.find(l => l.tier === "deluxe" && l.billingInterval === "yearly"),
       }
     };
 
@@ -390,6 +394,73 @@ router.post("/:slug/checkout", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("[PUBLIC PRICING] Checkout error:", error);
+    res.status(500).json({ success: false, error: "Errore interno del server" });
+  }
+});
+
+// Exclusive tier contact request - saves lead to landing_leads table
+router.post("/:slug/contact-request", async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const { name, email, phone, company, message } = req.body;
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Nome, email e messaggio sono obbligatori" 
+      });
+    }
+
+    // Find consultant by slug to validate
+    const [consultant] = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "consultant"),
+          or(
+            eq(users.pricingPageSlug, slug),
+            eq(users.username, slug)
+          )
+        )
+      )
+      .limit(1);
+
+    if (!consultant) {
+      return res.status(404).json({ error: "Consulente non trovato" });
+    }
+
+    // Parse name into first and last name
+    const nameParts = name.trim().split(/\s+/);
+    const firstName = nameParts[0] || name;
+    const lastName = nameParts.slice(1).join(" ") || "-";
+
+    // Create lead in landing_leads table
+    const [newLead] = await db.insert(landingLeads)
+      .values({
+        firstName,
+        lastName,
+        email: email,
+        phoneNumber: phone || "-",
+        source: `exclusive_pricing_${slug}`,
+        status: "pending",
+        notes: company 
+          ? `Azienda: ${company}\n\nRichiesta piano Exclusive:\n${message}`
+          : `Richiesta piano Exclusive:\n${message}`,
+      })
+      .returning();
+
+    console.log(`[PUBLIC PRICING] Exclusive contact request created for consultant ${consultant.id}: lead ${newLead.id}`);
+
+    res.json({
+      success: true,
+      message: "Richiesta inviata con successo! Sarai contattato a breve.",
+    });
+  } catch (error: any) {
+    console.error("[PUBLIC PRICING] Contact request error:", error);
     res.status(500).json({ success: false, error: "Errore interno del server" });
   }
 });
