@@ -534,6 +534,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: existingUser?.id || null, // Include userId if user exists in users table
           }, JWT_SECRET, { expiresIn: '30d' });
 
+          const publicSlug = consultant?.pricingPageSlug || consultant?.username || null;
+          console.log(`[LOGIN SILVER] User: ${silverUser.clientEmail}, userId: ${existingUser?.id || 'none'}, publicSlug: ${publicSlug}, agentSlug: ${silverAgent?.publicSlug || 'none'}`);
+
           return res.json({
             message: "Login successful",
             token,

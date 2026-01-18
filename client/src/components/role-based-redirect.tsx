@@ -15,7 +15,20 @@ export default function RoleBasedRedirect() {
       } else if (user.role === "consultant") {
         setLocation("/consultant");
       } else if (user.role === "client") {
-        setLocation("/client");
+        // Bronze/Silver users go to agent selection, Gold users go to client dashboard
+        const userTier = (user as any).tier;
+        if (userTier === "bronze" || userTier === "silver") {
+          // Get publicSlug from localStorage (set during login)
+          const publicSlug = localStorage.getItem('bronzePublicSlug');
+          if (publicSlug) {
+            setLocation(`/c/${publicSlug}/select-agent`);
+          } else {
+            // Fallback to client dashboard if no publicSlug
+            setLocation("/client");
+          }
+        } else {
+          setLocation("/client");
+        }
       }
     } else {
       setLocation("/login");
