@@ -461,6 +461,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
 
+        // For Silver/Bronze users, get publicSlug for agent selection redirect
+        let publicSlug: string | null = null;
+        if (tierType === "silver" || tierType === "bronze") {
+          const consultantId = userTierInfo.consultantId || user.consultantId;
+          if (consultantId) {
+            const [consultant] = await db
+              .select({ pricingPageSlug: schema.users.pricingPageSlug, username: schema.users.username })
+              .from(schema.users)
+              .where(eq(schema.users.id, consultantId))
+              .limit(1);
+            publicSlug = consultant?.pricingPageSlug || consultant?.username || null;
+          }
+          console.log(`[LOGIN USER+TIER] User: ${user.email}, tier: ${tierType}, publicSlug: ${publicSlug}`);
+        }
+
         return res.json({
           message: "Login successful",
           token,
@@ -481,6 +496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tier: tierType, // Now correctly determined via getUserTier()
             mustChangePassword: user.mustChangePassword || false,
           },
+          publicSlug, // Include for Silver/Bronze users to redirect to agent selection
         });
       }
 
