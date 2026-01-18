@@ -14633,7 +14633,90 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       // Booking Notification Configuration
       if (bookingNotificationEnabled !== undefined) updateData.bookingNotificationEnabled = bookingNotificationEnabled;
       if (bookingNotificationPhone !== undefined) updateData.bookingNotificationPhone = bookingNotificationPhone;
-      if (bookingNotificationTemplateId !== undefined) updateData.bookingNotificationTemplateId = bookingNotificationTemplateId;
+      
+      // Auto-import Twilio template if user selects an HX SID (Twilio template not yet in custom_templates)
+      if (bookingNotificationTemplateId !== undefined) {
+        let finalTemplateId = bookingNotificationTemplateId;
+        
+        // Check if it's a Twilio SID (starts with HX) - needs to be imported
+        if (bookingNotificationTemplateId && bookingNotificationTemplateId.startsWith('HX')) {
+          console.log(`📥 [BOOKING] Auto-importing Twilio template ${bookingNotificationTemplateId}...`);
+          
+          // Check if already exists in custom_templates with this twilioContentSid
+          const [existingCustom] = await db
+            .select({ id: schema.whatsappCustomTemplates.id })
+            .from(schema.whatsappCustomTemplates)
+            .where(eq(schema.whatsappCustomTemplates.twilioContentSid, bookingNotificationTemplateId))
+            .limit(1);
+          
+          if (existingCustom) {
+            // Already imported, use the custom template ID
+            finalTemplateId = existingCustom.id;
+            console.log(`✅ [BOOKING] Template already imported, using custom ID: ${finalTemplateId}`);
+          } else {
+            // Need to import from Twilio
+            try {
+              // Get Twilio credentials from existing config
+              if (existingConfig.twilioAccountSid && existingConfig.twilioAuthToken) {
+                const twilioClient = twilio(existingConfig.twilioAccountSid, existingConfig.twilioAuthToken);
+                const content = await twilioClient.content.v1.contents(bookingNotificationTemplateId).fetch();
+                
+                // Extract body text
+                let bodyText = '';
+                if (content.types?.['twilio/text']?.body) {
+                  bodyText = content.types['twilio/text'].body;
+                } else if ((content.types as any)?.['twilio/whatsapp']?.template?.components) {
+                  const bodyComponent = (content.types as any)['twilio/whatsapp'].template.components.find(
+                    (c: any) => c.type === 'BODY'
+                  );
+                  bodyText = bodyComponent?.text || '';
+                }
+                
+                // Create custom template record
+                const [newTemplate] = await db
+                  .insert(schema.whatsappCustomTemplates)
+                  .values({
+                    consultantId,
+                    templateName: content.friendlyName || 'Imported Template',
+                    description: `Auto-imported from Twilio (${bookingNotificationTemplateId})`,
+                    body: bodyText,
+                    useCase: 'booking-notification',
+                    templateType: 'booking_notification',
+                    twilioContentSid: bookingNotificationTemplateId,
+                    twilioApprovalStatus: 'approved',
+                    isSystemTemplate: false,
+                    isActive: true,
+                  })
+                  .returning();
+                
+                // Create version with twilioContentSid and status
+                await db
+                  .insert(schema.whatsappTemplateVersions)
+                  .values({
+                    templateId: newTemplate.id,
+                    versionNumber: 1,
+                    bodyText: bodyText,
+                    twilioContentSid: bookingNotificationTemplateId,
+                    twilioStatus: 'approved',
+                    isActive: true,
+                    createdBy: consultantId,
+                  });
+                
+                finalTemplateId = newTemplate.id;
+                console.log(`✅ [BOOKING] Template imported successfully with ID: ${finalTemplateId}`);
+              } else {
+                console.error(`❌ [BOOKING] Cannot import template - no Twilio credentials`);
+              }
+            } catch (importError: any) {
+              console.error(`❌ [BOOKING] Failed to import Twilio template:`, importError.message);
+              // Don't update the field if import fails
+              finalTemplateId = null;
+            }
+          }
+        }
+        
+        updateData.bookingNotificationTemplateId = finalTemplateId;
+      }
 
       // Handle useCentralCredentials - copy Twilio credentials from users table
       const { useCentralCredentials } = req.body;
