@@ -381,10 +381,14 @@ export default function PublicPricingDirect() {
         description: "Il tuo account Bronze è stato creato. Ora puoi accedere.",
       });
       setBronzeDialogOpen(false);
-      // Store token and redirect to manager page
-      if (data.token) {
-        localStorage.setItem("bronzeToken", data.token);
-        localStorage.setItem("bronzeUser", JSON.stringify(data.user));
+      // Store token and user data for manager/select-agent page
+      if (data.token && data.user) {
+        localStorage.setItem("bronzeAuthToken", data.token);
+        localStorage.setItem("bronzeUserTier", "1"); // Bronze = level 1
+        localStorage.setItem("bronzeUserName", `${data.user.firstName} ${data.user.lastName}`);
+        localStorage.setItem("bronzePublicSlug", slug || "");
+        localStorage.setItem("bronzeUserId", data.user.id);
+        localStorage.setItem("bronzeConsultantId", data.user.consultantId);
       }
       navigate(`/c/${slug}/select-agent`);
     },
