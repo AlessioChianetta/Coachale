@@ -704,20 +704,18 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
                         Nessun template disponibile. Importa il template Booking dalla pagina Template Custom.
                       </div>
                     ) : (
-                      bookingNotificationTemplates.map((template: any) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          <div className="flex items-center gap-2">
-                            <span>{template.templateName}</span>
-                            {template.approvalStatus === 'approved' ? (
-                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Approvato</span>
-                            ) : template.twilioSid ? (
-                              <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">In attesa</span>
-                            ) : (
-                              <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Bozza</span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))
+                      bookingNotificationTemplates.map((template: any) => {
+                        const statusBadge = template.approvalStatus === 'approved' 
+                          ? ' [Approvato]' 
+                          : template.twilioSid 
+                            ? ' [In attesa]' 
+                            : ' [Bozza]';
+                        return (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.templateName}{statusBadge}
+                          </SelectItem>
+                        );
+                      })
                     )}
                   </SelectContent>
                 </Select>
