@@ -62,12 +62,12 @@ When creating a direct link, the system automatically creates an associated paym
 - **Gold**: `createAsClient=true`, `clientLevel="gold"`, `sendWelcomeEmail=true` (tier + client role)
 - Automations are linked via `directLinkId` field and marked `showOnPricingPage=true`
 
-**Public Pricing Page Integration:**
-The public pricing page (`/c/:slug/pricing`) now integrates with direct links:
-- Endpoint `/api/public/consultant/:slug/pricing` returns `paymentLinks` object
-- Frontend (`public-pricing.tsx`) checks for direct Stripe links before showing registration form
-- If direct link exists: redirects directly to Stripe payment (100% commission)
-- If no direct link: fallback to registration form + Stripe Connect checkout (revenue sharing)
+**Separate Public Pricing Pages (January 2026):**
+Two distinct pricing pages to maintain clear separation of payment flows:
+- **`/c/:slug/pricing`** (Stripe Connect): Shows Bronze/Silver/Gold tiers with registration form, uses revenue sharing via superadmin Stripe keys (`public-pricing.tsx`)
+- **`/c/:slug/direct`** (Direct Links): Shows only Silver/Gold tiers, redirects directly to consultant's Stripe Payment Links for 100% commission (`public-pricing-direct.tsx`)
+- Both pages fetch from same endpoint `/api/public/consultant/:slug/pricing` which returns `paymentLinks` object
+- Direct Links page shows fallback message when links not configured, directing users to standard pricing page
 
 ### Key Features
 - **Webhook Integration**: Per-consultant webhook endpoints (`/api/webhooks/stripe/:consultantId`) with signature verification
