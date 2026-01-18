@@ -910,10 +910,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let subscriptionLevel: number | null = null;
       const [subscription] = await db.select({ level: schema.clientLevelSubscriptions.level })
         .from(schema.clientLevelSubscriptions)
-        .where(eq(schema.clientLevelSubscriptions.userId, user.id))
+        .where(eq(schema.clientLevelSubscriptions.clientId, user.id))
         .limit(1);
       if (subscription) {
-        subscriptionLevel = subscription.level;
+        // Convert string level ("2", "3", "4") to number for frontend
+        subscriptionLevel = parseInt(subscription.level, 10);
       }
 
       res.json({

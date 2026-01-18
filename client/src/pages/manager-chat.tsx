@@ -1650,6 +1650,7 @@ export default function ManagerChat() {
               isMobile={isMobile}
               sidebarMinimized={sidebarMinimized}
               onToggleMinimize={() => setSidebarMinimized(!sidebarMinimized)}
+              backToAgentsUrl={managerInfo?.consultantSlug ? `/c/${managerInfo.consultantSlug}/select-agent` : undefined}
             />
           </div>
         )}

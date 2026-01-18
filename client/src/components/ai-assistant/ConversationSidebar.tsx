@@ -24,7 +24,8 @@ import {
   ChevronDown,
   Mic,
   UserCircle,
-  Menu
+  Menu,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +63,7 @@ interface ConversationSidebarProps {
   onSettingsClick?: () => void;
   mainSidebarCollapsed?: boolean;
   onExpandMainSidebar?: () => void;
+  backToAgentsUrl?: string;
 }
 
 type FilterType = "all" | "assistenza" | "consulente" | "vocale";
@@ -84,6 +86,7 @@ export function ConversationSidebar({
   onSettingsClick,
   mainSidebarCollapsed,
   onExpandMainSidebar,
+  backToAgentsUrl,
 }: ConversationSidebarProps) {
   const [swipedConversationId, setSwipedConversationId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
@@ -275,14 +278,28 @@ export function ConversationSidebar({
           </AnimatePresence>
         )}
 
-        {!sidebarMinimized && mainSidebarCollapsed && onExpandMainSidebar && (
-          <button
+        {!sidebarMinimized && onExpandMainSidebar && (
+          <Button
             onClick={onExpandMainSidebar}
-            className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+            variant="outline"
+            size="sm"
+            className="w-full h-8 flex items-center justify-center gap-2 text-xs font-medium border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            <Menu className="h-3 w-3" />
+            <Menu className="h-4 w-4" />
             <span>Menu principale</span>
-          </button>
+          </Button>
+        )}
+        
+        {!sidebarMinimized && backToAgentsUrl && (
+          <Button
+            onClick={() => window.location.href = backToAgentsUrl}
+            variant="outline"
+            size="sm"
+            className="w-full h-8 flex items-center justify-center gap-2 text-xs font-medium border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+          >
+            <Users className="h-4 w-4" />
+            <span>Altri agenti</span>
+          </Button>
         )}
       </div>
 

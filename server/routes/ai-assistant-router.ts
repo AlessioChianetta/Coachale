@@ -5,7 +5,8 @@ import {
   agentClientAssignments,
   aiAssistantPreferences,
   users,
-  aiConversations
+  aiConversations,
+  clientLevelSubscriptions
 } from "../../shared/schema";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth";
@@ -47,7 +48,18 @@ router.get("/client/agents-for-assistant", authenticateToken, requireRole("clien
     const userType = (req.user as any)?.type;
     const subscriptionId = (req.user as any)?.subscriptionId;
     
-    console.log(`[AI Assistant] Fetching agents for client - clientId: ${clientId}, type: ${userType}, subscriptionId: ${subscriptionId}`);
+    // Determine client's subscription level from clientLevelSubscriptions
+    let tierLevel: string = "3"; // Default to Gold for clients (role=client implies Gold)
+    const [subscription] = await db.select({ level: clientLevelSubscriptions.level })
+      .from(clientLevelSubscriptions)
+      .where(eq(clientLevelSubscriptions.clientId, clientId))
+      .limit(1);
+    
+    if (subscription) {
+      tierLevel = subscription.level; // "2" = Silver, "3" = Gold, "4" = Deluxe
+    }
+    
+    console.log(`[AI Assistant] Fetching agents for client - clientId: ${clientId}, type: ${userType}, subscriptionId: ${subscriptionId}, tierLevel: ${tierLevel}`);
     
     const assignments = await db.select({
       agentId: agentClientAssignments.agentConfigId,
@@ -76,11 +88,31 @@ router.get("/client/agents-for-assistant", authenticateToken, requireRole("clien
       fileSearchCategories: consultantWhatsappConfig.fileSearchCategories,
       consultantId: consultantWhatsappConfig.consultantId,
       publicSlug: consultantWhatsappConfig.publicSlug,
+      levels: consultantWhatsappConfig.levels,
     })
     .from(consultantWhatsappConfig)
     .where(inArray(consultantWhatsappConfig.id, agentIds));
 
-    res.json(agents);
+    // Filter agents by tier: Gold/Deluxe sees all agents (including those without levels for backwards compatibility)
+    // Bronze/Silver see only agents with their tier level configured
+    const filteredAgents = agents.filter(agent => {
+      // Gold/Deluxe sees all assigned agents (fallback for legacy agents without levels)
+      if (tierLevel === "3" || tierLevel === "4") {
+        return true;
+      }
+      // Silver sees agents with level "2" configured
+      if (tierLevel === "2") {
+        return agent.levels && agent.levels.includes("2");
+      }
+      // Bronze sees agents with level "1" configured
+      return agent.levels && agent.levels.includes("1");
+    });
+    
+    console.log(`[AI Assistant] Tier ${tierLevel}: filtered ${filteredAgents.length}/${agents.length} agents`);
+
+    // Return without the levels field to keep response clean
+    const responseAgents = filteredAgents.map(({ levels, ...rest }) => rest);
+    res.json(responseAgents);
   } catch (error) {
     console.error("[AI Assistant] Error fetching client agents:", error);
     res.status(500).json({ error: "Failed to fetch agents" });

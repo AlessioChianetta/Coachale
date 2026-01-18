@@ -1813,14 +1813,33 @@ async function processPaymentAutomation(
           rolesAssigned.push(`${automation.clientLevel}_subscriber`);
           console.log(`[STRIPE AUTOMATION] Created ${automation.clientLevel} subscription with paymentSource: direct_link`);
           
-          // Auto-assign client to all consultant's agents for AI Assistant access
+          // Auto-assign client to tier-appropriate consultant agents for AI Assistant access
+          // Bronze = agents with levels containing "1", Silver = "2", Gold/Deluxe = all agents with levels configured
           try {
+            const tierLevelMap: Record<string, string> = { bronze: "1", silver: "2", gold: "3", deluxe: "4" };
+            const tierLevel = tierLevelMap[automation.clientLevel || "bronze"] || "3";
+            
             const consultantAgents = await db
-              .select({ id: schema.consultantWhatsappConfig.id })
+              .select({ id: schema.consultantWhatsappConfig.id, levels: schema.consultantWhatsappConfig.levels })
               .from(schema.consultantWhatsappConfig)
               .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
             
-            if (consultantAgents.length > 0) {
+            // Filter agents by tier: Gold/Deluxe sees all agents (including legacy without levels), Bronze/Silver only their tier
+            const tierFilteredAgents = consultantAgents.filter(agent => {
+              // Gold/Deluxe sees all consultant agents (fallback for legacy agents without levels)
+              if (tierLevel === "3" || tierLevel === "4") {
+                return true;
+              }
+              // Bronze/Silver need agents with their tier level configured
+              if (!agent.levels || agent.levels.length === 0) {
+                return false;
+              }
+              return agent.levels.includes(tierLevel as "1" | "2");
+            });
+            
+            console.log(`[STRIPE AUTOMATION] Tier ${tierLevel} (${automation.clientLevel}): ${tierFilteredAgents.length}/${consultantAgents.length} agents match`);
+            
+            if (tierFilteredAgents.length > 0) {
               // Check existing assignments to avoid duplicates
               const existingAssignments = await db
                 .select({ agentConfigId: schema.agentClientAssignments.agentConfigId })
@@ -1829,7 +1848,7 @@ async function processPaymentAutomation(
               
               const existingAgentIds = new Set(existingAssignments.map(a => a.agentConfigId));
               
-              const newAssignments = consultantAgents
+              const newAssignments = tierFilteredAgents
                 .filter(agent => !existingAgentIds.has(agent.id))
                 .map(agent => ({
                   agentConfigId: agent.id,
@@ -1840,7 +1859,7 @@ async function processPaymentAutomation(
               
               if (newAssignments.length > 0) {
                 await db.insert(schema.agentClientAssignments).values(newAssignments);
-                console.log(`[STRIPE AUTOMATION] Auto-assigned client to ${newAssignments.length} agents`);
+                console.log(`[STRIPE AUTOMATION] Auto-assigned client to ${newAssignments.length} tier-appropriate agents`);
               }
             }
           } catch (assignError: any) {
