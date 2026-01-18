@@ -60,7 +60,7 @@ export function OnboardingWizard({
   });
 
   const getToken = () => {
-    return localStorage.getItem("manager_token") || localStorage.getItem("token");
+    return localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token") || localStorage.getItem("token");
   };
 
   useEffect(() => {
