@@ -391,6 +391,35 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     },
   });
 
+  // Mutation to import the booking notification template
+  const importBookingTemplateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/whatsapp/custom-templates/import-booking-notification", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to import booking notification template");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "📅 Template Notifica Booking Importato!",
+        description: data.message || "Il template è pronto per le notifiche appuntamento.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: templatesData, isLoading, error } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates"],
     queryFn: async () => {
@@ -1325,54 +1354,90 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      onClick={() => importOpeningMessageMutation.mutate()}
-                      size="lg"
-                      variant="outline"
-                      disabled={importOpeningMessageMutation.isPending}
-                      className="bg-amber-500/20 border-amber-300/50 text-white hover:bg-amber-500/30"
-                    >
-                      {importOpeningMessageMutation.isPending ? (
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      ) : (
-                        <Star className="h-5 w-5 mr-2 fill-amber-300" />
-                      )}
-                      Aggiungi Template di Benvenuto
-                    </Button>
-                    <Button
-                      onClick={handleSyncTwilioStatus}
-                      size="lg"
-                      variant="outline"
-                      disabled={syncTwilioMutation.isPending}
-                      className="bg-white/10 border-white/30 text-white hover:bg-white/20"
-                    >
-                      {syncTwilioMutation.isPending ? (
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-5 w-5 mr-2" />
-                      )}
-                      Sincronizza Stato Twilio
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => {
-                        refetchAgentsByAccount();
-                        setSyncCredentialsDialogOpen(true);
-                      }}
-                      className="bg-white/10 border-white/30 text-white hover:bg-white/20 gap-2"
-                    >
-                      <RefreshCw className="h-5 w-5" />
-                      Sync Credenziali
-                    </Button>
+                  <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => importOpeningMessageMutation.mutate()}
+                            size="sm"
+                            variant="outline"
+                            disabled={importOpeningMessageMutation.isPending}
+                            className="bg-amber-500/20 border-amber-300/50 text-white hover:bg-amber-500/30"
+                          >
+                            {importOpeningMessageMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Star className="h-4 w-4 fill-amber-300" />
+                            )}
+                            <span className="hidden xl:inline ml-2">Benvenuto</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Aggiungi Template di Benvenuto</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => importBookingTemplateMutation.mutate()}
+                            size="sm"
+                            variant="outline"
+                            disabled={importBookingTemplateMutation.isPending}
+                            className="bg-green-500/20 border-green-300/50 text-white hover:bg-green-500/30"
+                          >
+                            {importBookingTemplateMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Bell className="h-4 w-4" />
+                            )}
+                            <span className="hidden xl:inline ml-2">Booking</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Aggiungi Template Notifica Booking</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleSyncTwilioStatus}
+                            size="sm"
+                            variant="outline"
+                            disabled={syncTwilioMutation.isPending}
+                            className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                          >
+                            {syncTwilioMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4" />
+                            )}
+                            <span className="hidden xl:inline ml-2">Sync Twilio</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Sincronizza Stato Twilio</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              refetchAgentsByAccount();
+                              setSyncCredentialsDialogOpen(true);
+                            }}
+                            className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            <span className="hidden xl:inline ml-2">Credenziali</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Sync Credenziali</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <Button
                       onClick={() => navigate("/consultant/whatsapp/custom-templates")}
-                      size="lg"
+                      size="sm"
                       className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-200"
                     >
-                      <Plus className="h-5 w-5 mr-2" />
-                      Crea Nuovo Template
+                      <Plus className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Nuovo</span>
                     </Button>
                   </div>
                 </div>

@@ -736,6 +736,121 @@ router.post(
 );
 
 /**
+ * POST /api/whatsapp/custom-templates/import-booking-notification
+ * Import the booking notification template with pre-mapped variables
+ */
+router.post(
+  "/whatsapp/custom-templates/import-booking-notification",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const BOOKING_TEMPLATE = {
+        templateName: "Notifica Nuovo Appuntamento",
+        description: "Template per notificare al venditore un nuovo appuntamento prenotato. Include nome cliente, data, ora e link meet.",
+        body: "Ciao! Hai un nuovo appuntamento confermato.\n📅 Cliente: {booking_client_name}\n📆 Data: {booking_date}\n⏰ Ora: {booking_time}\n🔗 Link Meet: {booking_meet_link}\nBuon lavoro!",
+        useCase: "conferma-appuntamento" as const,
+        targetAgentType: "proactive_setter" as const,
+        templateType: "booking_notification" as const,
+        variables: ["booking_client_name", "booking_date", "booking_time", "booking_meet_link"],
+      };
+
+      // Check if already exists
+      const existingTemplate = await db
+        .select({ id: schema.whatsappCustomTemplates.id })
+        .from(schema.whatsappCustomTemplates)
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            eq(schema.whatsappCustomTemplates.templateName, BOOKING_TEMPLATE.templateName)
+          )
+        );
+
+      if (existingTemplate.length > 0) {
+        return res.json({
+          success: true,
+          message: "Il Template Notifica Booking è già stato importato",
+          created: false,
+        });
+      }
+
+      // Load variable catalog for mapping
+      const catalogVariables = await db
+        .select({
+          id: whatsappVariableCatalog.id,
+          variableKey: whatsappVariableCatalog.variableKey,
+        })
+        .from(whatsappVariableCatalog);
+      
+      const catalogMap = new Map(catalogVariables.map(v => [v.variableKey, v.id]));
+
+      // Create the template
+      const [newTemplate] = await db
+        .insert(schema.whatsappCustomTemplates)
+        .values({
+          consultantId,
+          templateName: BOOKING_TEMPLATE.templateName,
+          description: BOOKING_TEMPLATE.description,
+          body: BOOKING_TEMPLATE.body,
+          useCase: BOOKING_TEMPLATE.useCase,
+          targetAgentType: BOOKING_TEMPLATE.targetAgentType,
+          templateType: BOOKING_TEMPLATE.templateType,
+          isSystemTemplate: true,
+          isActive: true,
+        })
+        .returning();
+
+      console.log(`✅ [BOOKING NOTIFICATION] Created template ID: ${newTemplate.id}`);
+
+      // Create version
+      const [newVersion] = await db
+        .insert(whatsappTemplateVersions)
+        .values({
+          templateId: newTemplate.id,
+          versionNumber: 1,
+          bodyText: BOOKING_TEMPLATE.body,
+          isActive: true,
+          createdBy: consultantId,
+        })
+        .returning();
+
+      // Create variable mappings in order
+      for (let i = 0; i < BOOKING_TEMPLATE.variables.length; i++) {
+        const variableKey = BOOKING_TEMPLATE.variables[i];
+        const catalogId = catalogMap.get(variableKey);
+        if (catalogId) {
+          await db
+            .insert(whatsappTemplateVariables)
+            .values({
+              templateVersionId: newVersion.id,
+              variableCatalogId: catalogId,
+              position: i + 1,
+            });
+          console.log(`  ✅ Mapped variable {${variableKey}} -> position ${i + 1}`);
+        } else {
+          console.log(`  ⚠️ Variable {${variableKey}} not found in catalog`);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Template Notifica Booking importato con successo!",
+        created: true,
+        templateId: newTemplate.id,
+      });
+    } catch (error: any) {
+      console.error("❌ [BOOKING NOTIFICATION] Error importing:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to import booking notification template",
+      });
+    }
+  }
+);
+
+/**
  * POST /api/whatsapp/custom-templates/fix-missing-variables
  * Fix templates that are missing variable mappings (for already loaded templates)
  */
