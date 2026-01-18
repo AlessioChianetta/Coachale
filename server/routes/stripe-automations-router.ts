@@ -1329,13 +1329,46 @@ async function processPaymentAutomation(
         }
       }
     } else {
-      // Create new user
-      password = generatePassword();
-      const hashedPassword = await bcrypt.hash(password, 10);
+      // Create new user - but check if this is an upgrade from Bronze first
+      let hashedPassword: string;
+      let isUpgradeFromBronze = false;
+      let bronzeUserData: { passwordHash: string; firstName: string | null; lastName: string | null; phone: string | null; mustChangePassword: boolean | null } | null = null;
+      
+      // If upgrading from Bronze, fetch existing password hash to preserve credentials
+      if (upgradeToken?.bronzeUserId) {
+        const [existingBronzeUser] = await db
+          .select({
+            passwordHash: schema.bronzeUsers.passwordHash,
+            firstName: schema.bronzeUsers.firstName,
+            lastName: schema.bronzeUsers.lastName,
+            phone: schema.bronzeUsers.phone,
+            mustChangePassword: schema.bronzeUsers.mustChangePassword,
+          })
+          .from(schema.bronzeUsers)
+          .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId))
+          .limit(1);
+        
+        if (existingBronzeUser?.passwordHash) {
+          bronzeUserData = existingBronzeUser;
+          hashedPassword = existingBronzeUser.passwordHash;
+          isUpgradeFromBronze = true;
+          password = null as any; // No temp password needed - user keeps their existing password
+          console.log(`[STRIPE AUTOMATION] Upgrade from Bronze detected - preserving existing password for user ${upgradeToken.bronzeUserId}`);
+        } else {
+          // Fallback: generate new password if Bronze user not found (shouldn't happen)
+          password = generatePassword();
+          hashedPassword = await bcrypt.hash(password, 10);
+          console.log(`[STRIPE AUTOMATION] Warning: Bronze user ${upgradeToken.bronzeUserId} not found, generating new password`);
+        }
+      } else {
+        // New user registration - generate fresh password
+        password = generatePassword();
+        hashedPassword = await bcrypt.hash(password, 10);
+      }
       
       const nameParts = customerName.split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
+      const firstName = bronzeUserData?.firstName || nameParts[0] || "";
+      const lastName = bronzeUserData?.lastName || nameParts.slice(1).join(" ") || "";
       
       // Generate username from email (part before @) + random suffix
       const emailPrefix = customerEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -1386,25 +1419,30 @@ async function processPaymentAutomation(
           ? consultantId 
           : null;
 
+        // For upgrades from Bronze, preserve existing password state
+        const shouldRequirePasswordChange = isUpgradeFromBronze 
+          ? (bronzeUserData?.mustChangePassword ?? false) // Preserve Bronze user's password change state
+          : true; // New users must change password
+
         const [newUser] = await db
           .insert(schema.users)
           .values({
             username,
             email: customerEmail.toLowerCase(),
             password: hashedPassword,
-            tempPassword: password, // Store plain text password for email reminders until user changes it
+            tempPassword: isUpgradeFromBronze ? null : password, // No temp password for upgrades
             firstName,
             lastName,
             role: primaryRole,
-            phoneNumber: customerPhone || null,
-            mustChangePassword: true,
+            phoneNumber: bronzeUserData?.phone || customerPhone || null,
+            mustChangePassword: shouldRequirePasswordChange,
             consultantId: userConsultantId,
           })
           .returning();
         
-        userMustChangePassword = true;
+        userMustChangePassword = shouldRequirePasswordChange;
         userId = newUser.id;
-        console.log(`[STRIPE AUTOMATION] Created new user: ${userId} with role: ${primaryRole}, consultantId: ${userConsultantId}`);
+        console.log(`[STRIPE AUTOMATION] Created new user: ${userId} with role: ${primaryRole}, consultantId: ${userConsultantId}${isUpgradeFromBronze ? " [UPGRADE - password preserved]" : ""}`);
 
         // Create user role profiles for multi-role support (like Fernando)
         if (automation.createAsConsultant) {
