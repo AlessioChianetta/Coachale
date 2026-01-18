@@ -12628,13 +12628,13 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       // Create upgrade token in database (30 min expiry) - keeps client_reference_id short (36 chars UUID)
       // Stripe has a 200 char limit for client_reference_id, JWT tokens are ~350 chars
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-      const [token] = await db.execute(sql`
+      const result = await db.execute(sql`
         INSERT INTO upgrade_tokens (bronze_user_id, consultant_id, target_tier, expires_at)
         VALUES (${bronzeUserId}, ${consultantId}, ${targetTier.toLowerCase()}, ${expiresAt})
         RETURNING id
       `);
       
-      const upgradeToken = (token as any).id;
+      const upgradeToken = (result.rows?.[0] as any)?.id || (result as any)[0]?.id;
 
       console.log(
         `[BRONZE AUTH] Upgrade token created in DB: ${upgradeToken} for user: ${bronzeUserId}, target tier: ${targetTier}`
