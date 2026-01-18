@@ -108,40 +108,61 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     });
   }, [allTemplatesData, formData.whatsappTemplates]);
 
-  // Booking notification templates: ONLY custom templates (FK constraint requires ID from whatsapp_custom_templates)
-  // Twilio templates must be imported as custom templates first
+  // Booking notification templates: include custom templates + approved Twilio templates
   const bookingNotificationTemplates = React.useMemo(() => {
     const result: any[] = [];
     const addedIds = new Set<string>();
     
-    // Only use custom templates (they have valid IDs in whatsapp_custom_templates table)
+    // Debug: log raw data
     const customTemplates = customTemplatesData?.data || [];
+    const twilioTemplates = allTemplatesData?.templates || [];
     
-    customTemplates.forEach((t: any) => {
+    console.log('[BOOKING DEBUG] customTemplates count:', customTemplates.length);
+    console.log('[BOOKING DEBUG] twilioTemplates count:', twilioTemplates.length);
+    
+    // Add custom templates (especially booking_notification type)
+    customTemplates.forEach((t: any, idx: number) => {
+      console.log(`[BOOKING DEBUG] Custom template ${idx}:`, { id: t.id, name: t.templateName, isActive: t.isActive, twilioContentSid: t.twilioContentSid });
       if (t.isActive && t.id && !addedIds.has(t.id)) {
         addedIds.add(t.id);
-        
-        // Determine approval status from twilioApprovalStatus or check if has twilioContentSid
-        let approvalStatus = 'draft';
-        if (t.twilioApprovalStatus === 'approved') {
-          approvalStatus = 'approved';
-        } else if (t.twilioContentSid) {
-          approvalStatus = 'pending';
+        // Also track twilioContentSid to avoid duplicates from Twilio list
+        if (t.twilioContentSid) {
+          addedIds.add(t.twilioContentSid);
         }
-        
         result.push({
-          id: t.id, // This is the UUID from whatsapp_custom_templates - valid for FK
+          id: t.id,
           templateName: t.templateName,
           templateType: t.templateType,
           isCustom: true,
           twilioSid: t.twilioContentSid,
-          approvalStatus,
+          approvalStatus: t.twilioApprovalStatus || 'draft',
         });
       }
     });
     
+    // Add approved Twilio templates (only if not already added via custom templates)
+    // Note: Twilio API returns "sid" field, not "contentSid"
+    twilioTemplates.forEach((t: any, idx: number) => {
+      const isApproved = t.approvalStatus?.toLowerCase() === 'approved';
+      const templateSid = t.sid || t.contentSid; // Use sid (Twilio API) or contentSid (fallback)
+      if (idx < 3) {
+        console.log(`[BOOKING DEBUG] Twilio template ${idx}:`, { sid: templateSid, name: t.friendlyName, approvalStatus: t.approvalStatus, isApproved });
+      }
+      if (isApproved && templateSid && !addedIds.has(templateSid)) {
+        addedIds.add(templateSid);
+        result.push({
+          id: templateSid,
+          templateName: t.friendlyName || t.name,
+          isCustom: false,
+          twilioSid: templateSid,
+          approvalStatus: 'approved',
+        });
+      }
+    });
+    
+    console.log('[BOOKING TEMPLATES] Final result:', result.map(r => ({ id: r.id, name: r.templateName })));
     return result;
-  }, [customTemplatesData]);
+  }, [customTemplatesData, allTemplatesData]);
 
   // Check if selected template has booking variables
   const { data: templateVariables } = useQuery({
