@@ -111,40 +111,44 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
   // Booking notification templates: include custom templates + approved Twilio templates
   const bookingNotificationTemplates = React.useMemo(() => {
     const result: any[] = [];
+    const addedIds = new Set<string>();
     
     // Add custom templates (especially booking_notification type)
     const customTemplates = customTemplatesData?.data || [];
     customTemplates.forEach((t: any) => {
-      if (t.isActive) {
+      if (t.isActive && t.id && !addedIds.has(t.id)) {
+        addedIds.add(t.id);
+        // Also track twilioContentSid to avoid duplicates from Twilio list
+        if (t.twilioContentSid) {
+          addedIds.add(t.twilioContentSid);
+        }
         result.push({
           id: t.id,
           templateName: t.templateName,
           templateType: t.templateType,
           isCustom: true,
-          twilioSid: t.twilioContentSid, // if exported to Twilio
+          twilioSid: t.twilioContentSid,
           approvalStatus: t.twilioApprovalStatus || 'draft',
         });
       }
     });
     
-    // Add approved Twilio templates
+    // Add approved Twilio templates (only if not already added via custom templates)
     const twilioTemplates = allTemplatesData?.templates || [];
     twilioTemplates.forEach((t: any) => {
-      if (t.approvalStatus?.toLowerCase() === 'approved') {
-        // Avoid duplicates if already added from custom templates
-        const alreadyAdded = result.some(r => r.twilioSid === t.contentSid);
-        if (!alreadyAdded) {
-          result.push({
-            id: t.contentSid,
-            templateName: t.friendlyName || t.name,
-            isCustom: false,
-            twilioSid: t.contentSid,
-            approvalStatus: 'approved',
-          });
-        }
+      if (t.approvalStatus?.toLowerCase() === 'approved' && t.contentSid && !addedIds.has(t.contentSid)) {
+        addedIds.add(t.contentSid);
+        result.push({
+          id: t.contentSid,
+          templateName: t.friendlyName || t.name,
+          isCustom: false,
+          twilioSid: t.contentSid,
+          approvalStatus: 'approved',
+        });
       }
     });
     
+    console.log('[BOOKING TEMPLATES]', result.map(r => ({ id: r.id, name: r.templateName })));
     return result;
   }, [customTemplatesData, allTemplatesData]);
 
