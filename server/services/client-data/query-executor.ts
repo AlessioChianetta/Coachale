@@ -384,6 +384,9 @@ export async function aggregateGroup(
   const validFunctions = ["SUM", "AVG", "COUNT", "MIN", "MAX"];
 
   for (const agg of aggregations) {
+    if (!agg.function) {
+      return { success: false, error: `Missing aggregate function for column: ${agg.column}` };
+    }
     const func = agg.function.toUpperCase();
     if (!validFunctions.includes(func)) {
       return { success: false, error: `Invalid aggregate function: ${agg.function}` };

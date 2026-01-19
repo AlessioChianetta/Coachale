@@ -367,11 +367,11 @@ export async function generateNaturalLanguageResponse(
   let response = explanation.summary;
 
   if (explanation.details.length > 0) {
-    response += "\n\n**Dettagli:**\n" + explanation.details.map(d => `• ${d}`).join("\n");
+    response += "\n\n" + explanation.details.join("\n");
   }
 
   if (explanation.insights.length > 0) {
-    response += "\n\n**Osservazioni:**\n" + explanation.insights.map(i => `💡 ${i}`).join("\n");
+    response += "\n\n" + explanation.insights.join("\n");
   }
 
   return response;
