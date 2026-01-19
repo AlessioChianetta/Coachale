@@ -68,42 +68,86 @@ const TEMPLATE_PATTERNS: Record<string, { columns: Record<string, { dataType: st
 };
 
 const PATTERNS = {
-  DATE_DMY: /^\d{2}[-\/]\d{2}[-\/]\d{4}$/,
-  DATE_YMD: /^\d{4}[-\/]\d{2}[-\/]\d{2}$/,
-  DATE_ISO: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+  DATE_DMY: /^\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}$/,
+  DATE_YMD: /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/,
+  DATE_ISO: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/,
+  DATE_WORDS: /^\d{1,2}\s+(gen|feb|mar|apr|mag|giu|lug|ago|set|ott|nov|dic|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i,
   IMPORTO_EU: /^-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?€?$/,
   IMPORTO_SIMPLE: /^-?€?\s?\d+(?:[.,]\d{1,2})?$/,
   PERCENTAGE: /^-?\d+(?:[.,]\d+)?%$/,
   INTEGER: /^-?\d+$/,
   DECIMAL: /^-?\d+[.,]\d+$/,
+  DECIMAL_SIMPLE: /^-?\d+\.\d{1,4}$/,
   PHONE: /^(?:\+?\d{1,3}[-.\s]?)?\d{6,}$/,
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  BOOLEAN_IT: /^(si|no|vero|falso|true|false|1|0)$/i,
+  BOOLEAN_IT: /^(si|no|vero|falso|true|false|1|0|s|n|y|yes)$/i,
   COD_FISCALE: /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/i,
   PARTITA_IVA: /^\d{11}$/,
 };
+
+const DIRTY_DATA_PATTERNS = [
+  /^#(REF|DIV\/0|N\/A|VALUE|NAME|NUM|NULL)!?$/i,
+  /^(n\/a|na|null|undefined|-)$/i,
+  /^(err|error|errore)$/i,
+  /^\s*$/,
+];
+
+function isCleanValue(val: any): boolean {
+  if (val === null || val === undefined || val === "") return false;
+  const strVal = String(val).trim();
+  return !DIRTY_DATA_PATTERNS.some(p => p.test(strVal));
+}
+
+function cleanNumericValue(val: string): string {
+  return val
+    .replace(/€/g, "")
+    .replace(/\s/g, "")
+    .replace(/['']/g, "")
+    .trim();
+}
 
 const COLUMN_NAME_HINTS: Record<string, { dataType: string; confidence: number }> = {
   "data": { dataType: "DATE", confidence: 0.9 },
   "date": { dataType: "DATE", confidence: 0.9 },
   "dt_": { dataType: "DATE", confidence: 0.85 },
+  "order_date": { dataType: "DATE", confidence: 0.95 },
+  "created": { dataType: "DATE", confidence: 0.85 },
+  "updated": { dataType: "DATE", confidence: 0.85 },
+  "timestamp": { dataType: "DATE", confidence: 0.9 },
   "importo": { dataType: "NUMERIC", confidence: 0.9 },
   "prezzo": { dataType: "NUMERIC", confidence: 0.9 },
-  "price": { dataType: "NUMERIC", confidence: 0.9 },
+  "price": { dataType: "NUMERIC", confidence: 0.95 },
+  "unit_price": { dataType: "NUMERIC", confidence: 0.95 },
+  "unit_cost": { dataType: "NUMERIC", confidence: 0.95 },
   "amount": { dataType: "NUMERIC", confidence: 0.9 },
-  "totale": { dataType: "NUMERIC", confidence: 0.85 },
-  "total": { dataType: "NUMERIC", confidence: 0.85 },
+  "totale": { dataType: "NUMERIC", confidence: 0.9 },
+  "total": { dataType: "NUMERIC", confidence: 0.9 },
+  "total_net": { dataType: "NUMERIC", confidence: 0.95 },
+  "net": { dataType: "NUMERIC", confidence: 0.85 },
+  "gross": { dataType: "NUMERIC", confidence: 0.85 },
   "imp_": { dataType: "NUMERIC", confidence: 0.85 },
-  "costo": { dataType: "NUMERIC", confidence: 0.85 },
-  "cost": { dataType: "NUMERIC", confidence: 0.85 },
-  "qta": { dataType: "INTEGER", confidence: 0.85 },
-  "qty": { dataType: "INTEGER", confidence: 0.85 },
-  "quantita": { dataType: "INTEGER", confidence: 0.85 },
-  "quantity": { dataType: "INTEGER", confidence: 0.85 },
-  "count": { dataType: "INTEGER", confidence: 0.8 },
-  "numero": { dataType: "INTEGER", confidence: 0.7 },
-  "perc": { dataType: "NUMERIC", confidence: 0.8 },
-  "percent": { dataType: "NUMERIC", confidence: 0.8 },
+  "costo": { dataType: "NUMERIC", confidence: 0.9 },
+  "cost": { dataType: "NUMERIC", confidence: 0.9 },
+  "revenue": { dataType: "NUMERIC", confidence: 0.9 },
+  "margin": { dataType: "NUMERIC", confidence: 0.85 },
+  "profit": { dataType: "NUMERIC", confidence: 0.85 },
+  "fee": { dataType: "NUMERIC", confidence: 0.85 },
+  "tax": { dataType: "NUMERIC", confidence: 0.85 },
+  "vat": { dataType: "NUMERIC", confidence: 0.85 },
+  "qta": { dataType: "INTEGER", confidence: 0.9 },
+  "qty": { dataType: "INTEGER", confidence: 0.9 },
+  "quantita": { dataType: "INTEGER", confidence: 0.9 },
+  "quantity": { dataType: "INTEGER", confidence: 0.9 },
+  "count": { dataType: "INTEGER", confidence: 0.85 },
+  "numero": { dataType: "INTEGER", confidence: 0.75 },
+  "number": { dataType: "INTEGER", confidence: 0.75 },
+  "table_number": { dataType: "INTEGER", confidence: 0.9 },
+  "order_id": { dataType: "INTEGER", confidence: 0.9 },
+  "perc": { dataType: "NUMERIC", confidence: 0.85 },
+  "percent": { dataType: "NUMERIC", confidence: 0.85 },
+  "percentage": { dataType: "NUMERIC", confidence: 0.85 },
+  "discount": { dataType: "NUMERIC", confidence: 0.85 },
+  "sconto": { dataType: "NUMERIC", confidence: 0.85 },
   "iva": { dataType: "NUMERIC", confidence: 0.85 },
   "email": { dataType: "TEXT", confidence: 0.95 },
   "telefono": { dataType: "TEXT", confidence: 0.9 },
@@ -111,6 +155,8 @@ const COLUMN_NAME_HINTS: Record<string, { dataType: string; confidence: number }
   "tel": { dataType: "TEXT", confidence: 0.85 },
   "nome": { dataType: "TEXT", confidence: 0.9 },
   "name": { dataType: "TEXT", confidence: 0.9 },
+  "item_name": { dataType: "TEXT", confidence: 0.95 },
+  "product_name": { dataType: "TEXT", confidence: 0.95 },
   "cognome": { dataType: "TEXT", confidence: 0.9 },
   "surname": { dataType: "TEXT", confidence: 0.9 },
   "descrizione": { dataType: "TEXT", confidence: 0.9 },
@@ -121,91 +167,137 @@ const COLUMN_NAME_HINTS: Record<string, { dataType: string; confidence: number }
   "code": { dataType: "TEXT", confidence: 0.8 },
   "cod_": { dataType: "TEXT", confidence: 0.75 },
   "id": { dataType: "TEXT", confidence: 0.7 },
-  "flag": { dataType: "BOOLEAN", confidence: 0.8 },
-  "attivo": { dataType: "BOOLEAN", confidence: 0.8 },
-  "active": { dataType: "BOOLEAN", confidence: 0.8 },
-  "enabled": { dataType: "BOOLEAN", confidence: 0.8 },
+  "waiter": { dataType: "TEXT", confidence: 0.9 },
+  "cameriere": { dataType: "TEXT", confidence: 0.9 },
+  "customer": { dataType: "TEXT", confidence: 0.9 },
+  "cliente": { dataType: "TEXT", confidence: 0.9 },
+  "category": { dataType: "TEXT", confidence: 0.9 },
+  "categoria": { dataType: "TEXT", confidence: 0.9 },
+  "flag": { dataType: "BOOLEAN", confidence: 0.85 },
+  "attivo": { dataType: "BOOLEAN", confidence: 0.85 },
+  "active": { dataType: "BOOLEAN", confidence: 0.85 },
+  "enabled": { dataType: "BOOLEAN", confidence: 0.85 },
+  "is_": { dataType: "BOOLEAN", confidence: 0.8 },
+  "has_": { dataType: "BOOLEAN", confidence: 0.8 },
 };
 
-export function detectPatterns(columnName: string, values: any[]): { dataType: string; confidence: number; pattern?: string } {
-  const nonNullValues = values.filter(v => v !== null && v !== undefined && v !== "");
-  if (nonNullValues.length === 0) {
-    return { dataType: "TEXT", confidence: 0.5 };
+export function detectPatterns(columnName: string, values: any[]): { dataType: string; confidence: number; pattern?: string; anomalyCount?: number } {
+  const cleanValues = values.filter(isCleanValue);
+  const totalOriginal = values.length;
+  const dirtyCount = totalOriginal - cleanValues.length;
+  
+  if (cleanValues.length === 0) {
+    return { dataType: "TEXT", confidence: 0.5, anomalyCount: dirtyCount };
   }
 
-  const stringValues = nonNullValues.map(v => String(v).trim());
+  const stringValues = cleanValues.map(v => String(v).trim());
   const totalCount = stringValues.length;
 
   let dateCount = 0;
-  let importoCount = 0;
-  let percentageCount = 0;
-  let integerCount = 0;
+  let numericCount = 0;
+  let integerOnlyCount = 0;
   let decimalCount = 0;
+  let percentageCount = 0;
   let emailCount = 0;
-  let phoneCount = 0;
   let booleanCount = 0;
+  let textCount = 0;
 
   for (const val of stringValues) {
-    if (PATTERNS.DATE_DMY.test(val) || PATTERNS.DATE_YMD.test(val) || PATTERNS.DATE_ISO.test(val)) {
+    const cleanedNumeric = cleanNumericValue(val);
+    
+    if (PATTERNS.DATE_DMY.test(val) || PATTERNS.DATE_YMD.test(val) || 
+        PATTERNS.DATE_ISO.test(val) || PATTERNS.DATE_WORDS.test(val)) {
       dateCount++;
     } else if (PATTERNS.PERCENTAGE.test(val)) {
       percentageCount++;
+      numericCount++;
     } else if (PATTERNS.EMAIL.test(val)) {
       emailCount++;
-    } else if (PATTERNS.PHONE.test(val)) {
-      phoneCount++;
     } else if (PATTERNS.BOOLEAN_IT.test(val)) {
       booleanCount++;
-    } else if (PATTERNS.IMPORTO_EU.test(val) || PATTERNS.IMPORTO_SIMPLE.test(val)) {
-      if (val.includes(",") && !val.includes(".")) {
-        importoCount++;
-      } else if (PATTERNS.DECIMAL.test(val.replace("€", "").trim())) {
-        importoCount++;
-      } else if (PATTERNS.INTEGER.test(val.replace("€", "").trim())) {
-        integerCount++;
-      }
-    } else if (PATTERNS.DECIMAL.test(val)) {
+    } else if (PATTERNS.DECIMAL.test(cleanedNumeric) || PATTERNS.DECIMAL_SIMPLE.test(cleanedNumeric)) {
       decimalCount++;
-    } else if (PATTERNS.INTEGER.test(val)) {
-      integerCount++;
+      numericCount++;
+    } else if (PATTERNS.INTEGER.test(cleanedNumeric)) {
+      integerOnlyCount++;
+      numericCount++;
+    } else if (PATTERNS.IMPORTO_EU.test(val) || PATTERNS.IMPORTO_SIMPLE.test(val)) {
+      numericCount++;
+      if (cleanedNumeric.includes(".") || cleanedNumeric.includes(",")) {
+        decimalCount++;
+      } else {
+        integerOnlyCount++;
+      }
+    } else {
+      textCount++;
     }
   }
 
   const results: { dataType: string; confidence: number; pattern?: string }[] = [];
-
-  if (dateCount > 0) {
-    results.push({ dataType: "DATE", confidence: dateCount / totalCount, pattern: "DATE" });
+  
+  const numericRatio = numericCount / totalCount;
+  const dateRatio = dateCount / totalCount;
+  const emailRatio = emailCount / totalCount;
+  const booleanRatio = booleanCount / totalCount;
+  
+  if (dateRatio >= 0.8) {
+    results.push({ dataType: "DATE", confidence: dateRatio, pattern: "DATE" });
   }
-  if (percentageCount > 0) {
-    results.push({ dataType: "NUMERIC", confidence: percentageCount / totalCount, pattern: "PERCENTAGE" });
+  
+  if (emailRatio >= 0.8) {
+    results.push({ dataType: "TEXT", confidence: emailRatio, pattern: "EMAIL" });
   }
-  if (emailCount > 0) {
-    results.push({ dataType: "TEXT", confidence: emailCount / totalCount, pattern: "EMAIL" });
+  
+  if (booleanRatio >= 0.8) {
+    results.push({ dataType: "BOOLEAN", confidence: booleanRatio, pattern: "BOOLEAN" });
   }
-  if (booleanCount > 0) {
-    results.push({ dataType: "BOOLEAN", confidence: booleanCount / totalCount, pattern: "BOOLEAN" });
-  }
-  if (importoCount > 0) {
-    results.push({ dataType: "NUMERIC", confidence: importoCount / totalCount, pattern: "IMPORTO" });
-  }
-  if (decimalCount > 0) {
-    results.push({ dataType: "NUMERIC", confidence: decimalCount / totalCount, pattern: "DECIMAL" });
-  }
-  if (integerCount > 0) {
-    const intConfidence = integerCount / totalCount;
-    if (intConfidence > 0.8) {
-      results.push({ dataType: "INTEGER", confidence: intConfidence, pattern: "INTEGER" });
+  
+  if (numericRatio >= 0.8) {
+    const hasDecimals = decimalCount > 0;
+    const isAllIntegers = integerOnlyCount === numericCount && !hasDecimals;
+    
+    if (isAllIntegers && numericRatio >= 0.95) {
+      results.push({ dataType: "INTEGER", confidence: numericRatio, pattern: "INTEGER" });
     } else {
-      results.push({ dataType: "NUMERIC", confidence: intConfidence, pattern: "NUMERIC" });
+      results.push({ dataType: "NUMERIC", confidence: numericRatio, pattern: hasDecimals ? "DECIMAL" : "NUMERIC" });
+    }
+  }
+
+  const nameHint = getColumnNameHint(columnName);
+  if (nameHint) {
+    for (const result of results) {
+      if (result.dataType === nameHint.dataType || 
+          (result.dataType === "INTEGER" && nameHint.dataType === "NUMERIC") ||
+          (result.dataType === "NUMERIC" && nameHint.dataType === "INTEGER")) {
+        if (result.confidence >= 0.95) {
+          result.confidence = Math.min(0.98, result.confidence + 0.02);
+        }
+      }
+    }
+    
+    if (results.length === 0 && nameHint.confidence >= 0.9) {
+      if ((nameHint.dataType === "NUMERIC" || nameHint.dataType === "INTEGER") && numericRatio >= 0.85) {
+        results.push({ dataType: "NUMERIC", confidence: numericRatio, pattern: "NAME_HINT" });
+      } else if (nameHint.dataType === "DATE" && dateRatio >= 0.85) {
+        results.push({ dataType: "DATE", confidence: dateRatio, pattern: "NAME_HINT" });
+      }
     }
   }
 
   if (results.length > 0) {
     results.sort((a, b) => b.confidence - a.confidence);
-    return results[0];
+    const best = results[0];
+    return { 
+      dataType: best.dataType, 
+      confidence: best.confidence, 
+      pattern: best.pattern,
+      anomalyCount: dirtyCount 
+    };
   }
 
-  return { dataType: "TEXT", confidence: 0.7 };
+  const textRatio = textCount / totalCount;
+  const fallbackConfidence = textRatio >= 0.5 ? Math.min(0.75, 0.5 + textRatio * 0.25) : 0.6;
+  return { dataType: "TEXT", confidence: fallbackConfidence, anomalyCount: dirtyCount };
 }
 
 function getColumnNameHint(columnName: string): { dataType: string; confidence: number } | null {
