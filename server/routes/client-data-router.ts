@@ -239,6 +239,15 @@ router.delete(
         });
       }
 
+      if (dataset.tableName) {
+        try {
+          await dropDynamicTable(dataset.tableName);
+          console.log(`[CLIENT-DATA] Dropped table: ${dataset.tableName}`);
+        } catch (dropError) {
+          console.warn(`[CLIENT-DATA] Could not drop table ${dataset.tableName}:`, dropError);
+        }
+      }
+
       await db.delete(clientDataDatasets).where(eq(clientDataDatasets.id, id));
 
       console.log(`[CLIENT-DATA] Dataset deleted: ${id}`);
