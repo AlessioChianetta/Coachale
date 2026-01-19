@@ -135,7 +135,7 @@ function validateToolCallAgainstSchema(
       if (!dateColumn || !schema.columns.includes(dateColumn)) {
         errors.push(`Invalid date column: ${dateColumn}. Available: ${schema.columns.slice(0, 5).join(", ")}...`);
       }
-      if (dateColumn && schema.columnTypes[dateColumn] !== "DATE") {
+      if (dateColumn && schema.columnTypes[dateColumn]?.toUpperCase() !== "DATE") {
         errors.push(`Column ${dateColumn} is not a DATE type`);
       }
 
@@ -350,7 +350,10 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
     console.error("[QUERY-PLANNER] Error planning query:", error.message);
 
     if (datasets.length > 0) {
-      const numericCols = datasets[0].columns.filter(c => c.dataType === "NUMERIC" || c.dataType === "INTEGER");
+      const numericCols = datasets[0].columns.filter(c => {
+        const t = c.dataType?.toUpperCase();
+        return t === "NUMERIC" || t === "INTEGER" || t === "NUMBER";
+      });
       if (numericCols.length > 0) {
         return {
           steps: [{

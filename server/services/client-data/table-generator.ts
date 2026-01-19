@@ -115,7 +115,8 @@ export async function createDynamicTable(
       const pgType = mapDataTypeToPostgres(col.dataType);
       columnDefs.push(`"${sanitizedName}" ${pgType}`);
 
-      if (col.dataType === "DATE" || col.dataType === "NUMERIC" || col.dataType === "INTEGER") {
+      const upperType = col.dataType?.toUpperCase();
+      if (upperType === "DATE" || upperType === "NUMERIC" || upperType === "INTEGER" || upperType === "NUMBER") {
         indexColumns.push(sanitizedName);
       }
     }
@@ -469,7 +470,8 @@ export async function importDataToTable(
 
     const indexColumns: string[] = [];
     for (const col of columns) {
-      if (col.dataType === "DATE" || col.dataType === "NUMERIC" || col.dataType === "INTEGER") {
+      const upperType = col.dataType?.toUpperCase();
+      if (upperType === "DATE" || upperType === "NUMERIC" || upperType === "INTEGER" || upperType === "NUMBER") {
         indexColumns.push(sanitizeColumnName(col.suggestedName || col.originalName));
       }
     }
