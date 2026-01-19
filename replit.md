@@ -129,6 +129,14 @@ Sistema di analisi dati strutturati (Excel/CSV) per clienti con architettura "co
 
 **Documentazione completa**: `docs/RDP-compute-first-data-analysis.md`, `docs/RDP-compute-first-analysis-review.md`
 
+### Data Analysis Chat UI (Gennaio 2026)
+Interfaccia chat AI stile ChatGPT per l'analisi dati con:
+- **DataAnalysisChat Component**: Messaggi animati con avatar, tabs Chat/History
+- **Conversation Persistence**: Tabelle `client_data_conversations`, `client_data_messages` per storico
+- **Tool Call Visualization**: ThinkingBubble mostra tool calls durante l'elaborazione (aggregate_group, filter_data, etc.)
+- **Consultative AI Prompt**: Prompt a 6 passi (risposta, contesto, pattern, interpretazione, azione, follow-up)
+- **AI Preferences**: Tabella `client_data_ai_preferences` per modello preferito, thinking level, stile
+
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
 - **Recharts**: Data visualization.
