@@ -8477,3 +8477,25 @@ export const insertClientDataDatasetSchema = createInsertSchema(clientDataDatase
   updatedAt: true,
   lastQueriedAt: true,
 });
+
+// ============================================================
+// CONSULTANT COLUMN MAPPINGS - Learned column mappings for auto-discovery
+// ============================================================
+
+export const consultantColumnMappings = pgTable("consultant_column_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sourcePattern: varchar("source_pattern", { length: 255 }).notNull(),
+  targetColumn: varchar("target_column", { length: 255 }).notNull(),
+  dataType: varchar("data_type", { length: 50 }).notNull().$type<"TEXT" | "NUMERIC" | "INTEGER" | "DATE" | "BOOLEAN">(),
+  confidence: real("confidence").notNull().default(0.8),
+  usageCount: integer("usage_count").default(1),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantPatternIdx: index("idx_column_mappings_consultant_pattern").on(table.consultantId, table.sourcePattern),
+  consultantIdx: index("idx_column_mappings_consultant").on(table.consultantId),
+}));
+
+export type ConsultantColumnMapping = typeof consultantColumnMappings.$inferSelect;
+export type InsertConsultantColumnMapping = typeof consultantColumnMappings.$inferInsert;
