@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 import { DatasetUploader } from "@/components/client-data/DatasetUploader";
+import { FilePreview } from "@/components/client-data/FilePreview";
 import { ColumnDiscoveryPreview } from "@/components/client-data/ColumnDiscoveryPreview";
 import { DatasetList } from "@/components/client-data/DatasetList";
 import { DatasetViewer } from "@/components/client-data/DatasetViewer";
@@ -54,7 +55,7 @@ interface ColumnDefinition {
   sampleValues: any[];
 }
 
-type ViewMode = "list" | "upload" | "discovery" | "view" | "query" | "results" | "metrics" | "reconcile";
+type ViewMode = "list" | "upload" | "preview" | "discovery" | "view" | "query" | "results" | "metrics" | "reconcile";
 
 interface QueryResult {
   success: boolean;
@@ -84,7 +85,15 @@ export default function ClientDataAnalysis() {
     if (result.sheets.length === 1) {
       setSelectedSheet(result.sheets[0].name);
     }
+    setViewMode("preview");
+  };
+
+  const handlePreviewConfirm = () => {
     setViewMode("discovery");
+  };
+
+  const handleAddMoreFiles = () => {
+    setViewMode("upload");
   };
 
   const handleColumnConfirm = async (columns: ColumnDefinition[], datasetName: string) => {
@@ -206,6 +215,21 @@ export default function ClientDataAnalysis() {
               <DatasetUploader
                 onUploadComplete={handleUploadComplete}
                 onCancel={() => setViewMode("list")}
+              />
+            </div>
+          )}
+
+          {viewMode === "preview" && uploadResult && (
+            <div className="max-w-4xl mx-auto">
+              <FilePreview
+                uploadResult={uploadResult}
+                onConfirm={handlePreviewConfirm}
+                onAddMore={handleAddMoreFiles}
+                onCancel={() => {
+                  setUploadResult(null);
+                  setSelectedSheet(null);
+                  setViewMode("list");
+                }}
               />
             </div>
           )}

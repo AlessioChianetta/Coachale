@@ -358,18 +358,18 @@ async function lookupSavedMappings(consultantId: string, columnNames: string[]):
         .where(
           and(
             eq(consultantColumnMappings.consultantId, consultantId),
-            ilike(consultantColumnMappings.sourcePattern, `%${colName.toLowerCase()}%`)
+            eq(consultantColumnMappings.originalColumn, colName)
           )
         )
         .limit(1);
 
-      if (mapping && mapping.confidence >= 0.8) {
+      if (mapping && (mapping.usageCount ?? 0) >= 1) {
         mappingsMap.set(colName, {
           originalName: colName,
-          suggestedName: mapping.targetColumn,
-          displayName: generateDisplayName(mapping.targetColumn),
-          dataType: mapping.dataType as ColumnDefinition["dataType"],
-          confidence: mapping.confidence,
+          suggestedName: mapping.mappedColumn,
+          displayName: generateDisplayName(mapping.mappedColumn),
+          dataType: mapping.mappedType as ColumnDefinition["dataType"],
+          confidence: 0.95,
           sampleValues: [],
         });
       }
