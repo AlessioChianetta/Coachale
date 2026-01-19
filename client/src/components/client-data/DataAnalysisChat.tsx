@@ -538,7 +538,7 @@ export function DataAnalysisChat({
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-gray-900 dark:text-white truncate group-hover:text-violet-700 dark:group-hover:text-violet-300">
-                            {conv.title}
+                            {conv.title || `Conversazione ${new Date(conv.createdAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`}
                           </p>
                           <div className="flex items-center gap-3 mt-0.5">
                             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -546,10 +546,13 @@ export function DataAnalysisChat({
                               {new Date(conv.updatedAt).toLocaleDateString('it-IT', {
                                 day: 'numeric',
                                 month: 'short',
+                              })} {new Date(conv.updatedAt).toLocaleTimeString('it-IT', {
+                                hour: '2-digit',
+                                minute: '2-digit',
                               })}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {conv.messageCount} messaggi
+                              {conv.messageCount || 0} msg
                             </p>
                           </div>
                         </div>
