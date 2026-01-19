@@ -70,8 +70,8 @@ export async function executeQuery(
 }
 
 async function logQuery(
-  datasetId: string,
-  queryHash: string,
+  datasetId: string | number,
+  toolName: string,
   sql: string,
   params: Record<string, any>,
   executionTimeMs: number,
@@ -81,15 +81,20 @@ async function logQuery(
   userId?: string
 ): Promise<void> {
   try {
+    const numericDatasetId = typeof datasetId === 'number' ? datasetId : parseInt(datasetId, 10);
+    if (isNaN(numericDatasetId) || numericDatasetId <= 0) {
+      console.warn("[QUERY-EXECUTOR] Invalid datasetId for logging:", datasetId);
+      return;
+    }
     await db.insert(clientDataQueryLog).values({
-      datasetId,
-      queryHash,
+      datasetId: numericDatasetId,
+      toolName,
       sqlExecuted: sql,
-      parameters: params,
+      toolParams: params,
       executionTimeMs,
-      resultRowCount: rowCount,
-      success,
-      errorMessage,
+      rowCount,
+      fromCache: false,
+      errorMessage: success ? null : errorMessage,
       userId,
     });
   } catch (error: any) {
@@ -181,7 +186,7 @@ export async function queryMetric(
 
   await logQuery(
     datasetId,
-    queryHash,
+    "query_metric",
     sql,
     { params: parameters },
     result.executionTimeMs || 0,
@@ -322,7 +327,7 @@ export async function filterData(
 
   await logQuery(
     datasetId,
-    queryHash,
+    "filter_data",
     sql,
     { params, filters },
     result.executionTimeMs || 0,
@@ -439,7 +444,7 @@ export async function aggregateGroup(
 
   await logQuery(
     datasetId,
-    queryHash,
+    "aggregate_group",
     sql,
     { params, groupBy: groupByColumns, aggregations },
     result.executionTimeMs || 0,

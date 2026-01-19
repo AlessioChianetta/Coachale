@@ -273,7 +273,7 @@ export async function cleanupStaleComputingEntries(maxAgeMinutes: number = 5): P
       .where(
         and(
           eq(clientDataQueryCache.status, "computing"),
-          lt(clientDataQueryCache.computeStartedAt!, cutoff)
+          lt(clientDataQueryCache.computeStartedAt, cutoff)
         )
       );
   } catch (error: any) {

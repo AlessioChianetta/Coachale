@@ -8555,15 +8555,17 @@ export type InsertClientDataQueryLog = typeof clientDataQueryLog.$inferInsert;
 
 export const clientDataQueryCache = pgTable("client_data_query_cache", {
   id: serial("id").primaryKey(),
-  datasetId: integer("dataset_id").notNull(),
-  cacheKey: varchar("cache_key", { length: 255 }).notNull(),
-  result: jsonb("result").$type<any>(),
+  datasetId: text("dataset_id").notNull(),
+  queryHash: varchar("query_hash", { length: 64 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().$type<"computing" | "ready" | "error" | "expired">().default("computing"),
+  resultJson: jsonb("result_json").$type<any>(),
+  errorMessage: text("error_message"),
   createdAt: timestamp("created_at").default(sql`now()`),
   expiresAt: timestamp("expires_at"),
-  computingStartedAt: timestamp("computing_started_at"),
+  computeStartedAt: timestamp("compute_started_at"),
+  computeCompletedAt: timestamp("compute_completed_at"),
 }, (table) => ({
-  datasetKeyIdx: index("idx_client_data_query_cache_dataset_key").on(table.datasetId, table.cacheKey),
+  datasetHashIdx: index("idx_client_data_query_cache_dataset_hash").on(table.datasetId, table.queryHash),
   statusIdx: index("idx_client_data_query_cache_status").on(table.status),
 }));
 
