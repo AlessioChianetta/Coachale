@@ -219,9 +219,39 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FLAG MASTER PER DISABILITARE TUTTI GLI SCHEDULER
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 
+  // Quando hai lo stesso software su più server (es. Replit + Hostinger),
+  // usa questo flag per decidere quale server esegue i job automatici:
+  //
+  // SERVER PRINCIPALE (Replit):
+  //   SCHEDULERS_ENABLED=true (o non impostato - è il default)
+  //   → Esegue tutti gli scheduler: follow-up AI, email, sync calendario, ecc.
+  //
+  // SERVER SECONDARIO (Hostinger):
+  //   SCHEDULERS_ENABLED=false
+  //   → Solo API e webhook, NESSUN job automatico
+  //   → Evita duplicazione di email, messaggi WhatsApp, valutazioni AI
+  //
+  // Questo è più semplice che impostare 10+ flag individuali come:
+  //   FOLLOWUP_SCHEDULER_ENABLED, EMAIL_SCHEDULER_ENABLED, ecc.
+  //
+  // ═══════════════════════════════════════════════════════════════════════════
+  const schedulersMasterEnabled = process.env.SCHEDULERS_ENABLED !== "false";
+  
+  if (!schedulersMasterEnabled) {
+    log("⚠️ ═══════════════════════════════════════════════════════════════════════");
+    log("⚠️  TUTTI GLI SCHEDULER DISABILITATI (SCHEDULERS_ENABLED=false)");
+    log("⚠️  Questa istanza serve solo API e webhook, nessun job automatico");
+    log("⚠️  Per abilitare gli scheduler: rimuovi SCHEDULERS_ENABLED o impostalo a true");
+    log("⚠️ ═══════════════════════════════════════════════════════════════════════");
+  }
+
   // Setup automated email scheduler
   // 🔒 Uses globalThis registry to prevent duplicate cron jobs during hot reload
-  const emailSchedulerEnabled = process.env.EMAIL_SCHEDULER_ENABLED !== "false";
+  const emailSchedulerEnabled = schedulersMasterEnabled && process.env.EMAIL_SCHEDULER_ENABLED !== "false";
   // Schedule: Run every hour, but emails are only sent after 13:00 of the scheduled day
   const cronSchedule = "0 * * * *";
 
@@ -265,7 +295,7 @@ app.use((req, res, next) => {
   }
 
   // Setup WhatsApp polling service (alternative to webhooks)
-  const whatsappPollingEnabled = process.env.WHATSAPP_POLLING_ENABLED !== "false";
+  const whatsappPollingEnabled = schedulersMasterEnabled && process.env.WHATSAPP_POLLING_ENABLED !== "false";
   
   if (whatsappPollingEnabled) {
     log("📱 WhatsApp polling service enabled - starting polling...");
@@ -280,7 +310,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Google Calendar sync service
-  const calendarSyncEnabled = process.env.CALENDAR_SYNC_ENABLED !== "false";
+  const calendarSyncEnabled = schedulersMasterEnabled && process.env.CALENDAR_SYNC_ENABLED !== "false";
   
   if (calendarSyncEnabled) {
     log("📅 Google Calendar sync service enabled - starting sync...");
@@ -294,7 +324,7 @@ app.use((req, res, next) => {
   // ⚠️ DEPRECATED: proactive-outreach.ts è stato sostituito da followup-scheduler.ts
   // Il nuovo sistema usa AI per decidere quando e come fare follow-up
   // Mantenuto per backward compatibility ma disabilitato di default
-  const proactiveOutreachEnabled = process.env.PROACTIVE_OUTREACH_ENABLED === "true";
+  const proactiveOutreachEnabled = schedulersMasterEnabled && process.env.PROACTIVE_OUTREACH_ENABLED === "true";
   
   if (proactiveOutreachEnabled) {
     log("⚠️ DEPRECATED: Proactive outreach scheduler is deprecated - use followup-scheduler instead");
@@ -306,7 +336,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Lead Polling Scheduler
-  const leadPollingEnabled = process.env.LEAD_POLLING_ENABLED !== "false";
+  const leadPollingEnabled = schedulersMasterEnabled && process.env.LEAD_POLLING_ENABLED !== "false";
   
   if (leadPollingEnabled) {
     log("📥 Lead polling scheduler enabled - initializing...");
@@ -321,7 +351,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Google Sheets Polling Scheduler
-  const sheetsPollingEnabled = process.env.SHEETS_POLLING_ENABLED !== "false";
+  const sheetsPollingEnabled = schedulersMasterEnabled && process.env.SHEETS_POLLING_ENABLED !== "false";
   
   if (sheetsPollingEnabled) {
     log("📊 Google Sheets polling scheduler enabled - starting...");
@@ -332,7 +362,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Training Summary Aggregator (Daily at 3 AM)
-  const trainingAggregatorEnabled = process.env.TRAINING_AGGREGATOR_ENABLED !== "false";
+  const trainingAggregatorEnabled = schedulersMasterEnabled && process.env.TRAINING_AGGREGATOR_ENABLED !== "false";
   
   if (trainingAggregatorEnabled) {
     log("📊 Training summary aggregator enabled - starting scheduler...");
@@ -343,9 +373,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Follow-up Scheduler for automated WhatsApp follow-ups
-  // Set FOLLOWUP_SCHEDULER_ENABLED=false on secondary environments (e.g., Hostinger)
-  // to prevent duplicate AI evaluations when same software runs on multiple servers
-  const followupSchedulerEnabled = process.env.FOLLOWUP_SCHEDULER_ENABLED !== "false";
+  const followupSchedulerEnabled = schedulersMasterEnabled && process.env.FOLLOWUP_SCHEDULER_ENABLED !== "false";
   
   if (followupSchedulerEnabled) {
     log("⚡ Follow-up scheduler enabled - starting scheduler...");
@@ -356,7 +384,7 @@ app.use((req, res, next) => {
   }
   
   // Start nurturing scheduler for 365-day email sequences
-  const nurturingSchedulerEnabled = process.env.NURTURING_SCHEDULER_ENABLED !== 'false';
+  const nurturingSchedulerEnabled = schedulersMasterEnabled && process.env.NURTURING_SCHEDULER_ENABLED !== 'false';
   if (nurturingSchedulerEnabled) {
     log("📧 Nurturing scheduler enabled - starting scheduler...");
     startNurturingScheduler();
@@ -366,7 +394,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Instagram Window Cleanup Scheduler
-  const instagramCleanupEnabled = process.env.INSTAGRAM_CLEANUP_ENABLED !== "false";
+  const instagramCleanupEnabled = schedulersMasterEnabled && process.env.INSTAGRAM_CLEANUP_ENABLED !== "false";
   
   if (instagramCleanupEnabled) {
     log("🪟 Instagram window cleanup enabled - starting scheduler...");
@@ -377,7 +405,7 @@ app.use((req, res, next) => {
   }
 
   // Setup File Search Scheduled Sync (Daily at configured hour, Italian timezone)
-  const fileSearchSyncEnabled = process.env.FILE_SEARCH_SYNC_ENABLED !== "false";
+  const fileSearchSyncEnabled = schedulersMasterEnabled && process.env.FILE_SEARCH_SYNC_ENABLED !== "false";
   
   if (fileSearchSyncEnabled) {
     log("📅 File Search scheduled sync enabled - starting scheduler (Europe/Rome timezone)...");
@@ -388,7 +416,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Memory Summary Scheduler (Daily at 03:00 Italian time)
-  const memorySummaryEnabled = process.env.MEMORY_SUMMARY_ENABLED !== "false";
+  const memorySummaryEnabled = schedulersMasterEnabled && process.env.MEMORY_SUMMARY_ENABLED !== "false";
   
   if (memorySummaryEnabled) {
     log("🧠 Memory summary scheduler enabled - starting scheduler (03:00 Europe/Rome)...");
@@ -399,7 +427,7 @@ app.use((req, res, next) => {
   }
 
   // Setup Finance Data Pre-fetch Scheduler (Daily at 6:00 AM)
-  const financePrefetchEnabled = process.env.FINANCE_PREFETCH_ENABLED !== "false";
+  const financePrefetchEnabled = schedulersMasterEnabled && process.env.FINANCE_PREFETCH_ENABLED !== "false";
   const financePrefetchSchedule = process.env.FINANCE_PREFETCH_SCHEDULE || "0 6 * * *";
   
   if (financePrefetchEnabled) {
