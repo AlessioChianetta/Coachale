@@ -10,9 +10,9 @@
 
 | Fase | Nome | Stato | Completamento |
 |------|------|-------|---------------|
-| 0 | Setup Iniziale | ⬜ Da fare | 0% |
-| 1 | Database Schema | ⬜ Da fare | 0% |
-| 2 | Upload & Parsing | ⬜ Da fare | 0% |
+| 0 | Setup Iniziale | ✅ Completato | 100% |
+| 1 | Database Schema | ✅ Completato | 100% |
+| 2 | Upload & Parsing | 🔄 In corso | 0% |
 | 3 | Column Discovery | ⬜ Da fare | 0% |
 | 4 | Tabelle Dinamiche | ⬜ Da fare | 0% |
 | 5 | Semantic Layer & Mini-DSL | ⬜ Da fare | 0% |
@@ -34,11 +34,11 @@
 
 | # | Task | File/Comando | Stato |
 |---|------|--------------|-------|
-| 0.1 | Installare dipendenze NPM | `npm install exceljs chardet better-sse` | ⬜ |
-| 0.2 | Creare struttura cartelle backend | `server/services/client-data/` | ⬜ |
-| 0.3 | Creare struttura cartelle frontend | `client/src/components/client-data/` | ⬜ |
-| 0.4 | Creare ruolo database app_user | SQL diretto | ⬜ |
-| 0.5 | Aggiornare .gitignore | Escludere file temporanei upload | ⬜ |
+| 0.1 | Installare dipendenze NPM | `npm install exceljs chardet better-sse` | ✅ |
+| 0.2 | Creare struttura cartelle backend | `server/services/client-data/` | ✅ |
+| 0.3 | Creare struttura cartelle frontend | `client/src/components/client-data/` | ✅ |
+| 0.4 | Creare ruolo database app_user | Supabase gestisce ruoli | ⏭️ Skip |
+| 0.5 | Aggiornare .gitignore | Escludere file temporanei upload | ✅ |
 
 ### Checklist Verifica
 
@@ -58,17 +58,17 @@
 
 | # | Task | File | Stato |
 |---|------|------|-------|
-| 1.1 | Schema client_data_datasets | SQL diretto | ⬜ |
-| 1.2 | Schema client_data_metrics | SQL diretto | ⬜ |
-| 1.3 | Schema client_data_dimensions | SQL diretto | ⬜ |
-| 1.4 | Schema client_data_query_log | SQL diretto | ⬜ |
-| 1.5 | Schema client_data_dataset_groups | SQL diretto | ⬜ |
-| 1.6 | Schema client_data_join_keys | SQL diretto | ⬜ |
-| 1.7 | Schema client_data_query_cache | SQL diretto | ⬜ |
-| 1.8 | Schema consultant_column_mappings | SQL diretto | ⬜ |
-| 1.9 | Creare indici performance | SQL diretto | ⬜ |
-| 1.10 | RLS policies su tutte le tabelle | SQL diretto | ⬜ |
-| 1.11 | Trigger auto-populate consultant_id | SQL diretto | ⬜ |
+| 1.1 | Schema client_data_datasets | SQL diretto | ✅ |
+| 1.2 | Schema client_data_metrics | SQL diretto | ✅ |
+| 1.3 | Schema client_data_dimensions | SQL diretto | ✅ |
+| 1.4 | Schema client_data_query_log | SQL diretto | ✅ |
+| 1.5 | Schema client_data_dataset_groups | SQL diretto | ✅ |
+| 1.6 | Schema client_data_join_keys | SQL diretto | ✅ |
+| 1.7 | Schema client_data_query_cache | SQL diretto | ✅ |
+| 1.8 | Schema consultant_column_mappings | SQL diretto | ✅ |
+| 1.9 | Creare indici performance | SQL diretto | ✅ |
+| 1.10 | RLS policies su tutte le tabelle | SQL diretto | ⏭️ Via Supabase |
+| 1.11 | Trigger auto-populate consultant_id | SQL diretto | ⏭️ Via App Logic |
 
 ### Checklist Verifica
 
