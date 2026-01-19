@@ -102,7 +102,11 @@ async function logQuery(
   }
 }
 
-async function getDatasetInfo(datasetId: string): Promise<{ tableName: string; columns: string[] } | null> {
+async function getDatasetInfo(datasetId: string): Promise<{ 
+  tableName: string; 
+  columns: string[]; 
+  columnMapping: Record<string, { displayName: string; dataType: string }>;
+} | null> {
   const [dataset] = await db
     .select()
     .from(clientDataDatasets)
@@ -114,7 +118,11 @@ async function getDatasetInfo(datasetId: string): Promise<{ tableName: string; c
   }
 
   const columns = Object.keys(dataset.columnMapping);
-  return { tableName: dataset.tableName, columns };
+  return { 
+    tableName: dataset.tableName, 
+    columns,
+    columnMapping: dataset.columnMapping as Record<string, { displayName: string; dataType: string }>,
+  };
 }
 
 export async function queryMetric(
@@ -385,7 +393,17 @@ export async function aggregateGroup(
       return { success: false, error: `Invalid aggregate column: ${agg.column}` };
     }
 
-    const col = agg.column === "*" ? "*" : `"${agg.column}"`;
+    let col: string;
+    if (agg.column === "*") {
+      col = "*";
+    } else {
+      const colMapping = datasetInfo.columnMapping[agg.column];
+      const isNumericType = colMapping && /^(number|numeric|integer|decimal)$/i.test(colMapping.dataType);
+      const needsCast = isNumericType && ["SUM", "AVG", "MIN", "MAX"].includes(func);
+      col = needsCast 
+        ? `CAST("${agg.column}" AS NUMERIC)` 
+        : `"${agg.column}"`;
+    }
     const alias = agg.alias || `${func.toLowerCase()}_${agg.column}`;
     selectParts.push(`${func}(${col}) AS "${alias}"`);
   }
