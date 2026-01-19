@@ -11,8 +11,13 @@ import { generateTableName, createDynamicTable, importDataToTable, getTablePrevi
 import { parseMetricExpression, validateMetricAgainstSchema } from "../services/client-data/metric-dsl";
 import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, aiTools, type QueryResult } from "../services/client-data/query-executor";
 import { invalidateCache, getCacheStats } from "../services/client-data/cache-manager";
+import { askDataset, type QueryExecutionResult } from "../ai/data-analysis/query-planner";
+import { explainResults, generateNaturalLanguageResponse } from "../ai/data-analysis/result-explainer";
+import { runReconciliationTests, compareAggregations, type ReconciliationReport } from "../services/client-data/reconciliation";
 import fs from "fs";
 import path from "path";
+
+const reconciliationReportsCache = new Map<string, ReconciliationReport>();
 
 const router = Router();
 
@@ -1278,6 +1283,265 @@ router.get(
     }));
 
     res.json({ success: true, data: tools });
+  }
+);
+
+router.post(
+  "/datasets/:id/ask",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { question } = req.body as { question: string };
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      if (!question || typeof question !== "string" || question.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Domanda richiesta",
+        });
+      }
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset non trovato" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      if (dataset.status !== "ready") {
+        return res.status(400).json({
+          success: false,
+          error: `Dataset non pronto. Stato: ${dataset.status}`,
+        });
+      }
+
+      const columnMapping = dataset.columnMapping as Record<string, { displayName: string; dataType: string; description?: string }>;
+      const datasetInfo = {
+        id: dataset.id,
+        name: dataset.name,
+        columns: Object.entries(columnMapping).map(([name, info]) => ({
+          name,
+          displayName: info.displayName,
+          dataType: info.dataType,
+          description: info.description,
+        })),
+        rowCount: dataset.rowCount || 0,
+      };
+
+      console.log(`[CLIENT-DATA] Ask query: "${question}" on dataset ${id}`);
+
+      const consultantId = dataset.consultantId || userId;
+      const executionResult = await askDataset(question, [datasetInfo], consultantId, userId);
+
+      const explanation = await generateNaturalLanguageResponse(
+        executionResult.results,
+        question,
+        consultantId
+      );
+
+      await db
+        .update(clientDataDatasets)
+        .set({ lastQueriedAt: new Date() })
+        .where(eq(clientDataDatasets.id, id));
+
+      res.json({
+        success: true,
+        data: {
+          question,
+          answer: explanation,
+          plan: {
+            steps: executionResult.plan.steps,
+            complexity: executionResult.plan.estimatedComplexity,
+          },
+          results: executionResult.results.map((r) => ({
+            tool: r.toolName,
+            success: r.success,
+            data: r.result,
+            error: r.error,
+            executionTimeMs: r.executionTimeMs,
+          })),
+          totalExecutionTimeMs: executionResult.totalExecutionTimeMs,
+        },
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Ask error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante l'elaborazione della domanda",
+      });
+    }
+  }
+);
+
+router.post(
+  "/datasets/:id/reconcile",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset non trovato" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      console.log(`[CLIENT-DATA] Running reconciliation tests for dataset ${id}`);
+
+      const report = await runReconciliationTests(id);
+
+      reconciliationReportsCache.set(id, report);
+
+      res.json({
+        success: true,
+        data: report,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Reconciliation error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante i test di riconciliazione",
+      });
+    }
+  }
+);
+
+router.get(
+  "/datasets/:id/reconciliation-report",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset non trovato" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      const cachedReport = reconciliationReportsCache.get(id);
+
+      if (cachedReport) {
+        res.json({
+          success: true,
+          data: cachedReport,
+          cached: true,
+        });
+      } else {
+        res.json({
+          success: true,
+          data: null,
+          message: "Nessun report di riconciliazione disponibile. Esegui POST /reconcile per generarlo.",
+        });
+      }
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching reconciliation report:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore nel recupero del report",
+      });
+    }
+  }
+);
+
+router.post(
+  "/datasets/:id/compare-aggregations",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { dsl1, dsl2, expectedRelation, expectedValue } = req.body as {
+        dsl1: string;
+        dsl2: string;
+        expectedRelation: "equal" | "greater" | "less" | "sum";
+        expectedValue?: number;
+      };
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      if (!dsl1 || !dsl2 || !expectedRelation) {
+        return res.status(400).json({
+          success: false,
+          error: "Parametri mancanti: dsl1, dsl2, expectedRelation",
+        });
+      }
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset non trovato" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Accesso negato" });
+      }
+
+      const result = await compareAggregations(id, dsl1, dsl2, expectedRelation, expectedValue);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Compare aggregations error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore nel confronto aggregazioni",
+      });
+    }
   }
 );
 

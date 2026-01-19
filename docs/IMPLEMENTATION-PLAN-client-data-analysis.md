@@ -18,9 +18,9 @@
 | 5 | Semantic Layer & Mini-DSL | ✅ Completato | 100% |
 | 6 | Query Executor | ✅ Completato | 100% |
 | 7 | Cache Anti-Stampede | ✅ Completato | 100% |
-| 8 | AI Integration | 🔄 In corso | 0% |
-| 9 | Test Riconciliazione | ⬜ Da fare | 0% |
-| 10 | Frontend | ⬜ Da fare | 0% |
+| 8 | AI Integration | ✅ Completato | 100% |
+| 9 | Test Riconciliazione | ✅ Completato | 100% |
+| 10 | Frontend | 🔄 In corso | 0% |
 | 11 | Polish & Security | ⬜ Da fare | 0% |
 
 ---
@@ -545,4 +545,5 @@ npm install exceljs chardet better-sse
 | 2026-01-19 | 2 | Upload & Parsing | OK | client-data-router.ts, upload-processor.ts, column-profiler.ts |
 | 2026-01-19 | 3+4 | Column Discovery + Tabelle | OK | column-discovery.ts, table-generator.ts, consultant_column_mappings |
 | 2026-01-19 | 5+6+7 | DSL + Executor + Cache | OK | metric-dsl.ts, query-executor.ts, cache-manager.ts |
+| 2026-01-19 | 8+9 | AI Integration + Riconciliazione | OK | tool-definitions.ts, query-planner.ts, result-explainer.ts, reconciliation.ts |
 
