@@ -262,16 +262,6 @@ export async function evaluateFollowup(
       console.log(`📅 [FOLLOWUP-ENGINE] AI suggested nextEvaluationAt: ${result.nextEvaluationAt}`);
     }
 
-    // Calculate default nextEvaluationAt if AI didn't provide one for skip/silence/nurturing
-    let finalNextEvaluationAt: string | undefined = result.nextEvaluationAt;
-    if (!finalNextEvaluationAt && ['skip', 'silence', 'nurturing'].includes(finalDecision)) {
-      const defaultNextEval = calculateDefaultNextEvaluation(finalDecision, context);
-      if (defaultNextEval) {
-        finalNextEvaluationAt = defaultNextEval.toISOString();
-        console.log(`📅 [FOLLOWUP-ENGINE] AI didn't provide nextEvaluationAt, using default: ${finalNextEvaluationAt}`);
-      }
-    }
-
     return {
       decision: finalDecision,
       urgency: result.urgency || undefined,
@@ -284,7 +274,7 @@ export async function evaluateFollowup(
       stateTransition: result.stateTransition || undefined,
       allowFreeformMessage,
       modelName: model,
-      nextEvaluationAt: finalNextEvaluationAt,
+      nextEvaluationAt: result.nextEvaluationAt || undefined,
     };
   } catch (error) {
     console.error("❌ [FOLLOWUP-ENGINE] Error evaluating follow-up:", error);
@@ -543,52 +533,6 @@ function createDefaultSkipDecision(reason: string): FollowupDecision {
     reasoning: reason,
     confidenceScore: 0,
   };
-}
-
-/**
- * Calculate a default nextEvaluationAt when AI doesn't provide one.
- * Rules:
- * - skip: Rivaluta tra 2-4 ore (in base a quanto è passato)
- * - silence: Rivaluta tra 24-48 ore
- * - nurturing: Rivaluta tra 48-72 ore
- * - Sempre in orario lavorativo (07:00-22:00)
- */
-function calculateDefaultNextEvaluation(decision: string, context: FollowupContext): Date | null {
-  const now = new Date();
-  let hoursToAdd: number;
-
-  switch (decision) {
-    case 'skip':
-      // Se è passato poco tempo, rivaluta tra 2 ore
-      // Se è passato più tempo, rivaluta tra 4 ore
-      hoursToAdd = context.hoursSinceLastOutbound < 6 ? 2 : 4;
-      break;
-    case 'silence':
-      // Rivaluta tra 24-48 ore
-      hoursToAdd = 24;
-      break;
-    case 'nurturing':
-      // Rivaluta tra 48-72 ore
-      hoursToAdd = 48;
-      break;
-    default:
-      return null;
-  }
-
-  const nextEval = new Date(now.getTime() + hoursToAdd * 60 * 60 * 1000);
-
-  // Adjust to business hours (07:00-22:00)
-  const hours = nextEval.getHours();
-  if (hours < 7) {
-    nextEval.setHours(7, 0, 0, 0);
-  } else if (hours >= 22) {
-    // Push to next day at 07:00
-    nextEval.setDate(nextEval.getDate() + 1);
-    nextEval.setHours(7, 0, 0, 0);
-  }
-
-  console.log(`📅 [FOLLOWUP-ENGINE] Default nextEvaluation for ${decision}: +${hoursToAdd}h → ${nextEval.toISOString()}`);
-  return nextEval;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
