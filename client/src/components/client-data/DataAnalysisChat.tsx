@@ -150,8 +150,8 @@ export function DataAnalysisChat({
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, question }: { conversationId: string; question: string }) => {
-      return apiRequest("POST", `/api/client-data/conversations/${conversationId}/messages`, { question });
+    mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
+      return apiRequest("POST", `/api/client-data/conversations/${conversationId}/messages`, { content });
     },
     onSuccess: (data: any) => {
       const toolCalls = data.toolCalls?.map((tc: { toolName: string; params?: object }) => {
@@ -229,7 +229,7 @@ export function DataAnalysisChat({
       }
     }
 
-    sendMessageMutation.mutate({ conversationId, question: input.trim() });
+    sendMessageMutation.mutate({ conversationId, content: input.trim() });
     setInput("");
   };
 
