@@ -97,10 +97,6 @@ export function QueryChat({
         queryResult: data,
       };
       setMessages((prev) => [...prev, assistantMessage]);
-
-      if (data.success && onResultSelect) {
-        onResultSelect(data);
-      }
     },
     onError: (error: Error) => {
       const errorMessage: QueryMessage = {
