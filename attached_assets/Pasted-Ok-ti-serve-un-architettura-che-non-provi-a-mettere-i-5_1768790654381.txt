@@ -1,0 +1,304 @@
+Ok—ti serve un’architettura che non provi a “mettere i 5M token nel prompt”, ma che faccia:
+
+calcolo deterministico fuori dal modello (SQL / Python / DuckDB / Polars),
+
+LLM solo per interpretazione, spiegazioni, e decisioni,
+
+RAG solo per “recuperare evidenze”, non per contare/sommare riga-per-riga.
+
+Di seguito una soluzione ad hoc (gennaio 2026), concreta, che funziona bene con Gemini via API e dataset “ristorante” in Excel.
+
+Perché oggi ti si rompe
+
+RAG: recupera pezzi rilevanti, ma non garantisce aggregazioni corrette su tutto il dataset (non vede tutte le righe).
+
+“Python in RAM” ma passato al system prompt: stai facendo il classico errore “agentic tool” mal incapsulato: il modello vede un sacco di testo/righe (o un dump), e quindi:
+
+o sfora contesto,
+
+o perde precisione,
+
+o non esegue aggregazioni su tutte le righe perché non le ha davvero in input.
+
+Serve separare “dati” da “ragionamento”.
+
+Soluzione: “Compute-first + Evidence + LLM” (pattern robusto)
+A) Ingest & storage (una volta sola)
+
+Converti l’Excel in Parquet (o in DB).
+
+Parquet è perfetto: compressione, colonne, veloce per aggregazioni.
+
+Carica in:
+
+DuckDB (embedded, zero infra) oppure
+
+Postgres (se già lo usi) oppure
+
+BigQuery (se hai volumi e vuoi managed).
+
+Per un ristorante, spesso DuckDB + Parquet è la combo più semplice e velocissima.
+
+B) Motore di calcolo deterministico (no LLM)
+
+Qui fai tutto ciò che è “riga per riga / somma / media / raggruppa / filtra”.
+
+Esempi tipici ristorante:
+
+fatturato per giorno/ora, coperti per fascia oraria
+
+ticket medio, margine per piatto/categoria
+
+top 20 piatti, trend, stagionalità
+
+tempi medi di servizio (se hai timestamp)
+
+correlazioni: meteo/eventi (se integri dati esterni)
+
+Tutto questo lo fai con:
+
+SQL (DuckDB/Postgres) oppure
+
+Polars (molto veloce per dataframe grandi).
+
+Output del compute: non passi mai le righe raw al modello.
+Passi solo:
+
+tabelle aggregate (piccole),
+
+statistiche,
+
+campioni controllati di righe (max N) se servono per spiegare anomalie.
+
+C) “LLM as Planner + Explainer” (Gemini 3 Pro)
+
+Gemini non deve “calcolare”. Deve:
+
+capire la domanda dell’utente,
+
+generare un piano di query (SQL) oppure chiamare funzioni/tool,
+
+leggere risultati aggregati,
+
+produrre una risposta spiegata e verificabile.
+
+Tool calling / function calling
+
+In pratica: Gemini decide “quali query servono”, tu le esegui, poi rimandi risultati.
+
+Schema tipico:
+
+User: “Qual è il fatturato medio a pranzo negli ultimi 90 giorni e quali piatti lo guidano?”
+
+Gemini: genera una o più query (o JSON tool call)
+
+Backend: esegue query su DuckDB/Postgres
+
+Backend: ritorna risultati (tabelle sintetiche)
+
+Gemini: interpreta e risponde (con spiegazione, caveat, grafici/insights).
+
+D) RAG solo per “documenti”, non per numeri
+
+RAG è perfetto per:
+
+manuale operativo
+
+descrizioni menu
+
+regole contabili
+
+promozioni
+
+note/annotazioni
+
+spiegazione colonne del dataset
+
+Ma per numeri globali: sempre compute.
+
+Il pezzo che ti manca: “Semantic layer” (metrica canonica)
+
+Per evitare che il modello inventi query sbagliate o metriche incoerenti, crei un “semantic layer” piccolo e stabile.
+
+Esempio JSON/YAML con:
+
+nomi tabelle
+
+colonne
+
+definizioni metriche (es. “fatturato = sum(totale_netto)”, “coperti = count(distinct id_scontrino)”, “ticket_medio = fatturato/coperti”)
+
+regole (timezone, arrotondamenti, resi/storni)
+
+Poi Gemini non scrive SQL libero:
+o scrive SQL ma validato,
+o meglio: chiama funzioni tipo:
+
+get_metric(metric_name, dims, filters, date_range)
+
+top_items(metric, group_by, filters, limit)
+
+compare_periods(metric, period_a, period_b, dims)
+
+Tu traduci questi in SQL.
+
+Questo è il salto di qualità che rende tutto robusto.
+
+Guardrail fondamentali (anti-allucinazioni)
+
+Niente raw data nel prompt: solo output aggregati e controllati.
+
+Ogni risposta deve includere:
+
+“Metriche usate”
+
+“Periodo”
+
+“Filtri”
+
+“Fonte: query eseguite” (anche solo query_id e summary)
+
+Verifica automatica:
+
+riconciliazioni (es. somma giornaliera = totale mese)
+
+controlli outlier
+
+se risultati “strani”, ritorni warning al modello.
+
+Come gestire 5M token senza soffrire
+
+Non devi mai “metterli nel prompt”. Devi:
+
+tenerli in storage columnar/DB
+
+far query
+
+inviare al modello solo:
+
+1–5 tabelle aggregate (poche centinaia di righe max)
+
+eventuale “sample” (es. 30 righe) per debug
+
+definizioni metriche dal semantic layer
+
+Implementazione pratica (stack consigliato)
+Opzione 1 (più semplice, super veloce)
+
+Excel → Parquet (una volta)
+
+DuckDB embedded (legge Parquet, fa SQL)
+
+Polars opzionale
+
+Gemini 3 Pro API con tool calling
+
+Vector DB (per doc RAG) es. pgvector / Pinecone / Weaviate (solo docs)
+
+Opzione 2 (se hai già Postgres)
+
+Excel → Postgres (COPY)
+
+indici sulle date e chiavi
+
+funzioni metriche in SQL
+
+Gemini tool calling sopra
+
+Prompting “giusto” (minimal, non gigante)
+
+System prompt di Gemini deve dire:
+
+“Non calcolare su dati non visti”
+
+“Usa sempre gli strumenti”
+
+“Se ti manca un dato, chiedi una query”
+
+“Risposte con metriche/periodi/filtri”
+
+“Mai inventare valori”
+
+E poi gli dai:
+
+schema database
+
+semantic layer (metriche)
+
+elenco tool/funzioni disponibili
+
+Fine. Niente 5M token.
+
+Esempio di flusso (con tool)
+
+User: “Dimmi i piatti con margine peggiore nell’ultimo trimestre e perché.”
+Gemini:
+
+tool call: top_items(metric="margine_percentuale", group_by="piatto", filters={"period":"last_90_days"}, order="asc", limit=20)
+
+tool call: get_metric(metric="costo_medio_ingredienti", dims=["piatto"], filters={"piatto_in":[...]})
+
+tool call: get_metric(metric="sconti_totali", dims=["piatto"], filters=...)
+
+Backend esegue SQL, ritorna tabelle.
+Gemini fa analisi (non calcolo), spiega: “margine basso perché costo ingredienti alto + sconti + porzioni…”.
+
+“Gemini 3 Pro” – note pratiche (gen 2026)
+
+Usa function calling / tool use in modo “hard”: il modello non deve poter rispondere “a mano” se la domanda richiede numeri.
+
+Imposta un validator:
+
+se l’utente chiede numeri e non ci sono risultati tool → blocchi la risposta e forzi tool call.
+
+Usa cache per query frequenti (last 7/30/90 days).
+
+Per domande “esplorative”, fai prima una query di profiling (min/max, count, nulls, date range).
+
+La tua situazione specifica: cosa fare domani
+
+Smetti di usare file search per calcoli: usalo solo per “manuali, note, definizioni”.
+
+Porta Excel → Parquet + DuckDB.
+
+Implementa 6–10 tool robusti (semantic layer), non SQL libero:
+
+profile_dataset()
+
+get_metric()
+
+breakdown_metric()
+
+top_bottom()
+
+compare_periods()
+
+anomaly_scan()
+
+Gemini 3 Pro fa solo:
+
+scegliere tool + parametri
+
+interpretare output
+
+scrivere la risposta
+
+Se vuoi che ti dia una soluzione precisa per i tuoi dati
+
+Senza chiederti troppe cose: se mi dici solo:
+
+quali colonne principali hai (es. data, totale, piatto, quantità, costo, sconto, tavolo, cameriere…)
+
+quali 10 domande “core” vuoi supportare
+…ti preparo:
+
+schema DuckDB/Postgres,
+
+semantic layer metriche,
+
+set di tool,
+
+e un system prompt + esempi (few-shot) pronti per Gemini.
+
+Intanto, se vuoi la risposta netta:
+Compute-first (DuckDB/SQL) + tool calling + semantic layer + RAG solo docs è la strada corretta.
