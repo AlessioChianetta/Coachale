@@ -76,9 +76,11 @@ export default function ClientDataAnalysis() {
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
 
-  const handleUploadComplete = (result: UploadResult) => {
+  const handleUploadComplete = (result: UploadResult, clientId?: string) => {
     setUploadResult(result);
+    setSelectedClientId(clientId);
     if (result.sheets.length === 1) {
       setSelectedSheet(result.sheets[0].name);
     }
@@ -95,6 +97,7 @@ export default function ClientDataAnalysis() {
         filename: uploadResult.originalFilename,
         sheetName: selectedSheet,
         columns,
+        clientId: selectedClientId,
       });
 
       if (response.success) {

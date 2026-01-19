@@ -1,12 +1,15 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, X, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Users } from "lucide-react";
 import { getToken } from "@/lib/auth";
+import { apiRequest } from "@/lib/queryClient";
 
 interface SheetInfo {
   name: string;
@@ -30,8 +33,15 @@ interface UploadResult {
   columnProfiles: Record<string, any> | null;
 }
 
+interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 interface DatasetUploaderProps {
-  onUploadComplete: (result: UploadResult) => void;
+  onUploadComplete: (result: UploadResult, clientId?: string) => void;
   onCancel?: () => void;
 }
 
@@ -40,6 +50,12 @@ export function DatasetUploader({ onUploadComplete, onCancel }: DatasetUploaderP
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
+
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    queryFn: () => apiRequest("/api/clients"),
+  });
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -68,7 +84,7 @@ export function DatasetUploader({ onUploadComplete, onCancel }: DatasetUploaderP
           title: "File caricato con successo",
           description: `${data.data.originalFilename} - ${data.data.sheets.length} fogli trovati`,
         });
-        onUploadComplete(data.data);
+        onUploadComplete(data.data, selectedClientId || undefined);
       } else {
         throw new Error(data.error || "Errore durante l'upload");
       }
@@ -153,7 +169,30 @@ export function DatasetUploader({ onUploadComplete, onCancel }: DatasetUploaderP
           Carica un file Excel o CSV per analizzare i dati del tuo cliente
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="client-select" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Associa a un cliente (opzionale)
+          </Label>
+          <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+            <SelectTrigger id="client-select">
+              <SelectValue placeholder="Seleziona un cliente..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Nessun cliente (solo per me)</SelectItem>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.firstName} {client.lastName} ({client.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-slate-500">
+            Se associ il dataset a un cliente, anche lui potra vederlo e interrogarlo.
+          </p>
+        </div>
+
         {!selectedFile ? (
           <div
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
