@@ -78,6 +78,7 @@ export default function ClientDataAnalysis() {
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleUploadComplete = (result: UploadResult, clientId?: string) => {
     setUploadResult(result);
@@ -99,6 +100,7 @@ export default function ClientDataAnalysis() {
   const handleColumnConfirm = async (columns: ColumnDefinition[], datasetName: string) => {
     if (!uploadResult) return;
 
+    setIsImporting(true);
     try {
       const response = await apiRequest("POST", "/api/client-data/create-and-import", {
         name: datasetName,
@@ -125,6 +127,8 @@ export default function ClientDataAnalysis() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -267,6 +271,7 @@ export default function ClientDataAnalysis() {
                     setSelectedSheet(null);
                     setViewMode("list");
                   }}
+                  isImporting={isImporting}
                 />
               )}
             </div>

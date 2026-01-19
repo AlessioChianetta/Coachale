@@ -635,8 +635,7 @@ router.post(
             consultantId,
             col.originalName,
             col.suggestedName,
-            col.dataType,
-            col.confidence
+            col.dataType
           );
         }
       }
@@ -834,8 +833,7 @@ router.post(
             consultantId,
             col.originalName,
             col.suggestedName,
-            col.dataType,
-            col.confidence
+            col.dataType
           );
         }
       }

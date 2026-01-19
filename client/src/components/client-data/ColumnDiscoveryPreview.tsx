@@ -37,6 +37,7 @@ interface ColumnDiscoveryPreviewProps {
   sheetName?: string;
   onConfirm: (columns: ColumnDefinition[], datasetName: string) => void;
   onCancel: () => void;
+  isImporting?: boolean;
 }
 
 const dataTypes = [
@@ -96,6 +97,7 @@ export function ColumnDiscoveryPreview({
   sheetName,
   onConfirm,
   onCancel,
+  isImporting = false,
 }: ColumnDiscoveryPreviewProps) {
   const { toast } = useToast();
   const [columns, setColumns] = useState<ColumnDefinition[]>([]);
@@ -354,13 +356,26 @@ export function ColumnDiscoveryPreview({
         )}
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel} disabled={isImporting}>
           Annulla
         </Button>
         {discoveryResult && (
-          <Button onClick={handleConfirm} className="bg-emerald-600 hover:bg-emerald-700">
-            <Check className="h-4 w-4 mr-2" />
-            Conferma e Importa
+          <Button 
+            onClick={handleConfirm} 
+            className="bg-emerald-600 hover:bg-emerald-700"
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Importazione in corso...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Conferma e Importa
+              </>
+            )}
           </Button>
         )}
       </CardFooter>

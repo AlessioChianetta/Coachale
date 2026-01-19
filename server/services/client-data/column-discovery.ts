@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { consultantColumnMappings } from "../../../shared/schema";
-import { eq, and, ilike } from "drizzle-orm";
+import { eq, and, ilike, sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { getSuperAdminGeminiKeys } from "../../ai/provider-factory";
 import type { DistributedSample, ColumnProfile } from "./column-profiler";
@@ -594,10 +594,9 @@ export async function discoverColumns(
 
 export async function saveColumnMapping(
   consultantId: string,
-  sourcePattern: string,
-  targetColumn: string,
-  dataType: string,
-  confidence: number
+  originalColumn: string,
+  mappedColumn: string,
+  mappedType: string
 ): Promise<void> {
   try {
     const existing = await db
@@ -606,7 +605,7 @@ export async function saveColumnMapping(
       .where(
         and(
           eq(consultantColumnMappings.consultantId, consultantId),
-          eq(consultantColumnMappings.sourcePattern, sourcePattern.toLowerCase())
+          eq(consultantColumnMappings.originalColumn, originalColumn.toLowerCase())
         )
       )
       .limit(1);
@@ -615,23 +614,23 @@ export async function saveColumnMapping(
       await db
         .update(consultantColumnMappings)
         .set({
-          targetColumn,
-          dataType,
-          confidence,
+          mappedColumn,
+          mappedType: mappedType as "TEXT" | "NUMERIC" | "INTEGER" | "DATE" | "BOOLEAN",
+          usageCount: sql`${consultantColumnMappings.usageCount} + 1`,
           updatedAt: new Date(),
         })
         .where(eq(consultantColumnMappings.id, existing[0].id));
     } else {
       await db.insert(consultantColumnMappings).values({
         consultantId,
-        sourcePattern: sourcePattern.toLowerCase(),
-        targetColumn,
-        dataType,
-        confidence,
+        originalColumn: originalColumn.toLowerCase(),
+        mappedColumn,
+        mappedType: mappedType as "TEXT" | "NUMERIC" | "INTEGER" | "DATE" | "BOOLEAN",
+        usageCount: 1,
       });
     }
 
-    console.log(`[COLUMN-DISCOVERY] Saved mapping: ${sourcePattern} -> ${targetColumn} (${dataType})`);
+    console.log(`[COLUMN-DISCOVERY] Saved mapping: ${originalColumn} -> ${mappedColumn} (${mappedType})`);
   } catch (error) {
     console.error("[COLUMN-DISCOVERY] Error saving column mapping:", error);
   }
