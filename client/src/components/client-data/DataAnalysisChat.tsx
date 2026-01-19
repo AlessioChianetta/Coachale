@@ -186,6 +186,9 @@ export function DataAnalysisChat({
         content,
         model,
         thinkingLevel: thinkingLvl,
+        writingStyle: preferences?.writingStyle || "default",
+        responseLength: (preferences as any)?.responseLength || "medium",
+        customInstructions: (preferences as any)?.customInstructions || "",
       });
     },
     onSuccess: (data: any) => {
