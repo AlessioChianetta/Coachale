@@ -228,6 +228,10 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
   try {
     const response = await client.generateContent({
       model: modelName,
+      systemInstruction: {
+        role: "system",
+        parts: [{ text: SYSTEM_PROMPT_IT }]
+      },
       contents: [
         { role: "user", parts: [{ text: userPrompt }] }
       ],
@@ -237,7 +241,12 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
       },
       tools: [{
         functionDeclarations: dataAnalysisTools
-      }]
+      }],
+      toolConfig: {
+        functionCallingConfig: {
+          mode: "AUTO"
+        }
+      }
     });
 
     const responseText = response.response.text();
@@ -281,7 +290,27 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
         });
         
         if (numericCols.length > 0) {
-          const groupByCol = dateCols.length > 0 ? dateCols[0].name : (textCols.length > 0 ? textCols[0].name : null);
+          let groupByCol: string | null = null;
+          let groupByExpression: string | null = null;
+          
+          const wantsMonthGrouping = /per\s+mese|mensil|monthly/i.test(userQuestion);
+          const wantsYearGrouping = /per\s+anno|annual|yearly/i.test(userQuestion);
+          
+          if (dateCols.length > 0) {
+            const dateCol = dateCols[0].name;
+            if (wantsMonthGrouping) {
+              groupByExpression = `DATE_TRUNC('month', "${dateCol}")`;
+              groupByCol = "mese";
+            } else if (wantsYearGrouping) {
+              groupByExpression = `DATE_TRUNC('year', "${dateCol}")`;
+              groupByCol = "anno";
+            } else {
+              groupByCol = dateCol;
+            }
+          } else if (textCols.length > 0) {
+            groupByCol = textCols[0].name;
+          }
+          
           const sumCol = numericCols.find(c => /total|importo|prezzo|price|net|revenue|amount/i.test(c.name)) || numericCols[0];
           
           if (groupByCol) {
@@ -289,13 +318,14 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
               name: "aggregate_group",
               args: {
                 datasetId: String(datasets[0].id),
-                groupBy: [groupByCol],
+                groupBy: groupByExpression ? [groupByExpression] : [groupByCol],
+                groupByAlias: groupByExpression ? groupByCol : undefined,
                 aggregations: [{ column: sumCol.name, function: "SUM", alias: "totale" }],
                 orderBy: { column: "totale", direction: "DESC" },
                 limit: 20
               }
             });
-            console.log("[QUERY-PLANNER] Using intelligent fallback: aggregate_group by", groupByCol, "sum of", sumCol.name);
+            console.log("[QUERY-PLANNER] Using intelligent fallback: aggregate_group by", groupByExpression || groupByCol, "sum of", sumCol.name);
           }
         }
       }
