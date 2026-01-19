@@ -1354,6 +1354,17 @@ router.post(
       const consultantId = dataset.consultantId || userId;
       const executionResult = await askDataset(question, [datasetInfo], consultantId, userId);
 
+      console.log(`[CLIENT-DATA] Execution result:`, {
+        planSteps: executionResult.plan.steps.length,
+        resultsCount: executionResult.results.length,
+        results: executionResult.results.map(r => ({
+          tool: r.toolName,
+          success: r.success,
+          dataLength: Array.isArray(r.result) ? r.result.length : (r.result ? 'object' : 'null'),
+          error: r.error,
+        })),
+      });
+
       const explanation = await generateNaturalLanguageResponse(
         executionResult.results,
         question,
@@ -1365,24 +1376,33 @@ router.post(
         .set({ lastQueriedAt: new Date() })
         .where(eq(clientDataDatasets.id, id));
 
+      const responseData = {
+        question,
+        answer: explanation,
+        plan: {
+          steps: executionResult.plan.steps,
+          complexity: executionResult.plan.estimatedComplexity,
+        },
+        results: executionResult.results.map((r) => ({
+          tool: r.toolName,
+          success: r.success,
+          data: r.result,
+          error: r.error,
+          executionTimeMs: r.executionTimeMs,
+        })),
+        totalExecutionTimeMs: executionResult.totalExecutionTimeMs,
+      };
+
+      console.log(`[CLIENT-DATA] Response data summary:`, {
+        hasAnswer: !!responseData.answer,
+        answerLength: responseData.answer?.length || 0,
+        resultsWithData: responseData.results.filter(r => r.success && r.data).length,
+        firstResultDataSample: responseData.results[0]?.data?.slice?.(0, 2) || responseData.results[0]?.data,
+      });
+
       res.json({
         success: true,
-        data: {
-          question,
-          answer: explanation,
-          plan: {
-            steps: executionResult.plan.steps,
-            complexity: executionResult.plan.estimatedComplexity,
-          },
-          results: executionResult.results.map((r) => ({
-            tool: r.toolName,
-            success: r.success,
-            data: r.result,
-            error: r.error,
-            executionTimeMs: r.executionTimeMs,
-          })),
-          totalExecutionTimeMs: executionResult.totalExecutionTimeMs,
-        },
+        data: responseData,
       });
     } catch (error: any) {
       console.error("[CLIENT-DATA] Ask error:", error);

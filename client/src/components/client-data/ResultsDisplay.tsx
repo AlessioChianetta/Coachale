@@ -81,20 +81,38 @@ export function ResultsDisplay({ result, onClose }: ResultsDisplayProps) {
   const [copied, setCopied] = useState(false);
 
   const extractRows = (): Record<string, any>[] => {
+    console.log("[ResultsDisplay] Extracting rows from result:", {
+      hasData: !!result.data,
+      hasRows: !!result.data?.rows,
+      rowsLength: result.data?.rows?.length || 0,
+      hasResults: !!result.data?.results,
+      resultsLength: result.data?.results?.length || 0,
+      resultsDetails: result.data?.results?.map(r => ({
+        tool: r.tool,
+        success: r.success,
+        dataIsArray: Array.isArray(r.data),
+        dataLength: Array.isArray(r.data) ? r.data.length : (r.data ? 'object' : 'null'),
+      })),
+    });
+
     if (result.data?.rows && result.data.rows.length > 0) {
+      console.log("[ResultsDisplay] Using data.rows:", result.data.rows.length, "rows");
       return result.data.rows;
     }
     if (result.data?.results) {
       for (const r of result.data.results) {
         if (r.success && Array.isArray(r.data) && r.data.length > 0) {
+          console.log("[ResultsDisplay] Using results[].data:", r.data.length, "rows from tool:", r.tool);
           return r.data;
         }
       }
     }
+    console.log("[ResultsDisplay] No rows found, returning empty array");
     return [];
   };
 
   const rows = extractRows();
+  console.log("[ResultsDisplay] Final rows:", rows.length, "columns:", rows.length > 0 ? Object.keys(rows[0]) : []);
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
   const aggregations = result.data?.aggregations || {};
   const chartData = result.data?.chartData || rows;
