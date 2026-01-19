@@ -131,11 +131,12 @@ Sistema di analisi dati strutturati (Excel/CSV) per clienti con architettura "co
 
 ### Data Analysis Chat UI (Gennaio 2026)
 Interfaccia chat AI stile ChatGPT per l'analisi dati con:
-- **DataAnalysisChat Component**: Messaggi animati con avatar, tabs Chat/History
+- **Unified Components (Gennaio 2026)**: DataAnalysisChat riutilizza esattamente gli stessi componenti dell'AI Assistant (MessageList, InputArea, AIPreferencesSheet) per UI identica
 - **Conversation Persistence**: Tabelle `client_data_conversations`, `client_data_messages` per storico
-- **Tool Call Visualization**: ThinkingBubble mostra tool calls durante l'elaborazione (aggregate_group, filter_data, etc.)
+- **Tool Call Visualization**: ThinkingBubble mostra tool calls durante l'elaborazione (aggregate_group, filter_data, etc.) via formatToolCallsAsThinking()
 - **Consultative AI Prompt**: Prompt a 6 passi (risposta, contesto, pattern, interpretazione, azione, follow-up)
-- **AI Preferences**: Tabella `client_data_ai_preferences` per modello preferito, thinking level, stile
+- **Unified Preferences System**: Usa le preferenze dell'AI Assistant (`ai_assistant_preferences`) invece di tabella separata, passando model, thinkingLevel, writingStyle, responseLength, customInstructions al backend
+- **Backend Preference Integration**: `result-explainer.ts` applica le preferenze utente al prompt AI (stile, lunghezza, istruzioni personalizzate)
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
