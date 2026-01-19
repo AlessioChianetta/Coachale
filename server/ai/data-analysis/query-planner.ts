@@ -257,29 +257,45 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
 
     if (steps.length === 0 && datasets.length > 0) {
       console.log("[QUERY-PLANNER] No function calls returned, attempting intelligent fallback");
-      const questionLower = userQuestion.toLowerCase();
       const hasGroupingIntent = /per\s+(mese|anno|categoria|prodotto|cliente|giorno)|raggruppat|suddivi|top\s+\d+/i.test(userQuestion);
       const hasAggregationIntent = /totale|somma|media|average|conteggio|count|quant[io]|massimo|minimo/i.test(userQuestion);
       
+      console.log("[QUERY-PLANNER] Fallback intent detection:", { hasGroupingIntent, hasAggregationIntent });
+      console.log("[QUERY-PLANNER] Dataset columns:", datasets[0].columns.map(c => ({ name: c.name, type: c.dataType })));
+      
       if (hasGroupingIntent || hasAggregationIntent) {
-        const numericCols = datasets[0].columns.filter(c => c.dataType === "NUMERIC" || c.dataType === "INTEGER");
-        const dateCols = datasets[0].columns.filter(c => c.dataType === "DATE");
-        const textCols = datasets[0].columns.filter(c => c.dataType === "TEXT");
+        const numericCols = datasets[0].columns.filter(c => 
+          /^(NUMERIC|INTEGER|number|decimal)$/i.test(c.dataType)
+        );
+        const dateCols = datasets[0].columns.filter(c => 
+          /^(DATE|datetime|timestamp)$/i.test(c.dataType)
+        );
+        const textCols = datasets[0].columns.filter(c => 
+          /^(TEXT|varchar|string)$/i.test(c.dataType)
+        );
+        
+        console.log("[QUERY-PLANNER] Column types found:", { 
+          numericCols: numericCols.map(c => c.name), 
+          dateCols: dateCols.map(c => c.name),
+          textCols: textCols.map(c => c.name)
+        });
         
         if (numericCols.length > 0) {
           const groupByCol = dateCols.length > 0 ? dateCols[0].name : (textCols.length > 0 ? textCols[0].name : null);
+          const sumCol = numericCols.find(c => /total|importo|prezzo|price|net|revenue|amount/i.test(c.name)) || numericCols[0];
+          
           if (groupByCol) {
             steps.push({
               name: "aggregate_group",
               args: {
                 datasetId: String(datasets[0].id),
                 groupBy: [groupByCol],
-                aggregations: [{ column: numericCols[0].name, function: "SUM", alias: "totale" }],
+                aggregations: [{ column: sumCol.name, function: "SUM", alias: "totale" }],
                 orderBy: { column: "totale", direction: "DESC" },
                 limit: 20
               }
             });
-            console.log("[QUERY-PLANNER] Using intelligent fallback: aggregate_group");
+            console.log("[QUERY-PLANNER] Using intelligent fallback: aggregate_group by", groupByCol, "sum of", sumCol.name);
           }
         }
       }
