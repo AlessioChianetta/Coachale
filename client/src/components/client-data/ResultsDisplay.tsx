@@ -35,10 +35,24 @@ import { useToast } from "@/hooks/use-toast";
 interface QueryResult {
   success: boolean;
   data?: {
+    question?: string;
+    answer?: string;
+    plan?: {
+      steps: any[];
+      complexity: string;
+    };
+    results?: Array<{
+      tool: string;
+      success: boolean;
+      data: any;
+      error?: string;
+      executionTimeMs: number;
+    }>;
     rows?: Record<string, any>[];
     aggregations?: Record<string, any>;
     chartData?: any[];
     summary?: string;
+    totalExecutionTimeMs?: number;
   };
   explanation?: string;
   sqlGenerated?: string;
@@ -66,7 +80,21 @@ export function ResultsDisplay({ result, onClose }: ResultsDisplayProps) {
   const [activeTab, setActiveTab] = useState("table");
   const [copied, setCopied] = useState(false);
 
-  const rows = result.data?.rows || [];
+  const extractRows = (): Record<string, any>[] => {
+    if (result.data?.rows && result.data.rows.length > 0) {
+      return result.data.rows;
+    }
+    if (result.data?.results) {
+      for (const r of result.data.results) {
+        if (r.success && Array.isArray(r.data) && r.data.length > 0) {
+          return r.data;
+        }
+      }
+    }
+    return [];
+  };
+
+  const rows = extractRows();
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
   const aggregations = result.data?.aggregations || {};
   const chartData = result.data?.chartData || rows;
