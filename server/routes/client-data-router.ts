@@ -1796,7 +1796,14 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const { id } = req.params;
-      const { content } = req.body as { content: string };
+      const { content, model, thinkingLevel, writingStyle, responseLength, customInstructions } = req.body as { 
+        content: string;
+        model?: string;
+        thinkingLevel?: string;
+        writingStyle?: string;
+        responseLength?: string;
+        customInstructions?: string;
+      };
       const userId = req.user!.id;
       const userRole = req.user!.role;
 
@@ -1881,10 +1888,20 @@ router.post(
       );
       const thinking = thinkingLines.join("\n");
 
+      // Pass user preferences for AI response customization
+      const userPreferences = {
+        model: model || "gemini-3-flash-preview",
+        thinkingLevel: thinkingLevel || "low",
+        writingStyle: writingStyle || "default",
+        responseLength: responseLength || "medium",
+        customInstructions: customInstructions || "",
+      };
+
       const explanation = await generateNaturalLanguageResponse(
         executionResult.results,
         content,
-        consultantId
+        consultantId,
+        userPreferences
       );
 
       const queryResult = executionResult.results.map((r) => ({

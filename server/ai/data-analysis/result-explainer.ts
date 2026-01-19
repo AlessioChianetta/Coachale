@@ -213,10 +213,51 @@ ESEMPIO DI RISPOSTA CONSULENZIALE:
 **Vuoi che analizzi** quali prodotti trainano questo picco iniziale?"`;
 
 
+export interface UserPreferences {
+  model?: string;
+  thinkingLevel?: string;
+  writingStyle?: string;
+  responseLength?: string;
+  customInstructions?: string;
+}
+
+function getStyleInstructions(preferences: UserPreferences): string {
+  const styleMap: Record<string, string> = {
+    professional: "Mantieni un tono professionale, cortese e preciso. Usa un linguaggio formale.",
+    friendly: "Sii amichevole, espansivo e accessibile. Usa un tono caldo e incoraggiante.",
+    concise: "Sii estremamente conciso e diretto. Vai dritto al punto senza fronzoli.",
+    detailed: "Fornisci spiegazioni dettagliate e complete. Approfondisci ogni aspetto.",
+    default: "",
+  };
+
+  const lengthMap: Record<string, string> = {
+    concise: "Rispondi in modo breve, massimo 2-3 frasi per punto.",
+    medium: "Bilancia brevità e dettaglio.",
+    detailed: "Fornisci risposte approfondite e complete con tutti i dettagli utili.",
+  };
+
+  let instructions = "";
+  
+  if (preferences.writingStyle && styleMap[preferences.writingStyle]) {
+    instructions += styleMap[preferences.writingStyle] + "\n";
+  }
+  
+  if (preferences.responseLength && lengthMap[preferences.responseLength]) {
+    instructions += lengthMap[preferences.responseLength] + "\n";
+  }
+
+  if (preferences.customInstructions) {
+    instructions += `\nIstruzioni personalizzate dell'utente: ${preferences.customInstructions}\n`;
+  }
+
+  return instructions;
+}
+
 export async function explainResults(
   results: ExecutedToolResult[],
   userQuestion: string,
-  consultantId?: string
+  consultantId?: string,
+  preferences?: UserPreferences
 ): Promise<ExplanationResult> {
   const basicExplanation = generateBasicExplanation(results, userQuestion);
 
@@ -227,7 +268,10 @@ export async function explainResults(
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);
     const client = providerResult.client;
-    const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
+    
+    // Use user-selected model or default
+    const selectedModel = preferences?.model || "gemini-3-flash-preview";
+    const modelName = selectedModel.includes("pro") ? "gemini-2.5-pro-preview-05-06" : "gemini-2.5-flash-preview-04-17";
 
     const resultsContext = results.map(r => ({
       tool: r.toolName,
@@ -236,7 +280,12 @@ export async function explainResults(
       error: r.error
     }));
 
+    // Add style instructions based on preferences
+    const styleInstructions = preferences ? getStyleInstructions(preferences) : "";
+    
     const prompt = `${EXPLAINER_SYSTEM_PROMPT}
+
+${styleInstructions ? `\n--- STILE DI RISPOSTA ---\n${styleInstructions}` : ""}
 
 ---
 
@@ -283,9 +332,10 @@ Rispondi alla domanda dell'utente basandoti su questi dati. Sii conversazionale,
 export async function generateNaturalLanguageResponse(
   results: ExecutedToolResult[],
   userQuestion: string,
-  consultantId?: string
+  consultantId?: string,
+  preferences?: UserPreferences
 ): Promise<string> {
-  const explanation = await explainResults(results, userQuestion, consultantId);
+  const explanation = await explainResults(results, userQuestion, consultantId, preferences);
 
   let response = explanation.summary;
 
