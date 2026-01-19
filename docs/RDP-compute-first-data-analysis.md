@@ -10,6 +10,31 @@ Sistema di analisi dati strutturati (Excel/CSV) per clienti, con architettura "c
 
 ---
 
+## ⚠️ Decisioni Tecniche Critiche (Gennaio 2026)
+
+Dopo analisi approfondita con ricerche web e best practices 2024-2025, le seguenti decisioni architetturali sono **obbligatorie**:
+
+| Area | Problema | Soluzione |
+|------|----------|-----------|
+| **Excel Parsing** | `xlsx` (SheetJS) carica tutto in RAM → crash su 50MB+ | Usare **ExcelJS con streaming** |
+| **Tabelle Dinamiche** | Drizzle ORM non supporta DDL runtime | Usare **raw SQL con sanitizzazione rigorosa** |
+| **Sicurezza RLS** | Superuser bypassa RLS | Creare ruolo **app_user** (NON superuser) |
+| **RLS Views** | Views non rispettano RLS di default | Usare `security_invoker = true` |
+| **Connection Pool** | Context tenant può leakare tra request | Usare **SET LOCAL** in transazioni |
+| **Progress Updates** | WebSocket è overkill per flusso unidirezionale | Usare **SSE (Server-Sent Events)** |
+| **AI Validation** | AI può rispondere senza chiamare tool | Validare risposta e **forzare retry** |
+| **Column Discovery** | Chiamare AI per ogni colonna è lento e costoso | **Pattern detection PRIMA** (template + regex), AI solo per <80% confidence |
+| **Automazione 1800** | Troppi click manuali | **Auto-conferma se confidence >= 85%** |
+
+**Dipendenze NPM richieste:**
+```bash
+npm install exceljs chardet better-sse
+```
+
+Per dettagli completi, vedere le sezioni specifiche e il documento `docs/RDP-compute-first-analysis-review.md`.
+
+---
+
 ## Architettura
 
 ```
@@ -287,22 +312,124 @@ server/
 
 #### 1. upload-processor.ts
 
+**IMPORTANTE:** Usare **ExcelJS con streaming** per file grandi (non xlsx/SheetJS che carica tutto in RAM).
+
 ```typescript
+// Dipendenze: npm install exceljs chardet
+
+import ExcelJS from 'exceljs';
+import chardet from 'chardet';
+
 interface UploadResult {
   sheets: Array<{
     name: string;
     columns: string[];
-    sampleRows: any[];      // Prime 100 righe
+    sampleRows: any[];      // Prime 100 righe per preview
     rowCount: number;
   }>;
   fileSize: number;
   originalFilename: string;
 }
 
-async function processUpload(file: Buffer, filename: string): Promise<UploadResult>
+/**
+ * Processa file Excel/CSV con streaming per supportare file fino a 50MB
+ * senza esaurire la memoria.
+ */
+async function processUpload(filePath: string, filename: string): Promise<UploadResult> {
+  const result: UploadResult = {
+    sheets: [],
+    fileSize: 0,
+    originalFilename: filename
+  };
+
+  if (filename.endsWith('.csv')) {
+    // CSV: rileva encoding e processa
+    const encoding = chardet.detectFileSync(filePath) || 'utf-8';
+    return processCSV(filePath, encoding);
+  }
+
+  // Excel: usa streaming per file grandi
+  const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
+    worksheets: 'emit',
+    sharedStrings: 'cache',
+    hyperlinks: 'ignore',
+    styles: 'ignore',
+  });
+
+  for await (const worksheetReader of workbookReader) {
+    const sheetData = {
+      name: worksheetReader.name,
+      columns: [] as string[],
+      sampleRows: [] as any[],
+      rowCount: 0
+    };
+
+    let isFirstRow = true;
+    for await (const row of worksheetReader) {
+      if (isFirstRow) {
+        // Prima riga = header
+        sheetData.columns = (row.values as any[]).slice(1).map(v => String(v || ''));
+        isFirstRow = false;
+      } else {
+        sheetData.rowCount++;
+        // Salva solo prime 100 righe per preview
+        if (sheetData.sampleRows.length < 100) {
+          sheetData.sampleRows.push((row.values as any[]).slice(1));
+        }
+      }
+    }
+
+    result.sheets.push(sheetData);
+  }
+
+  return result;
+}
+
+/**
+ * Import batch: inserisce righe 1000 alla volta per evitare timeout
+ */
+async function importWithBatching(
+  filePath: string,
+  tableName: string,
+  columnMapping: ColumnMapping[],
+  onProgress: (progress: number) => void
+): Promise<{ rowCount: number }> {
+  const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath);
+  let totalRows = 0;
+  let batch: any[] = [];
+  const BATCH_SIZE = 1000;
+
+  for await (const worksheetReader of workbookReader) {
+    let isFirstRow = true;
+    for await (const row of worksheetReader) {
+      if (isFirstRow) {
+        isFirstRow = false;
+        continue; // Skip header
+      }
+
+      batch.push(mapRowToColumns(row.values, columnMapping));
+      totalRows++;
+
+      if (batch.length >= BATCH_SIZE) {
+        await insertBatch(tableName, batch);
+        batch = [];
+        onProgress(totalRows);
+      }
+    }
+  }
+
+  // Insert remaining rows
+  if (batch.length > 0) {
+    await insertBatch(tableName, batch);
+  }
+
+  return { rowCount: totalRows };
+}
 ```
 
 #### 2. column-discovery.ts
+
+**STRATEGIA:** Pattern detection veloce PRIMA, AI solo per casi ambigui (<80% confidence).
 
 ```typescript
 interface ColumnMapping {
@@ -312,16 +439,131 @@ interface ColumnMapping {
   description: string;        // "Codice identificativo dell'articolo"
   sampleValues: string[];     // ["A001", "B002", "C003"]
   nullPercentage: number;     // % valori nulli
-  confidence: number;         // 0-1 quanto è sicura l'AI
+  confidence: number;         // 0-1 quanto è sicura l'inferenza
+  inferenceMethod: 'pattern' | 'ai' | 'template';  // Come è stato rilevato
 }
 
+// Pattern comuni per inferenza veloce (NO AI call)
+const TYPE_PATTERNS = {
+  email: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
+  date_iso: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/,
+  date_it: /^\d{2}\/\d{2}\/\d{4}$/,
+  date_us: /^\d{2}-\d{2}-\d{4}$/,
+  integer: /^-?\d+$/,
+  decimal: /^-?\d+[.,]\d+$/,
+  boolean: /^(true|false|si|no|yes|vero|falso|0|1)$/i,
+  currency: /^[€$£]?\s*-?\d+([.,]\d{2})?$/,
+  phone: /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/,
+};
+
+// Template colonne comuni (gestionali ristoranti italiani)
+const KNOWN_COLUMN_TEMPLATES: Record<string, Partial<ColumnMapping>> = {
+  'COD_ART': { mapped: 'codice_articolo', type: 'string', description: 'Codice articolo' },
+  'DESC_ART': { mapped: 'descrizione', type: 'string', description: 'Descrizione articolo' },
+  'QTA': { mapped: 'quantita', type: 'integer', description: 'Quantità' },
+  'IMP_TOT': { mapped: 'importo_totale', type: 'decimal', description: 'Importo totale (€)' },
+  'IMP_UNIT': { mapped: 'prezzo_unitario', type: 'decimal', description: 'Prezzo unitario' },
+  'DT_DOC': { mapped: 'data_documento', type: 'date', description: 'Data documento' },
+  'COD_CLI': { mapped: 'codice_cliente', type: 'string', description: 'Codice cliente' },
+  'RAGSOC': { mapped: 'ragione_sociale', type: 'string', description: 'Ragione sociale' },
+  // Aggiungi altri pattern comuni...
+};
+
+/**
+ * Inferenza tipo colonna con pattern detection (veloce, no AI)
+ */
+function inferColumnTypeByPattern(values: any[]): { type: string; confidence: number } {
+  const sample = values.slice(0, 100).filter(v => v != null && String(v).trim() !== '');
+  if (sample.length === 0) return { type: 'string', confidence: 0.5 };
+
+  for (const [typeName, regex] of Object.entries(TYPE_PATTERNS)) {
+    const matches = sample.filter(v => regex.test(String(v)));
+    const confidence = matches.length / sample.length;
+    if (confidence >= 0.8) {
+      return { type: typeName, confidence };
+    }
+  }
+
+  // Default: string
+  return { type: 'string', confidence: 1.0 };
+}
+
+/**
+ * Discovery colonne: template → pattern → AI (fallback)
+ */
 async function discoverColumns(
   columns: string[], 
   sampleRows: any[]
-): Promise<ColumnMapping[]>
+): Promise<ColumnMapping[]> {
+  const results: ColumnMapping[] = [];
+
+  for (let i = 0; i < columns.length; i++) {
+    const colName = columns[i].toUpperCase().trim();
+    const values = sampleRows.map(row => row[i]);
+    const nullCount = values.filter(v => v == null || String(v).trim() === '').length;
+    const nullPercentage = nullCount / values.length;
+    const sampleValues = values.filter(v => v != null).slice(0, 5).map(String);
+
+    // 1. Controlla template noti (istantaneo)
+    if (KNOWN_COLUMN_TEMPLATES[colName]) {
+      const template = KNOWN_COLUMN_TEMPLATES[colName];
+      results.push({
+        original: columns[i],
+        mapped: template.mapped!,
+        type: template.type as any,
+        description: template.description!,
+        sampleValues,
+        nullPercentage,
+        confidence: 0.95,
+        inferenceMethod: 'template'
+      });
+      continue;
+    }
+
+    // 2. Inferenza pattern (veloce)
+    const patternResult = inferColumnTypeByPattern(values);
+    if (patternResult.confidence >= 0.8) {
+      results.push({
+        original: columns[i],
+        mapped: sanitizeColumnName(columns[i]),
+        type: mapPatternToType(patternResult.type),
+        description: `Colonna ${columns[i]}`,
+        sampleValues,
+        nullPercentage,
+        confidence: patternResult.confidence,
+        inferenceMethod: 'pattern'
+      });
+      continue;
+    }
+
+    // 3. Solo se confidence < 0.8, chiama AI
+    const aiResult = await discoverColumnWithAI(columns[i], values);
+    results.push({
+      ...aiResult,
+      sampleValues,
+      nullPercentage,
+      inferenceMethod: 'ai'
+    });
+  }
+
+  return results;
+}
+
+// Calcola confidence complessiva per auto-conferma
+function calculateOverallConfidence(mappings: ColumnMapping[]): number {
+  const avgConfidence = mappings.reduce((sum, m) => sum + m.confidence, 0) / mappings.length;
+  const lowConfidenceCount = mappings.filter(m => m.confidence < 0.7).length;
+  
+  // Penalizza se ci sono molte colonne a bassa confidence
+  const penalty = lowConfidenceCount * 0.05;
+  return Math.max(0, avgConfidence - penalty);
+}
+
+// Se confidence >= 0.85, auto-conferma senza chiedere all'utente
+const AUTO_CONFIRM_THRESHOLD = 0.85;
 ```
 
-**Prompt AI per discovery:**
+**Prompt AI per discovery (usato solo come fallback):**
 ```
 Analizza queste colonne di un file dati e determina:
 1. Un nome normalizzato (snake_case, italiano)
@@ -346,26 +588,206 @@ Rispondi in JSON con questo formato:
 
 #### 3. table-generator.ts
 
+**IMPORTANTE:** Drizzle ORM NON supporta tabelle dinamiche. Usare **raw SQL con sanitizzazione rigorosa**.
+
 ```typescript
+import { sql } from 'drizzle-orm';
+import crypto from 'crypto';
+
+// ============================================================
+// SICUREZZA: Sanitizzazione nomi tabelle/colonne
+// ============================================================
+
+const MAX_IDENTIFIER_LENGTH = 63; // Limite PostgreSQL
+const SAFE_IDENTIFIER_REGEX = /^[a-z_][a-z0-9_]*$/;
+
+/**
+ * Sanitizza nome per uso come identificatore SQL (tabella/colonna)
+ * CRITICO per prevenire SQL injection
+ */
+function sanitizeIdentifier(input: string): string {
+  // 1. Lowercase
+  let safe = input.toLowerCase();
+  
+  // 2. Rimuovi caratteri non permessi
+  safe = safe.replace(/[^a-z0-9_]/g, '_');
+  
+  // 3. Rimuovi underscore multipli consecutivi
+  safe = safe.replace(/_+/g, '_');
+  
+  // 4. Rimuovi underscore iniziali/finali
+  safe = safe.replace(/^_+|_+$/g, '');
+  
+  // 5. Assicura che inizi con lettera
+  if (!/^[a-z]/.test(safe)) {
+    safe = 'col_' + safe;
+  }
+  
+  // 6. Tronca se troppo lungo
+  if (safe.length > MAX_IDENTIFIER_LENGTH) {
+    safe = safe.substring(0, MAX_IDENTIFIER_LENGTH);
+  }
+  
+  // 7. Validazione finale
+  if (!SAFE_IDENTIFIER_REGEX.test(safe)) {
+    throw new Error(`Identificatore non valido dopo sanitizzazione: ${input}`);
+  }
+  
+  return safe;
+}
+
+/**
+ * Genera nome tabella sicuro con pattern fisso
+ */
+function generateTableName(consultantId: number, clientId: number, datasetName: string): string {
+  const safeName = sanitizeIdentifier(datasetName);
+  const tableName = `cdd_${consultantId}_${clientId}_${safeName}`;
+  
+  if (tableName.length > MAX_IDENTIFIER_LENGTH) {
+    // Se troppo lungo, usa hash
+    const hash = crypto.createHash('md5').update(datasetName).digest('hex').substring(0, 8);
+    return `cdd_${consultantId}_${clientId}_${hash}`;
+  }
+  
+  return tableName;
+}
+
+/**
+ * Mappa tipo inferito a tipo PostgreSQL
+ */
+function mapToPostgresType(type: string): string {
+  const typeMap: Record<string, string> = {
+    'string': 'TEXT',
+    'integer': 'INTEGER',
+    'decimal': 'DECIMAL(18,4)',
+    'date': 'DATE',
+    'date_iso': 'TIMESTAMP',
+    'date_it': 'DATE',
+    'boolean': 'BOOLEAN',
+    'currency': 'DECIMAL(12,2)',
+    'email': 'VARCHAR(255)',
+    'phone': 'VARCHAR(50)',
+  };
+  return typeMap[type] || 'TEXT';
+}
+
+// ============================================================
+// CREAZIONE TABELLA (Raw SQL)
+// ============================================================
+
 async function createDataTable(
   consultantId: number,
   clientId: number,
   datasetName: string,
+  columnMapping: ColumnMapping[]
+): Promise<{ tableName: string }> {
+  
+  const tableName = generateTableName(consultantId, clientId, datasetName);
+  
+  // Costruisci DDL con colonne sanitizzate
+  const columnDefs = columnMapping.map(col => {
+    const safeColName = sanitizeIdentifier(col.mapped);
+    const pgType = mapToPostgresType(col.type);
+    return `${safeColName} ${pgType}`;
+  }).join(',\n    ');
+  
+  // Esegui CREATE TABLE con raw SQL
+  // NOTA: Non usare Drizzle schema, usa db.execute direttamente
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+      id SERIAL PRIMARY KEY,
+      ${columnDefs},
+      _row_number INTEGER,
+      _imported_at TIMESTAMP DEFAULT NOW()
+    )
+  `));
+  
+  // Crea indice su colonne data (se presenti)
+  const dateColumns = columnMapping.filter(c => 
+    c.type === 'date' || c.type === 'date_iso' || c.type === 'date_it'
+  );
+  
+  for (const col of dateColumns) {
+    const safeColName = sanitizeIdentifier(col.mapped);
+    await db.execute(sql.raw(`
+      CREATE INDEX IF NOT EXISTS idx_${tableName}_${safeColName} 
+      ON ${tableName}(${safeColName})
+    `));
+  }
+  
+  return { tableName };
+}
+
+// ============================================================
+// INSERT CON TRANSAZIONE E ROLLBACK
+// ============================================================
+
+async function importDataWithRollback(
+  tableName: string,
   columnMapping: ColumnMapping[],
-  rows: any[]
-): Promise<{ tableName: string; rowCount: number }>
-```
+  rows: any[],
+  onProgress: (count: number) => void
+): Promise<{ rowCount: number }> {
+  
+  const BATCH_SIZE = 1000;
+  let totalInserted = 0;
+  
+  // Usa transazione per rollback automatico in caso di errore
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      
+      // Costruisci INSERT con placeholders
+      const columns = columnMapping.map(c => sanitizeIdentifier(c.mapped)).join(', ');
+      const placeholders = batch.map((_, rowIdx) => 
+        `(${columnMapping.map((_, colIdx) => `$${rowIdx * columnMapping.length + colIdx + 1}`).join(', ')}, ${i + rowIdx + 1})`
+      ).join(', ');
+      
+      const values = batch.flatMap(row => 
+        columnMapping.map((col, idx) => row[idx])
+      );
+      
+      await tx.execute(sql.raw(`
+        INSERT INTO ${tableName} (${columns}, _row_number)
+        VALUES ${placeholders}
+      `), values);
+      
+      totalInserted += batch.length;
+      onProgress(totalInserted);
+    }
+  });
+  
+  return { rowCount: totalInserted };
+}
 
-Genera SQL dinamico:
-```sql
-CREATE TABLE cdd_{consultantId}_{clientId}_{datasetName} (
-  id SERIAL PRIMARY KEY,
-  {colonne mappate con tipi corretti},
-  _row_number INTEGER,
-  _imported_at TIMESTAMP DEFAULT NOW()
-);
+// ============================================================
+// CLEANUP TABELLE ORFANE
+// ============================================================
 
-INSERT INTO ... VALUES ...;
+async function dropOrphanTables(): Promise<number> {
+  // Trova tabelle cdd_* senza record in client_data_datasets
+  const orphans = await db.execute(sql`
+    SELECT tablename FROM pg_tables 
+    WHERE schemaname = 'public' 
+    AND tablename LIKE 'cdd_%'
+    AND tablename NOT IN (
+      SELECT table_name FROM client_data_datasets WHERE status = 'ready'
+    )
+  `);
+  
+  let dropped = 0;
+  for (const row of orphans.rows) {
+    const tableName = row.tablename as string;
+    // Verifica che sia effettivamente un pattern cdd_*
+    if (/^cdd_\d+_\d+_[a-z0-9_]+$/.test(tableName)) {
+      await db.execute(sql.raw(`DROP TABLE IF EXISTS ${tableName}`));
+      dropped++;
+      console.log(`[Cleanup] Dropped orphan table: ${tableName}`);
+    }
+  }
+  
+  return dropped;
+}
 ```
 
 #### 4. metric-suggester.ts
@@ -974,9 +1396,60 @@ Durante l'analisi, mostrare stato in tempo reale:
 └─────────────────────────────────────────────────┘
 ```
 
-**Implementazione WebSocket/SSE:**
+**Implementazione SSE (Server-Sent Events):**
+
+> **NOTA:** Usare SSE invece di WebSocket. SSE è meglio per questo caso:
+> - Unidirezionale (server→client) - perfetto per progress
+> - Auto-reconnect built-in nel browser
+> - Funziona con HTTP/2
+> - Passa firewall aziendali senza problemi
+> - Più semplice da implementare e debuggare
+
+```bash
+# Dipendenza consigliata
+npm install better-sse
+```
+
 ```typescript
-// Eventi inviati al frontend durante l'analisi
+// server/routes/client-data-router.ts
+import { createSession } from 'better-sse';
+
+// Endpoint SSE per progress in tempo reale
+app.get('/api/client-data/query/natural/stream', authenticateToken, async (req, res) => {
+  const session = await createSession(req, res);
+  
+  // Heartbeat ogni 30 secondi per mantenere connessione viva
+  const heartbeat = setInterval(() => {
+    session.push({ type: 'heartbeat', timestamp: Date.now() });
+  }, 30000);
+  
+  try {
+    const { question, datasetId } = req.query;
+    
+    await executeNaturalLanguageQuery({
+      question: String(question),
+      datasetId: Number(datasetId),
+      consultantId: req.user.consultantId,
+      
+      // Callback per ogni step
+      onProgress: (progress: AnalysisProgress) => {
+        session.push({ type: 'progress', data: progress });
+      }
+    });
+    
+  } catch (error) {
+    session.push({ 
+      type: 'error', 
+      message: 'Analisi fallita. Riprova tra qualche minuto.',
+      // Mai esporre stack trace!
+    });
+  } finally {
+    clearInterval(heartbeat);
+    session.push({ type: 'complete' });
+  }
+});
+
+// Tipi per eventi progress
 interface AnalysisProgress {
   status: 'started' | 'query_running' | 'query_completed' | 'explaining' | 'completed' | 'error';
   currentRound: number;
@@ -992,6 +1465,55 @@ interface AnalysisProgress {
   }>;
   elapsedTimeMs: number;
   timeoutMs: number;  // 300000 (5 min)
+}
+```
+
+**Frontend: Consumare SSE**
+
+```typescript
+// client/src/hooks/useAnalysisStream.ts
+
+export function useAnalysisStream() {
+  const [progress, setProgress] = useState<AnalysisProgress | null>(null);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  const startAnalysis = useCallback((question: string, datasetId: number) => {
+    setProgress(null);
+    setError(null);
+    
+    const url = `/api/client-data/query/natural/stream?question=${encodeURIComponent(question)}&datasetId=${datasetId}`;
+    const eventSource = new EventSource(url);
+    
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      switch (data.type) {
+        case 'progress':
+          setProgress(data.data);
+          break;
+        case 'result':
+          setResult(data.data);
+          break;
+        case 'error':
+          setError(data.message);
+          eventSource.close();
+          break;
+        case 'complete':
+          eventSource.close();
+          break;
+      }
+    };
+    
+    eventSource.onerror = () => {
+      setError('Connessione persa. Riprova.');
+      eventSource.close();
+    };
+    
+    return () => eventSource.close();
+  }, []);
+  
+  return { progress, result, error, startAnalysis };
 }
 ```
 
@@ -1218,18 +1740,152 @@ async function checkConsultantLimits(consultantId: number): Promise<void> {
 }
 ```
 
-### 4. Row Level Security (RLS)
+### 4. Row Level Security (RLS) - Setup Completo
 
-Abilitare RLS su Supabase per isolamento garantito:
+**IMPORTANTE:** RLS richiede configurazione precisa per evitare leak di dati multi-tenant.
 
 ```sql
--- Abilita RLS sulle tabelle metadata
-ALTER TABLE client_data_datasets ENABLE ROW LEVEL SECURITY;
+-- ============================================================
+-- 1. CREARE RUOLO APPLICAZIONE (NON SUPERUSER!)
+-- ============================================================
+-- CRITICO: Superuser BYPASSA RLS! Mai usare superuser per l'app.
 
--- Policy: consultant vede solo i suoi dati
-CREATE POLICY consultant_isolation ON client_data_datasets
+CREATE ROLE app_user LOGIN PASSWORD 'xxx_cambiare_in_produzione_xxx';
+
+-- Rimuovi esplicitamente privilegi pericolosi
+ALTER ROLE app_user NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+
+-- Grant necessari
+GRANT USAGE ON SCHEMA public TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
+
+-- ============================================================
+-- 2. ABILITARE RLS SU TUTTE LE TABELLE MULTI-TENANT
+-- ============================================================
+
+-- Abilita E forza RLS (anche per table owner)
+ALTER TABLE client_data_datasets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_data_datasets FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE client_data_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_data_metrics FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE client_data_dimensions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_data_dimensions FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE client_data_query_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_data_query_log FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE client_data_query_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_data_query_cache FORCE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 3. POLICIES CON CACHE DEL SETTING (Performance)
+-- ============================================================
+-- Nota: Wrappare current_setting in SELECT per cache
+
+CREATE POLICY consultant_isolation_datasets ON client_data_datasets
   FOR ALL
-  USING (consultant_id = current_setting('app.current_consultant_id')::integer);
+  USING (consultant_id = (SELECT current_setting('app.current_consultant', TRUE)::INTEGER));
+
+CREATE POLICY consultant_isolation_metrics ON client_data_metrics
+  FOR ALL
+  USING (dataset_id IN (
+    SELECT id FROM client_data_datasets 
+    WHERE consultant_id = (SELECT current_setting('app.current_consultant', TRUE)::INTEGER)
+  ));
+
+CREATE POLICY consultant_isolation_dimensions ON client_data_dimensions
+  FOR ALL
+  USING (dataset_id IN (
+    SELECT id FROM client_data_datasets 
+    WHERE consultant_id = (SELECT current_setting('app.current_consultant', TRUE)::INTEGER)
+  ));
+
+CREATE POLICY consultant_isolation_logs ON client_data_query_log
+  FOR ALL
+  USING (dataset_id IN (
+    SELECT id FROM client_data_datasets 
+    WHERE consultant_id = (SELECT current_setting('app.current_consultant', TRUE)::INTEGER)
+  ));
+
+-- ============================================================
+-- 4. TRIGGER PER AUTO-POPULATE consultant_id SU INSERT
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION set_consultant_id_from_context()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.consultant_id IS NULL THEN
+    NEW.consultant_id := current_setting('app.current_consultant', TRUE)::INTEGER;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER auto_set_consultant_id
+  BEFORE INSERT ON client_data_datasets
+  FOR EACH ROW EXECUTE FUNCTION set_consultant_id_from_context();
+
+-- ============================================================
+-- 5. INDICI OBBLIGATORI PER PERFORMANCE RLS
+-- ============================================================
+-- Senza indici, ogni query fa full table scan!
+
+CREATE INDEX IF NOT EXISTS idx_datasets_consultant ON client_data_datasets(consultant_id);
+CREATE INDEX IF NOT EXISTS idx_metrics_dataset ON client_data_metrics(dataset_id);
+CREATE INDEX IF NOT EXISTS idx_dimensions_dataset ON client_data_dimensions(dataset_id);
+CREATE INDEX IF NOT EXISTS idx_logs_dataset ON client_data_query_log(dataset_id);
+```
+
+**Backend: Settare contesto in ogni richiesta**
+
+```typescript
+// server/middleware/set-tenant-context.ts
+
+import { db } from '../db';
+import { sql } from 'drizzle-orm';
+
+/**
+ * CRITICO: Usare SET LOCAL (non SET) per evitare leak tra request
+ * con connection pooling. SET LOCAL si resetta automaticamente
+ * al COMMIT/ROLLBACK della transazione.
+ */
+export async function executeWithTenantContext<T>(
+  consultantId: number,
+  callback: () => Promise<T>
+): Promise<T> {
+  return await db.transaction(async (tx) => {
+    // SET LOCAL = auto-reset al commit
+    await tx.execute(sql`SET LOCAL app.current_consultant = ${String(consultantId)}`);
+    return await callback();
+  });
+}
+
+// Utilizzo in ogni endpoint
+app.get('/api/client-data/datasets', authenticateToken, async (req, res) => {
+  const consultantId = req.user.consultantId;
+  
+  const datasets = await executeWithTenantContext(consultantId, async () => {
+    // RLS filtra automaticamente - nessun WHERE consultant_id necessario!
+    return await db.select().from(clientDataDatasets);
+  });
+  
+  res.json(datasets);
+});
+```
+
+**Views: Rispettare RLS**
+
+```sql
+-- IMPORTANTE: Views NON rispettano RLS di default!
+-- Usare security_invoker = true
+
+CREATE VIEW active_datasets 
+  WITH (security_invoker = true) 
+AS 
+  SELECT * FROM client_data_datasets WHERE status = 'ready';
 ```
 
 ---
@@ -1404,6 +2060,21 @@ async function invalidateCache(datasetId: number) {
 
 ---
 
+## Dipendenze NPM da Installare
+
+```bash
+# Upload & Parsing (streaming per file grandi)
+npm install exceljs chardet
+
+# Progress Updates (SSE invece di WebSocket)
+npm install better-sse
+
+# Opzionale: Monitoring centralizzato
+npm install @sentry/node
+```
+
+---
+
 ## Checklist Bug Prevention
 
 ### Upload & Import
@@ -1415,29 +2086,42 @@ async function invalidateCache(datasetId: number) {
 - [ ] Gestire righe completamente vuote
 - [ ] Encoding UTF-8/Latin1 detection automatica per CSV
 - [ ] Gestire date in formati diversi (DD/MM/YYYY, YYYY-MM-DD, etc.)
+- [ ] **Usare ExcelJS streaming** (non xlsx che carica tutto in RAM)
+- [ ] Batch insert 1000 righe alla volta
 
 ### Database
-- [ ] Nomi tabelle/colonne sempre sanitizzati
+- [ ] Nomi tabelle/colonne sempre sanitizzati (max 63 char)
+- [ ] **Raw SQL per DDL dinamico** (Drizzle non supporta tabelle runtime)
 - [ ] Indici creati automaticamente su colonne data
 - [ ] Transaction rollback se import fallisce
 - [ ] Cleanup tabelle orfane (cron)
 - [ ] Limiti storage per consultant
-- [ ] RLS abilitato per isolamento
+- [ ] **RLS con ruolo app_user** (NON superuser!)
+- [ ] **FORCE ROW LEVEL SECURITY** su tutte le tabelle
+- [ ] **SET LOCAL** per context tenant (evita leak con connection pool)
+- [ ] Indici su tutti i tenant_id
 
 ### Query Execution
 - [ ] Timeout 30 sec per singola query SQL
 - [ ] Timeout 5 min per analisi completa
 - [ ] Limite risultati (max 10.000 righe per query)
 - [ ] Formule validate (no SQL injection)
-- [ ] Cache query frequenti
+- [ ] Cache query frequenti con **FOR UPDATE SKIP LOCKED** (anti-stampede)
 - [ ] Log tutte le query per audit
 
 ### AI Integration
 - [ ] Max 10 round per analisi
+- [ ] **Validare che AI chiami tool** (forzare retry se risponde senza function_call)
 - [ ] Gestire risposta AI malformata
 - [ ] Fallback se AI non risponde
-- [ ] Progress indicator via WebSocket/SSE
-- [ ] Retry automatico su errori transitori
+- [ ] **Progress indicator via SSE** (non WebSocket)
+- [ ] Retry automatico su errori transitori (backoff esponenziale)
+
+### Column Discovery
+- [ ] **Pattern detection PRIMA di AI** (template + regex)
+- [ ] AI solo per colonne con confidence < 80%
+- [ ] **Auto-conferma se confidence >= 85%** (zero-click per 1800 installazioni)
+- [ ] Template pre-configurati per gestionali comuni (DDTRIGHE, fatture)
 
 ### Frontend
 - [ ] Progress bar durante import

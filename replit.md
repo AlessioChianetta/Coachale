@@ -108,6 +108,20 @@ An automated 365-day email nurturing sequence for proactive leads utilizes AI-ge
 ## Email Hub System
 A comprehensive email hub for consultants supports IMAP/SMTP, unified inboxes, and AI-powered response generation. It features multi-folder support, automatic background synchronization, IMAP IDLE for real-time reception, and scalable email import. AI email capabilities include per-account configuration for tone and instructions. The system incorporates a ticket system, knowledge base integration for AI responses, webhook integration, risk detection, and analytics. Each email account can have its own dedicated knowledge base.
 
+## Compute-First Data Analysis System (Gennaio 2026)
+Sistema di analisi dati strutturati (Excel/CSV) per clienti con architettura "compute-first" che separa calcolo deterministico (SQL) da interpretazione AI (Gemini). Progettato per scalare a 1800+ installazioni multi-tenant.
+
+**Decisioni tecniche critiche:**
+- **Excel Parsing**: ExcelJS con streaming (non xlsx che carica tutto in RAM)
+- **Tabelle Dinamiche**: Raw SQL con sanitizzazione (Drizzle non supporta DDL runtime)
+- **RLS**: Ruolo app_user dedicato (superuser bypassa RLS), SET LOCAL in transazioni
+- **Progress Updates**: SSE invece di WebSocket
+- **Column Discovery**: Pattern detection prima di AI, auto-conferma se confidence >= 85%
+
+**Dipendenze**: exceljs, chardet, better-sse
+
+**Documentazione completa**: `docs/RDP-compute-first-data-analysis.md`, `docs/RDP-compute-first-analysis-review.md`
+
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
 - **Recharts**: Data visualization.
