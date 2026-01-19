@@ -84,7 +84,7 @@ export function DatasetUploader({ onUploadComplete, onCancel }: DatasetUploaderP
           title: "File caricato con successo",
           description: `${data.data.originalFilename} - ${data.data.sheets.length} fogli trovati`,
         });
-        onUploadComplete(data.data, selectedClientId || undefined);
+        onUploadComplete(data.data, selectedClientId && selectedClientId !== "__none__" ? selectedClientId : undefined);
       } else {
         throw new Error(data.error || "Errore durante l'upload");
       }
@@ -180,7 +180,7 @@ export function DatasetUploader({ onUploadComplete, onCancel }: DatasetUploaderP
               <SelectValue placeholder="Seleziona un cliente..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Nessun cliente (solo per me)</SelectItem>
+              <SelectItem value="__none__">Nessun cliente (solo per me)</SelectItem>
               {clients.map((client) => (
                 <SelectItem key={client.id} value={client.id}>
                   {client.firstName} {client.lastName} ({client.email})
