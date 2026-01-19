@@ -147,13 +147,17 @@ export interface GeminiClient {
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
     tools?: any[];
-  }): Promise<{ response: { text: () => string } }>;
+    systemInstruction?: { role: string; parts: Array<{ text: string }> };
+    toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
+  }): Promise<{ response: { text: () => string; candidates?: any[] } }>;
 
   generateContentStream(params: {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
     tools?: any[];
+    systemInstruction?: { role: string; parts: Array<{ text: string }> };
+    toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<AsyncIterable<GeminiStreamChunk>>;
 }
 
@@ -173,9 +177,14 @@ class VertexAIClientAdapter implements GeminiClient {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
-  }): Promise<{ response: { text: () => string } }> {
-    // Extract systemInstruction from generationConfig if present
-    const { systemInstruction, ...restConfig } = params.generationConfig || {};
+    tools?: any[];
+    systemInstruction?: { role: string; parts: Array<{ text: string }> };
+    toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
+  }): Promise<{ response: { text: () => string; candidates?: any[] } }> {
+    // Extract systemInstruction from generationConfig if present (legacy support)
+    const { systemInstruction: legacySystemInstruction, ...restConfig } = params.generationConfig || {};
+    // Prefer direct systemInstruction param over legacy
+    const finalSystemInstruction = params.systemInstruction || legacySystemInstruction;
 
     // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
@@ -189,8 +198,13 @@ class VertexAIClientAdapter implements GeminiClient {
     const result = await modelToUse.generateContent({
       contents: params.contents,
       generationConfig: restConfig,
-      systemInstruction: systemInstruction,
+      systemInstruction: finalSystemInstruction,
+      ...(params.tools && { tools: params.tools }),
+      ...(params.toolConfig && { toolConfig: params.toolConfig }),
     });
+
+    // Store candidates for function call extraction
+    const candidates = result.response?.candidates;
 
     return {
       response: {
@@ -230,7 +244,7 @@ class VertexAIClientAdapter implements GeminiClient {
           // 6. Check for functionCall response (model may have returned a function call instead of text)
           if (candidate?.content?.parts?.[0]?.functionCall) {
             console.log(`⚠️ [VertexAI Adapter] Response contains function call, not text`);
-            return JSON.stringify(candidate.content.parts[0].functionCall);
+            return "";
           }
 
           // 7. Check if response was truncated due to MAX_TOKENS
@@ -254,7 +268,8 @@ class VertexAIClientAdapter implements GeminiClient {
           }, null, 2));
 
           throw new Error("Failed to extract text from Vertex AI response");
-        }
+        },
+        candidates
       }
     };
   }
@@ -263,9 +278,13 @@ class VertexAIClientAdapter implements GeminiClient {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
+    tools?: any[];
+    systemInstruction?: { role: string; parts: Array<{ text: string }> };
+    toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<AsyncIterable<GeminiStreamChunk>> {
-    // Extract systemInstruction from generationConfig if present
-    const { systemInstruction, ...restConfig } = params.generationConfig || {};
+    // Extract systemInstruction from generationConfig if present (legacy support)
+    const { systemInstruction: legacySystemInstruction, ...restConfig } = params.generationConfig || {};
+    const finalSystemInstruction = params.systemInstruction || legacySystemInstruction;
 
     // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
@@ -279,7 +298,9 @@ class VertexAIClientAdapter implements GeminiClient {
     const streamResult = await modelToUse.generateContentStream({
       contents: params.contents,
       generationConfig: restConfig,
-      systemInstruction: systemInstruction,
+      systemInstruction: finalSystemInstruction,
+      ...(params.tools && { tools: params.tools }),
+      ...(params.toolConfig && { toolConfig: params.toolConfig }),
     });
 
     return {
@@ -317,17 +338,24 @@ class GeminiClientAdapter implements GeminiClient {
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
     tools?: any[];
-  }): Promise<{ response: { text: () => string } }> {
+    systemInstruction?: { role: string; parts: Array<{ text: string }> };
+    toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
+  }): Promise<{ response: { text: () => string; candidates?: any[] } }> {
     // NEW API: Call ai.models.generateContent directly (no getGenerativeModel)
-    // Include tools for File Search support (Google AI Studio only)
+    // Include tools, systemInstruction, and toolConfig for function calling support
     const result = await this.ai.models.generateContent({
       model: params.model,
       contents: params.contents,
       config: {
         ...params.generationConfig,
         ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
+        ...(params.systemInstruction && { systemInstruction: params.systemInstruction }),
+        ...(params.toolConfig && { toolConfig: params.toolConfig }),
       },
     });
+
+    // Store candidates for function call extraction
+    const candidates = (result as any).candidates || (result as any).response?.candidates;
 
     // Normalize response format
     return {
@@ -346,8 +374,13 @@ class GeminiClientAdapter implements GeminiClient {
           if (result.text) {
             return result.text;
           }
+          // For function calls, text may be empty - that's OK
+          if (candidates?.[0]?.content?.parts?.[0]?.functionCall) {
+            return "";
+          }
           throw new Error("Failed to extract text from response");
-        }
+        },
+        candidates
       }
     };
   }
