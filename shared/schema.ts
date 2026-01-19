@@ -8577,10 +8577,10 @@ export type InsertClientDataQueryCache = typeof clientDataQueryCache.$inferInser
 // ============================================================
 
 export const clientDataConversations = pgTable("client_data_conversations", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: uuid("client_id").notNull(),
-  consultantId: uuid("consultant_id").notNull(),
-  datasetId: integer("dataset_id").notNull(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  datasetId: integer("dataset_id").references(() => clientDataDatasets.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -8598,8 +8598,8 @@ export type InsertClientDataConversation = typeof clientDataConversations.$infer
 // ============================================================
 
 export const clientDataMessages = pgTable("client_data_messages", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  conversationId: uuid("conversation_id").notNull().references(() => clientDataConversations.id, { onDelete: "cascade" }),
+  id: serial("id").primaryKey(),
+  conversationId: varchar("conversation_id").notNull().references(() => clientDataConversations.id, { onDelete: "cascade" }),
   role: varchar("role", { length: 20 }).notNull().$type<"user" | "assistant">(),
   content: text("content").notNull(),
   toolCalls: jsonb("tool_calls").$type<any[]>(),
@@ -8618,8 +8618,8 @@ export type InsertClientDataMessage = typeof clientDataMessages.$inferInsert;
 // ============================================================
 
 export const clientDataAiPreferences = pgTable("client_data_ai_preferences", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: uuid("client_id").notNull().unique(),
+  id: serial("id").primaryKey(),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).unique(),
   preferredModel: varchar("preferred_model", { length: 50 }).default("gemini-2.5-flash"),
   thinkingLevel: varchar("thinking_level", { length: 20 }).default("none").$type<"none" | "low" | "medium" | "high">(),
   writingStyle: varchar("writing_style", { length: 50 }).default("default"),

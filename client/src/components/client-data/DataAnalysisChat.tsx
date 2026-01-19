@@ -113,7 +113,8 @@ export function DataAnalysisChat({
         headers: getAuthHeaders(),
       });
       if (!response.ok) return [];
-      return response.json();
+      const result = await response.json();
+      return result.data || [];
     },
   });
 
@@ -124,7 +125,8 @@ export function DataAnalysisChat({
         headers: getAuthHeaders(),
       });
       if (!response.ok) return null;
-      return response.json();
+      const result = await response.json();
+      return result.data || null;
     },
   });
 
@@ -142,7 +144,7 @@ export function DataAnalysisChat({
       return response.json();
     },
     onSuccess: (data) => {
-      setCurrentConversationId(data.id);
+      setCurrentConversationId(data.data?.id || data.id);
       queryClient.invalidateQueries({ queryKey: ["/api/client-data/conversations", datasetId] });
     },
   });
@@ -152,12 +154,9 @@ export function DataAnalysisChat({
       return apiRequest("POST", `/api/client-data/conversations/${conversationId}/messages`, { question });
     },
     onSuccess: (data: any) => {
-      const toolCalls = data.data?.results?.map((r: any) => {
-        const toolName = r.tool || "analisi";
-        const columns = r.data?.columns || [];
-        return columns.length > 0 
-          ? `${toolName} su colonna ${columns.join(", ")}`
-          : toolName;
+      const toolCalls = data.toolCalls?.map((tc: { toolName: string; params?: object }) => {
+        const params = tc.params ? Object.keys(tc.params).join(", ") : "";
+        return params ? `${tc.toolName} (${params})` : tc.toolName;
       }).filter(Boolean) || [];
 
       const responseText = data.data?.answer || data.data?.explanation || data.data?.summary || "Ecco i risultati della tua query.";
@@ -169,20 +168,21 @@ export function DataAnalysisChat({
         queryResult: data,
         toolCalls,
       };
-      setMessages((prev) => prev.map(m => 
-        m.isThinking ? assistantMessage : m
-      ));
+      setMessages((prev) => [...prev.filter(m => !m.isThinking), assistantMessage]);
     },
     onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Si è verificato un errore durante l'analisi",
+        variant: "destructive",
+      });
       const errorMessage: QueryMessage = {
         id: Date.now().toString(),
         role: "assistant",
         content: `Mi dispiace, c'è stato un errore: ${error.message}`,
         timestamp: new Date(),
       };
-      setMessages((prev) => prev.map(m => 
-        m.isThinking ? errorMessage : m
-      ));
+      setMessages((prev) => [...prev.filter(m => !m.isThinking), errorMessage]);
     },
   });
 
@@ -217,7 +217,8 @@ export function DataAnalysisChat({
     if (!conversationId) {
       try {
         const result = await createConversationMutation.mutateAsync();
-        conversationId = result.id;
+        conversationId = result.data?.id || result.id;
+        setCurrentConversationId(conversationId);
       } catch {
         toast({
           title: "Errore",
@@ -237,9 +238,43 @@ export function DataAnalysisChat({
     inputRef.current?.focus();
   };
 
-  const handleHistorySelect = (conversation: Conversation) => {
+  const loadConversation = async (conversationId: string) => {
+    try {
+      const response = await fetch(`/api/client-data/conversations/${conversationId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load conversation");
+      }
+      const result = await response.json();
+      
+      if (result.success && result.data?.messages) {
+        const loadedMessages: QueryMessage[] = result.data.messages.map((msg: any) => ({
+          id: msg.id || Date.now().toString(),
+          role: msg.role as "user" | "assistant",
+          content: msg.content || "",
+          timestamp: new Date(msg.createdAt || Date.now()),
+          queryResult: msg.queryResult,
+          toolCalls: msg.toolCalls?.map((tc: { toolName: string; params?: object }) => {
+            const params = tc.params ? Object.keys(tc.params).join(", ") : "";
+            return params ? `${tc.toolName} (${params})` : tc.toolName;
+          }) || [],
+        }));
+        setMessages(loadedMessages);
+      }
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Non è stato possibile caricare la conversazione",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleHistorySelect = async (conversation: Conversation) => {
     setCurrentConversationId(conversation.id);
     setActiveTab("chat");
+    await loadConversation(conversation.id);
     toast({
       title: "Conversazione caricata",
       description: `Caricata: ${conversation.title}`,

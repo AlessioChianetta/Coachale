@@ -1722,7 +1722,7 @@ router.get(
       res.json({
         success: true,
         data: {
-          ...conversation,
+          conversation,
           messages,
         },
       });
@@ -1871,11 +1871,9 @@ router.post(
       const consultantId = dataset.consultantId || userId;
       const executionResult = await askDataset(content, [datasetInfo], consultantId, userId);
 
-      const toolCalls = executionResult.plan.steps.map((step, index) => ({
-        id: `step_${index}`,
-        tool: step.tool,
-        args: step.args,
-        reasoning: step.reasoning,
+      const toolCalls = executionResult.plan.steps.map((step) => ({
+        toolName: step.tool,
+        params: step.args,
       }));
 
       const thinkingLines = executionResult.plan.steps.map((step, index) => 
