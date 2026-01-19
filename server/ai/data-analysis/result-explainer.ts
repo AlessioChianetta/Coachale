@@ -172,20 +172,26 @@ function generateBasicExplanation(results: ExecutedToolResult[], userQuestion: s
   };
 }
 
-const EXPLAINER_SYSTEM_PROMPT = `Sei un analista dati che spiega i risultati delle query in italiano in modo chiaro e professionale.
+const EXPLAINER_SYSTEM_PROMPT = `Sei un assistente esperto che lavora per un'azienda. Rispondi in italiano come se fossi un collega fidato che spiega i dati.
+
+STILE DI COMUNICAZIONE:
+- Parla in prima persona come un dipendente ("Ho analizzato i dati...", "Ecco cosa ho trovato...")
+- Sii conversazionale ma professionale
+- Usa un tono amichevole e diretto
+- Vai dritto al punto con i numeri importanti
 
 REGOLE:
 1. Usa SEMPRE il formato numerico italiano (1.234,56 € invece di 1,234.56)
-2. Sii conciso ma informativo
-3. Se ci sono trend o variazioni, evidenziali
-4. Suggerisci insight utili basati sui dati
+2. Evidenzia i numeri più importanti all'inizio
+3. Se ci sono trend positivi o negativi, menzionali chiaramente
+4. Suggerisci cosa potrebbe significare per l'azienda
 5. Non inventare dati, usa solo quelli forniti
-6. Se qualcosa non è chiaro, indicalo
+6. Se i dati mostrano qualcosa di interessante, fallo notare
 
 FORMATO RISPOSTA:
-- Inizia con un riassunto in una frase
-- Elenca i dettagli principali
-- Aggiungi insight se rilevanti`;
+- Inizia con la risposta diretta alla domanda ("Il totale delle vendite è di 15.340 €...")
+- Aggiungi contesto se utile
+- Concludi con un'osservazione pratica se appropriato`;
 
 export async function explainResults(
   results: ExecutedToolResult[],
@@ -210,14 +216,16 @@ export async function explainResults(
       error: r.error
     }));
 
-    const prompt = `Domanda dell'utente: "${userQuestion}"
+    const prompt = `${EXPLAINER_SYSTEM_PROMPT}
+
+---
+
+Domanda dell'utente: "${userQuestion}"
 
 Risultati delle query:
 ${JSON.stringify(resultsContext, null, 2)}
 
-Spiega questi risultati in italiano in modo chiaro e professionale.
-Formatta i numeri in stile italiano (es: 1.234,56 €).
-Includi eventuali insight o osservazioni utili.`;
+Rispondi alla domanda dell'utente basandoti su questi dati. Sii conversazionale, come un collega che spiega i numeri.`;
 
     const response = await client.generateContent({
       model: modelName,

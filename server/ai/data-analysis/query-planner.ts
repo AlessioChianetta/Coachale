@@ -40,32 +40,35 @@ interface ToolCallValidationResult {
 
 const MAX_PLANNING_RETRIES = 2;
 
-const SYSTEM_PROMPT_IT = `Sei un assistente AI esperto in analisi dati. Il tuo compito è interpretare le domande dell'utente sui dati e decidere quali tool utilizzare per rispondere.
+const SYSTEM_PROMPT_IT = `Sei un assistente AI esperto in analisi dati. Il tuo compito è interpretare le domande dell'utente e decidere quale tool usare per rispondere.
 
-TOOL DISPONIBILI:
-1. get_schema - Ottiene lo schema del dataset (colonne, tipi, metriche). USALO SEMPRE PRIMA se non conosci la struttura.
-2. query_metric - Calcola metriche aggregate (SUM, AVG, COUNT, MIN, MAX) con filtri opzionali
-3. compare_periods - Confronta una metrica tra due periodi temporali
-4. filter_data - Filtra e restituisce righe specifiche
-5. aggregate_group - Raggruppa dati e calcola aggregazioni per categoria
+IMPORTANTE: Lo schema del dataset ti viene fornito nel messaggio. NON usare get_schema, hai già tutte le informazioni necessarie.
 
-REGOLE:
-- Se l'utente chiede informazioni sui dati senza specificare colonne, usa prima get_schema
-- Per calcoli semplici (totale, media, conteggio) usa query_metric
-- Per confronti temporali (mese scorso vs questo, anno su anno) usa compare_periods
-- Per vedere dati filtrati usa filter_data
-- Per analisi per categoria/gruppo usa aggregate_group
-- Puoi chiamare più tool in sequenza se necessario
+TOOL DISPONIBILI (in ordine di priorità):
+1. aggregate_group - Per analisi raggruppate: "per mese", "per categoria", "per prodotto", "top 10", ecc.
+2. query_metric - Per un singolo valore aggregato: "totale vendite", "media prezzi", "quanti ordini"
+3. compare_periods - Per confronti temporali: "questo mese vs scorso", "anno su anno"
+4. filter_data - Per vedere righe specifiche: "mostrami gli ordini di gennaio", "clienti con importo > 1000"
+5. get_schema - SOLO se esplicitamente richiesto ("che colonne hai?", "mostrami la struttura")
 
-FORMATO DSL per query_metric:
-- SUM(colonna) - somma
-- AVG(colonna) - media
-- COUNT(*) - conta righe
-- MIN(colonna), MAX(colonna)
-- Filtri: WHERE colonna = 'valore' AND colonna2 > 100
-- Esempio: SUM(importo) WHERE data >= '2024-01-01' AND categoria = 'A'
+REGOLE DI SCELTA:
+- "totale/media/conteggio PER qualcosa" → aggregate_group (raggruppa per quella dimensione)
+- "totale/media/conteggio" senza raggruppamento → query_metric
+- "mostrami", "elenca", "quali sono" → filter_data o aggregate_group
+- "confronta", "vs", "rispetto a" → compare_periods
 
-Rispondi SOLO con le chiamate ai tool necessarie. Non aggiungere spiegazioni.`;
+ESEMPI PRATICI:
+- "Mostrami il totale delle vendite per mese" → aggregate_group con groupBy: ["mese"] o colonna data
+- "Quali sono i 10 prodotti più venduti?" → aggregate_group con groupBy: ["prodotto"], limit: 10
+- "Qual è il fatturato totale?" → query_metric con dsl: "SUM(importo)"
+- "Mostrami gli ordini di gennaio" → filter_data con filtro sulla data
+
+Per aggregate_group, usa questo formato:
+- groupBy: colonne per raggruppare (es: ["order_date"] per raggruppare per data)
+- aggregations: [{ column: "importo", function: "SUM", alias: "totale" }]
+- orderBy: { column: "totale", direction: "DESC" } per ordinare
+
+Rispondi SOLO con le chiamate ai tool. Mai get_schema se lo schema è già fornito.`;
 
 async function getDatasetSchema(datasetId: string): Promise<{ columns: string[]; columnTypes: Record<string, string> } | null> {
   try {
@@ -253,10 +256,41 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
     }
 
     if (steps.length === 0 && datasets.length > 0) {
-      steps.push({
-        name: "get_schema",
-        args: { datasetId: datasets[0].id }
-      });
+      console.log("[QUERY-PLANNER] No function calls returned, attempting intelligent fallback");
+      const questionLower = userQuestion.toLowerCase();
+      const hasGroupingIntent = /per\s+(mese|anno|categoria|prodotto|cliente|giorno)|raggruppat|suddivi|top\s+\d+/i.test(userQuestion);
+      const hasAggregationIntent = /totale|somma|media|average|conteggio|count|quant[io]|massimo|minimo/i.test(userQuestion);
+      
+      if (hasGroupingIntent || hasAggregationIntent) {
+        const numericCols = datasets[0].columns.filter(c => c.dataType === "NUMERIC" || c.dataType === "INTEGER");
+        const dateCols = datasets[0].columns.filter(c => c.dataType === "DATE");
+        const textCols = datasets[0].columns.filter(c => c.dataType === "TEXT");
+        
+        if (numericCols.length > 0) {
+          const groupByCol = dateCols.length > 0 ? dateCols[0].name : (textCols.length > 0 ? textCols[0].name : null);
+          if (groupByCol) {
+            steps.push({
+              name: "aggregate_group",
+              args: {
+                datasetId: String(datasets[0].id),
+                groupBy: [groupByCol],
+                aggregations: [{ column: numericCols[0].name, function: "SUM", alias: "totale" }],
+                orderBy: { column: "totale", direction: "DESC" },
+                limit: 20
+              }
+            });
+            console.log("[QUERY-PLANNER] Using intelligent fallback: aggregate_group");
+          }
+        }
+      }
+      
+      if (steps.length === 0) {
+        steps.push({
+          name: "filter_data",
+          args: { datasetId: String(datasets[0].id), filters: {}, limit: 50 }
+        });
+        console.log("[QUERY-PLANNER] Using fallback: filter_data (show sample rows)");
+      }
     }
 
     const complexity = steps.length <= 1 ? "simple" : steps.length <= 3 ? "medium" : "complex";
@@ -270,14 +304,17 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
     console.error("[QUERY-PLANNER] Error planning query:", error.message);
 
     if (datasets.length > 0) {
-      return {
-        steps: [{
-          name: "get_schema",
-          args: { datasetId: datasets[0].id }
-        }],
-        reasoning: "Fallback: ottenimento schema dataset",
-        estimatedComplexity: "simple"
-      };
+      const numericCols = datasets[0].columns.filter(c => c.dataType === "NUMERIC" || c.dataType === "INTEGER");
+      if (numericCols.length > 0) {
+        return {
+          steps: [{
+            name: "filter_data",
+            args: { datasetId: String(datasets[0].id), filters: {}, limit: 50 }
+          }],
+          reasoning: "Fallback: mostra campione di dati",
+          estimatedComplexity: "simple"
+        };
+      }
     }
 
     return {
