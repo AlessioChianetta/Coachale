@@ -154,12 +154,13 @@ export function DataAnalysisChat({
       return apiRequest("POST", `/api/client-data/conversations/${conversationId}/messages`, { content });
     },
     onSuccess: (data: any) => {
-      const toolCalls = data.toolCalls?.map((tc: { toolName: string; params?: object }) => {
+      const assistantMsg = data.data?.assistantMessage;
+      const toolCalls = assistantMsg?.toolCalls?.map((tc: { toolName: string; params?: object }) => {
         const params = tc.params ? Object.keys(tc.params).join(", ") : "";
         return params ? `${tc.toolName} (${params})` : tc.toolName;
       }).filter(Boolean) || [];
 
-      const responseText = data.data?.answer || data.data?.explanation || data.data?.summary || "Ecco i risultati della tua query.";
+      const responseText = assistantMsg?.content || data.data?.answer || data.data?.explanation || "Ecco i risultati della tua query.";
       const assistantMessage: QueryMessage = {
         id: Date.now().toString(),
         role: "assistant",
