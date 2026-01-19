@@ -48,6 +48,48 @@ const dataTypes = [
   { value: "percentage", label: "Percentuale" },
 ];
 
+function normalizeDataType(backendType: string | null | undefined): ColumnDefinition["dataType"] {
+  if (!backendType) {
+    return "text";
+  }
+  
+  const lowerType = backendType.toLowerCase().trim();
+  
+  if (lowerType.includes("timestamp") || lowerType.includes("date") || lowerType.includes("time")) {
+    return "date";
+  }
+  
+  if (lowerType.includes("int") || lowerType.includes("numeric") || lowerType.includes("decimal") ||
+      lowerType.includes("float") || lowerType.includes("double") || lowerType.includes("real") ||
+      lowerType.includes("number") || lowerType === "serial" || lowerType === "bigserial") {
+    return "number";
+  }
+  
+  if (lowerType.includes("bool")) {
+    return "boolean";
+  }
+  
+  if (lowerType.includes("money") || lowerType.includes("currency")) {
+    return "currency";
+  }
+  
+  if (lowerType.includes("percent")) {
+    return "percentage";
+  }
+  
+  if (lowerType.includes("text") || lowerType.includes("char") || lowerType.includes("varchar") ||
+      lowerType.includes("string")) {
+    return "text";
+  }
+  
+  if (["text", "number", "date", "boolean", "currency", "percentage"].includes(lowerType)) {
+    return lowerType as ColumnDefinition["dataType"];
+  }
+  
+  console.warn(`[ColumnDiscovery] Unknown data type "${backendType}", defaulting to "text"`);
+  return "text";
+}
+
 export function ColumnDiscoveryPreview({
   filePath,
   filename,
@@ -73,7 +115,11 @@ export function ColumnDiscoveryPreview({
     onSuccess: (data: any) => {
       if (data.success) {
         setDiscoveryResult(data.data);
-        setColumns(data.data.columns);
+        const normalizedColumns = data.data.columns.map((col: any) => ({
+          ...col,
+          dataType: normalizeDataType(col.dataType),
+        }));
+        setColumns(normalizedColumns);
         toast({
           title: "Colonne rilevate",
           description: `${data.data.columns.length} colonne trovate con confidenza ${Math.round(data.data.overallConfidence * 100)}%`,
