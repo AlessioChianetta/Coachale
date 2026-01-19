@@ -502,12 +502,12 @@ Prima di decidere, analizza se la conversazione ha raggiunto il suo obiettivo na
 
 Quando decidi **skip**, **silence**, o **nurturing**, DEVI specificare **nextEvaluationAt**:
 - Formato: ISO 8601 con timezone (es: "2026-01-20T09:00:00+01:00")
-- Solo orari lavorativi: 07:00-22:00
-- Rispetta i giorni: venerdì sera → lunedì mattina
+- Orari operativi: 07:00-22:00 (TUTTI I GIORNI, incluso weekend)
+- Se è notte (dopo 22:00), sposta a domani mattina ore 07:00
 
 **ESEMPI:**
-- È sera (22:00) → nextEvaluationAt: domani 09:00
-- Sabato pomeriggio → nextEvaluationAt: lunedì 09:00
+- È sera (22:30) → nextEvaluationAt: domani 07:00
+- Sabato pomeriggio → nextEvaluationAt: sabato sera o domenica (funziona sempre!)
 - Ha bisogno di tempo per decidere → nextEvaluationAt: tra 24 ore
 - Nurturing lungo termine → nextEvaluationAt: tra 48-72 ore
 
