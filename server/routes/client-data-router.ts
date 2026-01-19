@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { db } from "../db";
-import { clientDataDatasets, users, consultantColumnMappings } from "../../shared/schema";
+import { clientDataDatasets, users, consultantColumnMappings, clientDataMetrics } from "../../shared/schema";
 import { eq, and, desc, or } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../middleware/auth";
 import { upload } from "../middleware/upload";
@@ -8,6 +8,9 @@ import { processExcelFile, type ProcessedFile } from "../services/client-data/up
 import { getDistributedSample, profileAllColumns, type DistributedSample } from "../services/client-data/column-profiler";
 import { discoverColumns, saveColumnMapping, type ColumnDefinition, type DiscoveryResult } from "../services/client-data/column-discovery";
 import { generateTableName, createDynamicTable, importDataToTable, getTablePreview, dropDynamicTable, getTableRowCount } from "../services/client-data/table-generator";
+import { parseMetricExpression, validateMetricAgainstSchema } from "../services/client-data/metric-dsl";
+import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, aiTools, type QueryResult } from "../services/client-data/query-executor";
+import { invalidateCache, getCacheStats } from "../services/client-data/cache-manager";
 import fs from "fs";
 import path from "path";
 
@@ -849,6 +852,432 @@ router.post(
         error: error.message || "Failed to create and import dataset",
       });
     }
+  }
+);
+
+router.post(
+  "/datasets/:id/query",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { dsl, tool, params: toolParams } = req.body as {
+        dsl?: string;
+        tool?: string;
+        params?: Record<string, any>;
+      };
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (dataset.status !== "ready") {
+        return res.status(400).json({
+          success: false,
+          error: `Dataset is not ready. Current status: ${dataset.status}`,
+        });
+      }
+
+      let result: QueryResult;
+
+      if (tool && toolParams) {
+        switch (tool) {
+          case "query_metric":
+            result = await queryMetric(id, toolParams.dsl || dsl || "", { userId });
+            break;
+          case "filter_data":
+            result = await filterData(
+              id,
+              toolParams.filters || {},
+              toolParams.columns,
+              toolParams.limit || 100,
+              toolParams.offset || 0,
+              { userId }
+            );
+            break;
+          case "aggregate_group":
+            result = await aggregateGroup(
+              id,
+              toolParams.groupBy || [],
+              toolParams.aggregations || [],
+              toolParams.filters,
+              toolParams.orderBy,
+              toolParams.limit || 100,
+              { userId }
+            );
+            break;
+          case "compare_periods":
+            result = await comparePeriods(
+              id,
+              toolParams.dsl || "",
+              toolParams.dateColumn || "",
+              { start: toolParams.period1Start, end: toolParams.period1End },
+              { start: toolParams.period2Start, end: toolParams.period2End },
+              { userId }
+            );
+            break;
+          case "get_schema":
+            result = await getSchema(id);
+            break;
+          default:
+            return res.status(400).json({ success: false, error: `Unknown tool: ${tool}` });
+        }
+      } else if (dsl) {
+        result = await queryMetric(id, dsl, { userId });
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: "Either 'dsl' or 'tool' with 'params' is required",
+        });
+      }
+
+      await db
+        .update(clientDataDatasets)
+        .set({ lastQueriedAt: new Date() })
+        .where(eq(clientDataDatasets.id, id));
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error executing query:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to execute query",
+      });
+    }
+  }
+);
+
+router.get(
+  "/datasets/:id/metrics",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const metrics = await db
+        .select()
+        .from(clientDataMetrics)
+        .where(eq(clientDataMetrics.datasetId, id))
+        .orderBy(desc(clientDataMetrics.createdAt));
+
+      res.json({
+        success: true,
+        data: metrics,
+        count: metrics.length,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching metrics:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch metrics",
+      });
+    }
+  }
+);
+
+router.post(
+  "/datasets/:id/metrics",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, dsl, description } = req.body as {
+        name: string;
+        dsl: string;
+        description?: string;
+      };
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      if (!name || !dsl) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields: name, dsl",
+        });
+      }
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const parsed = parseMetricExpression(dsl);
+      if (!parsed.isValid) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid DSL syntax: ${parsed.errors.join("; ")}`,
+        });
+      }
+
+      const tableColumns = Object.keys(dataset.columnMapping);
+      const validation = validateMetricAgainstSchema(parsed, tableColumns);
+      if (!validation.valid) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid metric: ${validation.errors.join("; ")}`,
+        });
+      }
+
+      const [metric] = await db
+        .insert(clientDataMetrics)
+        .values({
+          datasetId: id,
+          name,
+          dslFormula: dsl,
+          description,
+        })
+        .returning();
+
+      console.log(`[CLIENT-DATA] Metric created: ${metric.id} for dataset ${id}`);
+
+      res.status(201).json({
+        success: true,
+        data: metric,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error creating metric:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to create metric",
+      });
+    }
+  }
+);
+
+router.delete(
+  "/datasets/:id/metrics/:metricId",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id, metricId } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      await db
+        .delete(clientDataMetrics)
+        .where(
+          and(
+            eq(clientDataMetrics.id, metricId),
+            eq(clientDataMetrics.datasetId, id)
+          )
+        );
+
+      res.json({ success: true, message: "Metric deleted" });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error deleting metric:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to delete metric",
+      });
+    }
+  }
+);
+
+router.get(
+  "/datasets/:id/schema",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const result = await getSchema(id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error getting schema:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to get schema",
+      });
+    }
+  }
+);
+
+router.post(
+  "/datasets/:id/cache/invalidate",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      await invalidateCache(id);
+
+      res.json({ success: true, message: "Cache invalidated" });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error invalidating cache:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to invalidate cache",
+      });
+    }
+  }
+);
+
+router.get(
+  "/datasets/:id/cache/stats",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, id))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const stats = await getCacheStats(id);
+
+      res.json({ success: true, data: stats });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error getting cache stats:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to get cache stats",
+      });
+    }
+  }
+);
+
+router.get(
+  "/tools",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    const tools = Object.entries(aiTools).map(([name, tool]) => ({
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters,
+    }));
+
+    res.json({ success: true, data: tools });
   }
 );
 

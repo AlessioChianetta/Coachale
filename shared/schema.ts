@@ -8499,3 +8499,72 @@ export const consultantColumnMappings = pgTable("consultant_column_mappings", {
 
 export type ConsultantColumnMapping = typeof consultantColumnMappings.$inferSelect;
 export type InsertConsultantColumnMapping = typeof consultantColumnMappings.$inferInsert;
+
+// ============================================================
+// CLIENT DATA METRICS - Semantic layer for metric definitions
+// ============================================================
+
+export const clientDataMetrics = pgTable("client_data_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasetId: varchar("dataset_id").notNull().references(() => clientDataDatasets.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  dslFormula: text("dsl_formula").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  datasetIdx: index("idx_client_data_metrics_dataset").on(table.datasetId),
+  nameIdx: index("idx_client_data_metrics_name").on(table.datasetId, table.name),
+}));
+
+export type ClientDataMetric = typeof clientDataMetrics.$inferSelect;
+export type InsertClientDataMetric = typeof clientDataMetrics.$inferInsert;
+
+// ============================================================
+// CLIENT DATA QUERY LOG - Audit trail for executed queries
+// ============================================================
+
+export const clientDataQueryLog = pgTable("client_data_query_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasetId: varchar("dataset_id").notNull().references(() => clientDataDatasets.id, { onDelete: "cascade" }),
+  queryHash: varchar("query_hash", { length: 64 }).notNull(),
+  sqlExecuted: text("sql_executed").notNull(),
+  parameters: jsonb("parameters").$type<Record<string, any>>(),
+  executionTimeMs: integer("execution_time_ms"),
+  resultRowCount: integer("result_row_count"),
+  userId: varchar("user_id").references(() => users.id),
+  success: boolean("success").default(true),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  datasetIdx: index("idx_client_data_query_log_dataset").on(table.datasetId),
+  hashIdx: index("idx_client_data_query_log_hash").on(table.queryHash),
+  createdAtIdx: index("idx_client_data_query_log_created").on(table.createdAt),
+}));
+
+export type ClientDataQueryLog = typeof clientDataQueryLog.$inferSelect;
+export type InsertClientDataQueryLog = typeof clientDataQueryLog.$inferInsert;
+
+// ============================================================
+// CLIENT DATA QUERY CACHE - Anti-stampede cache with SKIP LOCKED
+// ============================================================
+
+export const clientDataQueryCache = pgTable("client_data_query_cache", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasetId: varchar("dataset_id").notNull().references(() => clientDataDatasets.id, { onDelete: "cascade" }),
+  queryHash: varchar("query_hash", { length: 64 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().$type<"computing" | "ready" | "error" | "expired">().default("computing"),
+  resultJson: jsonb("result_json").$type<any>(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  expiresAt: timestamp("expires_at").notNull(),
+  computeStartedAt: timestamp("compute_started_at"),
+  computeCompletedAt: timestamp("compute_completed_at"),
+}, (table) => ({
+  datasetHashIdx: index("idx_client_data_query_cache_dataset_hash").on(table.datasetId, table.queryHash),
+  expiresIdx: index("idx_client_data_query_cache_expires").on(table.expiresAt),
+  statusIdx: index("idx_client_data_query_cache_status").on(table.status),
+}));
+
+export type ClientDataQueryCache = typeof clientDataQueryCache.$inferSelect;
+export type InsertClientDataQueryCache = typeof clientDataQueryCache.$inferInsert;
