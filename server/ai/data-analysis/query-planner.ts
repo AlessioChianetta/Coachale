@@ -244,7 +244,7 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
       }],
       toolConfig: {
         functionCallingConfig: {
-          mode: "AUTO"
+          mode: "ANY"
         }
       }
     });
