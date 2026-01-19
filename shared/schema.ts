@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -8571,3 +8571,63 @@ export const clientDataQueryCache = pgTable("client_data_query_cache", {
 
 export type ClientDataQueryCache = typeof clientDataQueryCache.$inferSelect;
 export type InsertClientDataQueryCache = typeof clientDataQueryCache.$inferInsert;
+
+// ============================================================
+// CLIENT DATA CONVERSATIONS - Chat history for data analysis
+// ============================================================
+
+export const clientDataConversations = pgTable("client_data_conversations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: uuid("client_id").notNull(),
+  consultantId: uuid("consultant_id").notNull(),
+  datasetId: integer("dataset_id").notNull(),
+  title: varchar("title", { length: 255 }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+  lastMessageAt: timestamp("last_message_at"),
+}, (table) => ({
+  clientIdx: index("idx_client_data_conversations_client_id").on(table.clientId),
+  datasetIdx: index("idx_client_data_conversations_dataset_id").on(table.datasetId),
+}));
+
+export type ClientDataConversation = typeof clientDataConversations.$inferSelect;
+export type InsertClientDataConversation = typeof clientDataConversations.$inferInsert;
+
+// ============================================================
+// CLIENT DATA MESSAGES - Messages within data analysis conversations
+// ============================================================
+
+export const clientDataMessages = pgTable("client_data_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: uuid("conversation_id").notNull().references(() => clientDataConversations.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 20 }).notNull().$type<"user" | "assistant">(),
+  content: text("content").notNull(),
+  toolCalls: jsonb("tool_calls").$type<any[]>(),
+  thinking: text("thinking"),
+  queryResult: jsonb("query_result").$type<any>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  conversationIdx: index("idx_client_data_messages_conversation_id").on(table.conversationId),
+}));
+
+export type ClientDataMessage = typeof clientDataMessages.$inferSelect;
+export type InsertClientDataMessage = typeof clientDataMessages.$inferInsert;
+
+// ============================================================
+// CLIENT DATA AI PREFERENCES - User preferences for data analysis AI
+// ============================================================
+
+export const clientDataAiPreferences = pgTable("client_data_ai_preferences", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: uuid("client_id").notNull().unique(),
+  preferredModel: varchar("preferred_model", { length: 50 }).default("gemini-2.5-flash"),
+  thinkingLevel: varchar("thinking_level", { length: 20 }).default("none").$type<"none" | "low" | "medium" | "high">(),
+  writingStyle: varchar("writing_style", { length: 50 }).default("default"),
+  responseLength: varchar("response_length", { length: 20 }).default("medium"),
+  customInstructions: text("custom_instructions"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ClientDataAiPreference = typeof clientDataAiPreferences.$inferSelect;
+export type InsertClientDataAiPreference = typeof clientDataAiPreferences.$inferInsert;

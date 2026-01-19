@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { DatasetViewer } from "@/components/client-data/DatasetViewer";
-import { QueryChat } from "@/components/client-data/QueryChat";
+import { DataAnalysisChat } from "@/components/client-data/DataAnalysisChat";
 import { ResultsDisplay } from "@/components/client-data/ResultsDisplay";
 
 import {
@@ -229,8 +229,8 @@ export default function MyDataAnalysis() {
           )}
 
           {viewMode === "query" && selectedDataset && (
-            <div className="h-full max-w-4xl mx-auto">
-              <QueryChat
+            <div className="h-full max-w-5xl mx-auto">
+              <DataAnalysisChat
                 datasetId={selectedDataset.id}
                 datasetName={selectedDataset.name}
                 columnMapping={selectedDataset.columnMapping}

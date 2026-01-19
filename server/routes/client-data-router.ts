@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { db } from "../db";
-import { clientDataDatasets, users, consultantColumnMappings, clientDataMetrics } from "../../shared/schema";
+import { clientDataDatasets, users, consultantColumnMappings, clientDataMetrics, clientDataConversations, clientDataMessages, clientDataAiPreferences } from "../../shared/schema";
 import { eq, and, desc, or } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../middleware/auth";
 import { upload } from "../middleware/upload";
@@ -1567,6 +1567,488 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Errore nel confronto aggregazioni",
+      });
+    }
+  }
+);
+
+// ============================================================
+// CONVERSATIONS ENDPOINTS
+// ============================================================
+
+router.get(
+  "/conversations",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      let conversations;
+      
+      if (userRole === "consultant") {
+        conversations = await db
+          .select()
+          .from(clientDataConversations)
+          .where(eq(clientDataConversations.consultantId, userId))
+          .orderBy(desc(clientDataConversations.lastMessageAt));
+      } else {
+        conversations = await db
+          .select()
+          .from(clientDataConversations)
+          .where(eq(clientDataConversations.clientId, userId))
+          .orderBy(desc(clientDataConversations.lastMessageAt));
+      }
+
+      res.json({
+        success: true,
+        data: conversations,
+        count: conversations.length,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching conversations:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch conversations",
+      });
+    }
+  }
+);
+
+router.post(
+  "/conversations",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+      const { datasetId, title } = req.body;
+
+      if (!datasetId) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required field: datasetId",
+        });
+      }
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, datasetId))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({
+          success: false,
+          error: "Dataset not found",
+        });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const conversationData: any = {
+        datasetId: parseInt(datasetId, 10),
+        title: title || `Conversation on ${dataset.name}`,
+        clientId: userRole === "client" ? userId : dataset.clientId,
+        consultantId: userRole === "consultant" ? userId : dataset.consultantId,
+      };
+
+      const [inserted] = await db
+        .insert(clientDataConversations)
+        .values(conversationData)
+        .returning();
+
+      console.log(`[CLIENT-DATA] Conversation created: ${inserted.id}`);
+
+      res.status(201).json({
+        success: true,
+        data: inserted,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error creating conversation:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to create conversation",
+      });
+    }
+  }
+);
+
+router.get(
+  "/conversations/:id",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [conversation] = await db
+        .select()
+        .from(clientDataConversations)
+        .where(eq(clientDataConversations.id, id))
+        .limit(1);
+
+      if (!conversation) {
+        return res.status(404).json({
+          success: false,
+          error: "Conversation not found",
+        });
+      }
+
+      if (userRole === "consultant" && conversation.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && conversation.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const messages = await db
+        .select()
+        .from(clientDataMessages)
+        .where(eq(clientDataMessages.conversationId, id))
+        .orderBy(clientDataMessages.createdAt);
+
+      res.json({
+        success: true,
+        data: {
+          ...conversation,
+          messages,
+        },
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching conversation:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch conversation",
+      });
+    }
+  }
+);
+
+router.delete(
+  "/conversations/:id",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [conversation] = await db
+        .select()
+        .from(clientDataConversations)
+        .where(eq(clientDataConversations.id, id))
+        .limit(1);
+
+      if (!conversation) {
+        return res.status(404).json({
+          success: false,
+          error: "Conversation not found",
+        });
+      }
+
+      if (userRole === "consultant" && conversation.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && conversation.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      await db.delete(clientDataConversations).where(eq(clientDataConversations.id, id));
+
+      console.log(`[CLIENT-DATA] Conversation deleted: ${id}`);
+
+      res.json({
+        success: true,
+        message: "Conversation deleted successfully",
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error deleting conversation:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to delete conversation",
+      });
+    }
+  }
+);
+
+// ============================================================
+// MESSAGES ENDPOINT
+// ============================================================
+
+router.post(
+  "/conversations/:id/messages",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { content } = req.body as { content: string };
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Message content is required",
+        });
+      }
+
+      const [conversation] = await db
+        .select()
+        .from(clientDataConversations)
+        .where(eq(clientDataConversations.id, id))
+        .limit(1);
+
+      if (!conversation) {
+        return res.status(404).json({ success: false, error: "Conversation not found" });
+      }
+
+      if (userRole === "consultant" && conversation.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && conversation.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, conversation.datasetId.toString()))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (dataset.status !== "ready") {
+        return res.status(400).json({
+          success: false,
+          error: `Dataset not ready. Status: ${dataset.status}`,
+        });
+      }
+
+      const [userMessage] = await db
+        .insert(clientDataMessages)
+        .values({
+          conversationId: id,
+          role: "user",
+          content: content.trim(),
+        })
+        .returning();
+
+      console.log(`[CLIENT-DATA] User message saved: ${userMessage.id}`);
+
+      const columnMapping = dataset.columnMapping as Record<string, { displayName: string; dataType: string; description?: string }>;
+      const datasetInfo = {
+        id: dataset.id,
+        name: dataset.name,
+        columns: Object.entries(columnMapping).map(([name, info]) => ({
+          name,
+          displayName: info.displayName,
+          dataType: info.dataType,
+          description: info.description,
+        })),
+        rowCount: dataset.rowCount || 0,
+      };
+
+      console.log(`[CLIENT-DATA] Processing message: "${content}" on dataset ${dataset.id}`);
+
+      const consultantId = dataset.consultantId || userId;
+      const executionResult = await askDataset(content, [datasetInfo], consultantId, userId);
+
+      const toolCalls = executionResult.plan.steps.map((step, index) => ({
+        id: `step_${index}`,
+        tool: step.tool,
+        args: step.args,
+        reasoning: step.reasoning,
+      }));
+
+      const thinkingLines = executionResult.plan.steps.map((step, index) => 
+        `Step ${index + 1}: ${step.tool} - ${step.reasoning}`
+      );
+      const thinking = thinkingLines.join("\n");
+
+      const explanation = await generateNaturalLanguageResponse(
+        executionResult.results,
+        content,
+        consultantId
+      );
+
+      const queryResult = executionResult.results.map((r) => ({
+        tool: r.toolName,
+        success: r.success,
+        data: r.result,
+        error: r.error,
+        executionTimeMs: r.executionTimeMs,
+      }));
+
+      const [assistantMessage] = await db
+        .insert(clientDataMessages)
+        .values({
+          conversationId: id,
+          role: "assistant",
+          content: explanation,
+          toolCalls,
+          thinking,
+          queryResult,
+        })
+        .returning();
+
+      await db
+        .update(clientDataConversations)
+        .set({ 
+          lastMessageAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(clientDataConversations.id, id));
+
+      await db
+        .update(clientDataDatasets)
+        .set({ lastQueriedAt: new Date() })
+        .where(eq(clientDataDatasets.id, dataset.id));
+
+      console.log(`[CLIENT-DATA] Assistant message saved: ${assistantMessage.id}`);
+
+      res.json({
+        success: true,
+        data: {
+          userMessage,
+          assistantMessage,
+          plan: {
+            steps: executionResult.plan.steps,
+            complexity: executionResult.plan.estimatedComplexity,
+          },
+          totalExecutionTimeMs: executionResult.totalExecutionTimeMs,
+        },
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Message error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to process message",
+      });
+    }
+  }
+);
+
+// ============================================================
+// AI PREFERENCES ENDPOINTS
+// ============================================================
+
+router.get(
+  "/ai-preferences",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+
+      const [preferences] = await db
+        .select()
+        .from(clientDataAiPreferences)
+        .where(eq(clientDataAiPreferences.clientId, userId))
+        .limit(1);
+
+      if (!preferences) {
+        return res.json({
+          success: true,
+          data: {
+            clientId: userId,
+            preferredModel: "gemini-2.5-flash",
+            thinkingLevel: "none",
+            writingStyle: "default",
+            responseLength: "medium",
+            customInstructions: null,
+          },
+        });
+      }
+
+      res.json({
+        success: true,
+        data: preferences,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching AI preferences:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch AI preferences",
+      });
+    }
+  }
+);
+
+router.put(
+  "/ai-preferences",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { preferredModel, thinkingLevel, writingStyle, responseLength, customInstructions } = req.body;
+
+      const [existing] = await db
+        .select()
+        .from(clientDataAiPreferences)
+        .where(eq(clientDataAiPreferences.clientId, userId))
+        .limit(1);
+
+      let result;
+
+      if (existing) {
+        [result] = await db
+          .update(clientDataAiPreferences)
+          .set({
+            preferredModel: preferredModel ?? existing.preferredModel,
+            thinkingLevel: thinkingLevel ?? existing.thinkingLevel,
+            writingStyle: writingStyle ?? existing.writingStyle,
+            responseLength: responseLength ?? existing.responseLength,
+            customInstructions: customInstructions !== undefined ? customInstructions : existing.customInstructions,
+            updatedAt: new Date(),
+          })
+          .where(eq(clientDataAiPreferences.clientId, userId))
+          .returning();
+
+        console.log(`[CLIENT-DATA] AI preferences updated for user: ${userId}`);
+      } else {
+        [result] = await db
+          .insert(clientDataAiPreferences)
+          .values({
+            clientId: userId,
+            preferredModel: preferredModel ?? "gemini-2.5-flash",
+            thinkingLevel: thinkingLevel ?? "none",
+            writingStyle: writingStyle ?? "default",
+            responseLength: responseLength ?? "medium",
+            customInstructions: customInstructions ?? null,
+          })
+          .returning();
+
+        console.log(`[CLIENT-DATA] AI preferences created for user: ${userId}`);
+      }
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error updating AI preferences:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update AI preferences",
       });
     }
   }
