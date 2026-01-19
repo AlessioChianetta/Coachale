@@ -124,6 +124,7 @@ import referralRouter from "./routes/referral-router";
 import emailHubRouter, { initializeEmailHubIdle } from "./routes/email-hub-router";
 import contentStudioRouter from "./routes/content-studio";
 import stripeAutomationsRouter, { handleStripeWebhook } from "./routes/stripe-automations-router";
+import clientDataRouter from "./routes/client-data-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -12696,6 +12697,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Content Marketing Studio routes
   app.use("/api/content", contentStudioRouter);
+
+  // Client Data Analysis routes
+  app.use("/api/client-data", clientDataRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {

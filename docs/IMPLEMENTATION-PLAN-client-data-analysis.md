@@ -12,8 +12,8 @@
 |------|------|-------|---------------|
 | 0 | Setup Iniziale | ✅ Completato | 100% |
 | 1 | Database Schema | ✅ Completato | 100% |
-| 2 | Upload & Parsing | 🔄 In corso | 0% |
-| 3 | Column Discovery | ⬜ Da fare | 0% |
+| 2 | Upload & Parsing | ✅ Completato | 100% |
+| 3 | Column Discovery | 🔄 In corso | 0% |
 | 4 | Tabelle Dinamiche | ⬜ Da fare | 0% |
 | 5 | Semantic Layer & Mini-DSL | ⬜ Da fare | 0% |
 | 6 | Query Executor | ⬜ Da fare | 0% |
@@ -540,4 +540,7 @@ npm install exceljs chardet better-sse
 | Data | Fase | Task | Stato | Note |
 |------|------|------|-------|------|
 | 2026-01-19 | - | Piano creato | OK | File IMPLEMENTATION-PLAN creato |
+| 2026-01-19 | 0 | Setup iniziale | OK | Dipendenze npm, cartelle, .gitignore |
+| 2026-01-19 | 1 | Database Schema | OK | 8 tabelle create con SQL diretto |
+| 2026-01-19 | 2 | Upload & Parsing | OK | client-data-router.ts, upload-processor.ts, column-profiler.ts |
 

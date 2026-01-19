@@ -8439,3 +8439,41 @@ export const consultantDirectLinks = pgTable("consultant_direct_links", {
 
 export type ConsultantDirectLink = typeof consultantDirectLinks.$inferSelect;
 export type InsertConsultantDirectLink = typeof consultantDirectLinks.$inferInsert;
+
+// ============================================================
+// CLIENT DATA ANALYSIS - Datasets uploaded by clients/consultants
+// ============================================================
+
+export const clientDataDatasets = pgTable("client_data_datasets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  originalFilename: varchar("original_filename", { length: 500 }),
+  sheetName: varchar("sheet_name", { length: 255 }),
+  tableName: varchar("table_name", { length: 255 }).notNull().unique(),
+  columnMapping: jsonb("column_mapping").$type<Record<string, { displayName: string; dataType: string; description?: string }>>().notNull(),
+  originalColumns: text("original_columns").array(),
+  detectedTypes: jsonb("detected_types").$type<Record<string, string>>(),
+  rowCount: integer("row_count").default(0),
+  fileSizeBytes: integer("file_size_bytes"),
+  status: varchar("status", { length: 50 }).default("pending").$type<"pending" | "processing" | "ready" | "error">(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+  lastQueriedAt: timestamp("last_queried_at"),
+}, (table) => ({
+  consultantIdx: index("idx_client_data_datasets_consultant").on(table.consultantId),
+  clientIdx: index("idx_client_data_datasets_client").on(table.clientId),
+  statusIdx: index("idx_client_data_datasets_status").on(table.status),
+}));
+
+export type ClientDataDataset = typeof clientDataDatasets.$inferSelect;
+export type InsertClientDataDataset = typeof clientDataDatasets.$inferInsert;
+
+export const insertClientDataDatasetSchema = createInsertSchema(clientDataDatasets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastQueriedAt: true,
+});
