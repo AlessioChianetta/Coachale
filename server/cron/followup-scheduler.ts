@@ -105,13 +105,13 @@ function getRetryBackoffMinutes(attemptCount: number): number {
 
 const MIN_NEXT_EVAL_MINUTES = 30;  // Minimum 30 minutes in the future
 const MAX_NEXT_EVAL_HOURS = 72;    // Maximum 72 hours in the future
-const BUSINESS_HOURS_START = 8;    // 08:00
-const BUSINESS_HOURS_END = 21;     // 21:00
+const BUSINESS_HOURS_START = 7;    // 07:00
+const BUSINESS_HOURS_END = 22;     // 22:00
 
 /**
  * Clamp and validate nextEvaluationAt from AI decision.
  * - Ensures it's in the future (min 30min, max 72h)
- * - Ensures it's within business hours (08:00-21:00)
+ * - Ensures it's within business hours (07:00-22:00)
  * - If outside business hours, moves to next business hour slot
  * 
  * @param nextEvalString - ISO 8601 timestamp string from AI
@@ -152,11 +152,11 @@ function clampNextEvaluationAt(nextEvalString: string | undefined): Date | null 
     const romeHour = parseInt(romeFormatter.format(nextEval), 10);
     
     if (romeHour < BUSINESS_HOURS_START) {
-      // Before 08:00 - move to 08:00 same day
+      // Before 07:00 - move to 07:00 same day
       nextEval.setHours(nextEval.getHours() + (BUSINESS_HOURS_START - romeHour));
       console.log(`📎 [NEXT-EVAL] Moved to business hours start: ${nextEval.toISOString()}`);
     } else if (romeHour >= BUSINESS_HOURS_END) {
-      // After 21:00 - move to 08:00 next day
+      // After 22:00 - move to 07:00 next day
       nextEval.setDate(nextEval.getDate() + 1);
       nextEval.setHours(BUSINESS_HOURS_START, 0, 0, 0);
       console.log(`📎 [NEXT-EVAL] Moved to next day business hours: ${nextEval.toISOString()}`);

@@ -106,7 +106,7 @@ Aggiungere istruzioni:
 
 Quando decidi skip, silence, o nurturing, DEVI specificare nextEvaluationAt:
 - Usa formato ISO 8601 con timezone (es: "2026-01-20T09:00:00+01:00")
-- Suggerisci solo orari lavorativi: 08:00-21:00
+- Suggerisci solo orari lavorativi: 07:00-22:00
 - Rispetta il giorno: se è venerdì sera → lunedì mattina
 - Range validi: minimo 30 minuti, massimo 72 ore
 
