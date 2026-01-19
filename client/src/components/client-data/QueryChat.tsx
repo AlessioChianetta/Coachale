@@ -31,10 +31,24 @@ interface QueryMessage {
 interface QueryResult {
   success: boolean;
   data?: {
+    question?: string;
+    answer?: string;
+    plan?: {
+      steps: any[];
+      complexity: string;
+    };
+    results?: Array<{
+      tool: string;
+      success: boolean;
+      data: any;
+      error?: string;
+      executionTimeMs: number;
+    }>;
     rows?: any[];
     aggregations?: Record<string, any>;
     chartData?: any[];
     summary?: string;
+    totalExecutionTimeMs?: number;
   };
   explanation?: string;
   sqlGenerated?: string;
@@ -74,10 +88,11 @@ export function QueryChat({
     mutationFn: (question: string) =>
       apiRequest("POST", `/api/client-data/datasets/${datasetId}/ask`, { question }),
     onSuccess: (data: any) => {
+      const responseText = data.data?.answer || data.data?.explanation || data.data?.summary || "Ecco i risultati della tua query.";
       const assistantMessage: QueryMessage = {
         id: Date.now().toString(),
         role: "assistant",
-        content: data.data?.explanation || data.data?.summary || "Ecco i risultati della tua query.",
+        content: responseText,
         timestamp: new Date(),
         queryResult: data,
       };
@@ -233,7 +248,8 @@ export function QueryChat({
                             {message.queryResult.data.summary}
                           </p>
                         )}
-                        {message.queryResult.data.rows && message.queryResult.data.rows.length > 0 && (
+                        {(message.queryResult.data.results?.some(r => r.success && r.data?.length > 0) ||
+                          (message.queryResult.data.rows && message.queryResult.data.rows.length > 0)) && (
                           <Button
                             variant="outline"
                             size="sm"
