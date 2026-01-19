@@ -666,7 +666,7 @@ export async function selectBestTemplateWithAI(
 
   // Build conversation summary - NO truncation to avoid AI seeing incomplete messages
   const recentMessages = conversationContext.lastMessages
-    .slice(-5) // Only last 5 messages
+    .slice(-10) // Last 10 messages for better context
     .map(m => `[${m.role}]: ${m.content}`)
     .join('\n');
 
