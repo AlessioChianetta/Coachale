@@ -4,8 +4,12 @@
  */
 
 import { getAIProvider, getModelWithThinking } from "../provider-factory";
-import { dataAnalysisTools, type ToolCall, type ExecutedToolResult, validateToolCall } from "./tool-definitions";
+import { dataAnalysisTools, type ToolCall, type ExecutedToolResult, validateToolCall, getToolByName } from "./tool-definitions";
 import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, type QueryResult } from "../../services/client-data/query-executor";
+import { parseMetricExpression, validateMetricAgainstSchema } from "../../services/client-data/metric-dsl";
+import { db } from "../../db";
+import { clientDataDatasets } from "../../../shared/schema";
+import { eq } from "drizzle-orm";
 
 interface DatasetInfo {
   id: string;
@@ -27,6 +31,14 @@ export interface QueryExecutionResult {
   success: boolean;
   totalExecutionTimeMs: number;
 }
+
+interface ToolCallValidationResult {
+  valid: boolean;
+  errors: string[];
+  repairedToolCall?: ToolCall;
+}
+
+const MAX_PLANNING_RETRIES = 2;
 
 const SYSTEM_PROMPT_IT = `Sei un assistente AI esperto in analisi dati. Il tuo compito è interpretare le domande dell'utente sui dati e decidere quali tool utilizzare per rispondere.
 
@@ -54,6 +66,135 @@ FORMATO DSL per query_metric:
 - Esempio: SUM(importo) WHERE data >= '2024-01-01' AND categoria = 'A'
 
 Rispondi SOLO con le chiamate ai tool necessarie. Non aggiungere spiegazioni.`;
+
+async function getDatasetSchema(datasetId: string): Promise<{ columns: string[]; columnTypes: Record<string, string> } | null> {
+  try {
+    const [dataset] = await db
+      .select()
+      .from(clientDataDatasets)
+      .where(eq(clientDataDatasets.id, datasetId))
+      .limit(1);
+
+    if (!dataset || dataset.status !== "ready") {
+      return null;
+    }
+
+    const columns = Object.keys(dataset.columnMapping);
+    const columnTypes: Record<string, string> = {};
+    for (const [name, info] of Object.entries(dataset.columnMapping)) {
+      columnTypes[name] = (info as any).dataType || "TEXT";
+    }
+
+    return { columns, columnTypes };
+  } catch (error) {
+    console.error("[QUERY-PLANNER] Error fetching dataset schema:", error);
+    return null;
+  }
+}
+
+function validateToolCallAgainstSchema(
+  toolCall: ToolCall,
+  schema: { columns: string[]; columnTypes: Record<string, string> }
+): ToolCallValidationResult {
+  const errors: string[] = [];
+
+  const basicValidation = validateToolCall(toolCall);
+  if (!basicValidation.valid) {
+    return { valid: false, errors: basicValidation.errors };
+  }
+
+  switch (toolCall.name) {
+    case "query_metric": {
+      const dsl = toolCall.args.dsl;
+      if (!dsl || typeof dsl !== "string") {
+        errors.push("DSL expression is required and must be a string");
+        break;
+      }
+      try {
+        const parsed = parseMetricExpression(dsl);
+        const validation = validateMetricAgainstSchema(parsed, schema.columns);
+        if (!validation.valid) {
+          errors.push(...validation.errors);
+        }
+      } catch (parseError: any) {
+        errors.push(`Invalid DSL syntax: ${parseError.message}`);
+      }
+      break;
+    }
+
+    case "compare_periods": {
+      const dsl = toolCall.args.dsl;
+      const dateColumn = toolCall.args.dateColumn;
+      
+      if (!dsl || typeof dsl !== "string") {
+        errors.push("DSL expression is required");
+      }
+      if (!dateColumn || !schema.columns.includes(dateColumn)) {
+        errors.push(`Invalid date column: ${dateColumn}. Available: ${schema.columns.slice(0, 5).join(", ")}...`);
+      }
+      if (dateColumn && schema.columnTypes[dateColumn] !== "DATE") {
+        errors.push(`Column ${dateColumn} is not a DATE type`);
+      }
+
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      for (const field of ["period1Start", "period1End", "period2Start", "period2End"]) {
+        const value = toolCall.args[field];
+        if (!value || !dateRegex.test(value)) {
+          errors.push(`Invalid date format for ${field}: expected YYYY-MM-DD`);
+        }
+      }
+      break;
+    }
+
+    case "filter_data": {
+      const filters = toolCall.args.filters;
+      if (filters && typeof filters === "object") {
+        for (const column of Object.keys(filters)) {
+          if (!schema.columns.includes(column)) {
+            errors.push(`Invalid filter column: ${column}`);
+          }
+        }
+      }
+      const columns = toolCall.args.columns;
+      if (columns && Array.isArray(columns)) {
+        for (const col of columns) {
+          if (!schema.columns.includes(col)) {
+            errors.push(`Invalid select column: ${col}`);
+          }
+        }
+      }
+      break;
+    }
+
+    case "aggregate_group": {
+      const groupBy = toolCall.args.groupBy;
+      if (groupBy && Array.isArray(groupBy)) {
+        for (const col of groupBy) {
+          if (!schema.columns.includes(col)) {
+            errors.push(`Invalid groupBy column: ${col}`);
+          }
+        }
+      }
+      const aggregations = toolCall.args.aggregations;
+      if (aggregations && Array.isArray(aggregations)) {
+        for (const agg of aggregations) {
+          if (agg.column && agg.column !== "*" && !schema.columns.includes(agg.column)) {
+            errors.push(`Invalid aggregation column: ${agg.column}`);
+          }
+        }
+      }
+      break;
+    }
+
+    case "get_schema":
+      break;
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
 
 export async function planQuery(
   userQuestion: string,
@@ -144,6 +285,86 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
       reasoning: `Errore nella pianificazione: ${error.message}`,
       estimatedComplexity: "simple"
     };
+  }
+}
+
+async function retryPlanWithFeedback(
+  userQuestion: string,
+  datasets: DatasetInfo[],
+  validationErrors: string[],
+  consultantId?: string,
+  attempt: number = 1
+): Promise<QueryPlan | null> {
+  if (attempt > MAX_PLANNING_RETRIES) {
+    console.error(`[QUERY-PLANNER] Max retries (${MAX_PLANNING_RETRIES}) exceeded`);
+    return null;
+  }
+
+  const providerResult = await getAIProvider(consultantId || "system", consultantId);
+  const client = providerResult.client;
+  const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
+
+  const datasetsContext = datasets.map(d => {
+    const cols = d.columns.map(c => `${c.name} (${c.dataType}): ${c.description || c.displayName}`).join("\n    ");
+    return `Dataset "${d.name}" (ID: ${d.id}):
+  Colonne disponibili:
+    ${cols}`;
+  }).join("\n\n");
+
+  const errorFeedback = validationErrors.join("\n- ");
+
+  const retryPrompt = `La tua risposta precedente conteneva errori di validazione:
+- ${errorFeedback}
+
+Dataset disponibili:
+${datasetsContext}
+
+Domanda originale: "${userQuestion}"
+
+Per favore correggi gli errori e genera nuove chiamate ai tool valide. Usa SOLO colonne che esistono nel dataset.`;
+
+  console.log(`[QUERY-PLANNER] Retry attempt ${attempt} with feedback`);
+
+  try {
+    const response = await client.generateContent({
+      model: modelName,
+      contents: [
+        { role: "user", parts: [{ text: retryPrompt }] }
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+      },
+      tools: [{
+        functionDeclarations: dataAnalysisTools
+      }]
+    });
+
+    const steps: ToolCall[] = [];
+    const candidates = (response.response as any).candidates;
+    if (candidates && candidates[0]?.content?.parts) {
+      for (const part of candidates[0].content.parts) {
+        if (part.functionCall) {
+          steps.push({
+            name: part.functionCall.name,
+            args: part.functionCall.args || {}
+          });
+        }
+      }
+    }
+
+    if (steps.length === 0) {
+      return null;
+    }
+
+    return {
+      steps,
+      reasoning: `Piano corretto dopo retry ${attempt}`,
+      estimatedComplexity: steps.length <= 1 ? "simple" : steps.length <= 3 ? "medium" : "complex"
+    };
+  } catch (error: any) {
+    console.error(`[QUERY-PLANNER] Retry ${attempt} failed:`, error.message);
+    return null;
   }
 }
 
@@ -268,6 +489,78 @@ export async function executePlan(
   };
 }
 
+export async function executePlanWithValidation(
+  plan: QueryPlan,
+  datasets: DatasetInfo[],
+  consultantId?: string,
+  userId?: string,
+  userQuestion?: string
+): Promise<QueryExecutionResult> {
+  const startTime = Date.now();
+  const results: ExecutedToolResult[] = [];
+  let allSuccess = true;
+  let currentPlan = plan;
+
+  const datasetsMap = new Map(datasets.map(d => [d.id, d]));
+
+  for (let i = 0; i < currentPlan.steps.length; i++) {
+    const step = currentPlan.steps[i];
+    const datasetId = step.args.datasetId;
+
+    if (datasetId && step.name !== "get_schema") {
+      const schema = await getDatasetSchema(datasetId);
+      if (schema) {
+        const validation = validateToolCallAgainstSchema(step, schema);
+        if (!validation.valid) {
+          console.warn(`[QUERY-PLANNER] Tool call validation failed:`, validation.errors);
+
+          const retryPlan = await retryPlanWithFeedback(
+            userQuestion || currentPlan.reasoning,
+            datasets,
+            validation.errors,
+            consultantId,
+            1
+          );
+
+          if (retryPlan) {
+            currentPlan = retryPlan;
+            i = -1;
+            results.length = 0;
+            allSuccess = true;
+            continue;
+          } else {
+            results.push({
+              toolName: step.name,
+              args: step.args,
+              result: null,
+              success: false,
+              error: `Validation failed: ${validation.errors.join("; ")}`,
+              executionTimeMs: 0
+            });
+            allSuccess = false;
+            continue;
+          }
+        }
+      }
+    }
+
+    const result = await executeToolCall(step, userId);
+    results.push(result);
+
+    if (!result.success) {
+      allSuccess = false;
+      console.warn(`[QUERY-PLANNER] Tool ${step.name} failed:`, result.error);
+    }
+  }
+
+  return {
+    plan: currentPlan,
+    results,
+    success: allSuccess,
+    totalExecutionTimeMs: Date.now() - startTime
+  };
+}
+
 export async function askDataset(
   userQuestion: string,
   datasets: DatasetInfo[],
@@ -279,7 +572,7 @@ export async function askDataset(
   const plan = await planQuery(userQuestion, datasets, consultantId);
   console.log(`[QUERY-PLANNER] Plan: ${plan.steps.length} steps, complexity: ${plan.estimatedComplexity}`);
 
-  const result = await executePlan(plan, userId);
+  const result = await executePlanWithValidation(plan, datasets, consultantId, userId, userQuestion);
   console.log(`[QUERY-PLANNER] Execution complete in ${result.totalExecutionTimeMs}ms, success: ${result.success}`);
 
   return result;

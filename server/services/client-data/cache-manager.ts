@@ -21,8 +21,8 @@ export interface CacheResultData {
   [key: string]: any;
 }
 
-const LOCK_RETRY_DELAY_MS = 50;
-const MAX_LOCK_RETRIES = 20;
+const LOCK_RETRY_DELAY_MS = 100;
+const DEFAULT_MAX_WAIT_MS = 30000;
 const CLEANUP_INTERVAL_MS = 60000;
 
 let cleanupInterval: NodeJS.Timeout | null = null;
@@ -108,11 +108,12 @@ export async function acquireCacheLock(
 
       await client.query(
         `UPDATE client_data_query_cache
-         SET status = 'computing', compute_started_at = NOW(), expires_at = NOW() + INTERVAL '${ttlSeconds} seconds'
+         SET status = 'computing', compute_started_at = NOW(), error_message = NULL, result_json = NULL, expires_at = NOW() + INTERVAL '${ttlSeconds} seconds'
          WHERE id = $1`,
         [existing.id]
       );
       await client.query("COMMIT");
+      console.log(`[CACHE-MANAGER] Lock acquired (re-compute) for hash ${queryHash.substring(0, 12)}...`);
       return true;
     }
 
@@ -123,6 +124,7 @@ export async function acquireCacheLock(
     );
 
     await client.query("COMMIT");
+    console.log(`[CACHE-MANAGER] Lock acquired (new) for hash ${queryHash.substring(0, 12)}...`);
     return true;
   } catch (error: any) {
     await client.query("ROLLBACK").catch(() => {});
@@ -141,23 +143,31 @@ export async function acquireCacheLock(
 export async function waitForCacheResult(
   queryHash: string,
   datasetId: string,
-  maxRetries: number = MAX_LOCK_RETRIES
+  maxWaitMs: number = DEFAULT_MAX_WAIT_MS
 ): Promise<CacheEntry | null> {
-  for (let i = 0; i < maxRetries; i++) {
+  const startTime = Date.now();
+  let attempts = 0;
+
+  while (Date.now() - startTime < maxWaitMs) {
+    attempts++;
     const cached = await getCachedResult(queryHash, datasetId);
 
     if (cached) {
       if (cached.status === "ready") {
+        console.log(`[CACHE-MANAGER] Wait complete: ready after ${attempts} polls, ${Date.now() - startTime}ms`);
         return cached;
       }
       if (cached.status === "error") {
+        console.log(`[CACHE-MANAGER] Wait complete: error after ${attempts} polls`);
         return cached;
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_DELAY_MS * (i + 1)));
+    const delayMs = Math.min(LOCK_RETRY_DELAY_MS * Math.pow(1.5, attempts - 1), 2000);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
+  console.warn(`[CACHE-MANAGER] Wait timeout after ${maxWaitMs}ms, ${attempts} polls`);
   return null;
 }
 
@@ -166,28 +176,32 @@ export async function cacheResult(
   datasetId: string,
   result: CacheResultData,
   ttlSeconds: number = 3600
-): Promise<void> {
+): Promise<boolean> {
   try {
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
-    await db
+    const updateResult = await db
       .update(clientDataQueryCache)
       .set({
         status: "ready",
         resultJson: result,
+        errorMessage: null,
         computeCompletedAt: new Date(),
         expiresAt,
       })
       .where(
         and(
           eq(clientDataQueryCache.queryHash, queryHash),
-          eq(clientDataQueryCache.datasetId, datasetId)
+          eq(clientDataQueryCache.datasetId, datasetId),
+          eq(clientDataQueryCache.status, "computing")
         )
       );
 
-    console.log(`[CACHE-MANAGER] Cached result for hash ${queryHash.substring(0, 12)}... TTL: ${ttlSeconds}s`);
+    console.log(`[CACHE-MANAGER] Transitioned to 'ready' for hash ${queryHash.substring(0, 12)}... TTL: ${ttlSeconds}s`);
+    return true;
   } catch (error: any) {
     console.error("[CACHE-MANAGER] Error caching result:", error.message);
+    return false;
   }
 }
 
@@ -195,23 +209,29 @@ export async function cacheError(
   queryHash: string,
   datasetId: string,
   errorMessage: string
-): Promise<void> {
+): Promise<boolean> {
   try {
     await db
       .update(clientDataQueryCache)
       .set({
         status: "error",
         errorMessage,
+        resultJson: null,
         computeCompletedAt: new Date(),
       })
       .where(
         and(
           eq(clientDataQueryCache.queryHash, queryHash),
-          eq(clientDataQueryCache.datasetId, datasetId)
+          eq(clientDataQueryCache.datasetId, datasetId),
+          eq(clientDataQueryCache.status, "computing")
         )
       );
+
+    console.log(`[CACHE-MANAGER] Transitioned to 'error' for hash ${queryHash.substring(0, 12)}...`);
+    return true;
   } catch (error: any) {
     console.error("[CACHE-MANAGER] Error caching error:", error.message);
+    return false;
   }
 }
 

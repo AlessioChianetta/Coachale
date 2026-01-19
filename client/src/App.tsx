@@ -150,6 +150,10 @@ const ContentStudioVisuals = lazy(() => import("@/pages/content-studio/visuals")
 const ContentStudioCalendar = lazy(() => import("@/pages/content-studio/calendar"));
 const ContentStudioBrand = lazy(() => import("@/pages/content-studio/brand"));
 
+// Client Data Analysis pages
+const ConsultantClientDataAnalysis = lazy(() => import("@/pages/consultant/ClientDataAnalysis"));
+const ClientMyDataAnalysis = lazy(() => import("@/pages/client/MyDataAnalysis"));
+
 function Router() {
   const user = getAuthUser();
   const isClient = user?.role === "client";
@@ -637,6 +641,12 @@ function Router() {
             </AuthGuard>
           </Route>
 
+          <Route path="/consultant/client-data-analysis">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantClientDataAnalysis />
+            </AuthGuard>
+          </Route>
+
           <Route path="/client">
             <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientDashboard />
@@ -670,6 +680,12 @@ function Router() {
           <Route path="/client/library/:documentId">
             <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
               <ClientLibraryDocument />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/client/my-data-analysis">
+            <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
+              <ClientMyDataAnalysis />
             </AuthGuard>
           </Route>
 

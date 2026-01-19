@@ -374,6 +374,7 @@ export async function importDataToTable(
   onProgress?: (current: number, total: number) => void
 ): Promise<{ success: boolean; rowCount: number; error?: string }> {
   const client = await pool.connect();
+  const stagingTableName = `staging_${tableName}`;
 
   try {
     const ext = path.extname(filePath).toLowerCase();
@@ -382,12 +383,33 @@ export async function importDataToTable(
       : await parseExcelFile(filePath, sheetName);
 
     const totalRows = parsed.rows.length;
-    console.log(`[TABLE-GENERATOR] Importing ${totalRows} rows into ${tableName}`);
+    console.log(`[TABLE-GENERATOR] Importing ${totalRows} rows using staging table strategy`);
 
-    const columnNameMap: Record<string, ColumnDefinition> = {};
+    await client.query("BEGIN");
+
+    await client.query(`DROP TABLE IF EXISTS "${stagingTableName}" CASCADE`);
+
+    const columnDefs: string[] = [
+      "id SERIAL PRIMARY KEY",
+      "riga_originale INTEGER NOT NULL",
+      "consultant_id VARCHAR(255) NOT NULL",
+      "client_id VARCHAR(255)",
+      "created_at TIMESTAMP DEFAULT NOW()",
+    ];
+
     for (const col of columns) {
-      columnNameMap[col.originalName] = col;
+      const sanitizedName = sanitizeColumnName(col.suggestedName || col.originalName);
+      const pgType = mapDataTypeToPostgres(col.dataType);
+      columnDefs.push(`"${sanitizedName}" ${pgType}`);
     }
+
+    const createStagingSQL = `
+      CREATE TABLE "${stagingTableName}" (
+        ${columnDefs.join(",\n        ")}
+      )
+    `;
+    await client.query(createStagingSQL);
+    console.log(`[TABLE-GENERATOR] Created staging table: ${stagingTableName}`);
 
     const sanitizedColumns = columns.map(c => sanitizeColumnName(c.suggestedName || c.originalName));
     const insertColumns = ["riga_originale", "consultant_id", "client_id", ...sanitizedColumns];
@@ -422,7 +444,7 @@ export async function importDataToTable(
         placeholders.push(`(${rowPlaceholders})`);
       }
 
-      const insertSQL = `INSERT INTO "${tableName}" (${columnsList}) VALUES ${placeholders.join(", ")}`;
+      const insertSQL = `INSERT INTO "${stagingTableName}" (${columnsList}) VALUES ${placeholders.join(", ")}`;
       const flatValues = values.flat();
 
       await client.query(insertSQL, flatValues);
@@ -434,13 +456,59 @@ export async function importDataToTable(
       }
 
       if (batchEnd < totalRows) {
-        console.log(`[TABLE-GENERATOR] Imported ${insertedCount}/${totalRows} rows...`);
+        console.log(`[TABLE-GENERATOR] Inserted ${insertedCount}/${totalRows} rows into staging...`);
       }
     }
 
-    console.log(`[TABLE-GENERATOR] Successfully imported ${insertedCount} rows into ${tableName}`);
+    console.log(`[TABLE-GENERATOR] Creating indexes on staging table...`);
+    await client.query(`CREATE INDEX ON "${stagingTableName}" (consultant_id)`);
+    if (clientId) {
+      await client.query(`CREATE INDEX ON "${stagingTableName}" (client_id)`);
+    }
+    await client.query(`CREATE INDEX ON "${stagingTableName}" (riga_originale)`);
+
+    const indexColumns: string[] = [];
+    for (const col of columns) {
+      if (col.dataType === "DATE" || col.dataType === "NUMERIC" || col.dataType === "INTEGER") {
+        indexColumns.push(sanitizeColumnName(col.suggestedName || col.originalName));
+      }
+    }
+
+    for (const colName of indexColumns.slice(0, 5)) {
+      try {
+        await client.query(`CREATE INDEX ON "${stagingTableName}" ("${colName}")`);
+      } catch (idxError) {
+        console.warn(`[TABLE-GENERATOR] Could not create index on ${colName}:`, idxError);
+      }
+    }
+
+    console.log(`[TABLE-GENERATOR] Performing atomic swap: staging -> target`);
+
+    const tableExistsResult = await client.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = $1
+      )`,
+      [tableName]
+    );
+
+    if (tableExistsResult.rows[0].exists) {
+      const backupName = `${tableName}_old_${Date.now()}`;
+      await client.query(`ALTER TABLE "${tableName}" RENAME TO "${backupName}"`);
+      await client.query(`ALTER TABLE "${stagingTableName}" RENAME TO "${tableName}"`);
+      await client.query(`DROP TABLE IF EXISTS "${backupName}" CASCADE`);
+    } else {
+      await client.query(`ALTER TABLE "${stagingTableName}" RENAME TO "${tableName}"`);
+    }
+
+    await client.query("COMMIT");
+
+    console.log(`[TABLE-GENERATOR] Successfully imported ${insertedCount} rows into ${tableName} (staging+swap)`);
     return { success: true, rowCount: insertedCount };
   } catch (error: any) {
+    await client.query("ROLLBACK").catch(() => {});
+    await client.query(`DROP TABLE IF EXISTS "${stagingTableName}" CASCADE`).catch(() => {});
     console.error(`[TABLE-GENERATOR] Error importing data to ${tableName}:`, error);
     return { success: false, rowCount: 0, error: error.message };
   } finally {

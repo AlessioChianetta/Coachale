@@ -2,7 +2,7 @@ import { pool, db } from "../../db";
 import { clientDataDatasets, clientDataQueryLog, clientDataMetrics } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
 import { parseMetricExpression, translateToSQL, validateMetricAgainstSchema, computeQueryHash, type ValidatedMetric } from "./metric-dsl";
-import { getCachedResult, cacheResult, acquireCacheLock, type CacheEntry } from "./cache-manager";
+import { getCachedResult, cacheResult, cacheError, acquireCacheLock, waitForCacheResult, type CacheEntry } from "./cache-manager";
 
 export interface QueryOptions {
   timeoutMs?: number;
@@ -149,18 +149,31 @@ export async function queryMetric(
 
     const lockAcquired = await acquireCacheLock(queryHash, datasetId);
     if (!lockAcquired) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      const cached2 = await getCachedResult(queryHash, datasetId);
-      if (cached2 && cached2.status === "ready") {
-        return {
-          success: true,
-          data: cached2.resultJson?.data,
-          metrics: cached2.resultJson?.metrics,
-          rowCount: cached2.resultJson?.rowCount || 0,
-          executionTimeMs: Date.now() - startTime,
-          cached: true,
-        };
+      const waitedCache = await waitForCacheResult(queryHash, datasetId, options.timeoutMs || DEFAULT_TIMEOUT_MS);
+      if (waitedCache) {
+        if (waitedCache.status === "ready") {
+          return {
+            success: true,
+            data: waitedCache.resultJson?.data,
+            metrics: waitedCache.resultJson?.metrics,
+            rowCount: waitedCache.resultJson?.rowCount || 0,
+            executionTimeMs: Date.now() - startTime,
+            cached: true,
+          };
+        }
+        if (waitedCache.status === "error") {
+          return {
+            success: false,
+            error: waitedCache.errorMessage || "Cache computation failed",
+            executionTimeMs: Date.now() - startTime,
+          };
+        }
       }
+      return {
+        success: false,
+        error: "Timeout waiting for cache computation",
+        executionTimeMs: Date.now() - startTime,
+      };
     }
   }
 
@@ -178,13 +191,17 @@ export async function queryMetric(
     options.userId
   );
 
-  if (result.success && options.useCache !== false) {
+  if (options.useCache !== false) {
     const ttl = options.cacheTtlSeconds || DEFAULT_CACHE_TTL_AGGREGATION;
-    await cacheResult(queryHash, datasetId, {
-      data: result.data,
-      metrics: result.data?.[0]?.result !== undefined ? { result: result.data[0].result } : undefined,
-      rowCount: result.rowCount,
-    }, ttl);
+    if (result.success) {
+      await cacheResult(queryHash, datasetId, {
+        data: result.data,
+        metrics: result.data?.[0]?.result !== undefined ? { result: result.data[0].result } : undefined,
+        rowCount: result.rowCount,
+      }, ttl);
+    } else {
+      await cacheError(queryHash, datasetId, result.error || "Query execution failed");
+    }
   }
 
   if (result.success && result.data?.length === 1 && "result" in result.data[0]) {

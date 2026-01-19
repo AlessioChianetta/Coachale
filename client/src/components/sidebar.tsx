@@ -124,6 +124,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Calendario", href: "/consultant/appointments", icon: Calendar, color: "text-orange-500" },
       { name: "Task", href: "/consultant/tasks", icon: ListTodo, color: "text-rose-500" },
       { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-teal-500" },
+      { name: "Analisi Dati", href: "/consultant/client-data-analysis", icon: BarChart3, color: "text-cyan-600", badge: "NEW" },
     ]
   },
   {
@@ -247,6 +248,7 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "Documenti AI", href: "/client/documents", icon: FileSearch, color: "text-teal-500" },
     ]
   },
+  { name: "Le Mie Analisi", href: "/client/my-data-analysis", icon: BarChart3, color: "text-cyan-600" },
 ];
 
 const proToolsItems: SidebarItemWithChildren[] = [
