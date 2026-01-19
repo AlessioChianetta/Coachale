@@ -113,10 +113,17 @@ Sistema di analisi dati strutturati (Excel/CSV) per clienti con architettura "co
 
 **Decisioni tecniche critiche:**
 - **Excel Parsing**: ExcelJS con streaming (non xlsx che carica tutto in RAM)
+- **Import veloce**: COPY via staging table + swap atomico (10x più veloce di INSERT batch)
 - **Tabelle Dinamiche**: Raw SQL con sanitizzazione (Drizzle non supporta DDL runtime)
-- **RLS**: Ruolo app_user dedicato (superuser bypassa RLS), SET LOCAL in transazioni
+- **RLS completo**: Ruolo app_user, SET LOCAL, RLS anche su tabelle cdd_* (non solo naming!)
 - **Progress Updates**: SSE invece di WebSocket
-- **Column Discovery**: Pattern detection prima di AI, auto-conferma se confidence >= 85%
+- **Column Discovery**: Pattern detection → AI fallback, auto-conferma se confidence >= 85%
+- **Sampling distribuito**: Campioni da inizio/metà/fine file (non solo prime 100 righe)
+- **Dataset Groups**: Abilitano JOIN tra tabelle correlate (DDTRIGHE ↔ PRODOTTI)
+- **Mini-DSL metriche**: Linguaggio controllato tradotto in SQL sicuro (non regex!)
+- **Cache anti-stampede**: FOR UPDATE SKIP LOCKED evita 50 query identiche
+- **Output strutturato**: JSON con metriche/periodo/filtri per UI, audit, test
+- **Test riconciliazione**: Verifiche automatiche che le somme tornino
 
 **Dipendenze**: exceljs, chardet, better-sse
 

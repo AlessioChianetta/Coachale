@@ -25,6 +25,12 @@ Dopo analisi approfondita con ricerche web e best practices 2024-2025, le seguen
 | **AI Validation** | AI può rispondere senza chiamare tool | Validare risposta e **forzare retry** |
 | **Column Discovery** | Chiamare AI per ogni colonna è lento e costoso | **Pattern detection PRIMA** (template + regex), AI solo per <80% confidence |
 | **Automazione 1800** | Troppi click manuali | **Auto-conferma se confidence >= 85%** |
+| **RLS tabelle cdd_*** | Naming convention non basta | **consultant_id in ogni tabella dati + RLS policy** |
+| **Import veloce** | INSERT batch lento su milioni | **COPY via staging table + swap atomico** |
+| **Dataset Groups** | No join tra tabelle correlate | **Namespace per join controllate (DDTRIGHE ↔ PRODOTTI)** |
+| **Validazione formule** | Regex aggirabile | **Mini-DSL controllato tradotto in SQL sicuro** |
+| **Cache stampede** | 50 request identiche = 50 query | **FOR UPDATE SKIP LOCKED** |
+| **Profiling colonne** | Solo prime 100 righe = bias | **Sampling distribuito (inizio/metà/fine)** |
 
 **Dipendenze NPM richieste:**
 ```bash
@@ -247,6 +253,10 @@ Quando un cliente carica un Excel, il sistema crea una tabella dedicata:
 CREATE TABLE cdd_5_123_ddtrighe (
   id SERIAL PRIMARY KEY,
   
+  -- ⚠️ OBBLIGATORIO: Foreign keys per RLS (non solo naming convention!)
+  consultant_id INTEGER NOT NULL REFERENCES users(id),
+  client_id INTEGER REFERENCES clients(id),
+  
   -- Colonne originali mappate
   codice_articolo VARCHAR(100),
   descrizione TEXT,
@@ -262,6 +272,146 @@ CREATE TABLE cdd_5_123_ddtrighe (
 
 -- Indici automatici su colonne data e categoriche
 CREATE INDEX idx_cdd_5_123_ddtrighe_data ON cdd_5_123_ddtrighe(data_documento);
+
+-- ⚠️ OBBLIGATORIO: Indice per RLS performance
+CREATE INDEX idx_cdd_5_123_ddtrighe_tenant ON cdd_5_123_ddtrighe(consultant_id, client_id);
+```
+
+### RLS su Tabelle Dinamiche cdd_*
+
+> **CRITICO:** La naming convention da sola NON basta! Se c'è un bug nell'API, i dati sono esposti.
+> Ogni tabella `cdd_*` DEVE avere:
+> 1. Colonne `consultant_id` e `client_id`
+> 2. Policy RLS attiva
+> 3. Indice su tenant columns
+
+```sql
+-- Esempio: Abilitare RLS su tabella dati dinamica
+ALTER TABLE cdd_5_123_ddtrighe ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cdd_5_123_ddtrighe FORCE ROW LEVEL SECURITY;
+
+-- Policy: consultant vede solo i propri dati
+CREATE POLICY cdd_consultant_isolation ON cdd_5_123_ddtrighe
+  FOR ALL
+  USING (consultant_id = current_setting('app.current_consultant_id')::INTEGER);
+```
+
+**Implementazione automatica in table-generator.ts:**
+
+```typescript
+async function createDataTableWithRLS(
+  tableName: string,
+  columns: ColumnDefinition[],
+  consultantId: number,
+  clientId: number | null
+): Promise<void> {
+  // 1. Crea tabella CON colonne tenant
+  const columnDefs = columns.map(c => `${sql.identifier(c.name)} ${c.sqlType}`).join(', ');
+  
+  await db.execute(sql`
+    CREATE TABLE ${sql.identifier(tableName)} (
+      id SERIAL PRIMARY KEY,
+      consultant_id INTEGER NOT NULL REFERENCES users(id),
+      client_id INTEGER REFERENCES clients(id),
+      ${sql.raw(columnDefs)},
+      _row_number INTEGER,
+      _imported_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  
+  // 2. Abilita RLS (FORCE = anche superuser rispetta policy, se non bypassata esplicitamente)
+  await db.execute(sql`
+    ALTER TABLE ${sql.identifier(tableName)} ENABLE ROW LEVEL SECURITY
+  `);
+  await db.execute(sql`
+    ALTER TABLE ${sql.identifier(tableName)} FORCE ROW LEVEL SECURITY
+  `);
+  
+  // 3. Crea policy isolamento
+  const policyName = `${tableName}_isolation`;
+  await db.execute(sql`
+    CREATE POLICY ${sql.identifier(policyName)} ON ${sql.identifier(tableName)}
+    FOR ALL
+    USING (consultant_id = current_setting('app.current_consultant_id')::INTEGER)
+  `);
+  
+  // 4. Indice per performance RLS
+  await db.execute(sql`
+    CREATE INDEX ${sql.identifier(`idx_${tableName}_tenant`)} 
+    ON ${sql.identifier(tableName)}(consultant_id, client_id)
+  `);
+}
+```
+
+### Dataset Groups (Join tra Tabelle Correlate)
+
+> **Problema:** Un ristorante carica DDTRIGHE (vendite) e PRODOTTI (anagrafica) - servono JOIN.
+> **Soluzione:** Dataset Group = namespace che permette join controllate.
+
+```sql
+-- Nuova tabella per gruppi
+CREATE TABLE client_data_dataset_groups (
+  id SERIAL PRIMARY KEY,
+  consultant_id INTEGER NOT NULL REFERENCES users(id),
+  client_id INTEGER REFERENCES clients(id),
+  
+  name VARCHAR(100) NOT NULL,           -- es: "Gestionale Ristorante"
+  description TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Relazione dataset → gruppo
+ALTER TABLE client_data_datasets ADD COLUMN group_id INTEGER REFERENCES client_data_dataset_groups(id);
+
+-- Chiavi di join definite
+CREATE TABLE client_data_join_keys (
+  id SERIAL PRIMARY KEY,
+  group_id INTEGER NOT NULL REFERENCES client_data_dataset_groups(id) ON DELETE CASCADE,
+  
+  -- Tabella sorgente
+  source_dataset_id INTEGER NOT NULL REFERENCES client_data_datasets(id),
+  source_column VARCHAR(100) NOT NULL,
+  
+  -- Tabella destinazione
+  target_dataset_id INTEGER NOT NULL REFERENCES client_data_datasets(id),
+  target_column VARCHAR(100) NOT NULL,
+  
+  -- Tipo join
+  join_type VARCHAR(20) DEFAULT 'LEFT',  -- LEFT, INNER
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Esempio UI:**
+
+```
+Dataset Group: "Gestionale Ristorante"
+├── DDTRIGHE (vendite) ─────┐
+│   └── codice_articolo ────┼──► JOIN
+├── PRODOTTI (anagrafica) ──┘
+│   └── cod_art
+└── JOIN definiti: DDTRIGHE.codice_articolo = PRODOTTI.cod_art
+```
+
+**Query con JOIN:**
+
+```typescript
+// Utente chiede: "Qual è il margine per categoria prodotto?"
+// Sistema genera automaticamente:
+const query = sql`
+  SELECT 
+    p.categoria,
+    SUM(d.importo_totale) as fatturato,
+    SUM(d.quantita * p.costo_unitario) as costo,
+    SUM(d.importo_totale) - SUM(d.quantita * p.costo_unitario) as margine
+  FROM ${sql.identifier(ddtrigheTable)} d
+  LEFT JOIN ${sql.identifier(prodottiTable)} p 
+    ON d.codice_articolo = p.cod_art
+  WHERE d.consultant_id = ${consultantId}
+  GROUP BY p.categoria
+`;
 ```
 
 ---
@@ -386,12 +536,109 @@ async function processUpload(filePath: string, filename: string): Promise<Upload
 }
 
 /**
- * Import batch: inserisce righe 1000 alla volta per evitare timeout
+ * IMPORT OTTIMIZZATO con COPY + Staging Table + Swap Atomico
+ * 
+ * Per milioni di righe, COPY è 10x+ più veloce di INSERT batch.
+ * Flusso:
+ * 1. Crea staging table temporanea
+ * 2. Converti Excel → CSV in streaming
+ * 3. COPY CSV → staging table
+ * 4. Crea indici sulla staging table
+ * 5. Swap atomico (RENAME) staging → finale
+ */
+async function importWithCopy(
+  filePath: string,
+  targetTableName: string,
+  columnMapping: ColumnMapping[],
+  consultantId: number,
+  clientId: number | null,
+  onProgress: (progress: ImportProgress) => void
+): Promise<{ rowCount: number }> {
+  const stagingTable = `${targetTableName}_staging_${Date.now()}`;
+  const csvTempPath = `/tmp/${stagingTable}.csv`;
+  
+  try {
+    // Step 1: Crea staging table (stessa struttura di target)
+    onProgress({ phase: 'creating_staging', percent: 5 });
+    await createStagingTable(stagingTable, columnMapping, consultantId, clientId);
+    
+    // Step 2: Converti Excel → CSV in streaming
+    onProgress({ phase: 'converting_to_csv', percent: 10 });
+    const rowCount = await excelToCsvStream(filePath, csvTempPath, columnMapping, (percent) => {
+      onProgress({ phase: 'converting_to_csv', percent: 10 + (percent * 0.3) });
+    });
+    
+    // Step 3: COPY CSV → staging table (MOLTO più veloce di INSERT)
+    onProgress({ phase: 'copying_data', percent: 40 });
+    await db.execute(sql`
+      COPY ${sql.identifier(stagingTable)} 
+      FROM ${csvTempPath}
+      WITH (FORMAT csv, HEADER true, DELIMITER ',')
+    `);
+    
+    // Step 4: Crea indici DOPO l'import (molto più veloce)
+    onProgress({ phase: 'creating_indexes', percent: 80 });
+    await createIndexes(stagingTable, columnMapping);
+    
+    // Step 5: Swap atomico - se target esiste, backup e rename
+    onProgress({ phase: 'finalizing', percent: 95 });
+    await atomicSwap(stagingTable, targetTableName);
+    
+    // Cleanup CSV temp
+    await fs.unlink(csvTempPath);
+    
+    onProgress({ phase: 'completed', percent: 100 });
+    return { rowCount };
+    
+  } catch (error) {
+    // Cleanup su errore
+    await db.execute(sql`DROP TABLE IF EXISTS ${sql.identifier(stagingTable)}`);
+    await fs.unlink(csvTempPath).catch(() => {});
+    throw error;
+  }
+}
+
+/**
+ * Swap atomico: evita downtime e garantisce rollback
+ */
+async function atomicSwap(stagingTable: string, targetTable: string): Promise<void> {
+  const backupTable = `${targetTable}_backup_${Date.now()}`;
+  
+  await db.transaction(async (tx) => {
+    // Se target esiste, rinomina in backup
+    const exists = await tx.execute(sql`
+      SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = ${targetTable})
+    `);
+    
+    if (exists.rows[0]?.exists) {
+      await tx.execute(sql`ALTER TABLE ${sql.identifier(targetTable)} RENAME TO ${sql.identifier(backupTable)}`);
+    }
+    
+    // Staging → Target
+    await tx.execute(sql`ALTER TABLE ${sql.identifier(stagingTable)} RENAME TO ${sql.identifier(targetTable)}`);
+    
+    // Elimina backup (se swap riuscito)
+    if (exists.rows[0]?.exists) {
+      await tx.execute(sql`DROP TABLE IF EXISTS ${sql.identifier(backupTable)}`);
+    }
+  });
+}
+
+interface ImportProgress {
+  phase: 'creating_staging' | 'converting_to_csv' | 'copying_data' | 'creating_indexes' | 'finalizing' | 'completed';
+  percent: number;
+}
+
+/**
+ * FALLBACK: Import batch per Supabase (che non supporta COPY da file locale)
+ * Usa INSERT multi-riga ottimizzato con 1000 righe per batch
  */
 async function importWithBatching(
   filePath: string,
   tableName: string,
   columnMapping: ColumnMapping[],
+  consultantId: number,
+  clientId: number | null,
   onProgress: (progress: number) => void
 ): Promise<{ rowCount: number }> {
   const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath);
@@ -407,7 +654,12 @@ async function importWithBatching(
         continue; // Skip header
       }
 
-      batch.push(mapRowToColumns(row.values, columnMapping));
+      // Aggiungi consultant_id e client_id a ogni riga
+      const mappedRow = mapRowToColumns(row.values, columnMapping);
+      mappedRow.consultant_id = consultantId;
+      mappedRow.client_id = clientId;
+      
+      batch.push(mappedRow);
       totalRows++;
 
       if (batch.length >= BATCH_SIZE) {
@@ -1999,9 +2251,254 @@ async function handleReUpload(existingDatasetId: number, newFile: Buffer) {
 
 ---
 
-## Caching Query Frequenti
+## Mini-DSL per Validazione Metriche
 
-Per evitare di ricalcolare le stesse metriche:
+> **CRITICO:** Regex per validare formule SQL sono aggirabili. Usare un Mini-DSL controllato.
+
+Invece di accettare SQL libero nelle formule metriche, definiamo un linguaggio semplice che viene **tradotto** in SQL sicuro:
+
+```typescript
+// server/services/client-data/metric-dsl.ts
+
+/**
+ * DSL Grammar semplificata:
+ * - sum(colonna)              → SUM(colonna)
+ * - avg(colonna)              → AVG(colonna)
+ * - count(colonna)            → COUNT(colonna)
+ * - count_distinct(colonna)   → COUNT(DISTINCT colonna)
+ * - min(colonna) / max(colonna)
+ * - ratio(metrica1, metrica2) → (metrica1) / NULLIF((metrica2), 0)
+ * - percent(parte, totale)    → 100.0 * (parte) / NULLIF((totale), 0)
+ * - subtract(a, b)            → (a) - (b)
+ * - add(a, b)                 → (a) + (b)
+ * - multiply(a, b)            → (a) * (b)
+ */
+
+interface DSLToken {
+  type: 'function' | 'column' | 'number' | 'metric_ref';
+  value: string;
+  args?: DSLToken[];
+}
+
+const ALLOWED_FUNCTIONS = new Set([
+  'sum', 'avg', 'count', 'count_distinct', 'min', 'max',
+  'ratio', 'percent', 'subtract', 'add', 'multiply'
+]);
+
+const AGGREGATE_FUNCTIONS = new Set(['sum', 'avg', 'count', 'count_distinct', 'min', 'max']);
+
+/**
+ * Parsa e valida DSL formula, ritorna SQL sicuro
+ */
+function parseDSL(
+  formula: string, 
+  allowedColumns: Set<string>,
+  definedMetrics: Map<string, string>  // nome → formula già validata
+): { sql: string; isAggregate: boolean } {
+  
+  const tokens = tokenize(formula);
+  const ast = parseExpression(tokens);
+  
+  // Valida ricorsivamente
+  validateAST(ast, allowedColumns, definedMetrics);
+  
+  // Genera SQL sicuro
+  const sql = generateSQL(ast, definedMetrics);
+  const isAggregate = containsAggregate(ast);
+  
+  return { sql, isAggregate };
+}
+
+function validateAST(
+  node: DSLToken, 
+  allowedColumns: Set<string>,
+  definedMetrics: Map<string, string>
+): void {
+  if (node.type === 'function') {
+    if (!ALLOWED_FUNCTIONS.has(node.value)) {
+      throw new Error(`Funzione non consentita: ${node.value}`);
+    }
+    node.args?.forEach(arg => validateAST(arg, allowedColumns, definedMetrics));
+  }
+  
+  if (node.type === 'column') {
+    if (!allowedColumns.has(node.value)) {
+      throw new Error(`Colonna non trovata: ${node.value}`);
+    }
+  }
+  
+  if (node.type === 'metric_ref') {
+    if (!definedMetrics.has(node.value)) {
+      throw new Error(`Metrica non definita: ${node.value}`);
+    }
+  }
+}
+
+function generateSQL(node: DSLToken, definedMetrics: Map<string, string>): string {
+  switch (node.type) {
+    case 'column':
+      return sql.identifier(node.value);
+      
+    case 'number':
+      return node.value;
+      
+    case 'metric_ref':
+      return `(${definedMetrics.get(node.value)})`;
+      
+    case 'function':
+      const args = node.args?.map(a => generateSQL(a, definedMetrics)) || [];
+      
+      switch (node.value) {
+        case 'sum': return `SUM(${args[0]})`;
+        case 'avg': return `AVG(${args[0]})`;
+        case 'count': return `COUNT(${args[0]})`;
+        case 'count_distinct': return `COUNT(DISTINCT ${args[0]})`;
+        case 'min': return `MIN(${args[0]})`;
+        case 'max': return `MAX(${args[0]})`;
+        case 'ratio': return `(${args[0]}) / NULLIF((${args[1]}), 0)`;
+        case 'percent': return `100.0 * (${args[0]}) / NULLIF((${args[1]}), 0)`;
+        case 'subtract': return `(${args[0]}) - (${args[1]})`;
+        case 'add': return `(${args[0]}) + (${args[1]})`;
+        case 'multiply': return `(${args[0]}) * (${args[1]})`;
+      }
+  }
+  throw new Error(`Token non riconosciuto: ${JSON.stringify(node)}`);
+}
+
+// Esempio utilizzo:
+// Input DSL:  "ratio(sum(importo_totale), count_distinct(data_documento))"
+// Output SQL: "(SUM(importo_totale)) / NULLIF((COUNT(DISTINCT data_documento)), 0)"
+```
+
+**UI per definire metriche:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Definisci Metrica: Ticket Medio                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Formula: [Dropdown selezione funzioni]                     │
+│                                                              │
+│  ratio(                                                     │
+│    sum( [importo_totale ▼] ),                               │
+│    count_distinct( [data_documento ▼] )                     │
+│  )                                                          │
+│                                                              │
+│  Preview: "SUM(importo_totale) / COUNT(DISTINCT ...)"       │
+│                                                              │
+│                                         [Salva]             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Sampling Distribuito per Profiling Colonne
+
+> **CRITICO:** Usare solo le prime 100 righe può creare bias (es. valori nulli all'inizio, tipi diversi dopo).
+
+```typescript
+// server/services/client-data/column-profiler.ts
+
+/**
+ * Campionamento distribuito: prende righe da inizio, metà, fine del file
+ * per rilevamento tipi più accurato.
+ */
+async function getDistributedSample(
+  filePath: string,
+  targetSampleSize: number = 300  // 100 inizio + 100 metà + 100 fine
+): Promise<{ columns: string[]; samples: any[][] }> {
+  const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath);
+  
+  // Prima passata: conta righe totali
+  let totalRows = 0;
+  let columns: string[] = [];
+  
+  for await (const worksheetReader of workbookReader) {
+    let isFirst = true;
+    for await (const row of worksheetReader) {
+      if (isFirst) {
+        columns = (row.values as any[]).slice(1).map(v => String(v || ''));
+        isFirst = false;
+      } else {
+        totalRows++;
+      }
+    }
+  }
+  
+  // Calcola posizioni di campionamento
+  const samplesPerSection = Math.floor(targetSampleSize / 3);
+  const samplePositions = new Set<number>();
+  
+  // Inizio: righe 1-100
+  for (let i = 1; i <= samplesPerSection && i <= totalRows; i++) {
+    samplePositions.add(i);
+  }
+  
+  // Metà: intorno a totalRows/2
+  const midpoint = Math.floor(totalRows / 2);
+  for (let i = 0; i < samplesPerSection && midpoint + i <= totalRows; i++) {
+    samplePositions.add(midpoint + i);
+  }
+  
+  // Fine: ultime 100 righe
+  for (let i = 0; i < samplesPerSection && totalRows - i > 0; i++) {
+    samplePositions.add(totalRows - i);
+  }
+  
+  // Seconda passata: estrai campioni
+  const samples: any[][] = [];
+  const workbookReader2 = new ExcelJS.stream.xlsx.WorkbookReader(filePath);
+  
+  for await (const worksheetReader of workbookReader2) {
+    let rowNum = 0;
+    for await (const row of worksheetReader) {
+      rowNum++;
+      if (rowNum === 1) continue; // Skip header
+      
+      if (samplePositions.has(rowNum - 1)) {
+        samples.push((row.values as any[]).slice(1));
+      }
+    }
+  }
+  
+  return { columns, samples };
+}
+
+/**
+ * Profiling colonna con sampling distribuito
+ */
+function profileColumn(values: any[]): ColumnProfile {
+  const nonNull = values.filter(v => v != null && String(v).trim() !== '');
+  
+  return {
+    totalCount: values.length,
+    nonNullCount: nonNull.length,
+    nullPercentage: ((values.length - nonNull.length) / values.length) * 100,
+    distinctCount: new Set(nonNull.map(String)).size,
+    
+    // Statistiche numeriche (se applicabili)
+    numericStats: isNumericColumn(nonNull) ? {
+      min: Math.min(...nonNull.map(Number)),
+      max: Math.max(...nonNull.map(Number)),
+      avg: nonNull.reduce((a, b) => a + Number(b), 0) / nonNull.length
+    } : null,
+    
+    // Campioni dai diversi punti del file
+    sampleValues: {
+      beginning: values.slice(0, 5).map(String),
+      middle: values.slice(Math.floor(values.length / 2), Math.floor(values.length / 2) + 5).map(String),
+      end: values.slice(-5).map(String)
+    }
+  };
+}
+```
+
+---
+
+## Caching Query Frequenti con Anti-Stampede
+
+> **CRITICO:** Se 50 utenti chiedono la stessa query contemporaneamente = 50 query identiche.
+> Usare `FOR UPDATE SKIP LOCKED` per evitare stampede.
 
 ```sql
 CREATE TABLE client_data_query_cache (
@@ -2012,49 +2509,383 @@ CREATE TABLE client_data_query_cache (
   cache_key VARCHAR(255) NOT NULL,  -- hash di tool + params
   
   -- Risultato
-  result JSONB NOT NULL,
+  result JSONB,  -- NULL = in fase di calcolo (lock)
+  
+  -- Stato
+  status VARCHAR(20) DEFAULT 'computing',  -- computing, ready, error
   
   -- Validità
   created_at TIMESTAMP DEFAULT NOW(),
   expires_at TIMESTAMP,  -- NULL = non scade
+  computing_started_at TIMESTAMP,  -- Per timeout detection
   
   UNIQUE(dataset_id, cache_key)
 );
 
 CREATE INDEX idx_cache_lookup ON client_data_query_cache(dataset_id, cache_key);
+CREATE INDEX idx_cache_computing ON client_data_query_cache(status) WHERE status = 'computing';
 ```
 
 ```typescript
-async function executeWithCache(datasetId: number, tool: string, params: any): Promise<QueryResult> {
+/**
+ * Caching con protezione anti-stampede usando SKIP LOCKED
+ */
+async function executeWithCacheAntiStampede(
+  datasetId: number, 
+  tool: string, 
+  params: any
+): Promise<QueryResult> {
   const cacheKey = hashQuery(tool, params);
   
-  // 1. Controlla cache
+  // 1. Prova a ottenere risultato dalla cache
   const cached = await db.query(sql`
-    SELECT result FROM client_data_query_cache
-    WHERE dataset_id = ${datasetId} AND cache_key = ${cacheKey}
-    AND (expires_at IS NULL OR expires_at > NOW())
+    SELECT result, status FROM client_data_query_cache
+    WHERE dataset_id = ${datasetId} 
+      AND cache_key = ${cacheKey}
+      AND (expires_at IS NULL OR expires_at > NOW())
   `);
   
   if (cached.length > 0) {
-    return { ...cached[0].result, fromCache: true };
+    if (cached[0].status === 'ready') {
+      return { ...cached[0].result, fromCache: true };
+    }
+    
+    if (cached[0].status === 'computing') {
+      // Qualcun altro sta già calcolando - aspetta
+      return await waitForCacheResult(datasetId, cacheKey);
+    }
   }
   
-  // 2. Esegui query
-  const result = await executeQuery(datasetId, tool, params);
+  // 2. Nessun cache - prova a prendere il lock per calcolare
+  const lockAcquired = await tryAcquireCacheLock(datasetId, cacheKey);
   
-  // 3. Salva in cache (scade dopo 1 ora)
+  if (!lockAcquired) {
+    // Un altro processo ha preso il lock mentre controllavamo - aspetta
+    return await waitForCacheResult(datasetId, cacheKey);
+  }
+  
+  try {
+    // 3. Abbiamo il lock - calcola il risultato
+    const result = await executeQuery(datasetId, tool, params);
+    
+    // 4. Salva risultato e rilascia lock
+    await db.execute(sql`
+      UPDATE client_data_query_cache 
+      SET result = ${JSON.stringify(result)}, 
+          status = 'ready',
+          expires_at = NOW() + INTERVAL '1 hour'
+      WHERE dataset_id = ${datasetId} AND cache_key = ${cacheKey}
+    `);
+    
+    return result;
+    
+  } catch (error) {
+    // Marca come errore per evitare retry immediati
+    await db.execute(sql`
+      UPDATE client_data_query_cache 
+      SET status = 'error'
+      WHERE dataset_id = ${datasetId} AND cache_key = ${cacheKey}
+    `);
+    throw error;
+  }
+}
+
+/**
+ * Prova ad acquisire lock usando FOR UPDATE SKIP LOCKED
+ */
+async function tryAcquireCacheLock(datasetId: number, cacheKey: string): Promise<boolean> {
+  // INSERT OR DO NOTHING + SELECT FOR UPDATE SKIP LOCKED
   await db.execute(sql`
-    INSERT INTO client_data_query_cache (dataset_id, cache_key, result, expires_at)
-    VALUES (${datasetId}, ${cacheKey}, ${JSON.stringify(result)}, NOW() + INTERVAL '1 hour')
-    ON CONFLICT (dataset_id, cache_key) DO UPDATE SET result = EXCLUDED.result, expires_at = EXCLUDED.expires_at
+    INSERT INTO client_data_query_cache (dataset_id, cache_key, status, computing_started_at)
+    VALUES (${datasetId}, ${cacheKey}, 'computing', NOW())
+    ON CONFLICT (dataset_id, cache_key) DO NOTHING
   `);
   
-  return result;
+  // Prova a prendere il lock (SKIP LOCKED = non blocca se già lockato)
+  const locked = await db.query(sql`
+    SELECT id FROM client_data_query_cache
+    WHERE dataset_id = ${datasetId} 
+      AND cache_key = ${cacheKey}
+      AND status = 'computing'
+    FOR UPDATE SKIP LOCKED
+  `);
+  
+  return locked.length > 0;
+}
+
+/**
+ * Attende che un altro processo completi il calcolo
+ */
+async function waitForCacheResult(
+  datasetId: number, 
+  cacheKey: string,
+  maxWaitMs: number = 30000,
+  pollIntervalMs: number = 200
+): Promise<QueryResult> {
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < maxWaitMs) {
+    const cached = await db.query(sql`
+      SELECT result, status FROM client_data_query_cache
+      WHERE dataset_id = ${datasetId} AND cache_key = ${cacheKey}
+    `);
+    
+    if (cached.length > 0 && cached[0].status === 'ready') {
+      return { ...cached[0].result, fromCache: true, waitedForOther: true };
+    }
+    
+    if (cached.length > 0 && cached[0].status === 'error') {
+      throw new Error('Query fallita durante calcolo da altro processo');
+    }
+    
+    await sleep(pollIntervalMs);
+  }
+  
+  throw new Error('Timeout in attesa risultato cache');
 }
 
 // Invalida cache quando dataset viene aggiornato
 async function invalidateCache(datasetId: number) {
   await db.execute(sql`DELETE FROM client_data_query_cache WHERE dataset_id = ${datasetId}`);
+}
+```
+
+---
+
+## Output Strutturato per Risposte AI
+
+> **CRITICO:** L'AI deve ritornare JSON strutturato per UI, audit e test automatici.
+
+```typescript
+// server/ai/data-analysis/structured-output.ts
+
+/**
+ * Schema output strutturato per ogni risposta AI
+ */
+interface StructuredQueryResponse {
+  // Identificazione
+  queryId: string;                    // UUID per tracking/audit
+  datasetId: number;
+  timestamp: string;                  // ISO 8601
+  
+  // Metriche calcolate
+  metrics: Array<{
+    name: string;                     // Nome metrica usata
+    value: number | string;
+    formattedValue: string;           // "€45.320,00"
+    period?: {
+      start: string;
+      end: string;
+    };
+    filters?: Record<string, any>;
+  }>;
+  
+  // Dati breakdown (se richiesti)
+  breakdown?: {
+    dimension: string;
+    data: Array<{
+      label: string;
+      value: number;
+      percentage?: number;
+    }>;
+  };
+  
+  // Comparazioni (se richieste)
+  comparison?: {
+    periodA: { label: string; value: number };
+    periodB: { label: string; value: number };
+    difference: number;
+    percentageChange: number;
+  };
+  
+  // Spiegazione human-readable
+  explanation: string;
+  
+  // Insight opzionali
+  insights?: string[];
+  
+  // Query SQL eseguite (per debug/audit)
+  queries: Array<{
+    tool: string;
+    params: Record<string, any>;
+    sql: string;
+    executionTimeMs: number;
+    rowCount: number;
+  }>;
+  
+  // Metadata performance
+  performance: {
+    totalRounds: number;
+    totalToolCalls: number;
+    totalExecutionTimeMs: number;
+    fromCache: boolean;
+  };
+}
+
+/**
+ * System prompt per forzare output strutturato
+ */
+function buildStructuredOutputPrompt(dataset: DatasetInfo): string {
+  return `...
+
+## FORMATO RISPOSTA OBBLIGATORIO
+
+Dopo aver usato i tool, rispondi SEMPRE in questo formato JSON:
+
+\`\`\`json
+{
+  "metrics": [
+    {
+      "name": "fatturato",
+      "value": 45320,
+      "formattedValue": "€45.320,00",
+      "period": { "start": "2024-12-01", "end": "2024-12-31" }
+    }
+  ],
+  "explanation": "Il fatturato di dicembre 2024 è stato di €45.320,00.",
+  "insights": ["In aumento del 12% rispetto a novembre"]
+}
+\`\`\`
+
+NON rispondere in testo libero senza la struttura JSON.`;
+}
+```
+
+---
+
+## Test di Riconciliazione Automatici
+
+> **CRITICO:** Verifiche automatiche che le somme "tornino" - se non tornano, warning nella risposta.
+
+```typescript
+// server/services/client-data/reconciliation-tests.ts
+
+interface ReconciliationResult {
+  passed: boolean;
+  checks: Array<{
+    name: string;
+    expected: number;
+    actual: number;
+    difference: number;
+    passed: boolean;
+  }>;
+  warnings: string[];
+}
+
+/**
+ * Esegue test di riconciliazione base sui dati
+ */
+async function runReconciliationTests(
+  datasetId: number,
+  tableName: string,
+  dateColumn?: string
+): Promise<ReconciliationResult> {
+  const checks: ReconciliationResult['checks'] = [];
+  const warnings: string[] = [];
+  
+  // Test 1: Somma per categoria = totale generale
+  if (await hasColumn(tableName, 'categoria')) {
+    const totalGeneral = await db.query(sql`
+      SELECT SUM(importo_totale) as total 
+      FROM ${sql.identifier(tableName)}
+      WHERE consultant_id = current_setting('app.current_consultant_id')::INTEGER
+    `);
+    
+    const totalByCategory = await db.query(sql`
+      SELECT SUM(importo_totale) as total 
+      FROM (
+        SELECT categoria, SUM(importo_totale) as importo_totale
+        FROM ${sql.identifier(tableName)}
+        WHERE consultant_id = current_setting('app.current_consultant_id')::INTEGER
+        GROUP BY categoria
+      ) sub
+    `);
+    
+    const diff = Math.abs(totalGeneral[0].total - totalByCategory[0].total);
+    checks.push({
+      name: 'Somma per categoria = Totale generale',
+      expected: totalGeneral[0].total,
+      actual: totalByCategory[0].total,
+      difference: diff,
+      passed: diff < 0.01  // Tolleranza per float
+    });
+  }
+  
+  // Test 2: Se c'è colonna data, somma giorni = somma mese
+  if (dateColumn) {
+    const monthlyTotal = await db.query(sql`
+      SELECT EXTRACT(MONTH FROM ${sql.identifier(dateColumn)}) as month, SUM(importo_totale) as total
+      FROM ${sql.identifier(tableName)}
+      WHERE consultant_id = current_setting('app.current_consultant_id')::INTEGER
+      GROUP BY month
+    `);
+    
+    const dailyTotals = await db.query(sql`
+      SELECT EXTRACT(MONTH FROM ${sql.identifier(dateColumn)}) as month, SUM(total) as total
+      FROM (
+        SELECT ${sql.identifier(dateColumn)}, SUM(importo_totale) as total
+        FROM ${sql.identifier(tableName)}
+        WHERE consultant_id = current_setting('app.current_consultant_id')::INTEGER
+        GROUP BY ${sql.identifier(dateColumn)}
+      ) sub
+      GROUP BY month
+    `);
+    
+    // Confronta ogni mese
+    for (const monthData of monthlyTotal) {
+      const dailySum = dailyTotals.find(d => d.month === monthData.month)?.total || 0;
+      const diff = Math.abs(monthData.total - dailySum);
+      
+      if (diff > 0.01) {
+        warnings.push(`Mese ${monthData.month}: somma giornaliera (${dailySum}) ≠ totale mensile (${monthData.total})`);
+      }
+    }
+  }
+  
+  // Test 3: Nessun valore negativo inaspettato
+  if (await hasColumn(tableName, 'quantita')) {
+    const negatives = await db.query(sql`
+      SELECT COUNT(*) as count FROM ${sql.identifier(tableName)}
+      WHERE quantita < 0 
+        AND consultant_id = current_setting('app.current_consultant_id')::INTEGER
+    `);
+    
+    if (negatives[0].count > 0) {
+      warnings.push(`Trovate ${negatives[0].count} righe con quantità negativa (potrebbero essere resi)`);
+    }
+  }
+  
+  const allPassed = checks.every(c => c.passed);
+  
+  return {
+    passed: allPassed && warnings.length === 0,
+    checks,
+    warnings
+  };
+}
+
+/**
+ * Aggiunge warning di riconciliazione alla risposta AI se necessario
+ */
+function appendReconciliationWarnings(
+  response: StructuredQueryResponse,
+  reconciliation: ReconciliationResult
+): StructuredQueryResponse {
+  if (!reconciliation.passed) {
+    response.insights = response.insights || [];
+    
+    for (const warning of reconciliation.warnings) {
+      response.insights.push(`⚠️ ${warning}`);
+    }
+    
+    for (const check of reconciliation.checks.filter(c => !c.passed)) {
+      response.insights.push(
+        `⚠️ Verifica fallita: ${check.name} - differenza di ${check.difference}`
+      );
+    }
+  }
+  
+  return response;
 }
 ```
 
@@ -2087,7 +2918,9 @@ npm install @sentry/node
 - [ ] Encoding UTF-8/Latin1 detection automatica per CSV
 - [ ] Gestire date in formati diversi (DD/MM/YYYY, YYYY-MM-DD, etc.)
 - [ ] **Usare ExcelJS streaming** (non xlsx che carica tutto in RAM)
-- [ ] Batch insert 1000 righe alla volta
+- [ ] **COPY via staging table** per import veloce (milioni di righe)
+- [ ] **Swap atomico** (RENAME) per evitare downtime durante re-upload
+- [ ] Creare indici DOPO l'import (molto più veloce)
 
 ### Database
 - [ ] Nomi tabelle/colonne sempre sanitizzati (max 63 char)
@@ -2100,14 +2933,19 @@ npm install @sentry/node
 - [ ] **FORCE ROW LEVEL SECURITY** su tutte le tabelle
 - [ ] **SET LOCAL** per context tenant (evita leak con connection pool)
 - [ ] Indici su tutti i tenant_id
+- [ ] **RLS anche su tabelle cdd_*** (non solo naming convention!)
+- [ ] **consultant_id e client_id** in ogni tabella dati dinamica
+- [ ] **Dataset groups** per abilitare JOIN tra tabelle correlate
 
 ### Query Execution
 - [ ] Timeout 30 sec per singola query SQL
 - [ ] Timeout 5 min per analisi completa
 - [ ] Limite risultati (max 10.000 righe per query)
-- [ ] Formule validate (no SQL injection)
+- [ ] **Mini-DSL per formule** (non regex - aggirabili!)
 - [ ] Cache query frequenti con **FOR UPDATE SKIP LOCKED** (anti-stampede)
+- [ ] **Cache status: computing/ready/error** per evitare race condition
 - [ ] Log tutte le query per audit
+- [ ] **Output strutturato JSON** per UI, audit e test automatici
 
 ### AI Integration
 - [ ] Max 10 round per analisi
@@ -2116,12 +2954,21 @@ npm install @sentry/node
 - [ ] Fallback se AI non risponde
 - [ ] **Progress indicator via SSE** (non WebSocket)
 - [ ] Retry automatico su errori transitori (backoff esponenziale)
+- [ ] **Forzare output JSON strutturato** nel system prompt
 
 ### Column Discovery
 - [ ] **Pattern detection PRIMA di AI** (template + regex)
 - [ ] AI solo per colonne con confidence < 80%
 - [ ] **Auto-conferma se confidence >= 85%** (zero-click per 1800 installazioni)
 - [ ] Template pre-configurati per gestionali comuni (DDTRIGHE, fatture)
+- [ ] **Sampling distribuito** (inizio/metà/fine) invece di solo prime 100 righe
+
+### Data Integrity
+- [ ] **Test riconciliazione automatici** dopo import
+- [ ] Somma per categoria = totale generale
+- [ ] Somma giorni = somma mese
+- [ ] Warning se valori negativi inaspettati
+- [ ] **Single source of truth** per definizioni metriche (semantic layer)
 
 ### Frontend
 - [ ] Progress bar durante import
@@ -2129,6 +2976,8 @@ npm install @sentry/node
 - [ ] Gestire timeout gracefully
 - [ ] Mostrare errori user-friendly
 - [ ] Disable pulsanti durante operazioni
+- [ ] UI per definire **dataset groups** e JOIN
+- [ ] UI visuale per costruire formule con **Mini-DSL**
 
 ---
 
