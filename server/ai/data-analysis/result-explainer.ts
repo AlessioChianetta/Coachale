@@ -261,29 +261,29 @@ export async function explainResults(
 ): Promise<ExplanationResult> {
   const basicExplanation = generateBasicExplanation(results, userQuestion);
 
-  if (results.length === 0 || results.every(r => !r.success)) {
-    return basicExplanation;
-  }
-
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);
     const client = providerResult.client;
     
-    // Use user-selected model or default
-    const selectedModel = preferences?.model || "gemini-3-flash-preview";
-    const modelName = selectedModel.includes("pro") ? "gemini-2.5-pro-preview-05-06" : "gemini-2.5-flash-preview-04-17";
-
-    const resultsContext = results.map(r => ({
-      tool: r.toolName,
-      success: r.success,
-      result: r.result,
-      error: r.error
-    }));
+    // Use getModelWithThinking which correctly maps provider to model
+    const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
 
     // Add style instructions based on preferences
     const styleInstructions = preferences ? getStyleInstructions(preferences) : "";
     
-    const prompt = `${EXPLAINER_SYSTEM_PROMPT}
+    // Handle both data queries and conversational messages
+    const hasResults = results.length > 0 && results.some(r => r.success);
+    
+    let prompt: string;
+    if (hasResults) {
+      const resultsContext = results.map(r => ({
+        tool: r.toolName,
+        success: r.success,
+        result: r.result,
+        error: r.error
+      }));
+
+      prompt = `${EXPLAINER_SYSTEM_PROMPT}
 
 ${styleInstructions ? `\n--- STILE DI RISPOSTA ---\n${styleInstructions}` : ""}
 
@@ -295,6 +295,23 @@ Risultati delle query:
 ${JSON.stringify(resultsContext, null, 2)}
 
 Rispondi alla domanda dell'utente basandoti su questi dati. Sii conversazionale, come un collega che spiega i numeri.`;
+    } else {
+      // Conversational mode - no data query, just chat
+      prompt = `Sei un assistente AI esperto di analisi dati. L'utente sta usando una chat per analizzare dataset ma ha inviato un messaggio conversazionale invece di una query sui dati.
+
+${styleInstructions ? `\n--- STILE DI RISPOSTA ---\n${styleInstructions}` : ""}
+
+Messaggio dell'utente: "${userQuestion}"
+
+Rispondi in modo amichevole e utile. Se l'utente saluta, salutalo. Se chiede cosa puoi fare, spiega che puoi:
+- Calcolare totali, medie, somme sui dati
+- Raggruppare dati per categoria/mese/prodotto
+- Confrontare periodi diversi
+- Trovare pattern e tendenze
+- Rispondere a domande sui dati in linguaggio naturale
+
+Sii breve e conversazionale.`;
+    }
 
     const response = await client.generateContent({
       model: modelName,
@@ -310,6 +327,16 @@ Rispondi alla domanda dell'utente basandoti su questi dati. Sii conversazionale,
     const aiExplanation = response.response.text();
 
     if (aiExplanation && aiExplanation.length > 10) {
+      // For conversational responses, return the AI response directly
+      if (!hasResults) {
+        return {
+          summary: aiExplanation,
+          details: [],
+          insights: [],
+          formattedValues: {}
+        };
+      }
+      
       const lines = aiExplanation.split("\n").filter(l => l.trim());
       const summary = lines[0] || basicExplanation.summary;
       const details = lines.slice(1).filter(l => !l.startsWith("Insight")).concat(basicExplanation.details);
