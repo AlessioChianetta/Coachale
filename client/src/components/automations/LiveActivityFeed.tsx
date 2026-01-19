@@ -94,6 +94,7 @@ interface ConversationTimeline {
   temperatureLevel?: 'hot' | 'warm' | 'cold' | 'ghost';
   currentState?: string;
   window24hExpiresAt?: string;
+  nextEvaluationAt?: string;
   events: TimelineEvent[];
 }
 
@@ -173,6 +174,26 @@ function formatCountdown(expiresAt?: string): { text: string; isExpired: boolean
     return { text: `${hours}h ${minutes}m`, isExpired: false, isUrgent };
   }
   return { text: `${minutes}m`, isExpired: false, isUrgent };
+}
+
+function formatNextEvaluation(nextEvaluationAt?: string): { text: string; isPast: boolean } | null {
+  if (!nextEvaluationAt) return null;
+
+  const now = new Date();
+  const nextEval = new Date(nextEvaluationAt);
+  const diffMs = nextEval.getTime() - now.getTime();
+
+  if (diffMs <= 0) {
+    return { text: 'Imminente', isPast: true };
+  }
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours > 0) {
+    return { text: `tra ${hours}h ${minutes}m`, isPast: false };
+  }
+  return { text: `tra ${minutes}m`, isPast: false };
 }
 
 function getEventIcon(type: string) {
@@ -851,6 +872,7 @@ function ConversationDetailView({ conversation }: { conversation: ConversationTi
   const StatusIcon = statusConfig.icon;
   const tempConfig = getTemperatureConfig(conversation.temperatureLevel);
   const countdown = formatCountdown(conversation.window24hExpiresAt);
+  const nextEval = formatNextEvaluation(conversation.nextEvaluationAt);
 
   return (
     <div className="h-full flex flex-col">
@@ -901,6 +923,28 @@ function ConversationDetailView({ conversation }: { conversation: ConversationTi
                         <p>{countdown.isExpired
                           ? 'Finestra 24h scaduta - serve template approvato'
                           : `Finestra 24h scade tra ${countdown.text}`}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {nextEval && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+                          nextEval.isPast
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                            : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                        }`}>
+                          <Brain className="h-3 w-3" />
+                          {nextEval.isPast ? 'Rivalutazione imminente' : `Prossima valutazione ${nextEval.text}`}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{nextEval.isPast
+                          ? 'L\'AI rivaluterà questa conversazione al prossimo ciclo'
+                          : `L'AI rivaluterà questa conversazione ${nextEval.text}`}
                         </p>
                       </TooltipContent>
                     </Tooltip>

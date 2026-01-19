@@ -257,6 +257,11 @@ export async function evaluateFollowup(
       }
     }
 
+    // Log nextEvaluationAt if provided by AI
+    if (result.nextEvaluationAt) {
+      console.log(`📅 [FOLLOWUP-ENGINE] AI suggested nextEvaluationAt: ${result.nextEvaluationAt}`);
+    }
+
     return {
       decision: finalDecision,
       urgency: result.urgency || undefined,
@@ -268,7 +273,8 @@ export async function evaluateFollowup(
       updatedConversionProbability: result.updatedConversionProbability || undefined,
       stateTransition: result.stateTransition || undefined,
       allowFreeformMessage,
-      modelName: model, // Include model name for logging
+      modelName: model,
+      nextEvaluationAt: result.nextEvaluationAt || undefined, // Pass through for scheduler to save
     };
   } catch (error) {
     console.error("❌ [FOLLOWUP-ENGINE] Error evaluating follow-up:", error);

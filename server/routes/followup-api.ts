@@ -1122,6 +1122,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         leadLastName: schema.proactiveLeads.lastName,
         currentState: schema.conversationStates.currentState,
         temperatureLevel: schema.conversationStates.temperatureLevel,
+        nextEvaluationAt: schema.conversationStates.nextEvaluationAt,
       })
       .from(schema.followupAiEvaluationLog)
       .innerJoin(
@@ -1198,6 +1199,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         templateTwilioStatus: schema.whatsappTemplateVersions.twilioStatus,
         temperatureLevel: schema.conversationStates.temperatureLevel,
         currentState: schema.conversationStates.currentState,
+        nextEvaluationAt: schema.conversationStates.nextEvaluationAt,
       })
       .from(schema.scheduledFollowupMessages)
       .innerJoin(
@@ -1285,6 +1287,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         temperatureLevel: log.temperatureLevel || 'warm',
         window24hExpiresAt: log.window24hExpiresAt,
         canSendFreeform: log.canSendFreeform,
+        nextEvaluationAt: log.nextEvaluationAt,
         status: log.decision === 'stop' ? 'stopped' :
           log.decision === 'skip' ? 'waiting' :
             log.decision === 'send_now' ? 'active' : 'active',
@@ -1329,6 +1332,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         aiSelectedTemplateReasoning: msg.aiSelectedTemplateReasoning,
         temperatureLevel: msg.temperatureLevel || 'warm',
         currentState: msg.currentState,
+        nextEvaluationAt: msg.nextEvaluationAt,
       });
     }
 
@@ -1369,6 +1373,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
           temperatureLevel: event.temperatureLevel || 'warm',
           currentState: event.currentState,
           window24hExpiresAt: event.window24hExpiresAt,
+          nextEvaluationAt: event.nextEvaluationAt,
           events: [],
         };
       }

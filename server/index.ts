@@ -343,6 +343,8 @@ app.use((req, res, next) => {
   }
 
   // Setup Follow-up Scheduler for automated WhatsApp follow-ups
+  // Set FOLLOWUP_SCHEDULER_ENABLED=false on secondary environments (e.g., Hostinger)
+  // to prevent duplicate AI evaluations when same software runs on multiple servers
   const followupSchedulerEnabled = process.env.FOLLOWUP_SCHEDULER_ENABLED !== "false";
   
   if (followupSchedulerEnabled) {
