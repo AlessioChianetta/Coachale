@@ -99,6 +99,77 @@ function getRetryBackoffMinutes(attemptCount: number): number {
   return 60;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Next Evaluation Time - Clamping & Business Hours
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MIN_NEXT_EVAL_MINUTES = 30;  // Minimum 30 minutes in the future
+const MAX_NEXT_EVAL_HOURS = 72;    // Maximum 72 hours in the future
+const BUSINESS_HOURS_START = 8;    // 08:00
+const BUSINESS_HOURS_END = 21;     // 21:00
+
+/**
+ * Clamp and validate nextEvaluationAt from AI decision.
+ * - Ensures it's in the future (min 30min, max 72h)
+ * - Ensures it's within business hours (08:00-21:00)
+ * - If outside business hours, moves to next business hour slot
+ * 
+ * @param nextEvalString - ISO 8601 timestamp string from AI
+ * @returns Clamped Date or null if invalid
+ */
+function clampNextEvaluationAt(nextEvalString: string | undefined): Date | null {
+  if (!nextEvalString) return null;
+  
+  try {
+    let nextEval = new Date(nextEvalString);
+    
+    // Validate it's a valid date
+    if (isNaN(nextEval.getTime())) {
+      console.log(`⚠️ [NEXT-EVAL] Invalid date string: ${nextEvalString}`);
+      return null;
+    }
+    
+    const now = new Date();
+    const minEval = new Date(now.getTime() + MIN_NEXT_EVAL_MINUTES * 60 * 1000);
+    const maxEval = new Date(now.getTime() + MAX_NEXT_EVAL_HOURS * 60 * 60 * 1000);
+    
+    // Clamp to min/max range
+    if (nextEval < minEval) {
+      console.log(`📎 [NEXT-EVAL] Clamped to minimum: ${minEval.toISOString()} (was ${nextEvalString})`);
+      nextEval = minEval;
+    }
+    if (nextEval > maxEval) {
+      console.log(`📎 [NEXT-EVAL] Clamped to maximum: ${maxEval.toISOString()} (was ${nextEvalString})`);
+      nextEval = maxEval;
+    }
+    
+    // Clamp to business hours (in Rome timezone)
+    const romeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Rome',
+      hour: 'numeric',
+      hour12: false
+    });
+    const romeHour = parseInt(romeFormatter.format(nextEval), 10);
+    
+    if (romeHour < BUSINESS_HOURS_START) {
+      // Before 08:00 - move to 08:00 same day
+      nextEval.setHours(nextEval.getHours() + (BUSINESS_HOURS_START - romeHour));
+      console.log(`📎 [NEXT-EVAL] Moved to business hours start: ${nextEval.toISOString()}`);
+    } else if (romeHour >= BUSINESS_HOURS_END) {
+      // After 21:00 - move to 08:00 next day
+      nextEval.setDate(nextEval.getDate() + 1);
+      nextEval.setHours(BUSINESS_HOURS_START, 0, 0, 0);
+      console.log(`📎 [NEXT-EVAL] Moved to next day business hours: ${nextEval.toISOString()}`);
+    }
+    
+    console.log(`✅ [NEXT-EVAL] Set to: ${nextEval.toISOString()}`);
+    return nextEval;
+  } catch (error) {
+    console.error(`❌ [NEXT-EVAL] Error parsing date:`, error);
+    return null;
+  }
+}
+
 /**
  * Controlla se il consulente può inviare un messaggio (rate limit)
  * @param consultantId - ID del consulente
@@ -1120,6 +1191,8 @@ export async function findCandidateConversations(
       dormantReason: conversationStates.dormantReason,
       // Anti-duplication field
       lastAiEvaluationAt: conversationStates.lastAiEvaluationAt,
+      // Next Evaluation Time - AI-suggested time to re-evaluate
+      nextEvaluationAt: conversationStates.nextEvaluationAt,
       conversation: {
         consultantId: whatsappConversations.consultantId,
         agentConfigId: whatsappConversations.agentConfigId,
@@ -1213,7 +1286,25 @@ export async function findCandidateConversations(
       continue;
     }
     
-    // 2b. Anti-duplication: Skip if AI was evaluated very recently (within 5 minutes)
+    // 2b. Next Evaluation Time: Skip if AI suggested a future re-evaluation time
+    // This prevents 60+ redundant evaluations overnight when AI says "wait until morning"
+    if (state.nextEvaluationAt) {
+      const nextEval = new Date(state.nextEvaluationAt);
+      if (now < nextEval) {
+        const hoursRemaining = (nextEval.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const formattedTime = nextEval.toLocaleString('it-IT', { 
+          timeZone: 'Europe/Rome',
+          day: '2-digit',
+          month: '2-digit', 
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        console.log(`⏸️ [CANDIDATE] ${state.conversationId}: SKIPPED - nextEvaluationAt in ${hoursRemaining.toFixed(1)}h (${formattedTime})`);
+        continue;
+      }
+    }
+    
+    // 2c. Anti-duplication: Skip if AI was evaluated very recently (within 5 minutes)
     // This prevents the 350+ duplicate evaluations bug
     if (state.lastAiEvaluationAt) {
       const minutesSinceLastEval = (now.getTime() - new Date(state.lastAiEvaluationAt).getTime()) / (1000 * 60);
@@ -1895,12 +1986,30 @@ async function evaluateConversation(
   }
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // Process and clamp nextEvaluationAt from AI decision
+  const clampedNextEval = clampNextEvaluationAt(decision.nextEvaluationAt);
+  
   await updateConversationState(candidate.conversationId, {
     lastAiEvaluationAt: new Date(),
     aiRecommendation: decision.reasoning,
+    ...(clampedNextEval && { nextEvaluationAt: clampedNextEval }),
   });
 
-  console.log(`⏭️ [FOLLOWUP-SCHEDULER] Skipped follow-up for ${candidate.conversationId}: ${decision.reasoning}`);
+  if (clampedNextEval) {
+    const hoursUntil = (clampedNextEval.getTime() - Date.now()) / (1000 * 60 * 60);
+    const formattedTime = clampedNextEval.toLocaleString('it-IT', { 
+      timeZone: 'Europe/Rome',
+      day: '2-digit',
+      month: '2-digit', 
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    console.log(`⏭️ [FOLLOWUP-SCHEDULER] Skipped follow-up for ${candidate.conversationId}`);
+    console.log(`   📅 Next evaluation: ${formattedTime} (in ${hoursUntil.toFixed(1)}h)`);
+    console.log(`   📝 Reason: ${decision.reasoning}`);
+  } else {
+    console.log(`⏭️ [FOLLOWUP-SCHEDULER] Skipped follow-up for ${candidate.conversationId}: ${decision.reasoning}`);
+  }
   return 'skipped';
 }
 

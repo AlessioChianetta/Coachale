@@ -6317,6 +6317,7 @@ export const conversationStates = pgTable("conversation_states", {
   conversionProbability: real("conversion_probability").default(0.5), // 0-1
   lastAiEvaluationAt: timestamp("last_ai_evaluation_at"),
   aiRecommendation: text("ai_recommendation"), // Last AI decision reasoning
+  nextEvaluationAt: timestamp("next_evaluation_at", { withTimezone: true }), // AI-suggested next evaluation time
 
   // Temperature segmentation for scalability (hot=<2h, warm=<24h, cold=<7d, ghost=>7d)
   temperatureLevel: text("temperature_level").$type<"hot" | "warm" | "cold" | "ghost">().default("warm"),

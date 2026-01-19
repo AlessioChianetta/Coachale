@@ -890,6 +890,13 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
         .where(eq(conversationStates.conversationId, conversation.id));
     }
 
+    // Reset nextEvaluationAt on inbound message - allows immediate follow-up re-evaluation
+    // This ensures the follow-up scheduler can re-evaluate this conversation immediately
+    await db.update(conversationStates)
+      .set({ nextEvaluationAt: null })
+      .where(eq(conversationStates.conversationId, conversation.id));
+    console.log(`🔄 [NEXT-EVAL] Reset nextEvaluationAt for conversation ${conversation.id} (new inbound message)`);
+
     console.log(`📸 [STEP 5] Building media context (${inboundMessages.length} messages)`);
     // Step 5: Build media context for AI
     let mediaContext = "";

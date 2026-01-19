@@ -94,6 +94,8 @@ export interface FollowupDecision {
   longTermScheduleType?: "nurturing" | "reactivation" | "seasonal";
   // Model name used for the decision (for logging)
   modelName?: string;
+  // Next Evaluation Time - when to re-evaluate this conversation (ISO 8601)
+  nextEvaluationAt?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -484,14 +486,35 @@ Prima di decidere, analizza se la conversazione ha raggiunto il suo obiettivo na
   "longTermScheduleType": "nurturing" | "reactivation" | null,
   "updatedEngagementScore": 0-100 o null,
   "updatedConversionProbability": 0-1 o null,
-  "stateTransition": "nuovo stato o null"
+  "stateTransition": "nuovo stato o null",
+  "nextEvaluationAt": "ISO 8601 timestamp - QUANDO rivalutare (OBBLIGATORIO se skip/silence/nurturing)"
 }
+
+---
+
+## NEXT EVALUATION TIME (IMPORTANTE!)
+
+Quando decidi **skip**, **silence**, o **nurturing**, DEVI specificare **nextEvaluationAt**:
+- Formato: ISO 8601 con timezone (es: "2026-01-20T09:00:00+01:00")
+- Solo orari lavorativi: 08:00-21:00
+- Rispetta i giorni: venerdì sera → lunedì mattina
+
+**ESEMPI:**
+- È sera (22:00) → nextEvaluationAt: domani 09:00
+- Sabato pomeriggio → nextEvaluationAt: lunedì 09:00
+- Ha bisogno di tempo per decidere → nextEvaluationAt: tra 24 ore
+- Nurturing lungo termine → nextEvaluationAt: tra 48-72 ore
+
+**RANGE VALIDI:** minimo 30 minuti, massimo 72 ore
+
+---
 
 ⚠️ RICORDA: 
 - Se fuori finestra 24h, DEVI specificare suggestedTemplateId
 - Se conversazione completata, imposta isConversationComplete = true
 - Il reasoning DEVE iniziare con "Tempo dall'ultimo messaggio: X ore"
-- Rispetta i limiti del tuo profilo agente`;
+- Rispetta i limiti del tuo profilo agente
+- **Se decision è skip/silence/nurturing, nextEvaluationAt è OBBLIGATORIO**`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
