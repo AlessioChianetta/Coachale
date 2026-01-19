@@ -502,14 +502,20 @@ Prima di decidere, analizza se la conversazione ha raggiunto il suo obiettivo na
 
 Quando decidi **skip**, **silence**, o **nurturing**, DEVI specificare **nextEvaluationAt**:
 - Formato: ISO 8601 con timezone (es: "2026-01-20T09:00:00+01:00")
-- Orari operativi: 07:00-22:00 (TUTTI I GIORNI, incluso weekend)
-- Se è notte (dopo 22:00), sposta a domani mattina ore 07:00
+- Sistema attivo H24, 7 giorni su 7
+- Decidi in base a QUANDO IL LEAD ERA ATTIVO:
+
+**REGOLA FONDAMENTALE: Rispetta l'orario di attività del lead**
+- Se il lead scrive alle 01:00 e smette alle 01:20 → puoi rivalutare alle 01:35 (è sveglio!)
+- Se il lead scrive alle 18:00 e smette di rispondere → NON rivalutare alle 23:50, aspetta domani 07:00-08:00
+- Se il lead era attivo di giorno → rivaluta in orario diurno
+- Se il lead era attivo di notte → puoi rivalutare di notte
 
 **ESEMPI:**
-- È sera (22:30) → nextEvaluationAt: domani 07:00
-- Sabato pomeriggio → nextEvaluationAt: sabato sera o domenica (funziona sempre!)
-- Ha bisogno di tempo per decidere → nextEvaluationAt: tra 24 ore
-- Nurturing lungo termine → nextEvaluationAt: tra 48-72 ore
+- Lead attivo alle 01:00, smette alle 01:20 → nextEvaluationAt: 01:45 (tra 25 min, è sveglio)
+- Lead attivo alle 18:00, ora sono le 20:00 → nextEvaluationAt: domani 08:00 (non disturbarlo di notte)
+- Lead attivo alle 14:00, ora sono le 16:00 → nextEvaluationAt: 18:00 (ancora orario diurno)
+- Nurturing lungo termine → nextEvaluationAt: tra 48-72 ore, ore 09:00
 
 **RANGE VALIDI:** minimo 30 minuti, massimo 72 ore
 

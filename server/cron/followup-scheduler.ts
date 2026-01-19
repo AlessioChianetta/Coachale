@@ -133,7 +133,7 @@ function clampNextEvaluationAt(nextEvalString: string | undefined): Date | null 
     const minEval = new Date(now.getTime() + MIN_NEXT_EVAL_MINUTES * 60 * 1000);
     const maxEval = new Date(now.getTime() + MAX_NEXT_EVAL_HOURS * 60 * 60 * 1000);
     
-    // Clamp to min/max range
+    // Clamp to min/max range only (30 min - 72 hours)
     if (nextEval < minEval) {
       console.log(`📎 [NEXT-EVAL] Clamped to minimum: ${minEval.toISOString()} (was ${nextEvalString})`);
       nextEval = minEval;
@@ -143,24 +143,9 @@ function clampNextEvaluationAt(nextEvalString: string | undefined): Date | null 
       nextEval = maxEval;
     }
     
-    // Clamp to business hours (in Rome timezone)
-    const romeFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Europe/Rome',
-      hour: 'numeric',
-      hour12: false
-    });
-    const romeHour = parseInt(romeFormatter.format(nextEval), 10);
-    
-    if (romeHour < BUSINESS_HOURS_START) {
-      // Before 07:00 - move to 07:00 same day
-      nextEval.setHours(nextEval.getHours() + (BUSINESS_HOURS_START - romeHour));
-      console.log(`📎 [NEXT-EVAL] Moved to business hours start: ${nextEval.toISOString()}`);
-    } else if (romeHour >= BUSINESS_HOURS_END) {
-      // After 22:00 - move to 07:00 next day
-      nextEval.setDate(nextEval.getDate() + 1);
-      nextEval.setHours(BUSINESS_HOURS_START, 0, 0, 0);
-      console.log(`📎 [NEXT-EVAL] Moved to next day business hours: ${nextEval.toISOString()}`);
-    }
+    // NO business hours clamping - AI decides based on lead activity context
+    // If lead was active at 01:00, AI can schedule follow-up at 01:30
+    // If lead was active at 18:00, AI should schedule for next morning, not 23:50
     
     console.log(`✅ [NEXT-EVAL] Set to: ${nextEval.toISOString()}`);
     return nextEval;
