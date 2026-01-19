@@ -12,7 +12,12 @@ vite.config.ts.*
 
 # Uploads
 # uploads/
+uploads/temp/
+*.tmp
 
 # Database files
 #data/
 .git.backup.*
+
+# Client Data Analysis temp files
+server/temp-uploads/
