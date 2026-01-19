@@ -1,0 +1,59 @@
+Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+
+[SHEETS POLLING] Starting polling cycle (ExecID: 4xxqce)...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-19T21:41:00.035Z
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Processing job ca427ee2-05d4-4614-b7bf-c10af25d5953 (Campagna Euro Space)
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+Duplicate headers found and renamed.
+[SHEETS POLLING] Date filter applied: 253 -> 41 rows (from 2026-01-11)
+[SHEETS POLLING] Processing 41 rows for job ca427ee2-05d4-4614-b7bf-c10af25d5953 (checking database for each)
+[SHEETS POLLING] Using campaign "Campagna Euro Space Massimo" for import
+9:41:04 PM [express] POST /api/activity/session/heartbeat 200 in 452ms :: {"success":true,"lastActiv…
+[SHEETS POLLING] Completed import for job ca427ee2-05d4-4614-b7bf-c10af25d5953: 0 imported, 41 duplicates, 0 skipped, 0 errors
+[SHEETS POLLING] Polling cycle completed (ExecID: 4xxqce)
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[QUERY-PLANNER] Execution complete in 319ms, success: true
+[CLIENT-DATA] Execution result: {
+  planSteps: 1,
+  resultsCount: 1,
+  results: [
+    {
+      tool: 'get_schema',
+      success: true,
+      dataLength: 1,
+      error: undefined
+    }
+  ]
+}
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[CLIENT-DATA] Response data summary: {
+  hasAnswer: true,
+  answerLength: 1514,
+  resultsWithData: 1,
+  firstResultDataSample: [
+    {
+      datasetId: 2,
+      name: 'restaurant_test_dataset',
+      tableName: 'cdd_0c73bbe5_restaurant_test_dataset_e4aa770f',
+      rowCount: 500,
+      status: 'ready',
+      columns: [Array],
+      metrics: []
+    }
+  ]
+}
+9:41:15 PM [express] POST /api/client-data/datasets/2/ask 200 in 19002ms :: {"success":true,"data":{…
