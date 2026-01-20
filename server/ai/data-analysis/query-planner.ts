@@ -443,8 +443,10 @@ export async function executeToolCall(
         break;
 
       case "execute_metric": {
+        console.log(`[EXECUTE-METRIC] Called with metricName: "${toolCall.args.metricName}", datasetId: ${toolCall.args.datasetId}`);
         const metric = getMetricDefinition(toolCall.args.metricName);
         if (!metric) {
+          console.error(`[EXECUTE-METRIC] Metric NOT FOUND: "${toolCall.args.metricName}"`);
           return {
             toolName: toolCall.name,
             args: toolCall.args,
@@ -454,6 +456,7 @@ export async function executeToolCall(
             executionTimeMs: Date.now() - startTime
           };
         }
+        console.log(`[EXECUTE-METRIC] Found metric: ${metric.name}, SQL: ${metric.sqlExpression}`);
         // Use executeMetricSQL which executes raw SQL without DSL parser
         result = await executeMetricSQL(
           toolCall.args.datasetId, 
@@ -461,6 +464,7 @@ export async function executeToolCall(
           toolCall.args.metricName,
           { userId, timeoutMs: 3000 }
         );
+        console.log(`[EXECUTE-METRIC] Result: success=${result.success}, error=${result.error || 'none'}`);
         break;
       }
 
