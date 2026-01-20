@@ -10,7 +10,8 @@ import { parseMetricExpression, validateMetricAgainstSchema } from "../../servic
 import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
-import { classifyIntent, ForceToolRetryError, requiresNumericAnswer, getConversationalReply } from "./intent-classifier";
+// NOTE: classifyIntent and ForceToolRetryError are deprecated - using Router Agent instead
+import { getConversationalReply } from "./intent-classifier";
 import { routeIntent, type IntentRouterOutput, type ConversationMessage } from "./intent-router";
 import { enforcePolicyOnToolCalls, getPolicyForIntent, POLICY_RULES, type IntentType } from "./policy-engine";
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
@@ -445,9 +446,9 @@ Domanda dell'utente: "${userQuestion}"
 
 Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`;
 
-  // Intent classification - check if this requires tool calling
-  const intentClassification = classifyIntent(userQuestion);
-  console.log(`[QUERY-PLANNER] Intent: ${intentClassification.type}, requiresToolCall: ${intentClassification.requiresToolCall}`);
+  // NOTE: Intent classification is now handled by Router Agent in askDataset()
+  // The legacy classifyIntent() is deprecated - Router Agent is the single source of truth
+  console.log(`[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)`);
 
   try {
     const response = await client.generateContent({
@@ -488,14 +489,11 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
       }
     }
 
-    // BLOCCO HARD: Se intent analitico e nessun tool chiamato, forza retry
-    if (steps.length === 0 && intentClassification.requiresToolCall) {
-      console.warn("[QUERY-PLANNER] FORCE RETRY: Analytical question but no tool called");
-      throw new ForceToolRetryError(
-        "La domanda richiede dati ma nessun tool è stato chiamato. Forzo retry.",
-        userQuestion,
-        intentClassification
-      );
+    // NOTE: Force retry logic is now handled by Policy Engine in askDataset()
+    // If Router Agent classifies as "analytics" but no tools are called, 
+    // the Policy Engine will handle this case
+    if (steps.length === 0) {
+      console.log("[QUERY-PLANNER] No tools planned - Policy Engine will handle this");
     }
 
     const complexity = steps.length <= 1 ? "simple" : steps.length <= 3 ? "medium" : "complex";
