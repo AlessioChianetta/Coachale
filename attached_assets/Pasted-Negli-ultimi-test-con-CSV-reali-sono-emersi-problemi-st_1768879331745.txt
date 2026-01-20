@@ -1,0 +1,109 @@
+Negli ultimi test con CSV reali sono emersi problemi strutturali nel modo in cui il sistema decide quali tool usare.
+
+Ti spiego cosa è successo concretamente:
+
+Alla domanda:
+“Come posso aumentare il fatturato del 50% nei prossimi 12 mesi?”
+Il planner ha chiamato filter_data invece di NON chiamare tool o usare metriche aggregate.
+
+Dopo aver letto righe raw, Gemini ha:
+
+inventato numeri (fatturato mensile, ticket medio diversi dal reale)
+
+fatto proiezioni non richieste
+
+attribuito pattern non presenti nei dati
+
+Questo non è un problema del modello in sé, ma del fatto che:
+
+il planner sta cercando di fare sia routing intent sia logica analytics
+
+non distinguiamo chiaramente “strategia” da “analytics” da “data preview”.
+
+Di conseguenza voglio separare questi ruoli.
+
+Decisione architetturale
+
+Introduciamo un Router Agent dedicato (Gemini Flash Lite) che serve SOLO a classificare l’intento dell’utente.
+
+Nuova pipeline:
+
+User prompt
+→ Router Agent (classifica intento)
+→ Policy Engine (regole hardcoded)
+→ Analytics Agent (Gemini Pro)
+→ Validator
+
+Router Agent responsibilities
+
+Il Router NON deve:
+
+calcolare numeri
+
+fare analisi
+
+generare testo lungo
+
+Deve solo restituire JSON tipo:
+
+{
+intent: analytics | strategy | data_preview | conversational
+suggested_tools: []
+requires_metrics: boolean
+}
+
+Policy rules che voglio applicare
+
+intent = strategy
+
+vietato filter_data
+
+vietato generare numeri
+
+solo risposta qualitativa
+
+intent = analytics
+
+obbligatorio usare tool compute
+
+blocco risposta senza tool
+
+intent = data_preview
+
+consentito solo filter_data
+
+vietato KPI aggregati
+
+intent = conversational
+
+nessun tool
+
+Obiettivo
+
+Eliminare:
+
+misrouting tool
+
+hallucination numeriche
+
+uso improprio di filter_data
+
+mescolanza tra consulenza e analytics
+
+Deliverables che mi aspetto
+
+Prompt Router Agent
+
+Output schema JSON
+
+Middleware intent + policy
+
+Test di accettazione:
+
+“Come aumento fatturato?” → strategy → NO tool
+
+“Fatturato totale?” → analytics → execute_metric
+
+“Mostrami righe” → data_preview → filter_data
+
+Questo step è prioritario perché è la root cause dei problemi visti.

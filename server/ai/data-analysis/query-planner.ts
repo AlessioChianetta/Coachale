@@ -11,6 +11,8 @@ import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
 import { classifyIntent, ForceToolRetryError, requiresNumericAnswer, getConversationalReply } from "./intent-classifier";
+import { routeIntent, type IntentRouterOutput } from "./intent-router";
+import { enforcePolicyOnToolCalls, getPolicyForIntent, POLICY_RULES, type IntentType } from "./policy-engine";
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
 import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
@@ -790,32 +792,62 @@ export async function askDataset(
   userId?: string
 ): Promise<QueryExecutionResult> {
   console.log(`[QUERY-PLANNER] Processing question: "${userQuestion}" for ${datasets.length} datasets`);
+  const startTime = Date.now();
 
-  // FIRST: Check intent - if conversational, return FIXED response without ANY tool calls
-  // This is a HARD BLOCK - Gemini does NOT decide, we do
-  const intent = classifyIntent(userQuestion);
-  if (intent.type === "conversational") {
+  // ====== LAYER 1: INTENT ROUTER (AI - gemini-2.5-flash-lite) ======
+  // Fast, cheap classification of user intent
+  const routerOutput = await routeIntent(userQuestion, consultantId);
+  console.log(`[QUERY-PLANNER] Router result: intent=${routerOutput.intent}, requires_metrics=${routerOutput.requires_metrics}, confidence=${routerOutput.confidence.toFixed(2)}`);
+
+  // ====== LAYER 2: POLICY ENGINE (TypeScript - no AI) ======
+  // Gate keeper for tool access based on intent
+  const policy = getPolicyForIntent(routerOutput.intent);
+  console.log(`[QUERY-PLANNER] Policy: allowedTools=[${policy.allowedTools.join(',')}], requireToolCall=${policy.requireToolCall}`);
+
+  // CONVERSATIONAL: Return fixed response without ANY tool calls
+  if (routerOutput.intent === "conversational") {
     const friendlyReply = getConversationalReply(userQuestion);
-    console.log(`[QUERY-PLANNER] CONVERSATIONAL HARD BLOCK - returning friendly response: "${friendlyReply.substring(0, 50)}..."`);
+    console.log(`[QUERY-PLANNER] CONVERSATIONAL - returning friendly response: "${friendlyReply.substring(0, 50)}..."`);
     return {
       plan: {
         steps: [],
-        reasoning: "HARD BLOCK: Messaggio di cortesia rilevato - risposta fissa senza AI",
+        reasoning: "Intent: conversational - risposta fissa senza AI",
         estimatedComplexity: "simple"
       },
       results: [{
         toolName: "conversational_response",
-        args: { blocked: true },
+        args: { intent: "conversational" },
         result: { message: friendlyReply, isFixedResponse: true },
         success: true
       }],
       success: true,
-      totalExecutionTimeMs: 0
+      totalExecutionTimeMs: Date.now() - startTime
+    };
+  }
+
+  // STRATEGY: Return qualitative response WITHOUT any tool calls
+  if (routerOutput.intent === "strategy") {
+    console.log(`[QUERY-PLANNER] STRATEGY - generating qualitative response without tools`);
+    const strategyResponse = await generateStrategyResponse(userQuestion, datasets, consultantId);
+    return {
+      plan: {
+        steps: [],
+        reasoning: "Intent: strategy - risposta qualitativa senza numeri inventati",
+        estimatedComplexity: "simple"
+      },
+      results: [{
+        toolName: "strategy_response",
+        args: { intent: "strategy" },
+        result: { message: strategyResponse, isQualitative: true },
+        success: true
+      }],
+      success: true,
+      totalExecutionTimeMs: Date.now() - startTime
     };
   }
 
   // CHECK: Analytics must be enabled (semantic mapping confirmed) for analytical queries
-  if (datasets.length > 0 && intent.type === "analytical") {
+  if (datasets.length > 0 && (routerOutput.intent === "analytics" || routerOutput.requires_metrics)) {
     const datasetId = parseInt(datasets[0].id);
     if (!isNaN(datasetId)) {
       const analyticsCheck = await checkAnalyticsEnabled(datasetId);
@@ -838,17 +870,113 @@ export async function askDataset(
             success: false
           }],
           success: false,
-          totalExecutionTimeMs: 0
+          totalExecutionTimeMs: Date.now() - startTime
         };
       }
     }
   }
 
+  // ====== LAYER 3: EXECUTION AGENT (AI - gemini-2.5-flash) ======
+  // Plan and execute tools based on policy
   const plan = await planQuery(userQuestion, datasets, consultantId);
   console.log(`[QUERY-PLANNER] Plan: ${plan.steps.length} steps, complexity: ${plan.estimatedComplexity}`);
+
+  // Apply policy enforcement to planned tool calls
+  if (plan.steps.length > 0) {
+    const policyResult = enforcePolicyOnToolCalls(routerOutput.intent, plan.steps);
+    
+    if (policyResult.violations.length > 0) {
+      console.warn(`[QUERY-PLANNER] POLICY VIOLATIONS: ${policyResult.violations.join('; ')}`);
+      // Replace blocked tools, keep only allowed
+      plan.steps = policyResult.allowed;
+      
+      if (plan.steps.length === 0 && policy.requireToolCall) {
+        return {
+          plan: {
+            steps: [],
+            reasoning: `Policy violation: ${policyResult.violations.join('; ')}`,
+            estimatedComplexity: "simple"
+          },
+          results: [{
+            toolName: "policy_violation",
+            args: { intent: routerOutput.intent, violations: policyResult.violations },
+            result: { 
+              blocked: true, 
+              message: `La richiesta non può essere elaborata: ${policyResult.violations[0]}`
+            },
+            success: false
+          }],
+          success: false,
+          totalExecutionTimeMs: Date.now() - startTime
+        };
+      }
+    }
+  }
 
   const result = await executePlanWithValidation(plan, datasets, consultantId, userId, userQuestion);
   console.log(`[QUERY-PLANNER] Execution complete in ${result.totalExecutionTimeMs}ms, success: ${result.success}`);
 
   return result;
+}
+
+/**
+ * Generate a qualitative strategy response without any tool calls or numbers
+ */
+async function generateStrategyResponse(
+  userQuestion: string,
+  datasets: DatasetInfo[],
+  consultantId?: string
+): Promise<string> {
+  const providerResult = await getAIProvider(consultantId || "system", consultantId);
+  const client = providerResult.client;
+  const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
+
+  const STRATEGY_PROMPT = `Sei un consulente strategico. Rispondi a domande di business in modo QUALITATIVO.
+
+REGOLE ASSOLUTE:
+1. NON citare numeri specifici (€, %, quantità)
+2. NON fare proiezioni numeriche
+3. NON inventare dati
+4. Fornisci consigli strategici generali
+
+APPROCCIO:
+- Identifica le leve strategiche (pricing, costi, volume, mix prodotti)
+- Suggerisci framework di analisi
+- Proponi azioni concrete senza quantificarle
+- Se servono numeri per una risposta precisa, suggerisci di chiedere analytics specifici
+
+ESEMPIO:
+Domanda: "Come posso aumentare il fatturato?"
+Risposta: "Per aumentare il fatturato puoi lavorare su tre leve principali:
+1. **Volume**: Aumentare il numero di clienti o la frequenza degli ordini
+2. **Prezzo**: Rivedere il pricing dei prodotti più venduti
+3. **Mix**: Promuovere prodotti ad alto margine
+
+Vuoi che analizzi i dati attuali per identificare le opportunità specifiche?"`;
+
+  const datasetContext = datasets.length > 0 
+    ? `\n\nDataset disponibile: "${datasets[0].name}" con ${datasets[0].rowCount} righe.`
+    : "";
+
+  try {
+    const response = await client.generateContent({
+      model: modelName,
+      systemInstruction: {
+        role: "system",
+        parts: [{ text: STRATEGY_PROMPT }]
+      },
+      contents: [
+        { role: "user", parts: [{ text: userQuestion + datasetContext }] }
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+      }
+    });
+
+    return response.response.text() || "Non ho potuto generare una risposta strategica. Prova a riformulare la domanda.";
+  } catch (error: any) {
+    console.error("[QUERY-PLANNER] Strategy response error:", error.message);
+    return "Per rispondere a questa domanda strategica, ho bisogno di analizzare prima i dati. Vuoi che calcoli le metriche rilevanti?";
+  }
 }
