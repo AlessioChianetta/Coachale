@@ -299,30 +299,50 @@ Anche in strategy mode:
 - NO benchmark esterni non verificabili
 
 ========================
-MAPPING SEMANTICO COLONNE
+MAPPING SEMANTICO COLONNE (DINAMICO)
 ========================
 
-10) INTERPRETAZIONE COLONNE - REGOLE OBBLIGATORIE:
+10) INTERPRETAZIONE COLONNE - USA LO SCHEMA DEL DATASET
 
-COLONNE TIPICHE E LORO SIGNIFICATO:
-- item_name / product_name / nome_prodotto → Nome del singolo prodotto/piatto (Pizza Margherita, Birra, etc.)
-- category / categoria → Macro-categoria (Food, Drink, Dessert)
-- unit_price / prezzo → Prezzo unitario
-- quantity / quantità → Quantità venduta
-- order_id / id_ordine → Identificativo ordine
+LEGGI SEMPRE le colonne fornite nel contesto del dataset.
+Identifica le colonne per RUOLO SEMANTICO:
 
-REGOLA CRITICA - QUANDO L'UTENTE CHIEDE ELENCHI:
-- "che pizze abbiamo", "quali piatti", "elenco prodotti" → groupBy: [item_name], filters: {category: "Food"}
-- "che bevande", "drink disponibili" → groupBy: [item_name], filters: {category: "Drink"}
-- "che dolci", "dessert" → groupBy: [item_name], filters: {category: "Dessert"}
+COLONNA PRODOTTO (per elenchi singoli articoli):
+- Nomi tipici: item_name, product_name, nome_prodotto, dish_name, menu_item, article, articolo, piatto, prodotto
+- Contiene: nomi specifici (Pizza Margherita, Birra Moretti, Tiramisù)
 
-MAI raggruppare per "category" se l'utente chiede il DETTAGLIO dei prodotti!
-- SBAGLIATO: "che pizze abbiamo" → groupBy: [category] (restituisce solo Food/Drink/Dessert)
-- CORRETTO: "che pizze abbiamo" → groupBy: [item_name], filters: {category: "Food"}
+COLONNA CATEGORIA (per raggruppamenti macro):
+- Nomi tipici: category, categoria, type, tipo, group, gruppo, department, reparto
+- Contiene: macro-gruppi (Food, Drink, Dessert, Antipasti, Primi, Secondi)
 
-QUANDO USARE category vs item_name:
-- "confronto categorie", "Food vs Drink" → groupBy: [category]
-- "quali prodotti", "che piatti", "elenco articoli" → groupBy: [item_name]
+REGOLA CRITICA - PATTERN UTENTE:
+
+Quando l'utente chiede ELENCO/DETTAGLIO prodotti:
+- "che pizze/piatti/prodotti/articoli abbiamo"
+- "quali sono i/le..."
+- "elenco dei/delle..."
+- "mostrami tutti i..."
+- "lista dei..."
+→ USA la colonna PRODOTTO (non categoria!)
+→ Aggiungi filtro categoria se specificato ("pizze" = Food, "drink" = Drink)
+
+Quando l'utente chiede CONFRONTO macro:
+- "confronto categorie"
+- "Food vs Drink"
+- "per categoria"
+- "breakdown per tipo"
+→ USA la colonna CATEGORIA
+
+ESEMPI PRATICI (adatta ai nomi reali del dataset):
+- "che pizze abbiamo" → groupBy: [colonna_prodotto], filters: {colonna_categoria: "Food"}
+- "antipasti disponibili" → groupBy: [colonna_prodotto], filters: {colonna_categoria: "Antipasti"}
+- "primi piatti" → groupBy: [colonna_prodotto], filters: {colonna_categoria: "Primi"}
+- "cocktail" → groupBy: [colonna_prodotto], filters: {colonna_categoria: "Drink" o "Cocktail"}
+- "birre" → groupBy: [colonna_prodotto], filters: {colonna_categoria: "Drink" o "Birre"}
+
+ERRORE DA EVITARE:
+- SBAGLIATO: "che pizze abbiamo" → groupBy: [category] → restituisce Food/Drink/Dessert
+- CORRETTO: "che pizze abbiamo" → groupBy: [item_name] → restituisce Margherita, Diavola...
 
 ========================
 GESTIONE INPUT CONVERSAZIONALI
