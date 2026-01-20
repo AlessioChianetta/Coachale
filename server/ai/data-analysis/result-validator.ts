@@ -87,18 +87,27 @@ function extractNumbersFromToolResults(results: ExecutedToolResult[]): number[] 
   const numbers: number[] = [];
   
   for (const result of results) {
+    console.log(`[RESULT-VALIDATOR] Processing tool result: toolName=${result.toolName}, success=${result.success}, result=`, JSON.stringify(result.result)?.substring(0, 200));
     if (!result.success || !result.result) continue;
     
-    const extractFromObject = (obj: any) => {
+    const extractFromObject = (obj: any, path: string = "root") => {
       if (typeof obj === "number" && isFinite(obj)) {
+        console.log(`[RESULT-VALIDATOR] Found number at ${path}: ${obj}`);
         numbers.push(obj);
+      } else if (typeof obj === "string") {
+        // Try to parse string numbers
+        const parsed = parseFloat(obj);
+        if (!isNaN(parsed) && isFinite(parsed)) {
+          console.log(`[RESULT-VALIDATOR] Parsed number from string at ${path}: ${parsed}`);
+          numbers.push(parsed);
+        }
       } else if (Array.isArray(obj)) {
-        for (const item of obj) {
-          extractFromObject(item);
+        for (let i = 0; i < obj.length; i++) {
+          extractFromObject(obj[i], `${path}[${i}]`);
         }
       } else if (typeof obj === "object" && obj !== null) {
-        for (const value of Object.values(obj)) {
-          extractFromObject(value);
+        for (const [key, value] of Object.entries(obj)) {
+          extractFromObject(value, `${path}.${key}`);
         }
       }
     };
@@ -106,6 +115,7 @@ function extractNumbersFromToolResults(results: ExecutedToolResult[]): number[] 
     extractFromObject(result.result);
   }
   
+  console.log(`[RESULT-VALIDATOR] Total numbers extracted: ${numbers.length}`, numbers);
   return [...new Set(numbers)];
 }
 
