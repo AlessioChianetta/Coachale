@@ -1946,7 +1946,7 @@ router.post(
         model: model || "gemini-3-flash-preview",
         thinkingLevel: thinkingLevel || "low",
         writingStyle: writingStyle || "default",
-        responseLength: responseLength || "medium",
+        responseLength: responseLength || "balanced",
         customInstructions: customInstructions || "",
       };
 

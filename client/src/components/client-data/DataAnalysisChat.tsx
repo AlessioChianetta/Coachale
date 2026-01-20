@@ -205,7 +205,7 @@ export function DataAnalysisChat({
         model,
         thinkingLevel: thinkingLvl,
         writingStyle: preferences?.writingStyle || "default",
-        responseLength: (preferences as any)?.responseLength || "medium",
+        responseLength: (preferences as any)?.responseLength || "balanced",
         customInstructions: (preferences as any)?.customInstructions || "",
       });
     },
