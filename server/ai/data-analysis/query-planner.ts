@@ -490,17 +490,40 @@ export async function executeToolCall(
         );
         break;
 
-      case "aggregate_group":
-        result = await aggregateGroup(
-          toolCall.args.datasetId,
-          toolCall.args.groupBy,
-          toolCall.args.aggregations,
-          toolCall.args.filters,
-          toolCall.args.orderBy,
-          toolCall.args.limit || 100,
-          { userId }
-        );
+      case "aggregate_group": {
+        // Convert metricName to aggregations if provided
+        let aggregations = toolCall.args.aggregations;
+        if (!aggregations && toolCall.args.metricName) {
+          const metric = getStandardMetric(toolCall.args.metricName);
+          if (metric) {
+            // Extract column from SQL expression: SUM(CAST("column" AS NUMERIC))
+            // We'll use total_net as default for revenue metrics
+            const columnMatch = metric.sqlExpression.match(/"(\w+)"/);
+            const column = columnMatch ? columnMatch[1] : "total_net";
+            const funcMatch = metric.sqlExpression.match(/^(SUM|AVG|COUNT|MIN|MAX)/i);
+            const func = funcMatch ? funcMatch[1].toUpperCase() : "SUM";
+            aggregations = [{ column, function: func, alias: toolCall.args.metricName }];
+          } else {
+            // Default fallback for unknown metrics
+            aggregations = [{ column: "total_net", function: "SUM", alias: "totale" }];
+          }
+        }
+        
+        if (!aggregations) {
+          result = { success: false, error: "Either aggregations or metricName is required" };
+        } else {
+          result = await aggregateGroup(
+            toolCall.args.datasetId,
+            toolCall.args.groupBy,
+            aggregations,
+            toolCall.args.filters,
+            toolCall.args.orderBy,
+            toolCall.args.limit || 100,
+            { userId }
+          );
+        }
         break;
+      }
 
       case "get_schema":
         result = await getSchema(toolCall.args.datasetId);
