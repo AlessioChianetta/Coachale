@@ -62,10 +62,25 @@ ANALYTICS (requires_metrics: true)
 - Parole chiave: quanto, quanti, totale, somma, media, analizzami, dettagli, quali sono
 - Tool: execute_metric, aggregate_group, compare_periods, filter_data
 
+⚠️ REGOLA CRITICA - ANALYTICS vs STRATEGY:
+ANALYTICS = la risposta dipende dai DATI SPECIFICI del cliente
+STRATEGY = la risposta sarebbe uguale per qualsiasi business
+
+Se una domanda strategica richiede analizzare i dati del cliente per rispondere, classificala come ANALYTICS perché servono i dati PRIMA del consiglio.
+
+Pattern comuni che richiedono DATI (→ ANALYTICS, NON strategy!):
+- "Vale la pena X?" (aprire a pranzo, aggiungere un piatto, fare delivery...)
+- "Dovrei eliminare/togliere X?" (un piatto, una categoria, un servizio...)
+- "Conviene X?" (fare promozioni, alzare i prezzi, assumere...)
+- "È meglio X o Y?" (puntare su Food o Drink, pranzo o cena...)
+- "Qual è il mio punto debole/forte?" (richiede analisi comparativa)
+- "Come sta andando X?" (il menu, le vendite, i margini...)
+- "Cosa funziona/non funziona?" (richiede dati per valutare)
+
 STRATEGY (requires_metrics: false)
-- Domande consulenziali che chiedono CONSIGLI, non numeri
-- Esempi: "Come aumento il fatturato?", "Consigli per ridurre i costi"
-- Tool: NESSUNO - risposta qualitativa
+- SOLO domande teoriche generiche che NON richiedono dati specifici
+- Esempi: "Come si calcola il food cost?", "Quali sono le best practice per un ristorante?"
+- Tool: NESSUNO - risposta qualitativa teorica
 
 DATA_PREVIEW (requires_metrics: false)
 - SOLO richieste iniziali di vedere dati raw SENZA contesto analitico

@@ -1,0 +1,65 @@
+5:38:28 AM [express] GET /api/ai-assistant/preferences 200 in 498ms :: {"writingStyle":"eccentric","…
+[CLIENT-DATA] User message saved: 5726e01d-da0a-4410-9c69-ee86b5e32663
+[CLIENT-DATA] Loaded 4 messages for context
+[CLIENT-DATA] Processing message: "secondo te vale la pena tenere aperto a pranzo?" on dataset 3
+[QUERY-PLANNER] Processing question: "secondo te vale la pena tenere aperto a pranzo?" for 1 datasets
+[QUERY-PLANNER] Conversation history: 4 messages
+[WIRING-CHECK] semantic contract detected - requestsAll=false, requestsTopN=false, keywords=[]
+[WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[INTENT-ROUTER] Classifying question: "secondo te vale la pena tenere aperto a pranzo?"
+[INTENT-ROUTER] Conversation context: 4 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (1075ms): ```json
+{
+  "intent": "strategy",
+  "requires_metrics": false,
+  "suggested_tools": [],
+  "confidence": 0.98
+}
+```
+[INTENT-ROUTER] Classification result: intent=strategy, requires_metrics=false, confidence=0.98, tools=[]
+[QUERY-PLANNER] Router result: intent=strategy, requires_metrics=false, confidence=0.98
+[POLICY-ENGINE] Getting policy for intent: strategy
+[QUERY-PLANNER] Policy: allowedTools=[], requireToolCall=false
+[QUERY-PLANNER] STRATEGY - generating qualitative response without tools
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[STRATEGY-GUARD] AI response contains numeric content, applying hard guard...
+[STRATEGY-GUARD] HARD BLOCK: numeric content still present after scrubbing, using fallback
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+
+[SHEETS POLLING] Starting polling cycle (ExecID: 4wbbqt)...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-20T05:39:00.048Z
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: 4wbbqt)
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[TOOL-GATING] Tools used: strategy_response, hasComputeTool: false, hasNumericClaims: true, isOnlyMetadata: false
+[RESULT-VALIDATOR] Processing tool result: toolName=strategy_response, success=true, result= {"message":"Per rispondere a questa domanda strategica in modo accurato, dovrei prima analizzare i tuoi dati reali.\n\nPosso suggerirti queste aree di focus:\n- **Analisi del volume**: Capire trend di
+[RESULT-VALIDATOR] Total numbers extracted: 0 []
+[RESULT-VALIDATOR] Coverage: 0% (0/0 tool numbers found in response)
+[RESULT-VALIDATOR] Generated 1 derived numbers from 0 base numbers
+[RESULT-VALIDATOR] Response numbers: 10, Tool numbers: 0, Extra: 10, Final invented: 0
+[LABEL-VALIDATOR] Metrics used in tools: 
+[RESULT-EXPLAINER] VALIDATION BLOCKED: HALLUCINATION BLOCKED: La risposta contiene numeri significativi (15, 22, 70...) ma non è stato usato nessun tool di calcolo (execute_metric, aggregate_group, etc.). I numeri devono provenire dal database.
+[CLIENT-DATA] Assistant message saved: 6e217882-c65c-41db-9e4f-db9e97bbb426
+5:39:17 AM [express] POST /api/client-data/conversations/257968e0-f28b-41f4-acec-f56557a7a9d1/messag…
