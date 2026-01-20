@@ -1,0 +1,334 @@
+🚨 1) PROBLEMA CRITICO: “ANY” function calling mode
+
+Hai questo:
+
+mode: "ANY"
+
+
+Questo è pericoloso.
+
+Perché?
+
+Gemini può:
+
+scegliere di NON chiamare tool
+
+rispondere in testo libero
+
+bypassare compute-first
+
+Devi dirgli:
+
+"Cambiamo ANY in REQUIRED + controllo applicativo:
+per richieste data-driven deve essere obbligatorio chiamare almeno un tool."
+
+Implementazione:
+
+controlla intent (numeri, %, confronto, trend)
+
+se nessuna function_call → retry forzato
+
+🚨 2) DSL Parser: Manca controllo “semantic intent”
+
+Il tuo metric-dsl.ts valida:
+
+sintassi
+
+funzioni
+
+token
+
+MA NON valida:
+
+significato business
+
+uso colonne corrette per dominio
+
+Problema:
+
+Gemini può scrivere:
+
+SUM(waiter)
+AVG(table_number)
+
+
+Che sono matematicamente validi ma business nonsense.
+
+Devi dirgli:
+
+"Il DSL deve essere validato contro semantic layer:
+solo colonne marcate numeric=true possono entrare in SUM/AVG."
+
+Serve:
+
+column_registry
+  - name
+  - type
+  - allowed_aggregations
+
+🚨 3) Mancano LIMIT HARD su aggregazioni per breakdown
+
+In aggregate_group / breakdown:
+
+Se Gemini chiede:
+
+GROUP BY customer_id
+
+
+Su dataset grosso → query killer.
+
+Devi imporre:
+
+"Qualsiasi GROUP BY deve avere LIMIT hard (es: max 500 righe).
+O paginazione forzata."
+
+Questo protegge:
+
+DB
+
+token budget
+
+latenza
+
+🚨 4) Query cost guard (fondamentale)
+
+Non vedo (né hai citato):
+
+timeout SQL
+
+EXPLAIN cost
+
+max execution time
+
+Devi chiedere:
+
+"Aggiungere statement_timeout per ogni query AI (es: 3s).
+E kill automatico se supera."
+
+Questo evita:
+
+full scan accidentali
+
+DOS involontari
+
+🚨 5) result-explainer.ts = rischio hallucination narrativa
+
+Tu dici:
+
+Gemini riceve solo output aggregati
+
+Bene.
+
+Ma NON vedo enforcement di “source binding”.
+
+Problema:
+
+Gemini può:
+
+aggiungere insight NON presenti
+
+fare inferenze non calcolate
+
+inventare pattern (come ti è già successo)
+
+Devi dirgli:
+
+"Il result-explainer deve ricevere solo JSON strutturato
+e deve essere istruito a NON introdurre nuove metriche o numeri."
+
+E aggiungere validatore:
+
+parse risposta
+
+se compaiono numeri non presenti nei tool results → reject
+
+Questo è potentissimo.
+
+🚨 6) Manca “intent classification” prima del planner
+
+Ora flusso è:
+
+user → planner → tool
+
+
+Serve invece:
+
+user → intent classifier → planner
+
+
+Perché?
+
+Per distinguere:
+
+domanda descrittiva ("spiegami cos'è food cost")
+
+domanda numerica ("quanto è il food cost")
+
+Devi chiedere:
+
+"Inseriamo intent detector:
+informational vs analytical vs operational."
+
+Solo analytical → tool forced.
+
+🚨 7) client-data-router.ts: rischio cross-dataset leakage
+
+Tu separi per datasetId.
+
+MA devi verificare:
+
+ownership enforcement
+
+tenant isolation
+
+Devi chiedere:
+
+"Ogni datasetId deve essere validato contro userId/sessionId server-side, non fidandosi del client."
+
+Mai fidarsi del frontend.
+
+🚨 8) Tool schema troppo libero
+
+Esempio tipico:
+
+dsl: string
+datasetId: string
+
+
+Questo è troppo generico.
+
+Miglioria:
+
+"Per metriche standard usare ENUM invece di stringa libera."
+
+Esempio:
+
+metric_name:
+  enum: ["food_cost","revenue","ticket_avg"]
+
+
+Questo:
+
+riduce hallucinations
+
+aumenta stabilità
+
+rende API versionabili
+
+🚨 9) Nessun "metric dependency graph"
+
+Se hai:
+
+food_cost_percent = food_cost / revenue
+
+
+E Gemini chiede food_cost_percent:
+
+Ora probabilmente:
+
+rigenera formula
+
+ricalcola
+
+Meglio:
+
+"Implementare dependency graph:
+metriche derivate devono usare metriche base già definite."
+
+Questo:
+
+riduce query
+
+aumenta coerenza
+
+facilita caching
+
+🚨 10) Caching: manca invalidation semantica
+
+Hai cache query.
+
+Ma manca:
+
+invalidazione quando dataset cambia
+
+invalidazione quando metric definition cambia
+
+Devi chiedere:
+
+"Cache key deve includere: dataset_version + metric_version"
+
+Altrimenti:
+
+risultati vecchi
+
+bug silenziosi
+
+🚨 11) Logging incompleto per audit enterprise
+
+Hai:
+
+query log
+
+Manca:
+
+prompt hash
+
+tool call JSON
+
+result hash
+
+semantic version
+
+Devi chiedere:
+
+"Salviamo full execution trace:
+user_input → tool_call → SQL → result → AI output."
+
+Questo ti salva in:
+
+contestazioni clienti
+
+bug investigazione
+
+compliance futura
+
+🚨 12) Mancano test automatici metriche
+
+Devi chiedere:
+
+"Scriviamo test unitari per metriche core (food_cost, revenue, ticket_avg) usando dataset finti."
+
+Se rompe una formula → CI deve fallire.
+
+🔥 RIASSUNTO: COSA DIRE AL PROGRAMMATORE
+
+Puoi letteralmente incollargli questo:
+
+"Ottima base. Ora voglio blindare il sistema enterprise-grade.
+Serve implementare:
+
+Function calling REQUIRED per richieste numeriche
+
+Semantic validation colonne nel DSL (no SUM su campi non numerici)
+
+LIMIT hard su breakdown/group by
+
+SQL timeout e query cost guard
+
+Result validator: bloccare numeri non provenienti dai tool
+
+Intent classification prima del planner
+
+Dataset ownership enforcement server-side
+
+Metric enum invece di stringhe libere
+
+Dependency graph metriche derivate
+
+Cache versionata per dataset+metric
+
+Full execution audit trace
+
+Unit test metriche core
+
+Questo è necessario prima di scalare utenti."

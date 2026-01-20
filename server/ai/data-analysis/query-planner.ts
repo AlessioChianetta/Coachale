@@ -10,6 +10,9 @@ import { parseMetricExpression, validateMetricAgainstSchema } from "../../servic
 import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
+import { classifyIntent, ForceToolRetryError, requiresNumericAnswer } from "./intent-classifier";
+import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName } from "./metric-registry";
+import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 
 interface DatasetInfo {
   id: string;
@@ -40,35 +43,35 @@ interface ToolCallValidationResult {
 
 const MAX_PLANNING_RETRIES = 2;
 
-const SYSTEM_PROMPT_IT = `Sei un assistente AI esperto in analisi dati. Il tuo compito è interpretare le domande dell'utente e decidere quale tool usare per rispondere.
+const SYSTEM_PROMPT_IT = `Sei un assistente AI esperto in analisi dati. Il tuo compito è chiamare i tool corretti per rispondere alle domande.
 
-IMPORTANTE: Lo schema del dataset ti viene fornito nel messaggio. NON usare get_schema, hai già tutte le informazioni necessarie.
+REGOLA FONDAMENTALE: Per qualsiasi domanda su numeri/metriche, DEVI chiamare un tool. NON rispondere mai con numeri senza aver chiamato un tool.
+
+METRICHE PREDEFINITE (usa execute_metric):
+- revenue: Fatturato totale
+- food_cost: Costo delle materie prime
+- food_cost_percent: Percentuale food cost su fatturato
+- ticket_medio: Valore medio per ordine
+- quantity_total: Quantità totale articoli
+- order_count: Numero ordini
+- gross_margin: Margine lordo
+- gross_margin_percent: Margine lordo percentuale
+- discount_total: Sconti totali
 
 TOOL DISPONIBILI (in ordine di priorità):
-1. aggregate_group - Per analisi raggruppate: "per mese", "per categoria", "per prodotto", "top 10", ecc.
-2. query_metric - Per un singolo valore aggregato: "totale vendite", "media prezzi", "quanti ordini"
-3. compare_periods - Per confronti temporali: "questo mese vs scorso", "anno su anno"
-4. filter_data - Per vedere righe specifiche: "mostrami gli ordini di gennaio", "clienti con importo > 1000"
-5. get_schema - SOLO se esplicitamente richiesto ("che colonne hai?", "mostrami la struttura")
+1. execute_metric - PREFERITO per metriche singole. Usa metricName dall'elenco sopra.
+2. aggregate_group - Per breakdown: "per mese", "per categoria". Max 500 righe.
+3. compare_periods - Per confronti temporali: "vs mese scorso"
+4. filter_data - Per vedere righe specifiche. Max 1000 righe.
 
-REGOLE DI SCELTA:
-- "totale/media/conteggio PER qualcosa" → aggregate_group (raggruppa per quella dimensione)
-- "totale/media/conteggio" senza raggruppamento → query_metric
-- "mostrami", "elenca", "quali sono" → filter_data o aggregate_group
-- "confronta", "vs", "rispetto a" → compare_periods
+REGOLE OBBLIGATORIE:
+- Domanda su fatturato/revenue → execute_metric con metricName: "revenue"
+- Domanda su food cost → execute_metric con metricName: "food_cost" o "food_cost_percent"
+- MAI inventare formule DSL se esiste una metrica predefinita
+- MAI rispondere con numeri senza chiamare tool
+- LIMIT obbligatorio su aggregate_group (max 500)
 
-ESEMPI PRATICI:
-- "Mostrami il totale delle vendite per mese" → aggregate_group con groupBy: ["mese"] o colonna data
-- "Quali sono i 10 prodotti più venduti?" → aggregate_group con groupBy: ["prodotto"], limit: 10
-- "Qual è il fatturato totale?" → query_metric con dsl: "SUM(importo)"
-- "Mostrami gli ordini di gennaio" → filter_data con filtro sulla data
-
-Per aggregate_group, usa questo formato:
-- groupBy: colonne per raggruppare (es: ["order_date"] per raggruppare per data)
-- aggregations: [{ column: "importo", function: "SUM", alias: "totale" }]
-- orderBy: { column: "totale", direction: "DESC" } per ordinare
-
-Rispondi SOLO con le chiamate ai tool. Mai get_schema se lo schema è già fornito.`;
+Rispondi SEMPRE con almeno una chiamata tool per domande analitiche.`;
 
 async function getDatasetSchema(datasetId: string): Promise<{ columns: string[]; columnTypes: Record<string, string> } | null> {
   try {
@@ -113,6 +116,18 @@ function validateToolCallAgainstSchema(
         errors.push("DSL expression is required and must be a string");
         break;
       }
+      
+      // DEPRECATION WARNING: Check if a predefined metric could be used instead
+      const dslLower = dsl.toLowerCase();
+      const predefinedMetrics = ["revenue", "food_cost", "ticket_medio", "order_count", "quantity_total"];
+      for (const metric of predefinedMetrics) {
+        if (dslLower.includes(metric.replace("_", " ")) || 
+            (metric === "revenue" && (dslLower.includes("sum") && dslLower.includes("net"))) ||
+            (metric === "order_count" && dslLower.includes("count"))) {
+          console.warn(`[QUERY-PLANNER] DEPRECATION: query_metric used for "${dsl}" but execute_metric with "${metric}" should be preferred`);
+        }
+      }
+      
       try {
         const parsed = parseMetricExpression(dsl);
         const validation = validateMetricAgainstSchema(parsed, schema.columns);
@@ -121,6 +136,14 @@ function validateToolCallAgainstSchema(
         }
       } catch (parseError: any) {
         errors.push(`Invalid DSL syntax: ${parseError.message}`);
+      }
+      break;
+    }
+
+    case "execute_metric": {
+      const metricName = toolCall.args.metricName;
+      if (!metricName || !isValidMetricName(metricName)) {
+        errors.push(`Metrica non valida: "${metricName}". Metriche disponibili: ${TOOL_METRIC_ENUM.join(", ")}`);
       }
       break;
     }
@@ -225,6 +248,10 @@ Domanda dell'utente: "${userQuestion}"
 
 Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`;
 
+  // Intent classification - check if this requires tool calling
+  const intentClassification = classifyIntent(userQuestion);
+  console.log(`[QUERY-PLANNER] Intent: ${intentClassification.type}, requiresToolCall: ${intentClassification.requiresToolCall}`);
+
   try {
     const response = await client.generateContent({
       model: modelName,
@@ -264,79 +291,14 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
       }
     }
 
-    if (steps.length === 0 && datasets.length > 0) {
-      console.log("[QUERY-PLANNER] No function calls returned, attempting intelligent fallback");
-      const hasGroupingIntent = /per\s+(mese|anno|categoria|prodotto|cliente|giorno)|raggruppat|suddivi|top\s+\d+/i.test(userQuestion);
-      const hasAggregationIntent = /totale|somma|media|average|conteggio|count|quant[io]|massimo|minimo/i.test(userQuestion);
-      
-      console.log("[QUERY-PLANNER] Fallback intent detection:", { hasGroupingIntent, hasAggregationIntent });
-      console.log("[QUERY-PLANNER] Dataset columns:", datasets[0].columns.map(c => ({ name: c.name, type: c.dataType })));
-      
-      if (hasGroupingIntent || hasAggregationIntent) {
-        const numericCols = datasets[0].columns.filter(c => 
-          /^(NUMERIC|INTEGER|number|decimal)$/i.test(c.dataType)
-        );
-        const dateCols = datasets[0].columns.filter(c => 
-          /^(DATE|datetime|timestamp)$/i.test(c.dataType)
-        );
-        const textCols = datasets[0].columns.filter(c => 
-          /^(TEXT|varchar|string)$/i.test(c.dataType)
-        );
-        
-        console.log("[QUERY-PLANNER] Column types found:", { 
-          numericCols: numericCols.map(c => c.name), 
-          dateCols: dateCols.map(c => c.name),
-          textCols: textCols.map(c => c.name)
-        });
-        
-        if (numericCols.length > 0) {
-          let groupByCol: string | null = null;
-          let groupByExpression: string | null = null;
-          
-          const wantsMonthGrouping = /per\s+mese|mensil|monthly/i.test(userQuestion);
-          const wantsYearGrouping = /per\s+anno|annual|yearly/i.test(userQuestion);
-          
-          if (dateCols.length > 0) {
-            const dateCol = dateCols[0].name;
-            if (wantsMonthGrouping) {
-              groupByExpression = `DATE_TRUNC('month', "${dateCol}")`;
-              groupByCol = "mese";
-            } else if (wantsYearGrouping) {
-              groupByExpression = `DATE_TRUNC('year', "${dateCol}")`;
-              groupByCol = "anno";
-            } else {
-              groupByCol = dateCol;
-            }
-          } else if (textCols.length > 0) {
-            groupByCol = textCols[0].name;
-          }
-          
-          const sumCol = numericCols.find(c => /total|importo|prezzo|price|net|revenue|amount/i.test(c.name)) || numericCols[0];
-          
-          if (groupByCol) {
-            steps.push({
-              name: "aggregate_group",
-              args: {
-                datasetId: String(datasets[0].id),
-                groupBy: groupByExpression ? [groupByExpression] : [groupByCol],
-                groupByAlias: groupByExpression ? groupByCol : undefined,
-                aggregations: [{ column: sumCol.name, function: "SUM", alias: "totale" }],
-                orderBy: { column: "totale", direction: "DESC" },
-                limit: 20
-              }
-            });
-            console.log("[QUERY-PLANNER] Using intelligent fallback: aggregate_group by", groupByExpression || groupByCol, "sum of", sumCol.name);
-          }
-        }
-      }
-      
-      if (steps.length === 0) {
-        steps.push({
-          name: "filter_data",
-          args: { datasetId: String(datasets[0].id), filters: {}, limit: 50 }
-        });
-        console.log("[QUERY-PLANNER] Using fallback: filter_data (show sample rows)");
-      }
+    // BLOCCO HARD: Se intent analitico e nessun tool chiamato, forza retry
+    if (steps.length === 0 && intentClassification.requiresToolCall) {
+      console.warn("[QUERY-PLANNER] FORCE RETRY: Analytical question but no tool called");
+      throw new ForceToolRetryError(
+        "La domanda richiede dati ma nessun tool è stato chiamato. Forzo retry.",
+        userQuestion,
+        intentClassification
+      );
     }
 
     const complexity = steps.length <= 1 ? "simple" : steps.length <= 3 ? "medium" : "complex";
@@ -479,6 +441,22 @@ export async function executeToolCall(
       case "query_metric":
         result = await queryMetric(toolCall.args.datasetId, toolCall.args.dsl, { userId });
         break;
+
+      case "execute_metric": {
+        const metric = getMetricDefinition(toolCall.args.metricName);
+        if (!metric) {
+          return {
+            toolName: toolCall.name,
+            args: toolCall.args,
+            result: null,
+            success: false,
+            error: `Metrica non trovata: ${toolCall.args.metricName}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        result = await queryMetric(toolCall.args.datasetId, metric.sqlExpression, { userId, timeoutMs: 3000 });
+        break;
+      }
 
       case "compare_periods":
         result = await comparePeriods(

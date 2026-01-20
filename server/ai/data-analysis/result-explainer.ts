@@ -1,16 +1,22 @@
 /**
  * Result Explainer - Generates Italian explanations for query results
  * Uses Gemini to provide context, insights, and formatted explanations
+ * 
+ * ANTI-HALLUCINATION: All AI responses are validated against tool results
+ * Numbers in AI response that don't come from tool results are flagged
  */
 
 import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import type { ExecutedToolResult } from "./tool-definitions";
+import { validateResponseNumbers, type ValidationResult as AntiHallucinationResult } from "./result-validator";
 
 export interface ExplanationResult {
   summary: string;
   details: string[];
   insights: string[];
   formattedValues: Record<string, string>;
+  validationResult?: AntiHallucinationResult;
+  wasValidated?: boolean;
 }
 
 function formatItalianNumber(value: number, options?: { currency?: boolean; decimals?: number }): string {
@@ -327,26 +333,76 @@ Sii breve e conversazionale.`;
     const aiExplanation = response.response.text();
 
     if (aiExplanation && aiExplanation.length > 10) {
-      // For conversational responses, return the AI response directly
+      // For conversational responses, return the AI response directly (no validation needed)
       if (!hasResults) {
         return {
           summary: aiExplanation,
           details: [],
           insights: [],
-          formattedValues: {}
+          formattedValues: {},
+          wasValidated: false
         };
       }
       
-      const lines = aiExplanation.split("\n").filter(l => l.trim());
+      // ANTI-HALLUCINATION: Validate AI response against tool results
+      // Extract actual numbers from tool results for validation
+      const toolNumbers: number[] = [];
+      for (const r of results) {
+        if (r.success && r.result) {
+          const extractNumbers = (obj: any): void => {
+            if (typeof obj === "number" && !isNaN(obj)) {
+              toolNumbers.push(obj);
+            } else if (Array.isArray(obj)) {
+              obj.forEach(extractNumbers);
+            } else if (obj && typeof obj === "object") {
+              Object.values(obj).forEach(extractNumbers);
+            }
+          };
+          extractNumbers(r.result);
+        }
+      }
+      const validationResult = validateResponseNumbers(aiExplanation, toolNumbers);
+      
+      // BLOCCO HARD: Se ci sono numeri inventati, NON restituire la risposta AI
+      // Ritorna la spiegazione base che contiene solo dati reali
+      if (!validationResult.valid && validationResult.inventedNumbers.length > 0) {
+        console.error(`[RESULT-EXPLAINER] HALLUCINATION BLOCKED: ${validationResult.inventedNumbers.length} invented numbers detected`);
+        console.error(`[RESULT-EXPLAINER] Invented numbers: ${validationResult.inventedNumbers.join(", ")}`);
+        console.error(`[RESULT-EXPLAINER] Valid numbers from tools: ${validationResult.validNumbers.join(", ")}`);
+        
+        // Ritorna spiegazione basic (basata solo sui dati reali) + warning
+        return {
+          summary: basicExplanation.summary,
+          details: basicExplanation.details,
+          insights: [
+            ...basicExplanation.insights,
+            "I dati mostrati provengono esclusivamente dal database."
+          ],
+          formattedValues: basicExplanation.formattedValues,
+          validationResult,
+          wasValidated: true
+        };
+      }
+      
+      let finalSummary = aiExplanation;
+      
+      const lines = finalSummary.split("\n").filter(l => l.trim());
       const summary = lines[0] || basicExplanation.summary;
       const details = lines.slice(1).filter(l => !l.startsWith("Insight")).concat(basicExplanation.details);
       const insights = lines.filter(l => l.toLowerCase().includes("insight") || l.includes("📊") || l.includes("💡")).concat(basicExplanation.insights);
+
+      // Add validation warnings to insights if any
+      if (validationResult.warnings.length > 0) {
+        insights.push(...validationResult.warnings.map(w => `⚠️ ${w}`));
+      }
 
       return {
         summary,
         details: [...new Set(details)],
         insights: [...new Set(insights)],
-        formattedValues: basicExplanation.formattedValues
+        formattedValues: basicExplanation.formattedValues,
+        validationResult,
+        wasValidated: true
       };
     }
   } catch (error: any) {

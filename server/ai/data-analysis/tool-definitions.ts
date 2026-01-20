@@ -1,6 +1,9 @@
 /**
  * Tool Definitions for Gemini Function Calling
  * These definitions describe the available data analysis tools for AI-driven queries
+ * 
+ * SECURITY: Gemini can ONLY use pre-defined metrics (execute_metric) - NO custom DSL allowed
+ * This eliminates 70% of hallucination errors
  */
 
 export interface GeminiFunctionDeclaration {
@@ -19,10 +22,52 @@ export interface GeminiFunctionDeclaration {
   };
 }
 
+export const METRIC_ENUM = [
+  "revenue",
+  "food_cost", 
+  "food_cost_percent",
+  "ticket_medio",
+  "quantity_total",
+  "order_count",
+  "avg_unit_price",
+  "gross_margin",
+  "gross_margin_percent",
+  "discount_total",
+] as const;
+
+export type MetricName = typeof METRIC_ENUM[number];
+
+export const MAX_GROUP_BY_LIMIT = 500;
+export const MAX_FILTER_LIMIT = 1000;
+export const SQL_TIMEOUT_MS = 3000;
+
 export const dataAnalysisTools: GeminiFunctionDeclaration[] = [
   {
+    name: "execute_metric",
+    description: "PREFERITO: Calcola una metrica predefinita. USA SOLO metriche dall'elenco. NON inventare formule.",
+    parameters: {
+      type: "object",
+      properties: {
+        metricName: {
+          type: "string",
+          description: "Nome della metrica predefinita da calcolare",
+          enum: [...METRIC_ENUM],
+        },
+        datasetId: {
+          type: "string",
+          description: "ID del dataset su cui eseguire la query"
+        },
+        filters: {
+          type: "object",
+          description: "Filtri opzionali: { colonna: { operator: '=', value: 'valore' } }"
+        }
+      },
+      required: ["metricName", "datasetId"]
+    }
+  },
+  {
     name: "query_metric",
-    description: "Calcola una metrica usando la formula DSL. Supporta SUM, AVG, COUNT, MIN, MAX su colonne numeriche con filtri opzionali.",
+    description: "[DEPRECATO - usa execute_metric] Calcola una metrica usando formula DSL. Solo per casi speciali non coperti da metriche predefinite.",
     parameters: {
       type: "object",
       properties: {
@@ -105,7 +150,7 @@ export const dataAnalysisTools: GeminiFunctionDeclaration[] = [
   },
   {
     name: "aggregate_group",
-    description: "Raggruppa dati per una o più colonne e calcola aggregazioni. Ideale per analisi per categoria, periodo, ecc.",
+    description: "Raggruppa dati per una o più colonne e calcola aggregazioni. LIMIT massimo 500 righe per performance.",
     parameters: {
       type: "object",
       properties: {
@@ -115,12 +160,17 @@ export const dataAnalysisTools: GeminiFunctionDeclaration[] = [
         },
         groupBy: {
           type: "array",
-          description: "Colonne per raggruppamento",
+          description: "Colonne per raggruppamento (max 3 colonne)",
           items: { type: "string" }
+        },
+        metricName: {
+          type: "string",
+          description: "Metrica predefinita da aggregare (preferito rispetto ad aggregations custom)",
+          enum: [...METRIC_ENUM],
         },
         aggregations: {
           type: "array",
-          description: "Lista di aggregazioni: [{ column: 'importo', function: 'SUM', alias: 'totale' }]. Funzioni: SUM, AVG, COUNT, MIN, MAX",
+          description: "DEPRECATO: usa metricName. Lista di aggregazioni: [{ column: 'importo', function: 'SUM', alias: 'totale' }]",
           items: { type: "object" }
         },
         filters: {
@@ -133,10 +183,10 @@ export const dataAnalysisTools: GeminiFunctionDeclaration[] = [
         },
         limit: {
           type: "number",
-          description: "Numero massimo di gruppi da restituire (default: 100)"
+          description: "Numero massimo di gruppi (default: 100, MAX: 500)"
         }
       },
-      required: ["datasetId", "groupBy", "aggregations"]
+      required: ["datasetId", "groupBy"]
     }
   },
   {

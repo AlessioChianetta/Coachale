@@ -23,9 +23,12 @@ export interface QueryResult {
   cached?: boolean;
 }
 
-const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TIMEOUT_MS = 3000; // Reduced from 30s to 3s for AI queries (query cost guard)
+const AI_QUERY_TIMEOUT_MS = 3000; // Hard limit for AI-triggered queries
 const DEFAULT_CACHE_TTL_AGGREGATION = 3600;
 const DEFAULT_CACHE_TTL_FILTER = 300;
+const MAX_GROUP_BY_LIMIT = 500; // Hard limit for GROUP BY queries
+const MAX_FILTER_LIMIT = 1000; // Hard limit for filter queries
 
 export async function executeQuery(
   sql: string,
@@ -285,6 +288,13 @@ export async function filterData(
   options: QueryOptions = {}
 ): Promise<QueryResult> {
   const startTime = Date.now();
+  
+  // HARD LIMIT: Enforce maximum limit for filter queries (query cost guard)
+  const enforcedLimit = Math.min(limit, MAX_FILTER_LIMIT);
+  if (limit > MAX_FILTER_LIMIT) {
+    console.warn(`[QUERY-EXECUTOR] Filter limit ${limit} exceeds max ${MAX_FILTER_LIMIT}, enforcing hard limit`);
+  }
+  
   const datasetInfo = await getDatasetInfo(datasetId);
 
   if (!datasetInfo) {
@@ -313,7 +323,7 @@ export async function filterData(
   if (whereClauses.length > 0) {
     sql += ` WHERE ${whereClauses.join(" AND ")}`;
   }
-  sql += ` LIMIT ${limit} OFFSET ${offset}`;
+  sql += ` LIMIT ${enforcedLimit} OFFSET ${offset}`;
 
   const queryHash = computeQueryHash(sql, params);
 
@@ -368,6 +378,18 @@ export async function aggregateGroup(
   options: QueryOptions = {}
 ): Promise<QueryResult> {
   const startTime = Date.now();
+  
+  // HARD LIMIT: Enforce maximum limit for GROUP BY queries (query cost guard)
+  const enforcedLimit = Math.min(limit, MAX_GROUP_BY_LIMIT);
+  if (limit > MAX_GROUP_BY_LIMIT) {
+    console.warn(`[QUERY-EXECUTOR] Limit ${limit} exceeds max ${MAX_GROUP_BY_LIMIT}, enforcing hard limit`);
+  }
+  
+  // HARD LIMIT: Max 3 columns in GROUP BY to prevent query explosion
+  if (groupByColumns.length > 3) {
+    return { success: false, error: `Troppe colonne in GROUP BY (max 3): ${groupByColumns.length}` };
+  }
+  
   const datasetInfo = await getDatasetInfo(datasetId);
 
   if (!datasetInfo) {
@@ -444,7 +466,7 @@ export async function aggregateGroup(
     sql += ` ORDER BY "${orderBy.column}" ${orderBy.direction}`;
   }
 
-  sql += ` LIMIT ${limit}`;
+  sql += ` LIMIT ${enforcedLimit}`;
 
   const queryHash = computeQueryHash(sql, params);
 
