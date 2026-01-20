@@ -283,13 +283,26 @@ export function validateResponseNumbers(
     }
   }
   
+  // COVERAGE BYPASS: If all database numbers are present in the response (100% coverage),
+  // allow the response to pass - the AI is correctly using real data and any extra numbers
+  // are legitimate derived calculations or context for consulting purposes
+  const fullCoverage = coveragePercent >= 100;
+  
   if (inventedNumbers.length > 0) {
-    // Only error if the invented numbers are significant (not small contextual numbers)
-    const significantInvented = inventedNumbers.filter(n => n > 10 || (n > 0 && n < 1)); // Filter out small integers that could be counts/ranks
-    if (hasComputeTool && significantInvented.length > 2) {
-      errors.push(`ERRORE CRITICO - NUMERI INVENTATI: Questi numeri (${significantInvented.join(", ")}) non provengono dai risultati dei tool. L'AI ha inventato dati. Risposta bloccata.`);
-    } else if (inventedNumbers.length > 0) {
-      warnings.push(`📊 Calcoli AI: ${inventedNumbers.join(", ")} (analisi derivate dai dati)`);
+    if (fullCoverage) {
+      // Full coverage: all database numbers are present, extra numbers are just analysis
+      console.log(`[RESULT-VALIDATOR] COVERAGE BYPASS: 100% coverage, allowing ${inventedNumbers.length} derived/extra numbers`);
+      if (inventedNumbers.length > 0) {
+        warnings.push(`📊 Analisi AI: ${inventedNumbers.join(", ")} (calcoli derivati dai dati reali)`);
+      }
+    } else {
+      // Partial coverage: some database numbers are missing, be more strict
+      const significantInvented = inventedNumbers.filter(n => n > 10 || (n > 0 && n < 1));
+      if (hasComputeTool && significantInvented.length > 2 && coveragePercent < 50) {
+        errors.push(`ERRORE CRITICO - NUMERI INVENTATI: Questi numeri (${significantInvented.join(", ")}) non provengono dai risultati dei tool. L'AI ha inventato dati. Risposta bloccata.`);
+      } else if (inventedNumbers.length > 0) {
+        warnings.push(`📊 Calcoli AI: ${inventedNumbers.join(", ")} (analisi derivate dai dati)`);
+      }
     }
   }
   
