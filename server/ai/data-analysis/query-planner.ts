@@ -919,8 +919,75 @@ export async function askDataset(
   return result;
 }
 
+const STRATEGY_FALLBACK = `Per rispondere a questa domanda strategica in modo accurato, dovrei prima analizzare i tuoi dati reali.
+
+Posso suggerirti queste aree di focus:
+- **Analisi del volume**: Capire trend di vendita e opportunità di crescita
+- **Ottimizzazione prezzi**: Identificare prodotti con margine migliorabile
+- **Mix prodotti**: Valutare la composizione del fatturato
+
+Vuoi che calcoli i numeri reali per una di queste aree?`;
+
+const ITALIAN_NUMERAL_WORDS = [
+  "zero", "un[oa]?", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove",
+  "dieci", "undici", "dodici", "tredici", "quattordici", "quindici", "sedici",
+  "diciassette", "diciotto", "diciannove",
+  "vent[io]?", "trent[ao]?", "quarant[ao]?", "cinquant[ao]?", "sessant[ao]?",
+  "settant[ao]?", "ottant[ao]?", "novant[ao]?",
+  "cent[oi]?", "mille", "mila", "milion[ei]?", "miliard[io]?",
+  "prim[oa]?", "second[oa]?", "terz[oa]?", "quart[oa]?", "quint[oa]?",
+  "sest[oa]?", "settim[oa]?", "ottav[oa]?", "non[oa]?", "decim[oa]?",
+  "dozzin[ae]", "mezz[oa]", "doppi[oa]", "tripl[oa]", "quadrupl[oa]"
+];
+const COMPOUND_PREFIX = "(vent|trent|quarant|cinquant|sessant|settant|ottant|novant|cent|duecent|trecent)";
+const COMPOUND_SUFFIX = "(uno|due|tre|quattro|cinque|sei|sette|otto|nove)";
+const ITALIAN_NUMERALS = new RegExp(`\\b(${ITALIAN_NUMERAL_WORDS.join("|")}|${COMPOUND_PREFIX}${COMPOUND_SUFFIX})\\b`, "i");
+const ROMAN_NUMERALS = /\b[IVXLCDM]{2,}\b/;
+
+function hasAnyDigit(text: string): boolean {
+  return /\d/.test(text);
+}
+
+function hasNumericContent(text: string): boolean {
+  if (/\d/.test(text)) return true;
+  if (ITALIAN_NUMERALS.test(text)) return true;
+  if (ROMAN_NUMERALS.test(text)) return true;
+  if (/\b[QqVv]\d+\b/.test(text)) return true;
+  if (/[\u0660-\u0669\u06F0-\u06F9\u0966-\u096F]/.test(text)) return true;
+  return false;
+}
+
+function convertListNumbersToBullets(text: string): string {
+  return text.replace(/^\s*(\d+)[\.\)]\s*/gm, "- ");
+}
+
+function removeAllNumbers(text: string): string {
+  let cleaned = text;
+  
+  cleaned = cleaned.replace(/[€$£]\s*[\d,.]+|[\d,.]+\s*[€$£]/g, "");
+  cleaned = cleaned.replace(/[+-]?\d+\s*%/g, "");
+  cleaned = cleaned.replace(/\b\d{4}\b/g, "");
+  cleaned = cleaned.replace(/\b\d{1,3}(?:[.,]\d{3})+/g, "");
+  cleaned = cleaned.replace(/\b\d+[.,]\d+\b/g, "");
+  cleaned = cleaned.replace(/\d+\s*[-–:]\s*\d+/g, "");
+  cleaned = cleaned.replace(/\d+[°º]/g, "");
+  cleaned = cleaned.replace(/\d+\s*(?:mesi|anni|giorni|ore|settimane)/gi, "un certo periodo");
+  
+  cleaned = convertListNumbersToBullets(cleaned);
+  
+  cleaned = cleaned.replace(/\b\d+\b/g, "");
+  cleaned = cleaned.replace(ROMAN_NUMERALS, "");
+  cleaned = cleaned.replace(ITALIAN_NUMERALS, "alcuni");
+  cleaned = cleaned.replace(new RegExp(COMPOUND_PREFIX + COMPOUND_SUFFIX, 'gi'), "alcuni");
+  cleaned = cleaned.replace(/\s{2,}/g, " ");
+  cleaned = cleaned.replace(/^\s+/gm, "");
+  
+  return cleaned.trim();
+}
+
 /**
  * Generate a qualitative strategy response without any tool calls or numbers
+ * Hard numeric guard: if AI still returns numbers, scrub them or fallback
  */
 async function generateStrategyResponse(
   userQuestion: string,
@@ -933,11 +1000,13 @@ async function generateStrategyResponse(
 
   const STRATEGY_PROMPT = `Sei un consulente strategico. Rispondi a domande di business in modo QUALITATIVO.
 
-REGOLE ASSOLUTE:
-1. NON citare numeri specifici (€, %, quantità)
-2. NON fare proiezioni numeriche
-3. NON inventare dati
-4. Fornisci consigli strategici generali
+REGOLE ASSOLUTE - VIOLAZIONE = ERRORE CRITICO:
+- NON citare MAI numeri specifici (€, %, quantità, importi)
+- NON fare MAI proiezioni numeriche o stime
+- NON inventare MAI dati o percentuali
+- NON usare numeri scritti in lettere (es. "dieci", "venti")
+- Fornisci SOLO consigli strategici generali
+- USA SEMPRE bullet points (-) invece di liste numerate
 
 APPROCCIO:
 - Identifica le leve strategiche (pricing, costi, volume, mix prodotti)
@@ -945,17 +1014,23 @@ APPROCCIO:
 - Proponi azioni concrete senza quantificarle
 - Se servono numeri per una risposta precisa, suggerisci di chiedere analytics specifici
 
-ESEMPIO:
-Domanda: "Come posso aumentare il fatturato?"
-Risposta: "Per aumentare il fatturato puoi lavorare su tre leve principali:
-1. **Volume**: Aumentare il numero di clienti o la frequenza degli ordini
-2. **Prezzo**: Rivedere il pricing dei prodotti più venduti
-3. **Mix**: Promuovere prodotti ad alto margine
+ESEMPIO CORRETTO:
+Domanda: "Come posso aumentare molto il fatturato?"
+Risposta: "Per aumentare significativamente il fatturato puoi lavorare su queste leve principali:
+- **Volume**: Aumentare il numero di clienti o la frequenza degli ordini
+- **Prezzo**: Rivedere il pricing dei prodotti più venduti
+- **Mix**: Promuovere prodotti ad alto margine
 
-Vuoi che analizzi i dati attuali per identificare le opportunità specifiche?"`;
+Vuoi che analizzi i dati attuali per identificare le opportunità specifiche?"
+
+VIETATO (MAI FARE):
+- Percentuali inventate
+- Proiezioni numeriche
+- Importi stimati
+- Numeri in lettere`;
 
   const datasetContext = datasets.length > 0 
-    ? `\n\nDataset disponibile: "${datasets[0].name}" con ${datasets[0].rowCount} righe.`
+    ? `\n\nDataset disponibile: "${datasets[0].name}".`
     : "";
 
   try {
@@ -974,7 +1049,20 @@ Vuoi che analizzi i dati attuali per identificare le opportunità specifiche?"`;
       }
     });
 
-    return response.response.text() || "Non ho potuto generare una risposta strategica. Prova a riformulare la domanda.";
+    let aiResponse = response.response.text() || "";
+    
+    if (hasNumericContent(aiResponse)) {
+      console.warn(`[STRATEGY-GUARD] AI response contains numeric content, applying hard guard...`);
+      aiResponse = removeAllNumbers(aiResponse);
+      aiResponse = aiResponse.replace(ITALIAN_NUMERALS, "alcuni");
+      
+      if (hasNumericContent(aiResponse)) {
+        console.error(`[STRATEGY-GUARD] HARD BLOCK: numeric content still present after scrubbing, using fallback`);
+        return STRATEGY_FALLBACK;
+      }
+    }
+    
+    return aiResponse;
   } catch (error: any) {
     console.error("[QUERY-PLANNER] Strategy response error:", error.message);
     return "Per rispondere a questa domanda strategica, ho bisogno di analizzare prima i dati. Vuoi che calcoli le metriche rilevanti?";

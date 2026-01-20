@@ -43,7 +43,7 @@ export const POLICY_RULES: Record<IntentType, PolicyRule> = {
   },
   data_preview: {
     intent: "data_preview",
-    allowedTools: ["filter_data"],
+    allowedTools: ["filter_data", "get_schema"],
     blockedTools: ALL_COMPUTE_TOOLS,
     blockNumericGeneration: true,
     requireToolCall: true,
