@@ -1213,7 +1213,11 @@ export async function executeToolCall(
         console.log(`[AGGREGATE-GROUP] filters: ${JSON.stringify(toolCall.args.filters)}`);
         
         // TASK 1: Cardinality check BEFORE executing aggregate_group
+        // AUTO-FALLBACK: If too many distinct values, automatically apply Top-10 instead of blocking
         const groupByColumns = toolCall.args.groupBy || [];
+        let fallbackApplied = false;
+        let originalDistinctCount = 0;
+        
         if (groupByColumns.length > 0) {
           console.log(`[WIRING-CHECK] checkCardinalityBeforeAggregate called for columns: ${JSON.stringify(groupByColumns)}`);
           const cardinalityCheck = await checkCardinalityBeforeAggregate(
@@ -1223,25 +1227,19 @@ export async function executeToolCall(
           );
           
           if (cardinalityCheck.needsConfirmation) {
-            console.warn(`[AGGREGATE-GROUP] CARDINALITY BLOCK: ${cardinalityCheck.distinctCount} distinct values exceeds limit`);
-            return {
-              toolName: toolCall.name,
-              args: toolCall.args,
-              result: {
-                needsConfirmation: true,
-                cardinality: {
-                  distinctCount: cardinalityCheck.distinctCount,
-                  totalRows: cardinalityCheck.totalRows,
-                  column: groupByColumns[0],
-                  limit: MAX_GROUP_BY_LIMIT,
-                },
-                message: cardinalityCheck.message,
-                options: cardinalityCheck.options,
-              },
-              success: false,
-              error: cardinalityCheck.message,
-              executionTimeMs: Date.now() - startTime
-            };
+            // AUTO-FALLBACK: Apply Top-10 with ORDER BY DESC instead of blocking
+            console.log(`[AGGREGATE-GROUP] HIGH CARDINALITY DETECTED: ${cardinalityCheck.distinctCount} values - applying AUTO Top-10 fallback`);
+            fallbackApplied = true;
+            originalDistinctCount = cardinalityCheck.distinctCount;
+            
+            // Force limit to 10
+            toolCall.args.limit = 10;
+            
+            // Force orderBy DESC on the metric (will be applied after metric resolution)
+            // We'll set a flag and apply it after we know the metric alias
+            toolCall.args._autoFallbackOrderDesc = true;
+            
+            console.log(`[AGGREGATE-GROUP] AUTO-FALLBACK applied: limit=10, orderBy=DESC`);
           }
         }
         
@@ -1280,6 +1278,15 @@ export async function executeToolCall(
           sanitizedOrderBy = undefined;
         }
         
+        // AUTO-FALLBACK: Apply ORDER BY DESC on the metric when fallback is active
+        if (toolCall.args._autoFallbackOrderDesc && toolCall.args.metricName) {
+          sanitizedOrderBy = {
+            column: toolCall.args.metricName,
+            direction: "DESC" as const
+          };
+          console.log(`[AGGREGATE-GROUP] AUTO-FALLBACK orderBy applied: ${toolCall.args.metricName} DESC`);
+        }
+        
         if (!aggregations && !useRawSqlExpression) {
           result = { success: false, error: "Either aggregations or metricName is required" };
         } else {
@@ -1301,6 +1308,14 @@ export async function executeToolCall(
             useRawSqlExpression ? { sql: useRawSqlExpression, alias: toolCall.args.metricName } : undefined
           );
           console.log(`[AGGREGATE-GROUP] Result: success=${result.success}, rowCount=${result.rowCount}, error=${result.error || 'none'}`);
+          
+          // Add fallback metadata to result for UX communication
+          if (fallbackApplied && result.success) {
+            result._fallbackApplied = true;
+            result._originalDistinctCount = originalDistinctCount;
+            result._fallbackLimit = 10;
+            console.log(`[AGGREGATE-GROUP] Fallback metadata added: originalCount=${originalDistinctCount}, limit=10`);
+          }
         }
         break;
       }
@@ -1320,7 +1335,8 @@ export async function executeToolCall(
         };
     }
 
-    return {
+    // Include fallback metadata in the result for UX communication
+    const executedResult: ExecutedToolResult = {
       toolName: toolCall.name,
       args: toolCall.args,
       result: result.success ? (result.data || result.metrics) : null,
@@ -1328,6 +1344,15 @@ export async function executeToolCall(
       error: result.error,
       executionTimeMs: Date.now() - startTime
     };
+    
+    // Propagate fallback metadata if present
+    if (result._fallbackApplied) {
+      executedResult._fallbackApplied = true;
+      executedResult._originalDistinctCount = result._originalDistinctCount;
+      executedResult._fallbackLimit = result._fallbackLimit;
+    }
+    
+    return executedResult;
   } catch (error: any) {
     return {
       toolName: toolCall.name,

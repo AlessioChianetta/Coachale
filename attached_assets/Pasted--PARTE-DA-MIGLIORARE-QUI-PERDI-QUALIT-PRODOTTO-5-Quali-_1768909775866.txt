@@ -1,0 +1,159 @@
+⚠️ PARTE DA MIGLIORARE (QUI PERDI QUALITÀ PRODOTTO)
+5️⃣ “Quali prodotti che fatturano di più?”
+Comportamento attuale:
+
+❌ si rifiuta per “troppi dati”
+
+Questo è SBAGLIATO.
+
+Il sistema deve automaticamente fare fallback intelligente:
+
+Comportamento corretto:
+
+Se dataset grande:
+
+AUTO:
+
+LIMIT 10
+ORDER BY revenue DESC
+
+Cosa dire al programmatore:
+
+Quando aggregate_group produce troppi gruppi:
+
+NON rispondere con errore
+
+applicare fallback automatico:
+
+limit = 10
+
+orderBy DESC
+
+comunicare all’utente che è Top 10
+
+Questo è UX enterprise standard.
+
+6️⃣ “Quali prodotti vendo di più per quantità?”
+
+Stesso problema.
+
+Deve diventare:
+
+Top 10 per quantity
+
+
+automatico.
+
+7️⃣ “Chi sono i clienti che spendono di più?”
+
+Qui invece il sistema ha fatto BENE.
+
+Perché:
+
+dataset non ha customer_id valido
+
+✔ Non ha inventato
+✔ Ha bloccato
+✔ Ha spiegato limite
+
+👉 Questo è anti-allucinazione perfetto.
+
+🔥 PROBLEMA STRATEGICO NASCOSTO (IMPORTANTE)
+
+Stai vedendo questo pattern:
+
+Ogni nuovo file = devo “riprogrammare”
+
+Questo è normale ora, ma non deve restare così.
+
+Il tuo Logical Role System serve proprio a questo:
+
+Una volta che:
+
+revenue_amount
+
+document_id
+
+quantity
+
+product_name
+
+sono salvati nel DB come semantic mapping,
+
+👉 NON devono essere ricalcolati ogni volta.
+
+Devi dire al programmatore:
+🔧 OBIETTIVO ARCHITETTURA
+
+Il semantic mapping deve essere:
+
+persistente per dataset
+
+versionato
+
+riutilizzabile
+
+non ricalcolato ad ogni domanda
+
+Implementazione corretta:
+
+Quando carichi file:
+
+1️⃣ Auto-detect
+2️⃣ Conferma UI
+3️⃣ SALVA mapping
+4️⃣ Blocca metriche se manca ruolo critico
+
+Poi runtime:
+
+👉 Query engine usa SOLO logical roles
+👉 AI non vede colonne fisiche
+
+📊 STATO ATTUALE DEL TUO PROGETTO
+
+Ti do una valutazione onesta:
+
+Livello	Stato
+Metric engine	✅ PRONTO
+Semantic mapping	✅ 80%
+Fallback UX	⚠️ da rifinire
+Dataset abstraction	⚠️ da consolidare
+Anti-hallucination	✅ MOLTO BUONO
+Commercial readiness	⚠️ 2 sprint
+🧠 Cosa sei riuscito a fare (non banale)
+
+Hai già:
+
+motore BI semantico
+
+metric registry
+
+multi dataset
+
+auto detect colonne
+
+natural language → SQL
+
+safety gating
+
+Questo è livello startup Series A, non MVP giocattolo.
+
+🎯 Cosa devi dire ORA al programmatore (copiabile)
+
+Puoi mandargli questo:
+
+Ora che i logical roles sono definiti, voglio:
+
+Persistenza definitiva mapping per dataset
+
+Fallback automatico Top-N quando aggregate_group produce troppe righe
+
+Bloccare metriche se manca ruolo critico (document_id, revenue_amount, quantity)
+
+Query planner che usa SOLO logical roles (mai colonne fisiche)
+
+Prompt planner con schema logical roles dinamico
+
+Modalità "production safe": niente rifiuti UX tipo "troppi dati", sempre risposta utile
+
+Target: stesso set di domande deve funzionare su QUALSIASI CSV/DDT senza toccare codice.

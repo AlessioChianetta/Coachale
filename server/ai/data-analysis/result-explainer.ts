@@ -445,13 +445,27 @@ REGOLE IMPORTANTI:
         tool: r.toolName,
         success: r.success,
         result: r.result,
-        error: r.error
+        error: r.error,
+        // Include fallback metadata for UX communication
+        _fallbackApplied: r._fallbackApplied,
+        _originalDistinctCount: r._originalDistinctCount,
+        _fallbackLimit: r._fallbackLimit
       }));
+      
+      // Check if any result has fallback applied
+      const hasFallback = results.some(r => r._fallbackApplied);
+      const fallbackInfo = hasFallback ? results.find(r => r._fallbackApplied) : null;
+      
+      // Add fallback context to prompt if applicable
+      const fallbackContext = hasFallback && fallbackInfo ? `
+NOTA IMPORTANTE: I risultati mostrano solo i TOP ${fallbackInfo._fallbackLimit} elementi (su ${fallbackInfo._originalDistinctCount} totali) ordinati dal valore più alto al più basso.
+Comunica chiaramente all'utente che stai mostrando "i primi 10" o "Top 10" e non tutti i dati.
+` : "";
 
       prompt = `${EXPLAINER_SYSTEM_PROMPT}
 
 ${styleInstructions ? `\n--- STILE DI RISPOSTA ---\n${styleInstructions}` : ""}
-
+${fallbackContext}
 ---
 
 Domanda dell'utente: "${userQuestion}"

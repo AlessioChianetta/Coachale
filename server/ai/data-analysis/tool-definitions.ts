@@ -227,6 +227,10 @@ export interface ExecutedToolResult {
   success: boolean;
   error?: string;
   executionTimeMs?: number;
+  // Auto-fallback metadata for high cardinality situations
+  _fallbackApplied?: boolean;
+  _originalDistinctCount?: number;
+  _fallbackLimit?: number;
 }
 
 export function getToolByName(name: string): GeminiFunctionDeclaration | undefined {
