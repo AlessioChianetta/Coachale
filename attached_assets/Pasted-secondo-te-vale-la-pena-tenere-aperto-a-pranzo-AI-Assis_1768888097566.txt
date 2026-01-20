@@ -1,0 +1,32 @@
+secondo te vale la pena tenere aperto a pranzo?
+
+AI Assistant
+
+🔧 filter_data (limit, filters, dat...
+Analizzando i dati di vendita e la struttura dei costi che abbiamo a disposizione, la risposta alla tua domanda non è un semplice "sì" o "no", ma una valutazione di efficienza operativa.
+1. RISPOSTA DIRETTA
+Al momento, il servizio del pranzo sembra sostenibile solo se il volume di coperti garantisce una copertura dei costi fissi (personale e utenze) che, dai dati attuali, appare compressa. Abbiamo un volume totale di 461 ordini Food e 390 Drink, il che indica un buon attaccamento alla vendita (cross-selling), ma i margini unitari richiedono una rotazione dei tavoli molto rapida per essere profittevoli.
+2. CONTESTO
+Per darti una prospettiva: una Pizza Margherita ha un margine di contribuzione di 6,05 € (prezzo 8,58 € - costo 2,53 €), mentre una Pizza Diavola scende a 5,05 €. Se consideriamo che a pranzo lo scontrino medio tende a essere più basso rispetto alla cena (meno dessert e meno alcolici strutturati), ogni tavolo "pesa" meno sulla redditività totale. I tuoi 90 ordini di Dessert totali suggeriscono che solo il 10% circa dei clienti conclude il pasto con un dolce, un dato tipico del pranzo veloce che però abbassa il margine potenziale.
+3. PATTERN RILEVATO: L'incidenza delle bevande
+📈 Pattern interessante: Noto un rapporto quasi 1:1 tra Food (461) e Drink (390). Questo è un segnale eccellente: significa che quasi ogni cliente ordina una bevanda. Tuttavia, il costo unitario delle bevande è proporzionalmente alto (es. Birra a 3,65 € di costo su 8,62 € di vendita). A pranzo, la Birra viene spesso sostituita dall'Acqua, che ha un margine nominale più basso ma un Food Cost percentuale migliore.
+4. INTERPRETAZIONE: Il rischio del "Prime Cost"
+Cosa significa questo per te? Se tieni aperto a pranzo con lo stesso numero di personale della cena, il tuo Prime Cost (Costo del venduto + Costo del lavoro) rischia di superare la soglia critica del 60-65%. Il pranzo "ruba" energia al team e logora le attrezzature; se il margine generato non copre ampiamente il costo del personale dedicato a quelle ore, stai tecnicamente "comprando" fatturato a scapito dell'utile netto.
+5. AZIONE SUGGERITA: Menu Engineering per il pranzo
+Ti consiglio di non chiudere subito, ma di testare una strategia di Menu Engineering specifica per il pranzo entro i prossimi 30 giorni:
+Menu "Fast & High Margin": Crea 3 piatti unici che utilizzino ingredienti a basso costo (es. la base della Margherita) ma con un prezzo percepito alto, garantendo un'uscita dalla cucina in meno di 10 minuti.
+Ottimizzazione Staff: Riduci la brigata al minimo indispensabile, puntando su una linea prepagata la mattina.
+●
+Focus Dessert: Introduci un "Caffè Goloso" (caffè + mini porzione di dolce) a 3,50 €. Con 90 dessert attuali, c'è un enorme spazio di crescita per alzare lo scontrino medio senza rallentare il servizio.
+6. DOMANDA DI APPROFONDIMENTO
+"Qual è l'incidenza esatta del costo del personale nelle ore del pranzo (12:00 - 14:30) rispetto all'incasso prodotto in quella specifica fascia oraria?"
+Con questo dato potrò calcolare il tuo punto di pareggio (Break-even point) orario e dirti con certezza matematica se quel turno ti sta arricchendo o se stai lavorando per pagare le bollette.
+Vuoi che proviamo a calcolare insieme il food cost medio ponderato per vedere quali piatti "spingere" di più nel menù del mezzogiorno?
+Righe corrispondenti ai filtri: 5
+Numero di gruppi: 3
+1
+category: Dessert, order_count: 90
+2
+category: Drink, order_count: 390
+3
+category: Food, order_count: 461
