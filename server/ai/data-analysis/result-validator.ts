@@ -139,14 +139,6 @@ export function validateResponseNumbers(
   // Numbers that are commonly used in context (list numbers, common percentages, etc.)
   const ALLOWED_CONTEXT_NUMBERS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100]);
   
-  // Calculate aggregates for validation (sum, average, count)
-  const toolSum = numbersFromTools.reduce((a, b) => a + b, 0);
-  const toolAvg = numbersFromTools.length > 0 ? toolSum / numbersFromTools.length : 0;
-  const toolMax = Math.max(...numbersFromTools, 0);
-  const toolMin = Math.min(...numbersFromTools, Infinity);
-  
-  console.log(`[RESULT-VALIDATOR] Aggregates: sum=${toolSum.toFixed(2)}, avg=${toolAvg.toFixed(2)}, max=${toolMax}, min=${toolMin}, count=${numbersFromTools.length}`);
-  
   for (const num of numbersInResponse) {
     // Skip common context numbers (list items, common percentages)
     if (ALLOWED_CONTEXT_NUMBERS.has(num)) {
@@ -165,18 +157,9 @@ export function validateResponseNumbers(
                numbersAreClose(num, roundedTo1, 0.01);
       });
       
-      // Check if this could be a valid aggregate (sum, partial sum, average)
-      const isValidAggregate = 
-        numbersAreClose(num, toolSum, 0.02) ||           // Total sum
-        numbersAreClose(num, toolAvg, 0.02) ||           // Average
-        numbersAreClose(num, Math.round(toolSum), 0.01) || // Rounded sum
-        numbersAreClose(num, Math.round(toolAvg), 0.01) || // Rounded average
-        (num > toolMax && num <= toolSum * 1.05);         // Likely a partial sum (within total)
-      
-      if (!isRoundedVersion && !isValidAggregate) {
+      // STRICT: AI must NOT do post-query aggregation. Numbers must come from SQL.
+      if (!isRoundedVersion) {
         inventedNumbers.push(num);
-      } else if (isValidAggregate) {
-        console.log(`[RESULT-VALIDATOR] Number ${num} accepted as valid aggregate (sum=${toolSum.toFixed(2)}, avg=${toolAvg.toFixed(2)})`);
       }
     }
   }

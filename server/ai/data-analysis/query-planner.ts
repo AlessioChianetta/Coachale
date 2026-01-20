@@ -529,6 +529,11 @@ export async function executeToolCall(
         if (!aggregations) {
           result = { success: false, error: "Either aggregations or metricName is required" };
         } else {
+          // Log time granularity if specified
+          if (toolCall.args.timeGranularity) {
+            console.log(`[AGGREGATE-GROUP] Time granularity: ${toolCall.args.timeGranularity}, dateColumn: ${toolCall.args.dateColumn}`);
+          }
+          
           result = await aggregateGroup(
             toolCall.args.datasetId,
             toolCall.args.groupBy,
@@ -536,7 +541,9 @@ export async function executeToolCall(
             toolCall.args.filters,
             sanitizedOrderBy,
             toolCall.args.limit || 100,
-            { userId }
+            { userId },
+            toolCall.args.timeGranularity,
+            toolCall.args.dateColumn
           );
           console.log(`[AGGREGATE-GROUP] Result: success=${result.success}, rowCount=${result.rowCount}, error=${result.error || 'none'}`);
         }

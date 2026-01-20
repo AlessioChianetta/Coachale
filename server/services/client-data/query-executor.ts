@@ -444,7 +444,9 @@ export async function aggregateGroup(
   filters?: Record<string, { operator: string; value: string | number }>,
   orderBy?: { column: string; direction: "ASC" | "DESC" },
   limit: number = 100,
-  options: QueryOptions = {}
+  options: QueryOptions = {},
+  timeGranularity?: "day" | "week" | "month" | "quarter" | "year",
+  dateColumn?: string
 ): Promise<QueryResult> {
   const startTime = Date.now();
   
@@ -488,7 +490,41 @@ export async function aggregateGroup(
     }
   }
 
-  const selectParts: string[] = groupByColumns.map(c => `"${c}"`);
+  // Handle time granularity - use DATE_TRUNC for temporal aggregation
+  let effectiveGroupBy: string[] = [];
+  let selectParts: string[] = [];
+  
+  if (timeGranularity && dateColumn) {
+    if (!datasetInfo.columns.includes(dateColumn)) {
+      return { success: false, error: `Invalid date column for time granularity: ${dateColumn}` };
+    }
+    
+    // Map granularity to PostgreSQL DATE_TRUNC argument
+    const truncArg = timeGranularity === "day" ? "day" : 
+                     timeGranularity === "week" ? "week" :
+                     timeGranularity === "month" ? "month" :
+                     timeGranularity === "quarter" ? "quarter" : "year";
+    
+    const truncExpr = `DATE_TRUNC('${truncArg}', "${dateColumn}"::timestamp)`;
+    const periodAlias = `period_${timeGranularity}`;
+    
+    selectParts.push(`${truncExpr} AS "${periodAlias}"`);
+    effectiveGroupBy.push(truncExpr);
+    
+    // Add non-date groupBy columns
+    for (const col of groupByColumns) {
+      if (col !== dateColumn) {
+        selectParts.push(`"${col}"`);
+        effectiveGroupBy.push(`"${col}"`);
+      }
+    }
+    
+    console.log(`[AGGREGATE-GROUP] Using DATE_TRUNC('${truncArg}', "${dateColumn}") for time granularity`);
+  } else {
+    // Standard groupBy without time granularity
+    selectParts = groupByColumns.map(c => `"${c}"`);
+    effectiveGroupBy = groupByColumns.map(c => `"${c}"`);
+  }
   const validFunctions = ["SUM", "AVG", "COUNT", "MIN", "MAX"];
 
   for (const agg of normalizedAggregations) {
@@ -540,7 +576,7 @@ export async function aggregateGroup(
     sql += ` WHERE ${whereClauses.join(" AND ")}`;
   }
 
-  sql += ` GROUP BY ${groupByColumns.map(c => `"${c}"`).join(", ")}`;
+  sql += ` GROUP BY ${effectiveGroupBy.join(", ")}`;
 
   if (orderBy) {
     if (!groupByColumns.includes(orderBy.column) && !normalizedAggregations.some(a => a.alias === orderBy.column)) {

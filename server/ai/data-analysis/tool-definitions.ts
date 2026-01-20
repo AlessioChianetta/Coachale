@@ -150,7 +150,7 @@ export const dataAnalysisTools: GeminiFunctionDeclaration[] = [
   },
   {
     name: "aggregate_group",
-    description: "Raggruppa dati per una o più colonne e calcola aggregazioni. LIMIT massimo 500 righe per performance.",
+    description: "Raggruppa dati per una o più colonne e calcola aggregazioni. LIMIT massimo 500 righe per performance. Per raggruppamenti temporali (per mese, per anno), usa SEMPRE timeGranularity invece di raggruppare per data grezza.",
     parameters: {
       type: "object",
       properties: {
@@ -160,8 +160,17 @@ export const dataAnalysisTools: GeminiFunctionDeclaration[] = [
         },
         groupBy: {
           type: "array",
-          description: "Colonne per raggruppamento (max 3 colonne)",
+          description: "Colonne per raggruppamento (max 3 colonne). Per date, specifica anche timeGranularity.",
           items: { type: "string" }
+        },
+        timeGranularity: {
+          type: "string",
+          description: "OBBLIGATORIO per raggruppamenti temporali. Specifica la granularità: 'day', 'week', 'month', 'quarter', 'year'. Esempio: se utente chiede 'vendite per mese', usa timeGranularity='month'",
+          enum: ["day", "week", "month", "quarter", "year"]
+        },
+        dateColumn: {
+          type: "string",
+          description: "Colonna data da usare con timeGranularity (es. 'order_date'). Richiesto se timeGranularity è specificato."
         },
         metricName: {
           type: "string",
