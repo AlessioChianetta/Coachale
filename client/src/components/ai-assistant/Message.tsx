@@ -28,7 +28,7 @@ interface MessageProps {
     }>;
     codeExecutions?: CodeExecution[];
   };
-  onActionClick?: () => void;
+  onActionClick?: (actionType?: string, actionData?: any) => void;
 }
 
 function escapeHtml(text: string): string {
@@ -582,11 +582,18 @@ export function Message({ message, onActionClick }: MessageProps) {
         }
         break;
 
+      case "view_blocked":
+      case "view_results":
+        if (onActionClick) onActionClick(action.type, action.data);
+        break;
+
       default:
         console.warn('Unknown action type:', action.type);
         if (action.data?.route) {
           setLocation(action.data.route);
           if (onActionClick) onActionClick();
+        } else if (onActionClick) {
+          onActionClick(action.type, action.data);
         }
     }
   };

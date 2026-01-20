@@ -26,7 +26,15 @@ import {
   Plus,
   ArrowRight,
   Settings,
+  ShieldAlert,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -65,6 +73,10 @@ interface QueryResult {
     chartData?: any[];
     summary?: string;
     totalExecutionTimeMs?: number;
+    wasBlocked?: boolean;
+    blockedResponse?: string;
+    validationErrors?: string[];
+    inventedNumbers?: string[];
   };
   explanation?: string;
   sqlGenerated?: string;
@@ -125,6 +137,12 @@ export function DataAnalysisChat({
   const [isTyping, setIsTyping] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-3-flash-preview");
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("low");
+  const [showBlockedDialog, setShowBlockedDialog] = useState(false);
+  const [blockedResponseData, setBlockedResponseData] = useState<{
+    blockedResponse?: string;
+    validationErrors?: string[];
+    inventedNumbers?: string[];
+  } | null>(null);
 
   const { data: conversations, isLoading: conversationsLoading } = useQuery<Conversation[]>({
     queryKey: ["/api/client-data/conversations", datasetId],
@@ -207,6 +225,18 @@ export function DataAnalysisChat({
             type: "view_results",
             label: "📊 Visualizza risultati",
             data: queryResult,
+          });
+        }
+        
+        if (queryResult.data.wasBlocked && queryResult.data.blockedResponse) {
+          resultActions.push({
+            type: "view_blocked",
+            label: "🛡️ Vedi risposta bloccata",
+            data: {
+              blockedResponse: queryResult.data.blockedResponse,
+              validationErrors: queryResult.data.validationErrors,
+              inventedNumbers: queryResult.data.inventedNumbers,
+            },
           });
         }
       }
@@ -344,10 +374,18 @@ export function DataAnalysisChat({
     }));
   };
 
-  const handleActionClick = () => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage?.queryResult && onResultSelect) {
-      onResultSelect(lastMessage.queryResult);
+  const handleActionClick = (actionType?: string, actionData?: any) => {
+    if (actionType === "view_blocked" && actionData) {
+      setBlockedResponseData(actionData);
+      setShowBlockedDialog(true);
+      return;
+    }
+    
+    if (actionType === "view_results") {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.queryResult && onResultSelect) {
+        onResultSelect(lastMessage.queryResult);
+      }
     }
   };
 
@@ -601,6 +639,61 @@ export function DataAnalysisChat({
           </p>
         </div>
       )}
+
+      <Dialog open={showBlockedDialog} onOpenChange={setShowBlockedDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <ShieldAlert className="h-5 w-5" />
+              Risposta AI Bloccata
+            </DialogTitle>
+            <DialogDescription>
+              Questa risposta è stata bloccata perché conteneva numeri non verificabili dal database.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {blockedResponseData?.validationErrors && blockedResponseData.validationErrors.length > 0 && (
+              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                <h4 className="font-medium text-red-800 dark:text-red-300 mb-2">Errori di validazione:</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-red-700 dark:text-red-400">
+                  {blockedResponseData.validationErrors.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {blockedResponseData?.inventedNumbers && blockedResponseData.inventedNumbers.length > 0 && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                <h4 className="font-medium text-amber-800 dark:text-amber-300 mb-2">Numeri inventati rilevati:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {blockedResponseData.inventedNumbers.map((num, idx) => (
+                    <Badge key={idx} variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
+                      {num}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {blockedResponseData?.blockedResponse && (
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Risposta originale (bloccata):</h4>
+                <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                  {blockedResponseData.blockedResponse}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => setShowBlockedDialog(false)} variant="outline">
+              Chiudi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

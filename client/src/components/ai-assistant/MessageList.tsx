@@ -15,6 +15,7 @@ interface MessageListProps {
     role: "user" | "assistant";
     content: string;
     thinking?: string;
+    status?: string;
     isThinking?: boolean;
     modelName?: string;
     thinkingLevel?: string;
@@ -26,7 +27,7 @@ interface MessageListProps {
     codeExecutions?: CodeExecution[];
   }>;
   isTyping: boolean;
-  onActionClick?: () => void;
+  onActionClick?: (actionType?: string, actionData?: any) => void;
 }
 
 export function MessageList({ messages, isTyping, onActionClick }: MessageListProps) {

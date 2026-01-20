@@ -1,0 +1,156 @@
+1️⃣ REGOLA DELLA VERITÀ NUMERICA
+
+Se un numero appare nella risposta, deve provenire da un tool compute.
+
+Implementazione:
+
+ogni risposta viene scansionata
+
+se contiene:
+
+cifre
+
+€
+
+%
+
+deve esserci almeno un execute_metric o aggregate_group
+
+Altrimenti:
+
+❌ risposta bloccata
+✅ retry automatico
+
+2️⃣ REGOLA DEL “NON POSSO”
+
+Se mancano le colonne richieste per una metrica, NON sostituire la metrica.
+
+Esempio:
+
+Richiesta:
+
+“media ordini per cliente”
+
+Se manca customer_id:
+
+Risposta corretta:
+
+✅
+
+“Impossibile calcolare: dataset non contiene identificatore cliente.”
+
+NON:
+
+❌ calcolare altro
+❌ reinterpretare
+❌ “scontrino medio”
+
+3️⃣ REGOLA DEL PERIMETRO SEMANTICO
+
+Solo metriche presenti nel metric registry possono essere calcolate.
+
+Niente:
+
+formule inventate
+
+KPI creativi
+
+combinazioni “furbe”
+
+Questo garantisce:
+
+coerenza
+
+auditabilità
+
+ripetibilità
+
+4️⃣ REGOLA DELLA NARRATIVA CONTROLLATA
+
+L’AI non può inventare cause, scenari o proiezioni senza tool esplicito.
+
+Vietato senza richiesta esplicita:
+
+“rischio”
+
+“inflazione”
+
+“perdita clienti”
+
+“trend di mercato”
+
+“parziale”
+
+Consentito:
+
+descrivere differenze numeriche
+
+confronti matematici
+
+trend calcolati
+
+5️⃣ REGOLA DELLA SEPARAZIONE
+
+Calcolo e consulenza NON devono mai essere mescolati automaticamente.
+
+Flusso corretto:
+
+calcolo
+
+mostra dati
+
+chiedi:
+
+“Vuoi un’interpretazione?”
+
+Solo se l’utente dice sì:
+
+→ advisor mode
+
+COSA OTTIENI SE IMPLEMENTI QUESTE 5
+
+Il tuo sistema diventa:
+
+deterministico
+
+affidabile
+
+vendibile
+
+difendibile
+
+scalabile
+
+E soprattutto:
+
+👉 smette di mentire “bene”.
+
+COME DIRLO AL PROGRAMMATORE (VERSIONE BREVE)
+
+Puoi scrivergli:
+
+"Voglio 5 guardrail obbligatori:
+
+Numeri solo da tool
+
+No sostituzione metriche
+
+Solo registry metriche
+
+Stop storytelling non richiesto
+
+Separazione calcolo/consulenza
+
+Se uno di questi fallisce, la risposta va bloccata."
+
+VERDETTO FINALE
+
+Ora sei passato da:
+
+“Sto facendo funzionare un’AI”
+
+a:
+
+“Sto costruendo un sistema decisionale affidabile.”
+
+Questo è livello founder vero.

@@ -10,7 +10,7 @@ import { parseMetricExpression, validateMetricAgainstSchema } from "../../servic
 import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
-import { classifyIntent, ForceToolRetryError, requiresNumericAnswer } from "./intent-classifier";
+import { classifyIntent, ForceToolRetryError, requiresNumericAnswer, CONVERSATIONAL_FALLBACK_REPLY } from "./intent-classifier";
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
 import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
@@ -720,6 +720,28 @@ export async function askDataset(
   userId?: string
 ): Promise<QueryExecutionResult> {
   console.log(`[QUERY-PLANNER] Processing question: "${userQuestion}" for ${datasets.length} datasets`);
+
+  // FIRST: Check intent - if conversational, return FIXED response without ANY tool calls
+  // This is a HARD BLOCK - Gemini does NOT decide, we do
+  const intent = classifyIntent(userQuestion);
+  if (intent.type === "conversational") {
+    console.log(`[QUERY-PLANNER] CONVERSATIONAL HARD BLOCK - returning fixed response, NO Gemini call`);
+    return {
+      plan: {
+        steps: [],
+        reasoning: "HARD BLOCK: Messaggio di cortesia rilevato - risposta fissa senza AI",
+        estimatedComplexity: "simple"
+      },
+      results: [{
+        toolName: "conversational_response",
+        args: { blocked: true },
+        result: { message: CONVERSATIONAL_FALLBACK_REPLY, isFixedResponse: true },
+        success: true
+      }],
+      success: true,
+      totalExecutionTimeMs: 0
+    };
+  }
 
   const plan = await planQuery(userQuestion, datasets, consultantId);
   console.log(`[QUERY-PLANNER] Plan: ${plan.steps.length} steps, complexity: ${plan.estimatedComplexity}`);

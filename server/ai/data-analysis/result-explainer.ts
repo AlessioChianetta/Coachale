@@ -8,7 +8,7 @@
 
 import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import type { ExecutedToolResult } from "./tool-definitions";
-import { validateResponseNumbers, type ValidationResult as AntiHallucinationResult } from "./result-validator";
+import { fullValidation, type ValidationResult as AntiHallucinationResult } from "./result-validator";
 
 export interface ExplanationResult {
   summary: string;
@@ -17,6 +17,8 @@ export interface ExplanationResult {
   formattedValues: Record<string, string>;
   validationResult?: AntiHallucinationResult;
   wasValidated?: boolean;
+  blockedResponse?: string;
+  wasBlocked?: boolean;
 }
 
 function formatItalianNumber(value: number, options?: { currency?: boolean; decimals?: number }): string {
@@ -390,17 +392,16 @@ Sii breve e conversazionale.`;
         };
       }
       
-      // ANTI-HALLUCINATION: Validate AI response against tool results
-      const validationResult = validateResponseNumbers(aiExplanation, results);
+      // UNIFIED ANTI-HALLUCINATION: Single validation call for all checks
+      const validation = fullValidation(aiExplanation, results);
       
-      // BLOCCO HARD: Se ci sono numeri inventati, NON restituire la risposta AI
-      // Ritorna la spiegazione base che contiene solo dati reali
-      if (!validationResult.valid && validationResult.inventedNumbers.length > 0) {
-        console.error(`[RESULT-EXPLAINER] HALLUCINATION BLOCKED: ${validationResult.inventedNumbers.length} invented numbers detected`);
-        console.error(`[RESULT-EXPLAINER] Invented numbers: ${validationResult.inventedNumbers.join(", ")}`);
-        console.error(`[RESULT-EXPLAINER] Valid numbers from tools: ${validationResult.numbersFromTools.join(", ")}`);
+      // BLOCK if validation fails (tool gating, hallucination, range errors)
+      if (!validation.canProceed) {
+        console.error(`[RESULT-EXPLAINER] VALIDATION BLOCKED: ${validation.errors.join(", ")}`);
+        if (validation.inventedNumbers.length > 0) {
+          console.error(`[RESULT-EXPLAINER] Invented numbers: ${validation.inventedNumbers.join(", ")}`);
+        }
         
-        // Ritorna spiegazione basic (basata solo sui dati reali) + warning
         return {
           summary: basicExplanation.summary,
           details: basicExplanation.details,
@@ -409,21 +410,28 @@ Sii breve e conversazionale.`;
             "I dati mostrati provengono esclusivamente dal database."
           ],
           formattedValues: basicExplanation.formattedValues,
-          validationResult,
-          wasValidated: true
+          validationResult: {
+            valid: validation.valid,
+            errors: validation.errors,
+            warnings: validation.warnings,
+            numbersInResponse: [],
+            numbersFromTools: [],
+            inventedNumbers: validation.inventedNumbers
+          },
+          wasValidated: true,
+          blockedResponse: aiExplanation,
+          wasBlocked: true
         };
       }
       
-      let finalSummary = aiExplanation;
-      
-      const lines = finalSummary.split("\n").filter(l => l.trim());
+      const lines = aiExplanation.split("\n").filter(l => l.trim());
       const summary = lines[0] || basicExplanation.summary;
       const details = lines.slice(1).filter(l => !l.startsWith("Insight")).concat(basicExplanation.details);
       const insights = lines.filter(l => l.toLowerCase().includes("insight") || l.includes("📊") || l.includes("💡")).concat(basicExplanation.insights);
 
       // Add validation warnings to insights if any
-      if (validationResult.warnings.length > 0) {
-        insights.push(...validationResult.warnings.map(w => `⚠️ ${w}`));
+      if (validation.warnings.length > 0) {
+        insights.push(...validation.warnings.map(w => `⚠️ ${w}`));
       }
 
       return {
@@ -431,7 +439,14 @@ Sii breve e conversazionale.`;
         details: [...new Set(details)],
         insights: [...new Set(insights)],
         formattedValues: basicExplanation.formattedValues,
-        validationResult,
+        validationResult: {
+          valid: validation.valid,
+          errors: validation.errors,
+          warnings: validation.warnings,
+          numbersInResponse: [],
+          numbersFromTools: [],
+          inventedNumbers: validation.inventedNumbers
+        },
         wasValidated: true
       };
     }

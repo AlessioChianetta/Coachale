@@ -6,9 +6,10 @@
  * - ANALYTICAL: Requires data/numbers → Tool calling REQUIRED
  * - INFORMATIONAL: Descriptive/explanatory → Tool calling optional
  * - OPERATIONAL: Actions/commands → Depends on action
+ * - CONVERSATIONAL: Simple courtesy messages → NO tool calling, simple response
  */
 
-export type IntentType = "analytical" | "informational" | "operational";
+export type IntentType = "analytical" | "informational" | "operational" | "conversational";
 
 export interface IntentClassification {
   type: IntentType;
@@ -47,6 +48,13 @@ const INFORMATIONAL_PATTERNS = [
   /\b(descrivi|describe)\b/i,
   /^ciao|^salve|^buongiorno|^hello|^hi\b/i,
   /\b(grazie|thanks|thank\s+you)\b/i,
+  /cosa\s+(puoi|sai)\s+fare/i,
+  /che\s+cosa\s+(puoi|sai)\s+fare/i,
+  /quali\s+(sono\s+le\s+tue\s+)?funzionalit[àa]/i,
+  /come\s+(ti\s+)?posso\s+usare/i,
+  /what\s+can\s+you\s+do/i,
+  /help\s*$/i,
+  /aiuto\s*$/i,
 ];
 
 const OPERATIONAL_PATTERNS = [
@@ -57,9 +65,66 @@ const OPERATIONAL_PATTERNS = [
   /\b(aggiungi|add|inserisci|insert)\b/i,
 ];
 
+const PURE_ACKNOWLEDGMENTS = [
+  "grazie", "ok", "okay", "perfetto", "capito", "bene", "ottimo",
+  "fantastico", "grande", "va bene", "d'accordo", "inteso", "chiaro",
+  "thanks", "thank you", "got it", "understood", "si", "sì", "no",
+  "esatto", "giusto", "bravo", "eccellente", "magnifico", "super"
+];
+
+const ANALYTICAL_BLOCKERS = [
+  "quanto", "quanti", "quante", "fatturato", "revenue", "vendite", "venduto",
+  "costo", "costi", "margine", "calcola", "mostrami", "analizza", "confronta",
+  "dimmi", "dammi", "elenca", "lista", "totale", "media", "somma", "conteggio"
+];
+
+function normalizeInput(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, "")
+    .replace(/[!?.,;:]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isConversationalMessage(question: string): boolean {
+  const normalized = normalizeInput(question);
+  const words = normalized.split(/\s+/).filter(w => w.length > 0);
+  
+  if (words.length === 0) return false;
+  if (words.length > 5) return false;
+  
+  const hasAnalyticalBlocker = ANALYTICAL_BLOCKERS.some(blocker => 
+    normalized.includes(blocker)
+  );
+  if (hasAnalyticalBlocker) return false;
+  
+  const hasAnyAcknowledgment = PURE_ACKNOWLEDGMENTS.some(ack => 
+    normalized.includes(ack)
+  );
+  
+  return hasAnyAcknowledgment;
+}
+
+export const CONVERSATIONAL_FALLBACK_REPLY = "Prego! Sono qui per aiutarti con l'analisi dei tuoi dati. Cosa vuoi sapere?";
+
 export function classifyIntent(userQuestion: string): IntentClassification {
   const question = userQuestion.trim();
   const detectedPatterns: string[] = [];
+  
+  // FIRST: Check for conversational messages (short courtesy phrases)
+  // These should bypass ALL tool calls and return simple responses
+  if (isConversationalMessage(question)) {
+    console.log(`[INTENT-CLASSIFIER] CONVERSATIONAL detected: "${question}" → no tool calls`);
+    return {
+      type: "conversational",
+      confidence: 0.99,
+      requiresToolCall: false,
+      detectedPatterns: ["conversational: courtesy message"],
+      explanation: "Messaggio di cortesia - risposta semplice senza analisi dati",
+    };
+  }
   
   let analyticalScore = 0;
   let informationalScore = 0;

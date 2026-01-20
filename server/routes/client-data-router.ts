@@ -1365,11 +1365,20 @@ router.post(
         })),
       });
 
-      const explanation = await generateNaturalLanguageResponse(
+      const explanationResult = await explainResults(
         executionResult.results,
         question,
         consultantId
       );
+      
+      // Construct answer text from explanation
+      let answer = explanationResult.summary;
+      if (explanationResult.details.length > 0) {
+        answer += "\n\n" + explanationResult.details.join("\n");
+      }
+      if (explanationResult.insights.length > 0) {
+        answer += "\n\n" + explanationResult.insights.join("\n");
+      }
 
       await db
         .update(clientDataDatasets)
@@ -1378,7 +1387,7 @@ router.post(
 
       const responseData = {
         question,
-        answer: explanation,
+        answer,
         plan: {
           steps: executionResult.plan.steps,
           complexity: executionResult.plan.estimatedComplexity,
@@ -1391,6 +1400,10 @@ router.post(
           executionTimeMs: r.executionTimeMs,
         })),
         totalExecutionTimeMs: executionResult.totalExecutionTimeMs,
+        wasBlocked: explanationResult.wasBlocked || false,
+        blockedResponse: explanationResult.blockedResponse,
+        validationErrors: explanationResult.validationResult?.errors,
+        inventedNumbers: explanationResult.validationResult?.inventedNumbers,
       };
 
       console.log(`[CLIENT-DATA] Response data summary:`, {
