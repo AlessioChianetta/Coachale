@@ -77,6 +77,13 @@ A 3-layer pipeline separating intent classification from execution to prevent st
   - Removes all numeric content or uses fallback response
   - Guarantees strategy responses contain ZERO invented numbers
 
+**Pre-Validation Layer (query-planner.ts + query-executor.ts)**
+- **Cardinality Probe**: `getDistinctCount()` distinguishes row_count vs unique_items before queries
+- **Semantic Contract**: `detectSemanticContract()` detects "uno per uno/tutti" keywords and BLOCKS limit changes without user consent
+- **Filter Enforcement**: `extractFiltersFromQuestion()` extracts mentioned filters (e.g., "categoria food") and injects them into tool calls
+- **Result Size Guardrail**: `checkCardinalityBeforeAggregate()` asks for user confirmation if result > 500 rows (top N, export, paginate options)
+- Wiring logs: `[WIRING-CHECK]` prefix for debugging execution flow
+
 ### Auto Semantic Mapping for CSV Datasets
 Automatic detection of column roles (price, cost, quantity, order_date) during CSV upload with confidence scoring. Features include:
 - **Auto-detect on upload**: Saves mappings with confidence ≥ 0.70 to dataset_column_semantics table
