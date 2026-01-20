@@ -11,7 +11,7 @@ import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
 import { classifyIntent, ForceToolRetryError, requiresNumericAnswer, getConversationalReply } from "./intent-classifier";
-import { routeIntent, type IntentRouterOutput } from "./intent-router";
+import { routeIntent, type IntentRouterOutput, type ConversationMessage } from "./intent-router";
 import { enforcePolicyOnToolCalls, getPolicyForIntent, POLICY_RULES, type IntentType } from "./policy-engine";
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
 import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
@@ -789,14 +789,16 @@ export async function askDataset(
   userQuestion: string,
   datasets: DatasetInfo[],
   consultantId?: string,
-  userId?: string
+  userId?: string,
+  conversationHistory?: ConversationMessage[]
 ): Promise<QueryExecutionResult> {
   console.log(`[QUERY-PLANNER] Processing question: "${userQuestion}" for ${datasets.length} datasets`);
+  console.log(`[QUERY-PLANNER] Conversation history: ${conversationHistory?.length || 0} messages`);
   const startTime = Date.now();
 
   // ====== LAYER 1: INTENT ROUTER (AI - gemini-2.5-flash-lite) ======
-  // Fast, cheap classification of user intent
-  const routerOutput = await routeIntent(userQuestion, consultantId);
+  // Fast, cheap classification of user intent WITH conversation context
+  const routerOutput = await routeIntent(userQuestion, consultantId, conversationHistory);
   console.log(`[QUERY-PLANNER] Router result: intent=${routerOutput.intent}, requires_metrics=${routerOutput.requires_metrics}, confidence=${routerOutput.confidence.toFixed(2)}`);
 
   // ====== LAYER 2: POLICY ENGINE (TypeScript - no AI) ======

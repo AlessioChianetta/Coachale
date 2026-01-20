@@ -1878,6 +1878,30 @@ router.post(
 
       console.log(`[CLIENT-DATA] User message saved: ${userMessage.id}`);
 
+      // Load conversation history for context-aware intent routing
+      const previousMessages = await db
+        .select({
+          role: clientDataMessages.role,
+          content: clientDataMessages.content,
+          toolCalls: clientDataMessages.toolCalls,
+        })
+        .from(clientDataMessages)
+        .where(eq(clientDataMessages.conversationId, id))
+        .orderBy(clientDataMessages.createdAt)
+        .limit(10);
+
+      // Format for intent router (exclude the message we just inserted)
+      const conversationHistory = previousMessages
+        .filter(m => m.content !== content.trim()) // Exclude current message
+        .slice(-5) // Last 5 messages
+        .map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          toolCalls: m.toolCalls as Array<{ toolName: string }> | undefined,
+        }));
+
+      console.log(`[CLIENT-DATA] Loaded ${conversationHistory.length} messages for context`);
+
       const columnMapping = dataset.columnMapping as Record<string, { displayName: string; dataType: string; description?: string }>;
       const datasetInfo = {
         id: dataset.id,
@@ -1894,7 +1918,7 @@ router.post(
       console.log(`[CLIENT-DATA] Processing message: "${content}" on dataset ${dataset.id}`);
 
       const consultantId = dataset.consultantId || userId;
-      const executionResult = await askDataset(content, [datasetInfo], consultantId, userId);
+      const executionResult = await askDataset(content, [datasetInfo], consultantId, userId, conversationHistory);
 
       const toolCalls = executionResult.plan.steps.map((step) => ({
         toolName: step.name,
