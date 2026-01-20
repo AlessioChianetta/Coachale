@@ -8459,6 +8459,7 @@ export const clientDataDatasets = pgTable("client_data_datasets", {
   fileSizeBytes: integer("file_size_bytes"),
   status: varchar("status", { length: 50 }).default("pending").$type<"pending" | "processing" | "ready" | "error">(),
   errorMessage: text("error_message"),
+  analyticsEnabled: boolean("analytics_enabled").notNull().default(false),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
   lastQueriedAt: timestamp("last_queried_at"),
@@ -8497,6 +8498,40 @@ export const consultantColumnMappings = pgTable("consultant_column_mappings", {
 
 export type ConsultantColumnMapping = typeof consultantColumnMappings.$inferSelect;
 export type InsertConsultantColumnMapping = typeof consultantColumnMappings.$inferInsert;
+
+// ============================================================
+// DATASET COLUMN SEMANTICS - Semantic role mapping for columns
+// ============================================================
+
+export type SemanticLogicalRole = 
+  | "price" | "cost" | "quantity" | "order_date" | "order_id"
+  | "customer_id" | "product_name" | "category" | "discount_percent"
+  | "total_net" | "tax_rate" | "payment_method" | "staff";
+
+export type SemanticMappingStatus = "pending" | "confirmed" | "rejected";
+
+export const CRITICAL_ROLES: SemanticLogicalRole[] = ["price", "cost", "quantity", "order_date"];
+
+export const datasetColumnSemantics = pgTable("dataset_column_semantics", {
+  id: serial("id").primaryKey(),
+  datasetId: integer("dataset_id").notNull().references(() => clientDataDatasets.id, { onDelete: "cascade" }),
+  physicalColumn: varchar("physical_column", { length: 255 }).notNull(),
+  logicalRole: varchar("logical_role", { length: 50 }).notNull().$type<SemanticLogicalRole>(),
+  confidence: numeric("confidence", { precision: 3, scale: 2 }).notNull().default("0"),
+  status: varchar("status", { length: 20 }).notNull().default("pending").$type<SemanticMappingStatus>(),
+  autoApproved: boolean("auto_approved").notNull().default(false),
+  confirmedByUserId: varchar("confirmed_by_user_id", { length: 255 }),
+  confirmedAt: timestamp("confirmed_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  datasetIdx: index("idx_semantics_dataset").on(table.datasetId),
+  statusIdx: index("idx_semantics_status").on(table.status),
+  uniqueDatasetColumn: unique("unique_dataset_column").on(table.datasetId, table.physicalColumn),
+}));
+
+export type DatasetColumnSemantic = typeof datasetColumnSemantics.$inferSelect;
+export type InsertDatasetColumnSemantic = typeof datasetColumnSemantics.$inferInsert;
 
 // ============================================================
 // CLIENT DATA METRICS - Semantic layer for metric definitions
