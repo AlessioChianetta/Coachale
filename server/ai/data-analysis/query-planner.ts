@@ -15,6 +15,7 @@ import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName,
 import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
 import { validateMetricForDataset } from "./pre-validator";
+import { checkAnalyticsEnabled } from "../../services/client-data/semantic-mapping-service";
 
 interface DatasetInfo {
   id: string;
@@ -811,6 +812,36 @@ export async function askDataset(
       success: true,
       totalExecutionTimeMs: 0
     };
+  }
+
+  // CHECK: Analytics must be enabled (semantic mapping confirmed) for analytical queries
+  if (datasets.length > 0 && intent.type === "analytical") {
+    const datasetId = parseInt(datasets[0].id);
+    if (!isNaN(datasetId)) {
+      const analyticsCheck = await checkAnalyticsEnabled(datasetId);
+      if (!analyticsCheck.enabled) {
+        console.log(`[QUERY-PLANNER] ANALYTICS BLOCKED - semantic mapping not confirmed for dataset ${datasetId}`);
+        return {
+          plan: {
+            steps: [],
+            reasoning: "BLOCK: Analytics disabled - semantic mapping confirmation required",
+            estimatedComplexity: "simple"
+          },
+          results: [{
+            toolName: "analytics_blocked",
+            args: { datasetId },
+            result: { 
+              blocked: true, 
+              message: analyticsCheck.message || "Per analizzare questo dataset, conferma prima il mapping delle colonne chiave.",
+              pendingColumns: analyticsCheck.pendingColumns || []
+            },
+            success: false
+          }],
+          success: false,
+          totalExecutionTimeMs: 0
+        };
+      }
+    }
   }
 
   const plan = await planQuery(userQuestion, datasets, consultantId);

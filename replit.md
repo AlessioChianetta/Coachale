@@ -51,6 +51,14 @@ An AI chat interface for data analysis, reusing components from the AI Assistant
 ### Semantic Layer for Anti-Hallucination
 An enterprise-grade system eliminates AI hallucinations through predefined metrics, semantic mapping, and a robust pre-validation architecture. It uses logical columns, metric templates, and term mapping to ensure accurate SQL generation and provides business-friendly error messages.
 
+### Auto Semantic Mapping for CSV Datasets
+Automatic detection of column roles (price, cost, quantity, order_date) during CSV upload with confidence scoring. Features include:
+- **Auto-detect on upload**: Saves mappings with confidence ≥ 0.70 to dataset_column_semantics table
+- **Critical column confirmation**: Requires 1-click confirmation for price/cost/quantity/order_date (even with high confidence)
+- **Analytics blocking**: Blocks analytical queries until required semantic mappings are confirmed
+- **Semantic resolver integration**: Metric formulas use {placeholder} syntax resolved via confirmed mappings
+- **Golden test values**: revenue=21956.62, food_cost=7689.61, order_count=941 for restaurant test dataset
+
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
 - **Recharts**: Data visualization.

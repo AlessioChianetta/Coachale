@@ -14,6 +14,7 @@ import { invalidateCache, getCacheStats } from "../services/client-data/cache-ma
 import { askDataset, type QueryExecutionResult } from "../ai/data-analysis/query-planner";
 import { explainResults, generateNaturalLanguageResponse } from "../ai/data-analysis/result-explainer";
 import { runReconciliationTests, compareAggregations, type ReconciliationReport } from "../services/client-data/reconciliation";
+import { detectAndSaveSemanticMappings, getSemanticMappings, confirmSemanticMappings, rejectSemanticMapping, checkAnalyticsEnabled } from "../services/client-data/semantic-mapping-service";
 import fs from "fs";
 import path from "path";
 
@@ -847,14 +848,18 @@ router.post(
         }
       }
 
-      console.log(`[CLIENT-DATA] Dataset ${dataset.id} created with ${importResult.rowCount} rows`);
+      const physicalColumns = columns.map((c) => c.suggestedName || c.originalName);
+      const semanticResult = await detectAndSaveSemanticMappings(dataset.id, physicalColumns);
+
+      console.log(`[CLIENT-DATA] Dataset ${dataset.id} created with ${importResult.rowCount} rows, analytics=${semanticResult.analyticsEnabled}`);
 
       res.status(201).json({
         success: true,
         data: {
-          dataset: updated,
+          dataset: { ...updated, analyticsEnabled: semanticResult.analyticsEnabled },
           rowCount: importResult.rowCount,
           tableName,
+          semanticMappings: semanticResult,
         },
       });
     } catch (error: any) {
@@ -2080,6 +2085,200 @@ router.put(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to update AI preferences",
+      });
+    }
+  }
+);
+
+router.get(
+  "/datasets/:id/semantic-mappings",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const result = await getSemanticMappings(dataset.id);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching semantic mappings:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch semantic mappings",
+      });
+    }
+  }
+);
+
+router.post(
+  "/datasets/:id/semantic-mappings/confirm",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { confirmations } = req.body as {
+        confirmations: Array<{ physicalColumn: string; logicalRole?: string }>;
+      };
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      if (!confirmations || !Array.isArray(confirmations) || confirmations.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing or invalid confirmations array",
+        });
+      }
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const result = await confirmSemanticMappings(dataset.id, confirmations, userId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error confirming semantic mappings:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to confirm semantic mappings",
+      });
+    }
+  }
+);
+
+router.post(
+  "/datasets/:id/semantic-mappings/reject",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { physicalColumn } = req.body as { physicalColumn: string };
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      if (!physicalColumn) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing physicalColumn",
+        });
+      }
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      await rejectSemanticMapping(dataset.id, physicalColumn, userId);
+
+      res.json({
+        success: true,
+        message: "Mapping rejected",
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error rejecting semantic mapping:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to reject semantic mapping",
+      });
+    }
+  }
+);
+
+router.get(
+  "/datasets/:id/analytics-status",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const result = await checkAnalyticsEnabled(dataset.id);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error checking analytics status:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to check analytics status",
       });
     }
   }

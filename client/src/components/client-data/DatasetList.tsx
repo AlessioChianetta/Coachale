@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Loader2,
   Plus,
+  Settings,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ interface Dataset {
   createdAt: string;
   lastQueriedAt?: string;
   errorMessage?: string;
+  analyticsEnabled?: boolean;
 }
 
 interface DatasetListProps {
@@ -212,7 +214,17 @@ export function DatasetList({
                         <p className="text-xs text-slate-500">{dataset.originalFilename}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(dataset.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {getStatusBadge(dataset.status)}
+                        {dataset.status === "ready" && !dataset.analyticsEnabled && (
+                          <Badge className="bg-amber-100 text-amber-700 flex items-center gap-1 text-xs">
+                            <Settings className="h-3 w-3" />
+                            Mapping
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-mono">
                       {formatRowCount(dataset.rowCount)}
                     </TableCell>

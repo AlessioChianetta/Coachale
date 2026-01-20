@@ -1,11 +1,13 @@
 /**
  * Semantic Resolver
  * Translates metric templates with {placeholder} into actual SQL with physical column names
+ * 
+ * UPDATED: Now uses dataset_column_semantics table for confirmed mappings only
  */
 
 import { db } from "../../db";
-import { datasetColumnMappings } from "../../../shared/schema";
-import { eq } from "drizzle-orm";
+import { datasetColumnSemantics } from "../../../shared/schema";
+import { eq, and } from "drizzle-orm";
 import { LOGICAL_COLUMNS, getLogicalColumnDisplayName } from "./logical-columns";
 
 export interface ResolveResult {
@@ -22,12 +24,17 @@ export interface ColumnMappingLookup {
 export async function getColumnMappingsForDataset(datasetId: number): Promise<ColumnMappingLookup> {
   const mappings = await db
     .select()
-    .from(datasetColumnMappings)
-    .where(eq(datasetColumnMappings.datasetId, datasetId));
+    .from(datasetColumnSemantics)
+    .where(
+      and(
+        eq(datasetColumnSemantics.datasetId, datasetId),
+        eq(datasetColumnSemantics.status, "confirmed")
+      )
+    );
   
   const lookup: ColumnMappingLookup = {};
   for (const mapping of mappings) {
-    lookup[mapping.logicalColumn] = mapping.physicalColumn;
+    lookup[mapping.logicalRole] = mapping.physicalColumn;
   }
   
   return lookup;
