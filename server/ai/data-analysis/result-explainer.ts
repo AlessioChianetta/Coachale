@@ -52,6 +52,76 @@ function formatDate(dateStr: string): string {
   }
 }
 
+function sanitizeUserContent(text: string): string {
+  if (!text) return "";
+  
+  let result = text;
+  
+  // Technical patterns to remove or replace
+  const technicalPatterns = [
+    /schema\s*dataset[:\s]*/gi,
+    /schema[:\s]*/gi,
+    /colonne[:\s]*/gi,
+    /righe\s*totali[:\s]*/gi,
+    /dataset\s*:/gi,
+    /\berror[e]?\b/gi,
+    /errore/gi,
+    /\btool\b/gi,
+    /⚠️\s*/g,  // Remove warning emoji prefix from validation warnings
+  ];
+  
+  for (const pattern of technicalPatterns) {
+    result = result.replace(pattern, '');
+  }
+  
+  // Remove lines that are purely technical
+  const lines = result.split('\n');
+  const filtered = lines.filter(line => {
+    const lower = line.toLowerCase();
+    return !(
+      lower.includes('schema') ||
+      lower.includes('colonne') ||
+      lower.includes('righe totali') ||
+      lower.includes('dataset:') ||
+      lower.includes('errore') ||
+      lower.includes('tool')
+    );
+  });
+  
+  result = filtered.join('\n').trim();
+  
+  // Remove excessive whitespace
+  result = result.replace(/\n\n+/g, '\n').trim();
+  
+  return result;
+}
+
+function sanitizeArray(arr: string[]): string[] {
+  return arr
+    .map(item => {
+      const sanitized = sanitizeUserContent(item);
+      return sanitized.trim();
+    })
+    .filter(item => {
+      if (!item || item.trim().length === 0) return false;
+      
+      const lower = item.toLowerCase();
+      // Filter out items that are purely technical
+      if (
+        lower.includes('schema') ||
+        lower.includes('colonne') ||
+        lower.includes('righe totali') ||
+        lower.includes('dataset:') ||
+        lower.includes('errore') ||
+        lower.includes('tool')
+      ) {
+        return false;
+      }
+      
+      return true;
+    });
+}
+
 function extractFormattedValues(results: ExecutedToolResult[]): Record<string, string> {
   const formatted: Record<string, string> = {};
 
@@ -101,7 +171,8 @@ function generateBasicExplanation(results: ExecutedToolResult[], userQuestion: s
 
   for (const res of results) {
     if (!res.success) {
-      details.push(`⚠️ Errore nell'esecuzione di ${res.toolName}: ${res.error}`);
+      // Don't show technical error messages to users - just skip failed tools
+      // The summary will handle showing a friendly message
       continue;
     }
 
@@ -191,15 +262,18 @@ function generateBasicExplanation(results: ExecutedToolResult[], userQuestion: s
   }
 
   if (!summary) {
-    summary = results.every(r => r.success)
-      ? "Query eseguita con successo"
-      : "Si sono verificati errori durante l'esecuzione";
+    // Never show technical messages - guide user instead
+    if (results.every(r => r.success)) {
+      summary = "Ho elaborato i dati. Vuoi analizzare fatturato, food cost, margine o confrontare periodi?";
+    } else {
+      summary = "Non sono riuscito a elaborare la richiesta. Prova a specificare quale metrica vuoi analizzare.";
+    }
   }
 
   return {
-    summary,
-    details,
-    insights,
+    summary: sanitizeUserContent(summary),
+    details: sanitizeArray(details),
+    insights: sanitizeArray(insights),
     formattedValues
   };
 }
@@ -309,7 +383,7 @@ export async function explainResults(
     
     let prompt: string;
     
-    // ANTI-HALLUCINATION: If all tools failed, return error message - don't let AI respond freely
+    // ANTI-HALLUCINATION: If all tools failed, return FRIENDLY message - no technical details
     if (hasFailedTools) {
       const errorDetails = results
         .filter(r => !r.success && r.error)
@@ -318,12 +392,13 @@ export async function explainResults(
       
       console.error(`[RESULT-EXPLAINER] ALL TOOLS FAILED - blocking AI response. Errors: ${errorDetails}`);
       
+      // FRIENDLY UX: No technical error messages - just helpful guidance
       return {
-        summary: "Non sono riuscito a elaborare la tua richiesta. Si sono verificati errori durante l'analisi dei dati.",
-        details: results.map(r => `⚠️ ${r.toolName}: ${r.error || "errore sconosciuto"}`),
-        insights: [
-          "💡 Suggerimento: Le colonne richieste potrebbero non esistere nel dataset. Verifica i nomi delle colonne con 'mostrami lo schema del dataset'.",
-        ],
+        summary: sanitizeUserContent("Non sono riuscito a trovare quei dati. Prova a specificare meglio cosa vuoi analizzare."),
+        details: sanitizeArray([]), // No technical error details
+        insights: sanitizeArray([
+          "Prova a chiedere: 'Mostrami il fatturato di gennaio' o 'Qual è il food cost totale?'"
+        ]),
         formattedValues: {},
         wasValidated: true
       };
@@ -384,9 +459,9 @@ Sii breve e conversazionale.`;
       // For conversational responses, return the AI response directly (no validation needed)
       if (!hasResults) {
         return {
-          summary: aiExplanation,
-          details: [],
-          insights: [],
+          summary: sanitizeUserContent(aiExplanation),
+          details: sanitizeArray([]),
+          insights: sanitizeArray([]),
           formattedValues: {},
           wasValidated: false
         };
@@ -402,18 +477,35 @@ Sii breve e conversazionale.`;
           console.error(`[RESULT-EXPLAINER] Invented numbers: ${validation.inventedNumbers.join(", ")}`);
         }
         
+        // FRIENDLY UX: ALWAYS show guided message when blocked - never technical content
+        // Check if we have actual COMPUTE tool data (execute_metric, aggregate_group, compare_periods)
+        const computeTools = ["execute_metric", "query_metric", "aggregate_group", "compare_periods"];
+        const hasComputeData = results.some(r => 
+          r.success && computeTools.includes(r.toolName) && r.result
+        );
+        
+        // Only show data if we have actual compute results, otherwise show guidance
+        const friendlySummary = hasComputeData 
+          ? sanitizeUserContent(basicExplanation.summary)
+          : sanitizeUserContent("Specifica quale metrica vuoi analizzare: fatturato, food cost, margine o vendite per periodo.");
+        
+        const friendlyDetails = hasComputeData 
+          ? sanitizeArray(basicExplanation.details)
+          : sanitizeArray([]);
+        
+        const friendlyInsights = hasComputeData && basicExplanation.insights.length > 0 
+          ? sanitizeArray(basicExplanation.insights)
+          : sanitizeArray(["Prova a chiedere: 'Mostrami il fatturato di gennaio' o 'Confronta gennaio e febbraio'"]);
+        
         return {
-          summary: basicExplanation.summary,
-          details: basicExplanation.details,
-          insights: [
-            ...basicExplanation.insights,
-            "I dati mostrati provengono esclusivamente dal database."
-          ],
+          summary: friendlySummary,
+          details: friendlyDetails,
+          insights: friendlyInsights,
           formattedValues: basicExplanation.formattedValues,
           validationResult: {
             valid: validation.valid,
-            errors: validation.errors,
-            warnings: validation.warnings,
+            errors: [],
+            warnings: [],
             numbersInResponse: [],
             numbersFromTools: [],
             inventedNumbers: validation.inventedNumbers
@@ -425,14 +517,9 @@ Sii breve e conversazionale.`;
       }
       
       const lines = aiExplanation.split("\n").filter(l => l.trim());
-      const summary = lines[0] || basicExplanation.summary;
-      const details = lines.slice(1).filter(l => !l.startsWith("Insight")).concat(basicExplanation.details);
-      const insights = lines.filter(l => l.toLowerCase().includes("insight") || l.includes("📊") || l.includes("💡")).concat(basicExplanation.insights);
-
-      // Add validation warnings to insights if any
-      if (validation.warnings.length > 0) {
-        insights.push(...validation.warnings.map(w => `⚠️ ${w}`));
-      }
+      const summary = sanitizeUserContent(lines[0] || basicExplanation.summary);
+      const details = sanitizeArray(lines.slice(1).filter(l => !l.startsWith("Insight")).concat(basicExplanation.details));
+      const insights = sanitizeArray(lines.filter(l => l.toLowerCase().includes("insight") || l.includes("📊") || l.includes("💡")).concat(basicExplanation.insights));
 
       return {
         summary,
@@ -441,8 +528,8 @@ Sii breve e conversazionale.`;
         formattedValues: basicExplanation.formattedValues,
         validationResult: {
           valid: validation.valid,
-          errors: validation.errors,
-          warnings: validation.warnings,
+          errors: [],
+          warnings: [],
           numbersInResponse: [],
           numbersFromTools: [],
           inventedNumbers: validation.inventedNumbers
@@ -454,7 +541,14 @@ Sii breve e conversazionale.`;
     console.warn("[RESULT-EXPLAINER] AI explanation failed, using basic:", error.message);
   }
 
-  return basicExplanation;
+  // Return sanitized basic explanation as fallback
+  return {
+    summary: sanitizeUserContent(basicExplanation.summary),
+    details: sanitizeArray(basicExplanation.details),
+    insights: sanitizeArray(basicExplanation.insights),
+    formattedValues: basicExplanation.formattedValues,
+    wasValidated: basicExplanation.wasValidated
+  };
 }
 
 export async function generateNaturalLanguageResponse(

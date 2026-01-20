@@ -1,0 +1,250 @@
+📐 SPECIFICA TECNICA — AUTO SEMANTIC MAPPING CSV (PRODUCTION READY)
+Obiettivo
+
+Automatizzare al massimo il mapping colonne CSV → ruoli semantici business
+senza compromettere l’affidabilità delle metriche.
+
+Target UX:
+
+80–90% mapping automatico
+
+1–2 click di conferma massimo
+
+ZERO calcoli su colonne non validate
+
+1️⃣ STEP INGEST PIPELINE
+
+Quando viene caricato un CSV:
+
+1.1 Analisi colonne (AI + regole)
+
+Per ogni colonna estrarre:
+
+column_name
+
+sample_values (20 righe)
+
+inferred_type (number, date, text)
+
+candidate_logical_roles[]
+
+confidence_score per ruolo
+
+Esempio output:
+
+{
+  "column": "unit_price",
+  "type": "number",
+  "candidates": [
+    { "role": "price", "confidence": 0.96 },
+    { "role": "cost", "confidence": 0.12 }
+  ]
+}
+
+2️⃣ CLASSIFICAZIONE RUOLI SEMANTICI
+
+Definire vocabolario fisso:
+
+Core roles (critici)
+price
+cost
+quantity
+order_date
+order_id
+customer_id
+
+Dimension roles
+product_name
+product_category
+payment_method
+staff
+table_id
+
+Financial roles
+discount_percent
+tax_rate
+
+3️⃣ AUTO APPROVAL LOGIC
+
+Implementare questa logica:
+
+3.1 Auto-approve sicuro
+
+Se:
+
+confidence ≥ 0.90
+
+ruolo NON è core critical
+
+👉 auto-map
+
+3.2 Core critical confirmation
+
+Per questi ruoli:
+
+price
+cost
+quantity
+order_date
+
+
+Regola:
+
+👉 anche se confidence = 0.99
+👉 richiedere 1 click di conferma UI
+
+3.3 Ambiguità
+
+Se:
+
+2 candidate roles con confidence > 0.70
+
+👉 blocco
+👉 richiedere scelta manuale
+
+3.4 Low confidence
+
+Se:
+
+confidence < 0.70
+
+👉 non mappare
+👉 mostra errore UI
+
+4️⃣ PERSISTENZA SEMANTICA
+
+Creare tabella:
+
+dataset_column_semantics
+dataset_id
+physical_column
+logical_role
+confidence
+auto_approved BOOLEAN
+confirmed_by_user BOOLEAN
+timestamp
+
+5️⃣ METRIC ENGINE CONSUMPTION RULE
+
+Metric registry NON deve usare:
+
+unit_price
+quantity
+
+
+Ma solo:
+
+{price}
+{quantity}
+
+
+Resolver:
+
+logical_role → physical_column
+
+
+Se logical_role non presente:
+
+👉 blocco metrica
+
+6️⃣ HARD FAIL RULES
+
+Sistema deve rifiutare calcoli se manca:
+
+Metrica	Required roles
+revenue	price, quantity
+food_cost	cost, quantity
+ticket_medio	price, quantity
+order_count	order_id
+avg_orders_per_customer	customer_id, order_id
+
+Errore UX:
+
+"Impossibile calcolare: manca mappatura campo COST"
+
+7️⃣ UI FLOW (MINIMA)
+Step 1 — Auto mapping
+
+Mostrare:
+
+✔ 7 colonne mappate automaticamente
+⚠ 2 colonne richiedono conferma
+
+Step 2 — Conferma rapida
+
+Mostrare SOLO:
+
+price
+
+cost
+
+quantity
+
+order_date
+
+UI tipo:
+
+Abbiamo rilevato:
+unit_price → Prezzo di vendita
+[ Conferma ] [ Cambia ]
+
+Step 3 — Lock mapping
+
+Dopo conferma:
+
+mapping congelato
+
+metriche abilitate
+
+8️⃣ SAFE FALLBACK
+
+Se utente salta mapping:
+
+👉 dataset resta:
+
+analytics_disabled = true
+
+
+Consentito:
+
+preview schema
+
+NON consentito:
+
+metriche
+
+AI analytics
+
+9️⃣ LOGGING OBBLIGATORIO
+
+Loggare:
+
+mapping automatico
+
+mapping manuale
+
+metric failures per missing role
+
+Serve per:
+
+debugging
+
+migliorare AI mapping
+
+10️⃣ QUALITY METRIC INTERNE
+
+Track KPI:
+
+KPI	Target
+Auto mapping rate	>80%
+Manual corrections	<15%
+Metric fail rate	<3%
+RISULTATO FINALE
+
+Con questa architettura ottieni:
+
+✅ automazione vera
+✅ controllo umano minimo
+✅ metriche affidabili
+✅ scalabilità SaaS
+✅ difesa da CSV sporchi

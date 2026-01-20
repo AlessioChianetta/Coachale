@@ -10,7 +10,7 @@ import { parseMetricExpression, validateMetricAgainstSchema } from "../../servic
 import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
-import { classifyIntent, ForceToolRetryError, requiresNumericAnswer, CONVERSATIONAL_FALLBACK_REPLY } from "./intent-classifier";
+import { classifyIntent, ForceToolRetryError, requiresNumericAnswer, getConversationalReply } from "./intent-classifier";
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
 import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
@@ -794,7 +794,8 @@ export async function askDataset(
   // This is a HARD BLOCK - Gemini does NOT decide, we do
   const intent = classifyIntent(userQuestion);
   if (intent.type === "conversational") {
-    console.log(`[QUERY-PLANNER] CONVERSATIONAL HARD BLOCK - returning fixed response, NO Gemini call`);
+    const friendlyReply = getConversationalReply(userQuestion);
+    console.log(`[QUERY-PLANNER] CONVERSATIONAL HARD BLOCK - returning friendly response: "${friendlyReply.substring(0, 50)}..."`);
     return {
       plan: {
         steps: [],
@@ -804,7 +805,7 @@ export async function askDataset(
       results: [{
         toolName: "conversational_response",
         args: { blocked: true },
-        result: { message: CONVERSATIONAL_FALLBACK_REPLY, isFixedResponse: true },
+        result: { message: friendlyReply, isFixedResponse: true },
         success: true
       }],
       success: true,

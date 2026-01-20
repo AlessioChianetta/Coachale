@@ -1,0 +1,255 @@
+Colonna Originale	Nome Visualizzato	Tipo Dati	Confidenza	Esempi	
+order_id	Order Id	
+Numero
+Alta	1, 2, 3	
+order_date	Order Date	
+Data
+Alta	2025-01-01, 2025-01-01, 2025-01-01	
+customer_id	Customer Id	
+Numero
+Alta	15, 4, 29	
+item_name	Item Name	
+Testo
+Alta	Pizza Margherita, Pizza Diavola, Birra	
+category	Category	
+Testo
+Alta	Food, Food, Drink	
+unit_price	Unit Price	
+Numero
+Alta	8.58, 8.02, 8.62	
+unit_cost	Unit Cost	
+Numero
+Alta	2.53, 2.97, 3.65	
+quantity	Quantity	
+Numero
+Alta	3, 1, 3	
+discount_percent	Discount Percent	
+Numero
+Alta	0, 10, 0	
+payment_method	Metodo di Pagamento	
+Testo
+Alta	pos, pos, card	
+table_id	Table Id	
+Numero
+Alta	7, 11, 5	
+waiter	Waiter	
+Testo
+Alta	Luca, Giulia, Marco	
+tax_rate	Tax Rate	
+Numero
+Media	10, 10, 22
+
+Perfetto, questo è un buon mapping tecnico, ma non è ancora un mapping semantico “analytics-safe”. Ti spiego cosa va bene, cosa manca, e cosa devi chiedere al programmatore per portarlo a livello produzione.
+
+✅ COSA È FATTO BENE
+1️⃣ Tipizzazione colonne
+
+Hai:
+
+Numero / Testo / Data
+
+esempi reali
+
+livello confidenza
+
+Questo è ottimo per:
+
+validazione input
+
+UI mapping
+
+prevenire errori grossolani
+
+2️⃣ Identificatori chiave presenti
+
+Hai:
+
+order_id ✅
+
+customer_id ✅
+
+order_date ✅
+
+Questo abilita:
+
+KPI cliente
+
+retention
+
+frequency
+
+analytics temporali seri
+
+Ottimo.
+
+⚠️ COSA MANCA (QUESTO È IL GAP CRITICO)
+
+Quello che hai è:
+
+schema mapping
+
+Quello che ti serve è:
+
+semantic business mapping
+
+Ora ti faccio esempi concreti.
+
+❌ PROBLEMA 1 — Nessun ruolo semantico
+
+Esempio:
+
+unit_price → Numero
+
+
+MA il sistema NON sa che:
+
+questo è prezzo di vendita canonico
+
+questo è la base revenue
+
+Devi avere:
+
+logical_role: "price"
+
+
+Stesso per:
+
+unit_cost → cost
+
+quantity → quantity
+
+order_date → date
+
+customer_id → customer_identifier
+
+❌ PROBLEMA 2 — Discount non qualificato
+
+Hai:
+
+discount_percent → Numero
+
+
+Ma manca:
+
+se è percentuale o assoluto
+
+se è per riga o per ordine
+
+se riduce revenue o è promo informativa
+
+Devi aggiungere:
+
+discount_type: percentage
+discount_scope: line_item
+
+❌ PROBLEMA 3 — Tax rate non collegata a metriche
+
+Hai:
+
+tax_rate → Numero (Media confidenza)
+
+
+Ma non è collegata a:
+
+revenue netto
+
+VAT handling
+
+net_margin
+
+Quindi ora è dato morto.
+
+Devi decidere:
+
+la usi
+
+o la escludi dal modello.
+
+❌ PROBLEMA 4 — Category non ha ruolo operativo
+
+Ora:
+
+category → Testo
+
+
+Ma semanticamente è:
+
+product_category
+
+menu_category
+
+reporting dimension
+
+Serve:
+
+logical_role: product_category
+dimension: true
+
+COSA DEVI CHIEDERE AL PROGRAMMATORE (TESTO PRONTO)
+
+Copiabile:
+
+"Il mapping attuale è solo strutturale.
+Dobbiamo aggiungere semantic roles alle colonne:
+
+Esempio:
+unit_price → logical_role: price
+unit_cost → logical_role: cost
+quantity → logical_role: quantity
+order_date → logical_role: date
+customer_id → logical_role: customer_id
+category → logical_role: product_category
+
+Le metriche devono usare i logical_role, non i nomi fisici CSV."
+
+STRUTTURA IDEALE (COME DOVREBBE ESSERE)
+
+Esempio corretto:
+
+unit_price:
+  type: number
+  logical_role: price
+  currency: EUR
+
+unit_cost:
+  type: number
+  logical_role: cost
+
+quantity:
+  type: number
+  logical_role: quantity
+
+order_date:
+  type: date
+  logical_role: order_date
+
+customer_id:
+  type: number
+  logical_role: customer_id
+
+discount_percent:
+  logical_role: discount_percentage
+  affects_revenue: true
+
+PERCHÉ QUESTO È CRITICO PER CSV COMPLESSI
+
+Quando arriverà CSV cliente con:
+
+price_net
+
+gross_price
+
+total_amount
+
+subtotal
+
+Senza semantic role:
+
+👉 Gemini sceglierà “a intuito”
+👉 torni nel casino che hai visto.
+
+Con semantic role:
+
+👉 sistema deterministico
+👉 metriche portabili
+👉 meno bug.

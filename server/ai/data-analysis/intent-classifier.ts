@@ -72,6 +72,17 @@ const PURE_ACKNOWLEDGMENTS = [
   "esatto", "giusto", "bravo", "eccellente", "magnifico", "super"
 ];
 
+// These patterns should also be treated as conversational (no data analysis needed)
+const CONVERSATIONAL_PHRASES = [
+  // Greetings
+  "ciao", "salve", "buongiorno", "buonasera", "hello", "hi", "hey",
+  // Ambiguous/casual
+  "come va", "come stai", "tutto bene", "tutto ok", "che fai",
+  // Help requests
+  "aiuto", "help", "cosa puoi fare", "cosa sai fare", "come funziona", "come ti uso",
+  "che cosa puoi fare", "che cosa sai fare", "quali funzioni", "funzionalita"
+];
+
 const ANALYTICAL_BLOCKERS = [
   "quanto", "quanti", "quante", "fatturato", "revenue", "vendite", "venduto",
   "costo", "costi", "margine", "calcola", "mostrami", "analizza", "confronta",
@@ -93,21 +104,60 @@ function isConversationalMessage(question: string): boolean {
   const words = normalized.split(/\s+/).filter(w => w.length > 0);
   
   if (words.length === 0) return false;
-  if (words.length > 5) return false;
+  if (words.length > 8) return false; // Allow slightly longer conversational phrases
   
   const hasAnalyticalBlocker = ANALYTICAL_BLOCKERS.some(blocker => 
     normalized.includes(blocker)
   );
   if (hasAnalyticalBlocker) return false;
   
+  // Check for acknowledgments
   const hasAnyAcknowledgment = PURE_ACKNOWLEDGMENTS.some(ack => 
     normalized.includes(ack)
   );
   
-  return hasAnyAcknowledgment;
+  // Check for conversational phrases (greetings, help, ambiguous)
+  const hasConversationalPhrase = CONVERSATIONAL_PHRASES.some(phrase => 
+    normalized.includes(phrase)
+  );
+  
+  return hasAnyAcknowledgment || hasConversationalPhrase;
 }
 
-export const CONVERSATIONAL_FALLBACK_REPLY = "Prego! Sono qui per aiutarti con l'analisi dei tuoi dati. Cosa vuoi sapere?";
+// Friendly UX responses for different conversational scenarios
+export const CONVERSATIONAL_REPLIES = {
+  thanks: "Perfetto! Quando vuoi, chiedimi fatturato, food cost, margine o vendite per periodo.",
+  greeting: "Ciao! Sono pronto ad analizzare i tuoi dati. Cosa vuoi sapere?",
+  acknowledgment: "Ricevuto! Se hai altre domande sui dati, sono qui.",
+  help: "Posso aiutarti ad analizzare: fatturato, food cost, margine, vendite per periodo, confronti tra mesi e molto altro. Cosa ti interessa?",
+  ambiguous: "Vuoi analizzare fatturato, food cost, margine o un altro indicatore?",
+  default: "Perfetto! Quando vuoi, chiedimi fatturato, food cost o vendite per periodo."
+};
+
+// Detect which type of conversational reply to use
+function getConversationalReplyType(normalized: string): keyof typeof CONVERSATIONAL_REPLIES {
+  const thanksPatterns = ["grazie", "thanks", "thank", "perfetto", "ottimo", "grande", "bravo"];
+  const greetingPatterns = ["ciao", "salve", "buongiorno", "buonasera", "hello", "hi"];
+  const ackPatterns = ["ok", "okay", "capito", "inteso", "chiaro", "va bene", "d'accordo"];
+  const helpPatterns = ["aiuto", "help", "cosa puoi", "cosa sai", "come funziona"];
+  const ambiguousPatterns = ["come va", "tutto bene", "come stai"];
+  
+  if (thanksPatterns.some(p => normalized.includes(p))) return "thanks";
+  if (greetingPatterns.some(p => normalized.includes(p))) return "greeting";
+  if (helpPatterns.some(p => normalized.includes(p))) return "help";
+  if (ambiguousPatterns.some(p => normalized.includes(p))) return "ambiguous";
+  if (ackPatterns.some(p => normalized.includes(p))) return "acknowledgment";
+  
+  return "default";
+}
+
+export function getConversationalReply(userMessage: string): string {
+  const normalized = normalizeInput(userMessage);
+  const replyType = getConversationalReplyType(normalized);
+  return CONVERSATIONAL_REPLIES[replyType];
+}
+
+export const CONVERSATIONAL_FALLBACK_REPLY = CONVERSATIONAL_REPLIES.default;
 
 export function classifyIntent(userQuestion: string): IntentClassification {
   const question = userQuestion.trim();
