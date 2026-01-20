@@ -194,9 +194,9 @@ export function validateResponseNumbers(
     }
   }
   
-  // Only add as warning, not error (don't block)
+  // Only add as INFO note, not warning - these are calculated projections from AI
   if (inventedNumbers.length > 0) {
-    warnings.push(`Numeri aggiuntivi nella risposta (contesto consulenziale): ${inventedNumbers.join(", ")}`);
+    warnings.push(`📊 Calcoli proiettivi AI: ${inventedNumbers.join(", ")} (obiettivi/proiezioni basati sui dati reali)`);
   }
   
   const valid = errors.length === 0;

@@ -780,6 +780,20 @@ export function Message({ message, onActionClick }: MessageProps) {
         continue;
       }
 
+      if (trimmedLine.startsWith('📊')) {
+        const text = trimmedLine.replace(/^📊\s*/, '');
+        result.push(`<div class="my-4 p-4 bg-slate-50 dark:bg-slate-950/20 border-l-4 border-slate-400 rounded-r-lg">
+          <div class="flex items-start gap-3">
+            <span class="text-xl flex-shrink-0">📊</span>
+            <div>
+              <div class="font-bold text-slate-700 dark:text-slate-200 mb-1 text-sm uppercase tracking-wide">Nota Analitica</div>
+              <div class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">${text}</div>
+            </div>
+          </div>
+        </div>`);
+        continue;
+      }
+
       // Quotes
       if (trimmedLine.startsWith('>')) {
         const quoteText = trimmedLine.substring(1).trim();
