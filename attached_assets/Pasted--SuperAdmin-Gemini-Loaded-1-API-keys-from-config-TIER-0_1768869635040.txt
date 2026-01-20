@@ -1,0 +1,28 @@
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-CLASSIFIER] Question: "Mi calcoli i dati del foodcost..." → analytical (confidence: 0.95, requiresToolCall: true)
+[QUERY-PLANNER] Intent: analytical, requiresToolCall: true
+there are non-text parts functionCall,functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 2 steps, complexity: medium
+[EXECUTE-METRIC] Called with metricName: "food_cost", datasetId: 2
+[EXECUTE-METRIC] Found metric: food_cost, SQL: SUM(CAST("Unit Cost" AS NUMERIC) * CAST("Quantity" AS NUMERIC))
+[QUERY-EXECUTOR] Query execution error: column "Unit Cost" does not exist
+[QUERY-EXECUTOR] Failed to log query: column "metric_version" of relation "client_data_query_log" does not exist
+[EXECUTE-METRIC] Result: success=false, error=column "Unit Cost" does not exist
+[QUERY-PLANNER] Tool execute_metric failed: column "Unit Cost" does not exist
+[EXECUTE-METRIC] Called with metricName: "food_cost_percent", datasetId: 2
+[EXECUTE-METRIC] Found metric: food_cost_percent, SQL: (SUM(CAST("Unit Cost" AS NUMERIC) * CAST("Quantity" AS NUMERIC)) / NULLIF(SUM(CAST("Total Net" AS NUMERIC)), 0)) * 100
+[QUERY-EXECUTOR] Query execution error: column "Unit Cost" does not exist
+[QUERY-EXECUTOR] Failed to log query: column "metric_version" of relation "client_data_query_log" does not exist
+[EXECUTE-METRIC] Result: success=false, error=column "Unit Cost" does not exist
+[QUERY-PLANNER] Tool execute_metric failed: column "Unit Cost" does not exist
+[QUERY-PLANNER] Execution complete in 2214ms, success: false
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - blocking AI response. Errors: execute_metric: column "Unit Cost" does not exist; execute_metric: column "Unit Cost" does not exist
+[CLIENT-DATA] Assistant message saved: eaa79465-fd1b-44f2-bdd6-82f577cfe161
+12:40:29 AM [express] POST /api/client-data/conversation

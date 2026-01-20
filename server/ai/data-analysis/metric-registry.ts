@@ -45,7 +45,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "revenue",
     displayName: "Fatturato",
     description: "Somma totale delle vendite",
-    sqlExpression: 'SUM(CAST("Total Net" AS NUMERIC))',
+    sqlExpression: 'SUM(CAST("total_net" AS NUMERIC))',
     unit: "currency",
     validationRules: {
       mustBePositive: true,
@@ -58,7 +58,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "food_cost",
     displayName: "Food Cost",
     description: "Costo totale delle materie prime",
-    sqlExpression: 'SUM(CAST("Unit Cost" AS NUMERIC) * CAST("Quantity" AS NUMERIC))',
+    sqlExpression: 'SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC))',
     unit: "currency",
     validationRules: {
       mustBePositive: true,
@@ -71,7 +71,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "food_cost_percent",
     displayName: "Food Cost %",
     description: "Percentuale food cost su fatturato",
-    sqlExpression: '(SUM(CAST("Unit Cost" AS NUMERIC) * CAST("Quantity" AS NUMERIC)) / NULLIF(SUM(CAST("Total Net" AS NUMERIC)), 0)) * 100',
+    sqlExpression: '(SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC)) / NULLIF(SUM(CAST("total_net" AS NUMERIC)), 0)) * 100',
     unit: "percentage",
     validationRules: {
       minValue: 0,
@@ -87,7 +87,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "ticket_medio",
     displayName: "Ticket Medio",
     description: "Valore medio per ordine",
-    sqlExpression: 'AVG(CAST("Total Net" AS NUMERIC))',
+    sqlExpression: 'AVG(CAST("total_net" AS NUMERIC))',
     unit: "currency",
     validationRules: {
       mustBePositive: true,
@@ -100,7 +100,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "quantity_total",
     displayName: "Quantità Totale",
     description: "Numero totale di articoli venduti",
-    sqlExpression: 'SUM(CAST("Quantity" AS NUMERIC))',
+    sqlExpression: 'SUM(CAST("quantity" AS NUMERIC))',
     unit: "count",
     validationRules: {
       mustBePositive: true,
@@ -114,7 +114,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "order_count",
     displayName: "Numero Ordini",
     description: "Conteggio ordini unici",
-    sqlExpression: 'COUNT(DISTINCT "Order Id")',
+    sqlExpression: 'COUNT(DISTINCT "order_id")',
     unit: "count",
     validationRules: {
       mustBePositive: true,
@@ -128,7 +128,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "avg_unit_price",
     displayName: "Prezzo Medio Unitario",
     description: "Prezzo medio per unità venduta",
-    sqlExpression: 'AVG(CAST("Unit Price" AS NUMERIC))',
+    sqlExpression: 'AVG(CAST("unit_price" AS NUMERIC))',
     unit: "currency",
     validationRules: {
       mustBePositive: true,
@@ -141,7 +141,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "gross_margin",
     displayName: "Margine Lordo",
     description: "Fatturato meno food cost",
-    sqlExpression: 'SUM(CAST("Total Net" AS NUMERIC)) - SUM(CAST("Unit Cost" AS NUMERIC) * CAST("Quantity" AS NUMERIC))',
+    sqlExpression: 'SUM(CAST("total_net" AS NUMERIC)) - SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC))',
     unit: "currency",
     validationRules: {},
     dependsOn: ["revenue", "food_cost"],
@@ -152,7 +152,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "gross_margin_percent",
     displayName: "Margine Lordo %",
     description: "Percentuale margine lordo su fatturato",
-    sqlExpression: '((SUM(CAST("Total Net" AS NUMERIC)) - SUM(CAST("Unit Cost" AS NUMERIC) * CAST("Quantity" AS NUMERIC))) / NULLIF(SUM(CAST("Total Net" AS NUMERIC)), 0)) * 100',
+    sqlExpression: '((SUM(CAST("total_net" AS NUMERIC)) - SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC))) / NULLIF(SUM(CAST("total_net" AS NUMERIC)), 0)) * 100',
     unit: "percentage",
     validationRules: {
       minValue: 0,
@@ -166,7 +166,7 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
     name: "discount_total",
     displayName: "Sconti Totali",
     description: "Somma degli sconti applicati",
-    sqlExpression: 'SUM(CAST("Total Net" AS NUMERIC) * (CAST("Discount Percent" AS NUMERIC) / 100))',
+    sqlExpression: 'SUM(CAST("total_net" AS NUMERIC) * (CAST("discount_percent" AS NUMERIC) / 100))',
     unit: "currency",
     validationRules: {
       mustBePositive: true,
