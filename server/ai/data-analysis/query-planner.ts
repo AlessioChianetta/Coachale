@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 // NOTE: classifyIntent and ForceToolRetryError are deprecated - using Router Agent instead
 import { getConversationalReply } from "./intent-classifier";
 import { routeIntent, type IntentRouterOutput, type ConversationMessage } from "./intent-router";
-import { enforcePolicyOnToolCalls, getPolicyForIntent, POLICY_RULES, type IntentType } from "./policy-engine";
+import { enforcePolicyOnToolCalls, getPolicyForIntent, POLICY_RULES, validateAnalyticsToolCalls, COMPUTE_TOOLS as POLICY_COMPUTE_TOOLS, type IntentType } from "./policy-engine";
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
 import { METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
@@ -1127,6 +1127,39 @@ export async function askDataset(
             result: { 
               blocked: true, 
               message: `La richiesta non può essere elaborata: ${policyResult.violations[0]}`
+            },
+            success: false
+          }],
+          success: false,
+          totalExecutionTimeMs: Date.now() - startTime
+        };
+      }
+    }
+    
+    // NEW: Validate analytics intent with requires_metrics=true has at least one compute tool
+    // RULE: get_schema can PRECEDE compute tools, but cannot SUBSTITUTE them
+    // ENFORCED: If only metadata tools, BLOCK and require re-plan
+    if (routerOutput.intent === "analytics" && routerOutput.requiresMetrics) {
+      const analyticsValidation = validateAnalyticsToolCalls(plan.steps, routerOutput.requiresMetrics);
+      if (!analyticsValidation.valid) {
+        console.warn(`[QUERY-PLANNER] ANALYTICS VALIDATION FAILED: ${analyticsValidation.reason}`);
+        console.log(`[QUERY-PLANNER] BLOCKING metadata-only call - forcing compute tool requirement`);
+        return {
+          plan: {
+            steps: [],
+            reasoning: `Analytics validation failed: ${analyticsValidation.reason}`,
+            estimatedComplexity: "simple"
+          },
+          results: [{
+            toolName: "analytics_requires_compute",
+            args: { 
+              intent: routerOutput.intent, 
+              requiresMetrics: routerOutput.requiresMetrics,
+              attemptedTools: plan.steps.map(s => s.name)
+            },
+            result: { 
+              blocked: true, 
+              message: "La domanda richiede calcoli sui dati. Usa aggregate_group o execute_metric per analizzare i numeri del dataset."
             },
             success: false
           }],
