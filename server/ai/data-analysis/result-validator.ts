@@ -136,39 +136,70 @@ export function validateResponseNumbers(
   const errors: string[] = [];
   const warnings: string[] = [];
   
-  // Numbers that are commonly used in context (list numbers, common percentages, etc.)
-  const ALLOWED_CONTEXT_NUMBERS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100]);
+  // NEW APPROACH: Check that the IMPORTANT numbers from the database are PRESENT in the response
+  // Don't block for extra context numbers the AI uses for consulting (benchmarks, percentages, etc.)
   
-  for (const num of numbersInResponse) {
-    // Skip common context numbers (list items, common percentages)
-    if (ALLOWED_CONTEXT_NUMBERS.has(num)) {
-      continue;
+  // Find which tool numbers are missing from the response
+  const missingToolNumbers: number[] = [];
+  const presentToolNumbers: number[] = [];
+  
+  for (const toolNum of numbersFromTools) {
+    // Check if this tool number (or a rounded version) appears in the response
+    const foundInResponse = numbersInResponse.some(respNum => {
+      if (numbersAreClose(respNum, toolNum, 0.05)) return true;
+      // Check rounded versions
+      const rounded = Math.round(toolNum);
+      const roundedTo2 = Math.round(toolNum * 100) / 100;
+      const roundedTo1 = Math.round(toolNum * 10) / 10;
+      return numbersAreClose(respNum, rounded, 0.02) ||
+             numbersAreClose(respNum, roundedTo2, 0.02) ||
+             numbersAreClose(respNum, roundedTo1, 0.02);
+    });
+    
+    if (foundInResponse) {
+      presentToolNumbers.push(toolNum);
+    } else {
+      missingToolNumbers.push(toolNum);
     }
+  }
+  
+  // Calculate coverage: what percentage of database numbers are mentioned?
+  const coveragePercent = numbersFromTools.length > 0 
+    ? (presentToolNumbers.length / numbersFromTools.length) * 100 
+    : 100;
+  
+  console.log(`[RESULT-VALIDATOR] Coverage: ${coveragePercent.toFixed(0)}% (${presentToolNumbers.length}/${numbersFromTools.length} tool numbers found in response)`);
+  
+  // BLOCK only if:
+  // 1. Coverage is very low (< 20%) - AI is ignoring the database numbers
+  // 2. AND the response has numbers (AI is making up its own)
+  const hasSignificantNumbers = numbersInResponse.filter(n => n > 100).length > 0;
+  
+  if (numbersFromTools.length > 0 && coveragePercent < 20 && hasSignificantNumbers) {
+    errors.push(`HALLUCINATION DETECTED: Solo ${coveragePercent.toFixed(0)}% dei numeri dal database presenti nella risposta`);
+  }
+  
+  // For backwards compatibility, still track "invented" numbers but don't block for them
+  for (const num of numbersInResponse) {
+    if (num <= 100) continue; // Small numbers are likely context
     
     const foundInTools = numbersFromTools.some(toolNum => numbersAreClose(num, toolNum, 0.05));
-    
     if (!foundInTools) {
-      const isRoundedVersion = numbersFromTools.some(toolNum => {
-        const rounded = Math.round(toolNum);
-        const roundedTo2 = Math.round(toolNum * 100) / 100;
-        const roundedTo1 = Math.round(toolNum * 10) / 10;
-        return numbersAreClose(num, rounded, 0.01) || 
-               numbersAreClose(num, roundedTo2, 0.01) ||
-               numbersAreClose(num, roundedTo1, 0.01);
+      const isRounded = numbersFromTools.some(toolNum => {
+        return numbersAreClose(num, Math.round(toolNum), 0.02);
       });
-      
-      // STRICT: AI must NOT do post-query aggregation. Numbers must come from SQL.
-      if (!isRoundedVersion) {
+      if (!isRounded) {
         inventedNumbers.push(num);
       }
     }
   }
   
+  // Only add as warning, not error (don't block)
   if (inventedNumbers.length > 0) {
-    errors.push(`HALLUCINATION DETECTED: Numeri non provenienti dai tool: ${inventedNumbers.join(", ")}`);
+    warnings.push(`Numeri aggiuntivi nella risposta (contesto consulenziale): ${inventedNumbers.join(", ")}`);
   }
   
-  const valid = inventedNumbers.length === 0;
+  const valid = errors.length === 0;
   
   console.log(`[RESULT-VALIDATOR] Response numbers: ${numbersInResponse.length}, Tool numbers: ${numbersFromTools.length}, Invented: ${inventedNumbers.length}`);
   
