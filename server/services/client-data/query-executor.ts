@@ -446,16 +446,21 @@ export async function aggregateGroup(
   limit: number = 100,
   options: QueryOptions = {},
   timeGranularity?: "day" | "week" | "month" | "quarter" | "year",
-  dateColumn?: string
+  dateColumn?: string,
+  rawMetricSql?: { sql: string; alias: string }
 ): Promise<QueryResult> {
   const startTime = Date.now();
   
   // Normalize aggregations to array (AI might pass single object)
   let normalizedAggregations: { column: string; function: string; alias?: string }[];
-  if (!aggregations) {
+  
+  // If rawMetricSql is provided, we'll use that instead of aggregations
+  if (rawMetricSql) {
+    normalizedAggregations = []; // Will be handled specially below
+    console.log(`[AGGREGATE-GROUP] Using raw metric SQL: ${rawMetricSql.sql} AS "${rawMetricSql.alias}"`);
+  } else if (!aggregations) {
     return { success: false, error: "Aggregations parameter is required" };
-  }
-  if (Array.isArray(aggregations)) {
+  } else if (Array.isArray(aggregations)) {
     normalizedAggregations = aggregations;
   } else if (typeof aggregations === 'object') {
     normalizedAggregations = [aggregations];
@@ -463,7 +468,7 @@ export async function aggregateGroup(
     return { success: false, error: `Invalid aggregations format: expected array or object, got ${typeof aggregations}` };
   }
   
-  if (normalizedAggregations.length === 0) {
+  if (normalizedAggregations.length === 0 && !rawMetricSql) {
     return { success: false, error: "At least one aggregation is required" };
   }
   
@@ -525,34 +530,40 @@ export async function aggregateGroup(
     selectParts = groupByColumns.map(c => `"${c}"`);
     effectiveGroupBy = groupByColumns.map(c => `"${c}"`);
   }
-  const validFunctions = ["SUM", "AVG", "COUNT", "MIN", "MAX"];
+  // Add aggregation expressions to SELECT
+  if (rawMetricSql) {
+    // Use the raw SQL expression from the semantic layer (e.g., SUM(unit_price * quantity))
+    selectParts.push(`${rawMetricSql.sql} AS "${rawMetricSql.alias}"`);
+  } else {
+    const validFunctions = ["SUM", "AVG", "COUNT", "MIN", "MAX"];
 
-  for (const agg of normalizedAggregations) {
-    if (!agg.function) {
-      return { success: false, error: `Missing aggregate function for column: ${agg.column}` };
-    }
-    const func = agg.function.toUpperCase();
-    if (!validFunctions.includes(func)) {
-      return { success: false, error: `Invalid aggregate function: ${agg.function}` };
-    }
+    for (const agg of normalizedAggregations) {
+      if (!agg.function) {
+        return { success: false, error: `Missing aggregate function for column: ${agg.column}` };
+      }
+      const func = agg.function.toUpperCase();
+      if (!validFunctions.includes(func)) {
+        return { success: false, error: `Invalid aggregate function: ${agg.function}` };
+      }
 
-    if (agg.column !== "*" && !datasetInfo.columns.includes(agg.column)) {
-      return { success: false, error: `Invalid aggregate column: ${agg.column}` };
-    }
+      if (agg.column !== "*" && !datasetInfo.columns.includes(agg.column)) {
+        return { success: false, error: `Invalid aggregate column: ${agg.column}` };
+      }
 
-    let col: string;
-    if (agg.column === "*") {
-      col = "*";
-    } else {
-      const colMapping = datasetInfo.columnMapping[agg.column];
-      const isNumericType = colMapping && /^(number|numeric|integer|decimal)$/i.test(colMapping.dataType);
-      const needsCast = isNumericType && ["SUM", "AVG", "MIN", "MAX"].includes(func);
-      col = needsCast 
-        ? `CAST("${agg.column}" AS NUMERIC)` 
-        : `"${agg.column}"`;
+      let col: string;
+      if (agg.column === "*") {
+        col = "*";
+      } else {
+        const colMapping = datasetInfo.columnMapping[agg.column];
+        const isNumericType = colMapping && /^(number|numeric|integer|decimal)$/i.test(colMapping.dataType);
+        const needsCast = isNumericType && ["SUM", "AVG", "MIN", "MAX"].includes(func);
+        col = needsCast 
+          ? `CAST("${agg.column}" AS NUMERIC)` 
+          : `"${agg.column}"`;
+      }
+      const alias = agg.alias || `${func.toLowerCase()}_${agg.column}`;
+      selectParts.push(`${func}(${col}) AS "${alias}"`);
     }
-    const alias = agg.alias || `${func.toLowerCase()}_${agg.column}`;
-    selectParts.push(`${func}(${col}) AS "${alias}"`);
   }
 
   const params: (string | number)[] = [];

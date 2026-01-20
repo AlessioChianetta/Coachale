@@ -1,0 +1,159 @@
+✅ VALORI CORRETTI (calcolo deterministico sul CSV)
+
+Dal dataset:
+
+Mese	Vendite corrette
+Gennaio 2025	€4.542,00
+Febbraio 2025	€4.063,00
+Marzo 2025	€277,50
+
+Totale = €8.882,50 (coerente col fatturato lordo totale)
+
+❌ VALORI CHE TI HA DATO IL TUO SISTEMA
+
+Il tuo sistema ha restituito:
+
+Mese	Valore AI
+Gennaio	€1.833,50
+Febbraio	€1.564,50
+Marzo	€110,50
+
+👉 Sono esattamente ~40% del valore reale.
+
+Questo NON è un errore casuale.
+
+🎯 COSA STA SUCCEDENDO DAVVERO
+
+Questi numeri corrispondono MOLTO probabilmente a:
+
+SUM(total_net)
+
+
+cioè:
+
+fatturato NETTO dopo sconto
+
+NON fatturato lordo
+
+Mentre tu stai chiedendo:
+
+“totale vendite”
+
+che semanticamente deve essere:
+
+SUM(unit_price * quantity)
+
+ERRORE STRUTTURALE
+
+Il tuo sistema:
+
+✅ ora raggruppa correttamente per mese
+❌ MA usa ancora la colonna sbagliata come “revenue”
+
+È lo stesso problema del food cost %, ripetuto su un altro KPI.
+
+RADICE DEL PROBLEMA
+
+Tu NON hai ancora:
+
+una definizione unica e obbligatoria di “revenue”
+
+Quindi:
+
+Gemini sceglie total_net
+
+perché è la colonna più “ovvia”
+
+ma è concettualmente sbagliata per KPI finanziari base.
+
+COSA DEVI DIRE AL PROGRAMMATORE (PRECISO)
+
+Digli questo:
+
+"Le vendite mensili stanno usando total_net invece di revenue lordo.
+Serve definizione canonica:
+
+revenue_gross = SUM(unit_price * quantity)
+
+Questa deve essere la metrica default per 'vendite', 'fatturato', 'revenue'.
+total_net deve essere chiamato net_revenue e usato solo se richiesto esplicitamente."
+
+COSA IMPLEMENTARE SUBITO
+1️⃣ Metrica primaria obbligatoria
+
+Nel semantic layer:
+
+PRIMARY_REVENUE = revenue_gross
+
+
+E nel planner:
+
+Se utente dice:
+
+vendite
+
+fatturato
+
+revenue
+
+👉 usa SEMPRE revenue_gross.
+
+2️⃣ Mapping sinonimi
+vendite -> revenue_gross
+fatturato -> revenue_gross
+incassi -> revenue_gross
+
+
+NON colonna raw.
+
+3️⃣ Esporre anche net_revenue (ma non default)
+
+Così puoi dire:
+
+lordo
+
+netto
+
+differenza sconti
+
+Questo aumenta valore prodotto.
+
+PERCHÉ QUESTO È CRITICO PER IL BUSINESS
+
+Se vai dal cliente e dici:
+
+“Hai fatturato 1.800€ a gennaio”
+
+quando in realtà ha fatto 4.500€:
+
+❌ perdi credibilità
+❌ il rivenditore smette di vendere
+❌ il prodotto muore
+
+Questo è un bug killer.
+
+LA BUONA NOTIZIA
+
+Ora il sistema:
+
+usa SQL corretto
+
+usa time grouping corretto
+
+NON inventa numeri
+
+Sta solo usando colonne sbagliate per KPI base.
+
+Questo è esattamente ciò che il semantic layer serve a risolvere.
+
+VERDETTO TECNICO
+
+Se sistemi:
+
+revenue_gross canonico
+
+food_cost_percent derivato corretto
+
+mapping sinonimi KPI
+
+Hai risolto il 90% dei bug numerici business-critical.

@@ -502,16 +502,15 @@ export async function executeToolCall(
         
         // Convert metricName to aggregations if provided
         let aggregations = toolCall.args.aggregations;
+        let useRawSqlExpression: string | null = null;
+        
         if (!aggregations && toolCall.args.metricName) {
           const metric = getMetricDefinition(toolCall.args.metricName);
           if (metric) {
-            // Extract column from SQL expression: SUM(CAST("column" AS NUMERIC))
-            const columnMatch = metric.sqlExpression.match(/"(\w+)"/);
-            const column = columnMatch ? columnMatch[1] : "total_net";
-            const funcMatch = metric.sqlExpression.match(/^(SUM|AVG|COUNT|MIN|MAX)/i);
-            const func = funcMatch ? funcMatch[1].toUpperCase() : "SUM";
-            aggregations = [{ column, function: func, alias: toolCall.args.metricName }];
-            console.log(`[AGGREGATE-GROUP] Converted metricName "${toolCall.args.metricName}" to aggregations:`, JSON.stringify(aggregations));
+            // Use the FULL SQL expression from the metric definition
+            // This ensures complex formulas like SUM(unit_price * quantity) work correctly
+            useRawSqlExpression = metric.sqlExpression;
+            console.log(`[AGGREGATE-GROUP] Using raw SQL expression for "${toolCall.args.metricName}": ${useRawSqlExpression}`);
           } else {
             // Default fallback for unknown metrics
             aggregations = [{ column: "total_net", function: "SUM", alias: "totale" }];
@@ -526,7 +525,7 @@ export async function executeToolCall(
           sanitizedOrderBy = undefined;
         }
         
-        if (!aggregations) {
+        if (!aggregations && !useRawSqlExpression) {
           result = { success: false, error: "Either aggregations or metricName is required" };
         } else {
           // Log time granularity if specified
@@ -537,13 +536,14 @@ export async function executeToolCall(
           result = await aggregateGroup(
             toolCall.args.datasetId,
             toolCall.args.groupBy,
-            aggregations,
+            aggregations || [],  // Pass empty array when using raw SQL
             toolCall.args.filters,
             sanitizedOrderBy,
             toolCall.args.limit || 100,
             { userId },
             toolCall.args.timeGranularity,
-            toolCall.args.dateColumn
+            toolCall.args.dateColumn,
+            useRawSqlExpression ? { sql: useRawSqlExpression, alias: toolCall.args.metricName } : undefined
           );
           console.log(`[AGGREGATE-GROUP] Result: success=${result.success}, rowCount=${result.rowCount}, error=${result.error || 'none'}`);
         }
