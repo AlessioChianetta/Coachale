@@ -19,59 +19,91 @@ export interface IntentRouterOutput {
   confidence: number;
 }
 
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+  toolCalls?: Array<{ toolName: string }>;
+}
+
 const INTENT_ROUTER_MODEL = "gemini-2.5-flash-lite";
 
-const ROUTER_PROMPT = `Sei un classificatore di intenti. NON fare analisi, NON generare numeri.
+const ROUTER_PROMPT = `Sei un classificatore di intenti INTELLIGENTE. NON fare analisi, NON generare numeri.
 
-ANALIZZA la domanda dell'utente e restituisci SOLO un JSON con:
-- intent: tipo di richiesta
-- requires_metrics: se servono numeri dal database
-- suggested_tools: tool consigliati (può essere vuoto)
-- confidence: confidenza della classificazione (0.0-1.0)
+========================
+IL TUO COMPITO
+========================
+
+RAGIONA sul CONTESTO della conversazione, poi classifica l'intento.
+Non basarti solo sulle parole chiave - usa il ragionamento logico.
+
+========================
+CHAIN OF THOUGHT (OBBLIGATORIO)
+========================
+
+PRIMA di classificare, chiediti:
+1. L'utente ha appena ricevuto numeri/aggregazioni? (es: "945 piatti", "fatturato 21.000€")
+2. Sta chiedendo dettagli, drill-down, o analisi approfondita di quei numeri?
+3. È una continuazione logica dell'analisi precedente?
+4. Qual è l'OBIETTIVO REALE dell'utente?
+
+REGOLA D'ORO:
+Se l'utente ha appena visto numeri aggregati e chiede "analizzami", "dettagli", "uno per uno", "quali sono", "elenca" → è SEMPRE ANALYTICS (drill-down analitico), MAI data_preview.
 
 ========================
 INTENT TYPES
 ========================
 
 ANALYTICS (requires_metrics: true)
-- Domande che chiedono numeri specifici
-- Esempi: "Qual è il fatturato?", "Quanti ordini?", "Food cost %", "Ticket medio", "Margine"
-- Parole chiave: quanto, quanti, totale, somma, media, percentuale, fatturato, revenue, vendite, costo, margine
-- Tool: execute_metric, aggregate_group, compare_periods
+- Domande che chiedono numeri specifici o dettagli su numeri già visti
+- DRILL-DOWN: dopo aver visto aggregazioni, chiede dettagli → ANALYTICS
+- Esempi: "Qual è il fatturato?", "Quanti ordini?", "Analizzami i 945 piatti", "Quali piatti?"
+- Parole chiave: quanto, quanti, totale, somma, media, analizzami, dettagli, quali sono
+- Tool: execute_metric, aggregate_group, compare_periods, filter_data
 
 STRATEGY (requires_metrics: false)
-- Domande consulenziali/strategiche che chiedono consigli
-- Esempi: "Come aumento il fatturato?", "Consigli per ridurre i costi", "Come posso migliorare?"
-- Parole chiave: come posso, come fare, consigli, suggerimenti, strategie, migliorare, aumentare, ridurre
+- Domande consulenziali che chiedono CONSIGLI, non numeri
+- Esempi: "Come aumento il fatturato?", "Consigli per ridurre i costi"
 - Tool: NESSUNO - risposta qualitativa
 
 DATA_PREVIEW (requires_metrics: false)
-- Richieste di vedere righe raw del dataset
-- Esempi: "Mostrami i dati", "Prime 10 righe", "Lista ordini", "Vedi tabella"
-- Parole chiave: mostrami, visualizza, lista, tabella, righe, dati raw, anteprima
-- Tool: filter_data SOLO
+- SOLO richieste iniziali di vedere dati raw SENZA contesto analitico
+- Esempi: "Mostrami le prime 10 righe", "Che dati ci sono?", "Anteprima tabella"
+- NON usare se l'utente sta facendo drill-down su numeri precedenti!
+- Tool: filter_data, get_schema
 
 CONVERSATIONAL (requires_metrics: false)
-- Saluti, ringraziamenti, conferme, domande su cosa puoi fare
-- Esempi: "Grazie", "Ok", "Ciao", "Perfetto", "Cosa puoi fare?"
+- Saluti, ringraziamenti, conferme brevi
+- Esempi: "Grazie", "Ok", "Ciao"
 - Tool: NESSUNO
 
 ========================
-REGOLE DI CLASSIFICAZIONE
+ESEMPI DI RAGIONAMENTO
 ========================
 
-1. Se la domanda contiene "quanto", "quanti", "qual è il", "calcola" → ANALYTICS
-2. Se la domanda contiene "come posso", "consigli", "suggerimenti" → STRATEGY  
-3. Se la domanda contiene "mostrami", "visualizza", "lista", "tabella" → DATA_PREVIEW
-4. Se è un saluto, ringraziamento o conferma breve → CONVERSATIONAL
-5. In caso di dubbio tra ANALYTICS e STRATEGY, preferisci ANALYTICS
+ESEMPIO 1 - DRILL-DOWN ANALITICO:
+Contesto: Assistant mostrò "categoria Food: 945 piatti"
+Utente: "analizzami uno per uno i 945 piatti della categoria food"
+Ragionamento: L'utente ha visto un aggregato (945) e vuole i DETTAGLI. È un drill-down analitico.
+→ ANALYTICS (NON data_preview!)
+
+ESEMPIO 2 - PREVIEW INIZIALE:
+Contesto: Nessuna conversazione precedente
+Utente: "mostrami i dati"
+Ragionamento: Prima richiesta, vuole solo vedere cosa c'è. Nessun contesto numerico.
+→ DATA_PREVIEW
+
+ESEMPIO 3 - CONTINUAZIONE ANALITICA:
+Contesto: Assistant mostrò il fatturato totale
+Utente: "ora fammi vedere per mese"
+Ragionamento: Sta continuando l'analisi, vuole breakdown temporale.
+→ ANALYTICS
 
 ========================
 OUTPUT FORMAT
 ========================
 
-Rispondi SOLO con JSON valido, senza markdown o altro testo:
-{"intent":"analytics","requires_metrics":true,"suggested_tools":["execute_metric"],"confidence":0.95}`;
+Rispondi SOLO con JSON valido:
+{"intent":"analytics","requires_metrics":true,"suggested_tools":["aggregate_group"],"confidence":0.95}`;
 
 function parseRouterResponse(responseText: string): IntentRouterOutput | null {
   try {
@@ -124,29 +156,65 @@ function getDefaultIntent(): IntentRouterOutput {
 }
 
 /**
+ * Format conversation history for the router prompt
+ */
+function formatConversationContext(history: ConversationMessage[]): string {
+  if (!history || history.length === 0) {
+    return "Nessuna conversazione precedente.";
+  }
+  
+  const formattedMessages = history.slice(-5).map((msg, idx) => {
+    const role = msg.role === "user" ? "UTENTE" : "ASSISTANT";
+    const toolInfo = msg.toolCalls?.length 
+      ? ` [usò: ${msg.toolCalls.map(t => t.toolName).join(", ")}]`
+      : "";
+    const contentPreview = msg.content.length > 200 
+      ? msg.content.substring(0, 200) + "..." 
+      : msg.content;
+    return `${idx + 1}. ${role}${toolInfo}: ${contentPreview}`;
+  });
+  
+  return formattedMessages.join("\n");
+}
+
+/**
  * Route user intent using gemini-2.5-flash-lite
  * @param question - User's question to classify
  * @param consultantId - Optional consultant ID for AI client resolution
+ * @param conversationHistory - Previous messages for context-aware classification
  * @returns IntentRouterOutput with classification result
  */
 export async function routeIntent(
   question: string,
-  consultantId?: string
+  consultantId?: string,
+  conversationHistory?: ConversationMessage[]
 ): Promise<IntentRouterOutput> {
   const startTime = Date.now();
   console.log(`[INTENT-ROUTER] Classifying question: "${question.substring(0, 80)}${question.length > 80 ? '...' : ''}"`);
+  console.log(`[INTENT-ROUTER] Conversation context: ${conversationHistory?.length || 0} messages`);
   
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);
     const client = providerResult.client;
     console.log(`[INTENT-ROUTER] Using provider: ${providerResult.metadata?.name || "unknown"}`);
     
+    const contextSection = formatConversationContext(conversationHistory || []);
+    const fullPrompt = `========================
+CONTESTO CONVERSAZIONE PRECEDENTE
+========================
+${contextSection}
+
+========================
+NUOVA DOMANDA DA CLASSIFICARE
+========================
+${question}`;
+    
     const result = await client.generateContent({
       model: INTENT_ROUTER_MODEL,
       contents: [
         {
           role: "user",
-          parts: [{ text: question }],
+          parts: [{ text: fullPrompt }],
         },
       ],
       generationConfig: {
