@@ -288,13 +288,18 @@ export function validateResponseNumbers(
   // are legitimate derived calculations or context for consulting purposes
   const fullCoverage = coveragePercent >= 100;
   
+  // Track extra numbers for informational purposes
+  const extraNumbers = [...inventedNumbers];
+  
   if (inventedNumbers.length > 0) {
     if (fullCoverage) {
       // Full coverage: all database numbers are present, extra numbers are just analysis
       console.log(`[RESULT-VALIDATOR] COVERAGE BYPASS: 100% coverage, allowing ${inventedNumbers.length} derived/extra numbers`);
-      if (inventedNumbers.length > 0) {
-        warnings.push(`📊 Analisi AI: ${inventedNumbers.join(", ")} (calcoli derivati dai dati reali)`);
+      if (extraNumbers.length > 0) {
+        warnings.push(`📊 Analisi AI: ${extraNumbers.join(", ")} (calcoli derivati dai dati reali)`);
       }
+      // CLEAR invented numbers when coverage bypass is active - this prevents fullValidation from blocking
+      inventedNumbers.length = 0;
     } else {
       // Partial coverage: some database numbers are missing, be more strict
       const significantInvented = inventedNumbers.filter(n => n > 10 || (n > 0 && n < 1));
@@ -302,13 +307,15 @@ export function validateResponseNumbers(
         errors.push(`ERRORE CRITICO - NUMERI INVENTATI: Questi numeri (${significantInvented.join(", ")}) non provengono dai risultati dei tool. L'AI ha inventato dati. Risposta bloccata.`);
       } else if (inventedNumbers.length > 0) {
         warnings.push(`📊 Calcoli AI: ${inventedNumbers.join(", ")} (analisi derivate dai dati)`);
+        // Also clear for partial coverage when no error is generated
+        inventedNumbers.length = 0;
       }
     }
   }
   
   const valid = errors.length === 0;
   
-  console.log(`[RESULT-VALIDATOR] Response numbers: ${numbersInResponse.length}, Tool numbers: ${numbersFromTools.length}, Invented: ${inventedNumbers.length}`);
+  console.log(`[RESULT-VALIDATOR] Response numbers: ${numbersInResponse.length}, Tool numbers: ${numbersFromTools.length}, Extra: ${extraNumbers.length}, Final invented: ${inventedNumbers.length}`);
   
   return {
     valid,
