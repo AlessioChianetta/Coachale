@@ -84,13 +84,38 @@ A 3-layer pipeline separating intent classification from execution to prevent st
 - **Result Size Guardrail**: `checkCardinalityBeforeAggregate()` asks for user confirmation if result > 500 rows (top N, export, paginate options)
 - Wiring logs: `[WIRING-CHECK]` prefix for debugging execution flow
 
-### Auto Semantic Mapping for CSV Datasets
-Automatic detection of column roles (price, cost, quantity, order_date) during CSV upload with confidence scoring. Features include:
-- **Auto-detect on upload**: Saves mappings with confidence ≥ 0.70 to dataset_column_semantics table
-- **Critical column confirmation**: Requires 1-click confirmation for price/cost/quantity/order_date (even with high confidence)
-- **Analytics blocking**: Blocks analytical queries until required semantic mappings are confirmed
-- **Semantic resolver integration**: Metric formulas use {placeholder} syntax resolved via confirmed mappings
-- **Golden test values**: revenue=21956.62, food_cost=7689.61, order_count=941 for restaurant test dataset
+### Universal Semantic Layer (Enterprise-Grade)
+A domain-agnostic semantic layer supporting any CSV/Excel dataset (POS, DDT, invoices, e-commerce, ERP):
+
+**18 Logical Roles:**
+- `document_id`: Universal document identifier (DDT, orders, invoices, receipts)
+- `line_id`: Line/detail row identifier
+- `revenue_amount`: Final revenue per line (post-discount, ready to sum)
+- `price`, `cost`, `quantity`: Core financial columns
+- `product_id`, `product_name`, `category`: Product data
+- `customer_id`, `customer_name`: Customer data
+- `supplier_id`, `supplier_name`: Supplier data
+- `order_date`, `payment_method`, `status`, `warehouse`, etc.
+
+**Alias System:**
+- `document_id` ↔ `order_id` are interchangeable
+- Metrics work regardless of which is mapped
+- Example: `idddt` (DDT) or `order_id` (POS) both satisfy `{document_id}`
+
+**Flexible Auto-Detect Patterns:**
+- Patterns match variations: `prezzofinale`, `prezzofinaleultra`, `prezzo_finale_2`
+- No strict ending required (removed $ anchor from regex)
+- Italian and English column names supported
+
+**Metrics Use Logical Roles Only:**
+- `revenue = SUM({revenue_amount})` - never hard-coded column names
+- `document_count = COUNT(DISTINCT {document_id})`
+- `ticket_medio = SUM({revenue_amount}) / COUNT(DISTINCT {document_id})`
+
+**Pre-validation:**
+- Analytics blocked until core mappings confirmed
+- Monetary column warnings prevent wrong revenue calculations
+- Clear error messages: "Manca: Importo Fatturato (Totale Riga)"
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
