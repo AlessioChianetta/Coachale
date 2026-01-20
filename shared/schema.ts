@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial, uuid, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -8659,3 +8659,24 @@ export const clientDataAiPreferences = pgTable("client_data_ai_preferences", {
 
 export type ClientDataAiPreference = typeof clientDataAiPreferences.$inferSelect;
 export type InsertClientDataAiPreference = typeof clientDataAiPreferences.$inferInsert;
+
+// ============================================================
+// DATASET COLUMN MAPPINGS - Semantic layer: logical → physical column mapping
+// ============================================================
+
+export const datasetColumnMappings = pgTable("dataset_column_mappings", {
+  id: serial("id").primaryKey(),
+  datasetId: integer("dataset_id").notNull().references(() => clientDataDatasets.id, { onDelete: "cascade" }),
+  logicalColumn: varchar("logical_column", { length: 100 }).notNull(),
+  physicalColumn: varchar("physical_column", { length: 255 }).notNull(),
+  confidence: decimal("confidence", { precision: 3, scale: 2 }).default("1.0"),
+  isConfirmed: boolean("is_confirmed").default(false),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  datasetIdx: index("idx_dataset_column_mappings_dataset").on(table.datasetId),
+  uniqueMapping: unique("dataset_column_mappings_dataset_logical_unique").on(table.datasetId, table.logicalColumn),
+}));
+
+export type DatasetColumnMapping = typeof datasetColumnMappings.$inferSelect;
+export type InsertDatasetColumnMapping = typeof datasetColumnMappings.$inferInsert;

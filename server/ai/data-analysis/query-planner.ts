@@ -11,8 +11,10 @@ import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
 import { classifyIntent, ForceToolRetryError, requiresNumericAnswer } from "./intent-classifier";
-import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName } from "./metric-registry";
+import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
 import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
+import { forceMetricFromTerms } from "./term-mapper";
+import { validateMetricForDataset, getBusinessFriendlyError } from "./pre-validator";
 
 interface DatasetInfo {
   id: string;

@@ -3,11 +3,16 @@
  * 
  * Gemini can ONLY select from these pre-defined metrics.
  * NO custom DSL allowed - eliminates 70% of errors.
+ * 
+ * UPDATED: Now uses metric-templates.ts with semantic column placeholders
+ * that get resolved by semantic-resolver.ts before SQL execution.
  */
 
 import { db } from "../../db";
 import { clientDataMetrics, clientDataDatasets } from "../../../shared/schema";
 import { eq, and } from "drizzle-orm";
+import { METRIC_TEMPLATES, getMetricTemplate, getMetricTemplateNames, type MetricTemplate } from "./metric-templates";
+import { resolveMetricSQL, getColumnMappingsForDataset } from "./semantic-resolver";
 
 export interface MetricDefinition {
   id: number;
@@ -15,6 +20,8 @@ export interface MetricDefinition {
   displayName: string;
   description?: string;
   sqlExpression: string;
+  sqlTemplate?: string;
+  requiredLogicalColumns?: string[];
   unit: "currency" | "percentage" | "number" | "count";
   validationRules: ValidationRules;
   dependsOn?: string[];
@@ -40,7 +47,39 @@ export interface ColumnDefinition {
   description?: string;
 }
 
-const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
+function templateToStandardMetric(template: MetricTemplate): Omit<MetricDefinition, "id"> {
+  return {
+    name: template.name,
+    displayName: template.displayName,
+    description: template.description,
+    sqlExpression: template.sqlTemplate,
+    sqlTemplate: template.sqlTemplate,
+    requiredLogicalColumns: template.requiredLogicalColumns,
+    unit: template.unit,
+    validationRules: template.validationRules,
+    isPrimary: template.isPrimary,
+    version: template.version,
+  };
+}
+
+const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = Object.fromEntries(
+  Object.entries(METRIC_TEMPLATES).map(([name, template]) => [name, templateToStandardMetric(template)])
+);
+
+export async function resolveMetricSQLForDataset(
+  metricName: string,
+  datasetId: number
+): Promise<{ sql: string; valid: boolean; error?: string }> {
+  const template = METRIC_TEMPLATES[metricName];
+  if (!template) {
+    return { sql: "", valid: false, error: `Metrica "${metricName}" non trovata` };
+  }
+  
+  const result = await resolveMetricSQL(template.sqlTemplate, datasetId);
+  return result;
+}
+
+const LEGACY_STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
   revenue_gross: {
     name: "revenue_gross",
     displayName: "Fatturato Lordo",
