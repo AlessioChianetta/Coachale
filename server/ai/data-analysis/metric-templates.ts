@@ -1,6 +1,10 @@
 /**
  * Metric Templates with Placeholder Columns
  * These templates use {logical_column} placeholders that get resolved to physical columns
+ * 
+ * UNIVERSAL BI METRICS
+ * All metrics use logical roles, NOT physical column names
+ * document_id = universal document identifier (order, DDT, invoice, receipt)
  */
 
 export interface MetricTemplate {
@@ -23,6 +27,20 @@ export interface MetricTemplate {
 }
 
 export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
+  revenue: {
+    name: "revenue",
+    displayName: "Fatturato",
+    description: "Fatturato reale (somma degli importi riga già calcolati, post-sconti). Usa revenue_amount, NON price*quantity.",
+    sqlTemplate: 'SUM(CAST({revenue_amount} AS NUMERIC))',
+    requiredLogicalColumns: ["revenue_amount"],
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 2,
+  },
   revenue_gross: {
     name: "revenue_gross",
     displayName: "Fatturato Lordo",
@@ -51,20 +69,6 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
     isPrimary: true,
     version: 1,
   },
-  revenue: {
-    name: "revenue",
-    displayName: "Fatturato",
-    description: "Fatturato reale (somma degli importi riga già calcolati, post-sconti). Usa revenue_amount, NON price*quantity.",
-    sqlTemplate: 'SUM(CAST({revenue_amount} AS NUMERIC))',
-    requiredLogicalColumns: ["revenue_amount"],
-    unit: "currency",
-    validationRules: {
-      mustBePositive: true,
-      minValue: 0,
-    },
-    isPrimary: true,
-    version: 2,
-  },
   revenue_calculated: {
     name: "revenue_calculated",
     displayName: "Fatturato Calcolato",
@@ -77,6 +81,109 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
       minValue: 0,
     },
     isPrimary: false,
+    version: 1,
+  },
+  document_count: {
+    name: "document_count",
+    displayName: "Numero Documenti",
+    description: "Conteggio documenti unici (DDT, fatture, ordini, scontrini)",
+    sqlTemplate: 'COUNT(DISTINCT {document_id})',
+    requiredLogicalColumns: ["document_id"],
+    unit: "count",
+    validationRules: {
+      mustBePositive: true,
+      mustBeInteger: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 1,
+  },
+  order_count: {
+    name: "order_count",
+    displayName: "Numero Ordini",
+    description: "Conteggio ordini/documenti unici (usa document_id)",
+    sqlTemplate: 'COUNT(DISTINCT {document_id})',
+    requiredLogicalColumns: ["document_id"],
+    unit: "count",
+    validationRules: {
+      mustBePositive: true,
+      mustBeInteger: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 2,
+  },
+  ticket_medio: {
+    name: "ticket_medio",
+    displayName: "Ticket Medio",
+    description: "Valore medio per documento (fatturato / numero documenti)",
+    sqlTemplate: 'SUM(CAST({revenue_amount} AS NUMERIC)) / NULLIF(COUNT(DISTINCT {document_id}), 0)',
+    requiredLogicalColumns: ["revenue_amount", "document_id"],
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 2,
+  },
+  customer_count: {
+    name: "customer_count",
+    displayName: "Numero Clienti",
+    description: "Conteggio clienti unici",
+    sqlTemplate: 'COUNT(DISTINCT {customer_id})',
+    requiredLogicalColumns: ["customer_id"],
+    unit: "count",
+    validationRules: {
+      mustBePositive: true,
+      mustBeInteger: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 1,
+  },
+  product_count: {
+    name: "product_count",
+    displayName: "Numero Prodotti",
+    description: "Conteggio prodotti unici",
+    sqlTemplate: 'COUNT(DISTINCT {product_id})',
+    requiredLogicalColumns: ["product_id"],
+    unit: "count",
+    validationRules: {
+      mustBePositive: true,
+      mustBeInteger: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 1,
+  },
+  supplier_count: {
+    name: "supplier_count",
+    displayName: "Numero Fornitori",
+    description: "Conteggio fornitori unici",
+    sqlTemplate: 'COUNT(DISTINCT {supplier_id})',
+    requiredLogicalColumns: ["supplier_id"],
+    unit: "count",
+    validationRules: {
+      mustBePositive: true,
+      mustBeInteger: true,
+      minValue: 0,
+    },
+    isPrimary: false,
+    version: 1,
+  },
+  quantity_total: {
+    name: "quantity_total",
+    displayName: "Quantità Totale",
+    description: "Numero totale di articoli venduti",
+    sqlTemplate: 'SUM(CAST({quantity} AS NUMERIC))',
+    requiredLogicalColumns: ["quantity"],
+    unit: "count",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: true,
     version: 1,
   },
   food_cost: {
@@ -105,50 +212,6 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
       maxValue: 100,
       warningThreshold: 35,
       warningMessage: "Food cost superiore al 35% - verificare margini",
-    },
-    isPrimary: true,
-    version: 1,
-  },
-  ticket_medio: {
-    name: "ticket_medio",
-    displayName: "Ticket Medio",
-    description: "Valore medio per ordine (fatturato / numero ordini)",
-    sqlTemplate: 'SUM(CAST({price} AS NUMERIC) * CAST({quantity} AS NUMERIC)) / NULLIF(COUNT(DISTINCT {order_id}), 0)',
-    requiredLogicalColumns: ["price", "quantity", "order_id"],
-    unit: "currency",
-    validationRules: {
-      mustBePositive: true,
-      minValue: 0,
-    },
-    isPrimary: true,
-    version: 1,
-  },
-  quantity_total: {
-    name: "quantity_total",
-    displayName: "Quantità Totale",
-    description: "Numero totale di articoli venduti",
-    sqlTemplate: 'SUM(CAST({quantity} AS NUMERIC))',
-    requiredLogicalColumns: ["quantity"],
-    unit: "count",
-    validationRules: {
-      mustBePositive: true,
-      mustBeInteger: true,
-      minValue: 0,
-    },
-    isPrimary: true,
-    version: 1,
-  },
-  order_count: {
-    name: "order_count",
-    displayName: "Numero Ordini",
-    description: "Conteggio ordini unici",
-    sqlTemplate: 'COUNT(DISTINCT {order_id})',
-    requiredLogicalColumns: ["order_id"],
-    unit: "count",
-    validationRules: {
-      mustBePositive: true,
-      mustBeInteger: true,
-      minValue: 0,
     },
     isPrimary: true,
     version: 1,
@@ -220,6 +283,34 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
     isPrimary: false,
     version: 1,
   },
+  avg_items_per_document: {
+    name: "avg_items_per_document",
+    displayName: "Media Articoli per Documento",
+    description: "Numero medio di articoli per documento/ordine",
+    sqlTemplate: 'COUNT(*) / NULLIF(COUNT(DISTINCT {document_id}), 0)',
+    requiredLogicalColumns: ["document_id"],
+    unit: "number",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: false,
+    version: 1,
+  },
+  avg_quantity_per_line: {
+    name: "avg_quantity_per_line",
+    displayName: "Media Quantità per Riga",
+    description: "Quantità media per riga documento",
+    sqlTemplate: 'AVG(CAST({quantity} AS NUMERIC))',
+    requiredLogicalColumns: ["quantity"],
+    unit: "number",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: false,
+    version: 1,
+  },
 };
 
 export function getMetricTemplate(name: string): MetricTemplate | null {
@@ -242,4 +333,10 @@ export function getMetricTemplateDescriptions(): string {
 
 export function getPrimaryMetricTemplates(): MetricTemplate[] {
   return Object.values(METRIC_TEMPLATES).filter((m) => m.isPrimary);
+}
+
+export function getMetricsForLogicalColumn(logicalColumn: string): string[] {
+  return Object.entries(METRIC_TEMPLATES)
+    .filter(([_, template]) => template.requiredLogicalColumns.includes(logicalColumn))
+    .map(([name, _]) => name);
 }

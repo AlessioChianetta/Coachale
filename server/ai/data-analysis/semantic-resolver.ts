@@ -2,19 +2,27 @@
  * Semantic Resolver
  * Translates metric templates with {placeholder} into actual SQL with physical column names
  * 
- * UPDATED: Now uses dataset_column_semantics table for confirmed mappings only
+ * UNIVERSAL BI SEMANTIC LAYER
+ * Supports aliases: document_id ↔ order_id are interchangeable
  */
 
 import { db } from "../../db";
 import { datasetColumnSemantics, clientDataDatasets } from "../../../shared/schema";
 import { eq, and } from "drizzle-orm";
-import { LOGICAL_COLUMNS, getLogicalColumnDisplayName, COLUMN_AUTO_DETECT_PATTERNS } from "./logical-columns";
+import { 
+  LOGICAL_COLUMNS, 
+  getLogicalColumnDisplayName, 
+  COLUMN_AUTO_DETECT_PATTERNS,
+  LOGICAL_COLUMN_ALIASES,
+  resolveWithAliases
+} from "./logical-columns";
 
 export interface ResolveResult {
   sql: string;
   valid: boolean;
   missingColumns?: { logical: string; displayName: string }[];
   error?: string;
+  resolvedAliases?: { original: string; resolvedTo: string; physicalColumn: string }[];
 }
 
 export interface ColumnMappingLookup {
@@ -54,19 +62,39 @@ export function extractPlaceholders(sqlTemplate: string): string[] {
   return placeholders;
 }
 
-export function resolvePlaceholders(
+export function resolvePlaceholdersWithAliases(
   sqlTemplate: string,
   mappings: ColumnMappingLookup
 ): ResolveResult {
   const placeholders = extractPlaceholders(sqlTemplate);
   const missing: { logical: string; displayName: string }[] = [];
+  const resolvedAliases: { original: string; resolvedTo: string; physicalColumn: string }[] = [];
+  const resolvedMappings: ColumnMappingLookup = {};
   
   for (const placeholder of placeholders) {
-    if (!mappings[placeholder]) {
+    const physicalColumn = resolveWithAliases(placeholder, mappings);
+    
+    if (!physicalColumn) {
       missing.push({
         logical: placeholder,
         displayName: getLogicalColumnDisplayName(placeholder, "it"),
       });
+    } else {
+      resolvedMappings[placeholder] = physicalColumn;
+      
+      if (!mappings[placeholder] && physicalColumn) {
+        const aliases = LOGICAL_COLUMN_ALIASES[placeholder] || [];
+        for (const alias of aliases) {
+          if (mappings[alias]) {
+            resolvedAliases.push({
+              original: placeholder,
+              resolvedTo: alias,
+              physicalColumn
+            });
+            break;
+          }
+        }
+      }
     }
   }
   
@@ -80,15 +108,27 @@ export function resolvePlaceholders(
   }
   
   let resolvedSql = sqlTemplate;
-  for (const [logical, physical] of Object.entries(mappings)) {
+  for (const [logical, physical] of Object.entries(resolvedMappings)) {
     const regex = new RegExp(`\\{${logical}\\}`, "g");
     resolvedSql = resolvedSql.replace(regex, `"${physical}"`);
+  }
+  
+  if (resolvedAliases.length > 0) {
+    console.log(`[SEMANTIC-RESOLVER] Resolved aliases: ${resolvedAliases.map(a => `${a.original} → ${a.resolvedTo} (${a.physicalColumn})`).join(", ")}`);
   }
   
   return {
     sql: resolvedSql,
     valid: true,
+    resolvedAliases: resolvedAliases.length > 0 ? resolvedAliases : undefined,
   };
+}
+
+export function resolvePlaceholders(
+  sqlTemplate: string,
+  mappings: ColumnMappingLookup
+): ResolveResult {
+  return resolvePlaceholdersWithAliases(sqlTemplate, mappings);
 }
 
 export async function resolveMetricSQL(
@@ -96,7 +136,45 @@ export async function resolveMetricSQL(
   datasetId: number
 ): Promise<ResolveResult> {
   const mappings = await getColumnMappingsForDataset(datasetId);
-  return resolvePlaceholders(sqlTemplate, mappings);
+  return resolvePlaceholdersWithAliases(sqlTemplate, mappings);
+}
+
+export async function checkMetricAvailabilityWithAliases(
+  requiredLogicalColumns: string[],
+  datasetId: number
+): Promise<{
+  available: boolean;
+  missingColumns: { logical: string; displayName: string }[];
+  resolvedAliases: { original: string; resolvedTo: string }[];
+}> {
+  const mappings = await getColumnMappingsForDataset(datasetId);
+  const missing: { logical: string; displayName: string }[] = [];
+  const resolvedAliases: { original: string; resolvedTo: string }[] = [];
+  
+  for (const logical of requiredLogicalColumns) {
+    const physicalColumn = resolveWithAliases(logical, mappings);
+    
+    if (!physicalColumn) {
+      missing.push({
+        logical,
+        displayName: getLogicalColumnDisplayName(logical, "it"),
+      });
+    } else if (!mappings[logical]) {
+      const aliases = LOGICAL_COLUMN_ALIASES[logical] || [];
+      for (const alias of aliases) {
+        if (mappings[alias]) {
+          resolvedAliases.push({ original: logical, resolvedTo: alias });
+          break;
+        }
+      }
+    }
+  }
+  
+  return {
+    available: missing.length === 0,
+    missingColumns: missing,
+    resolvedAliases,
+  };
 }
 
 export async function checkMetricAvailability(
@@ -106,21 +184,10 @@ export async function checkMetricAvailability(
   available: boolean;
   missingColumns: { logical: string; displayName: string }[];
 }> {
-  const mappings = await getColumnMappingsForDataset(datasetId);
-  const missing: { logical: string; displayName: string }[] = [];
-  
-  for (const logical of requiredLogicalColumns) {
-    if (!mappings[logical]) {
-      missing.push({
-        logical,
-        displayName: getLogicalColumnDisplayName(logical, "it"),
-      });
-    }
-  }
-  
+  const result = await checkMetricAvailabilityWithAliases(requiredLogicalColumns, datasetId);
   return {
-    available: missing.length === 0,
-    missingColumns: missing,
+    available: result.available,
+    missingColumns: result.missingColumns,
   };
 }
 
@@ -132,22 +199,26 @@ export async function getAvailableMetricsForDataset(
   unavailable: { name: string; missingColumns: string[] }[];
 }> {
   const mappings = await getColumnMappingsForDataset(datasetId);
-  const availableLogical = new Set(Object.keys(mappings));
   
   const available: string[] = [];
   const unavailable: { name: string; missingColumns: string[] }[] = [];
   
   for (const [metricName, template] of Object.entries(metricTemplates)) {
-    const missing = template.requiredLogicalColumns.filter(
-      (col) => !availableLogical.has(col)
-    );
+    const missingCols: string[] = [];
     
-    if (missing.length === 0) {
+    for (const col of template.requiredLogicalColumns) {
+      const physicalColumn = resolveWithAliases(col, mappings);
+      if (!physicalColumn) {
+        missingCols.push(getLogicalColumnDisplayName(col, "it"));
+      }
+    }
+    
+    if (missingCols.length === 0) {
       available.push(metricName);
     } else {
       unavailable.push({
         name: metricName,
-        missingColumns: missing.map((col) => getLogicalColumnDisplayName(col, "it")),
+        missingColumns: missingCols,
       });
     }
   }
@@ -274,4 +345,33 @@ export async function logRevenueColumnUsage(
   } else {
     console.warn(`[REVENUE-TRACKING] Dataset ${datasetId} - No revenue mapping configured for ${metricName}`);
   }
+}
+
+/**
+ * Get a human-readable summary of dataset semantic mappings
+ */
+export async function getDatasetSemanticSummary(datasetId: number): Promise<{
+  mappedColumns: { logical: string; displayName: string; physical: string }[];
+  availableMetrics: string[];
+  missingForFullAnalytics: string[];
+}> {
+  const mappings = await getColumnMappingsForDataset(datasetId);
+  
+  const mappedColumns = Object.entries(mappings).map(([logical, physical]) => ({
+    logical,
+    displayName: getLogicalColumnDisplayName(logical, "it"),
+    physical
+  }));
+  
+  const coreRoles = ["document_id", "revenue_amount", "quantity", "product_name", "order_date"];
+  const missingForFullAnalytics = coreRoles.filter(role => !resolveWithAliases(role, mappings));
+  
+  const { METRIC_TEMPLATES } = require("./metric-templates");
+  const { available } = await getAvailableMetricsForDataset(datasetId, METRIC_TEMPLATES);
+  
+  return {
+    mappedColumns,
+    availableMetrics: available,
+    missingForFullAnalytics: missingForFullAnalytics.map(r => getLogicalColumnDisplayName(r, "it")),
+  };
 }

@@ -1,6 +1,9 @@
 /**
  * Logical Columns Definition
  * Standard semantic column names that metrics can reference
+ * 
+ * UNIVERSAL BI SEMANTIC LAYER
+ * Supports: POS, DDT, Invoices, E-commerce, ERP, any CSV
  */
 
 export interface LogicalColumnDefinition {
@@ -10,9 +13,36 @@ export interface LogicalColumnDefinition {
   dataType: "NUMERIC" | "TEXT" | "DATE" | "INTEGER";
   description: string;
   requiredForMetrics: string[];
+  aliases?: string[];
 }
 
 export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
+  document_id: {
+    name: "document_id",
+    displayName: "Document ID",
+    displayNameIt: "ID Documento",
+    dataType: "TEXT",
+    description: "Unique document/order/invoice identifier (universal: works for DDT, orders, invoices, receipts)",
+    requiredForMetrics: ["document_count", "order_count", "ticket_medio"],
+    aliases: ["order_id"],
+  },
+  order_id: {
+    name: "order_id",
+    displayName: "Order ID",
+    displayNameIt: "ID Ordine",
+    dataType: "TEXT",
+    description: "Unique order/receipt identifier (alias for document_id in POS context)",
+    requiredForMetrics: [],
+    aliases: ["document_id"],
+  },
+  line_id: {
+    name: "line_id",
+    displayName: "Line ID",
+    displayNameIt: "ID Riga",
+    dataType: "TEXT",
+    description: "Unique line/detail row identifier",
+    requiredForMetrics: [],
+  },
   revenue_amount: {
     name: "revenue_amount",
     displayName: "Revenue Amount (Line Total)",
@@ -51,7 +81,7 @@ export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
     displayNameIt: "Totale Netto",
     dataType: "NUMERIC",
     description: "Net total after discounts",
-    requiredForMetrics: ["revenue_net", "ticket_medio", "gross_margin", "gross_margin_percent"],
+    requiredForMetrics: ["revenue_net"],
   },
   discount_percent: {
     name: "discount_percent",
@@ -61,13 +91,21 @@ export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
     description: "Discount percentage applied",
     requiredForMetrics: ["discount_total"],
   },
-  order_id: {
-    name: "order_id",
-    displayName: "Order ID",
-    displayNameIt: "ID Ordine",
+  discount_amount: {
+    name: "discount_amount",
+    displayName: "Discount Amount",
+    displayNameIt: "Importo Sconto",
+    dataType: "NUMERIC",
+    description: "Absolute discount amount",
+    requiredForMetrics: [],
+  },
+  product_id: {
+    name: "product_id",
+    displayName: "Product ID",
+    displayNameIt: "ID Prodotto",
     dataType: "TEXT",
-    description: "Unique order/receipt identifier",
-    requiredForMetrics: ["order_count"],
+    description: "Unique product/SKU identifier",
+    requiredForMetrics: ["product_count"],
   },
   product_name: {
     name: "product_name",
@@ -93,87 +131,296 @@ export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
     description: "Date of the order/transaction",
     requiredForMetrics: [],
   },
+  customer_id: {
+    name: "customer_id",
+    displayName: "Customer ID",
+    displayNameIt: "ID Cliente",
+    dataType: "TEXT",
+    description: "Unique customer identifier",
+    requiredForMetrics: ["customer_count"],
+  },
+  customer_name: {
+    name: "customer_name",
+    displayName: "Customer Name",
+    displayNameIt: "Nome Cliente",
+    dataType: "TEXT",
+    description: "Customer name or company name",
+    requiredForMetrics: [],
+  },
+  tax_amount: {
+    name: "tax_amount",
+    displayName: "Tax Amount",
+    displayNameIt: "Importo IVA",
+    dataType: "NUMERIC",
+    description: "Tax/VAT amount",
+    requiredForMetrics: [],
+  },
+  tax_rate: {
+    name: "tax_rate",
+    displayName: "Tax Rate",
+    displayNameIt: "Aliquota IVA",
+    dataType: "NUMERIC",
+    description: "Tax/VAT rate percentage",
+    requiredForMetrics: [],
+  },
+  payment_method: {
+    name: "payment_method",
+    displayName: "Payment Method",
+    displayNameIt: "Metodo Pagamento",
+    dataType: "TEXT",
+    description: "Payment method used",
+    requiredForMetrics: [],
+  },
+  status: {
+    name: "status",
+    displayName: "Status",
+    displayNameIt: "Stato",
+    dataType: "TEXT",
+    description: "Document/order status",
+    requiredForMetrics: [],
+  },
+  supplier_id: {
+    name: "supplier_id",
+    displayName: "Supplier ID",
+    displayNameIt: "ID Fornitore",
+    dataType: "TEXT",
+    description: "Unique supplier/vendor identifier",
+    requiredForMetrics: ["supplier_count"],
+  },
+  supplier_name: {
+    name: "supplier_name",
+    displayName: "Supplier Name",
+    displayNameIt: "Nome Fornitore",
+    dataType: "TEXT",
+    description: "Supplier/vendor name",
+    requiredForMetrics: [],
+  },
+  warehouse: {
+    name: "warehouse",
+    displayName: "Warehouse",
+    displayNameIt: "Magazzino",
+    dataType: "TEXT",
+    description: "Warehouse or storage location",
+    requiredForMetrics: [],
+  },
 };
 
 export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
+  document_id: [
+    /^idddt/i,
+    /^id_?ddt/i,
+    /^doc_?id/i,
+    /^document_?id/i,
+    /^id_?documento/i,
+    /^numero_?doc/i,
+    /^invoice_?id/i,
+    /^fattura_?id/i,
+    /^id_?fattura/i,
+    /^receipt_?id/i,
+    /^scontrino/i,
+    /^order_?id/i,
+    /^id_?ordine/i,
+    /^transaction_?id/i,
+    /^numero_?ordine/i,
+  ],
+  line_id: [
+    /^id_?riga/i,
+    /^line_?id/i,
+    /^detail_?id/i,
+    /^idriga/i,
+    /^riga_?id/i,
+    /^row_?id/i,
+  ],
   revenue_amount: [
-    /^prezzo_?finale$/i,
-    /^prezzofinale$/i,
-    /^importo_?riga$/i,
-    /^line_?total$/i,
-    /^totale_?riga$/i,
-    /^importo_?fatturato$/i,
-    /^net_?amount$/i,
-    /^final_?price$/i,
-    /^importo2$/i,
+    /^prezzo_?finale/i,
+    /^prezzofinale/i,
+    /^importo_?riga/i,
+    /^line_?total/i,
+    /^totale_?riga/i,
+    /^importo_?fatturato/i,
+    /^net_?amount/i,
+    /^final_?price/i,
+    /^importo2/i,
+    /^total_?line/i,
+    /^row_?total/i,
+    /^amount/i,
   ],
   price: [
-    /^(unit_)?price$/i,
-    /^prezzo(_unitario)?$/i,
-    /^selling_price$/i,
-    /^importo_vendita$/i,
+    /^prezzo$/i,
+    /^price$/i,
+    /^unit_?price/i,
+    /^prezzo_?unitario/i,
+    /^selling_?price/i,
+    /^importo_?vendita/i,
     /^pvp$/i,
-    /^listino$/i,
+    /^listino/i,
   ],
   cost: [
-    /^(unit_)?cost$/i,
-    /^costo(_unitario)?$/i,
-    /^food_cost$/i,
-    /^costo_acquisto$/i,
-    /^purchase_price$/i,
     /^costo$/i,
+    /^cost$/i,
+    /^unit_?cost/i,
+    /^costo_?unitario/i,
+    /^food_?cost/i,
+    /^costo_?acquisto/i,
+    /^purchase_?price/i,
+    /^buy_?price/i,
   ],
   quantity: [
-    /^(qty|quantity|quantita|qta)$/i,
-    /^numero_pezzi$/i,
-    /^pieces$/i,
-    /^units$/i,
+    /^quantita/i,
+    /^quantity/i,
+    /^qty/i,
+    /^qta/i,
+    /^numero_?pezzi/i,
+    /^pieces/i,
+    /^units/i,
+    /^pezzi/i,
   ],
   total_net: [
-    /^total_net$/i,
-    /^totale_netto$/i,
-    /^net_total$/i,
-    /^importo_totale$/i,
+    /^total_?net/i,
+    /^totale_?netto/i,
+    /^net_?total/i,
+    /^importo_?totale/i,
     /^importo$/i,
-    /^amount$/i,
   ],
   discount_percent: [
-    /^discount(_percent)?$/i,
-    /^sconto(_percentuale)?$/i,
-    /^discount_pct$/i,
+    /^sconto_?percent/i,
+    /^discount_?percent/i,
+    /^sconto_?perc/i,
+    /^discount_?pct/i,
+    /^perc_?sconto/i,
   ],
-  order_id: [
-    /^order_id$/i,
-    /^id_ordine$/i,
-    /^scontrino$/i,
-    /^receipt_id$/i,
-    /^transaction_id$/i,
-    /^numero_ordine$/i,
+  discount_amount: [
+    /^sconto$/i,
+    /^discount$/i,
+    /^sconto_?importo/i,
+    /^discount_?amount/i,
+    /^importo_?sconto/i,
+  ],
+  product_id: [
+    /^idprodotto/i,
+    /^id_?prodotto/i,
+    /^product_?id/i,
+    /^sku/i,
+    /^codice_?articolo/i,
+    /^item_?id/i,
+    /^cod_?art/i,
+    /^codart/i,
+    /^article_?id/i,
+    /^art_?id/i,
   ],
   product_name: [
-    /^(product_)?name$/i,
-    /^nome(_prodotto)?$/i,
-    /^item(_name)?$/i,
-    /^descrizione$/i,
-    /^description$/i,
-    /^articolo$/i,
+    /^descrprod/i,
+    /^descr_?prod/i,
+    /^product_?name/i,
+    /^nome_?prodotto/i,
+    /^descrizione/i,
+    /^description/i,
+    /^articolo/i,
+    /^item_?name/i,
+    /^prodotto/i,
   ],
   category: [
-    /^category$/i,
-    /^categoria$/i,
+    /^categoria/i,
+    /^category/i,
     /^cat$/i,
-    /^product_category$/i,
+    /^product_?category/i,
+    /^tipologia/i,
     /^tipo$/i,
     /^type$/i,
+    /^famiglia/i,
+    /^group/i,
+    /^gruppo/i,
   ],
   order_date: [
-    /^(order_)?date$/i,
-    /^data(_ordine)?$/i,
-    /^timestamp$/i,
-    /^created_at$/i,
-    /^transaction_date$/i,
     /^data$/i,
+    /^date$/i,
+    /^data_?doc/i,
+    /^data_?ordine/i,
+    /^order_?date/i,
+    /^invoice_?date/i,
+    /^data_?fattura/i,
+    /^timestamp/i,
+    /^created_?at/i,
+    /^transaction_?date/i,
+    /^data_?documento/i,
   ],
+  customer_id: [
+    /^idcliente/i,
+    /^id_?cliente/i,
+    /^customer_?id/i,
+    /^client_?id/i,
+    /^cod_?cliente/i,
+    /^codcliente/i,
+    /^buyer_?id/i,
+  ],
+  customer_name: [
+    /^ragione_?sociale/i,
+    /^customer_?name/i,
+    /^cliente/i,
+    /^nominativo/i,
+    /^client_?name/i,
+    /^buyer_?name/i,
+    /^intestatario/i,
+  ],
+  tax_amount: [
+    /^iva$/i,
+    /^tax$/i,
+    /^vat$/i,
+    /^imposta/i,
+    /^importo_?iva/i,
+    /^tax_?amount/i,
+    /^vat_?amount/i,
+  ],
+  tax_rate: [
+    /^aliquota/i,
+    /^tax_?rate/i,
+    /^vat_?rate/i,
+    /^iva_?perc/i,
+    /^perc_?iva/i,
+  ],
+  payment_method: [
+    /^pagamento/i,
+    /^payment/i,
+    /^payment_?method/i,
+    /^tipo_?pagamento/i,
+    /^modalita_?pagamento/i,
+    /^metodo_?pagamento/i,
+  ],
+  status: [
+    /^stato$/i,
+    /^status$/i,
+    /^state$/i,
+    /^order_?status/i,
+    /^doc_?status/i,
+  ],
+  supplier_id: [
+    /^id_?fornitore/i,
+    /^idfornitore/i,
+    /^supplier_?id/i,
+    /^vendor_?id/i,
+    /^cod_?fornitore/i,
+    /^codfornitore/i,
+  ],
+  supplier_name: [
+    /^fornitore/i,
+    /^supplier/i,
+    /^supplier_?name/i,
+    /^vendor/i,
+    /^vendor_?name/i,
+    /^ragione_?sociale_?fornitore/i,
+  ],
+  warehouse: [
+    /^magazzino/i,
+    /^warehouse/i,
+    /^deposito/i,
+    /^storage/i,
+    /^location/i,
+  ],
+};
+
+export const LOGICAL_COLUMN_ALIASES: Record<string, string[]> = {
+  document_id: ["order_id"],
+  order_id: ["document_id"],
 };
 
 export function getLogicalColumnDisplayName(logicalColumn: string, locale: "en" | "it" = "it"): string {
@@ -191,16 +438,21 @@ export function getMetricsRequiringColumn(logicalColumn: string): string[] {
   return col?.requiredForMetrics || [];
 }
 
+export function getAliasesForColumn(logicalColumn: string): string[] {
+  return LOGICAL_COLUMN_ALIASES[logicalColumn] || [];
+}
+
 export function autoDetectLogicalColumn(physicalColumnName: string): { logicalColumn: string; confidence: number } | null {
   const nameLower = physicalColumnName.toLowerCase().trim();
   
   for (const [logical, patterns] of Object.entries(COLUMN_AUTO_DETECT_PATTERNS)) {
-    for (const pattern of patterns) {
+    for (let i = 0; i < patterns.length; i++) {
+      const pattern = patterns[i];
       if (pattern.test(nameLower)) {
-        const isExactMatch = patterns[0].test(nameLower);
+        const isFirstPattern = i === 0;
         return {
           logicalColumn: logical,
-          confidence: isExactMatch ? 0.95 : 0.80,
+          confidence: isFirstPattern ? 0.95 : 0.80,
         };
       }
     }
@@ -239,4 +491,23 @@ export function autoDetectAllColumns(physicalColumns: string[]): Map<string, { l
   }
   
   return mappings;
+}
+
+export function resolveWithAliases(
+  logicalColumn: string, 
+  availableMappings: Record<string, string>
+): string | null {
+  if (availableMappings[logicalColumn]) {
+    return availableMappings[logicalColumn];
+  }
+  
+  const aliases = getAliasesForColumn(logicalColumn);
+  for (const alias of aliases) {
+    if (availableMappings[alias]) {
+      console.log(`[SEMANTIC-ALIAS] Resolved ${logicalColumn} via alias ${alias} → ${availableMappings[alias]}`);
+      return availableMappings[alias];
+    }
+  }
+  
+  return null;
 }
