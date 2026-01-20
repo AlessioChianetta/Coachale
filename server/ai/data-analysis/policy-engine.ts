@@ -29,8 +29,8 @@ const ALL_TOOLS = [...ALL_COMPUTE_TOOLS, "filter_data", "get_schema"];
 export const POLICY_RULES: Record<IntentType, PolicyRule> = {
   analytics: {
     intent: "analytics",
-    allowedTools: ["execute_metric", "aggregate_group", "compare_periods"],
-    blockedTools: ["filter_data"],
+    allowedTools: ["execute_metric", "aggregate_group", "compare_periods", "filter_data"],
+    blockedTools: [],
     blockNumericGeneration: true,
     requireToolCall: true,
   },

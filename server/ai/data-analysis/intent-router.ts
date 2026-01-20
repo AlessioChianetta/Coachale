@@ -37,10 +37,10 @@ RAGIONA sul CONTESTO della conversazione, poi classifica l'intento.
 Non basarti solo sulle parole chiave - usa il ragionamento logico.
 
 ========================
-CHAIN OF THOUGHT (OBBLIGATORIO)
+RAGIONAMENTO INTERNO (NON OUTPUT)
 ========================
 
-PRIMA di classificare, chiediti:
+Ragiona INTERNAMENTE prima di classificare:
 1. L'utente ha appena ricevuto numeri/aggregazioni? (es: "945 piatti", "fatturato 21.000€")
 2. Sta chiedendo dettagli, drill-down, o analisi approfondita di quei numeri?
 3. È una continuazione logica dell'analisi precedente?
@@ -48,6 +48,8 @@ PRIMA di classificare, chiediti:
 
 REGOLA D'ORO:
 Se l'utente ha appena visto numeri aggregati e chiede "analizzami", "dettagli", "uno per uno", "quali sono", "elenca" → è SEMPRE ANALYTICS (drill-down analitico), MAI data_preview.
+
+IMPORTANTE: Non scrivere il tuo ragionamento. Output SOLO JSON.
 
 ========================
 INTENT TYPES

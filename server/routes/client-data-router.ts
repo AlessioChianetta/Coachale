@@ -1879,21 +1879,24 @@ router.post(
       console.log(`[CLIENT-DATA] User message saved: ${userMessage.id}`);
 
       // Load conversation history for context-aware intent routing
+      // Query last 6 messages by createdAt desc, filter out current message, then reverse for chronological order
       const previousMessages = await db
         .select({
+          id: clientDataMessages.id,
           role: clientDataMessages.role,
           content: clientDataMessages.content,
           toolCalls: clientDataMessages.toolCalls,
         })
         .from(clientDataMessages)
         .where(eq(clientDataMessages.conversationId, id))
-        .orderBy(clientDataMessages.createdAt)
-        .limit(10);
+        .orderBy(desc(clientDataMessages.createdAt))
+        .limit(6);
 
-      // Format for intent router (exclude the message we just inserted)
+      // Filter out the just-inserted message by ID, take last 5, and reverse for chronological order
       const conversationHistory = previousMessages
-        .filter(m => m.content !== content.trim()) // Exclude current message
-        .slice(-5) // Last 5 messages
+        .filter(m => m.id !== userMessage.id)
+        .slice(0, 5)
+        .reverse()
         .map(m => ({
           role: m.role as "user" | "assistant",
           content: m.content,
