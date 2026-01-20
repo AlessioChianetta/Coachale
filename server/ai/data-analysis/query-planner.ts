@@ -5,7 +5,7 @@
 
 import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import { dataAnalysisTools, type ToolCall, type ExecutedToolResult, validateToolCall, getToolByName } from "./tool-definitions";
-import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, type QueryResult } from "../../services/client-data/query-executor";
+import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, getDistinctCount, checkCardinalityBeforeAggregate, validateFiltersApplied, MAX_GROUP_BY_LIMIT, type QueryResult, type CardinalityCheckResult } from "../../services/client-data/query-executor";
 import { parseMetricExpression, validateMetricAgainstSchema } from "../../services/client-data/metric-dsl";
 import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
@@ -14,10 +14,133 @@ import { classifyIntent, ForceToolRetryError, requiresNumericAnswer, getConversa
 import { routeIntent, type IntentRouterOutput, type ConversationMessage } from "./intent-router";
 import { enforcePolicyOnToolCalls, getPolicyForIntent, POLICY_RULES, type IntentType } from "./policy-engine";
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
-import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
+import { METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
 import { validateMetricForDataset } from "./pre-validator";
 import { checkAnalyticsEnabled } from "../../services/client-data/semantic-mapping-service";
+
+/**
+ * TASK 2: Semantic Contract Detection
+ * Detects if user requests "ALL items" vs "top N"
+ */
+export interface SemanticContract {
+  requestsAll: boolean;
+  requestsTopN: boolean;
+  topNValue?: number;
+  detectedKeywords: string[];
+  detectedFilters: { column: string; value: string }[];
+}
+
+const ALL_KEYWORDS = [
+  "uno per uno", "tutti", "ogni", "ciascun", "ognuno", "singolarmente",
+  "each", "all", "one by one", "every", "all of them", "complete list",
+  "lista completa", "elenco completo", "tutti quanti", "nel dettaglio"
+];
+
+const TOP_N_PATTERNS = [
+  /\btop\s*(\d+)\b/i,
+  /\bprimi?\s*(\d+)\b/i,
+  /\bmigliori?\s*(\d+)\b/i,
+  /\bpeggiori?\s*(\d+)\b/i,
+  /\bultimi?\s*(\d+)\b/i,
+  /\bmax(?:imum)?\s*(\d+)\b/i,
+];
+
+const FILTER_PATTERNS = [
+  { pattern: /\bcategoria\s+["']?(\w+)["']?\b/i, column: "categoria" },
+  { pattern: /\bcat(?:egory)?\s*[=:]\s*["']?(\w+)["']?\b/i, column: "category" },
+  { pattern: /\btipo\s+["']?(\w+)["']?\b/i, column: "tipo" },
+  { pattern: /\btype\s+["']?(\w+)["']?\b/i, column: "type" },
+  { pattern: /\bdella\s+categoria\s+["']?(\w+)["']?\b/i, column: "categoria" },
+];
+
+export function detectSemanticContract(userQuestion: string): SemanticContract {
+  const questionLower = userQuestion.toLowerCase();
+  const detectedKeywords: string[] = [];
+  const detectedFilters: { column: string; value: string }[] = [];
+  let requestsAll = false;
+  let requestsTopN = false;
+  let topNValue: number | undefined;
+
+  for (const keyword of ALL_KEYWORDS) {
+    if (questionLower.includes(keyword.toLowerCase())) {
+      detectedKeywords.push(keyword);
+      requestsAll = true;
+    }
+  }
+
+  for (const pattern of TOP_N_PATTERNS) {
+    const match = questionLower.match(pattern);
+    if (match) {
+      requestsTopN = true;
+      topNValue = parseInt(match[1], 10);
+      detectedKeywords.push(match[0]);
+      break;
+    }
+  }
+
+  for (const { pattern, column } of FILTER_PATTERNS) {
+    const match = userQuestion.match(pattern);
+    if (match && match[1]) {
+      detectedFilters.push({ column, value: match[1] });
+    }
+  }
+
+  if (requestsAll && detectedKeywords.length > 0) {
+    console.log(`[SEMANTIC-CONTRACT] Detected "ALL items" request: keywords=[${detectedKeywords.join(", ")}]`);
+  }
+  if (requestsTopN && topNValue) {
+    console.log(`[SEMANTIC-CONTRACT] Detected "top N" request: N=${topNValue}`);
+  }
+  if (detectedFilters.length > 0) {
+    console.log(`[SEMANTIC-CONTRACT] Detected filters: ${JSON.stringify(detectedFilters)}`);
+  }
+
+  return {
+    requestsAll,
+    requestsTopN,
+    topNValue,
+    detectedKeywords,
+    detectedFilters,
+  };
+}
+
+/**
+ * TASK 4: Extract mentioned filters from user question
+ * Used to inject missing filters before execution
+ */
+export function extractFiltersFromQuestion(
+  userQuestion: string,
+  availableColumns: string[]
+): Record<string, { operator: string; value: string }> {
+  const filters: Record<string, { operator: string; value: string }> = {};
+  const questionLower = userQuestion.toLowerCase();
+
+  const columnAliases: Record<string, string[]> = {
+    "categoria": ["categoria", "category", "cat"],
+    "tipo": ["tipo", "type"],
+    "status": ["stato", "status"],
+  };
+
+  for (const { pattern, column } of FILTER_PATTERNS) {
+    const match = userQuestion.match(pattern);
+    if (match && match[1]) {
+      const actualColumn = availableColumns.find(c => {
+        const cLower = c.toLowerCase();
+        if (cLower === column.toLowerCase()) return true;
+        const aliases = columnAliases[column.toLowerCase()] || [];
+        return aliases.some(alias => cLower.includes(alias));
+      });
+
+      if (actualColumn) {
+        filters[actualColumn] = { operator: "=", value: match[1] };
+        console.log(`[FILTER-EXTRACT] Found filter: ${actualColumn} = "${match[1]}"`);
+      }
+    }
+  }
+
+  return filters;
+}
 
 interface DatasetInfo {
   id: string;
@@ -592,6 +715,38 @@ export async function executeToolCall(
         console.log(`[AGGREGATE-GROUP] orderBy: ${JSON.stringify(toolCall.args.orderBy)}`);
         console.log(`[AGGREGATE-GROUP] filters: ${JSON.stringify(toolCall.args.filters)}`);
         
+        // TASK 3: Cardinality check BEFORE executing aggregate_group
+        const groupByColumns = toolCall.args.groupBy || [];
+        if (groupByColumns.length > 0) {
+          const cardinalityCheck = await checkCardinalityBeforeAggregate(
+            toolCall.args.datasetId,
+            groupByColumns,
+            toolCall.args.filters
+          );
+          
+          if (cardinalityCheck.needsConfirmation) {
+            console.warn(`[AGGREGATE-GROUP] CARDINALITY BLOCK: ${cardinalityCheck.distinctCount} distinct values exceeds limit`);
+            return {
+              toolName: toolCall.name,
+              args: toolCall.args,
+              result: {
+                needsConfirmation: true,
+                cardinality: {
+                  distinctCount: cardinalityCheck.distinctCount,
+                  totalRows: cardinalityCheck.totalRows,
+                  column: groupByColumns[0],
+                  limit: MAX_GROUP_BY_LIMIT,
+                },
+                message: cardinalityCheck.message,
+                options: cardinalityCheck.options,
+              },
+              success: false,
+              error: cardinalityCheck.message,
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+        }
+        
         // Convert metricName to aggregations if provided
         let aggregations = toolCall.args.aggregations;
         let useRawSqlExpression: string | null = null;
@@ -796,6 +951,19 @@ export async function askDataset(
   console.log(`[QUERY-PLANNER] Conversation history: ${conversationHistory?.length || 0} messages`);
   const startTime = Date.now();
 
+  // ====== TASK 2: SEMANTIC CONTRACT DETECTION ======
+  // Detect if user requests "ALL items" vs "top N"
+  const semanticContract = detectSemanticContract(userQuestion);
+
+  // TASK 4: Extract mentioned filters from user question  
+  const availableColumns = datasets.length > 0 
+    ? datasets[0].columns.map(c => c.name) 
+    : [];
+  const extractedFilters = extractFiltersFromQuestion(userQuestion, availableColumns);
+  if (Object.keys(extractedFilters).length > 0) {
+    console.log(`[QUERY-PLANNER] Extracted filters from question: ${JSON.stringify(extractedFilters)}`);
+  }
+
   // ====== LAYER 1: INTENT ROUTER (AI - gemini-2.5-flash-lite) ======
   // Fast, cheap classification of user intent WITH conversation context
   const routerOutput = await routeIntent(userQuestion, consultantId, conversationHistory);
@@ -911,6 +1079,63 @@ export async function askDataset(
           success: false,
           totalExecutionTimeMs: Date.now() - startTime
         };
+      }
+    }
+    
+    // TASK 2: Check semantic contract - if user requests ALL but AI set a limit, BLOCK
+    for (const step of plan.steps) {
+      if (step.name === "aggregate_group" || step.name === "filter_data") {
+        const limit = step.args.limit;
+        
+        if (semanticContract.requestsAll && limit && limit < MAX_GROUP_BY_LIMIT) {
+          console.warn(`[SEMANTIC-CONTRACT] BLOCK: User requested ALL items (keywords: ${semanticContract.detectedKeywords.join(", ")}) but AI set limit=${limit}`);
+          return {
+            plan: {
+              steps: [],
+              reasoning: `Semantic contract violation: user requested ALL items but AI would truncate to ${limit}`,
+              estimatedComplexity: "simple"
+            },
+            results: [{
+              toolName: "semantic_contract_violation",
+              args: { 
+                requestedAll: true, 
+                aiLimit: limit,
+                keywords: semanticContract.detectedKeywords 
+              },
+              result: { 
+                needsConfirmation: true,
+                message: `Hai chiesto di vedere TUTTI gli elementi (${semanticContract.detectedKeywords.join(", ")}), ma potrebbero essere molti. Vuoi procedere comunque o preferisci vedere solo i primi ${limit}?`,
+                options: [
+                  { action: "show_all", description: "Mostra tutti gli elementi" },
+                  { action: "top_n", description: `Mostra i primi ${limit}` },
+                  { action: "export", description: "Esporta in CSV" },
+                ]
+              },
+              success: false
+            }],
+            success: false,
+            totalExecutionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        // TASK 4: Inject missing filters into tool calls
+        if (Object.keys(extractedFilters).length > 0) {
+          const existingFilters = step.args.filters || {};
+          let injected = false;
+          
+          for (const [col, filter] of Object.entries(extractedFilters)) {
+            if (!existingFilters[col]) {
+              console.log(`[FILTER-INJECT] Injecting missing filter: ${col} = "${filter.value}"`);
+              existingFilters[col] = filter;
+              injected = true;
+            }
+          }
+          
+          if (injected) {
+            step.args.filters = existingFilters;
+            console.log(`[FILTER-INJECT] Updated filters: ${JSON.stringify(step.args.filters)}`);
+          }
+        }
       }
     }
   }

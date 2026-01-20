@@ -27,8 +27,180 @@ const DEFAULT_TIMEOUT_MS = 3000; // Reduced from 30s to 3s for AI queries (query
 const AI_QUERY_TIMEOUT_MS = 3000; // Hard limit for AI-triggered queries
 const DEFAULT_CACHE_TTL_AGGREGATION = 3600;
 const DEFAULT_CACHE_TTL_FILTER = 300;
-const MAX_GROUP_BY_LIMIT = 500; // Hard limit for GROUP BY queries
+export const MAX_GROUP_BY_LIMIT = 500; // Hard limit for GROUP BY queries
 const MAX_FILTER_LIMIT = 1000; // Hard limit for filter queries
+
+export interface DistinctCountResult {
+  success: boolean;
+  distinctCount?: number;
+  totalRows?: number;
+  error?: string;
+}
+
+export interface CardinalityCheckResult {
+  success: boolean;
+  needsConfirmation: boolean;
+  distinctCount?: number;
+  totalRows?: number;
+  message?: string;
+  options?: { action: string; description: string }[];
+}
+
+/**
+ * TASK 1: Cardinality probe tool - lightweight COUNT(DISTINCT column)
+ * Used to distinguish row_count vs unique_items before expensive GROUP BY
+ */
+export async function getDistinctCount(
+  datasetId: string,
+  column: string,
+  filters?: Record<string, { operator: string; value: string | number }>
+): Promise<DistinctCountResult> {
+  const startTime = Date.now();
+  const datasetInfo = await getDatasetInfo(datasetId);
+
+  if (!datasetInfo) {
+    return { success: false, error: "Dataset not found or not ready" };
+  }
+
+  if (!datasetInfo.columns.includes(column)) {
+    return { success: false, error: `Invalid column: ${column}` };
+  }
+
+  const params: (string | number)[] = [];
+  const whereClauses: string[] = [];
+  let paramIndex = 1;
+
+  if (filters) {
+    for (const [col, condition] of Object.entries(filters)) {
+      if (!datasetInfo.columns.includes(col)) {
+        return { success: false, error: `Invalid filter column: ${col}` };
+      }
+      whereClauses.push(`"${col}" ${condition.operator} $${paramIndex}`);
+      params.push(condition.value);
+      paramIndex++;
+    }
+  }
+
+  let sql = `SELECT COUNT(DISTINCT "${column}") AS distinct_count, COUNT(*) AS total_rows FROM "${datasetInfo.tableName}"`;
+  if (whereClauses.length > 0) {
+    sql += ` WHERE ${whereClauses.join(" AND ")}`;
+  }
+
+  console.log(`[CARDINALITY-PROBE] Running: ${sql}`);
+  const result = await executeQuery(sql, params, { timeoutMs: AI_QUERY_TIMEOUT_MS });
+
+  if (!result.success) {
+    console.error(`[CARDINALITY-PROBE] Failed: ${result.error}`);
+    return { success: false, error: result.error };
+  }
+
+  const distinctCount = parseInt(result.data?.[0]?.distinct_count || "0", 10);
+  const totalRows = parseInt(result.data?.[0]?.total_rows || "0", 10);
+
+  console.log(`[CARDINALITY-PROBE] Column "${column}": ${distinctCount} distinct values, ${totalRows} total rows (${Date.now() - startTime}ms)`);
+
+  await logQuery(
+    datasetId,
+    "get_distinct_count",
+    sql,
+    { column, filters },
+    result.executionTimeMs || 0,
+    1,
+    true,
+    undefined,
+    undefined
+  );
+
+  return {
+    success: true,
+    distinctCount,
+    totalRows,
+  };
+}
+
+/**
+ * TASK 3: Check cardinality before aggregate_group
+ * Returns need_confirmation if distinctCount exceeds MAX_GROUP_BY_LIMIT
+ */
+export async function checkCardinalityBeforeAggregate(
+  datasetId: string,
+  groupByColumns: string[],
+  filters?: Record<string, { operator: string; value: string | number }>
+): Promise<CardinalityCheckResult> {
+  if (groupByColumns.length === 0) {
+    return { success: true, needsConfirmation: false };
+  }
+
+  const primaryColumn = groupByColumns[0];
+  const probeResult = await getDistinctCount(datasetId, primaryColumn, filters);
+
+  if (!probeResult.success) {
+    console.warn(`[CARDINALITY-CHECK] Probe failed for "${primaryColumn}": ${probeResult.error}`);
+    return { success: true, needsConfirmation: false };
+  }
+
+  const { distinctCount, totalRows } = probeResult;
+
+  if (distinctCount && distinctCount > MAX_GROUP_BY_LIMIT) {
+    console.warn(`[CARDINALITY-CHECK] HIGH CARDINALITY DETECTED: ${distinctCount} distinct values in "${primaryColumn}" exceeds limit ${MAX_GROUP_BY_LIMIT}`);
+    return {
+      success: true,
+      needsConfirmation: true,
+      distinctCount,
+      totalRows,
+      message: `La colonna "${primaryColumn}" ha ${distinctCount} valori unici. Mostrare tutti ${distinctCount} elementi potrebbe essere lento e difficile da leggere.`,
+      options: [
+        { action: "top_n", description: `Mostra solo i primi ${MAX_GROUP_BY_LIMIT} elementi ordinati per valore` },
+        { action: "export", description: "Esporta tutti i dati in un file CSV" },
+        { action: "paginate", description: "Mostra i risultati a pagine" },
+        { action: "confirm_all", description: `Procedi comunque con tutti i ${distinctCount} elementi (può essere lento)` },
+      ],
+    };
+  }
+
+  console.log(`[CARDINALITY-CHECK] OK: ${distinctCount} distinct values in "${primaryColumn}" is within limit ${MAX_GROUP_BY_LIMIT}`);
+  return {
+    success: true,
+    needsConfirmation: false,
+    distinctCount,
+    totalRows,
+  };
+}
+
+/**
+ * TASK 4: Validate that required filters are present in the SQL
+ * Returns true if all expected filters are applied
+ */
+export function validateFiltersApplied(
+  expectedFilters: Record<string, { operator: string; value: string | number }>,
+  actualFilters?: Record<string, { operator: string; value: string | number }>
+): { valid: boolean; missingFilters: string[] } {
+  if (!expectedFilters || Object.keys(expectedFilters).length === 0) {
+    return { valid: true, missingFilters: [] };
+  }
+
+  const missingFilters: string[] = [];
+
+  for (const [column, condition] of Object.entries(expectedFilters)) {
+    if (!actualFilters || !actualFilters[column]) {
+      missingFilters.push(`${column} ${condition.operator} "${condition.value}"`);
+    } else {
+      const actual = actualFilters[column];
+      if (String(actual.value).toLowerCase() !== String(condition.value).toLowerCase()) {
+        missingFilters.push(`${column}: expected "${condition.value}", got "${actual.value}"`);
+      }
+    }
+  }
+
+  if (missingFilters.length > 0) {
+    console.warn(`[FILTER-VALIDATION] Missing or incorrect filters: ${missingFilters.join(", ")}`);
+  }
+
+  return {
+    valid: missingFilters.length === 0,
+    missingFilters,
+  };
+}
 
 export async function executeQuery(
   sql: string,
