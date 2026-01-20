@@ -416,7 +416,7 @@ REGOLE IMPORTANTI:
         const failureResponse = await client.generateContent({
           model: failureModel,
           contents: [{ role: "user", parts: [{ text: failurePrompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 512 }
+          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 }
         });
         
         const contextualMessage = failureResponse.response.text();

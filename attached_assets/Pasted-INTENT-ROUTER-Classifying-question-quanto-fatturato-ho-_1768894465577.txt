@@ -1,0 +1,66 @@
+INTENT-ROUTER] Classifying question: "quanto fatturato ho"
+[INTENT-ROUTER] Conversation context: 0 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (1010ms): ```json
+{
+  "intent": "analytics",
+  "requires_metrics": true,
+  "suggested_tools": [
+    "execute_metric"
+  ],
+  "confidence": 0.98
+}
+```
+[INTENT-ROUTER] Classification result: intent=analytics, requires_metrics=true, confidence=0.98, tools=[execute_metric]
+[QUERY-PLANNER] Router result: intent=analytics, requires_metrics=true, confidence=0.98
+[POLICY-ENGINE] Getting policy for intent: analytics
+[QUERY-PLANNER] Policy: allowedTools=[execute_metric,aggregate_group,compare_periods,filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 0 messages
+[QUERY-PLANNER] Allowed tools for AI: [execute_metric, query_metric, compare_periods, filter_data, aggregate_group, get_schema]
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+[POLICY-ENGINE] ALLOWED: execute_metric
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=true, hasOnlyMetadata=false
+[POLICY-ENGINE] VALIDATION OK: compute tool present
+[EXECUTE-METRIC] Called with metricName: "revenue", datasetId: 5
+[REVENUE-TRACKING] Dataset 5 - Using price×quantity: "prezzo" × "quantita" for revenue
+[SEMANTIC-RESOLVER] ⚠️ ATTENZIONE: Il dataset contiene colonne monetarie non mappate: importo2, prezzofinale. Attualmente il fatturato viene calcolato come price × quantity (prezzo × quantita). Considera di mappare "importo2" come "Importo Fatturato" per calcoli più accurati.
+[REVENUE-TRACKING] ⚠️ ATTENZIONE: Il dataset contiene colonne monetarie non mappate: importo2, prezzofinale. Attualmente il fatturato viene calcolato come price × quantity (prezzo × quantita). Considera di mappare "importo2" come "Importo Fatturato" per calcoli più accurati.
+[EXECUTE-METRIC] Pre-validation failed: Non posso calcolare "Fatturato" perché mancano le colonne: Importo Fatturato (Totale Riga).
+[QUERY-PLANNER] Tool execute_metric failed: Non posso calcolare "Fatturato" perché mancano le colonne: Importo Fatturato (Totale Riga).
+[QUERY-PLANNER] Execution complete in 512ms, success: false
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: execute_metric: Non posso calcolare "Fatturato" perché mancano le colonne: Importo Fatturato (Totale Riga).
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-20T07:34:00.030Z
+
+[SHEETS POLLING] Starting polling cycle (ExecID: 3xos7)...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: 3xos7)
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[CLIENT-DATA] Assistant message saved: f8fdff1e-6732-4f6a-ad57-593ab7331c7b
+7:34:01 AM [express] POST /api/client-data/conversations/4b370fca-63ca-40c3-b6b6-3b33d65ad609/messag…
