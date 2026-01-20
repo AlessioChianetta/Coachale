@@ -1,0 +1,54 @@
+analisi della redditività del tuo menu attuale
+
+AI Assistant
+
+🔧 execute_metric (datasetId, metri...
+🔧 execute_metric (datasetId, metricName) 🔧 execute_metric (datasetId, metricName) 🔧 execute_metric (datasetId, metricName) 🔧 aggregate_group (groupBy, orderBy, datasetId, metricName) 🔧 aggregate_group (limit, groupBy, orderBy, datasetId, metricName)
+
+Analizzando i dati della tua attività, emerge un quadro molto chiaro sulla salute finanziaria del tuo menu. Come tuo consulente, ho elaborato i numeri per darti una visione strategica che va oltre il semplice calcolo del food cost.
+1. Risposta Diretta: I Numeri Chiave
+La redditività totale del tuo menu ha generato un margine lordo di 21.956,62 €.
+Il tuo Margine Operativo Lordo medio è del 64,98%, il che significa che il tuo Food Cost (costo delle materie prime) si attesta mediamente al 35,02%.
+2. Contestualizzazione
+Un margine del 65% è un buon punto di partenza nel settore F&B, ma siamo leggermente al di sotto del "gold standard" del 68-70% a cui puntano i ristoranti ad alta efficienza. Notiamo una consistenza quasi chirurgica tra le categorie:
+Dessert: 65,43%
+Drink: 64,95%
+Food: 64,91%
+Questa uniformità indica che hai applicato un ricarico (markup) costante, ma suggerisce anche che non stai ancora sfruttando la "psicologia del prezzo" per spingere i piatti a più alto margine.
+3. Pattern e Analisi del Menu Engineering
+1
+Analizzando i singoli piatti, ho individuato alcune dinamiche interessanti
+🏆 La Regina del Margine: La Pizza Margherita (66,14%) è il tuo prodotto più efficiente dal punto di vista dei costi. È il tuo "cavallo di battaglia" finanziario.
+Il Punto Debole: La Lasagna (63,49%) presenta il margine più basso. Questo è spesso dovuto all'alto costo del lavoro o alla complessità degli ingredienti (carne, latticini).
+🍰 L'Opportunità Nascosta: Il Tiramisù (65,43%) ha un margine superiore alla media del food. Spingere la vendita dei dolci a fine pasto è la via più rapida per alzare la redditività netta senza aumentare i costi fissi.
+4. Interpretazione Strategica
+Il fatto che i margini siano così simili tra loro (tutti intorno al 64-65%) mi dice che il tuo menu è "piatto". In una strategia d'élite, dovremmo avere dei "Leader di Profitto" (piatti con margini oltre il 75%) bilanciati da piatti di richiamo. Attualmente, la tua redditività dipende eccessivamente dal volume di vendita totale piuttosto che dall'ottimizzazione del mix di vendita.
+5. Azioni Suggerite (Il tuo Piano d'Attacco)
+2
+Ti consiglio di intraprendere queste tre azioni immediate
+1
+Ingegneria della Lasagna: Dobbiamo analizzare la ricetta. Possiamo ridurre gli sprechi o aumentare il prezzo di vendita di soli 0,50 € - 1,00 €? Data la sua natura, i clienti accettano spesso un premium price per una lasagna artigianale.
+2
+Promozione Incrociata (Upselling): Poiché i Dessert e le Bevande hanno margini solidi (65%), istruisci lo staff a proporre sempre l'abbinamento dolce/caffè. Ogni Tiramisù venduto protegge il tuo margine medio.
+3
+Posizionamento nel Menu: Assicurati che la Pizza Margherita e la Pasta Carbonara (65,29%) siano in posizioni di rilievo visivo (il cosiddetto "triangolo d'oro" del menu), poiché sono i tuoi motori di profitto più affidabili.
+6. Domanda di Approfondimento
+"Per trasformare questa analisi in una matrice di Menu Engineering completa (identificando i tuoi 'Star' e i tuoi 'Plowhorses'), vuoi che incrociamo questi margini con i volumi di vendita (quantità vendute) per vedere quali piatti generano effettivamente più cassa a fine mese?"
+Questo ci permetterà di capire se la Lasagna, nonostante il margine più basso, è un piatto che attira molti clienti o se è un peso morto da eliminare o trasformare. _Cosa ne pensi?_
+📊
+Nota Analitica
+Revenue: 21.956,62 €
+📊
+Nota Analitica
+Gross Margin Percent: 64,98%
+📊
+Nota Analitica
+Food Cost Percent: 35,02%
+Numero di gruppi: 3
+1
+category: Food, gross_margin_percent: 64.91400804411523832100
+2
+category: Dessert, gross_margin_percent: 65.43466919152882980400
+3
+category: Drink, gross_margin_percent: 64.95120904020842652800
+Numero di gruppi: 10

@@ -628,6 +628,147 @@ export function validateToolGating(
   return { valid: true };
 }
 
+/**
+ * Label/Metric Alignment Validator
+ * Ensures that labels in the response match the metrics actually called
+ * 
+ * CRITICAL: Prevents confusing revenue with gross_margin
+ */
+function validateLabelMetricAlignment(
+  aiResponse: string,
+  toolResults: ExecutedToolResult[]
+): { valid: boolean; errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const responseLower = aiResponse.toLowerCase();
+  
+  // Extract metric names from tool calls - use args.metricName as primary source
+  const metricsUsed = new Set<string>();
+  for (const result of toolResults) {
+    if (!result.success) continue;
+    
+    // Primary source: args.metricName (canonical)
+    const argsMetric = (result as any).args?.metricName;
+    if (argsMetric) metricsUsed.add(argsMetric.toLowerCase());
+    
+    // Fallback sources
+    const resultMetric = (result.result as any)?.metricName;
+    if (resultMetric) metricsUsed.add(resultMetric.toLowerCase());
+    
+    // Also check nested metric names in aggregate results
+    if (result.result?.data && Array.isArray(result.result.data)) {
+      for (const row of result.result.data) {
+        for (const key of Object.keys(row)) {
+          metricsUsed.add(key.toLowerCase());
+        }
+      }
+    }
+  }
+  
+  console.log(`[LABEL-VALIDATOR] Metrics used in tools: ${[...metricsUsed].join(", ")}`);
+  
+  // CRITICAL CHECK 1: "margine lordo" + € amount requires gross_margin
+  const marginPatterns = [
+    /margine\s+lordo\s+(?:di\s+)?[\d.,]+\s*[€]/i,
+    /margine\s+lordo[:\s]+[\d.,]+\s*[€]/i,
+    /margine[:\s]+[\d.,]+\s*[€]/i,
+    /profitto\s+(?:di\s+)?[\d.,]+\s*[€]/i,
+  ];
+  
+  const hasMarginWithEuro = marginPatterns.some(p => p.test(aiResponse));
+  const hasGrossMarginMetric = metricsUsed.has("gross_margin") || 
+                                metricsUsed.has("gross_margin_percent") ||
+                                [...metricsUsed].some(m => m.includes("gross_margin"));
+  
+  if (hasMarginWithEuro && !hasGrossMarginMetric) {
+    const hasRevenueMetric = metricsUsed.has("revenue") || 
+                             [...metricsUsed].some(m => m.includes("revenue"));
+    
+    if (hasRevenueMetric) {
+      errors.push(`ERRORE CRITICO - CONFUSIONE REVENUE/MARGINE: La risposta menziona "margine lordo €" ma il tool chiamato era "revenue". Il revenue (fatturato) NON è il margine lordo. Per calcolare il margine lordo in euro serve execute_metric(gross_margin).`);
+    } else {
+      warnings.push(`ATTENZIONE: La risposta menziona "margine lordo €" ma non è stato chiamato execute_metric(gross_margin). Verificare che il valore sia corretto.`);
+    }
+  }
+  
+  // CRITICAL CHECK 2: Detect value confusion using number parsing
+  // This checks BOTH cases: when gross_margin is missing AND when it's present but wrong value is used
+  let revenueFromTools: number | null = null;
+  let grossMarginFromTools: number | null = null;
+  
+  for (const result of toolResults) {
+    if (!result.success || !result.result) continue;
+    const metricName = ((result as any).args?.metricName || "").toLowerCase();
+    const resultValue = result.result?.value ?? result.result?.result;
+    
+    if (metricName === "revenue" && typeof resultValue === "number") {
+      revenueFromTools = resultValue;
+    }
+    if (metricName === "gross_margin" && typeof resultValue === "number") {
+      grossMarginFromTools = resultValue;
+    }
+  }
+  
+  // Extract numbers from response near "margine lordo" mentions
+  const marginMentioned = responseLower.includes("margine lordo") || responseLower.includes("margine:");
+  if (marginMentioned && revenueFromTools) {
+    // Extract euro amounts from response
+    const responseNumbers: number[] = [];
+    const numPatterns = [/[\d.,]+\s*[€]/g, /[€]\s*[\d.,]+/g];
+    for (const pattern of numPatterns) {
+      const matches = aiResponse.match(pattern) || [];
+      for (const m of matches) {
+        const cleaned = m.replace(/[€\s]/g, "").replace(/\.(\d{3})/g, "$1").replace(",", ".");
+        const num = parseFloat(cleaned);
+        if (!isNaN(num) && num > 100) responseNumbers.push(num);
+      }
+    }
+    
+    // Find number closest to "margine lordo" in text
+    const marginIdx = responseLower.indexOf("margine lordo");
+    if (marginIdx >= 0) {
+      // Find the first € amount after "margine lordo"
+      const textAfterMargin = aiResponse.substring(marginIdx, marginIdx + 100);
+      const euroMatch = textAfterMargin.match(/[\d.,]+\s*[€]/);
+      if (euroMatch) {
+        const cleaned = euroMatch[0].replace(/[€\s]/g, "").replace(/\.(\d{3})/g, "$1").replace(",", ".");
+        const marginValueInResponse = parseFloat(cleaned);
+        
+        if (!isNaN(marginValueInResponse)) {
+          // Check if this value matches revenue (WRONG) or gross_margin (CORRECT)
+          const matchesRevenue = Math.abs(marginValueInResponse - revenueFromTools) / revenueFromTools < 0.02;
+          const matchesGrossMargin = grossMarginFromTools && Math.abs(marginValueInResponse - grossMarginFromTools) / grossMarginFromTools < 0.02;
+          
+          if (matchesRevenue && !matchesGrossMargin) {
+            errors.push(`ERRORE CRITICO - CONFUSIONE VALORI: "${marginValueInResponse.toFixed(2)}€" etichettato come "margine lordo" ma è il valore di REVENUE. ${grossMarginFromTools ? `Il margine lordo corretto è ${grossMarginFromTools.toFixed(2)}€.` : 'Serve execute_metric(gross_margin) per ottenere il margine.'}`);
+          }
+        }
+      }
+    }
+  }
+  
+  // CRITICAL CHECK 3: Detect forbidden narrative tokens (benchmarks, storytelling) - BLOCKING
+  const forbiddenPatterns = [
+    { pattern: /gold\s+standard/i, reason: "benchmark esterno non verificabile" },
+    { pattern: /68[\-–]70\s*%/i, reason: "benchmark percentuale inventato" },
+    { pattern: /triangolo\s+d['']?oro/i, reason: "storytelling non richiesto" },
+    { pattern: /psicologia\s+del\s+prezzo/i, reason: "concetto esterno non supportato" },
+    { pattern: /piano\s+d['']?attacco/i, reason: "storytelling non richiesto" },
+    { pattern: /leader\s+di\s+profitto/i, reason: "storytelling non richiesto" },
+    { pattern: /strategia\s+d['']?[eé]lite/i, reason: "giudizio soggettivo" },
+    { pattern: /markup\s+costante/i, reason: "inferenza non verificabile" },
+  ];
+  
+  for (const { pattern, reason } of forbiddenPatterns) {
+    if (pattern.test(aiResponse)) {
+      // BLOCKING ERROR - not just warning
+      errors.push(`NARRATIVE VIETATA: "${pattern.source.replace(/\\/g, "")}" - ${reason}. Questo contenuto non è permesso in modalità dati.`);
+    }
+  }
+  
+  return { valid: errors.length === 0, errors, warnings };
+}
+
 export function fullValidation(
   aiResponse: string,
   toolResults: ExecutedToolResult[]
@@ -641,9 +782,10 @@ export function fullValidation(
   const toolGating = validateToolGating(aiResponse, toolResults);
   const responseValidation = validateResponseNumbers(aiResponse, toolResults);
   const toolValidation = validateToolResults(toolResults);
+  const labelValidation = validateLabelMetricAlignment(aiResponse, toolResults);
   
-  const allErrors = [...responseValidation.errors, ...toolValidation.errors];
-  const allWarnings = [...responseValidation.warnings, ...toolValidation.warnings];
+  const allErrors = [...responseValidation.errors, ...toolValidation.errors, ...labelValidation.errors];
+  const allWarnings = [...responseValidation.warnings, ...toolValidation.warnings, ...labelValidation.warnings];
   
   if (!toolGating.valid && toolGating.error) {
     allErrors.unshift(toolGating.error);
@@ -654,10 +796,11 @@ export function fullValidation(
     e.includes("sotto il minimo") || e.includes("sopra il massimo") || e.includes("deve essere")
   );
   const hasToolGatingError = !toolGating.valid;
+  const hasLabelError = !labelValidation.valid;
   
   return {
     valid: allErrors.length === 0,
-    canProceed: !hasHallucination && !hasRangeErrors && !hasToolGatingError,
+    canProceed: !hasHallucination && !hasRangeErrors && !hasToolGatingError && !hasLabelError,
     errors: allErrors,
     warnings: allWarnings,
     inventedNumbers: responseValidation.inventedNumbers,
