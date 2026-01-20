@@ -1,0 +1,39 @@
+[WIRING-CHECK] semantic contract detected - requestsAll=false, requestsTopN=false, keywords=[]
+[WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[WIRING-CHECK] groupByIntent - isProductListing=false, productColumn=null
+[INTENT-ROUTER] Classifying question: "cosa hai caricato"
+[INTENT-ROUTER] Conversation context: 5 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (898ms): {"intent":"data_preview","requires_metrics":false,"suggested_tools":["get_schema"],"confidence":0.9}
+[INTENT-ROUTER] Classification result: intent=data_preview, requires_metrics=false, confidence=0.90, tools=[get_schema]
+[QUERY-PLANNER] Router result: intent=data_preview, requires_metrics=false, confidence=0.90
+[POLICY-ENGINE] Getting policy for intent: data_preview
+[QUERY-PLANNER] Policy: allowedTools=[filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 5 messages
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+there are non-text parts functionCall,functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 2 steps, complexity: medium
+[POLICY-ENGINE] Enforcing policy for intent: data_preview, tool calls: 2
+[POLICY-ENGINE] BLOCKED: execute_metric (in blockedTools)
+[POLICY-ENGINE] BLOCKED: execute_metric (in blockedTools)
+[POLICY-ENGINE] Result: allowed=0, blocked=2, violations=2
+[POLICY-ENGINE] Tool analysis: hasComputeTool=false, hasOnlyMetadata=false
+[QUERY-PLANNER] POLICY VIOLATIONS: Tool "execute_metric" non consentito per intent "data_preview"; Tool "execute_metric" non consentito per intent "data_preview"
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: 
+[CLIENT-DATA] Assistant message saved: 680c463f-be42-4990-a9ff-8f414e36eb49
+7:06:21 AM [express] POST /api/client-data/conversations/84c64841-4418-4d2d-8e49-b40ca5bafb57/messag…

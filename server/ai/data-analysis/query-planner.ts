@@ -893,7 +893,8 @@ export async function planQuery(
   userQuestion: string,
   datasets: DatasetInfo[],
   consultantId?: string,
-  conversationHistory?: ConversationMessage[]
+  conversationHistory?: ConversationMessage[],
+  allowedTools?: string[]
 ): Promise<QueryPlan> {
   const providerResult = await getAIProvider(consultantId || "system", consultantId);
   const client = providerResult.client;
@@ -917,9 +918,21 @@ export async function planQuery(
 
   console.log(`[QUERY-PLANNER] Conversation context for planner: ${conversationHistory?.length || 0} messages`);
 
+  // Filter available tools based on policy
+  const availableToolsForAI = allowedTools && allowedTools.length > 0
+    ? dataAnalysisTools.filter(tool => allowedTools.includes(tool.name))
+    : dataAnalysisTools;
+  
+  const toolConstraint = allowedTools && allowedTools.length > 0
+    ? `\n\n⚠️ TOOL CONSENTITI: Puoi usare SOLO questi tool: [${allowedTools.join(', ')}]. NON usare altri tool.`
+    : '';
+
+  console.log(`[QUERY-PLANNER] Allowed tools for AI: [${availableToolsForAI.map(t => t.name).join(', ')}]`);
+
   const userPrompt = `Dataset disponibili:
 ${datasetsContext}
 ${conversationContext}
+${toolConstraint}
 
 Domanda dell'utente: "${userQuestion}"
 
@@ -944,7 +957,7 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
         maxOutputTokens: 2048,
       },
       tools: [{
-        functionDeclarations: dataAnalysisTools
+        functionDeclarations: availableToolsForAI
       }],
       toolConfig: {
         functionCallingConfig: {
@@ -1539,8 +1552,36 @@ export async function askDataset(
     
     if (policyResult.violations.length > 0) {
       console.warn(`[QUERY-PLANNER] POLICY VIOLATIONS: ${policyResult.violations.join('; ')}`);
-      // Replace blocked tools, keep only allowed
-      plan.steps = policyResult.allowed;
+      
+      // RETRY WITH FEEDBACK: Re-plan with explicit tool constraints
+      if (policyResult.allowed.length === 0) {
+        console.log(`[QUERY-PLANNER] All tools blocked - retrying with explicit constraints`);
+        
+        const retryPlan = await planQuery(
+          userQuestion, 
+          datasets, 
+          consultantId, 
+          conversationHistory,
+          policy.allowedTools // Pass allowed tools to constrain AI
+        );
+        
+        if (retryPlan.steps.length > 0) {
+          // Validate retry plan
+          const retryPolicyResult = enforcePolicyOnToolCalls(routerOutput.intent, retryPlan.steps);
+          if (retryPolicyResult.allowed.length > 0) {
+            console.log(`[QUERY-PLANNER] Retry successful - got ${retryPolicyResult.allowed.length} valid tools`);
+            plan.steps = retryPolicyResult.allowed;
+          } else {
+            console.warn(`[QUERY-PLANNER] Retry also failed - no valid tools generated`);
+            plan.steps = [];
+          }
+        } else {
+          plan.steps = [];
+        }
+      } else {
+        // Some tools were allowed, use those
+        plan.steps = policyResult.allowed;
+      }
       
       if (plan.steps.length === 0 && policy.requireToolCall) {
         return {
