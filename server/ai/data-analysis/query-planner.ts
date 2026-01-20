@@ -299,10 +299,36 @@ Anche in strategy mode:
 - NO benchmark esterni non verificabili
 
 ========================
+MAPPING SEMANTICO COLONNE
+========================
+
+10) INTERPRETAZIONE COLONNE - REGOLE OBBLIGATORIE:
+
+COLONNE TIPICHE E LORO SIGNIFICATO:
+- item_name / product_name / nome_prodotto → Nome del singolo prodotto/piatto (Pizza Margherita, Birra, etc.)
+- category / categoria → Macro-categoria (Food, Drink, Dessert)
+- unit_price / prezzo → Prezzo unitario
+- quantity / quantità → Quantità venduta
+- order_id / id_ordine → Identificativo ordine
+
+REGOLA CRITICA - QUANDO L'UTENTE CHIEDE ELENCHI:
+- "che pizze abbiamo", "quali piatti", "elenco prodotti" → groupBy: [item_name], filters: {category: "Food"}
+- "che bevande", "drink disponibili" → groupBy: [item_name], filters: {category: "Drink"}
+- "che dolci", "dessert" → groupBy: [item_name], filters: {category: "Dessert"}
+
+MAI raggruppare per "category" se l'utente chiede il DETTAGLIO dei prodotti!
+- SBAGLIATO: "che pizze abbiamo" → groupBy: [category] (restituisce solo Food/Drink/Dessert)
+- CORRETTO: "che pizze abbiamo" → groupBy: [item_name], filters: {category: "Food"}
+
+QUANDO USARE category vs item_name:
+- "confronto categorie", "Food vs Drink" → groupBy: [category]
+- "quali prodotti", "che piatti", "elenco articoli" → groupBy: [item_name]
+
+========================
 GESTIONE INPUT CONVERSAZIONALI
 ========================
 
-10) Se il messaggio è solo:
+11) Se il messaggio è solo:
 - grazie / ok / perfetto / capito / conferme simili
 
 NON chiamare tool.
