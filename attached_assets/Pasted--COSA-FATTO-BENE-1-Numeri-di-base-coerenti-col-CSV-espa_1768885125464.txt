@@ -1,0 +1,198 @@
+✅ COSA È FATTO BENE
+1️⃣ Numeri di base coerenti col CSV espanso
+
+Hai:
+
+Revenue totale: 21.956,62 € ✅ (corretto, lo abbiamo calcolato prima)
+
+Breakdown per categoria:
+
+Food: 10.989,40 €
+
+Drink: 8.897,14 €
+
+Dessert: 2.070,08 €
+
+La somma torna:
+
+10.989,40 + 8.897,14 + 2.070,08 = 21.956,62
+
+
+👉 Questo è PERFETTO. Vuol dire che:
+
+aggregate_group(category, revenue) funziona
+
+nessuna somma inventata
+
+pipeline dati OK
+
+2️⃣ Quantità per categoria coerenti
+
+Food 945
+Drink 790
+Dessert 178
+
+Totale righe vendute: 1.913
+
+Questo combacia con il dataset espanso.
+
+👉 Bene anche questo.
+
+⚠️ COSA È SBAGLIATO (IMPORTANTE)
+
+Ora arrivano i problemi seri.
+
+🔴 ERRORE 1 — “Prezzo medio dessert = 11,63€” INVENTATO
+
+Hai scritto:
+
+“Il prezzo medio di vendita di un dessert è circa 11,63€”
+
+Questo numero NON è stato calcolato da nessun tool.
+
+Per calcolarlo serviva:
+
+AVG(unit_price) WHERE category = Dessert
+
+
+Oppure:
+
+revenue_dessert / quantity_dessert
+
+
+Ma:
+
+non vedo execute_metric
+
+non vedo aggregate_group con AVG
+
+👉 Questo è hallucinated derived metric.
+
+🔴 ERRORE 2 — Conversion rate “18% clienti prendono dessert”
+
+Hai scritto:
+
+“solo il 18% dei clienti che ordinano Food prende dessert”
+
+Questo è FALSO dal punto di vista dati perché:
+
+Nel CSV:
+
+non hai relazione ordine → food+dessert cross join
+
+non sai se lo stesso order_id ha food + dessert
+
+Per calcolare questo serviva:
+
+COUNT(DISTINCT order_id con dessert)
+/
+COUNT(DISTINCT order_id con food)
+
+
+Non è stato fatto.
+
+👉 Questo è storytelling inventato.
+
+🔴 ERRORE 3 — “Dessert sovrapprezzati” = supposizione
+
+Non puoi affermare:
+
+sovrapprezzati
+
+entry level dessert
+
+Senza:
+
+margine dessert
+
+food cost dessert
+
+Questa è consulenza non supportata dai dati.
+
+🔴 ERRORE 4 — Contraddizione interna
+
+Hai detto:
+
+“mancano i costi COGS”
+
+Ma nel tuo dataset complesso unit_cost esiste.
+
+Quindi:
+
+il sistema NON ha collegato cost ai dessert
+
+oppure non ha fatto aggregate_group con gross_margin per category
+
+👉 Bug nel metric resolver per category+cost.
+
+🧠 COSA DOVEVA DIRE CORRETTAMENTE
+
+La risposta corretta sarebbe dovuta essere:
+
+Parte dati (OK)
+
+Revenue per categoria
+
+Quantità per categoria
+
+Parte interpretazione SAFE
+
+Solo questo era consentito:
+
+✅ “Food genera il 50% del fatturato”
+✅ “Drink pesa molto sul totale”
+❌ NON parlare di prezzo medio
+❌ NON parlare di comportamento clienti
+❌ NON parlare di sovrapprezzo
+
+🚨 BUG ARCHITETTURALE CHE DEVI RISOLVERE
+PROBLEMA: “Derived KPI senza tool”
+
+La tua AI sta:
+
+combinando numeri internamente
+
+generando metriche non dichiarate
+
+Devi imporre questa regola:
+
+REGOLA D'ORO
+
+L’AI può citare SOLO:
+
+output diretti tool
+
+metriche ufficiali registrate
+
+È VIETATO:
+
+fare divisioni interne
+
+stimare percentuali
+
+inventare “medie”
+
+COSA DIRE AL PROGRAMMATORE (PRONTO)
+
+Nell’analisi menu ho visto che l’AI:
+
+ha inventato prezzo medio dessert (11,63€)
+
+ha inventato conversion rate 18%
+
+ha fatto interpretazioni senza KPI calcolati
+
+Serve:
+
+Bloccare DERIVED metrics lato LLM
+Se non esiste una metrica ufficiale → non può essere citata.
+
+Consentire solo numeri provenienti dai tool.
+
+Aggiungere metriche ufficiali:
+
+avg_price_by_category
+
+order_with_dessert_ratio (se richiesto)
+
+Validator: se risposta contiene numeri non presenti nei tool output → BLOCK.
