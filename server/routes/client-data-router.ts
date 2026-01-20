@@ -1879,14 +1879,17 @@ router.post(
       const executionResult = await askDataset(content, [datasetInfo], consultantId, userId);
 
       const toolCalls = executionResult.plan.steps.map((step) => ({
-        toolName: step.tool,
+        toolName: step.name,
         params: step.args,
       }));
 
-      const thinkingLines = executionResult.plan.steps.map((step, index) => 
-        `Step ${index + 1}: ${step.tool} - ${step.reasoning}`
-      );
-      const thinking = thinkingLines.join("\n");
+      const thinkingLines = executionResult.plan.steps.map((step, index) => {
+        const argsPreview = Object.keys(step.args).slice(0, 3).join(", ");
+        return `Step ${index + 1}: ${step.name}${argsPreview ? ` (${argsPreview})` : ""}`;
+      });
+      const thinking = thinkingLines.length > 0 
+        ? thinkingLines.join("\n") + (executionResult.plan.reasoning ? `\n\n${executionResult.plan.reasoning}` : "")
+        : executionResult.plan.reasoning || "";
 
       // Pass user preferences for AI response customization
       const userPreferences = {
