@@ -98,9 +98,9 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
   ticket_medio: {
     name: "ticket_medio",
     displayName: "Ticket Medio",
-    description: "Valore medio per ordine",
-    sqlTemplate: 'AVG(CAST({total_net} AS NUMERIC))',
-    requiredLogicalColumns: ["total_net"],
+    description: "Valore medio per ordine (fatturato / numero ordini)",
+    sqlTemplate: 'SUM(CAST({price} AS NUMERIC) * CAST({quantity} AS NUMERIC)) / NULLIF(COUNT(DISTINCT {order_id}), 0)',
+    requiredLogicalColumns: ["price", "quantity", "order_id"],
     unit: "currency",
     validationRules: {
       mustBePositive: true,
