@@ -1,0 +1,124 @@
+✅ 1. Dove vengono calcolate le metriche?
+
+"Quando l’utente chiede fatturato o food cost, chi fa la somma?
+Il database/SQL, Python, oppure Gemini nel prompt?"
+
+Risposte accettabili:
+
+SQL
+
+DuckDB
+
+Python aggregations
+
+Risposte pericolose:
+
+"Gemini lo calcola"
+
+"lo deduce dal testo"
+
+"lo stimiamo"
+
+✅ 2. Gemini vede dati grezzi?
+
+"Il modello riceve righe del dataset o solo output aggregati?"
+
+Se dice:
+
+"passiamo il CSV nel prompt"
+
+"gli mandiamo chunk di righe"
+
+⚠️ È sbagliato per analytics.
+
+✅ 3. Stiamo usando tool calling vero?
+
+"Gemini chiama funzioni strutturate JSON o scrive testo libero?"
+
+Devi sentire:
+
+function calling
+
+tool schema
+
+structured output
+
+Se dice:
+
+"gli chiediamo di scrivere SQL in chat"
+
+⚠️ fragile.
+
+✅ 4. C’è un semantic layer?
+
+"Le metriche (food_cost, revenue, ticket medio) sono definite in un file/config o Gemini le interpreta?"
+
+Se non esiste:
+
+stai vivendo nel caos numerico.
+
+✅ 5. Se Gemini sbaglia, chi se ne accorge?
+
+"Abbiamo validazione risultati?
+Tipo: range check, reconciliation, schema validation?"
+
+Se dice:
+
+"ci fidiamo del modello"
+
+❌ enorme red flag.
+
+BLOCCO 2 — COSA CHIEDERE DI IMPLEMENTARE (concreto)
+
+Ora le DIRETTIVE che devi dare.
+
+Puoi dirgli:
+
+1️⃣ Separare calcolo da AI
+
+"Voglio che TUTTI i numeri vengano calcolati dal database o da Python, non dal modello.
+Gemini deve solo chiamare tool e spiegare output."
+
+2️⃣ Implementare tool layer stabile
+
+"Serve un layer di funzioni tipo:
+
+get_metric
+
+breakdown
+
+top_bottom
+
+compare_periods
+con input JSON e output strutturato."
+
+3️⃣ Semantic layer configurabile per dataset
+
+"Ogni dataset deve avere un file metriche/dimensioni che definisce:
+
+cosa è revenue
+
+cosa è food cost
+
+quali colonne usare
+Gemini NON deve inventarle."
+
+4️⃣ Bloccare risposte senza tool
+
+"Se l’utente chiede numeri e Gemini non ha chiamato tool, la risposta va rifiutata."
+
+Questo è fondamentale.
+
+5️⃣ Log + audit
+
+"Ogni risposta numerica deve salvare:
+
+query eseguita
+
+parametri
+
+dataset_id
+
+timestamp"
+
+Questo ti salva legalmente e commercialmente.
