@@ -71,6 +71,11 @@ const TERM_MAPPINGS: TermMapping[] = [
     metricName: "discount_total",
     priority: 1,
   },
+  {
+    terms: ["incidenza sconti", "impatto sconti", "sconti percentuale", "percentuale sconti", "discount percent", "discount rate"],
+    metricName: "discount_percent_on_revenue",
+    priority: 2,
+  },
 ];
 
 export function forceMetricFromTerms(question: string): string | null {

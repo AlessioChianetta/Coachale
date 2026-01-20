@@ -33,6 +33,7 @@ export const METRIC_ENUM = [
   "gross_margin",
   "gross_margin_percent",
   "discount_total",
+  "discount_percent_on_revenue",
 ] as const;
 
 export type MetricName = typeof METRIC_ENUM[number];

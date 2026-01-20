@@ -1,0 +1,212 @@
+🔥 TIER 1 — CORE BUSINESS (OBBLIGATORIE)
+
+Se queste sbagliano, il prodotto è morto.
+
+1️⃣ “Quanto ho incassato?”
+
+Totale fatturato
+
+Per giorno / mese
+
+Test:
+
+execute_metric revenue
+
+aggregate_group by month
+
+2️⃣ “Qual è lo scontrino medio?”
+
+Ticket medio reale
+
+Test:
+
+richiede order_id
+
+SUM(price*qty) / DISTINCT orders
+
+3️⃣ “Qual è il food cost %?”
+
+Food cost teorico
+
+Test:
+
+food_cost_percent
+
+controllo divisione per zero
+
+arrotondamenti
+
+4️⃣ “Quanti ordini ho fatto?”
+
+Numero scontrini
+
+Test:
+
+DISTINCT order_id
+
+5️⃣ “Quanto margine sto facendo?”
+
+Margine lordo €
+
+Margine %
+
+Test:
+
+gross_margin
+
+gross_margin_percent
+
+🚀 TIER 2 — OPERATIVO GIORNALIERO
+
+Queste vendono il prodotto.
+
+6️⃣ “Quali sono i piatti più venduti?”
+
+Top prodotti per quantità
+
+Top per ricavo
+
+Test:
+
+aggregate_group item_name
+
+sort by revenue/quantity
+
+7️⃣ “Quali piatti mi fanno guadagnare di più?”
+
+Profit per prodotto
+
+Test:
+
+(price-cost)*qty grouped by item
+
+8️⃣ “Chi sta vendendo meglio?” (staff)
+
+Vendite per cameriere
+
+Test:
+
+group by waiter
+
+revenue
+
+9️⃣ “Qual è il metodo di pagamento più usato?”
+
+Cash vs Card
+
+Test:
+
+group by payment_method
+
+🔟 “Quali categorie vanno meglio?”
+
+Food vs Drink vs Dessert
+
+Test:
+
+group by category
+
+📈 TIER 3 — MANAGEMENT & STRATEGIA
+
+Qui fai il salto di qualità.
+
+11️⃣ “Sto crescendo o calando?”
+
+Confronto mese su mese
+
+Test:
+
+compare_periods
+
+12️⃣ “Quali giorni vendono di più?”
+
+Analisi per giorno/settimana
+
+Test:
+
+group by order_date (day/week)
+
+13️⃣ “Quali clienti tornano di più?”
+
+(se customer_id presente)
+
+Test:
+
+orders per customer
+
+top returning customers
+
+14️⃣ “Quanto incidono gli sconti?”
+
+Discount totale
+
+% su revenue
+
+Test:
+
+discount_total
+
+discount impact %
+
+15️⃣ “Qual è il mio best seller reale?”
+
+Non solo volume, ma:
+
+popolarità
+
+margine
+
+Test:
+
+cross metric group by item
+
+⚠️ TIER 4 — DOMANDE PERICOLOSE (DA GESTIRE)
+
+Queste sono trappole se non gestite bene.
+
+❌ “Perché vendo meno?”
+
+→ Devi rispondere senza inventare cause.
+
+Test:
+
+risposta qualitativa + numeri già calcolati
+
+❌ “Come aumento il fatturato?”
+
+→ Niente proiezioni automatiche.
+
+Test:
+
+no numeri nuovi
+
+solo leve generiche
+
+❌ “Analizza tutti i piatti uno per uno”
+
+→ Cardinalità guardrail.
+
+Test:
+
+chiedere top N o export
+
+🧪 TEST TECNICI CHE DEVI FARE PER OGNI DOMANDA
+
+Per OGNI domanda sopra devi verificare:
+
+✅ usa tool giusto
+✅ non inventa numeri
+✅ rispetta filtri
+✅ non cambia semantica
+✅ errori friendly se mancano colonne
+✅ output coerente con CSV semplice + complesso
+
+KPI DI QUALITÀ DEL TUO SISTEMA
+
+Quando sei pronto a vendere:
+
+KPI	Target
+Risposte corrette TIER 1	100%
+Risposte corrette TIER 2	>95%
+Zero numeri inventati	obbligatorio
+Tempo risposta	<2s
