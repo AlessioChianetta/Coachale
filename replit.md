@@ -1,5 +1,5 @@
 # Overview
-This full-stack web application is a comprehensive consultation platform connecting consultants and clients. It facilitates exercise assignments, progress tracking, and performance analytics. Key features include an AI assistant for personalized financial insights, advanced client management, robust communication tools, and an extensive AI knowledge base. The platform aims to enhance consultant-client interactions, streamline financial guidance, and improve client outcomes and consultant efficiency. It incorporates a multi-tier subscription system for AI agents with revenue sharing, an employee licensing system, and a public landing page for lead generation, targeting market growth and consultant empowerment.
+This full-stack web application is a comprehensive consultation platform connecting consultants and clients, facilitating exercise assignments, progress tracking, and performance analytics. It offers an AI assistant for personalized financial insights, advanced client management, robust communication tools, and an extensive AI knowledge base. The platform aims to enhance consultant-client interactions, streamline financial guidance, and improve client outcomes and consultant efficiency. It incorporates a multi-tier subscription system for AI agents with revenue sharing, an employee licensing system, and a public landing page for lead generation, targeting market growth and consultant empowerment.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -7,136 +7,49 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 
 # System Architecture
 ## Core Technologies
-The application is built with React 18, TypeScript, Vite, TanStack React Query, Wouter, shadcn/ui, Tailwind CSS, React Hook Form, Zod for the frontend. The backend uses Express.js, TypeScript, JWT, bcrypt, PostgreSQL (Drizzle ORM), and Multer.
+The application uses React 18, TypeScript, Vite, TanStack React Query, Wouter, shadcn/ui, Tailwind CSS, React Hook Form, and Zod for the frontend. The backend is built with Express.js, TypeScript, JWT, bcrypt, PostgreSQL (Drizzle ORM), and Multer.
 
 ## Data Management
 PostgreSQL (Supabase) with Drizzle ORM manages all application data.
 
 ## Authentication & Authorization
-Authentication uses JWT tokens and bcrypt for secure passwords. A role-based access control system supports consultant, client, and super_admin roles. A multi-profile system allows users to hold multiple roles, with granular control for consultants over client profiles.
+Authentication uses JWT and bcrypt. A role-based access control system supports consultant, client, and super_admin roles, with a multi-profile system allowing granular control for consultants over client profiles.
 
 ## UI/UX Decisions
-A modern, accessible, and responsive design is achieved using `shadcn/ui` and `Tailwind CSS`. Onboarding includes interactive guided tours with `Driver.js`. Navigation is categorized with state persistence. Layouts are content-focused with sidebars and responsive elements.
+A modern, accessible, and responsive design is achieved using `shadcn/ui` and `Tailwind CSS`. Onboarding includes interactive guided tours. Navigation is categorized with state persistence, and layouts are content-focused.
 
 ## AI Integration & Automation
-The platform heavily leverages AI for diverse functionalities:
-- **Financial Insights**: Provides personalized financial insights.
-- **AI Knowledge Base**: Supports document uploads and external API integrations for AI context, with semantic search (RAG) using Google's native File Search and multi-tenant isolation.
-- **Consultation Summarization**: Generates summary emails and actionable tasks from transcripts.
-- **Messaging Integration**: Full-featured WhatsApp Business and Instagram Direct Messaging via Twilio and Meta Graph API, powered by AI for responses and automation.
-- **Sales Automation**: Configurable AI sales agents with dynamic token usage and personality profiling.
-- **Follow-up Automation**: 100% AI-driven follow-up system based on consultant preferences.
-- **Content Generation**: AI tools for creating courses, university pathways, and multi-language exercises.
-- **AI Assistant**: A ChatGPT-style interface with dynamic model selection, reasoning visualization, and persistent preferences.
-- **Conversation Memory**: Comprehensive memory management for AI assistant conversations with daily summaries and memory injection.
-- **Manager Gold Memory**: An exclusive, per-agent AI memory system for managers with isolated daily summaries.
-- **System Prompt Architecture**: All AI endpoints utilize a `buildSystemPrompt()` function for comprehensive context.
-- **Token Optimization**: A hybrid strategy combines intent detection, conditional database queries, caching, and RAG to reduce AI token consumption.
+The platform extensively uses AI for:
+- **Financial Insights**: Personalized financial analysis.
+- **AI Knowledge Base**: Semantic search (RAG) over documents and external APIs with multi-tenant isolation.
+- **Consultation Summarization**: Generates summary emails and tasks from transcripts.
+- **Messaging Integration**: AI-powered WhatsApp Business and Instagram Direct Messaging via Twilio and Meta Graph API.
+- **Sales Automation**: Configurable AI sales agents with dynamic token usage.
+- **Follow-up Automation**: 100% AI-driven follow-up system.
+- **Content Generation**: AI tools for creating courses, pathways, and multi-language exercises.
+- **AI Assistant**: A ChatGPT-style interface with dynamic model selection, reasoning visualization, and conversation memory.
+- **Token Optimization**: A hybrid strategy combining intent detection, conditional queries, caching, and RAG to reduce AI token consumption.
 
 ## Subscription & Licensing
-A multi-tier subscription system ("Dipendenti AI Subscription System") offers AI agent subscriptions with consultant license tracking, revenue sharing, and AI credits. An employee licensing system tracks team member licenses. Public and consultant-specific pricing pages are configurable. A unified login with Stripe integration manages subscriptions, automatic provisioning, webhooks, and Stripe Connect for Italian consultants. A seamless upgrade flow (Bronze/Silver to Gold) is implemented.
-
-## Stripe Payment Automations
-An automated user provisioning system that creates users when Stripe payments are received. The system supports dual payment channels with commission consistency.
-
-### Dual Payment Channels
-1. **Stripe Connect**: Revenue sharing with platform, uses superadmin Stripe keys
-2. **Direct Links**: 100% consultant commission, uses consultant's personal Stripe keys
-
-### Payment Channel Consistency
-When a user purchases via Direct Link (paymentSource=direct_link), all future upgrades use Direct Links to preserve the 100% commission. The system tracks:
-- `paymentSource` field on bronzeUsers (organic, stripe_connect, direct_link)
-- `consultantId` stored in localStorage during login for upgrade link resolution
-
-### Direct Links Feature
-Consultants can configure auto-generated upgrade payment links in `/consultant/payment-automations`:
-- Set prices (monthly/yearly) for Silver, Gold tiers (Bronze is free registration)
-- Configure temporary discounts with expiration dates
-- System auto-creates Stripe Product/Price/PaymentLink using consultant's keys
-- Links stored in `consultant_direct_links` table
-- Public endpoint for fetching upgrade links: `/api/stripe-automations/direct-links/public/:consultantId`
-
-**Auto-Automation Creation (January 2026):**
-When creating a direct link, the system automatically creates an associated payment automation:
-- **Silver**: `createAsClient=false`, `clientLevel="silver"`, `sendWelcomeEmail=true` (tier only, no client role)
-- **Gold**: `createAsClient=true`, `clientLevel="gold"`, `sendWelcomeEmail=true` (tier + client role)
-- Automations are linked via `directLinkId` field and marked `showOnPricingPage=true`
-
-**Separate Public Pricing Pages (January 2026):**
-Two distinct pricing pages to maintain clear separation of payment flows:
-- **`/c/:slug/pricing`** (Stripe Connect): Shows Bronze/Silver/Gold tiers with registration form, uses revenue sharing via superadmin Stripe keys (`public-pricing.tsx`)
-- **`/c/:slug/direct`** (Direct Links): Shows only Silver/Gold tiers, redirects directly to consultant's Stripe Payment Links for 100% commission (`public-pricing-direct.tsx`)
-- Both pages fetch from same endpoint `/api/public/consultant/:slug/pricing` which returns `paymentLinks` object
-- Direct Links page shows fallback message when links not configured, directing users to standard pricing page
-
-### Key Features
-- **Webhook Integration**: Per-consultant webhook endpoints (`/api/webhooks/stripe/:consultantId`) with signature verification
-- **Automatic User Creation**: Parses Stripe checkout session data to create users with cryptographically secure passwords
-- **Role Assignment**: Configurable creation as client or consultant with Bronze/Silver/Gold level assignment
-- **Gold = Client Rule**: Gold tier ALWAYS creates client role (enforced in both stripe-automations-router and stripe-connect-router webhooks)
-- **Password Management**: Temporary passwords stored until user changes them; change-password redirects Gold clients to /client, Bronze/Silver to /c/{slug}/select-agent
-- **Welcome Emails**: Step-by-step email templates with clear instructions
-- **Audit Logging**: Complete history of all provisioned users with success/failure tracking
-- **UI Management**: Dedicated page with descriptive tooltips explaining Client/Consultant roles and Bronze/Silver/Gold levels
-
-### Secure Bronze Upgrade Flow (January 2026)
-Bronze users can upgrade to Silver/Gold/Deluxe via Direct Links with cryptographically secure token-based authentication:
-
-**Token Generation:**
-- `POST /api/public/upgrade-token` generates a signed JWT (30-min expiry) containing `bronzeUserId`, `consultantId`, `targetTier`
-- Token is appended to Stripe Payment Link URL as `client_reference_id` parameter
-
-**Webhook Validation:**
-- Stripe webhook extracts `client_reference_id` and validates JWT signature, expiration, type, and consultantId match
-- If valid, webhook updates `bronzeUsers` with `upgradedAt`, `upgradedToLevel`, `upgradedSubscriptionId`
-- `clientLevelSubscriptions` receives `bronzeUserId` foreign key for secure linking
-
-**Upgrade Detection (Two-Priority System):**
-- Priority 1: Check `bronzeUsers.upgradedAt` and `upgradedSubscriptionId` (secure bronzeUserId link)
-- Priority 2: Fallback to email matching for backwards compatibility with legacy upgrades
-- Polling in UI detects upgrade within seconds, auto-refreshes without logout
-
-## Referral System
-A comprehensive "Invita un Amico" referral system for clients and consultants features unique codes, tracking, customizable landing pages with AI, dynamic qualification fields, automated emails, CRM lead creation, and bonus tracking.
+A multi-tier subscription system offers AI agent subscriptions with consultant license tracking, revenue sharing, and AI credits. An employee licensing system tracks team member licenses. Stripe integration manages subscriptions, provisioning, webhooks, and Stripe Connect. Dual payment channels (Stripe Connect for revenue sharing, Direct Links for 100% consultant commission) are supported with payment channel consistency. Bronze users can securely upgrade via token-based authentication.
 
 ## Content Marketing Studio
-This system provides tools for content creation and marketing. It includes features for AI-powered content idea generation, social media copy creation, a 6-step campaign builder, AI image generation via Google Gemini Imagen 3, and a hierarchical folder system for content organization. It also offers a content calendar and brand asset management.
+Provides AI-powered tools for content idea generation, social media copy, a 6-step campaign builder, AI image generation, and content organization with a calendar and brand asset management.
 
 ## Lead Nurturing 365 System
-An automated 365-day email nurturing sequence for proactive leads utilizes AI-generated content. It employs a topic-first approach for generating email content, integrates brand voice data for personalization, and uses dynamic template variables. A cron scheduler handles daily email sending with GDPR-compliant unsubscribe functionality. The system includes email tracking for opens and clicks, and lead integration for nurturing options.
+An automated 365-day email nurturing sequence uses AI-generated content, brand voice integration, and dynamic templates. A cron scheduler handles daily sending with GDPR compliance and email tracking.
 
 ## Email Hub System
-A comprehensive email hub for consultants supports IMAP/SMTP, unified inboxes, and AI-powered response generation. It features multi-folder support, automatic background synchronization, IMAP IDLE for real-time reception, and scalable email import. AI email capabilities include per-account configuration for tone and instructions. The system incorporates a ticket system, knowledge base integration for AI responses, webhook integration, risk detection, and analytics. Each email account can have its own dedicated knowledge base.
+A comprehensive email hub for consultants supports IMAP/SMTP, unified inboxes, and AI-powered response generation. Features include multi-folder support, background synchronization, IMAP IDLE, a ticket system, and knowledge base integration.
 
-## Compute-First Data Analysis System (Gennaio 2026)
-Sistema di analisi dati strutturati (Excel/CSV) per clienti con architettura "compute-first" che separa calcolo deterministico (SQL) da interpretazione AI (Gemini). Progettato per scalare a 1800+ installazioni multi-tenant.
+## Compute-First Data Analysis System
+A "compute-first" data analysis system for structured data (Excel/CSV) separates deterministic calculation (SQL) from AI interpretation. Key decisions include efficient Excel parsing, fast imports, dynamic tables with RLS, SSE for progress updates, AI-fallback column discovery, distributed sampling, and anti-stampede caching. It uses a structured JSON output.
 
-**Decisioni tecniche critiche:**
-- **Excel Parsing**: ExcelJS con streaming (non xlsx che carica tutto in RAM)
-- **Import veloce**: COPY via staging table + swap atomico (10x più veloce di INSERT batch)
-- **Tabelle Dinamiche**: Raw SQL con sanitizzazione (Drizzle non supporta DDL runtime)
-- **RLS completo**: Ruolo app_user, SET LOCAL, RLS anche su tabelle cdd_* (non solo naming!)
-- **Progress Updates**: SSE invece di WebSocket
-- **Column Discovery**: Pattern detection → AI fallback, auto-conferma se confidence >= 85%
-- **Sampling distribuito**: Campioni da inizio/metà/fine file (non solo prime 100 righe)
-- **Dataset Groups**: Abilitano JOIN tra tabelle correlate (DDTRIGHE ↔ PRODOTTI)
-- **Mini-DSL metriche**: Linguaggio controllato tradotto in SQL sicuro (non regex!)
-- **Cache anti-stampede**: FOR UPDATE SKIP LOCKED evita 50 query identiche
-- **Output strutturato**: JSON con metriche/periodo/filtri per UI, audit, test
-- **Test riconciliazione**: Verifiche automatiche che le somme tornino
+### Data Analysis Chat UI
+An AI chat interface for data analysis, reusing components from the AI Assistant. It features conversation persistence, tool call visualization, a consultative AI prompt, and unified preference integration.
 
-**Dipendenze**: exceljs, chardet, better-sse
-
-**Documentazione completa**: `docs/RDP-compute-first-data-analysis.md`, `docs/RDP-compute-first-analysis-review.md`
-
-### Data Analysis Chat UI (Gennaio 2026)
-Interfaccia chat AI stile ChatGPT per l'analisi dati con:
-- **Unified Components (Gennaio 2026)**: DataAnalysisChat riutilizza esattamente gli stessi componenti dell'AI Assistant (MessageList, InputArea, AIPreferencesSheet) per UI identica
-- **Conversation Persistence**: Tabelle `client_data_conversations`, `client_data_messages` per storico
-- **Tool Call Visualization**: ThinkingBubble mostra tool calls durante l'elaborazione (aggregate_group, filter_data, etc.) via formatToolCallsAsThinking()
-- **Consultative AI Prompt**: Prompt a 6 passi (risposta, contesto, pattern, interpretazione, azione, follow-up)
-- **Unified Preferences System**: Usa le preferenze dell'AI Assistant (`ai_assistant_preferences`) invece di tabella separata, passando model, thinkingLevel, writingStyle, responseLength, customInstructions al backend
-- **Backend Preference Integration**: `result-explainer.ts` applica le preferenze utente al prompt AI (stile, lunghezza, istruzioni personalizzate)
+### Semantic Layer for Anti-Hallucination
+An enterprise-grade system eliminates AI hallucinations through predefined metrics, semantic mapping, and a robust pre-validation architecture. It uses logical columns, metric templates, and term mapping to ensure accurate SQL generation and provides business-friendly error messages.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
