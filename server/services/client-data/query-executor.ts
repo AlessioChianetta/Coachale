@@ -128,6 +128,75 @@ async function getDatasetInfo(datasetId: string): Promise<{
   };
 }
 
+/**
+ * Execute a pre-defined metric using raw SQL expression
+ * This bypasses the DSL parser - used by execute_metric tool
+ * @param datasetId - Dataset ID
+ * @param sqlExpression - Raw SQL aggregation expression (e.g., 'SUM(CAST("Total Net" AS NUMERIC))')
+ * @param options - Query options including timeout
+ */
+export async function executeMetricSQL(
+  datasetId: string,
+  sqlExpression: string,
+  metricName: string,
+  options: QueryOptions = {}
+): Promise<QueryResult> {
+  const startTime = Date.now();
+  const datasetInfo = await getDatasetInfo(datasetId);
+
+  if (!datasetInfo) {
+    return { success: false, error: "Dataset not found or not ready" };
+  }
+
+  const sql = `SELECT ${sqlExpression} AS result FROM "${datasetInfo.tableName}"`;
+  const queryHash = computeQueryHash(sql, []);
+
+  if (options.useCache !== false) {
+    const cached = await getCachedResult(queryHash, datasetId);
+    if (cached && cached.status === "ready") {
+      return {
+        success: true,
+        data: cached.resultJson?.data,
+        metrics: cached.resultJson?.metrics,
+        rowCount: 1,
+        executionTimeMs: Date.now() - startTime,
+        cached: true,
+      };
+    }
+  }
+
+  const result = await executeQuery(sql, [], { 
+    ...options, 
+    timeoutMs: options.timeoutMs || AI_QUERY_TIMEOUT_MS 
+  });
+
+  await logQuery(
+    datasetId,
+    "execute_metric",
+    sql,
+    { metricName, sqlExpression },
+    result.executionTimeMs || 0,
+    1,
+    result.success,
+    result.error,
+    options.userId
+  );
+
+  if (result.success && options.useCache !== false) {
+    const metricValue = result.data?.[0]?.result;
+    await cacheResult(queryHash, datasetId, {
+      data: result.data,
+      metrics: { [metricName]: metricValue },
+      rowCount: 1,
+    }, DEFAULT_CACHE_TTL_AGGREGATION);
+  }
+
+  return {
+    ...result,
+    metrics: result.success ? { [metricName]: result.data?.[0]?.result } : undefined,
+  };
+}
+
 export async function queryMetric(
   datasetId: string,
   dslExpression: string,

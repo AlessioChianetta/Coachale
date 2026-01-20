@@ -5,7 +5,7 @@
 
 import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import { dataAnalysisTools, type ToolCall, type ExecutedToolResult, validateToolCall, getToolByName } from "./tool-definitions";
-import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, type QueryResult } from "../../services/client-data/query-executor";
+import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, type QueryResult } from "../../services/client-data/query-executor";
 import { parseMetricExpression, validateMetricAgainstSchema } from "../../services/client-data/metric-dsl";
 import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
@@ -454,7 +454,13 @@ export async function executeToolCall(
             executionTimeMs: Date.now() - startTime
           };
         }
-        result = await queryMetric(toolCall.args.datasetId, metric.sqlExpression, { userId, timeoutMs: 3000 });
+        // Use executeMetricSQL which executes raw SQL without DSL parser
+        result = await executeMetricSQL(
+          toolCall.args.datasetId, 
+          metric.sqlExpression, 
+          toolCall.args.metricName,
+          { userId, timeoutMs: 3000 }
+        );
         break;
       }
 
