@@ -15,6 +15,7 @@ import { QueryChat } from "@/components/client-data/QueryChat";
 import { ResultsDisplay } from "@/components/client-data/ResultsDisplay";
 import { MetricEditor } from "@/components/client-data/MetricEditor";
 import { ReconciliationReport } from "@/components/client-data/ReconciliationReport";
+import { SemanticMappingConfirmation } from "@/components/client-data/SemanticMappingConfirmation";
 
 import {
   Database,
@@ -278,11 +279,19 @@ export default function ClientDataAnalysis() {
           )}
 
           {viewMode === "view" && selectedDataset && (
-            <DatasetViewer
-              datasetId={selectedDataset.id}
-              datasetName={selectedDataset.name}
-              onBack={handleBackToList}
-            />
+            <div className="space-y-6">
+              <SemanticMappingConfirmation
+                datasetId={parseInt(selectedDataset.id)}
+                onConfirmed={() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/client-data/datasets"] });
+                }}
+              />
+              <DatasetViewer
+                datasetId={selectedDataset.id}
+                datasetName={selectedDataset.name}
+                onBack={handleBackToList}
+              />
+            </div>
           )}
 
           {viewMode === "query" && selectedDataset && (
