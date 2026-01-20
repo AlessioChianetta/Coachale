@@ -58,8 +58,15 @@ INTENT TYPES
 ANALYTICS (requires_metrics: true)
 - Domande che chiedono numeri specifici o dettagli su numeri già visti
 - DRILL-DOWN: dopo aver visto aggregazioni, chiede dettagli → ANALYTICS
+- CONFRONTI/RANKING: chi fa più/meno, quale X è il migliore/peggiore → ANALYTICS
 - Esempi: "Qual è il fatturato?", "Quanti ordini?", "Analizzami i 945 piatti", "Quali piatti?"
 - Parole chiave: quanto, quanti, totale, somma, media, analizzami, dettagli, quali sono
+- Pattern RANKING (SEMPRE analytics!):
+  * "Chi [verbo] più/meno [qualcosa]?" → aggregazione + ranking
+  * "Chi applica più sconti?" → SUM(sconti) GROUP BY operatore ORDER BY DESC
+  * "Chi vende di più?" → SUM(vendite) GROUP BY venditore ORDER BY DESC
+  * "Quale prodotto costa di più?" → MAX(prezzo) o ranking prezzi
+  * "Qual è il piatto più venduto?" → ranking per quantità
 - Tool: execute_metric, aggregate_group, compare_periods, filter_data
 
 ⚠️ REGOLA CRITICA - ANALYTICS vs STRATEGY:
@@ -114,6 +121,12 @@ Contesto: Assistant mostrò il fatturato totale
 Utente: "ora fammi vedere per mese"
 Ragionamento: Sta continuando l'analisi, vuole breakdown temporale.
 → ANALYTICS
+
+ESEMPIO 4 - RANKING/CONFRONTO:
+Contesto: Qualsiasi
+Utente: "Chi applica più sconti?"
+Ragionamento: "Chi [fa] più [X]?" richiede aggregazione + ranking → SEMPRE ANALYTICS.
+→ ANALYTICS (requires_metrics: true)
 
 ========================
 OUTPUT FORMAT
@@ -195,6 +208,38 @@ function formatConversationContext(history: ConversationMessage[]): string {
 }
 
 /**
+ * Pre-classification patterns that are ALWAYS analytics (no AI needed)
+ * These patterns require aggregation + ranking and should never be classified as data_preview
+ */
+const FORCE_ANALYTICS_PATTERNS = [
+  /chi\s+(applica|fa|vende|guadagna|spende|perde|incassa|sconta)\s+(più|meno|di più|di meno)/i,
+  /chi\s+ha\s+(più|meno|il maggior|il minor)\s+/i,
+  /quale?\s+(prodotto|piatto|articolo|cliente|operatore)\s+(costa|vende|rende|guadagna)\s+(di più|di meno|più|meno)/i,
+  /qual\s+è\s+il\s+(piatto|prodotto|articolo)\s+(più|meno)\s+(venduto|costoso|redditizio)/i,
+  /(top|migliori|peggiori)\s+\d+\s+(prodotti|piatti|clienti|venditori)/i,
+  /classifica\s+(dei|delle|di)/i,
+  /ranking\s+/i,
+];
+
+function preClassifyAnalytics(question: string): IntentRouterOutput | null {
+  const questionLower = question.toLowerCase();
+  
+  for (const pattern of FORCE_ANALYTICS_PATTERNS) {
+    if (pattern.test(question)) {
+      console.log(`[INTENT-ROUTER] PRE-CLASSIFICATION: Matched analytics pattern: ${pattern}`);
+      return {
+        intent: "analytics",
+        requires_metrics: true,
+        suggested_tools: ["aggregate_group"],
+        confidence: 0.98,
+      };
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Route user intent using gemini-2.5-flash-lite
  * @param question - User's question to classify
  * @param consultantId - Optional consultant ID for AI client resolution
@@ -209,6 +254,13 @@ export async function routeIntent(
   const startTime = Date.now();
   console.log(`[INTENT-ROUTER] Classifying question: "${question.substring(0, 80)}${question.length > 80 ? '...' : ''}"`);
   console.log(`[INTENT-ROUTER] Conversation context: ${conversationHistory?.length || 0} messages`);
+  
+  // FAST PATH: Pre-classify obvious analytics patterns without AI
+  const preClassified = preClassifyAnalytics(question);
+  if (preClassified) {
+    console.log(`[INTENT-ROUTER] Using pre-classification (no AI call needed)`);
+    return preClassified;
+  }
   
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);

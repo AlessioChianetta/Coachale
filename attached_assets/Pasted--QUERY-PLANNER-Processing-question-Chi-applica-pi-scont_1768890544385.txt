@@ -1,0 +1,50 @@
+[QUERY-PLANNER] Processing question: "Chi applica più sconti?" for 1 datasets
+[QUERY-PLANNER] Conversation history: 0 messages
+[WIRING-CHECK] semantic contract detected - requestsAll=false, requestsTopN=false, keywords=[]
+[WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[WIRING-CHECK] groupByIntent - isProductListing=false, productColumn=item_name
+[INTENT-ROUTER] Classifying question: "Chi applica più sconti?"
+[INTENT-ROUTER] Conversation context: 0 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (1728ms): è alla sua prima domanda. Non ha ancora visto alcun dato aggregato o numero specifico. La domanda "Chi applica più sconti?" è una richiesta generica d...
+[INTENT-ROUTER] Classification result: intent=data_preview, requires_metrics=false, confidence=0.90, tools=[filter_data]
+[QUERY-PLANNER] Router result: intent=data_preview, requires_metrics=false, confidence=0.90
+[POLICY-ENGINE] Getting policy for intent: data_preview
+[QUERY-PLANNER] Policy: allowedTools=[filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 0 messages
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+[IMAP] Opened folder "[Gmail]/Bozze": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Bozze (drafts)
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 35
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: data_preview, tool calls: 1
+[POLICY-ENGINE] BLOCKED: aggregate_group (in blockedTools)
+[POLICY-ENGINE] Result: allowed=0, blocked=1, violations=1
+[POLICY-ENGINE] Tool analysis: hasComputeTool=false, hasOnlyMetadata=false
+[QUERY-PLANNER] POLICY VIOLATIONS: Tool "aggregate_group" non consentito per intent "data_preview"
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - blocking AI response. Errors: 
+[CLIENT-DATA] Assistant message saved: eedda757-a90c-4734-9ae9-0b1387d10ced
+6:28:44 AM [express] POST /api/client-data/conversations/570df340-3ed5-43bc-9285-36f9272b48f2/messag…
+6:28:56 AM [express] POST /api/activity/session/heartbeat 200 in 910ms :: {"success":true,"lastActiv…
