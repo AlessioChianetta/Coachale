@@ -747,22 +747,33 @@ function validateLabelMetricAlignment(
     }
   }
   
-  // CRITICAL CHECK 3: Detect forbidden narrative tokens (benchmarks, storytelling) - BLOCKING
-  const forbiddenPatterns = [
-    { pattern: /gold\s+standard/i, reason: "benchmark esterno non verificabile" },
+  // CHECK 3: Detect narrative tokens (benchmarks, storytelling) - WARNING ONLY (not blocking)
+  // Only block invented percentages/benchmarks, allow consulting language
+  const blockingPatterns = [
     { pattern: /68[\-–]70\s*%/i, reason: "benchmark percentuale inventato" },
-    { pattern: /triangolo\s+d['']?oro/i, reason: "storytelling non richiesto" },
-    { pattern: /psicologia\s+del\s+prezzo/i, reason: "concetto esterno non supportato" },
-    { pattern: /piano\s+d['']?attacco/i, reason: "storytelling non richiesto" },
-    { pattern: /leader\s+di\s+profitto/i, reason: "storytelling non richiesto" },
-    { pattern: /strategia\s+d['']?[eé]lite/i, reason: "giudizio soggettivo" },
-    { pattern: /markup\s+costante/i, reason: "inferenza non verificabile" },
+    { pattern: /gold\s+standard/i, reason: "benchmark esterno non verificabile" },
   ];
   
-  for (const { pattern, reason } of forbiddenPatterns) {
+  const warningPatterns = [
+    { pattern: /triangolo\s+d['']?oro/i, reason: "storytelling" },
+    { pattern: /psicologia\s+del\s+prezzo/i, reason: "concetto esterno" },
+    { pattern: /piano\s+d['']?attacco/i, reason: "linguaggio consulenziale" },
+    { pattern: /leader\s+di\s+profitto/i, reason: "linguaggio consulenziale" },
+    { pattern: /strategia\s+d['']?[eé]lite/i, reason: "linguaggio consulenziale" },
+    { pattern: /markup\s+costante/i, reason: "inferenza" },
+  ];
+  
+  // Only block invented benchmarks
+  for (const { pattern, reason } of blockingPatterns) {
     if (pattern.test(aiResponse)) {
-      // BLOCKING ERROR - not just warning
-      errors.push(`NARRATIVE VIETATA: "${pattern.source.replace(/\\/g, "")}" - ${reason}. Questo contenuto non è permesso in modalità dati.`);
+      errors.push(`BENCHMARK INVENTATO: "${pattern.source.replace(/\\/g, "")}" - ${reason}. I numeri devono provenire dai dati.`);
+    }
+  }
+  
+  // Allow consulting language with just a warning
+  for (const { pattern, reason } of warningPatterns) {
+    if (pattern.test(aiResponse)) {
+      warnings.push(`Nota: "${pattern.source.replace(/\\/g, "")}" - ${reason}.`);
     }
   }
   
