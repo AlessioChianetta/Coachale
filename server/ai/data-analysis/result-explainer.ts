@@ -279,8 +279,30 @@ export async function explainResults(
     
     // Handle both data queries and conversational messages
     const hasResults = results.length > 0 && results.some(r => r.success);
+    const hasFailedTools = results.length > 0 && results.every(r => !r.success);
     
     let prompt: string;
+    
+    // ANTI-HALLUCINATION: If all tools failed, return error message - don't let AI respond freely
+    if (hasFailedTools) {
+      const errorDetails = results
+        .filter(r => !r.success && r.error)
+        .map(r => `${r.toolName}: ${r.error}`)
+        .join("; ");
+      
+      console.error(`[RESULT-EXPLAINER] ALL TOOLS FAILED - blocking AI response. Errors: ${errorDetails}`);
+      
+      return {
+        summary: "Non sono riuscito a elaborare la tua richiesta. Si sono verificati errori durante l'analisi dei dati.",
+        details: results.map(r => `⚠️ ${r.toolName}: ${r.error || "errore sconosciuto"}`),
+        insights: [
+          "💡 Suggerimento: Le colonne richieste potrebbero non esistere nel dataset. Verifica i nomi delle colonne con 'mostrami lo schema del dataset'.",
+        ],
+        formattedValues: {},
+        wasValidated: true
+      };
+    }
+    
     if (hasResults) {
       const resultsContext = results.map(r => ({
         tool: r.toolName,
