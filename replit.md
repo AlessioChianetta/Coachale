@@ -51,6 +51,28 @@ An AI chat interface for data analysis, reusing components from the AI Assistant
 ### Semantic Layer for Anti-Hallucination
 An enterprise-grade system eliminates AI hallucinations through predefined metrics, semantic mapping, and a robust pre-validation architecture. It uses logical columns, metric templates, and term mapping to ensure accurate SQL generation and provides business-friendly error messages.
 
+### Intent Router Architecture (NEW)
+A 3-layer pipeline separating intent classification from execution to prevent strategic questions from triggering data analysis tools and hallucinating numbers:
+
+**Layer 1 - Intent Router (intent-router.ts)**
+- Uses gemini-2.5-flash-lite for fast, cheap intent classification
+- 4 intent types: analytics, strategy, data_preview, conversational
+- Returns structured JSON with intent, requires_metrics, suggested_tools, confidence
+
+**Layer 2 - Policy Engine (policy-engine.ts)**
+- Pure TypeScript rules (no AI calls)
+- analytics: allows [execute_metric, aggregate_group, compare_periods]
+- strategy: allows NO tools (qualitative responses only)
+- data_preview: allows [filter_data, get_schema]
+- conversational: allows NO tools (fixed responses)
+
+**Layer 3 - Execution Agent (query-planner.ts)**
+- Executes approved tools only
+- Strategy responses have hard numeric guard:
+  - Detects digits, Italian numerals, Roman numerals, compound forms, ordinals
+  - Removes all numeric content or uses fallback response
+  - Guarantees strategy responses contain ZERO invented numbers
+
 ### Auto Semantic Mapping for CSV Datasets
 Automatic detection of column roles (price, cost, quantity, order_date) during CSV upload with confidence scoring. Features include:
 - **Auto-detect on upload**: Saves mappings with confidence ≥ 0.70 to dataset_column_semantics table
