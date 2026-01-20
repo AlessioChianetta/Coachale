@@ -1,0 +1,210 @@
+Ottimo. Quello che hai scritto è esattamente il cuore di un BI universale vero. Ora ti dico senza girarci intorno: con questa mappatura sei passato da “progetto AI carino” a architettura da prodotto enterprise-grade.
+
+Adesso però va operazionalizzata, altrimenti resta teoria. Ti spiego cosa fare subito, cosa bloccare, e cosa consegnare al programmatore.
+
+✅ QUELLO CHE HAI GIÀ FATTO BENE (molto bene)
+
+Hai risolto 3 problemi enormi:
+
+1️⃣ Separazione concetto → colonna fisica
+
+Ora:
+
+document_id = concetto
+
+idddt, order_id, invoice_id = implementazioni
+
+Questo è esattamente come lavorano:
+
+Snowflake Semantic Layer
+
+Looker LookML
+
+PowerBI Tabular Model
+
+2️⃣ Metriche astratte dal dataset
+
+Ora scrivi:
+
+order_count = COUNT(DISTINCT {document_id})
+
+
+NON:
+
+COUNT(DISTINCT order_id)
+
+
+Questo rende il sistema:
+
+✅ multi-dominio
+✅ multi-ERP
+✅ multi-CSV
+✅ stabile nel tempo
+
+3️⃣ Auto-detect intelligente
+
+Hai già previsto:
+
+pattern
+
+synonyms
+
+naming variations
+
+Questo riduce onboarding a 30 secondi per dataset.
+
+🔥 ORA SERVE LA PARTE CHE TRASFORMA TUTTO IN PRODOTTO
+
+Qui è dove il 90% dei progetti fallisce.
+
+Devi implementare 4 layer obbligatori
+1️⃣ DATABASE SEMANTIC LAYER (non opzionale)
+
+Devi creare una tabella dedicata:
+
+dataset_column_semantics
+dataset_id
+column_name
+logical_role
+confidence
+auto_detected BOOLEAN
+confirmed BOOLEAN
+updated_at
+
+
+Esempio:
+
+dataset_id	column_name	logical_role	confidence	confirmed
+6	idddt	document_id	0.96	true
+6	prezzofinale	revenue_amount	0.94	true
+6	quantita	quantity	0.92	true
+
+👉 Questa è la tua fonte di verità.
+
+2️⃣ METRIC RESOLVER DINAMICO
+
+Il metric engine NON deve più contenere SQL fisso.
+
+Deve fare:
+
+Step runtime:
+revenue →
+  cerca logical_role = revenue_amount →
+    trova colonna fisica →
+      genera SQL
+
+
+Esempio:
+
+SUM({revenue_amount})
+
+
+diventa:
+
+SUM(prezzofinale)
+
+
+oppure:
+
+SUM(line_total)
+
+
+in base al dataset.
+
+3️⃣ VALIDATION PRIMA DELLA QUERY (fondamentale)
+
+Prima di eseguire una metrica:
+
+esempio avg_ticket:
+
+Richiede:
+
+document_id
+
+revenue_amount
+
+Se mancano:
+
+NON eseguire SQL
+
+Ma rispondere:
+
+Non posso calcolare lo scontrino medio: manca il campo ID documento.
+
+Questo evita:
+
+❌ numeri falsi
+❌ bug silenziosi
+❌ allucinazioni
+
+4️⃣ UI DI CONFERMA SMART (non rompere UX)
+
+Non far vedere 30 colonne.
+
+Mostra SOLO:
+
+colonne critiche:
+
+document_id
+
+revenue_amount
+
+quantity
+
+date
+
+cost_amount
+
+Con:
+
+✔ suggerimento AI
+✔ dropdown override
+✔ salva mapping
+
+Tempo onboarding target:
+
+👉 60 secondi massimo.
+
+🚨 REGOLA D'ORO DA IMPORRE AL PROGRAMMATORE
+
+Digli chiaramente:
+
+Nessuna metrica può usare nomi di colonne fisiche.
+Solo logical_role.
+
+Se non imponi questa regola ora:
+
+❌ tra 3 mesi sarà ingestibile
+❌ ogni nuovo cliente romperà il sistema
+
+🎯 COME SAI SE È FATTO BENE
+
+Dopo implementazione, questo test deve funzionare:
+
+Carichi:
+
+POS ristorante
+
+DDTRIGHE gestionale
+
+CSV Shopify
+
+Poi chiedi:
+
+Quanto ho incassato?
+
+
+Deve funzionare su tutti e tre.
+
+Quanti documenti?
+
+
+Deve funzionare anche se:
+
+order_id
+
+idddt
+
+invoice_id
+
+sono diversi.
