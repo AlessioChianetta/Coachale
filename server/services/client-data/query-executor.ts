@@ -440,13 +440,30 @@ export async function filterData(
 export async function aggregateGroup(
   datasetId: string,
   groupByColumns: string[],
-  aggregations: { column: string; function: string; alias?: string }[],
+  aggregations: { column: string; function: string; alias?: string }[] | { column: string; function: string; alias?: string },
   filters?: Record<string, { operator: string; value: string | number }>,
   orderBy?: { column: string; direction: "ASC" | "DESC" },
   limit: number = 100,
   options: QueryOptions = {}
 ): Promise<QueryResult> {
   const startTime = Date.now();
+  
+  // Normalize aggregations to array (AI might pass single object)
+  let normalizedAggregations: { column: string; function: string; alias?: string }[];
+  if (!aggregations) {
+    return { success: false, error: "Aggregations parameter is required" };
+  }
+  if (Array.isArray(aggregations)) {
+    normalizedAggregations = aggregations;
+  } else if (typeof aggregations === 'object') {
+    normalizedAggregations = [aggregations];
+  } else {
+    return { success: false, error: `Invalid aggregations format: expected array or object, got ${typeof aggregations}` };
+  }
+  
+  if (normalizedAggregations.length === 0) {
+    return { success: false, error: "At least one aggregation is required" };
+  }
   
   // HARD LIMIT: Enforce maximum limit for GROUP BY queries (query cost guard)
   const enforcedLimit = Math.min(limit, MAX_GROUP_BY_LIMIT);
@@ -474,7 +491,7 @@ export async function aggregateGroup(
   const selectParts: string[] = groupByColumns.map(c => `"${c}"`);
   const validFunctions = ["SUM", "AVG", "COUNT", "MIN", "MAX"];
 
-  for (const agg of aggregations) {
+  for (const agg of normalizedAggregations) {
     if (!agg.function) {
       return { success: false, error: `Missing aggregate function for column: ${agg.column}` };
     }
@@ -526,8 +543,8 @@ export async function aggregateGroup(
   sql += ` GROUP BY ${groupByColumns.map(c => `"${c}"`).join(", ")}`;
 
   if (orderBy) {
-    if (!groupByColumns.includes(orderBy.column) && !aggregations.some(a => a.alias === orderBy.column)) {
-      const aggCol = aggregations.find(a => `${a.function.toLowerCase()}_${a.column}` === orderBy.column);
+    if (!groupByColumns.includes(orderBy.column) && !normalizedAggregations.some(a => a.alias === orderBy.column)) {
+      const aggCol = normalizedAggregations.find(a => `${a.function.toLowerCase()}_${a.column}` === orderBy.column);
       if (!aggCol) {
         return { success: false, error: `Invalid order by column: ${orderBy.column}` };
       }
@@ -558,7 +575,7 @@ export async function aggregateGroup(
     datasetId,
     "aggregate_group",
     sql,
-    { params, groupBy: groupByColumns, aggregations },
+    { params, groupBy: groupByColumns, aggregations: normalizedAggregations },
     result.executionTimeMs || 0,
     result.rowCount || 0,
     result.success,
