@@ -8,7 +8,7 @@ import { dataAnalysisTools, type ToolCall, type ExecutedToolResult, validateTool
 import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, getDistinctCount, checkCardinalityBeforeAggregate, validateFiltersApplied, MAX_GROUP_BY_LIMIT, type QueryResult, type CardinalityCheckResult, type IsSellableConfig } from "../../services/client-data/query-executor";
 import { parseMetricExpression, validateMetricAgainstSchema } from "../../services/client-data/metric-dsl";
 import { db } from "../../db";
-import { clientDataDatasets } from "../../../shared/schema";
+import { clientDataDatasets, datasetColumnMappings } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
 // NOTE: classifyIntent and ForceToolRetryError are deprecated - using Router Agent instead
 import { getConversationalReply } from "./intent-classifier";
@@ -1319,8 +1319,21 @@ export async function executeToolCall(
             .limit(1);
           
           if (dataset.length > 0) {
-            const mappings = (dataset[0].semanticMappings || {}) as Record<string, string>;
-            const datasetColumns = dataset[0].columns as string[] || [];
+            // Read semantic mappings from the dedicated table (not from dataset record)
+            const semanticMappingsRows = await db.select()
+              .from(datasetColumnMappings)
+              .where(eq(datasetColumnMappings.datasetId, parseInt(toolCall.args.datasetId)));
+            
+            // Convert to format { physical_column: logical_role }
+            const mappings: Record<string, string> = {};
+            for (const row of semanticMappingsRows) {
+              mappings[row.physicalColumn] = row.logicalColumn;
+            }
+            console.log(`[AGGREGATE-GROUP] Loaded ${semanticMappingsRows.length} semantic mappings from database`);
+            
+            // Get dataset columns from column_mapping keys (column_mapping has physical column names as keys)
+            const columnMapping = (dataset[0].columnMapping || {}) as Record<string, any>;
+            const datasetColumns = Object.keys(columnMapping);
             
             // PRIORITY 1: Check if dataset has explicit is_sellable column
             const isSellablePhysical = Object.entries(mappings)
