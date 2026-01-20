@@ -653,9 +653,9 @@ export async function getSchema(datasetId: string): Promise<QueryResult> {
 
   const columns = Object.entries(dataset.columnMapping).map(([name, info]) => ({
     name,
-    displayName: info.displayName,
-    dataType: info.dataType,
-    description: info.description,
+    displayName: info.displayName || name,
+    dataType: info.dataType || "text",
+    description: info.description || "",
   }));
 
   const metrics = await db
