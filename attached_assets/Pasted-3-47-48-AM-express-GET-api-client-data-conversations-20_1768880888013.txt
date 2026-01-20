@@ -1,0 +1,26 @@
+3:47:48 AM [express] GET /api/client-data/conversations 200 in 303ms :: {"success":true,"data":[{"id…
+[CLIENT-DATA] User message saved: a0c1feda-91f2-4bfe-9a08-af6e5f835eb7
+[CLIENT-DATA] Processing message: "Mostrami il totale delle vendite per mese" on dataset 3
+[QUERY-PLANNER] Processing question: "Mostrami il totale delle vendite per mese" for 1 datasets
+[INTENT-ROUTER] Classifying question: "Mostrami il totale delle vendite per mese"
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (1066ms): {"intent":"analytics","requires_metrics":true,"suggested_tools":["aggregate_group"],"confidence":0.95}
+[INTENT-ROUTER] Classification result: intent=analytics, requires_metrics=true, confidence=0.95, tools=[aggregate_group]
+[QUERY-PLANNER] Router result: intent=analytics, requires_metrics=true, confidence=0.95
+[POLICY-ENGINE] Getting policy for intent: analytics
+[QUERY-PLANNER] Policy: allowedTools=[execute_metric,aggregate_group,compare_periods], requireToolCall=true
+[QUERY-PLANNER] ANALYTICS BLOCKED - semantic mapping not confirmed for dataset 3
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - blocking AI response. Errors: 
+[CLIENT-DATA] Assistant message saved: 59123745-ea49-4c12-b3c0-619cabc4441b
+3:47:51 AM [express] POST /api/client-data/conversations/e9fc34c8-2afc-497c-98a9-44cca4ad09a5/messag…
