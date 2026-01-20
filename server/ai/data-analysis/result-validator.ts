@@ -208,6 +208,35 @@ export function validateResponseNumbers(
   const errors: string[] = [];
   const warnings: string[] = [];
   
+  // BUG FIX: Check if ALL tool results returned 0 rows - this means the filter matched nothing
+  // If rowCount=0 for all compute tools, ANY numbers in the response are INVENTED
+  const computeToolResults = toolResults.filter(r => 
+    COMPUTE_TOOLS.includes(r.toolName) && r.success
+  );
+  
+  const allToolsReturnedZeroRows = computeToolResults.length > 0 && computeToolResults.every(r => {
+    const rowCount = r.result?.rowCount ?? r.result?.data?.length ?? 
+                     (Array.isArray(r.result) ? r.result.length : null);
+    return rowCount === 0;
+  });
+  
+  // If tools returned 0 rows and response has numbers, those are INVENTED
+  if (allToolsReturnedZeroRows && numbersInResponse.length > 0) {
+    const significantNumbers = numbersInResponse.filter(n => n > 10 || (n > 0 && n < 1));
+    if (significantNumbers.length > 0) {
+      console.error(`[RESULT-VALIDATOR] ZERO ROWS GUARD: All queries returned 0 rows but AI response contains numbers: ${significantNumbers.join(", ")}`);
+      errors.push(`ERRORE CRITICO - NUMERI INVENTATI: La query non ha trovato dati (0 righe), ma la risposta contiene numeri (${significantNumbers.slice(0, 3).join(", ")}${significantNumbers.length > 3 ? '...' : ''}). L'AI ha inventato dati inesistenti.`);
+      return {
+        valid: false,
+        errors,
+        warnings,
+        numbersInResponse,
+        numbersFromTools: [],
+        inventedNumbers: significantNumbers,
+      };
+    }
+  }
+  
   // NEW APPROACH: Check that the IMPORTANT numbers from the database are PRESENT in the response
   // Don't block for extra context numbers the AI uses for consulting (benchmarks, percentages, etc.)
   
@@ -236,9 +265,10 @@ export function validateResponseNumbers(
   }
   
   // Calculate coverage: what percentage of database numbers are mentioned?
+  // BUG FIX: If there are NO numbers from tools (empty results), do NOT give 100% coverage bypass
   const coveragePercent = numbersFromTools.length > 0 
     ? (presentToolNumbers.length / numbersFromTools.length) * 100 
-    : 100;
+    : 0; // Changed from 100 to 0 - no numbers from tools means 0% coverage, not 100%
   
   console.log(`[RESULT-VALIDATOR] Coverage: ${coveragePercent.toFixed(0)}% (${presentToolNumbers.length}/${numbersFromTools.length} tool numbers found in response)`);
   

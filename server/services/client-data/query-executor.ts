@@ -75,8 +75,18 @@ export async function getDistinctCount(
       if (!datasetInfo.columns.includes(col)) {
         return { success: false, error: `Invalid filter column: ${col}` };
       }
-      whereClauses.push(`"${col}" ${condition.operator} $${paramIndex}`);
-      params.push(condition.value);
+      // Case-insensitive comparison for string columns
+      const colMapping = datasetInfo.columnMapping[col];
+      const isStringType = colMapping && /^(text|varchar|char|string)$/i.test(colMapping.dataType);
+      
+      if (isStringType && condition.operator === "=") {
+        // Use ILIKE for case-insensitive string comparison
+        whereClauses.push(`"${col}" ILIKE $${paramIndex}`);
+        params.push(String(condition.value));
+      } else {
+        whereClauses.push(`"${col}" ${condition.operator} $${paramIndex}`);
+        params.push(condition.value);
+      }
       paramIndex++;
     }
   }
@@ -555,8 +565,18 @@ export async function filterData(
       return { success: false, error: `Invalid column: ${column}` };
     }
 
-    whereClauses.push(`"${column}" ${condition.operator} $${paramIndex}`);
-    params.push(condition.value);
+    // Case-insensitive comparison for string columns
+    const colMapping = datasetInfo.columnMapping[column];
+    const isStringType = colMapping && /^(text|varchar|char|string)$/i.test(colMapping.dataType);
+    
+    if (isStringType && condition.operator === "=") {
+      // Use ILIKE for case-insensitive string comparison
+      whereClauses.push(`"${column}" ILIKE $${paramIndex}`);
+      params.push(String(condition.value));
+    } else {
+      whereClauses.push(`"${column}" ${condition.operator} $${paramIndex}`);
+      params.push(condition.value);
+    }
     paramIndex++;
   }
 
@@ -747,8 +767,18 @@ export async function aggregateGroup(
       if (!datasetInfo.columns.includes(column)) {
         return { success: false, error: `Invalid filter column: ${column}` };
       }
-      whereClauses.push(`"${column}" ${condition.operator} $${paramIndex}`);
-      params.push(condition.value);
+      // Case-insensitive comparison for string columns
+      const colMapping = datasetInfo.columnMapping[column];
+      const isStringType = colMapping && /^(text|varchar|char|string)$/i.test(colMapping.dataType);
+      
+      if (isStringType && condition.operator === "=") {
+        // Use ILIKE for case-insensitive string comparison
+        whereClauses.push(`"${column}" ILIKE $${paramIndex}`);
+        params.push(String(condition.value));
+      } else {
+        whereClauses.push(`"${column}" ${condition.operator} $${paramIndex}`);
+        params.push(condition.value);
+      }
       paramIndex++;
     }
   }

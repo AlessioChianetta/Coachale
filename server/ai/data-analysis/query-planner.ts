@@ -1145,6 +1145,64 @@ export async function askDataset(
   const result = await executePlanWithValidation(plan, datasets, consultantId, userId, userQuestion);
   console.log(`[QUERY-PLANNER] Execution complete in ${result.totalExecutionTimeMs}ms, success: ${result.success}`);
 
+  // BUG FIX: Check for zero results and return clear message instead of letting AI generate analysis
+  const COMPUTE_TOOLS = ["execute_metric", "aggregate_group", "compare_periods", "filter_data", "query_metric"];
+  const computeResults = result.results.filter(r => COMPUTE_TOOLS.includes(r.toolName) && r.success);
+  
+  if (computeResults.length > 0) {
+    const allZeroRows = computeResults.every(r => {
+      const rowCount = r.result?.rowCount ?? r.result?.data?.length ?? 
+                       (Array.isArray(r.result) ? r.result.length : null);
+      return rowCount === 0;
+    });
+    
+    if (allZeroRows) {
+      console.log(`[QUERY-PLANNER] ZERO RESULTS DETECTED - All compute tools returned 0 rows`);
+      
+      // Extract filter info for helpful message
+      const appliedFilters: string[] = [];
+      for (const r of computeResults) {
+        if (r.args?.filters) {
+          for (const [col, filter] of Object.entries(r.args.filters)) {
+            const f = filter as { operator: string; value: string | number };
+            appliedFilters.push(`${col} ${f.operator} "${f.value}"`);
+          }
+        }
+      }
+      
+      const filterInfo = appliedFilters.length > 0 
+        ? `\n\n**Filtri applicati:** ${appliedFilters.join(", ")}`
+        : "";
+      
+      const zeroResultsMessage = `## ⚠️ La query non ha trovato dati
+
+La ricerca non ha restituito risultati con i filtri applicati.${filterInfo}
+
+**Possibili cause:**
+- Il valore del filtro potrebbe contenere un errore di battitura
+- Il valore potrebbe non esistere nel dataset (verifica i valori disponibili)
+- Prova a riformulare la domanda con valori diversi
+
+**Suggerimento:** Chiedi "quali sono i valori unici di [colonna]?" per vedere i valori disponibili.`;
+
+      return {
+        plan: result.plan,
+        results: [{
+          toolName: "zero_results_handler",
+          args: { appliedFilters },
+          result: { 
+            message: zeroResultsMessage, 
+            isZeroResults: true,
+            rowCount: 0
+          },
+          success: true
+        }],
+        success: true,
+        totalExecutionTimeMs: Date.now() - startTime
+      };
+    }
+  }
+
   return result;
 }
 
