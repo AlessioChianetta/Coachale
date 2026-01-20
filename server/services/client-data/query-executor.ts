@@ -792,11 +792,18 @@ export async function aggregateGroup(
   sql += ` GROUP BY ${effectiveGroupBy.join(", ")}`;
 
   if (orderBy) {
-    if (!groupByColumns.includes(orderBy.column) && !normalizedAggregations.some(a => a.alias === orderBy.column)) {
-      const aggCol = normalizedAggregations.find(a => `${a.function.toLowerCase()}_${a.column}` === orderBy.column);
-      if (!aggCol) {
-        return { success: false, error: `Invalid order by column: ${orderBy.column}` };
-      }
+    // Check if orderBy column is valid:
+    // 1. It's a groupBy column
+    // 2. It matches an aggregation alias
+    // 3. It matches the rawMetricSql alias (e.g., "revenue" when using metricName)
+    // 4. It matches the pattern function_column (e.g., "sum_quantity")
+    const isGroupByCol = groupByColumns.includes(orderBy.column);
+    const isAggAlias = normalizedAggregations.some(a => a.alias === orderBy.column);
+    const isRawMetricAlias = rawMetricSql && rawMetricSql.alias === orderBy.column;
+    const isAutoAlias = normalizedAggregations.some(a => `${a.function.toLowerCase()}_${a.column}` === orderBy.column);
+    
+    if (!isGroupByCol && !isAggAlias && !isRawMetricAlias && !isAutoAlias) {
+      return { success: false, error: `Invalid order by column: ${orderBy.column}` };
     }
     sql += ` ORDER BY "${orderBy.column}" ${orderBy.direction}`;
   }

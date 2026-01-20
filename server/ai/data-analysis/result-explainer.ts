@@ -383,25 +383,61 @@ export async function explainResults(
     
     let prompt: string;
     
-    // ANTI-HALLUCINATION: If all tools failed, return FRIENDLY message - no technical details
+    // ANTI-HALLUCINATION: If all tools failed, generate contextual AI response (no invented data)
     if (hasFailedTools) {
       const errorDetails = results
         .filter(r => !r.success && r.error)
         .map(r => `${r.toolName}: ${r.error}`)
         .join("; ");
       
-      console.error(`[RESULT-EXPLAINER] ALL TOOLS FAILED - blocking AI response. Errors: ${errorDetails}`);
+      console.error(`[RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: ${errorDetails}`);
       
-      // FRIENDLY UX: No technical error messages - just helpful guidance
-      return {
-        summary: sanitizeUserContent("Non sono riuscito a trovare quei dati. Prova a specificare meglio cosa vuoi analizzare."),
-        details: sanitizeArray([]), // No technical error details
-        insights: sanitizeArray([
-          "Prova a chiedere: 'Mostrami il fatturato di gennaio' o 'Qual è il food cost totale?'"
-        ]),
-        formattedValues: {},
-        wasValidated: true
-      };
+      // Generate contextual AI response explaining what went wrong
+      try {
+        const { model: failureModel } = getModelWithThinking(providerResult.metadata?.name);
+        
+        const failurePrompt = `L'utente ha chiesto: "${userQuestion}"
+
+Ho provato ad analizzare i dati ma ho riscontrato un problema tecnico.
+
+Errore interno (NON mostrare all'utente): ${errorDetails}
+
+Rispondi in modo amichevole spiegando che:
+1. Non sei riuscito a trovare esattamente quello che cercava
+2. Suggerisci cosa potrebbe provare a chiedere in modo diverso
+3. Se l'errore riguarda una colonna mancante, suggerisci che potrebbero non esserci quei dati nel dataset
+
+REGOLE IMPORTANTI:
+- NON inventare numeri o dati
+- NON mostrare messaggi tecnici di errore
+- Sii breve e amichevole
+- Rispondi in italiano`;
+
+        const failureResponse = await client.generateContent({
+          model: failureModel,
+          contents: [{ role: "user", parts: [{ text: failurePrompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 512 }
+        });
+        
+        const contextualMessage = failureResponse.response.text();
+        
+        return {
+          summary: sanitizeUserContent(contextualMessage || "Non sono riuscito ad analizzare quei dati. Prova a riformulare la domanda."),
+          details: sanitizeArray([]),
+          insights: sanitizeArray([]),
+          formattedValues: {},
+          wasValidated: true
+        };
+      } catch (fallbackError) {
+        // If AI fails too, use generic message
+        return {
+          summary: sanitizeUserContent("Non sono riuscito a trovare quei dati. Prova a specificare meglio cosa vuoi analizzare."),
+          details: sanitizeArray([]),
+          insights: sanitizeArray([]),
+          formattedValues: {},
+          wasValidated: true
+        };
+      }
     }
     
     if (hasResults) {
