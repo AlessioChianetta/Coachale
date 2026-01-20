@@ -491,22 +491,39 @@ export async function executeToolCall(
         break;
 
       case "aggregate_group": {
+        // DETAILED LOGGING - show exactly what Gemini passed
+        console.log(`[AGGREGATE-GROUP] Full args from Gemini:`, JSON.stringify(toolCall.args, null, 2));
+        console.log(`[AGGREGATE-GROUP] datasetId: ${toolCall.args.datasetId}`);
+        console.log(`[AGGREGATE-GROUP] groupBy: ${JSON.stringify(toolCall.args.groupBy)}`);
+        console.log(`[AGGREGATE-GROUP] metricName: ${toolCall.args.metricName}`);
+        console.log(`[AGGREGATE-GROUP] aggregations: ${JSON.stringify(toolCall.args.aggregations)}`);
+        console.log(`[AGGREGATE-GROUP] orderBy: ${JSON.stringify(toolCall.args.orderBy)}`);
+        console.log(`[AGGREGATE-GROUP] filters: ${JSON.stringify(toolCall.args.filters)}`);
+        
         // Convert metricName to aggregations if provided
         let aggregations = toolCall.args.aggregations;
         if (!aggregations && toolCall.args.metricName) {
           const metric = getMetricDefinition(toolCall.args.metricName);
           if (metric) {
             // Extract column from SQL expression: SUM(CAST("column" AS NUMERIC))
-            // We'll use total_net as default for revenue metrics
             const columnMatch = metric.sqlExpression.match(/"(\w+)"/);
             const column = columnMatch ? columnMatch[1] : "total_net";
             const funcMatch = metric.sqlExpression.match(/^(SUM|AVG|COUNT|MIN|MAX)/i);
             const func = funcMatch ? funcMatch[1].toUpperCase() : "SUM";
             aggregations = [{ column, function: func, alias: toolCall.args.metricName }];
+            console.log(`[AGGREGATE-GROUP] Converted metricName "${toolCall.args.metricName}" to aggregations:`, JSON.stringify(aggregations));
           } else {
             // Default fallback for unknown metrics
             aggregations = [{ column: "total_net", function: "SUM", alias: "totale" }];
+            console.log(`[AGGREGATE-GROUP] Unknown metric, using default SUM(total_net)`);
           }
+        }
+        
+        // Sanitize orderBy - skip if column is undefined/null
+        let sanitizedOrderBy = toolCall.args.orderBy;
+        if (sanitizedOrderBy && (!sanitizedOrderBy.column || sanitizedOrderBy.column === "undefined")) {
+          console.log(`[AGGREGATE-GROUP] Skipping invalid orderBy (column is undefined)`);
+          sanitizedOrderBy = undefined;
         }
         
         if (!aggregations) {
@@ -517,10 +534,11 @@ export async function executeToolCall(
             toolCall.args.groupBy,
             aggregations,
             toolCall.args.filters,
-            toolCall.args.orderBy,
+            sanitizedOrderBy,
             toolCall.args.limit || 100,
             { userId }
           );
+          console.log(`[AGGREGATE-GROUP] Result: success=${result.success}, rowCount=${result.rowCount}, error=${result.error || 'none'}`);
         }
         break;
       }
