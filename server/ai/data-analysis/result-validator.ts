@@ -487,6 +487,42 @@ export function validateToolResults(
         }
       }
     }
+    
+    // SANITY CHECK: Detect impossible business scenarios
+    if (result.toolName === "aggregate_group" && result.success && Array.isArray(result.result)) {
+      const metricName = result.args?.metricName;
+      
+      if (metricName === "gross_margin" || metricName === "gross_margin_percent") {
+        const negativeCount = result.result.filter((row: any) => {
+          const marginValue = parseFloat(row.gross_margin || row.gross_margin_percent || 0);
+          return marginValue < 0;
+        }).length;
+        
+        const totalRows = result.result.length;
+        const negativeRatio = totalRows > 0 ? negativeCount / totalRows : 0;
+        
+        // BUSINESS ANOMALY: If >50% of products show negative margin, flag as suspicious
+        if (negativeRatio > 0.5 && totalRows >= 3) {
+          warnings.push(`⚠️ ANOMALIA BUSINESS: ${negativeCount}/${totalRows} prodotti mostrano margine negativo. Questo è statisticamente improbabile - verificare il mapping costo/prezzo nel dataset.`);
+          console.warn(`[SANITY-CHECK] Business anomaly detected: ${(negativeRatio * 100).toFixed(0)}% products with negative margin`);
+        }
+        
+        // BEVERAGE CHECK: Drinks with negative margin is extremely rare
+        const beverageNegatives = result.result.filter((row: any) => {
+          const category = (row.category || "").toLowerCase();
+          const itemName = (row.item_name || "").toLowerCase();
+          const marginValue = parseFloat(row.gross_margin || row.gross_margin_percent || 0);
+          const isBeverage = category.includes("drink") || category.includes("beverage") || 
+                             itemName.includes("acqua") || itemName.includes("birra") || 
+                             itemName.includes("caffè") || itemName.includes("vino");
+          return isBeverage && marginValue < 0;
+        });
+        
+        if (beverageNegatives.length > 0) {
+          warnings.push(`⚠️ ANOMALIA: Bevande con margine negativo rilevate (${beverageNegatives.length}). Le bevande hanno tipicamente margini molto alti - verificare i dati.`);
+        }
+      }
+    }
   }
   
   return {
