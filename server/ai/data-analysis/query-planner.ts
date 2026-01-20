@@ -145,6 +145,193 @@ export function extractFiltersFromQuestion(
 }
 
 /**
+ * TASK 4.5: Detect Quantitative Metric with Category Filter
+ * Recognizes "quante pizze ho venduto" as a METRIC with FILTER, not a ranking
+ * Returns: metric to use + filter to apply (category or product_name ILIKE)
+ */
+export interface QuantitativeMetricFilter {
+  isQuantitativeWithFilter: boolean;
+  metricName: string;  // e.g., 'quantity_total' or 'items_sold'
+  categoryTerm: string | null;  // e.g., 'pizza', 'bevande', 'coperti'
+  filterType: 'category' | 'product_ilike' | 'exact_match' | null;
+}
+
+const QUANTITATIVE_KEYWORDS = [
+  'quant[ei]', 'total[ei]?', 'volume', 'pezzi', 'numero di', 'conteggio',
+  'how many', 'total', 'count of', 'number of'
+];
+
+const CATEGORY_TERMS: Record<string, { searchPatterns: string[], productIlike: string[] }> = {
+  'pizza': { searchPatterns: ['pizz'], productIlike: ['%margherit%', '%diavol%', '%capriccio%', '%4 stagion%', '%marinara%', '%napole%', '%roman%'] },
+  'pizze': { searchPatterns: ['pizz'], productIlike: ['%margherit%', '%diavol%', '%capriccio%', '%4 stagion%', '%marinara%', '%napole%', '%roman%'] },
+  'bevande': { searchPatterns: ['bevand', 'drink'], productIlike: ['%acqua%', '%coca%', '%fanta%', '%sprite%', '%birra%', '%vino%'] },
+  'bevanda': { searchPatterns: ['bevand', 'drink'], productIlike: ['%acqua%', '%coca%', '%fanta%', '%sprite%', '%birra%', '%vino%'] },
+  'birre': { searchPatterns: ['birr'], productIlike: ['%birra%', '%bionda%', '%rossa%', '%ipa%', '%lager%'] },
+  'birra': { searchPatterns: ['birr'], productIlike: ['%birra%', '%bionda%', '%rossa%', '%ipa%', '%lager%'] },
+  'dolci': { searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
+  'dolce': { searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
+  'dessert': { searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
+  'coperti': { searchPatterns: ['copert'], productIlike: ['%coperto%'] },
+  'coperto': { searchPatterns: ['copert'], productIlike: ['%coperto%'] },
+  'caffè': { searchPatterns: ['caff'], productIlike: ['%caff%', '%espresso%', '%cappuccino%'] },
+  'caffe': { searchPatterns: ['caff'], productIlike: ['%caff%', '%espresso%', '%cappuccino%'] },
+  'antipasti': { searchPatterns: ['antipast'], productIlike: ['%bruschett%', '%frittur%', '%affettat%'] },
+  'antipasto': { searchPatterns: ['antipast'], productIlike: ['%bruschett%', '%frittur%', '%affettat%'] },
+  'primi': { searchPatterns: ['prim'], productIlike: ['%pasta%', '%risotto%', '%gnocchi%', '%lasagn%'] },
+  'primo': { searchPatterns: ['prim'], productIlike: ['%pasta%', '%risotto%', '%gnocchi%', '%lasagn%'] },
+  'secondi': { searchPatterns: ['second'], productIlike: ['%carne%', '%pesce%', '%grigliata%', '%tagliata%'] },
+  'secondo': { searchPatterns: ['second'], productIlike: ['%carne%', '%pesce%', '%grigliata%', '%tagliata%'] },
+};
+
+export function detectQuantitativeMetricWithFilter(userQuestion: string): QuantitativeMetricFilter {
+  const questionLower = userQuestion.toLowerCase();
+  
+  // Check for quantitative keywords
+  const hasQuantitativeKeyword = QUANTITATIVE_KEYWORDS.some(kw => {
+    const regex = new RegExp(`\\b${kw}\\b`, 'i');
+    return regex.test(questionLower);
+  });
+  
+  if (!hasQuantitativeKeyword) {
+    return { isQuantitativeWithFilter: false, metricName: '', categoryTerm: null, filterType: null };
+  }
+  
+  // Look for category terms in the question
+  for (const [term, config] of Object.entries(CATEGORY_TERMS)) {
+    if (questionLower.includes(term)) {
+      console.log(`[QUANTITATIVE-FILTER] Detected quantitative query with category: "${term}"`);
+      return {
+        isQuantitativeWithFilter: true,
+        metricName: 'quantity_total',
+        categoryTerm: term,
+        filterType: 'product_ilike',  // Default to product ILIKE since category columns often have codes
+      };
+    }
+  }
+  
+  return { isQuantitativeWithFilter: false, metricName: '', categoryTerm: null, filterType: null };
+}
+
+/**
+ * Build ILIKE filter conditions for a category term
+ * Returns SQL WHERE clause patterns for product_name column
+ */
+export function buildCategoryIlikeFilters(categoryTerm: string, productColumn: string): string[] {
+  const termConfig = CATEGORY_TERMS[categoryTerm.toLowerCase()];
+  if (!termConfig) {
+    // Fallback: use the term itself as ILIKE pattern
+    return [`"${productColumn}" ILIKE '%${categoryTerm}%'`];
+  }
+  
+  // Build OR conditions for all patterns
+  return termConfig.productIlike.map(pattern => `"${productColumn}" ILIKE '${pattern}'`);
+}
+
+/**
+ * Execute a quantitative metric (like quantity_total) with category filter
+ * Uses ILIKE on product_name column to filter by category
+ */
+interface QuantitativeMetricResult {
+  success: boolean;
+  data?: { result: string; categoryTerm: string; matchedRows?: number };
+  error?: string;
+  executionTimeMs?: number;
+}
+
+async function executeQuantitativeMetricWithFilter(
+  datasetId: string,
+  categoryTerm: string,
+  metricName: string
+): Promise<QuantitativeMetricResult> {
+  const startTime = Date.now();
+  
+  try {
+    // Get dataset info and semantic mappings
+    const datasetIdNum = parseInt(datasetId);
+    if (isNaN(datasetIdNum)) {
+      return { success: false, error: "Invalid dataset ID" };
+    }
+    
+    // Get dataset table name
+    const dataset = await db.query.clientDataDatasets.findFirst({
+      where: eq(clientDataDatasets.id, datasetIdNum)
+    });
+    
+    if (!dataset || !dataset.tableName) {
+      return { success: false, error: "Dataset not found" };
+    }
+    
+    // Get semantic mappings
+    const mappings = await db.query.datasetColumnMappings.findMany({
+      where: eq(datasetColumnMappings.datasetId, datasetIdNum)
+    });
+    
+    // Find product_name and quantity columns
+    const productMapping = mappings.find(m => m.logicalColumn === 'product_name');
+    const quantityMapping = mappings.find(m => m.logicalColumn === 'quantity');
+    
+    if (!productMapping) {
+      return { success: false, error: "No product_name column mapped for this dataset" };
+    }
+    
+    const productColumn = productMapping.physicalColumn;
+    const quantityColumn = quantityMapping?.physicalColumn || null;
+    
+    // Build ILIKE conditions for category
+    const ilikeConditions = buildCategoryIlikeFilters(categoryTerm, productColumn);
+    const whereClause = ilikeConditions.length > 0 
+      ? `WHERE (${ilikeConditions.join(' OR ')})` 
+      : '';
+    
+    // Build metric SQL based on metricName
+    let metricSql: string;
+    if (metricName === 'quantity_total' && quantityColumn) {
+      metricSql = `SUM(CAST("${quantityColumn}" AS NUMERIC))`;
+    } else if (metricName === 'items_sold') {
+      metricSql = `COUNT(*)`;
+    } else {
+      // Fallback to COUNT for unknown metrics
+      metricSql = `COUNT(*)`;
+    }
+    
+    // Execute query
+    const sql = `SELECT ${metricSql} AS result, COUNT(*) AS matched_rows FROM "${dataset.tableName}" ${whereClause}`;
+    console.log(`[QUANTITATIVE-FILTER] Executing SQL: ${sql}`);
+    
+    const { pool } = await import("../../db");
+    const result = await pool.query(sql);
+    
+    if (result.rows.length === 0) {
+      return { 
+        success: true, 
+        data: { result: "0", categoryTerm, matchedRows: 0 },
+        executionTimeMs: Date.now() - startTime
+      };
+    }
+    
+    const row = result.rows[0];
+    const value = row.result || "0";
+    const matchedRows = parseInt(row.matched_rows) || 0;
+    
+    console.log(`[QUANTITATIVE-FILTER] Result: ${value} (matched ${matchedRows} rows for "${categoryTerm}")`);
+    
+    return { 
+      success: true, 
+      data: { 
+        result: String(value), 
+        categoryTerm,
+        matchedRows
+      },
+      executionTimeMs: Date.now() - startTime
+    };
+    
+  } catch (error: any) {
+    console.error(`[QUANTITATIVE-FILTER] Error: ${error.message}`);
+    return { success: false, error: error.message, executionTimeMs: Date.now() - startTime };
+  }
+}
+
+/**
  * TASK 5: Detect if user is asking for product listing vs category comparison
  * Returns the correct column to use for groupBy AND the search term for ILIKE filter
  */
@@ -1672,6 +1859,54 @@ export async function askDataset(
           totalExecutionTimeMs: Date.now() - startTime
         };
       }
+    }
+  }
+
+  // ====== QUANTITATIVE METRIC WITH FILTER DETECTION ======
+  // Intercept "quante pizze ho venduto" as execute_metric with ILIKE filter (not aggregate_group)
+  const quantitativeFilter = detectQuantitativeMetricWithFilter(userQuestion);
+  if (quantitativeFilter.isQuantitativeWithFilter && datasets.length > 0 && routerOutput.intent === "analytics") {
+    console.log(`[QUERY-PLANNER] QUANTITATIVE FILTER DETECTED: term="${quantitativeFilter.categoryTerm}", metric="${quantitativeFilter.metricName}"`);
+    
+    const datasetId = datasets[0].id;
+    const quantityResult = await executeQuantitativeMetricWithFilter(
+      datasetId,
+      quantitativeFilter.categoryTerm || '',
+      quantitativeFilter.metricName
+    );
+    
+    if (quantityResult.success) {
+      console.log(`[QUERY-PLANNER] Quantitative metric executed successfully: ${JSON.stringify(quantityResult.data)}`);
+      return {
+        plan: {
+          steps: [{
+            name: "execute_metric_filtered",
+            args: { 
+              datasetId, 
+              metricName: quantitativeFilter.metricName, 
+              categoryFilter: quantitativeFilter.categoryTerm 
+            }
+          }],
+          reasoning: `Metrica quantitativa con filtro categoria: ${quantitativeFilter.categoryTerm}`,
+          estimatedComplexity: "simple"
+        },
+        results: [{
+          toolName: "execute_metric",
+          args: { 
+            datasetId, 
+            metricName: quantitativeFilter.metricName, 
+            filters: { category_ilike: quantitativeFilter.categoryTerm }
+          },
+          result: quantityResult.data,
+          success: true,
+          executionTimeMs: quantityResult.executionTimeMs
+        }],
+        success: true,
+        totalExecutionTimeMs: Date.now() - startTime
+      };
+    } else {
+      console.log(`[QUERY-PLANNER] Quantitative metric failed: ${quantityResult.error}, falling back to standard planning`);
+      // Fall through to standard planning if quantitative metric fails
     }
   }
 
