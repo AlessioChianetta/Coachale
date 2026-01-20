@@ -1,0 +1,180 @@
+Qui fermiamoci un secondo. Questa risposta è sbagliata dal punto di vista logico-business, anche se tecnicamente ha fatto una query. Ed è un segnale importantissimo per il tuo prodotto.
+
+Ti spiego perché e cosa devi correggere.
+
+🚨 PROBLEMA GRAVE: “Prodotti con margine negativo”
+
+Nel tuo dataset NON ESISTONO margini negativi reali per questi prodotti.
+
+Lo sappiamo perché:
+
+Prima hai calcolato:
+
+Margine lordo totale positivo
+
+Margine % ~65%
+
+Le stesse pizze e bevande risultavano profittevoli nelle analisi precedenti
+
+E ora improvvisamente:
+
+Birra, Pizza, Acqua, Caffè = “in perdita”
+
+❌ Questo è semanticamente falso.
+
+PERCHÉ È SUCCESSO
+
+Guardiamo la chiamata:
+
+aggregate_group (filters, groupBy, orderBy, metricName, aggregations)
+
+
+Probabile errore:
+
+1️⃣ Ha sommato male il margine
+
+Spesso accade quando:
+
+gross_margin viene ricalcolato riga per riga
+
+oppure viene sottratto il costo unitario senza moltiplicare per quantity
+
+oppure viene usato unit_cost invece di (unit_cost * quantity)
+
+Risultato:
+
+👉 numeri matematicamente validi
+👉 business logic sbagliata
+
+2️⃣ Non ha fatto sanity check
+
+Il sistema ha accettato:
+
+acqua e caffè in perdita
+
+Che per un ristorante è statisticamente improbabile.
+
+Qui manca una regola di coerenza.
+
+QUESTO È IL BUG PIÙ PERICOLOSO
+
+Perché:
+
+Non rompe il sistema
+
+Non genera errore
+
+Ma dice cose false con sicurezza
+
+Questo è il peggior tipo di errore in un SaaS analytics.
+
+COSA DIRE AL PROGRAMMATORE (MESSAGGIO PRONTO)
+
+Puoi mandargli questo:
+
+⚠️ BUG LOGICO: MARGINE NEGATIVO FALSO
+
+Abbiamo un problema serio:
+
+La query "prodotti con margine negativo" restituisce:
+
+Birra
+
+Pizza
+
+Acqua
+
+Caffè
+
+Ma:
+
+Il margine totale è positivo
+
+Le stesse categorie prima risultavano profittevoli
+
+Questo indica:
+
+Errore nel calcolo di gross_margin aggregato
+
+O uso errato di unit_cost senza moltiplicare per quantity
+
+O sottrazione doppia del costo
+
+Serve:
+✅ Validazione formula
+
+gross_margin = SUM((unit_price * quantity) - (unit_cost * quantity))
+
+NON:
+
+unit_price - unit_cost
+
+SUM(unit_cost) senza quantity
+
+✅ Sanity check automatico
+
+Bloccare output se:
+
+prodotto beverage con margine < 0
+
+margine negativo ma margine totale positivo
+
+In quel caso:
+
+"Dati incoerenti — verificare mapping cost/price"
+
+✅ Flag “business anomaly”
+
+Se più del 30% dei top seller risultano negativi:
+
+→ fermare risposta automatica.
+
+LIVELLO MATURITÀ SISTEMA (ORA)
+
+Dopo questo test:
+
+Tecnico:
+
+🟢 forte
+
+Business intelligence:
+
+🟠 ancora fragile
+
+Perché:
+
+manca validazione economica
+
+manca controllo semantico dei risultati
+
+COSA FARE SUBITO (PRIORITÀ)
+
+Se vuoi un prodotto vendibile:
+
+1️⃣ Aggiungi sanity rules
+
+Non permettere:
+
+bevande negative
+
+top seller in perdita senza warning
+
+2️⃣ Se margine negativo:
+
+Risposta obbligatoria:
+
+"Possibile errore di mapping cost/price — verifica dataset"
+
+NON:
+
+“alzare prezzi del 15%” 🤦‍♂️
+
+3️⃣ Logica “confidence downgrade”
+
+Se anomalia:
+
+confidence risposta = bassa
+
+tono = prudente
+
+no consigli automatici.

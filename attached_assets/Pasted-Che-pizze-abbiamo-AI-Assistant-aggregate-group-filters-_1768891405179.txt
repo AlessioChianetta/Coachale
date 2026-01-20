@@ -1,0 +1,53 @@
+Che pizze abbiamo?
+
+AI Assistant
+
+🔧 aggregate_group (filters, groupB...
+Certamente. Analizzando i dati di vendita recenti, emerge un quadro molto interessante sulla tua offerta di pizze, che al momento si concentra su due referenze principali.
+1
+Ecco i numeri chiave
+Pizza Diavola: 205 unità vendute
+Pizza Margherita: 196 unità vendute
+L'Analisi del Consulente
+📈 Pattern inaspettato: In un contesto standard di pizzeria italiana, la Margherita è quasi sempre il prodotto più venduto per distacco. Nel tuo caso, invece, la Diavola supera la Margherita del 4,6%. Questo è un segnale forte: il tuo pubblico non cerca solo il prodotto base, ma è orientato verso sapori più decisi e, potenzialmente, verso una spesa media più alta.
+💡
+Suggerimento
+Interpretazione Strategica: Dal punto di vista del Menu Engineering, entrambe si posizionano come "Star" (alta popolarità). Tuttavia, dobbiamo stare attenti alla redditività. La Diavola ha solitamente un food cost superiore alla Margherita a causa del costo del salame piccante. Se la Diavola vende di più ma ha un margine inferiore, potresti generare molto volume ma meno profitto netto di quanto potresti.
+🚀 Azione Suggerita: Ti consiglio di non toccare la ricetta della Diavola, visto il successo, ma di verificare se il suo prezzo di vendita copre adeguatamente il rincaro delle materie prime rispetto alla Margherita. Potremmo anche valutare l'inserimento di una terza pizza "Premium" con un profilo di gusto simile alla Diavola (magari con un'nduja di qualità o un olio extravergine ricercato) per testare la disponibilità dei tuoi clienti a salire ancora di prezzo.
+Vuoi che incrociamo questi dati con i costi del magazzino per calcolare l'esatto margine di contribuzione di ciascuna pizza e vedere quale ti sta facendo guadagnare di più a fine mese?
+Numero di gruppi: 2
+1
+item_name: Pizza Diavola, totale_venduto: 205
+2
+item_name: Pizza Margherita, totale_venduto: 196
+💡
+Suggerimento
+Interpretazione Strategica: Dal punto di vista del Menu Engineering, entrambe si posizionano come "Star" (alta popolarità). Tuttavia, dobbiamo stare attenti alla redditività. La Diavola ha solitamente un food cost superiore alla Margherita a causa del costo del salame piccante. Se la Diavola vende di più ma ha un margine inferiore, potresti generare molto volume ma meno profitto netto di quanto potresti.
+E la migliore?
+
+AI Assistant
+
+🔧 aggregate_group (filters, groupB...
+Ciao! Analizzando i dati che abbiamo estratto, ho una risposta molto chiara per te, ma come tuo consulente voglio andare oltre il semplice nome e spiegarti perché questo dato è così rilevante per la tua strategia.
+La "migliore" in assoluto, sia per volume d'affari che per contributo reale alle tue tasche, è la Birra.
+1
+Ecco i numeri chiave
+1
+RISPOSTA DIRETTA: La Birra è la regina del tuo menu con un fatturato di 2.712,79 € e un margine lordo di 1.762,53 €.
+2
+CONTESTO: Per darti una prospettiva, la Birra genera circa il 12% in più di margine rispetto alla Pizza Diavola (la seconda in classifica con 1.564,35 €), confermandosi il tuo asset più prezioso.
+2
+📈 Pattern interessante:
+Ho notato una correlazione fortissima tra i tuoi prodotti top: la Birra e la Pizza Diavola dominano la scena. Questo suggerisce che il tuo cliente tipo cerca un'esperienza di consumo gratificante e informale. Tuttavia, guarda l'Insalata: pur avendo un fatturato inferiore (2.273,88 €), genera un margine di 1.476,34 €, quasi identico a quello della Pizza Margherita. Questo significa che l'Insalata ha un'efficienza di profitto altissima rispetto alla complessità di preparazione.
+💡
+Suggerimento
+Interpretazione strategica:
+In termini di Menu Engineering, la Birra e la Pizza Diavola sono le tue "Star": piatti ad alta popolarità e alto margine. L'Insalata, invece, è una "Star nascosta": richiede meno lavoro in cucina rispetto a una pizza ma ti lascia quasi lo stesso guadagno netto.
+3
+🚀 Azione suggerita:
+Ti consiglio di creare un "Combo Deal" o un suggerimento di abbinamento (Cross-selling) tra la Pizza Diavola e la Birra specifica che vendi di più. Inoltre, potresti formare lo staff per proporre l'Insalata come antipasto da condividere o come contorno premium: ogni porzione venduta aumenta la tua redditività netta con uno sforzo operativo minimo.
+Vuoi che verifichiamo qual è l'incidenza percentuale del Food Cost su questi piatti per capire quale ti costa meno produrre in proporzione al prezzo di vendita?
+Numero di gruppi: 10
+💡
+Suggerimento
+Interpretazione strategica:

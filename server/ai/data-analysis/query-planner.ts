@@ -656,6 +656,34 @@ NON chiamare tool.
 Rispondi brevemente: "Dimmi cosa vuoi analizzare."
 
 ========================
+FOLLOW-UP E CONTESTO (CRITICO!)
+========================
+
+12) EREDITÀ DEL CONTESTO - REGOLA D'ORO
+
+Quando l'utente fa una domanda di FOLLOW-UP che si riferisce a qualcosa menzionato PRIMA:
+- "E la migliore?" → si riferisce all'argomento precedente (es: pizze, prodotti, categorie)
+- "Quali vendono di più?" → mantieni i filtri della query precedente
+- "Mostrami i dettagli" → drill-down sul gruppo precedente
+- "E per categoria?" → cambia solo il groupBy, mantieni altri filtri
+
+REGOLA: Se la conversazione precedente parlava di un SUBSET di dati (es: "pizze"), 
+la domanda successiva DEVE mantenere quel filtro anche se non lo ripete!
+
+ESEMPIO CRITICO:
+- Utente: "Che pizze abbiamo?" → groupBy: item_name, filters: {category: "Food", item_name: ILIKE "%pizza%"}
+- Utente: "E la migliore?" → MANTIENI i filtri! → groupBy: item_name, filters: {item_name: ILIKE "%pizza%"}, orderBy DESC
+
+SBAGLIATO: "E la migliore?" → groupBy: item_name, filters: {} ← perde il contesto delle pizze!
+CORRETTO: "E la migliore?" → groupBy: item_name, filters: {item_name: ILIKE "%pizza%"}, limit: 1, orderBy: revenue DESC
+
+Pattern di follow-up da riconoscere:
+- "E il/la [superlativo]?" → ranking con filtri precedenti
+- "Quale è il migliore/peggiore?" → ranking con filtri precedenti
+- "Mostrami per [dimensione]" → cambia groupBy, mantieni filtri
+- "E se filtro per..." → modifica solo il filtro specificato
+
+========================
 ERROR HANDLING
 ========================
 
@@ -846,7 +874,7 @@ export async function planQuery(
   const conversationContext = conversationHistory && conversationHistory.length > 0
     ? `\n\n=== CONTESTO CONVERSAZIONE PRECEDENTE ===\n${conversationHistory.slice(-5).map(m => 
         `${m.role === 'user' ? 'UTENTE' : 'ASSISTENTE'}: ${m.content.substring(0, 300)}${m.content.length > 300 ? '...' : ''}`
-      ).join('\n')}\n=== FINE CONTESTO ===\n\nUSA questo contesto per capire riferimenti come "le", "questi", "fammi vedere", etc.`
+      ).join('\n')}\n=== FINE CONTESTO ===\n\n⚠️ REGOLA CRITICA CONTESTO: Se la domanda precedente parlava di un SUBSET (es: "pizze", "drink", "Food"), e la domanda attuale è un follow-up (es: "E la migliore?", "Quale vende di più?"), DEVI mantenere gli stessi filtri della query precedente!`
     : '';
 
   console.log(`[QUERY-PLANNER] Conversation context for planner: ${conversationHistory?.length || 0} messages`);
