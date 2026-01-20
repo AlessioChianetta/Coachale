@@ -5,7 +5,7 @@
 
 import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import { dataAnalysisTools, type ToolCall, type ExecutedToolResult, validateToolCall, getToolByName } from "./tool-definitions";
-import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, getDistinctCount, checkCardinalityBeforeAggregate, validateFiltersApplied, MAX_GROUP_BY_LIMIT, type QueryResult, type CardinalityCheckResult } from "../../services/client-data/query-executor";
+import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, getDistinctCount, checkCardinalityBeforeAggregate, validateFiltersApplied, MAX_GROUP_BY_LIMIT, type QueryResult, type CardinalityCheckResult, type IsSellableConfig } from "../../services/client-data/query-executor";
 import { parseMetricExpression, validateMetricAgainstSchema } from "../../services/client-data/metric-dsl";
 import { db } from "../../db";
 import { clientDataDatasets } from "../../../shared/schema";
@@ -1295,6 +1295,94 @@ export async function executeToolCall(
             console.log(`[AGGREGATE-GROUP] Time granularity: ${toolCall.args.timeGranularity}, dateColumn: ${toolCall.args.dateColumn}`);
           }
           
+          // TASK: Generate is_sellable filter for ALL SALES ANALYTICS
+          // Auto-filter out notes/modifiers for revenue/quantity/product queries
+          let isSellableConfig: IsSellableConfig | undefined;
+          const groupBy = toolCall.args.groupBy || [];
+          
+          // Check if this is a SALES metric based on:
+          // 1. metricName contains sales-related terms
+          // 2. OR uses SQL expression with revenue/quantity patterns
+          const salesMetrics = ['revenue', 'quantity', 'quantity_total', 'revenue_net', 'revenue_gross', 'avg_unit_price', 'ticket_medio'];
+          const metricName = toolCall.args.metricName?.toLowerCase() || '';
+          const isSalesMetricByName = salesMetrics.some(sm => metricName.includes(sm));
+          
+          // Also check if the resolved SQL uses revenue_amount or quantity logical roles
+          const sqlExpression = useRawSqlExpression?.toLowerCase() || '';
+          const isSalesMetricBySQL = sqlExpression.includes('sum') || sqlExpression.includes('avg') || sqlExpression.includes('count');
+          
+          const isSalesQuery = isSalesMetricByName || isSalesMetricBySQL;
+          
+          // Get dataset to check semantic mappings
+          const dataset = await db.select().from(clientDataDatasets)
+            .where(eq(clientDataDatasets.id, toolCall.args.datasetId))
+            .limit(1);
+          
+          if (dataset.length > 0) {
+            const mappings = (dataset[0].semanticMappings || {}) as Record<string, string>;
+            const datasetColumns = dataset[0].columns as string[] || [];
+            
+            // PRIORITY 1: Check if dataset has explicit is_sellable column
+            const isSellablePhysical = Object.entries(mappings)
+              .find(([_, logical]) => logical === 'is_sellable')?.[0];
+            
+            if (isSellablePhysical && datasetColumns.includes(isSellablePhysical)) {
+              // Use dedicated is_sellable column - add as structured filter
+              // This will be handled by the standard filter system
+              if (!toolCall.args.filters) toolCall.args.filters = {};
+              toolCall.args.filters[isSellablePhysical] = { operator: '=', value: 1 };
+              console.log(`[AGGREGATE-GROUP] Using dedicated is_sellable column: ${isSellablePhysical}`);
+            } else {
+              // PRIORITY 2: Use heuristic filter for product-level queries or sales metrics
+              const productNamePhysical = Object.entries(mappings)
+                .find(([_, logical]) => logical === 'product_name')?.[0];
+              
+              // Check if groupBy contains product column or if this is a sales query
+              let hasProductGroupBy = productNamePhysical && groupBy.includes(productNamePhysical);
+              let productCol = productNamePhysical;
+              
+              // Fallback pattern matching for product detection
+              if (!hasProductGroupBy && !productCol) {
+                const productPatterns = ['product_name', 'descrprod', 'descr_prod', 'prodotto', 'articolo', 'nome_prodotto'];
+                productCol = groupBy.find((col: string) => 
+                  productPatterns.some(pc => col.toLowerCase().includes(pc.toLowerCase()))
+                );
+                hasProductGroupBy = !!productCol;
+              }
+              
+              // Apply filter if: product groupBy OR sales metric
+              const shouldApplyFilter = hasProductGroupBy || isSalesQuery;
+              
+              if (shouldApplyFilter) {
+                if (productCol && datasetColumns.includes(productCol)) {
+                  console.log(`[AGGREGATE-GROUP] Sales analytics detected - generating is_sellable filter`);
+                  console.log(`[AGGREGATE-GROUP] Reason: ${hasProductGroupBy ? 'product groupBy' : 'sales metric'}`);
+                  
+                  // Find revenue column for more robust filtering
+                  const revenueCol = Object.entries(mappings)
+                    .find(([_, logical]) => logical === 'revenue_amount')?.[0];
+                  
+                  // STRUCTURED CONFIG: Pass to aggregateGroup for internal validation
+                  isSellableConfig = {
+                    productNameColumn: productCol,
+                    revenueColumn: revenueCol
+                  };
+                  console.log(`[AGGREGATE-GROUP] is_sellable config: productCol=${productCol}, revenueCol=${revenueCol || 'none'}`);
+                } else if (hasProductGroupBy) {
+                  // FAIL CLOSED: Product groupBy detected but no valid product_name column
+                  console.error(`[AGGREGATE-GROUP] FAIL CLOSED: Product groupBy detected but product_name column not mapped`);
+                  result = { 
+                    success: false, 
+                    error: "Dataset non configurato per analisi prodotti. Configura il mapping per 'product_name' nelle impostazioni del dataset." 
+                  };
+                  break;
+                }
+                // Note: If only isSalesQuery but no product column, we proceed without is_sellable filter
+                // This allows general sales metrics (e.g., total revenue) without product breakdown
+              }
+            }
+          }
+          
           result = await aggregateGroup(
             toolCall.args.datasetId,
             toolCall.args.groupBy,
@@ -1305,7 +1393,8 @@ export async function executeToolCall(
             { userId },
             toolCall.args.timeGranularity,
             toolCall.args.dateColumn,
-            useRawSqlExpression ? { sql: useRawSqlExpression, alias: toolCall.args.metricName } : undefined
+            useRawSqlExpression ? { sql: useRawSqlExpression, alias: toolCall.args.metricName } : undefined,
+            isSellableConfig  // Structured is_sellable config (validated internally)
           );
           console.log(`[AGGREGATE-GROUP] Result: success=${result.success}, rowCount=${result.rowCount}, error=${result.error || 'none'}`);
           

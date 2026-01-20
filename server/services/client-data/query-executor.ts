@@ -629,6 +629,12 @@ export async function filterData(
   };
 }
 
+// Configuration for is_sellable filtering (structured, not raw SQL)
+export interface IsSellableConfig {
+  productNameColumn: string;  // Must be validated column from dataset
+  revenueColumn?: string;     // Optional revenue column for additional filtering
+}
+
 export async function aggregateGroup(
   datasetId: string,
   groupByColumns: string[],
@@ -639,7 +645,8 @@ export async function aggregateGroup(
   options: QueryOptions = {},
   timeGranularity?: "day" | "week" | "month" | "quarter" | "year",
   dateColumn?: string,
-  rawMetricSql?: { sql: string; alias: string }
+  rawMetricSql?: { sql: string; alias: string },
+  isSellableConfig?: IsSellableConfig  // Structured is_sellable filtering config
 ): Promise<QueryResult> {
   const startTime = Date.now();
   
@@ -784,6 +791,36 @@ export async function aggregateGroup(
   }
 
   let sql = `SELECT ${selectParts.join(", ")} FROM "${datasetInfo.tableName}"`;
+
+  // STRUCTURED is_sellable filtering (validated, not raw SQL injection)
+  if (isSellableConfig) {
+    const { productNameColumn, revenueColumn } = isSellableConfig;
+    
+    // Validate column exists in dataset (prevents injection)
+    if (!datasetInfo.columns.includes(productNameColumn)) {
+      return { success: false, error: `is_sellable filter: invalid product column "${productNameColumn}"` };
+    }
+    if (revenueColumn && !datasetInfo.columns.includes(revenueColumn)) {
+      console.warn(`[AGGREGATE-GROUP] is_sellable filter: revenue column "${revenueColumn}" not found, skipping`);
+    }
+    
+    // Add is_sellable filter conditions (note: column names validated above)
+    const prodCol = `"${productNameColumn}"`;
+    
+    // Filter out notes/modifiers with validated patterns
+    whereClauses.push(`${prodCol} NOT LIKE '...%'`);
+    whereClauses.push(`${prodCol} NOT LIKE '.%'`);
+    whereClauses.push(`${prodCol} NOT LIKE '+%'`);
+    whereClauses.push(`LOWER(${prodCol}) NOT LIKE 'poco %'`);
+    whereClauses.push(`LOWER(${prodCol}) NOT LIKE 'senza %'`);
+    
+    // Add revenue > 0 filter if column is valid
+    if (revenueColumn && datasetInfo.columns.includes(revenueColumn)) {
+      whereClauses.push(`"${revenueColumn}" > 0`);
+    }
+    
+    console.log(`[AGGREGATE-GROUP] is_sellable filter applied: productCol=${productNameColumn}, revenueCol=${revenueColumn || 'none'}`);
+  }
 
   if (whereClauses.length > 0) {
     sql += ` WHERE ${whereClauses.join(" AND ")}`;

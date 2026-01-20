@@ -203,6 +203,23 @@ export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
     description: "Warehouse or storage location",
     requiredForMetrics: [],
   },
+  // === LINE CLASSIFICATION (for POS data quality) ===
+  line_type: {
+    name: "line_type",
+    displayName: "Line Type",
+    displayNameIt: "Tipo Riga",
+    dataType: "TEXT",
+    description: "Classification of line: product (sellable item), modifier (extra/additions), note (kitchen notes)",
+    requiredForMetrics: [],
+  },
+  is_sellable: {
+    name: "is_sellable",
+    displayName: "Is Sellable Item",
+    displayNameIt: "È Prodotto Vendibile",
+    dataType: "INTEGER", // 0/1 boolean
+    description: "Whether this line represents a real sellable product (1) or a modifier/note (0). Used for automatic filtering in analytics.",
+    requiredForMetrics: [],
+  },
 };
 
 export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
@@ -415,6 +432,20 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
     /^deposito/i,
     /^storage/i,
     /^location/i,
+  ],
+  line_type: [
+    /^tipo_?riga/i,
+    /^tiporiga/i,
+    /^line_?type/i,
+    /^row_?type/i,
+    /^tipo_?linea/i,
+  ],
+  is_sellable: [
+    /^vendibile/i,
+    /^is_?sellable/i,
+    /^sellable/i,
+    /^is_?product/i,
+    /^is_?item/i,
   ],
 };
 
