@@ -635,6 +635,12 @@ export interface IsSellableConfig {
   revenueColumn?: string;     // Optional revenue column for additional filtering
 }
 
+// Configuration for product ILIKE filtering (used for category ranking)
+export interface ProductIlikeConfig {
+  productNameColumn: string;  // Column to apply ILIKE patterns to (validated)
+  patterns: string[];         // Array of ILIKE patterns like ['%margherit%', '%diavol%']
+}
+
 export async function aggregateGroup(
   datasetId: string,
   groupByColumns: string[],
@@ -646,7 +652,8 @@ export async function aggregateGroup(
   timeGranularity?: "day" | "week" | "month" | "quarter" | "year",
   dateColumn?: string,
   rawMetricSql?: { sql: string; alias: string },
-  isSellableConfig?: IsSellableConfig  // Structured is_sellable filtering config
+  isSellableConfig?: IsSellableConfig,  // Structured is_sellable filtering config
+  productIlikeConfig?: ProductIlikeConfig  // ILIKE patterns for category filtering (e.g., "Top 5 pizze")
 ): Promise<QueryResult> {
   const startTime = Date.now();
   
@@ -820,6 +827,32 @@ export async function aggregateGroup(
     }
     
     console.log(`[AGGREGATE-GROUP] is_sellable filter applied: productCol=${productNameColumn}, revenueCol=${revenueColumn || 'none'}`);
+  }
+
+  // PRODUCT ILIKE FILTERING (for category ranking like "Top 5 pizze")
+  // CRITICAL: This filter is applied BEFORE aggregation to ensure correct ranking
+  if (productIlikeConfig) {
+    const { productNameColumn, patterns } = productIlikeConfig;
+    
+    // Validate column exists in dataset (prevents injection)
+    if (!datasetInfo.columns.includes(productNameColumn)) {
+      return { success: false, error: `productIlike filter: invalid product column "${productNameColumn}"` };
+    }
+    
+    if (patterns && patterns.length > 0) {
+      // Build OR conditions for all ILIKE patterns using parameterized queries (SECURE)
+      const ilikeConditions: string[] = [];
+      for (const pattern of patterns) {
+        ilikeConditions.push(`"${productNameColumn}" ILIKE $${paramIndex}`);
+        params.push(pattern);
+        paramIndex++;
+      }
+      
+      // Wrap in parentheses to maintain correct AND/OR precedence
+      whereClauses.push(`(${ilikeConditions.join(' OR ')})`);
+      
+      console.log(`[AGGREGATE-GROUP] productIlike filter applied: ${patterns.length} patterns on column "${productNameColumn}"`);
+    }
   }
 
   if (whereClauses.length > 0) {
@@ -1002,6 +1035,7 @@ export const aiTools = {
       aggregations: { type: "array", required: true, description: "Aggregations: [{ column, function, alias }]" },
       orderBy: { type: "object", required: false, description: "{ column, direction: 'ASC'|'DESC' }" },
       limit: { type: "number", required: false },
+      productIlikePatterns: { type: "array", required: false, description: "ILIKE patterns for category filtering (e.g., ['%margherit%', '%diavol%'])" },
     },
     execute: async (params: {
       datasetId: string;
@@ -1010,7 +1044,35 @@ export const aiTools = {
       filters?: Record<string, { operator: string; value: string | number }>;
       orderBy?: { column: string; direction: "ASC" | "DESC" };
       limit?: number;
+      productIlikePatterns?: string[];  // ILIKE patterns injected by query-planner for category filtering
+      _rankingCategoryFilter?: string;  // Metadata: which category filter was applied
+      _applyIsSellable?: boolean;       // Flag to also apply is_sellable filter
     }, options?: QueryOptions) => {
+      // Build productIlikeConfig if patterns were injected
+      let productIlikeConfig: ProductIlikeConfig | undefined;
+      let isSellableConfig: IsSellableConfig | undefined;
+      
+      if (params.productIlikePatterns && params.productIlikePatterns.length > 0) {
+        // Determine the product_name column - use first groupBy column (which should be product_name for rankings)
+        // This is validated in aggregateGroup function against dataset columns
+        const productColumn = params.groupBy[0];
+        
+        productIlikeConfig = {
+          productNameColumn: productColumn,
+          patterns: params.productIlikePatterns
+        };
+        
+        // Also apply is_sellable filter if requested (filters out notes/modifiers)
+        if (params._applyIsSellable) {
+          isSellableConfig = {
+            productNameColumn: productColumn
+          };
+          console.log(`[TOOL-REGISTRY] aggregate_group: Applying ${params.productIlikePatterns.length} ILIKE patterns + is_sellable on column "${productColumn}"`);
+        } else {
+          console.log(`[TOOL-REGISTRY] aggregate_group: Applying ${params.productIlikePatterns.length} ILIKE patterns on column "${productColumn}"`);
+        }
+      }
+      
       return aggregateGroup(
         params.datasetId,
         params.groupBy,
@@ -1018,7 +1080,12 @@ export const aiTools = {
         params.filters,
         params.orderBy,
         params.limit || 100,
-        options
+        options,
+        undefined, // timeGranularity
+        undefined, // dateColumn
+        undefined, // rawMetricSql
+        isSellableConfig, // is_sellable filter (excludes notes/modifiers)
+        productIlikeConfig // productIlike filter for category ranking
       );
     },
   },

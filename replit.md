@@ -84,6 +84,15 @@ A 3-layer pipeline separating intent classification from execution to prevent st
 - **Result Size Guardrail**: `checkCardinalityBeforeAggregate()` asks for user confirmation if result > 500 rows (top N, export, paginate options)
 - Wiring logs: `[WIRING-CHECK]` prefix for debugging execution flow
 
+**Ranking with Category Filter (query-planner.ts + query-executor.ts)**
+- **Problem Fixed**: "Top 5 pizze" was returning global ranking (Coperto, Caffè, Acqua) instead of filtered pizzas
+- **Detection**: `detectRankingWithCategoryFilter()` detects ranking patterns (Top N, migliori, classifica) + category terms from CATEGORY_TERMS dictionary
+- **Order Enforced**: FILTER → GROUP → AGGREGATE → ORDER → LIMIT (never the reverse)
+- **Deterministic Injection**: Injects `productIlikePatterns` into aggregate_group tool args AFTER planning
+- **Parameterized Queries**: Uses $1, $2, $3... placeholders for secure ILIKE patterns (no SQL injection)
+- **is_sellable Integration**: Also applies is_sellable filter to exclude notes/modifiers from product rankings
+- **CATEGORY_TERMS Dictionary**: Hardcoded ILIKE patterns for categories (pizze → %margherit%, %diavol%, etc.)
+
 ### Universal Semantic Layer (Enterprise-Grade)
 A domain-agnostic semantic layer supporting any CSV/Excel dataset (POS, DDT, invoices, e-commerce, ERP):
 

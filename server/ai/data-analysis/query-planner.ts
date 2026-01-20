@@ -183,6 +183,74 @@ const CATEGORY_TERMS: Record<string, { searchPatterns: string[], productIlike: s
   'secondo': { searchPatterns: ['second'], productIlike: ['%carne%', '%pesce%', '%grigliata%', '%tagliata%'] },
 };
 
+/**
+ * RANKING WITH CATEGORY FILTER DETECTION
+ * Detects queries like "Top 5 pizze", "i 10 drink più venduti"
+ * These MUST apply category filter BEFORE ranking
+ */
+interface RankingWithCategoryFilter {
+  isRankingWithFilter: boolean;
+  limit: number;
+  categoryTerm: string | null;
+  metricType: 'quantity' | 'revenue';
+}
+
+const RANKING_PATTERNS = [
+  /top\s*(\d+)\s+(\w+)/i,                           // "Top 5 pizze"
+  /(?:i|le|gli)\s+(\d+)\s+(\w+)\s+(?:più|piu)/i,   // "i 5 prodotti più venduti"
+  /(?:prime|primi)\s+(\d+)\s+(\w+)/i,              // "prime 5 pizze"
+  /classifica\s+(?:top\s*)?(\d+)?\s*(\w+)/i,       // "classifica pizze", "classifica top 10 pizze"
+  /(?:migliori|peggiori)\s+(\d+)\s+(\w+)/i,        // "migliori 5 pizze"
+];
+
+export function detectRankingWithCategoryFilter(userQuestion: string): RankingWithCategoryFilter {
+  const questionLower = userQuestion.toLowerCase();
+  
+  // IMPROVED: First check if any CATEGORY_TERMS are present in the question
+  // This is more robust than regex capture groups
+  let detectedCategory: string | null = null;
+  for (const [term, config] of Object.entries(CATEGORY_TERMS)) {
+    if (questionLower.includes(term)) {
+      detectedCategory = term;
+      break;
+    }
+  }
+  
+  // If no category found, this is not a ranking-with-filter query
+  if (!detectedCategory) {
+    return { isRankingWithFilter: false, limit: 10, categoryTerm: null, metricType: 'quantity' };
+  }
+  
+  // Check if this is a ranking query (has Top N, migliori, classifica, etc.)
+  const isRankingQuery = /top\s*\d+|migliori\s*\d*|peggiori\s*\d*|classifica|prime\s*\d+|primi\s*\d+|più\s*(vendut|popolar|richiest)/i.test(questionLower);
+  
+  if (!isRankingQuery) {
+    return { isRankingWithFilter: false, limit: 10, categoryTerm: null, metricType: 'quantity' };
+  }
+  
+  // Extract limit from query (default 10)
+  const limitMatch = questionLower.match(/top\s*(\d+)|migliori\s*(\d+)|peggiori\s*(\d+)|prime\s*(\d+)|primi\s*(\d+)/i);
+  let limit = 10;
+  if (limitMatch) {
+    const matchedNumber = limitMatch[1] || limitMatch[2] || limitMatch[3] || limitMatch[4] || limitMatch[5];
+    if (matchedNumber) {
+      limit = parseInt(matchedNumber);
+    }
+  }
+  
+  // Detect if asking for revenue or quantity
+  const isRevenueQuery = /fatturato|revenue|incasso|vendite|ricavo/i.test(questionLower);
+  
+  console.log(`[RANKING-FILTER] Detected ranking with category: "${detectedCategory}", limit=${limit}, metric=${isRevenueQuery ? 'revenue' : 'quantity'}`);
+  
+  return {
+    isRankingWithFilter: true,
+    limit,
+    categoryTerm: detectedCategory,
+    metricType: isRevenueQuery ? 'revenue' : 'quantity'
+  };
+}
+
 export function detectQuantitativeMetricWithFilter(userQuestion: string): QuantitativeMetricFilter {
   const questionLower = userQuestion.toLowerCase();
   
@@ -1752,6 +1820,57 @@ export async function executePlanWithValidation(
   };
 }
 
+/**
+ * Extract category context from conversation history
+ * If user previously asked about "pizze", "bevande", etc. and now asks a follow-up,
+ * we should maintain that filter context
+ */
+function extractCategoryContextFromHistory(
+  conversationHistory: ConversationMessage[] | undefined
+): { categoryTerm: string | null; fromMessageIndex: number } {
+  if (!conversationHistory || conversationHistory.length === 0) {
+    return { categoryTerm: null, fromMessageIndex: -1 };
+  }
+  
+  // Look at recent user messages for category terms
+  const categoryTermsToCheck = Object.keys(CATEGORY_TERMS);
+  
+  for (let i = conversationHistory.length - 1; i >= 0; i--) {
+    const msg = conversationHistory[i];
+    if (msg.role === 'user') {
+      const msgLower = msg.content.toLowerCase();
+      for (const term of categoryTermsToCheck) {
+        if (msgLower.includes(term)) {
+          console.log(`[CONTEXT-MEMORY] Found category "${term}" in conversation history at index ${i}`);
+          return { categoryTerm: term, fromMessageIndex: i };
+        }
+      }
+    }
+  }
+  
+  return { categoryTerm: null, fromMessageIndex: -1 };
+}
+
+/**
+ * Detect if current question is a follow-up that should inherit context
+ * E.g., "mi elenchi tutte le tipologie" after "quante pizze ho venduto"
+ */
+const FOLLOWUP_PATTERNS = [
+  /^(mi\s+)?elenc[aoi]/i,           // "mi elenchi", "elenca"
+  /^(mi\s+)?mostr[aoi]/i,           // "mi mostri", "mostra"
+  /^quali\s+sono/i,                 // "quali sono"
+  /^dimmi/i,                        // "dimmi"
+  /^e\s+(le|i|la|il|quali|quanti)/i, // "e le...", "e quali..."
+  /^intendevo/i,                    // "intendevo..."
+  /^volevo\s+(dire|sapere)/i,       // "volevo dire", "volevo sapere"
+  /^(solo\s+)?(le|i|la|il)\s+\w+$/i, // "le tipologie", "i prodotti"
+];
+
+function isFollowUpQuery(question: string): boolean {
+  const questionTrimmed = question.trim();
+  return FOLLOWUP_PATTERNS.some(pattern => pattern.test(questionTrimmed));
+}
+
 export async function askDataset(
   userQuestion: string,
   datasets: DatasetInfo[],
@@ -1762,6 +1881,14 @@ export async function askDataset(
   console.log(`[QUERY-PLANNER] Processing question: "${userQuestion}" for ${datasets.length} datasets`);
   console.log(`[QUERY-PLANNER] Conversation history: ${conversationHistory?.length || 0} messages`);
   const startTime = Date.now();
+  
+  // ====== CONTEXT MEMORY: Extract category filter from conversation history ======
+  const isFollowUp = isFollowUpQuery(userQuestion);
+  const contextCategory = extractCategoryContextFromHistory(conversationHistory);
+  
+  if (isFollowUp && contextCategory.categoryTerm) {
+    console.log(`[CONTEXT-MEMORY] Follow-up detected! Inheriting category filter: "${contextCategory.categoryTerm}"`);
+  }
 
   // ====== TASK 2: SEMANTIC CONTRACT DETECTION ======
   // Detect if user requests "ALL items" vs "top N"
@@ -1862,6 +1989,16 @@ export async function askDataset(
     }
   }
 
+  // ====== RANKING WITH CATEGORY FILTER DETECTION ======
+  // CRITICAL: "Top 5 pizze" must apply FILTER FIRST, then RANK
+  // Order: FILTER → GROUP → AGGREGATE → ORDER → LIMIT (never the reverse!)
+  // NOTE: We detect the ranking pattern here but inject filters AFTER planning (see below)
+  const rankingFilter = detectRankingWithCategoryFilter(userQuestion);
+  if (rankingFilter.isRankingWithFilter) {
+    console.log(`[QUERY-PLANNER] RANKING WITH FILTER DETECTED: category="${rankingFilter.categoryTerm}", limit=${rankingFilter.limit}, metric=${rankingFilter.metricType}`);
+    // We'll inject the filter into aggregate_group tool args AFTER planning (see deterministic injection section)
+  }
+
   // ====== QUANTITATIVE METRIC WITH FILTER DETECTION ======
   // Intercept "quante pizze ho venduto" as execute_metric with ILIKE filter (not aggregate_group)
   const quantitativeFilter = detectQuantitativeMetricWithFilter(userQuestion);
@@ -1910,9 +2047,22 @@ export async function askDataset(
     }
   }
 
+  // ====== CONTEXT MEMORY: Enhance user question with inherited context ======
+  // Instead of bypassing the pipeline, we enhance the question for the AI planner
+  // This is safer as it goes through normal tool validation
+  let enhancedQuestion = userQuestion;
+  if (isFollowUp && contextCategory.categoryTerm) {
+    // Build ILIKE patterns for the category to pass to the planner
+    const categoryPatterns = CATEGORY_TERMS[contextCategory.categoryTerm.toLowerCase()]?.productIlike || [`%${contextCategory.categoryTerm}%`];
+    const contextHint = `[CONTESTO: La domanda precedente riguardava "${contextCategory.categoryTerm}". Applica un filtro ILIKE sul nome prodotto con questi pattern: ${categoryPatterns.join(', ')}]`;
+    enhancedQuestion = `${userQuestion} ${contextHint}`;
+    console.log(`[CONTEXT-MEMORY] Enhanced question with context: "${contextCategory.categoryTerm}"`);
+  }
+
   // ====== LAYER 3: EXECUTION AGENT (AI - gemini-2.5-flash) ======
   // Plan and execute tools based on policy WITH conversation context
-  const plan = await planQuery(userQuestion, datasets, consultantId, conversationHistory);
+  // Use enhancedQuestion if context was added, otherwise use original userQuestion
+  const plan = await planQuery(enhancedQuestion, datasets, consultantId, conversationHistory);
   console.log(`[QUERY-PLANNER] Plan: ${plan.steps.length} steps, complexity: ${plan.estimatedComplexity}`);
 
   // Apply policy enforcement to planned tool calls
@@ -2069,6 +2219,34 @@ export async function askDataset(
           if (injected) {
             step.args.filters = existingFilters;
             console.log(`[FILTER-INJECT] Updated filters: ${JSON.stringify(step.args.filters)}`);
+          }
+        }
+        
+        // ====== CONTEXT MEMORY: Deterministic ILIKE injection for follow-ups ======
+        // If this is a follow-up with inherited category context, inject ILIKE filter into tool args
+        if (isFollowUp && contextCategory.categoryTerm && !step.args.productIlikePatterns) {
+          const categoryDef = CATEGORY_TERMS[contextCategory.categoryTerm.toLowerCase()];
+          if (categoryDef && categoryDef.productIlike && categoryDef.productIlike.length > 0) {
+            step.args.productIlikePatterns = categoryDef.productIlike;
+            step.args._inheritedCategoryContext = contextCategory.categoryTerm;
+            console.log(`[CONTEXT-MEMORY] DETERMINISTIC FILTER INJECTION: Injected ${categoryDef.productIlike.length} ILIKE patterns for "${contextCategory.categoryTerm}" into ${step.name}`);
+          }
+        }
+        
+        // ====== RANKING FILTER INJECTION ======
+        // CRITICAL: For "Top 5 pizze" queries, inject ILIKE patterns BEFORE ranking
+        // This ensures filter is applied FIRST, then ranking (never the reverse)
+        if (rankingFilter.isRankingWithFilter && rankingFilter.categoryTerm && !step.args.productIlikePatterns) {
+          const categoryDef = CATEGORY_TERMS[rankingFilter.categoryTerm.toLowerCase()];
+          if (categoryDef && categoryDef.productIlike && categoryDef.productIlike.length > 0) {
+            step.args.productIlikePatterns = categoryDef.productIlike;
+            step.args._rankingCategoryFilter = rankingFilter.categoryTerm;
+            step.args._applyIsSellable = true; // Also filter out notes/modifiers
+            // Also enforce the limit from the ranking query
+            if (rankingFilter.limit && (!step.args.limit || step.args.limit > rankingFilter.limit)) {
+              step.args.limit = rankingFilter.limit;
+            }
+            console.log(`[RANKING-FILTER] DETERMINISTIC INJECTION: Injected ${categoryDef.productIlike.length} ILIKE patterns for "${rankingFilter.categoryTerm}" into ${step.name}, limit=${step.args.limit}, is_sellable=true`);
           }
         }
       }
