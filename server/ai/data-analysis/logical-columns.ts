@@ -13,13 +13,21 @@ export interface LogicalColumnDefinition {
 }
 
 export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
+  revenue_amount: {
+    name: "revenue_amount",
+    displayName: "Revenue Amount (Line Total)",
+    displayNameIt: "Importo Fatturato (Totale Riga)",
+    dataType: "NUMERIC",
+    description: "Final revenue amount per line (post-discount, ready to sum). Use this instead of price*quantity when available.",
+    requiredForMetrics: ["revenue"],
+  },
   price: {
     name: "price",
     displayName: "Selling Price",
     displayNameIt: "Prezzo di Vendita",
     dataType: "NUMERIC",
-    description: "Unit selling price before discounts",
-    requiredForMetrics: ["revenue_gross", "revenue", "food_cost_percent", "avg_unit_price"],
+    description: "Unit selling price before discounts (use revenue_amount for final values)",
+    requiredForMetrics: ["revenue_gross", "revenue_calculated", "food_cost_percent", "avg_unit_price"],
   },
   cost: {
     name: "cost",
@@ -88,6 +96,17 @@ export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
 };
 
 export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
+  revenue_amount: [
+    /^prezzo_?finale$/i,
+    /^prezzofinale$/i,
+    /^importo_?riga$/i,
+    /^line_?total$/i,
+    /^totale_?riga$/i,
+    /^importo_?fatturato$/i,
+    /^net_?amount$/i,
+    /^final_?price$/i,
+    /^importo2$/i,
+  ],
   price: [
     /^(unit_)?price$/i,
     /^prezzo(_unitario)?$/i,

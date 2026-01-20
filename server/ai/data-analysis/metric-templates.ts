@@ -54,7 +54,21 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
   revenue: {
     name: "revenue",
     displayName: "Fatturato",
-    description: "Alias per fatturato lordo (default per calcoli food cost)",
+    description: "Fatturato reale (somma degli importi riga già calcolati, post-sconti). Usa revenue_amount, NON price*quantity.",
+    sqlTemplate: 'SUM(CAST({revenue_amount} AS NUMERIC))',
+    requiredLogicalColumns: ["revenue_amount"],
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 2,
+  },
+  revenue_calculated: {
+    name: "revenue_calculated",
+    displayName: "Fatturato Calcolato",
+    description: "Fatturato calcolato come prezzo × quantità (SOLO se revenue_amount non disponibile)",
     sqlTemplate: 'SUM(CAST({price} AS NUMERIC) * CAST({quantity} AS NUMERIC))',
     requiredLogicalColumns: ["price", "quantity"],
     unit: "currency",
@@ -62,7 +76,7 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
       mustBePositive: true,
       minValue: 0,
     },
-    isPrimary: true,
+    isPrimary: false,
     version: 1,
   },
   food_cost: {

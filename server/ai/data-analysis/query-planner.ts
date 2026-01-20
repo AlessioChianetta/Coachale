@@ -19,6 +19,7 @@ import { METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
 import { validateMetricForDataset } from "./pre-validator";
 import { checkAnalyticsEnabled } from "../../services/client-data/semantic-mapping-service";
+import { logRevenueColumnUsage, checkMonetaryColumnWarnings } from "./semantic-resolver";
 
 /**
  * TASK 2: Semantic Contract Detection
@@ -1131,6 +1132,12 @@ export async function executeToolCall(
 
       case "execute_metric": {
         console.log(`[EXECUTE-METRIC] Called with metricName: "${toolCall.args.metricName}", datasetId: ${toolCall.args.datasetId}`);
+        
+        // Log which column is being used for revenue calculations
+        await logRevenueColumnUsage(
+          parseInt(toolCall.args.datasetId, 10),
+          toolCall.args.metricName
+        );
         
         // Step 1: Pre-validate that required columns exist for this metric
         const preValidation = await validateMetricForDataset(toolCall.args.metricName, toolCall.args.datasetId);

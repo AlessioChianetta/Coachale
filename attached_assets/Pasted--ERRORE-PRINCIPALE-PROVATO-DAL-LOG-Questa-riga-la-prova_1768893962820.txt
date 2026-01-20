@@ -1,0 +1,163 @@
+❌ ERRORE PRINCIPALE (PROVATO DAL LOG)
+
+Questa riga è la prova:
+
+[EXECUTE-METRIC] Resolved SQL:
+SUM(CAST("prezzo" AS NUMERIC) * CAST("quantita" AS NUMERIC))
+
+
+⚠️ Sta usando prezzo invece di prezzofinale
+
+Nel tuo file DDT:
+
+prezzo = prezzo base
+
+prezzofinale = prezzo realmente fatturato (post sconti/listini)
+
+👉 Questo genera automaticamente una sottostima massiva del fatturato.
+
+Io ho ricalcolato:
+
+SUM(prezzofinale * quantita) = 647.634,54 €
+
+
+Il sistema invece:
+
+SUM(prezzo * quantita) = 253.600,04 €
+
+
+Errore = -61% di fatturato
+
+Questo è business critical.
+
+🔥 PROBLEMA ARCHITETTURALE (NON SOLO DI QUERY)
+
+Il problema NON è solo SQL. È strutturale:
+
+Attualmente:
+metric revenue = SUM(price * quantity)
+logical price → mappato su colonna "prezzo"
+
+
+Ma non esiste un concetto di "primary monetary column".
+
+Il sistema:
+
+non distingue prezzo listino
+
+prezzo netto
+
+prezzo fatturato
+
+importo riga
+
+Questo è pericoloso in qualunque gestionale reale.
+
+COSA DEVE ESISTERE (livello SaaS serio)
+
+Devi introdurre un concetto SEMANTICO:
+
+1️⃣ Colonna "revenue_amount" canonica
+
+Nel mapping dataset:
+
+logical_role: revenue_amount
+physical_column: prezzofinale
+
+
+Non:
+
+price
+
+
+Ma:
+
+revenue_amount (valore già netto riga)
+
+2️⃣ Revenue NON sempre = price * quantity
+
+Nei DDT reali spesso esiste:
+
+importo riga già calcolato
+
+sconti applicati
+
+arrotondamenti
+
+prezzi speciali cliente
+
+Quindi serve priorità:
+
+Regola corretta:
+SE esiste revenue_amount:
+    SUM(revenue_amount)
+ALTRIMENTI:
+    SUM(price * quantity)
+
+3️⃣ Warning automatico
+
+Se la revenue viene calcolata da:
+
+price * quantity
+
+
+E nel dataset esiste:
+
+prezzofinale OR importo2
+
+
+👉 DEV'essere mostrato warning:
+
+"Attenzione: esiste colonna monetaria più affidabile. Verifica mapping."
+
+PERCHÉ IL SISTEMA HA "FUNZIONATO" MA È SBAGLIATO
+
+Dal log:
+
+[RESULT-VALIDATOR] Coverage: 100%
+
+
+Validator controlla SOLO:
+
+coerenza numeri vs tool
+
+NON business correctness
+
+Quindi:
+
+✅ Tech ok
+❌ Business wrong
+
+Questo è il classico errore da prodotto analytics junior.
+
+MESSAGGIO PRONTO PER IL PROGRAMMATORE (COPIA/INCOLLA)
+
+Mandagli questo:
+
+Ho trovato l’errore sul fatturato. Dai log:
+
+SUM("prezzo" * "quantita")
+
+
+Ma nel DDT la colonna corretta è prezzofinale.
+Il fatturato reale è 647.634,54€, non 253.600€.
+
+Serve fix strutturale:
+
+Introdurre logical role: revenue_amount
+
+Mappare prezzofinale come primary revenue column
+
+Regola revenue:
+
+IF revenue_amount exists:
+   SUM(revenue_amount)
+ELSE:
+   SUM(price * quantity)
+
+
+Warning automatico se esistono colonne monetarie alternative non usate
+
+Loggare sempre quale colonna è usata per revenue
+
+Questo è mandatory per evitare fatturati sbagliati su DDT/fatture reali.
