@@ -310,9 +310,35 @@ interface ToolCallCorrection {
   injectedOrderBy: any;
 }
 
+/**
+ * Detect if user is asking for "best" (DESC) or "worst" (ASC) ranking
+ */
+function detectRankingDirection(userQuestion: string): 'DESC' | 'ASC' {
+  const worstPatterns = [
+    /peggio/i, /peggiore/i, /peggiori/i,
+    /meno\s+(vendut|vendit)/i,
+    /minor[ei]?\s+(fatturato|vendite|revenue)/i,
+    /performato?\s+peggio/i,
+    /ultim[oi]/i,
+    /fondo\s+(classifica|lista)/i,
+    /flop/i,
+    /scarso/i, /scarse/i,
+  ];
+  
+  for (const pattern of worstPatterns) {
+    if (pattern.test(userQuestion)) {
+      console.log(`[RANKING-DIRECTION] Detected WORST pattern: ${pattern}`);
+      return 'ASC';
+    }
+  }
+  
+  return 'DESC'; // Default: best = highest value
+}
+
 export function validateAndCorrectGroupBy(
   toolCall: ToolCall,
-  groupByIntent: GroupByValidation
+  groupByIntent: GroupByValidation,
+  userQuestion?: string
 ): ToolCallCorrection {
   const result: ToolCallCorrection = {
     corrected: false,
@@ -326,6 +352,9 @@ export function validateAndCorrectGroupBy(
   if (toolCall.name !== 'aggregate_group' && toolCall.name !== 'filter_data') {
     return result;
   }
+  
+  // Detect ranking direction from user question
+  const rankingDirection = userQuestion ? detectRankingDirection(userQuestion) : 'DESC';
   
   const groupBy = toolCall.args.groupBy as string[] || [];
   result.originalGroupBy = [...groupBy];
@@ -423,15 +452,24 @@ export function validateAndCorrectGroupBy(
       console.log(`[AGGREGATION-INJECTION] SUM(${groupByIntent.quantityColumn}) as totale_venduto`);
     }
 
-    // 5. INJECT ORDER BY: DESC by aggregated quantity (use alias "totale_venduto")
-    if (!toolCall.args.orderBy) {
+    // 5. INJECT ORDER BY: Use detected ranking direction (DESC for "best", ASC for "worst")
+    if (!toolCall.args.orderBy || !toolCall.args.orderBy.column) {
       toolCall.args.orderBy = {
         column: 'totale_venduto',
-        direction: 'DESC'
+        direction: rankingDirection
       };
-      result.injectedOrderBy = { column: 'totale_venduto', direction: 'DESC' };
+      result.injectedOrderBy = { column: 'totale_venduto', direction: rankingDirection };
       result.corrected = true;
-      console.log(`[ORDERBY-INJECTION] ORDER BY totale_venduto DESC`);
+      console.log(`[ORDERBY-INJECTION] ORDER BY totale_venduto ${rankingDirection}`);
+    } else if (toolCall.args.orderBy.column) {
+      // Override direction if orderBy exists but direction might be wrong
+      const existingDirection = toolCall.args.orderBy.direction;
+      if (rankingDirection !== existingDirection) {
+        console.log(`[ORDERBY-OVERRIDE] Changing direction: ${existingDirection} → ${rankingDirection}`);
+        toolCall.args.orderBy.direction = rankingDirection;
+        result.injectedOrderBy = toolCall.args.orderBy;
+        result.corrected = true;
+      }
     }
   }
 
@@ -1597,7 +1635,8 @@ export async function askDataset(
         }
         
         // TASK 5: Auto-correct groupBy if user asks for product listing but AI used category
-        const groupByCorrection = validateAndCorrectGroupBy(step, groupByIntent);
+        // Also detect ranking direction (DESC for "best", ASC for "worst")
+        const groupByCorrection = validateAndCorrectGroupBy(step, groupByIntent, userQuestion);
         if (groupByCorrection.corrected) {
           console.log(`[WIRING-CHECK] groupBy auto-corrected: ${JSON.stringify(groupByCorrection.originalGroupBy)} → ${JSON.stringify(groupByCorrection.newGroupBy)}`);
         }
