@@ -446,9 +446,26 @@ export async function executeToolCall(
 
       case "execute_metric": {
         console.log(`[EXECUTE-METRIC] Called with metricName: "${toolCall.args.metricName}", datasetId: ${toolCall.args.datasetId}`);
-        const metric = getMetricDefinition(toolCall.args.metricName);
-        if (!metric) {
-          console.error(`[EXECUTE-METRIC] Metric NOT FOUND: "${toolCall.args.metricName}"`);
+        
+        // Step 1: Pre-validate that required columns exist for this metric
+        const preValidation = await validateMetricForDataset(toolCall.args.metricName, toolCall.args.datasetId);
+        if (!preValidation.valid) {
+          const businessError = getBusinessFriendlyError(toolCall.args.metricName, preValidation.missingColumns);
+          console.error(`[EXECUTE-METRIC] Pre-validation failed: ${businessError}`);
+          return {
+            toolName: toolCall.name,
+            args: toolCall.args,
+            result: null,
+            success: false,
+            error: businessError,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        // Step 2: Resolve template SQL with dataset-specific column mappings
+        const resolvedSQL = await resolveMetricSQLForDataset(toolCall.args.metricName, toolCall.args.datasetId);
+        if (!resolvedSQL) {
+          console.error(`[EXECUTE-METRIC] Could not resolve SQL for metric: "${toolCall.args.metricName}"`);
           return {
             toolName: toolCall.name,
             args: toolCall.args,
@@ -458,11 +475,12 @@ export async function executeToolCall(
             executionTimeMs: Date.now() - startTime
           };
         }
-        console.log(`[EXECUTE-METRIC] Found metric: ${metric.name}, SQL: ${metric.sqlExpression}`);
-        // Use executeMetricSQL which executes raw SQL without DSL parser
+        console.log(`[EXECUTE-METRIC] Resolved SQL: ${resolvedSQL}`);
+        
+        // Step 3: Execute the resolved SQL
         result = await executeMetricSQL(
           toolCall.args.datasetId, 
-          metric.sqlExpression, 
+          resolvedSQL, 
           toolCall.args.metricName,
           { userId, timeoutMs: 3000 }
         );
@@ -507,12 +525,20 @@ export async function executeToolCall(
         let useRawSqlExpression: string | null = null;
         
         if (!aggregations && toolCall.args.metricName) {
-          const metric = getMetricDefinition(toolCall.args.metricName);
-          if (metric) {
-            // Use the FULL SQL expression from the metric definition
-            // This ensures complex formulas like SUM(unit_price * quantity) work correctly
-            useRawSqlExpression = metric.sqlExpression;
-            console.log(`[AGGREGATE-GROUP] Using raw SQL expression for "${toolCall.args.metricName}": ${useRawSqlExpression}`);
+          // Step 1: Pre-validate that required columns exist for this metric
+          const preValidation = await validateMetricForDataset(toolCall.args.metricName, toolCall.args.datasetId);
+          if (!preValidation.valid) {
+            const businessError = getBusinessFriendlyError(toolCall.args.metricName, preValidation.missingColumns);
+            console.error(`[AGGREGATE-GROUP] Pre-validation failed: ${businessError}`);
+            result = { success: false, error: businessError };
+            break;
+          }
+          
+          // Step 2: Resolve template SQL with dataset-specific column mappings
+          const resolvedSQL = await resolveMetricSQLForDataset(toolCall.args.metricName, toolCall.args.datasetId);
+          if (resolvedSQL) {
+            useRawSqlExpression = resolvedSQL;
+            console.log(`[AGGREGATE-GROUP] Using resolved SQL expression for "${toolCall.args.metricName}": ${useRawSqlExpression}`);
           } else {
             // Default fallback for unknown metrics
             aggregations = [{ column: "total_net", function: "SUM", alias: "totale" }];
