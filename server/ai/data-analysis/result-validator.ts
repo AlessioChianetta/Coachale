@@ -569,6 +569,19 @@ export function validateToolGating(
   const toolsUsed = toolResults.map(r => r.toolName);
   const hasComputeTool = toolsUsed.some(t => COMPUTE_TOOLS.includes(t));
   
+  // Check if this is a conversational response (fixed response, no data analysis needed)
+  const hasConversationalTool = toolsUsed.includes("conversational_response");
+  const isConversationalResult = toolResults.some(r => 
+    r.toolName === "conversational_response" || 
+    (r.result && typeof r.result === "object" && (r.result as any).isFixedResponse === true)
+  );
+  
+  // Skip validation for conversational responses - they don't need compute tools
+  if (hasConversationalTool || isConversationalResult) {
+    console.log(`[TOOL-GATING] CONVERSATIONAL BYPASS: Skipping validation for conversational response`);
+    return { valid: true };
+  }
+  
   const hasNumericClaimsInResponse = hasNumericClaims(aiResponse);
   const isOnlyMetadata = isMetadataContext(aiResponse);
   
