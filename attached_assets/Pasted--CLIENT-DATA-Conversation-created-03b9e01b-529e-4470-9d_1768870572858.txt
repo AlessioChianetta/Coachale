@@ -1,0 +1,40 @@
+[CLIENT-DATA] Conversation created: 03b9e01b-529e-4470-9de2-58e1ddd3ae39
+12:55:56 AM [express] POST /api/client-data/conversations 201 in 415ms :: {"success":true,"data":{"id…
+12:55:56 AM [express] GET /api/client-data/conversations 200 in 308ms :: {"success":true,"data":[{"id…
+[CLIENT-DATA] User message saved: e539690a-7c49-41aa-992b-329a6e81efa4
+[CLIENT-DATA] Processing message: "Mostrami il totale delle vendite per mese" on dataset 2
+[QUERY-PLANNER] Processing question: "Mostrami il totale delle vendite per mese" for 1 datasets
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-CLASSIFIER] Question: "Mostrami il totale delle vendite per mese..." → analytical (confidence: 0.95, requiresToolCall: true)
+[QUERY-PLANNER] Intent: analytical, requiresToolCall: true
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-20T00:56:00.029Z
+
+[SHEETS POLLING] Starting polling cycle (ExecID: 16xnh)...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: 16xnh)
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[QUERY-PLANNER] Tool aggregate_group failed: getStandardMetric is not defined
+[QUERY-PLANNER] Execution complete in 103ms, success: false
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - blocking AI response. Errors: aggregate_group: getStandardMetric is not defined
+[CLIENT-DATA] Assistant message saved: 4ad24151-52ee-47f2-8ed0-ec5d1ab7a162
+12:56:01 AM [express] POST /api/client-data/conversations/03b9e01b-529e-4470-9de2-58e1ddd3ae39/messag…
+12:56:05 AM [express] POST /api/activity/ses

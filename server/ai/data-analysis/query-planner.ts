@@ -494,7 +494,7 @@ export async function executeToolCall(
         // Convert metricName to aggregations if provided
         let aggregations = toolCall.args.aggregations;
         if (!aggregations && toolCall.args.metricName) {
-          const metric = getStandardMetric(toolCall.args.metricName);
+          const metric = getMetricDefinition(toolCall.args.metricName);
           if (metric) {
             // Extract column from SQL expression: SUM(CAST("column" AS NUMERIC))
             // We'll use total_net as default for revenue metrics
