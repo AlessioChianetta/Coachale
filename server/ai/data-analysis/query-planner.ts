@@ -145,7 +145,7 @@ export function extractFiltersFromQuestion(
 
 /**
  * TASK 5: Detect if user is asking for product listing vs category comparison
- * Returns the correct column to use for groupBy
+ * Returns the correct column to use for groupBy AND the search term for ILIKE filter
  */
 interface GroupByValidation {
   isProductListing: boolean;
@@ -153,6 +153,9 @@ interface GroupByValidation {
   productColumn: string | null;
   categoryColumn: string | null;
   detectedPatterns: string[];
+  searchTerm: string | null;
+  categoryFilter: string | null;
+  quantityColumn: string | null;
 }
 
 const PRODUCT_COLUMN_NAMES = [
@@ -165,13 +168,23 @@ const CATEGORY_COLUMN_NAMES = [
   'department', 'reparto', 'class', 'classe'
 ];
 
-const PRODUCT_LISTING_PATTERNS = [
-  /che\s+(pizze|piatti|prodotti|articoli|bevande|drink|dolci|antipasti|primi|secondi|contorni|birre|vini|cocktail)\s+(abbiamo|ci sono|sono)/i,
-  /quali\s+(pizze|piatti|prodotti|articoli|bevande|drink|dolci|antipasti|primi|secondi|contorni|birre|vini|cocktail)/i,
-  /elenco\s+(dei|delle|di)\s+\w+/i,
-  /mostrami\s+(tutti|tutte)\s+(i|le|gli)\s+\w+/i,
-  /lista\s+(dei|delle|di)\s+\w+/i,
-  /tutti\s+(i|le|gli)\s+(prodotti|piatti|articoli)/i,
+const QUANTITY_COLUMN_NAMES = [
+  'quantity', 'quantità', 'qty', 'amount', 'count', 'numero'
+];
+
+const PRODUCT_SEARCH_PATTERNS: { pattern: RegExp; searchGroup: number; categoryHint?: string }[] = [
+  { pattern: /che\s+(pizze?)\s+(abbiamo|ci sono|sono|vendiamo|disponibili|offriamo)/i, searchGroup: 1, categoryHint: 'Food' },
+  { pattern: /che\s+(birre?|vini?|cocktail|bevande?|drink)\s+(abbiamo|ci sono|sono|vendiamo|disponibili)/i, searchGroup: 1, categoryHint: 'Drink' },
+  { pattern: /che\s+(dolci?|dessert)\s+(abbiamo|ci sono|sono|vendiamo|disponibili)/i, searchGroup: 1, categoryHint: 'Dessert' },
+  { pattern: /che\s+(antipasti?|primi?|secondi?|contorni?|piatti?)\s+(abbiamo|ci sono|sono|vendiamo|disponibili)/i, searchGroup: 1, categoryHint: 'Food' },
+  { pattern: /quali\s+(pizze?|birre?|vini?|piatti?|prodotti?|articoli?)/i, searchGroup: 1 },
+  { pattern: /elenco\s+(dei|delle|di|delle)?\s*(pizze?|birre?|vini?|prodotti?|piatti?)/i, searchGroup: 2 },
+  { pattern: /mostrami\s+(tutti|tutte|le|i|gli)?\s*(pizze?|birre?|vini?|prodotti?|piatti?)/i, searchGroup: 2 },
+  { pattern: /lista\s+(dei|delle|di|delle)?\s*(pizze?|birre?|vini?|prodotti?|piatti?)/i, searchGroup: 2 },
+  { pattern: /(pizze?|birre?|vini?|cocktail)\s+(più\s+vendut[ei]|vendute|venduti|migliori|top)/i, searchGroup: 1 },
+  { pattern: /(pizze?|birre?|prodotti?)\s+(disponibili|a\s+menu|in\s+menu)/i, searchGroup: 1 },
+  { pattern: /vorrei\s+(le\s+)?(pizze?|birre?|prodotti?)/i, searchGroup: 2 },
+  { pattern: /(menu|menù)\s+(pizze?|birre?)/i, searchGroup: 2 },
 ];
 
 const CATEGORY_COMPARISON_PATTERNS = [
@@ -182,6 +195,33 @@ const CATEGORY_COMPARISON_PATTERNS = [
   /(raggruppato|raggruppa|raggruppare)\s+per\s+(categoria|tipo)/i,
 ];
 
+const SEARCH_TERM_TO_CATEGORY: Record<string, string> = {
+  'pizza': 'Food', 'pizze': 'Food',
+  'piatto': 'Food', 'piatti': 'Food',
+  'antipasto': 'Food', 'antipasti': 'Food',
+  'primo': 'Food', 'primi': 'Food',
+  'secondo': 'Food', 'secondi': 'Food',
+  'contorno': 'Food', 'contorni': 'Food',
+  'birra': 'Drink', 'birre': 'Drink',
+  'vino': 'Drink', 'vini': 'Drink',
+  'cocktail': 'Drink',
+  'bevanda': 'Drink', 'bevande': 'Drink',
+  'drink': 'Drink',
+  'dolce': 'Dessert', 'dolci': 'Dessert',
+  'dessert': 'Dessert',
+};
+
+function normalizeSearchTerm(term: string): string {
+  const normalized = term.toLowerCase()
+    .replace(/pizze$/i, 'pizza')
+    .replace(/birre$/i, 'birra')
+    .replace(/vini$/i, 'vino')
+    .replace(/piatti$/i, '')
+    .replace(/prodotti$/i, '')
+    .replace(/articoli$/i, '');
+  return normalized;
+}
+
 export function detectGroupByIntent(
   userQuestion: string,
   availableColumns: string[]
@@ -191,12 +231,22 @@ export function detectGroupByIntent(
   
   let isProductListing = false;
   let isCategoryComparison = false;
+  let searchTerm: string | null = null;
+  let categoryFilter: string | null = null;
   
-  for (const pattern of PRODUCT_LISTING_PATTERNS) {
-    if (pattern.test(userQuestion)) {
+  for (const { pattern, searchGroup, categoryHint } of PRODUCT_SEARCH_PATTERNS) {
+    const match = userQuestion.match(pattern);
+    if (match) {
       isProductListing = true;
-      const match = userQuestion.match(pattern);
-      if (match) detectedPatterns.push(match[0]);
+      detectedPatterns.push(match[0]);
+      
+      const rawTerm = match[searchGroup];
+      if (rawTerm && rawTerm.length > 2) {
+        searchTerm = normalizeSearchTerm(rawTerm);
+        categoryFilter = categoryHint || SEARCH_TERM_TO_CATEGORY[rawTerm.toLowerCase()] || null;
+        console.log(`[GROUPBY-VALIDATION] Extracted searchTerm="${searchTerm}", categoryFilter="${categoryFilter}"`);
+      }
+      break;
     }
   }
   
@@ -204,6 +254,8 @@ export function detectGroupByIntent(
     if (pattern.test(userQuestion)) {
       isCategoryComparison = true;
       isProductListing = false;
+      searchTerm = null;
+      categoryFilter = null;
       const match = userQuestion.match(pattern);
       if (match) detectedPatterns.push(match[0]);
     }
@@ -216,11 +268,16 @@ export function detectGroupByIntent(
   const categoryColumn = availableColumns.find(col => 
     CATEGORY_COLUMN_NAMES.some(name => col.toLowerCase() === name.toLowerCase())
   ) || null;
+
+  const quantityColumn = availableColumns.find(col =>
+    QUANTITY_COLUMN_NAMES.some(name => col.toLowerCase().includes(name.toLowerCase()))
+  ) || null;
   
   if (detectedPatterns.length > 0) {
     console.log(`[GROUPBY-VALIDATION] Detected patterns: ${detectedPatterns.join(', ')}`);
     console.log(`[GROUPBY-VALIDATION] isProductListing=${isProductListing}, isCategoryComparison=${isCategoryComparison}`);
-    console.log(`[GROUPBY-VALIDATION] productColumn=${productColumn}, categoryColumn=${categoryColumn}`);
+    console.log(`[GROUPBY-VALIDATION] productColumn=${productColumn}, categoryColumn=${categoryColumn}, quantityColumn=${quantityColumn}`);
+    console.log(`[GROUPBY-VALIDATION] searchTerm=${searchTerm}, categoryFilter=${categoryFilter}`);
   }
   
   return {
@@ -229,26 +286,62 @@ export function detectGroupByIntent(
     productColumn,
     categoryColumn,
     detectedPatterns,
+    searchTerm,
+    categoryFilter,
+    quantityColumn,
   };
 }
 
 /**
- * TASK 5: Auto-correct groupBy if user asks for product listing but AI used category
+ * TASK 5: Auto-correct groupBy AND inject complete query structure for product listing
+ * 
+ * CORRECT QUERY PATTERN for "che pizze abbiamo":
+ * - filter: category = 'Food' AND item_name ILIKE '%pizza%'
+ * - groupBy: [item_name]
+ * - metric: SUM(quantity)
+ * - orderBy: quantity DESC
  */
+interface ToolCallCorrection {
+  corrected: boolean;
+  originalGroupBy: string[];
+  newGroupBy: string[];
+  injectedFilters: Record<string, any>;
+  injectedAggregations: any[];
+  injectedOrderBy: any;
+}
+
 export function validateAndCorrectGroupBy(
   toolCall: ToolCall,
   groupByIntent: GroupByValidation
-): { corrected: boolean; originalGroupBy: string[]; newGroupBy: string[] } {
+): ToolCallCorrection {
+  const result: ToolCallCorrection = {
+    corrected: false,
+    originalGroupBy: [],
+    newGroupBy: [],
+    injectedFilters: {},
+    injectedAggregations: [],
+    injectedOrderBy: null,
+  };
+
   if (toolCall.name !== 'aggregate_group' && toolCall.name !== 'filter_data') {
-    return { corrected: false, originalGroupBy: [], newGroupBy: [] };
+    return result;
   }
   
   const groupBy = toolCall.args.groupBy as string[] || [];
+  result.originalGroupBy = [...groupBy];
+  result.newGroupBy = [...groupBy];
   
   if (!groupByIntent.isProductListing || !groupByIntent.productColumn) {
-    return { corrected: false, originalGroupBy: groupBy, newGroupBy: groupBy };
+    return result;
   }
+
+  // Initialize filters if not present
+  if (!toolCall.args.filters) {
+    toolCall.args.filters = {};
+  }
+  const filters = toolCall.args.filters as Record<string, any>;
   
+  // 1. CORRECT GROUPBY: Use product column instead of category
   const usesCategory = groupBy.some(col => 
     CATEGORY_COLUMN_NAMES.some(catName => col.toLowerCase() === catName.toLowerCase())
   );
@@ -257,20 +350,98 @@ export function validateAndCorrectGroupBy(
     PRODUCT_COLUMN_NAMES.some(prodName => col.toLowerCase().includes(prodName.toLowerCase()))
   );
   
-  if (usesCategory && !usesProduct && groupByIntent.productColumn) {
-    console.log(`[GROUPBY-CORRECTION] Detected category grouping for product listing!`);
-    console.log(`[GROUPBY-CORRECTION] Original: ${JSON.stringify(groupBy)} → Corrected: [${groupByIntent.productColumn}]`);
-    
+  if ((usesCategory && !usesProduct) || groupBy.length === 0) {
+    console.log(`[GROUPBY-CORRECTION] Correcting groupBy for product listing`);
+    console.log(`[GROUPBY-CORRECTION] Original: ${JSON.stringify(groupBy)} → [${groupByIntent.productColumn}]`);
     toolCall.args.groupBy = [groupByIntent.productColumn];
+    result.newGroupBy = [groupByIntent.productColumn];
+    result.corrected = true;
+  }
+
+  // 2. INJECT/OVERRIDE CATEGORY FILTER: category = 'Food' (if detected)
+  // FORCE override even if AI set different category
+  if (groupByIntent.categoryFilter && groupByIntent.categoryColumn) {
+    const existingCatFilter = filters[groupByIntent.categoryColumn];
+    const needsOverride = !existingCatFilter || existingCatFilter.value !== groupByIntent.categoryFilter;
     
-    return {
-      corrected: true,
-      originalGroupBy: groupBy,
-      newGroupBy: [groupByIntent.productColumn],
-    };
+    if (needsOverride) {
+      if (existingCatFilter) {
+        console.log(`[FILTER-OVERRIDE] Overriding category: ${existingCatFilter.value} → ${groupByIntent.categoryFilter}`);
+      }
+      filters[groupByIntent.categoryColumn] = { 
+        operator: '=', 
+        value: groupByIntent.categoryFilter 
+      };
+      result.injectedFilters[groupByIntent.categoryColumn] = groupByIntent.categoryFilter;
+      result.corrected = true;
+      console.log(`[FILTER-INJECTION] category filter: ${groupByIntent.categoryColumn} = '${groupByIntent.categoryFilter}'`);
+    }
+  }
+
+  // 3. INJECT/OVERRIDE ILIKE FILTER: item_name ILIKE '%pizza%' (if searchTerm is specific)
+  // FORCE replace any existing filter on productColumn with ILIKE
+  if (groupByIntent.searchTerm && groupByIntent.productColumn) {
+    const genericTerms = ['piatto', 'prodotto', 'articolo', 'piatti', 'prodotti', 'articoli', ''];
+    if (!genericTerms.includes(groupByIntent.searchTerm)) {
+      const existingProdFilter = filters[groupByIntent.productColumn];
+      const ilikeValue = `%${groupByIntent.searchTerm}%`;
+      const needsOverride = !existingProdFilter || 
+                            existingProdFilter.operator !== 'ILIKE' || 
+                            existingProdFilter.value !== ilikeValue;
+      
+      if (needsOverride) {
+        if (existingProdFilter) {
+          console.log(`[FILTER-OVERRIDE] Overriding product filter: ${JSON.stringify(existingProdFilter)} → ILIKE '${ilikeValue}'`);
+        }
+        filters[groupByIntent.productColumn] = {
+          operator: 'ILIKE',
+          value: ilikeValue
+        };
+        result.injectedFilters[groupByIntent.productColumn] = ilikeValue;
+        result.corrected = true;
+        console.log(`[FILTER-INJECTION] ILIKE filter: ${groupByIntent.productColumn} ILIKE '${ilikeValue}'`);
+      }
+    }
+  }
+
+  // 4. INJECT AGGREGATION: SUM(quantity) if aggregate_group and quantity column exists
+  if (toolCall.name === 'aggregate_group' && groupByIntent.quantityColumn) {
+    const aggregations = (toolCall.args.aggregations as any[]) || [];
+    const hasQuantityAgg = aggregations.some(agg => 
+      agg.column?.toLowerCase() === groupByIntent.quantityColumn?.toLowerCase()
+    );
+    
+    if (!hasQuantityAgg) {
+      aggregations.push({
+        function: 'SUM',
+        column: groupByIntent.quantityColumn,
+        alias: 'totale_venduto'
+      });
+      toolCall.args.aggregations = aggregations;
+      result.injectedAggregations.push({ function: 'SUM', column: groupByIntent.quantityColumn });
+      result.corrected = true;
+      console.log(`[AGGREGATION-INJECTION] SUM(${groupByIntent.quantityColumn}) as totale_venduto`);
+    }
+
+    // 5. INJECT ORDER BY: DESC by aggregated quantity (use alias "totale_venduto")
+    if (!toolCall.args.orderBy) {
+      toolCall.args.orderBy = {
+        column: 'totale_venduto',
+        direction: 'DESC'
+      };
+      result.injectedOrderBy = { column: 'totale_venduto', direction: 'DESC' };
+      result.corrected = true;
+      console.log(`[ORDERBY-INJECTION] ORDER BY totale_venduto DESC`);
+    }
+  }
+
+  toolCall.args.filters = filters;
+
+  if (result.corrected) {
+    console.log(`[GROUPBY-CORRECTION] Final tool call args: ${JSON.stringify(toolCall.args)}`);
   }
   
-  return { corrected: false, originalGroupBy: groupBy, newGroupBy: groupBy };
+  return result;
 }
 
 interface DatasetInfo {
