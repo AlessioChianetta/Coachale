@@ -367,30 +367,14 @@ Sii breve e conversazionale.`;
       }
       
       // ANTI-HALLUCINATION: Validate AI response against tool results
-      // Extract actual numbers from tool results for validation
-      const toolNumbers: number[] = [];
-      for (const r of results) {
-        if (r.success && r.result) {
-          const extractNumbers = (obj: any): void => {
-            if (typeof obj === "number" && !isNaN(obj)) {
-              toolNumbers.push(obj);
-            } else if (Array.isArray(obj)) {
-              obj.forEach(extractNumbers);
-            } else if (obj && typeof obj === "object") {
-              Object.values(obj).forEach(extractNumbers);
-            }
-          };
-          extractNumbers(r.result);
-        }
-      }
-      const validationResult = validateResponseNumbers(aiExplanation, toolNumbers);
+      const validationResult = validateResponseNumbers(aiExplanation, results);
       
       // BLOCCO HARD: Se ci sono numeri inventati, NON restituire la risposta AI
       // Ritorna la spiegazione base che contiene solo dati reali
       if (!validationResult.valid && validationResult.inventedNumbers.length > 0) {
         console.error(`[RESULT-EXPLAINER] HALLUCINATION BLOCKED: ${validationResult.inventedNumbers.length} invented numbers detected`);
         console.error(`[RESULT-EXPLAINER] Invented numbers: ${validationResult.inventedNumbers.join(", ")}`);
-        console.error(`[RESULT-EXPLAINER] Valid numbers from tools: ${validationResult.validNumbers.join(", ")}`);
+        console.error(`[RESULT-EXPLAINER] Valid numbers from tools: ${validationResult.numbersFromTools.join(", ")}`);
         
         // Ritorna spiegazione basic (basata solo sui dati reali) + warning
         return {
