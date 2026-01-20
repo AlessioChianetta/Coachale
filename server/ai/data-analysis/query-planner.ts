@@ -5,7 +5,7 @@
 
 import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import { dataAnalysisTools, type ToolCall, type ExecutedToolResult, validateToolCall, getToolByName } from "./tool-definitions";
-import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, getDistinctCount, checkCardinalityBeforeAggregate, validateFiltersApplied, MAX_GROUP_BY_LIMIT, type QueryResult, type CardinalityCheckResult, type IsSellableConfig } from "../../services/client-data/query-executor";
+import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, executeMetricSQL, getDistinctCount, checkCardinalityBeforeAggregate, validateFiltersApplied, MAX_GROUP_BY_LIMIT, type QueryResult, type CardinalityCheckResult, type IsSellableConfig, type ProductIlikeConfig } from "../../services/client-data/query-executor";
 import { parseMetricExpression, validateMetricAgainstSchema } from "../../services/client-data/metric-dsl";
 import { db } from "../../db";
 import { clientDataDatasets, datasetColumnMappings } from "../../../shared/schema";
@@ -1167,9 +1167,29 @@ export async function planQuery(
   }).join("\n\n");
 
   const conversationContext = conversationHistory && conversationHistory.length > 0
-    ? `\n\n=== CONTESTO CONVERSAZIONE PRECEDENTE ===\n${conversationHistory.slice(-5).map(m => 
-        `${m.role === 'user' ? 'UTENTE' : 'ASSISTENTE'}: ${m.content.substring(0, 300)}${m.content.length > 300 ? '...' : ''}`
-      ).join('\n')}\n=== FINE CONTESTO ===\n\n⚠️ REGOLA CRITICA CONTESTO: Se la domanda precedente parlava di un SUBSET (es: "pizze", "drink", "Food"), e la domanda attuale è un follow-up (es: "E la migliore?", "Quale vende di più?"), DEVI mantenere gli stessi filtri della query precedente!`
+    ? `\n\n=== CONTESTO CONVERSAZIONE PRECEDENTE ===\n${conversationHistory.map(m => {
+        let toolResultsInfo = "";
+        // Include tool results for assistant messages (numerical data context)
+        if (m.role === 'assistant' && (m as any).toolResults && (m as any).toolResults.length > 0) {
+          const results = (m as any).toolResults as Array<{ tool: string; data: any }>;
+          const resultsPreview = results
+            .filter((r: any) => r.data)
+            .map((r: any) => {
+              const data = r.data;
+              if (Array.isArray(data) && data.length > 0) {
+                const preview = data.slice(0, 5).map((item: any) => JSON.stringify(item)).join(", ");
+                return `${r.tool}: [${preview}${data.length > 5 ? `, ... (${data.length} total)` : ""}]`;
+              } else if (typeof data === "object" && data !== null) {
+                return `${r.tool}: ${JSON.stringify(data)}`;
+              }
+              return `${r.tool}: ${data}`;
+            });
+          if (resultsPreview.length > 0) {
+            toolResultsInfo = `\n   [DATI RESTITUITI: ${resultsPreview.join("; ")}]`;
+          }
+        }
+        return `${m.role === 'user' ? 'UTENTE' : 'ASSISTENTE'}: ${m.content}${toolResultsInfo}`;
+      }).join('\n')}\n=== FINE CONTESTO ===\n\n⚠️ REGOLA CRITICA CONTESTO: Se la domanda precedente parlava di un SUBSET (es: "pizze", "drink", "Food"), e la domanda attuale è un follow-up (es: "E la migliore?", "Quale vende di più?"), DEVI mantenere gli stessi filtri della query precedente!`
     : '';
 
   console.log(`[QUERY-PLANNER] Conversation context for planner: ${conversationHistory?.length || 0} messages`);
@@ -1651,6 +1671,19 @@ export async function executeToolCall(
             }
           }
           
+          // BUILD productIlikeConfig from injected patterns (for category ranking like "Top 5 pizze")
+          let productIlikeConfig: ProductIlikeConfig | undefined;
+          if (toolCall.args.productIlikePatterns && toolCall.args.productIlikePatterns.length > 0) {
+            const productColumn = toolCall.args.groupBy?.[0];
+            if (productColumn) {
+              productIlikeConfig = {
+                productNameColumn: productColumn,
+                patterns: toolCall.args.productIlikePatterns
+              };
+              console.log(`[AGGREGATE-GROUP] productIlikeConfig built: ${toolCall.args.productIlikePatterns.length} patterns on column "${productColumn}"`);
+            }
+          }
+          
           result = await aggregateGroup(
             toolCall.args.datasetId,
             toolCall.args.groupBy,
@@ -1662,7 +1695,8 @@ export async function executeToolCall(
             toolCall.args.timeGranularity,
             toolCall.args.dateColumn,
             useRawSqlExpression ? { sql: useRawSqlExpression, alias: toolCall.args.metricName } : undefined,
-            isSellableConfig  // Structured is_sellable config (validated internally)
+            isSellableConfig,  // Structured is_sellable config (validated internally)
+            productIlikeConfig  // ILIKE patterns for category ranking (e.g., "Top 5 pizze")
           );
           console.log(`[AGGREGATE-GROUP] Result: success=${result.success}, rowCount=${result.rowCount}, error=${result.error || 'none'}`);
           

@@ -1882,29 +1882,30 @@ router.post(
 
       console.log(`[CLIENT-DATA] User message saved: ${userMessage.id}`);
 
-      // Load conversation history for context-aware intent routing
-      // Query last 6 messages by createdAt desc, filter out current message, then reverse for chronological order
+      // Load FULL conversation history for context-aware intent routing
+      // No limit - load all messages for complete context
+      // Include queryResult for tool results context
       const previousMessages = await db
         .select({
           id: clientDataMessages.id,
           role: clientDataMessages.role,
           content: clientDataMessages.content,
           toolCalls: clientDataMessages.toolCalls,
+          queryResult: clientDataMessages.queryResult,
         })
         .from(clientDataMessages)
         .where(eq(clientDataMessages.conversationId, id))
-        .orderBy(desc(clientDataMessages.createdAt))
-        .limit(6);
+        .orderBy(desc(clientDataMessages.createdAt));
 
-      // Filter out the just-inserted message by ID, take last 5, and reverse for chronological order
+      // Filter out the just-inserted message by ID and reverse for chronological order
       const conversationHistory = previousMessages
         .filter(m => m.id !== userMessage.id)
-        .slice(0, 5)
         .reverse()
         .map(m => ({
           role: m.role as "user" | "assistant",
           content: m.content,
           toolCalls: m.toolCalls as Array<{ toolName: string }> | undefined,
+          toolResults: m.queryResult as Array<{ tool: string; data: any }> | undefined,
         }));
 
       console.log(`[CLIENT-DATA] Loaded ${conversationHistory.length} messages for context`);

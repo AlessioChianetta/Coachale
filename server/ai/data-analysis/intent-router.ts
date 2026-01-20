@@ -23,6 +23,7 @@ export interface ConversationMessage {
   role: "user" | "assistant";
   content: string;
   toolCalls?: Array<{ toolName: string }>;
+  toolResults?: Array<{ tool: string; data: any }>;
 }
 
 const INTENT_ROUTER_MODEL = "gemini-2.5-flash-lite";
@@ -187,21 +188,43 @@ function getDefaultIntent(): IntentRouterOutput {
 
 /**
  * Format conversation history for the router prompt
+ * NO LIMITS: Full conversation history, no truncation
+ * INCLUDES: Tool results data for context
  */
 function formatConversationContext(history: ConversationMessage[]): string {
   if (!history || history.length === 0) {
     return "Nessuna conversazione precedente.";
   }
   
-  const formattedMessages = history.slice(-5).map((msg, idx) => {
+  // Full conversation - no slice, no truncation
+  const formattedMessages = history.map((msg, idx) => {
     const role = msg.role === "user" ? "UTENTE" : "ASSISTANT";
     const toolInfo = msg.toolCalls?.length 
       ? ` [usò: ${msg.toolCalls.map(t => t.toolName).join(", ")}]`
       : "";
-    const contentPreview = msg.content.length > 200 
-      ? msg.content.substring(0, 200) + "..." 
-      : msg.content;
-    return `${idx + 1}. ${role}${toolInfo}: ${contentPreview}`;
+    
+    // Include tool results for assistant messages (numerical data context)
+    let toolResultsInfo = "";
+    if (msg.role === "assistant" && msg.toolResults && msg.toolResults.length > 0) {
+      const resultsPreview = msg.toolResults
+        .filter(r => r.data)
+        .map(r => {
+          const data = r.data;
+          if (Array.isArray(data) && data.length > 0) {
+            // For arrays, show first few items
+            const preview = data.slice(0, 5).map(item => JSON.stringify(item)).join(", ");
+            return `${r.tool}: [${preview}${data.length > 5 ? `, ... (${data.length} total)` : ""}]`;
+          } else if (typeof data === "object" && data !== null) {
+            return `${r.tool}: ${JSON.stringify(data)}`;
+          }
+          return `${r.tool}: ${data}`;
+        });
+      if (resultsPreview.length > 0) {
+        toolResultsInfo = `\n   [DATI RESTITUITI: ${resultsPreview.join("; ")}]`;
+      }
+    }
+    
+    return `${idx + 1}. ${role}${toolInfo}: ${msg.content}${toolResultsInfo}`;
   });
   
   return formattedMessages.join("\n");
