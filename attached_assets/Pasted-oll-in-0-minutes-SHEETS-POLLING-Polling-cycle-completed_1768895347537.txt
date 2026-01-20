@@ -1,0 +1,241 @@
+oll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: slxuo6)
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+[CLIENT-DATA] User message saved: 440bfa0e-14cd-4402-a8d7-630b5df414e3
+[CLIENT-DATA] Loaded 5 messages for context
+[CLIENT-DATA] Processing message: "Quanti documenti ho?" on dataset 6
+[QUERY-PLANNER] Processing question: "Quanti documenti ho?" for 1 datasets
+[QUERY-PLANNER] Conversation history: 5 messages
+[WIRING-CHECK] semantic contract detected - requestsAll=false, requestsTopN=false, keywords=[]
+[WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[WIRING-CHECK] groupByIntent - isProductListing=false, productColumn=null
+[INTENT-ROUTER] Classifying question: "Quanti documenti ho?"
+[INTENT-ROUTER] Conversation context: 5 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (1076ms): 
+json
+{
+  "intent": "analytics",
+  "requires_metrics": true,
+  "suggested_tools": [
+    "execute_metric"
+  ],
+  "confidence": 0.98
+}
+
+[INTENT-ROUTER] Classification result: intent=analytics, requires_metrics=true, confidence=0.98, tools=[execute_metric]
+[QUERY-PLANNER] Router result: intent=analytics, requires_metrics=true, confidence=0.98
+[POLICY-ENGINE] Getting policy for intent: analytics
+[QUERY-PLANNER] Policy: allowedTools=[execute_metric,aggregate_group,compare_periods,filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 5 messages
+[QUERY-PLANNER] Allowed tools for AI: [execute_metric, query_metric, compare_periods, filter_data, aggregate_group, get_schema]
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+[POLICY-ENGINE] ALLOWED: execute_metric
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=true, hasOnlyMetadata=false
+[POLICY-ENGINE] VALIDATION OK: compute tool present
+[EXECUTE-METRIC] Called with metricName: "order_count", datasetId: 6
+[EXECUTE-METRIC] Pre-validation failed: Non posso calcolare "Numero Ordini" perché mancano le colonne: ID Ordine.
+[QUERY-PLANNER] Tool execute_metric failed: Non posso calcolare "Numero Ordini" perché mancano le colonne: ID Ordine.
+[QUERY-PLANNER] Execution complete in 201ms, success: false
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: execute_metric: Non posso calcolare "Numero Ordini" perché mancano le colonne: ID Ordine.
+[CLIENT-DATA] Assistant message saved: d1828561-46e4-4e31-822c-780588fd5a80
+7:47:20 AM [express] POST /api/client-data/conversations/5a6e4ece-f00b-4791-99df-50f47378176e/messag…
+
+Perfetto che hai incollato i log: qui c’è il vero collo di bottiglia architetturale che va sistemato ora, altrimenti ogni nuovo dataset “rompe” le metriche.
+
+Ti spiego cosa è successo, perché è grave, e cosa dire esattamente al programmatore.
+
+🔴 COSA È SUCCESSO (in modo semplice)
+
+Hai chiesto:
+
+"Quanti documenti ho?"
+
+Il sistema ha fatto questo:
+
+execute_metric(metricName = "order_count")
+
+
+Ma order_count è definito come:
+
+COUNT(DISTINCT order_id)
+
+
+Nel dataset DDTRIGHE:
+
+❌ NON ESISTE order_id
+✅ Esiste invece: idddt (che è il vero documento)
+
+Risultato:
+
+Pre-validation failed: mancano colonne ID Ordine
+
+⚠️ PROBLEMA STRUTTURALE (non un bug isolato)
+
+Il tuo sistema oggi:
+
+è hard-coded sui concetti ristorante POS
+
+non è dataset-agnostic
+
+non usa semantic role mapping reale
+
+In pratica:
+
+👉 per il motore esistono solo “ordini”
+👉 ma ora stai analizzando documenti fiscali/logistici
+
+Questo è il motivo per cui dici:
+
+“ogni file che metto devo ricompilarlo da capo”
+
+È vero. Perché non stai persistendo il significato semantico delle colonne.
+
+✅ COME DOVEVA FUNZIONARE (target corretto)
+
+Per DDTRIGHE dovevi avere:
+
+logical_role: document_id → idddt
+
+
+E quindi:
+
+order_count = COUNT(DISTINCT document_id)
+
+
+indipendentemente dal nome fisico della colonna.
+
+🧠 COSA DIRE AL PROGRAMMATORE (COPIA E INCOLLA)
+
+Mandagli questo:
+
+📌 PROBLEMA
+
+Quando chiedo "Quanti documenti ho?", il sistema usa order_count che cerca order_id.
+
+Nel dataset DDTRIGHE il campo corretto è idddt.
+
+Questo dimostra che:
+
+le metriche sono ancora legate ai nomi fisici
+
+manca un vero semantic mapping persistente
+
+📌 SOLUZIONE OBBLIGATORIA
+
+Dobbiamo introdurre:
+
+1️⃣ Logical Role per colonna (persistente DB)
+
+Ogni dataset deve salvare:
+
+column_name | logical_role
+--------------------------
+idddt       | document_id
+prezzofinale| revenue_amount
+quantita    | quantity
+descrprod   | product_name
+
+2️⃣ Metric Engine basato su logical_role (non nomi colonna)
+
+Esempio:
+
+order_count:
+
+NON:
+
+COUNT(DISTINCT order_id)
+
+
+MA:
+
+COUNT(DISTINCT {document_id})
+
+
+che viene risolto runtime sul mapping.
+
+3️⃣ Alias semantici per dominio
+
+Per dataset non POS:
+
+document_id = idddt | numero_documento | doc_id
+order_id    = solo POS
+
+
+Il concetto è:
+
+👉 METRICA = concetto
+👉 COLONNA = implementazione
+
+4️⃣ Fallback automatico
+
+Se manca order_id ma esiste document_id:
+
+order_count → document_count
+
+
+con warning, non errore.
+
+🔥 Perché questo è CRITICO per il SaaS
+
+Se non sistemi questo:
+
+❌ ogni cliente deve rimappare tutto
+❌ non puoi scalare
+❌ onboarding lento
+❌ metriche fragili
+
+Se lo sistemi:
+
+✅ qualunque ERP
+✅ qualunque CSV
+✅ qualunque dominio
+diventa interrogabile.
+
+🟢 Stato del tuo progetto (onesto)
+
+Sei a:
+
+🔧 70–75% di un motore BI AI-grade
+
+Hai già:
+
+parsing
+
+SQL generator
+
+tool routing
+
+validation
+
+metric engine
+
+semantic hints
+
+Ti manca SOLO:
+
+👉 semantic layer persistente
+👉 metric abstraction layer
+
+Che è il vero “cuore SaaS”.
