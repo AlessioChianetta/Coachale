@@ -1567,8 +1567,9 @@ export async function askDataset(
     // NEW: Validate analytics intent with requires_metrics=true has at least one compute tool
     // RULE: get_schema can PRECEDE compute tools, but cannot SUBSTITUTE them
     // ENFORCED: If only metadata tools, BLOCK and require re-plan
-    if (routerOutput.intent === "analytics" && routerOutput.requiresMetrics) {
-      const analyticsValidation = validateAnalyticsToolCalls(plan.steps, routerOutput.requiresMetrics);
+    // FIX: Use requires_metrics (underscore) to match router output format
+    if (routerOutput.intent === "analytics" && routerOutput.requires_metrics) {
+      const analyticsValidation = validateAnalyticsToolCalls(plan.steps, routerOutput.requires_metrics);
       if (!analyticsValidation.valid) {
         console.warn(`[QUERY-PLANNER] ANALYTICS VALIDATION FAILED: ${analyticsValidation.reason}`);
         console.log(`[QUERY-PLANNER] BLOCKING metadata-only call - forcing compute tool requirement`);
@@ -1582,7 +1583,7 @@ export async function askDataset(
             toolName: "analytics_requires_compute",
             args: { 
               intent: routerOutput.intent, 
-              requiresMetrics: routerOutput.requiresMetrics,
+              requires_metrics: routerOutput.requires_metrics,
               attemptedTools: plan.steps.map(s => s.name)
             },
             result: { 

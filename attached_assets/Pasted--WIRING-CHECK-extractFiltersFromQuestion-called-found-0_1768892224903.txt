@@ -1,0 +1,57 @@
+[WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[WIRING-CHECK] groupByIntent - isProductListing=false, productColumn=null
+[INTENT-ROUTER] Classifying question: "Mostrami il totale delle vendite per mese"
+[INTENT-ROUTER] Conversation context: 0 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (967ms): ```json
+{
+  "intent": "analytics",
+  "requires_metrics": true,
+  "suggested_tools": [
+    "aggregate_group"
+  ],
+  "confidence": 0.98
+}
+```
+[INTENT-ROUTER] Classification result: intent=analytics, requires_metrics=true, confidence=0.98, tools=[aggregate_group]
+[QUERY-PLANNER] Router result: intent=analytics, requires_metrics=true, confidence=0.98
+[POLICY-ENGINE] Getting policy for intent: analytics
+[QUERY-PLANNER] Policy: allowedTools=[execute_metric,aggregate_group,compare_periods,filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 0 messages
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+[POLICY-ENGINE] ALLOWED: get_schema
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=false, hasOnlyMetadata=true
+[QUERY-PLANNER] Execution complete in 207ms, success: true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+6:56:27 AM [express] POST /api/activity/session/heartbeat 200 in 309ms :: {"success":true,"lastActiv…
+[TOOL-GATING] Tools used: get_schema, hasComputeTool: false, hasNumericClaims: true, isOnlyMetadata: false
+[RESULT-VALIDATOR] Processing tool result: toolName=get_schema, success=true, result= [{"datasetId":4,"name":"DDTRIGHE","tableName":"cdd_0c73bbe5_ddtrighe_ccf43c6d","rowCount":67244,"status":"ready","columns":[{"name":"ID","displayName":"Id","dataType":"number","description":""},{"name
+[RESULT-VALIDATOR] Found number at root[0].datasetId: 4
+[RESULT-VALIDATOR] Found number at root[0].rowCount: 67244
+[RESULT-VALIDATOR] Total numbers extracted: 2 [ 4, 67244 ]
+[RESULT-VALIDATOR] Coverage: 50% (1/2 tool numbers found in response)
+[RESULT-VALIDATOR] Generated 15 derived numbers from 2 base numbers
+[RESULT-VALIDATOR] Response numbers: 19, Tool numbers: 2, Extra: 18, Final invented: 0
+[LABEL-VALIDATOR] Metrics used in tools: 
+[RESULT-EXPLAINER] VALIDATION BLOCKED: HALLUCINATION BLOCKED: La risposta contiene numeri significativi (142560.8, 68.5, 138940.5...) ma non è stato usato nessun tool di calcolo (execute_metric, aggregate_group, etc.). I numeri devono provenire dal database.
+[CLIENT-DATA] Assistant message saved: 77f2cf1d-5b41-468c-8a19-eb129e247e01
+6:56:46 AM [express] POST /api/client-data/conversations/fb51b619-a160-4a7d-9f07-e619886e0e00/messag…

@@ -628,12 +628,51 @@ function hasNumericClaims(text: string): boolean {
   return significantNumbers.length > 0;
 }
 
+/**
+ * Extract legitimate numbers from get_schema results (rowCount, datasetId, column counts)
+ */
+function extractMetadataNumbers(toolResults: ExecutedToolResult[]): Set<number> {
+  const metadataNumbers = new Set<number>();
+  
+  for (const result of toolResults) {
+    if (result.toolName !== "get_schema" || !result.success) continue;
+    
+    // get_schema returns array of datasets
+    const datasets = Array.isArray(result.result) ? result.result : [result.result];
+    
+    for (const dataset of datasets) {
+      if (!dataset) continue;
+      
+      // Extract rowCount - this is the most common metadata number
+      if (typeof dataset.rowCount === "number") {
+        metadataNumbers.add(dataset.rowCount);
+        // Also add rounded versions (67244 → 67000, 67200)
+        metadataNumbers.add(Math.round(dataset.rowCount / 1000) * 1000);
+        metadataNumbers.add(Math.round(dataset.rowCount / 100) * 100);
+      }
+      
+      // Extract datasetId
+      if (typeof dataset.datasetId === "number") {
+        metadataNumbers.add(dataset.datasetId);
+      }
+      
+      // Extract column count
+      if (Array.isArray(dataset.columns)) {
+        metadataNumbers.add(dataset.columns.length);
+      }
+    }
+  }
+  
+  return metadataNumbers;
+}
+
 export function validateToolGating(
   aiResponse: string,
   toolResults: ExecutedToolResult[]
 ): { valid: boolean; error?: string } {
   const toolsUsed = toolResults.map(r => r.toolName);
   const hasComputeTool = toolsUsed.some(t => COMPUTE_TOOLS.includes(t));
+  const hasOnlyMetadataTools = toolsUsed.length > 0 && toolsUsed.every(t => METADATA_ONLY_TOOLS.includes(t));
   
   // Check if this is a conversational response (fixed response, no data analysis needed)
   const hasConversationalTool = toolsUsed.includes("conversational_response");
@@ -649,11 +688,28 @@ export function validateToolGating(
   }
   
   const hasNumericClaimsInResponse = hasNumericClaims(aiResponse);
-  const isOnlyMetadata = isMetadataContext(aiResponse);
+  const isOnlyMetadataText = isMetadataContext(aiResponse);
   
-  console.log(`[TOOL-GATING] Tools used: ${toolsUsed.join(", ")}, hasComputeTool: ${hasComputeTool}, hasNumericClaims: ${hasNumericClaimsInResponse}, isOnlyMetadata: ${isOnlyMetadata}`);
+  console.log(`[TOOL-GATING] Tools used: ${toolsUsed.join(", ")}, hasComputeTool: ${hasComputeTool}, hasNumericClaims: ${hasNumericClaimsInResponse}, isOnlyMetadata: ${isOnlyMetadataText}, hasOnlyMetadataTools: ${hasOnlyMetadataTools}`);
   
-  if (hasNumericClaimsInResponse && !isOnlyMetadata && !hasComputeTool) {
+  // NEW: If only metadata tools were used (get_schema), validate that numbers come from those results
+  if (hasOnlyMetadataTools && hasNumericClaimsInResponse) {
+    const metadataNumbers = extractMetadataNumbers(toolResults);
+    const responseNumbers = extractSignificantNumbers(aiResponse);
+    
+    // Check if all response numbers come from metadata
+    const inventedNumbers = responseNumbers.filter(num => !metadataNumbers.has(num));
+    
+    if (inventedNumbers.length === 0) {
+      console.log(`[TOOL-GATING] METADATA BYPASS: All numbers (${responseNumbers.join(", ")}) come from get_schema results`);
+      return { valid: true };
+    } else {
+      console.log(`[TOOL-GATING] METADATA CHECK: Some numbers not from metadata: ${inventedNumbers.join(", ")}`);
+      // Fall through to standard validation - these might be KPI numbers that need compute tools
+    }
+  }
+  
+  if (hasNumericClaimsInResponse && !isOnlyMetadataText && !hasComputeTool) {
     const significantNumbers = extractSignificantNumbers(aiResponse);
     return {
       valid: false,

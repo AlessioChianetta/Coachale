@@ -1,0 +1,61 @@
+WIRING-CHECK] semantic contract detected - requestsAll=false, requestsTopN=false, keywords=[]
+[WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[WIRING-CHECK] groupByIntent - isProductListing=false, productColumn=null
+[INTENT-ROUTER] Classifying question: "che dati hai a disposizione"
+[INTENT-ROUTER] Conversation context: 5 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (961ms): {"intent":"data_preview","requires_metrics":false,"suggested_tools":["get_schema"],"confidence":0.9}
+[INTENT-ROUTER] Classification result: intent=data_preview, requires_metrics=false, confidence=0.90, tools=[get_schema]
+[QUERY-PLANNER] Router result: intent=data_preview, requires_metrics=false, confidence=0.90
+[POLICY-ENGINE] Getting policy for intent: data_preview
+[QUERY-PLANNER] Policy: allowedTools=[filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 5 messages
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: data_preview, tool calls: 1
+[POLICY-ENGINE] ALLOWED: get_schema
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=false, hasOnlyMetadata=true
+[QUERY-PLANNER] Execution complete in 218ms, success: true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-20T07:01:00.019Z
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+
+[SHEETS POLLING] Starting polling cycle (ExecID: wc9qqw)...
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: wc9qqw)
+[TOOL-GATING] Tools used: get_schema, hasComputeTool: false, hasNumericClaims: true, isOnlyMetadata: false
+[RESULT-VALIDATOR] Processing tool result: toolName=get_schema, success=true, result= [{"datasetId":4,"name":"DDTRIGHE","tableName":"cdd_0c73bbe5_ddtrighe_ccf43c6d","rowCount":67244,"status":"ready","columns":[{"name":"ID","displayName":"Id","dataType":"number","description":""},{"name
+[RESULT-VALIDATOR] Found number at root[0].datasetId: 4
+[RESULT-VALIDATOR] Found number at root[0].rowCount: 67244
+[RESULT-VALIDATOR] Total numbers extracted: 2 [ 4, 67244 ]
+[RESULT-VALIDATOR] Coverage: 50% (1/2 tool numbers found in response)
+[RESULT-VALIDATOR] Generated 15 derived numbers from 2 base numbers
+[RESULT-VALIDATOR] Response numbers: 6, Tool numbers: 2, Extra: 4, Final invented: 0
+[LABEL-VALIDATOR] Metrics used in tools: 
+[RESULT-EXPLAINER] VALIDATION BLOCKED: HALLUCINATION BLOCKED: La risposta contiene numeri significativi (67244, 67000) ma non è stato usato nessun tool di calcolo (execute_metric, aggregate_group, etc.). I numeri devono provenire dal database.
+[CLIENT-DATA] Assistant message saved: 601dc467-e063-4936-b065-38cac2cf612b
+7:01:05 AM [express] POST /api/client-data/conversations/fb51b619-a160-4a7d-9f07-e619886e0e00/messag…
