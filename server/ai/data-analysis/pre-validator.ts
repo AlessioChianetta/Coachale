@@ -26,8 +26,16 @@ export interface MetricValidationResult {
 
 export async function validateMetricForDataset(
   metricName: string,
-  datasetId: number
+  datasetId: number | string
 ): Promise<MetricValidationResult> {
+  const numericDatasetId = typeof datasetId === 'string' ? parseInt(datasetId, 10) : datasetId;
+  if (isNaN(numericDatasetId)) {
+    return {
+      valid: false,
+      missingColumns: [],
+      error: `ID dataset non valido: ${datasetId}`,
+    };
+  }
   const template = METRIC_TEMPLATES[metricName];
   
   if (!template) {
@@ -38,7 +46,7 @@ export async function validateMetricForDataset(
     };
   }
   
-  const mappings = await getColumnMappingsForDataset(datasetId);
+  const mappings = await getColumnMappingsForDataset(numericDatasetId);
   const missing: { logical: string; displayName: string }[] = [];
   
   for (const logical of template.requiredLogicalColumns) {
@@ -67,9 +75,18 @@ export async function validateMetricForDataset(
 }
 
 export async function validateDatasetCapabilities(
-  datasetId: number
+  datasetId: number | string
 ): Promise<PreValidationResult> {
-  const mappings = await getColumnMappingsForDataset(datasetId);
+  const numericDatasetId = typeof datasetId === 'string' ? parseInt(datasetId, 10) : datasetId;
+  if (isNaN(numericDatasetId)) {
+    return {
+      valid: false,
+      availableMetrics: [],
+      unavailableMetrics: [],
+      error: `ID dataset non valido: ${datasetId}`,
+    };
+  }
+  const mappings = await getColumnMappingsForDataset(numericDatasetId);
   const availableLogical = new Set(Object.keys(mappings));
   
   const available: string[] = [];
@@ -113,7 +130,7 @@ export async function validateDatasetCapabilities(
 
 export async function getBusinessFriendlyError(
   metricName: string,
-  datasetId: number
+  datasetId: number | string
 ): Promise<string | null> {
   const validation = await validateMetricForDataset(metricName, datasetId);
   

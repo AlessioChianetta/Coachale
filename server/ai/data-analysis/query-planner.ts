@@ -14,7 +14,7 @@ import { classifyIntent, ForceToolRetryError, requiresNumericAnswer } from "./in
 import { getMetricDefinition, getMetricDescriptionsForPrompt, isValidMetricName, resolveMetricSQLForDataset } from "./metric-registry";
 import { MAX_GROUP_BY_LIMIT, METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
-import { validateMetricForDataset, getBusinessFriendlyError } from "./pre-validator";
+import { validateMetricForDataset } from "./pre-validator";
 
 interface DatasetInfo {
   id: string;
@@ -450,7 +450,7 @@ export async function executeToolCall(
         // Step 1: Pre-validate that required columns exist for this metric
         const preValidation = await validateMetricForDataset(toolCall.args.metricName, toolCall.args.datasetId);
         if (!preValidation.valid) {
-          const businessError = getBusinessFriendlyError(toolCall.args.metricName, preValidation.missingColumns);
+          const businessError = preValidation.error || `Metrica "${toolCall.args.metricName}" non disponibile per questo dataset.`;
           console.error(`[EXECUTE-METRIC] Pre-validation failed: ${businessError}`);
           return {
             toolName: toolCall.name,
@@ -463,24 +463,24 @@ export async function executeToolCall(
         }
         
         // Step 2: Resolve template SQL with dataset-specific column mappings
-        const resolvedSQL = await resolveMetricSQLForDataset(toolCall.args.metricName, toolCall.args.datasetId);
-        if (!resolvedSQL) {
-          console.error(`[EXECUTE-METRIC] Could not resolve SQL for metric: "${toolCall.args.metricName}"`);
+        const resolveResult = await resolveMetricSQLForDataset(toolCall.args.metricName, toolCall.args.datasetId);
+        if (!resolveResult.valid) {
+          console.error(`[EXECUTE-METRIC] Could not resolve SQL for metric: "${toolCall.args.metricName}", error: ${resolveResult.error}`);
           return {
             toolName: toolCall.name,
             args: toolCall.args,
             result: null,
             success: false,
-            error: `Metrica non trovata: ${toolCall.args.metricName}`,
+            error: resolveResult.error || `Metrica non trovata: ${toolCall.args.metricName}`,
             executionTimeMs: Date.now() - startTime
           };
         }
-        console.log(`[EXECUTE-METRIC] Resolved SQL: ${resolvedSQL}`);
+        console.log(`[EXECUTE-METRIC] Resolved SQL: ${resolveResult.sql}`);
         
         // Step 3: Execute the resolved SQL
         result = await executeMetricSQL(
           toolCall.args.datasetId, 
-          resolvedSQL, 
+          resolveResult.sql, 
           toolCall.args.metricName,
           { userId, timeoutMs: 3000 }
         );
@@ -528,21 +528,23 @@ export async function executeToolCall(
           // Step 1: Pre-validate that required columns exist for this metric
           const preValidation = await validateMetricForDataset(toolCall.args.metricName, toolCall.args.datasetId);
           if (!preValidation.valid) {
-            const businessError = getBusinessFriendlyError(toolCall.args.metricName, preValidation.missingColumns);
+            const businessError = preValidation.error || `Metrica "${toolCall.args.metricName}" non disponibile per questo dataset.`;
             console.error(`[AGGREGATE-GROUP] Pre-validation failed: ${businessError}`);
             result = { success: false, error: businessError };
             break;
           }
           
           // Step 2: Resolve template SQL with dataset-specific column mappings
-          const resolvedSQL = await resolveMetricSQLForDataset(toolCall.args.metricName, toolCall.args.datasetId);
-          if (resolvedSQL) {
-            useRawSqlExpression = resolvedSQL;
+          const resolveResult = await resolveMetricSQLForDataset(toolCall.args.metricName, toolCall.args.datasetId);
+          if (resolveResult.valid) {
+            useRawSqlExpression = resolveResult.sql;
             console.log(`[AGGREGATE-GROUP] Using resolved SQL expression for "${toolCall.args.metricName}": ${useRawSqlExpression}`);
           } else {
-            // Default fallback for unknown metrics
-            aggregations = [{ column: "total_net", function: "SUM", alias: "totale" }];
-            console.log(`[AGGREGATE-GROUP] Unknown metric, using default SUM(total_net)`);
+            // STRICT: No fallback - return error if metric cannot be resolved
+            const errorMsg = resolveResult.error || `Metrica "${toolCall.args.metricName}" non risolvibile per questo dataset.`;
+            console.error(`[AGGREGATE-GROUP] ${errorMsg}`);
+            result = { success: false, error: errorMsg };
+            break;
           }
         }
         

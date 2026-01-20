@@ -68,14 +68,18 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = Object.fr
 
 export async function resolveMetricSQLForDataset(
   metricName: string,
-  datasetId: number
+  datasetId: number | string
 ): Promise<{ sql: string; valid: boolean; error?: string }> {
+  const numericDatasetId = typeof datasetId === 'string' ? parseInt(datasetId, 10) : datasetId;
+  if (isNaN(numericDatasetId)) {
+    return { sql: "", valid: false, error: `ID dataset non valido: ${datasetId}` };
+  }
   const template = METRIC_TEMPLATES[metricName];
   if (!template) {
     return { sql: "", valid: false, error: `Metrica "${metricName}" non trovata` };
   }
   
-  const result = await resolveMetricSQL(template.sqlTemplate, datasetId);
+  const result = await resolveMetricSQL(template.sqlTemplate, numericDatasetId);
   return result;
 }
 
