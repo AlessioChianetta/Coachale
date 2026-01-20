@@ -1,0 +1,189 @@
+WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[GROUPBY-VALIDATION] Extracted searchTerm="pizza", categoryFilter="Food"
+[GROUPBY-VALIDATION] Detected patterns: pizze più vendute
+[GROUPBY-VALIDATION] isProductListing=true, isCategoryComparison=false
+[GROUPBY-VALIDATION] productColumn=null, categoryColumn=null, quantityColumn=null
+[GROUPBY-VALIDATION] searchTerm=pizza, categoryFilter=Food
+[WIRING-CHECK] groupByIntent - isProductListing=true, productColumn=null
+[INTENT-ROUTER] Classifying question: "Top 5 pizze più vendute per quantità"
+[INTENT-ROUTER] Conversation context: 0 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (1196ms): 
+json
+{
+  "intent": "analytics",
+  "requires_metrics": true,
+  "suggested_tools": [
+    "aggregate_group"
+  ],
+  "confidence": 0.98
+}
+
+[INTENT-ROUTER] Classification result: intent=analytics, requires_metrics=true, confidence=0.98, tools=[aggregate_group]
+[QUERY-PLANNER] Router result: intent=analytics, requires_metrics=true, confidence=0.98
+[POLICY-ENGINE] Getting policy for intent: analytics
+[QUERY-PLANNER] Policy: allowedTools=[execute_metric,aggregate_group,compare_periods,filter_data,get_schema], requireToolCall=true
+[RANKING-FILTER] Detected ranking with category: "pizze", limit=5, metric=quantity
+[QUERY-PLANNER] RANKING WITH FILTER DETECTED: category="pizze", limit=5, metric=quantity
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 0 messages
+[QUERY-PLANNER] Allowed tools for AI: [execute_metric, query_metric, compare_periods, filter_data, aggregate_group, get_schema]
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+[IMAP] Opened folder "[Gmail]/Bozze": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Bozze (drafts)
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 35
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+[POLICY-ENGINE] ALLOWED: aggregate_group
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=true, hasOnlyMetadata=false
+[POLICY-ENGINE] VALIDATION OK: compute tool present
+[RANKING-FILTER] DETERMINISTIC INJECTION: Injected 7 ILIKE patterns for "pizze" into aggregate_group, limit=5, is_sellable=true
+[AGGREGATE-GROUP] Full args from Gemini: {
+  "metricName": "quantity_total",
+  "filters": {},
+  "limit": 5,
+  "groupBy": [
+    "descr_prod"
+  ],
+  "timeGranularity": "day",
+  "datasetId": "7",
+  "orderBy": {},
+  "productIlikePatterns": [
+    "%margherit%",
+    "%diavol%",
+    "%capriccio%",
+    "%4 stagion%",
+    "%marinara%",
+    "%napole%",
+    "%roman%"
+  ],
+  "_rankingCategoryFilter": "pizze",
+  "_applyIsSellable": true
+}
+[AGGREGATE-GROUP] datasetId: 7
+[AGGREGATE-GROUP] groupBy: ["descr_prod"]
+[AGGREGATE-GROUP] metricName: quantity_total
+[AGGREGATE-GROUP] aggregations: undefined
+[AGGREGATE-GROUP] orderBy: {}
+[AGGREGATE-GROUP] filters: {}
+[WIRING-CHECK] checkCardinalityBeforeAggregate called for columns: ["descr_prod"]
+[CARDINALITY-PROBE] Running: SELECT COUNT(DISTINCT "descr_prod") AS distinct_count, COUNT(*) AS total_rows FROM "cdd_0c73bbe5_ddtrighe_4f7be1d5"
+[CARDINALITY-PROBE] Column "descr_prod": 1446 distinct values, 67244 total rows (1212ms)
+[CARDINALITY-CHECK] HIGH CARDINALITY DETECTED: 1446 distinct values in "descr_prod" exceeds limit 500
+[AGGREGATE-GROUP] HIGH CARDINALITY DETECTED: 1446 values - applying AUTO Top-10 fallback
+[AGGREGATE-GROUP] AUTO-FALLBACK applied: limit=10, orderBy=DESC
+[AGGREGATE-GROUP] Using resolved SQL expression for "quantity_total": SUM(CAST("quantita" AS NUMERIC))
+[AGGREGATE-GROUP] Skipping invalid orderBy (column is undefined)
+[AGGREGATE-GROUP] AUTO-FALLBACK orderBy applied: quantity_total DESC
+[AGGREGATE-GROUP] Time granularity: day, dateColumn: undefined
+[AGGREGATE-GROUP] Loaded 10 semantic mappings from database
+[AGGREGATE-GROUP] Sales analytics detected - generating is_sellable filter
+[AGGREGATE-GROUP] Reason: product groupBy
+[AGGREGATE-GROUP] is_sellable config: productCol=descr_prod, revenueCol=prezzofinale
+[AGGREGATE-GROUP] Using raw metric SQL: SUM(CAST("quantita" AS NUMERIC)) AS "quantity_total"
+[AGGREGATE-GROUP] is_sellable filter applied: productCol=descr_prod, revenueCol=prezzofinale
+[CACHE-MANAGER] Transitioned to 'ready' for hash 07430ab083de... TTL: 3600s
+[AGGREGATE-GROUP] Result: success=true, rowCount=10, error=none
+[AGGREGATE-GROUP] Fallback metadata added: originalCount=1446, limit=10
+[QUERY-PLANNER] Execution complete in 2799ms, success: true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+1:22:29 PM [express] POST /api/activity/session/heartbeat 200 in 921ms :: {"success":true,"lastActiv…
+[TOOL-GATING] Tools used: aggregate_group, hasComputeTool: true, hasNumericClaims: true, isOnlyMetadata: false, hasOnlyMetadataTools: false
+[RESULT-VALIDATOR] Processing tool result: toolName=aggregate_group, success=true, result= [{"descr_prod":"COPERTO","quantity_total":"15496"},{"descr_prod":"CAFFE'","quantity_total":"4315"},{"descr_prod":"ACQUA NAT.","quantity_total":"2729"},{"descr_prod":"MEDIA BIONDA","quantity_total":"21
+[RESULT-VALIDATOR] Parsed number from string at root[0].quantity_total: 15496
+[RESULT-VALIDATOR] Parsed number from string at root[1].quantity_total: 4315
+[RESULT-VALIDATOR] Parsed number from string at root[2].quantity_total: 2729
+[RESULT-VALIDATOR] Parsed number from string at root[3].quantity_total: 2100
+[RESULT-VALIDATOR] Parsed number from string at root[4].quantity_total: 1920
+[RESULT-VALIDATOR] Parsed number from string at root[5].quantity_total: 1367
+[RESULT-VALIDATOR] Parsed number from string at root[6].quantity_total: 1166
+[RESULT-VALIDATOR] Parsed number from string at root[7].quantity_total: 1111
+[RESULT-VALIDATOR] Parsed number from string at root[8].quantity_total: 974
+[RESULT-VALIDATOR] Parsed number from string at root[9].quantity_total: 813
+[RESULT-VALIDATOR] Total numbers extracted: 10 [
+  15496, 4315, 2729,
+   2100, 1920, 1367,
+   1166, 1111,  974,
+    813
+]
+[RESULT-VALIDATOR] Coverage: 100% (10/10 tool numbers found in response)
+[RESULT-VALIDATOR] Generated 613 derived numbers from 10 base numbers
+[RESULT-VALIDATOR] Number 10 is a valid derived calculation (close to 9.38)
+[RESULT-VALIDATOR] Number 1446 is a valid derived calculation (close to 1367.00)
+[RESULT-VALIDATOR] Number 1 is a valid derived calculation (close to 1.09)
+[RESULT-VALIDATOR] Number 2 is a valid derived calculation (close to 2.05)
+[RESULT-VALIDATOR] Number 3 is a valid derived calculation (close to 3.16)
+[RESULT-VALIDATOR] Number 4 is a valid derived calculation (close to 3.60)
+[RESULT-VALIDATOR] Number 5 is a valid derived calculation (close to 5.31)
+[RESULT-VALIDATOR] Number 6 is a valid derived calculation (close to 5.68)
+[RESULT-VALIDATOR] Number 7 is a valid derived calculation (close to 7.38)
+[RESULT-VALIDATOR] Number 8 is a valid derived calculation (close to 7.38)
+[RESULT-VALIDATOR] Number 9 is a valid derived calculation (close to 8.53)
+[RESULT-VALIDATOR] Response numbers: 22, Tool numbers: 10, Extra: 0, Final invented: 0
+[LABEL-VALIDATOR] Metrics used in to ed: 20313b14-7327-4351-bbd7-ec2c4fbfcd07
+1:22:37 PM [express] POST /api/client-data/conversations/a9715b10-7432-45dd-981f-0de79176469e/messag… AI Assistant
+
+🔧 aggregate_group (limit, filters,...
+🔧 aggregate_group (limit, filters, groupBy, orderBy, datasetId, metricName, timeGranularity, _applyIsSellable, productIlikePatterns, _autoFallbackOrderDesc, _rankingCategoryFilter)
+
+Ciao, ho analizzato con attenzione i dati di vendita che abbiamo a disposizione.
+Analizzando i primi 10 elementi per volume (su un totale di 1.446 referenze in anagrafica), emerge un quadro molto interessante sulla struttura del tuo venduto, anche se c'è una precisazione importante da fare riguardo alla tua richiesta sulle pizze.
+1
+Ecco l'analisi dei volumi principali
+1
+COPERTO: 15.496 unità
+2
+CAFFE': 4.315 unità
+3
+ACQUA NAT.: 2.729 unità
+4
+MEDIA BIONDA: 2.100 unità
+5
+ACQUA FRIZZ.: 1.920 unità
+6
+PAT. FRITTE: 1.367 unità
+7
+COCA MED.: 1.166 unità
+8
+SORBETTO: 1.111 unità
+9
+PICC. BIONDA: 974 unità
+10
+FRITTO MIX: 813 unità
+🧐 L'Interpretazione del Consulente
+Analizzando questi numeri, balza subito all'occhio un dato: nella Top 10 generale non compare ancora nessuna pizza specifica.
+Questo non significa che non ne vendi, anzi! Significa che la tua offerta di pizze è probabilmente molto variegata (frammentata su molti gusti diversi), mentre i prodotti "di servizio" e i complementi (bevande e fritti) sono trasversali a ogni ordine.
+Cosa ci dicono questi numeri:
+Il volume d'affari è solido: Il dato del "Coperto" (15.496) è la nostra stella polare: ci dice esattamente quanti clienti si sono seduti.
+Upselling dei complementi: Hai un'ottima performance sui fritti (Patatine e Fritto Mix totalizzano oltre 2.180 ordini). Questo indica che il tuo staff è bravo a proporre l'antipasto o che il menu è ben strutturato per l'acquisto d'impulso.
+●
+Il potenziale della birra: La "Media Bionda" (2.100) batte nettamente la piccola. I tuoi clienti preferiscono il formato grande, il che è ottimo per il margine di contribuzione.
+💡 Azioni Suggerite
+1
+Focus sul Fritto Mix: Con 813 porzioni vendute, è un tuo "Star" o un "Plowhorse" (cavallo di battaglia). Ti suggerisco di verificare il Food Cost preciso di questo piatto: se riusciamo a ottimizzare il costo degli ingredienti anche di pochi centesimi, l'impatto sulla redditività netta a fine anno sarà massiccio dato il volume.
+2
+Strategia Digestivi: Il Sorbetto (1.111) vende quasi quanto la Coca Cola Media. È un dato altissimo! Potresti testare una versione "Premium" o un abbinamento con un amaro locale per alzare ulteriormente lo scontrino medio a fine pasto.
+🚀 Prossimo Passo Strategico
+Per rispondere esattamente alla tua domanda sulle Top 5 Pizze, devo "scavare" oltre la Top 10 generale e isolare solo la categoria merceologica delle pizze. In questo modo vedremo quali gusti guidano la classifica (probabilmente la Margherita sarà in testa, ma sarà interessante vedere chi occupa il secondo e terzo posto).
+Vuoi che proceda con l'estrazione specifica della categoria "Pizze" per identificare quali sono i tuoi veri campioni di incasso nel forno? 
