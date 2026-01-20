@@ -715,9 +715,10 @@ export async function executeToolCall(
         console.log(`[AGGREGATE-GROUP] orderBy: ${JSON.stringify(toolCall.args.orderBy)}`);
         console.log(`[AGGREGATE-GROUP] filters: ${JSON.stringify(toolCall.args.filters)}`);
         
-        // TASK 3: Cardinality check BEFORE executing aggregate_group
+        // TASK 1: Cardinality check BEFORE executing aggregate_group
         const groupByColumns = toolCall.args.groupBy || [];
         if (groupByColumns.length > 0) {
+          console.log(`[WIRING-CHECK] checkCardinalityBeforeAggregate called for columns: ${JSON.stringify(groupByColumns)}`);
           const cardinalityCheck = await checkCardinalityBeforeAggregate(
             toolCall.args.datasetId,
             groupByColumns,
@@ -954,15 +955,14 @@ export async function askDataset(
   // ====== TASK 2: SEMANTIC CONTRACT DETECTION ======
   // Detect if user requests "ALL items" vs "top N"
   const semanticContract = detectSemanticContract(userQuestion);
+  console.log(`[WIRING-CHECK] semantic contract detected - requestsAll=${semanticContract.requestsAll}, requestsTopN=${semanticContract.requestsTopN}, keywords=[${semanticContract.detectedKeywords.join(",")}]`);
 
-  // TASK 4: Extract mentioned filters from user question  
+  // TASK 3: Extract mentioned filters from user question  
   const availableColumns = datasets.length > 0 
     ? datasets[0].columns.map(c => c.name) 
     : [];
   const extractedFilters = extractFiltersFromQuestion(userQuestion, availableColumns);
-  if (Object.keys(extractedFilters).length > 0) {
-    console.log(`[QUERY-PLANNER] Extracted filters from question: ${JSON.stringify(extractedFilters)}`);
-  }
+  console.log(`[WIRING-CHECK] extractFiltersFromQuestion called - found ${Object.keys(extractedFilters).length} filters: ${JSON.stringify(extractedFilters)}`);
 
   // ====== LAYER 1: INTENT ROUTER (AI - gemini-2.5-flash-lite) ======
   // Fast, cheap classification of user intent WITH conversation context
@@ -1088,6 +1088,7 @@ export async function askDataset(
         const limit = step.args.limit;
         
         if (semanticContract.requestsAll && limit && limit < MAX_GROUP_BY_LIMIT) {
+          console.log(`[WIRING-CHECK] semantic contract enforced - requestsAll=${semanticContract.requestsAll}, aiLimit=${limit}`);
           console.warn(`[SEMANTIC-CONTRACT] BLOCK: User requested ALL items (keywords: ${semanticContract.detectedKeywords.join(", ")}) but AI set limit=${limit}`);
           return {
             plan: {
@@ -1125,6 +1126,7 @@ export async function askDataset(
           
           for (const [col, filter] of Object.entries(extractedFilters)) {
             if (!existingFilters[col]) {
+              console.log(`[WIRING-CHECK] filters injected - ${col} = "${filter.value}"`);
               console.log(`[FILTER-INJECT] Injecting missing filter: ${col} = "${filter.value}"`);
               existingFilters[col] = filter;
               injected = true;
