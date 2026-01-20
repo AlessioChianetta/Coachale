@@ -1,0 +1,94 @@
+[WIRING-CHECK] groupByIntent - isProductListing=true, productColumn=null
+[INTENT-ROUTER] Classifying question: "Quali prodotti hanno il costo di struttura più alto?"
+[INTENT-ROUTER] Conversation context: 2 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (925ms): ```json
+{
+  "intent": "analytics",
+  "requires_metrics": true,
+  "suggested_tools": [
+    "aggregate_group"
+  ],
+  "confidence": 0.95
+}
+```
+[INTENT-ROUTER] Classification result: intent=analytics, requires_metrics=true, confidence=0.95, tools=[aggregate_group]
+[QUERY-PLANNER] Router result: intent=analytics, requires_metrics=true, confidence=0.95
+[POLICY-ENGINE] Getting policy for intent: analytics
+[QUERY-PLANNER] Policy: allowedTools=[execute_metric,aggregate_group,compare_periods,filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 2 messages
+[QUERY-PLANNER] Allowed tools for AI: [execute_metric, query_metric, compare_periods, filter_data, aggregate_group, get_schema]
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+[POLICY-ENGINE] ALLOWED: aggregate_group
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=true, hasOnlyMetadata=false
+[POLICY-ENGINE] VALIDATION OK: compute tool present
+[AGGREGATE-GROUP] Full args from Gemini: {
+  "limit": 10,
+  "aggregations": [
+    {
+      "alias": "max_costo_struttura",
+      "function": "MAX",
+      "column": "costoproduzione_struttura"
+    }
+  ],
+  "groupBy": [
+    "descrprod"
+  ],
+  "orderBy": {
+    "column": "max_costo_struttura",
+    "direction": "DESC"
+  },
+  "datasetId": "4"
+}
+[AGGREGATE-GROUP] datasetId: 4
+[AGGREGATE-GROUP] groupBy: ["descrprod"]
+[AGGREGATE-GROUP] metricName: undefined
+[AGGREGATE-GROUP] aggregations: [{"alias":"max_costo_struttura","function":"MAX","column":"costoproduzione_struttura"}]
+[AGGREGATE-GROUP] orderBy: {"column":"max_costo_struttura","direction":"DESC"}
+[AGGREGATE-GROUP] filters: undefined
+[WIRING-CHECK] checkCardinalityBeforeAggregate called for columns: ["descrprod"]
+[CARDINALITY-PROBE] Running: SELECT COUNT(DISTINCT "descrprod") AS distinct_count, COUNT(*) AS total_rows FROM "cdd_0c73bbe5_ddtrighe_ccf43c6d"
+[QUERY-EXECUTOR] Query execution error: column "descrprod" does not exist
+[CARDINALITY-PROBE] Failed: column "descrprod" does not exist
+[CARDINALITY-CHECK] Probe failed for "descrprod": column "descrprod" does not exist
+[QUERY-EXECUTOR] Query execution error: column "descrprod" does not exist
+[AGGREGATE-GROUP] Result: success=false, rowCount=undefined, error=column "descrprod" does not exist
+[QUERY-PLANNER] Tool aggregate_group failed: column "descrprod" does not exist
+[QUERY-PLANNER] Execution complete in 1962ms, success: false
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: aggregate_group: column "descrprod" does not exist
+
+[SHEETS POLLING] Starting polling cycle (ExecID: onv7i)...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-20T07:14:00.028Z
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: onv7i)
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+[CLIENT-DATA] Assistant message saved: b9ba22e5-8bf2-4957-80f8-032765a948d3
+7:14:02 AM [express] POST /api/client-data/conversations/5762a18e-422b-4c04-9c1b-9e7a5372c072/messag…

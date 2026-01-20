@@ -7,7 +7,7 @@ import { upload } from "../middleware/upload";
 import { processExcelFile, type ProcessedFile } from "../services/client-data/upload-processor";
 import { getDistributedSample, profileAllColumns, type DistributedSample } from "../services/client-data/column-profiler";
 import { discoverColumns, saveColumnMapping, type ColumnDefinition, type DiscoveryResult } from "../services/client-data/column-discovery";
-import { generateTableName, createDynamicTable, importDataToTable, getTablePreview, dropDynamicTable, getTableRowCount } from "../services/client-data/table-generator";
+import { generateTableName, createDynamicTable, importDataToTable, getTablePreview, dropDynamicTable, getTableRowCount, sanitizeColumnName } from "../services/client-data/table-generator";
 import { parseMetricExpression, validateMetricAgainstSchema } from "../services/client-data/metric-dsl";
 import { queryMetric, filterData, aggregateGroup, comparePeriods, getSchema, aiTools, type QueryResult } from "../services/client-data/query-executor";
 import { invalidateCache, getCacheStats } from "../services/client-data/cache-manager";
@@ -618,9 +618,11 @@ router.post(
         });
       }
 
+      // Use sanitized column names (matching database column names) as keys
       const columnMapping: Record<string, { displayName: string; dataType: string; description?: string }> = {};
       for (const col of columns) {
-        columnMapping[col.originalName] = {
+        const dbColumnName = sanitizeColumnName(col.suggestedName || col.originalName);
+        columnMapping[dbColumnName] = {
           displayName: col.displayName,
           dataType: col.dataType,
           description: col.description,
@@ -766,9 +768,11 @@ router.post(
 
       console.log(`[CLIENT-DATA] Creating dataset ${name} with table ${tableName}`);
 
+      // Use sanitized column names (matching database column names) as keys
       const columnMapping: Record<string, { displayName: string; dataType: string; description?: string }> = {};
       for (const col of columns) {
-        columnMapping[col.originalName] = {
+        const dbColumnName = sanitizeColumnName(col.suggestedName || col.originalName);
+        columnMapping[dbColumnName] = {
           displayName: col.displayName,
           dataType: col.dataType,
           description: col.description,
@@ -785,7 +789,7 @@ router.post(
           sheetName,
           tableName,
           columnMapping,
-          originalColumns: columns.map(c => c.originalName),
+          originalColumns: columns.map(c => sanitizeColumnName(c.suggestedName || c.originalName)),
           status: "processing",
         })
         .returning();
