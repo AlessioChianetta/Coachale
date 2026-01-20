@@ -113,6 +113,30 @@ function generateBasicExplanation(results: ExecutedToolResult[], userQuestion: s
           }
         }
         break;
+        
+      case "execute_metric":
+        if (Array.isArray(res.result) && res.result.length > 0) {
+          const rawValue = res.result[0]?.result;
+          const value = typeof rawValue === "string" ? parseFloat(rawValue) : rawValue;
+          const metricName = res.args?.metricName || "metrica";
+          const isPercentage = metricName.includes("percent") || metricName.includes("_percent");
+          
+          if (typeof value === "number" && !isNaN(value)) {
+            const formatted = isPercentage 
+              ? `${value.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+              : formatItalianNumber(value, { currency: true });
+            
+            const displayName = metricName.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            details.push(`📊 **${displayName}**: ${formatted}`);
+            
+            if (!summary) {
+              summary = `${displayName}: ${formatted}`;
+            } else {
+              summary += ` | ${displayName}: ${formatted}`;
+            }
+          }
+        }
+        break;
 
       case "compare_periods":
         if (typeof res.result === "object" && res.result.period1_value !== undefined) {

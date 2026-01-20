@@ -1,0 +1,33 @@
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-CLASSIFIER] Question: "Mi calcoli i dati del foodcos..." → analytical (confidence: 0.30, requiresToolCall: true)
+[QUERY-PLANNER] Intent: analytical, requiresToolCall: true
+there are non-text parts functionCall,functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 2 steps, complexity: medium
+[EXECUTE-METRIC] Called with metricName: "food_cost", datasetId: 2
+[EXECUTE-METRIC] Found metric: food_cost, SQL: SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC))
+[CACHE-MANAGER] Transitioned to 'ready' for hash 4327f283e680... TTL: 3600s
+[EXECUTE-METRIC] Result: success=true, error=none
+[EXECUTE-METRIC] Called with metricName: "food_cost_percent", datasetId: 2
+[EXECUTE-METRIC] Found metric: food_cost_percent, SQL: (SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC)) / NULLIF(SUM(CAST("total_net" AS NUMERIC)), 0)) * 100
+[CACHE-MANAGER] Transitioned to 'ready' for hash 5b0d6c8d8d41... TTL: 3600s
+[EXECUTE-METRIC] Result: success=true, error=none
+[QUERY-PLANNER] Execution complete in 2448ms, success: true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-VALIDATOR] Processing tool result: toolName=execute_metric, success=true, result= [{"result":"3166.7"}]
+[RESULT-VALIDATOR] Parsed number from string at root[0].result: 3166.7
+[RESULT-VALIDATOR] Processing tool result: toolName=execute_metric, success=true, result= [{"result":"37.85360372475539856400"}]
+[RESULT-VALIDATOR] Parsed number from string at root[0].result: 37.8536037247554
+[RESULT-VALIDATOR] Total numbers extracted: 2 [ 3166.7, 37.8536037247554 ]
+[RESULT-VALIDATOR] Response numbers: 13, Tool numbers: 2, Invented: 9
+[RESULT-EXPLAINER] HALLUCINATION BLOCKED: 9 invented numbers detected
+[RESULT-EXPLAINER] Invented numbers: 28, 32, 30, 1, 2, 3, 4, 5, 70
+[RESULT-EXPLAINER] Valid numbers from tools: 3166.7, 37.8536037247554
+[CLIENT-DATA] Assistant message saved: 9be9c20d-0933-4a78-ae08-128b8ede102d
+12:46:34 AM [express] POST /api/client-data/conversations/edbd21d9-e83f-4462-bcd3-9a15f345ba19/messag…
+12:46:35 AM [express] POST /api/activity/session/heartbeat 200 in 946ms :: {"success":true,"lastActiv…
