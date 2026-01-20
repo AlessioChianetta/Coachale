@@ -1,0 +1,204 @@
+COSA HO CAPITO DEL TUO SISTEMA (VERSIONE REALE)
+✅ 1) Mapping colonne: ESISTE ma è solo “descrittivo”
+
+Avete:
+
+client_data_datasets.columnMapping
+{
+  "unit_price": { displayName, dataType }
+}
+
+
+Questo è utile per UI e tipi, non è semantic mapping.
+
+👉 Serve per sapere “che tipo è la colonna”,
+❌ NON per sapere “che ruolo ha nel business”.
+
+Quindi oggi:
+
+il sistema sa che unit_price è un numero
+
+NON sa che unit_price = prezzo di vendita canonico
+
+Questo spiega tutti i bug revenue/food cost.
+
+✅ 2) Metriche standard: OTTIMA scelta tenerle fuori dall’LLM
+
+Hai:
+
+metric-registry.ts
+revenue_gross
+food_cost_percent
+
+
+Questo è molto buono.
+
+Punti forti:
+
+Gemini non inventa formule
+
+SQL è deterministico
+
+Problema:
+
+metriche legate ai nomi fisici CSV
+
+non portabili tra dataset diversi
+
+⚠️ 3) Nomi CSV hardcoded: È IL COLLO DI BOTTIGLIA PRINCIPALE
+
+Oggi:
+
+SUM("unit_price" * "quantity")
+
+
+Questo funziona SOLO se:
+
+il CSV ha esattamente quei nomi
+
+Appena cambi gestionale:
+
+tutto si rompe
+
+oppure peggio: “funziona male”
+
+Questo è il più grande rischio di prodotto che hai ora.
+
+⚠️ 4) Validazione post-query: troppo tardi
+
+Oggi:
+
+query parte
+
+SQL fallisce
+
+ritorni errore tecnico
+
+Per un SaaS business è brutto:
+
+UX scadente
+
+errori poco comprensibili
+
+niente controllo preventivo
+
+Devi spostare il controllo:
+
+👉 prima della query
+
+✅ 5) Tool forcing: MOLTO BENE
+
+Questa parte è fatta bene:
+
+intent classifier
+
+retry
+
+blocco risposta senza tool
+
+Questo ti ha già salvato da hallucinations.
+
+⚠️ 6) Metriche in codice: va bene ora, NON scala
+
+Tenere metriche in codice:
+
+✅ OK per MVP
+❌ NON OK se:
+
+vuoi custom consultant
+
+vuoi più verticali
+
+vuoi versioning
+
+Prima o poi dovrai:
+
+spostarle in DB/config versionato
+
+DOVE SEI OGGI (LIVELLO DI MATURITÀ)
+
+Direi:
+
+Analytics engine solido
++
+Semantic layer incompleto
+=
+Sistema instabile sui dati reali dei clienti
+
+
+Non è un problema di AI.
+È un problema di modellazione dei dati.
+
+COSA DEVI CHIEDERE DI IMPLEMENTARE (IN ORDINE GIUSTO)
+
+Questo è importante: non tutto insieme.
+
+🔥 PRIORITÀ 1 — Semantic column mapping (OBBLIGATORIO)
+
+Digli:
+
+"Dobbiamo introdurre dataset_column_mappings:
+logicalColumn → physicalColumn.
+Le metriche NON devono più usare nomi CSV diretti."
+
+Esempio:
+
+logical: price
+physical: unit_price
+
+
+Metric registry:
+
+SUM({price} * {quantity})
+
+
+Resolver:
+
+{price} → "unit_price"
+
+
+Questo da solo risolve:
+
+cambio CSV
+
+vendor diversi
+
+naming diversi
+
+bug revenue
+
+🔥 PRIORITÀ 2 — Pre-query validation
+
+Prima di eseguire:
+
+controlla se tutte le logicalColumn richieste esistono nel mapping
+
+se manca → errore business leggibile:
+
+"Questo dataset non contiene il costo unitario. Impossibile calcolare food cost."
+
+NON SQL error.
+
+🔥 PRIORITÀ 3 — Revenue canonica hard-locked
+
+Devi dirgli:
+
+"Qualunque richiesta 'vendite/fatturato/revenue' deve usare revenue_gross metric, non colonne raw."
+
+Questo va mappato semanticamente, NON interpretato.
+
+⚠️ PRIORITÀ 4 — Metric registry esterno al codice (fase 2)
+
+Quando vai verso produzione vera:
+
+sposta metriche in tabella:
+
+metric_name
+
+sql_template
+
+version
+
+domain (restaurant, fitness)
+
+Ma questo può aspettare.
