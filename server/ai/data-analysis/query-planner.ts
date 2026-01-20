@@ -143,6 +143,136 @@ export function extractFiltersFromQuestion(
   return filters;
 }
 
+/**
+ * TASK 5: Detect if user is asking for product listing vs category comparison
+ * Returns the correct column to use for groupBy
+ */
+interface GroupByValidation {
+  isProductListing: boolean;
+  isCategoryComparison: boolean;
+  productColumn: string | null;
+  categoryColumn: string | null;
+  detectedPatterns: string[];
+}
+
+const PRODUCT_COLUMN_NAMES = [
+  'item_name', 'product_name', 'nome_prodotto', 'dish_name', 'menu_item', 
+  'article', 'articolo', 'piatto', 'prodotto', 'product', 'item'
+];
+
+const CATEGORY_COLUMN_NAMES = [
+  'category', 'categoria', 'type', 'tipo', 'group', 'gruppo', 
+  'department', 'reparto', 'class', 'classe'
+];
+
+const PRODUCT_LISTING_PATTERNS = [
+  /che\s+(pizze|piatti|prodotti|articoli|bevande|drink|dolci|antipasti|primi|secondi|contorni|birre|vini|cocktail)\s+(abbiamo|ci sono|sono)/i,
+  /quali\s+(pizze|piatti|prodotti|articoli|bevande|drink|dolci|antipasti|primi|secondi|contorni|birre|vini|cocktail)/i,
+  /elenco\s+(dei|delle|di)\s+\w+/i,
+  /mostrami\s+(tutti|tutte)\s+(i|le|gli)\s+\w+/i,
+  /lista\s+(dei|delle|di)\s+\w+/i,
+  /tutti\s+(i|le|gli)\s+(prodotti|piatti|articoli)/i,
+];
+
+const CATEGORY_COMPARISON_PATTERNS = [
+  /confronto\s+(tra\s+)?(categorie|tipi|gruppi)/i,
+  /per\s+categoria/i,
+  /breakdown\s+(per|by)\s+(categoria|tipo|category)/i,
+  /food\s+vs\s+drink/i,
+  /(raggruppato|raggruppa|raggruppare)\s+per\s+(categoria|tipo)/i,
+];
+
+export function detectGroupByIntent(
+  userQuestion: string,
+  availableColumns: string[]
+): GroupByValidation {
+  const questionLower = userQuestion.toLowerCase();
+  const detectedPatterns: string[] = [];
+  
+  let isProductListing = false;
+  let isCategoryComparison = false;
+  
+  for (const pattern of PRODUCT_LISTING_PATTERNS) {
+    if (pattern.test(userQuestion)) {
+      isProductListing = true;
+      const match = userQuestion.match(pattern);
+      if (match) detectedPatterns.push(match[0]);
+    }
+  }
+  
+  for (const pattern of CATEGORY_COMPARISON_PATTERNS) {
+    if (pattern.test(userQuestion)) {
+      isCategoryComparison = true;
+      isProductListing = false;
+      const match = userQuestion.match(pattern);
+      if (match) detectedPatterns.push(match[0]);
+    }
+  }
+  
+  const productColumn = availableColumns.find(col => 
+    PRODUCT_COLUMN_NAMES.some(name => col.toLowerCase().includes(name.toLowerCase()))
+  ) || null;
+  
+  const categoryColumn = availableColumns.find(col => 
+    CATEGORY_COLUMN_NAMES.some(name => col.toLowerCase() === name.toLowerCase())
+  ) || null;
+  
+  if (detectedPatterns.length > 0) {
+    console.log(`[GROUPBY-VALIDATION] Detected patterns: ${detectedPatterns.join(', ')}`);
+    console.log(`[GROUPBY-VALIDATION] isProductListing=${isProductListing}, isCategoryComparison=${isCategoryComparison}`);
+    console.log(`[GROUPBY-VALIDATION] productColumn=${productColumn}, categoryColumn=${categoryColumn}`);
+  }
+  
+  return {
+    isProductListing,
+    isCategoryComparison,
+    productColumn,
+    categoryColumn,
+    detectedPatterns,
+  };
+}
+
+/**
+ * TASK 5: Auto-correct groupBy if user asks for product listing but AI used category
+ */
+export function validateAndCorrectGroupBy(
+  toolCall: ToolCall,
+  groupByIntent: GroupByValidation
+): { corrected: boolean; originalGroupBy: string[]; newGroupBy: string[] } {
+  if (toolCall.name !== 'aggregate_group' && toolCall.name !== 'filter_data') {
+    return { corrected: false, originalGroupBy: [], newGroupBy: [] };
+  }
+  
+  const groupBy = toolCall.args.groupBy as string[] || [];
+  
+  if (!groupByIntent.isProductListing || !groupByIntent.productColumn) {
+    return { corrected: false, originalGroupBy: groupBy, newGroupBy: groupBy };
+  }
+  
+  const usesCategory = groupBy.some(col => 
+    CATEGORY_COLUMN_NAMES.some(catName => col.toLowerCase() === catName.toLowerCase())
+  );
+  
+  const usesProduct = groupBy.some(col =>
+    PRODUCT_COLUMN_NAMES.some(prodName => col.toLowerCase().includes(prodName.toLowerCase()))
+  );
+  
+  if (usesCategory && !usesProduct && groupByIntent.productColumn) {
+    console.log(`[GROUPBY-CORRECTION] Detected category grouping for product listing!`);
+    console.log(`[GROUPBY-CORRECTION] Original: ${JSON.stringify(groupBy)} → Corrected: [${groupByIntent.productColumn}]`);
+    
+    toolCall.args.groupBy = [groupByIntent.productColumn];
+    
+    return {
+      corrected: true,
+      originalGroupBy: groupBy,
+      newGroupBy: [groupByIntent.productColumn],
+    };
+  }
+  
+  return { corrected: false, originalGroupBy: groupBy, newGroupBy: groupBy };
+}
+
 interface DatasetInfo {
   id: string;
   name: string;
@@ -525,7 +655,8 @@ function validateToolCallAgainstSchema(
 export async function planQuery(
   userQuestion: string,
   datasets: DatasetInfo[],
-  consultantId?: string
+  consultantId?: string,
+  conversationHistory?: ConversationMessage[]
 ): Promise<QueryPlan> {
   const providerResult = await getAIProvider(consultantId || "system", consultantId);
   const client = providerResult.client;
@@ -541,8 +672,17 @@ export async function planQuery(
     ${metrics}`;
   }).join("\n\n");
 
+  const conversationContext = conversationHistory && conversationHistory.length > 0
+    ? `\n\n=== CONTESTO CONVERSAZIONE PRECEDENTE ===\n${conversationHistory.slice(-5).map(m => 
+        `${m.role === 'user' ? 'UTENTE' : 'ASSISTENTE'}: ${m.content.substring(0, 300)}${m.content.length > 300 ? '...' : ''}`
+      ).join('\n')}\n=== FINE CONTESTO ===\n\nUSA questo contesto per capire riferimenti come "le", "questi", "fammi vedere", etc.`
+    : '';
+
+  console.log(`[QUERY-PLANNER] Conversation context for planner: ${conversationHistory?.length || 0} messages`);
+
   const userPrompt = `Dataset disponibili:
 ${datasetsContext}
+${conversationContext}
 
 Domanda dell'utente: "${userQuestion}"
 
@@ -1064,6 +1204,11 @@ export async function askDataset(
   const extractedFilters = extractFiltersFromQuestion(userQuestion, availableColumns);
   console.log(`[WIRING-CHECK] extractFiltersFromQuestion called - found ${Object.keys(extractedFilters).length} filters: ${JSON.stringify(extractedFilters)}`);
 
+  // ====== TASK 5: GROUPBY INTENT DETECTION ======
+  // Detect if user is asking for product listing vs category comparison
+  const groupByIntent = detectGroupByIntent(userQuestion, availableColumns);
+  console.log(`[WIRING-CHECK] groupByIntent - isProductListing=${groupByIntent.isProductListing}, productColumn=${groupByIntent.productColumn}`);
+
   // ====== LAYER 1: INTENT ROUTER (AI - gemini-2.5-flash-lite) ======
   // Fast, cheap classification of user intent WITH conversation context
   const routerOutput = await routeIntent(userQuestion, consultantId, conversationHistory);
@@ -1147,8 +1292,8 @@ export async function askDataset(
   }
 
   // ====== LAYER 3: EXECUTION AGENT (AI - gemini-2.5-flash) ======
-  // Plan and execute tools based on policy
-  const plan = await planQuery(userQuestion, datasets, consultantId);
+  // Plan and execute tools based on policy WITH conversation context
+  const plan = await planQuery(userQuestion, datasets, consultantId, conversationHistory);
   console.log(`[QUERY-PLANNER] Plan: ${plan.steps.length} steps, complexity: ${plan.estimatedComplexity}`);
 
   // Apply policy enforcement to planned tool calls
@@ -1252,6 +1397,12 @@ export async function askDataset(
           };
         }
         
+        // TASK 5: Auto-correct groupBy if user asks for product listing but AI used category
+        const groupByCorrection = validateAndCorrectGroupBy(step, groupByIntent);
+        if (groupByCorrection.corrected) {
+          console.log(`[WIRING-CHECK] groupBy auto-corrected: ${JSON.stringify(groupByCorrection.originalGroupBy)} → ${JSON.stringify(groupByCorrection.newGroupBy)}`);
+        }
+
         // TASK 4: Inject missing filters into tool calls
         if (Object.keys(extractedFilters).length > 0) {
           const existingFilters = step.args.filters || {};
