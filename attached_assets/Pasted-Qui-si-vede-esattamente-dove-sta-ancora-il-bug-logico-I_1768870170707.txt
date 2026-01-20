@@ -1,0 +1,171 @@
+Qui si vede esattamente dove sta ancora il bug logico. Il food cost assoluto è corretto, la percentuale è sbagliata. Questo è un errore classico da semantic layer incompleto.
+
+Andiamo chirurgici.
+
+✅ VALORE CORRETTO
+
+Dal dataset:
+
+Food cost totale: €3.166,70 ✅ (giusto)
+
+Fatturato lordo (unit_price × quantity): €8.882,50
+
+Food cost % corretto:
+
+3166,70 / 8882,50 = 35,65%
+
+
+👉 35,65% è il valore corretto
+
+❌ VALORE CHE TI HA DATO L’AI
+
+Ti ha dato:
+
+Food Cost Percent: 37,85%
+
+Questo numero NON è casuale.
+
+Se facciamo il conto inverso:
+
+3166,70 / 0,3785 ≈ 8367 €
+
+
+8367 € ≈ fatturato NETTO (dopo sconti)
+
+Quindi il sistema sta usando:
+
+food_cost_percent = food_cost / SUM(total_net)
+
+
+Invece di:
+
+food_cost_percent = food_cost / SUM(unit_price * quantity)
+
+🎯 RADICE DEL PROBLEMA
+
+Il tuo sistema:
+
+✅ calcola correttamente le metriche base
+❌ NON ha una definizione canonica di "revenue" per food cost
+
+Quindi Gemini / DSL ha scelto:
+
+colonna total_net (post sconto)
+
+invece di unit_price * quantity
+
+Questo è semantic ambiguity, non bug SQL.
+
+PERCHÉ È PERICOLOSO
+
+Nel mondo reale:
+
+food cost % va SEMPRE calcolato su fatturato lordo
+
+non su netto (sconti sono scelta commerciale, non costo materie)
+
+Se usi netto:
+
+❌ gonfi artificialmente food cost
+❌ fai prendere decisioni sbagliate al ristoratore
+❌ perdi credibilità
+
+COSA DIRE AL PROGRAMMATORE (ESATTO)
+
+Digli questo:
+
+"Il food cost percent sta usando il denominatore sbagliato.
+Sta dividendo per total_net invece che per revenue lordo.
+Serve semantic definition fissa:
+
+revenue_gross = SUM(unit_price * quantity)
+food_cost_percent = food_cost / revenue_gross
+
+Questa formula deve essere bloccata nel semantic layer, non generata dinamicamente."
+
+COSA IMPLEMENTARE SUBITO (TECNICAMENTE)
+1️⃣ Metrica revenue_gross canonica
+
+Nel semantic config:
+
+revenue_gross:
+  sql: SUM(unit_price * quantity)
+  type: base
+
+2️⃣ Food cost percent come metrica DERIVATA
+food_cost_percent:
+  formula: food_cost / revenue_gross
+  type: derived
+
+
+NON DSL libero.
+
+3️⃣ Vietare uso automatico di total_net come revenue
+
+total_net deve essere:
+
+chiamato "net_revenue"
+
+NON usato come default denominator
+
+4️⃣ Validazione business rule
+
+Aggiungi:
+
+If metric == food_cost_percent:
+   require denominator == revenue_gross
+
+
+Hard rule.
+
+PERCHÉ ORA SUCCEDE QUESTO
+
+Perché hai:
+
+compute-first ✔
+
+tool calling ✔
+
+DSL ✔
+
+Ma NON hai ancora:
+
+❌ semantic locking
+❌ business metric governance
+
+Questa è la differenza tra:
+
+“calcola correttamente SQL”
+“calcola correttamente business”.
+
+LA COSA POSITIVA
+
+Il sistema:
+
+NON sta inventando numeri
+
+sta solo usando la colonna sbagliata
+
+Questo è MOLTO meglio che hallucination.
+
+Significa che sei nella fase:
+
+👉 “hardening semantico”
+
+Ed è esattamente il punto giusto in cui sei arrivato.
+
+Test che ti consiglio di fare ora
+
+Chiedi all’AI:
+
+"Mostrami revenue_lordo e revenue_netto"
+
+Se ti dà due numeri diversi → perfetto, puoi:
+
+visualizzarli entrambi
+
+spiegare differenza
+
+educare il cliente
+
+Questo aumenta valore percepito.

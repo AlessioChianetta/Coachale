@@ -41,11 +41,37 @@ export interface ColumnDefinition {
 }
 
 const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
+  revenue_gross: {
+    name: "revenue_gross",
+    displayName: "Fatturato Lordo",
+    description: "Fatturato lordo (prezzo unitario × quantità, prima degli sconti)",
+    sqlExpression: 'SUM(CAST("unit_price" AS NUMERIC) * CAST("quantity" AS NUMERIC))',
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 1,
+  },
+  revenue_net: {
+    name: "revenue_net",
+    displayName: "Fatturato Netto",
+    description: "Fatturato netto (dopo sconti)",
+    sqlExpression: 'SUM(CAST("total_net" AS NUMERIC))',
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 1,
+  },
   revenue: {
     name: "revenue",
     displayName: "Fatturato",
-    description: "Somma totale delle vendite",
-    sqlExpression: 'SUM(CAST("total_net" AS NUMERIC))',
+    description: "Alias per fatturato lordo (default per calcoli food cost)",
+    sqlExpression: 'SUM(CAST("unit_price" AS NUMERIC) * CAST("quantity" AS NUMERIC))',
     unit: "currency",
     validationRules: {
       mustBePositive: true,
@@ -70,16 +96,16 @@ const STANDARD_METRICS: Record<string, Omit<MetricDefinition, "id">> = {
   food_cost_percent: {
     name: "food_cost_percent",
     displayName: "Food Cost %",
-    description: "Percentuale food cost su fatturato",
-    sqlExpression: '(SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC)) / NULLIF(SUM(CAST("total_net" AS NUMERIC)), 0)) * 100',
+    description: "Percentuale food cost su fatturato LORDO (standard ristorazione)",
+    sqlExpression: '(SUM(CAST("unit_cost" AS NUMERIC) * CAST("quantity" AS NUMERIC)) / NULLIF(SUM(CAST("unit_price" AS NUMERIC) * CAST("quantity" AS NUMERIC)), 0)) * 100',
     unit: "percentage",
     validationRules: {
       minValue: 0,
       maxValue: 100,
-      warningThreshold: 60,
-      warningMessage: "Food cost superiore al 60% - verificare margini",
+      warningThreshold: 35,
+      warningMessage: "Food cost superiore al 35% - verificare margini",
     },
-    dependsOn: ["food_cost", "revenue"],
+    dependsOn: ["food_cost", "revenue_gross"],
     isPrimary: true,
     version: 1,
   },

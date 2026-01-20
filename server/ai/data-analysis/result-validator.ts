@@ -136,14 +136,25 @@ export function validateResponseNumbers(
   const errors: string[] = [];
   const warnings: string[] = [];
   
+  // Numbers that are commonly used in context (list numbers, common percentages, etc.)
+  const ALLOWED_CONTEXT_NUMBERS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100]);
+  
   for (const num of numbersInResponse) {
+    // Skip common context numbers (list items, common percentages)
+    if (ALLOWED_CONTEXT_NUMBERS.has(num)) {
+      continue;
+    }
+    
     const foundInTools = numbersFromTools.some(toolNum => numbersAreClose(num, toolNum, 0.05));
     
     if (!foundInTools) {
       const isRoundedVersion = numbersFromTools.some(toolNum => {
         const rounded = Math.round(toolNum);
         const roundedTo2 = Math.round(toolNum * 100) / 100;
-        return numbersAreClose(num, rounded, 0.01) || numbersAreClose(num, roundedTo2, 0.01);
+        const roundedTo1 = Math.round(toolNum * 10) / 10;
+        return numbersAreClose(num, rounded, 0.01) || 
+               numbersAreClose(num, roundedTo2, 0.01) ||
+               numbersAreClose(num, roundedTo1, 0.01);
       });
       
       if (!isRoundedVersion) {
