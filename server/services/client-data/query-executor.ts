@@ -674,8 +674,8 @@ export async function getSchema(datasetId: string): Promise<QueryResult> {
       columns,
       metrics: metrics.map(m => ({
         name: m.name,
-        dslFormula: m.dslFormula,
-        description: m.description,
+        dslFormula: m.formulaDsl,
+        description: m.description || "",
       })),
     }],
     rowCount: 1,
