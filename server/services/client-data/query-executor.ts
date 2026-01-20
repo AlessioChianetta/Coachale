@@ -814,9 +814,9 @@ export async function aggregateGroup(
     whereClauses.push(`LOWER(${prodCol}) NOT LIKE 'poco %'`);
     whereClauses.push(`LOWER(${prodCol}) NOT LIKE 'senza %'`);
     
-    // Add revenue > 0 filter if column is valid
+    // Add revenue > 0 filter if column is valid (CAST to NUMERIC for text columns)
     if (revenueColumn && datasetInfo.columns.includes(revenueColumn)) {
-      whereClauses.push(`"${revenueColumn}" > 0`);
+      whereClauses.push(`CAST("${revenueColumn}" AS NUMERIC) > 0`);
     }
     
     console.log(`[AGGREGATE-GROUP] is_sellable filter applied: productCol=${productNameColumn}, revenueCol=${revenueColumn || 'none'}`);
