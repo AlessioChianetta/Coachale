@@ -60,10 +60,32 @@ export async function validateMetricForDataset(
   
   if (missing.length > 0) {
     const missingNames = missing.map((m) => m.displayName).join(", ");
+    const columnExamples: Record<string, string> = {
+      cost: "costo, costo_unitario, cost, unit_cost, prezzo_acquisto",
+      price: "prezzo, prezzo_vendita, price, unit_price, selling_price",
+      quantity: "quantita, qta, quantity, qty",
+      revenue_amount: "totale, totale_riga, prezzofinale, revenue, importo",
+      document_id: "id_ordine, order_id, numero_scontrino, receipt_id, idddt",
+      order_id: "id_ordine, order_id, numero_scontrino, receipt_id",
+      line_id: "id_riga, line_id, row_id, riga",
+      product_id: "id_prodotto, product_id, sku, codice_prodotto",
+      product_name: "nome_prodotto, product_name, descrizione, descr_prod",
+      category: "categoria, category, reparto, gruppo_merceologico",
+      customer_id: "id_cliente, customer_id, codice_cliente",
+      customer_name: "nome_cliente, customer_name, ragione_sociale",
+      order_date: "data, date, data_ordine, order_date, data_vendita",
+      discount_percent: "sconto, discount, sconto_percentuale",
+      discount_amount: "importo_sconto, discount_amount, sconto_euro",
+      total_net: "totale_netto, net_total, imponibile",
+    };
+    const exampleHints = missing
+      .filter((m) => columnExamples[m.logical])
+      .map((m) => `${m.displayName}: cerca colonne tipo "${columnExamples[m.logical]}"`)
+      .join("; ");
     return {
       valid: false,
       missingColumns: missing,
-      error: `Non posso calcolare "${template.displayName}" perché mancano le colonne: ${missingNames}.`,
+      error: `Non posso calcolare "${template.displayName}" perché mancano le colonne: ${missingNames}.${exampleHints ? ` Suggerimento: ${exampleHints}.` : ""}`,
       suggestedAction: "Vai in Impostazioni Dataset per configurare le colonne mancanti.",
     };
   }

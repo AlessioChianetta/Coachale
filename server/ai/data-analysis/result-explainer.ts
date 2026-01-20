@@ -401,21 +401,27 @@ export async function explainResults(
       try {
         const { model: failureModel } = getModelWithThinking(providerResult.metadata?.name);
         
+        // Extract specific column info from error for user-friendly explanation
+        const columnMatch = errorDetails.match(/mancano le colonne: ([^.]+)/);
+        const missingColumnInfo = columnMatch ? columnMatch[1] : null;
+        
         const failurePrompt = `L'utente ha chiesto: "${userQuestion}"
 
-Ho provato ad analizzare i dati ma ho riscontrato un problema tecnico.
+Ho provato ad analizzare i dati ma non ho trovato le informazioni necessarie nel dataset.
 
-Errore interno (NON mostrare all'utente): ${errorDetails}
+${missingColumnInfo ? `Colonne mancanti: ${missingColumnInfo}. Il dataset non contiene questi dati, quindi non posso calcolare la metrica richiesta.` : `Dettaglio errore: ${errorDetails}`}
 
-Rispondi in modo amichevole spiegando che:
-1. Non sei riuscito a trovare esattamente quello che cercava
-2. Suggerisci cosa potrebbe provare a chiedere in modo diverso
-3. Se l'errore riguarda una colonna mancante, suggerisci che potrebbero non esserci quei dati nel dataset
+${styleInstructions ? `--- STILE DI RISPOSTA ---\n${styleInstructions}\n---\n` : ""}
 
-REGOLE IMPORTANTI:
-- NON inventare numeri o dati
-- NON mostrare messaggi tecnici di errore
-- Sii breve e amichevole
+RISPOSTA RICHIESTA:
+1. Spiega chiaramente quale dato specifico manca (usa il nome della colonna mancante)
+2. Suggerisci 2-3 alternative concrete che puoi fare con i dati disponibili (es. analisi vendite, ranking prodotti, trend)
+3. Offri di procedere con un'analisi alternativa
+
+REGOLE CRITICHE:
+- MANTIENI ESATTAMENTE lo stesso tono e personalità usati nella conversazione precedente
+- NON cambiare stile o registro - se prima eri entusiasta, resta entusiasta
+- NON inventare numeri
 - Rispondi in italiano`;
 
         const failureResponse = await client.generateContent({
