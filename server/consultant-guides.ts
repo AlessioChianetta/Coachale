@@ -4641,8 +4641,30 @@ ${section.description}
 
 /**
  * Helper per esportare la guida come documento per File Search
+ * Legge da MANUALE-COMPLETO.md se disponibile, altrimenti usa le guide TypeScript
  */
 export function getGuideAsDocument(): { title: string; content: string } {
+  const fs = require('fs');
+  const path = require('path');
+  
+  // Prova a leggere da MANUALE-COMPLETO.md
+  const manualePath = path.join(process.cwd(), 'MANUALE-COMPLETO.md');
+  
+  try {
+    if (fs.existsSync(manualePath)) {
+      const content = fs.readFileSync(manualePath, 'utf-8');
+      console.log(`📚 [Guide] Loaded MANUALE-COMPLETO.md (${content.length} chars)`);
+      return {
+        title: "Guida Completa Piattaforma Consulente",
+        content: content
+      };
+    }
+  } catch (error) {
+    console.warn(`⚠️ [Guide] Could not read MANUALE-COMPLETO.md, using TypeScript guides:`, error);
+  }
+  
+  // Fallback: usa le guide TypeScript
+  console.log(`📚 [Guide] Using TypeScript consultant guides (fallback)`);
   return {
     title: "Guida Completa Piattaforma Consulente",
     content: formatGuidesForPrompt(consultantGuides)

@@ -101,7 +101,7 @@ export interface SyncProgressEvent {
   total?: number;
   synced?: number;
   totalSynced?: number;
-  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans' | 'assigned_exercises' | 'assigned_library' | 'assigned_university' | 'goals' | 'tasks' | 'daily_reflections' | 'client_progress' | 'library_progress' | 'email_journey' | 'consultant_guide';
+  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'whatsapp_agents' | 'exercise_responses' | 'client_knowledge' | 'client_consultations' | 'financial_data' | 'orphans' | 'assigned_exercises' | 'assigned_library' | 'assigned_university' | 'goals' | 'tasks' | 'daily_reflections' | 'client_progress' | 'library_progress' | 'email_journey' | 'consultant_guide' | 'client_guide';
   error?: string;
   consultantId: string;
   orphansRemoved?: number;
@@ -1401,7 +1401,86 @@ export class FileSearchSyncService {
       return { synced, failed, errors };
     } catch (error: any) {
       console.error('[FileSync] Error syncing guide for all consultants:', error);
-      return { synced: 0, failed: 1, errors: [error.message] };
+      return { synced: 0, failed: 0, errors: [error.message] };
+    }
+  }
+
+  /**
+   * Sync the Client Platform Guide to FileSearchStore
+   * This guide documents all client pages and features
+   */
+  static async syncClientGuide(clientId: string): Promise<{ success: boolean; error?: string; updated?: boolean }> {
+    try {
+      const { getClientGuidesAsText } = await import('../client-guides');
+      const content = getClientGuidesAsText();
+      const guideSourceId = `client-guide-${clientId}`;
+      const currentHash = crypto.createHash('md5').update(content).digest('hex');
+      
+      // Emit start event
+      syncProgressEmitter.emitStart(clientId, 'client_guide', 1);
+      
+      // Get or create client store
+      let clientStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, clientId),
+          eq(fileSearchStores.ownerType, 'client'),
+        ),
+      });
+
+      if (!clientStore) {
+        // Create client store if needed
+        const [newStore] = await db.insert(fileSearchStores).values({
+          ownerId: clientId,
+          ownerType: 'client',
+          displayName: 'Client Knowledge Store',
+        }).returning();
+        clientStore = newStore;
+      }
+      
+      // Check if document exists
+      const indexInfo = await fileSearchService.getDocumentIndexInfo('client_guide', guideSourceId, {
+        storeId: clientStore.id
+      });
+      
+      if (indexInfo.exists && indexInfo.contentHash === currentHash) {
+        console.log(`📌 [FileSync] Client guide already up-to-date for: ${clientId}`);
+        return { success: true, updated: false };
+      }
+      
+      // Delete old version if exists
+      if (indexInfo.exists && indexInfo.documentId) {
+        await fileSearchService.deleteDocument(indexInfo.documentId);
+      }
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[GUIDA] Piattaforma Cliente`,
+        storeId: clientStore.id,
+        sourceType: 'client_guide',
+        sourceId: guideSourceId,
+        userId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Client guide synced for: ${clientId}`);
+        syncProgressEmitter.emitProgress({
+          type: 'complete',
+          category: 'client_guide',
+          total: 1,
+          current: 1,
+          consultantId: clientId,
+          clientId: clientId,
+          storeType: 'client',
+        });
+      }
+
+      return uploadResult.success 
+        ? { success: true, updated: indexInfo.exists }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client guide:', error);
+      syncProgressEmitter.emitError(clientId, 'client_guide', error.message);
+      return { success: false, error: error.message };
     }
   }
 
