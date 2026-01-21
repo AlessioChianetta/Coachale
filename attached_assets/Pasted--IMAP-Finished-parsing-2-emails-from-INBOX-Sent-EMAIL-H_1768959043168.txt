@@ -1,0 +1,37 @@
+[IMAP] Finished parsing 2 emails from "INBOX.Sent"
+[EMAIL-HUB AUTO] Fetched 2 emails from INBOX.Sent (sent)
+[IMAP] Opened folder "INBOX.Drafts": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from INBOX.Drafts (drafts)
+[IMAP] Opened folder "[Gmail]/Posta inviata": server reports 34 total messages
+[IMAP] Opened folder "INBOX.Trash": server reports 6 total messages
+[IMAP] Finished parsing 34 emails from "[Gmail]/Posta inviata"
+[EMAIL-HUB AUTO] Fetched 34 emails from [Gmail]/Posta inviata (sent)
+[IMAP] Finished parsing 6 emails from "INBOX.Trash"
+[EMAIL-HUB AUTO] Fetched 6 emails from INBOX.Trash (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for f5eaa99d-efc3-46d0-84fc-80ada80ed89c, last UID: 29
+[IMAP IDLE] Started IDLE for account f5eaa99d-efc3-46d0-84fc-80ada80ed89c
+[EMAIL-HUB AUTO] IDLE started for no-reply@alessiochianetta.it
+1:30:18 AM [express] GET /api/client-data/datasets/8/semantic-mappings 304 in 514ms :: {"success":tr…
+1:30:18 AM [express] GET /api/client-data/datasets/8/preview 304 in 714ms :: {"success":true,"data":…
+[CLIENT-DATA] Generating AI mapping suggestions for dataset 8
+[AI-MAPPER] Analyzing 32 columns for dataset 8
+[CLIENT-DATA] Running reconciliation tests for dataset 8
+[IMAP] Opened folder "[Gmail]/Bozze": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Bozze (drafts)
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 38
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+[CACHE-MANAGER] Lock acquired (new) for hash 88e433fb1cc1...
+[QUERY-EXECUTOR] Query execution error: function sum(text) does not exist
+[CACHE-MANAGER] Transitioned to 'error' for hash 88e433fb1cc1...
+[CACHE-MANAGER] Lock acquired (new) for hash 65258608cf8c...
+[QUERY-EXECUTOR] Query execution error: function sum(text) does not exist
+[CACHE-MANAGER] Transitioned to 'error' for hash 65258608cf8c...
+[CACHE-MANAGER] Lock acquired (new) for hash a7b9c0398101...
+[QUERY-EXECUTOR] Query execution error: function sum(text) does not exist
+[CACHE-MANAGER] Transitioned to 'error' for hash a7b9c0398101...
+[RECONCILIATION] Dataset 8: 3/25 passed, status: critical
