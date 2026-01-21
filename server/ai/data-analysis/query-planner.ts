@@ -609,8 +609,10 @@ export function detectGroupByIntent(
       const rawTerm = match[searchGroup];
       if (rawTerm && rawTerm.length > 2) {
         searchTerm = normalizeSearchTerm(rawTerm);
-        categoryFilter = categoryHint || SEARCH_TERM_TO_CATEGORY[rawTerm.toLowerCase()] || null;
-        console.log(`[GROUPBY-VALIDATION] Extracted searchTerm="${searchTerm}", categoryFilter="${categoryFilter}"`);
+        // FIX 1: Prefer CATEGORY_TERMS.categoryValue (specific like 'Pizza') over SEARCH_TERM_TO_CATEGORY (generic like 'Food')
+        const categoryTermDef = CATEGORY_TERMS[rawTerm.toLowerCase()];
+        categoryFilter = categoryTermDef?.categoryValue || categoryHint || SEARCH_TERM_TO_CATEGORY[rawTerm.toLowerCase()] || null;
+        console.log(`[GROUPBY-VALIDATION] Extracted searchTerm="${searchTerm}", categoryFilter="${categoryFilter}" (from CATEGORY_TERMS: ${!!categoryTermDef})`);
       }
       break;
     }
@@ -774,8 +776,14 @@ export function validateAndCorrectGroupBy(
   }
 
   // 3. INJECT/OVERRIDE ILIKE FILTER: item_name ILIKE '%pizza%' (if searchTerm is specific)
-  // FORCE replace any existing filter on productColumn with ILIKE
-  if (groupByIntent.searchTerm && groupByIntent.productColumn) {
+  // FIX 4: SKIP ILIKE when we have a precise category filter from CATEGORY_TERMS
+  // If categoryFilter came from CATEGORY_TERMS (e.g., 'Pizza'), the category filter is sufficient
+  const searchTermLower = groupByIntent.searchTerm?.toLowerCase() || '';
+  const hasPreciseCategoryFilter = CATEGORY_TERMS[searchTermLower]?.categoryValue === groupByIntent.categoryFilter;
+  
+  if (hasPreciseCategoryFilter) {
+    console.log(`[FILTER-INJECTION] SKIP ILIKE: Using precise category filter '${groupByIntent.categoryFilter}' instead of ILIKE '%${groupByIntent.searchTerm}%'`);
+  } else if (groupByIntent.searchTerm && groupByIntent.productColumn) {
     const genericTerms = ['piatto', 'prodotto', 'articolo', 'piatti', 'prodotti', 'articoli', ''];
     if (!genericTerms.includes(groupByIntent.searchTerm)) {
       const existingProdFilter = filters[groupByIntent.productColumn];
@@ -1632,7 +1640,12 @@ export async function executeToolCall(
         let aggregations = toolCall.args.aggregations;
         let useRawSqlExpression: string | null = null;
         
-        if (!aggregations && toolCall.args.metricName) {
+        // FIX 3: Resolve metricName even when aggregations exist (for orderBy usage)
+        // If metricName is provided AND it's used for orderBy, we need to resolve it as additional column
+        const metricUsedForOrderBy = toolCall.args.metricName && 
+          toolCall.args.orderBy?.column === toolCall.args.metricName;
+        
+        if (toolCall.args.metricName && (!aggregations || metricUsedForOrderBy)) {
           // Step 1: Pre-validate that required columns exist for this metric
           const preValidation = await validateMetricForDataset(toolCall.args.metricName, toolCall.args.datasetId);
           if (!preValidation.valid) {
@@ -1647,6 +1660,9 @@ export async function executeToolCall(
           if (resolveResult.valid) {
             useRawSqlExpression = resolveResult.sql;
             console.log(`[AGGREGATE-GROUP] Using resolved SQL expression for "${toolCall.args.metricName}": ${useRawSqlExpression}`);
+            if (metricUsedForOrderBy && aggregations) {
+              console.log(`[AGGREGATE-GROUP] FIX 3: Metric "${toolCall.args.metricName}" resolved for orderBy alongside existing aggregations`);
+            }
           } else {
             // STRICT: No fallback - return error if metric cannot be resolved
             const errorMsg = resolveResult.error || `Metrica "${toolCall.args.metricName}" non risolvibile per questo dataset.`;
@@ -1722,9 +1738,9 @@ export async function executeToolCall(
             
             // ====== RESOLVE SEMANTIC CATEGORY FILTER ======
             // If _semanticCategoryFilter is set, resolve to physical column
+            // FIX 2: HARD OVERRIDE - remove any conflicting category filters before applying semantic one
             // DESIGN: We apply categoryValue to the 'category' logical role ONLY
             // because category values like "Pizza" are category-level, not subcategory-level
-            // For subcategory filtering, we'd need subcategory-specific terms
             if (toolCall.args._semanticCategoryFilter) {
               const { value } = toolCall.args._semanticCategoryFilter;
               const categoryTerm = toolCall.args._detectedCategoryTerm || toolCall.args._rankingCategoryFilter;
@@ -1734,8 +1750,23 @@ export async function executeToolCall(
                 .find(([_, logical]) => logical === 'category')?.[0];
               
               if (categoryPhysical && datasetColumns.includes(categoryPhysical)) {
-                // Found category column, apply filter with exact match
                 if (!toolCall.args.filters) toolCall.args.filters = {};
+                
+                // FIX 2: HARD OVERRIDE - Remove any existing filter on this column with different value
+                const existingFilter = toolCall.args.filters[categoryPhysical];
+                if (existingFilter && existingFilter.value !== value) {
+                  console.log(`[SEMANTIC-FILTER] HARD OVERRIDE: Removing existing filter ${categoryPhysical}='${existingFilter.value}' → '${value}'`);
+                }
+                
+                // Also remove filters on common category column names that might conflict
+                const categoryColumnNames = ['category', 'categoria', 'type', 'tipo', 'group', 'gruppo'];
+                for (const colName of categoryColumnNames) {
+                  if (colName !== categoryPhysical && toolCall.args.filters[colName]) {
+                    console.log(`[SEMANTIC-FILTER] HARD OVERRIDE: Removing conflicting filter on "${colName}"`);
+                    delete toolCall.args.filters[colName];
+                  }
+                }
+                
                 toolCall.args.filters[categoryPhysical] = { operator: '=', value: value };
                 console.log(`[SEMANTIC-FILTER] RESOLVED: category → "${categoryPhysical}" = '${value}'`);
               } else {
@@ -1745,6 +1776,13 @@ export async function executeToolCall(
                 
                 if (subcategoryPhysical && datasetColumns.includes(subcategoryPhysical)) {
                   if (!toolCall.args.filters) toolCall.args.filters = {};
+                  
+                  // FIX 2: Also apply hard override for subcategory
+                  const existingFilter = toolCall.args.filters[subcategoryPhysical];
+                  if (existingFilter && existingFilter.value !== value) {
+                    console.log(`[SEMANTIC-FILTER] HARD OVERRIDE: Removing existing filter ${subcategoryPhysical}='${existingFilter.value}' → '${value}'`);
+                  }
+                  
                   toolCall.args.filters[subcategoryPhysical] = { operator: '=', value: value };
                   console.log(`[SEMANTIC-FILTER] RESOLVED via subcategory: "${subcategoryPhysical}" = '${value}'`);
                 } else {

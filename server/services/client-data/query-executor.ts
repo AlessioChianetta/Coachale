@@ -737,10 +737,16 @@ export async function aggregateGroup(
     effectiveGroupBy = groupByColumns.map(c => `"${c}"`);
   }
   // Add aggregation expressions to SELECT
+  // FIX: Support BOTH rawMetricSql AND aggregations in the same query
+  // This enables orderBy on a metric while also having other aggregations
   if (rawMetricSql) {
     // Use the raw SQL expression from the semantic layer (e.g., SUM(unit_price * quantity))
     selectParts.push(`${rawMetricSql.sql} AS "${rawMetricSql.alias}"`);
-  } else {
+    console.log(`[AGGREGATE-GROUP] Added rawMetricSql to SELECT: ${rawMetricSql.sql} AS "${rawMetricSql.alias}"`);
+  }
+  
+  // Also add any explicit aggregations (can coexist with rawMetricSql)
+  if (normalizedAggregations.length > 0) {
     const validFunctions = ["SUM", "AVG", "COUNT", "MIN", "MAX"];
 
     for (const agg of normalizedAggregations) {
