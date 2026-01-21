@@ -21,6 +21,7 @@ router.get("/proactive-leads", authenticateToken, requireRole("consultant"), asy
   try {
     const consultantId = req.user!.id;
     const status = req.query.status as string | undefined;
+    const source = req.query.source as string | undefined;
     
     // Validate status if provided
     if (status) {
@@ -33,7 +34,12 @@ router.get("/proactive-leads", authenticateToken, requireRole("consultant"), asy
       }
     }
     
-    const leads = await storage.getAllProactiveLeads(consultantId, status);
+    let leads = await storage.getAllProactiveLeads(consultantId, status);
+    
+    // Filter by source if provided
+    if (source) {
+      leads = leads.filter((lead: any) => lead.source === source);
+    }
     
     res.json({
       success: true,

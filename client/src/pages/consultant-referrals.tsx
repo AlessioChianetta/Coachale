@@ -48,6 +48,10 @@ import {
   UserPlus,
   Search,
   Loader2,
+  FileText,
+  Copy,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -96,6 +100,22 @@ const STATUS_CONFIG: Record<ReferralStatus, { label: string; color: string; bgCo
   closed_lost: { label: "Chiuso Perso", color: "text-red-700", bgColor: "bg-red-100", icon: XCircle },
 };
 
+interface ProactiveLead {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  email?: string;
+  status: string;
+  source: string;
+  createdAt: string;
+  leadInfo?: {
+    email?: string;
+    obiettivi?: string;
+    desideri?: string;
+  };
+}
+
 export default function ConsultantReferralsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -104,6 +124,10 @@ export default function ConsultantReferralsPage() {
   const queryClient = useQueryClient();
   const user = getAuthUser();
 
+  // Switch tra Referral e Optin
+  const [viewMode, setViewMode] = useState<"referral" | "optin">("referral");
+  const [linkCopied, setLinkCopied] = useState(false);
+  
   const [activeTab, setActiveTab] = useState<"all" | ReferralStatus>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReferral, setSelectedReferral] = useState<Referral | null>(null);
@@ -161,6 +185,45 @@ export default function ConsultantReferralsPage() {
       });
     },
   });
+
+  // Query per lead Optin
+  const { data: optinLeadsData, isLoading: optinLoading } = useQuery<{ leads: ProactiveLead[] }>({
+    queryKey: ["/api/proactive-leads", "optin"],
+    queryFn: async () => {
+      const response = await fetch("/api/proactive-leads?source=optin", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch optin leads");
+      return response.json();
+    },
+    enabled: viewMode === "optin",
+  });
+
+  const optinLeads = optinLeadsData?.leads || [];
+
+  // Helper per copiare il link optin
+  const getOptinLink = () => {
+    if (!user?.id) return "";
+    return `${window.location.origin}/optin/${user.id}`;
+  };
+
+  const copyOptinLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getOptinLink());
+      setLinkCopied(true);
+      toast({
+        title: "Link copiato!",
+        description: "Il link optin è stato copiato negli appunti",
+      });
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Errore",
+        description: "Impossibile copiare il link",
+        variant: "destructive",
+      });
+    }
+  };
 
   const stats = statsData?.stats || {
     total: 0,
@@ -246,18 +309,63 @@ export default function ConsultantReferralsPage() {
 
         <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
           <div className="mb-4 sm:mb-6 md:mb-8">
-            <div className="bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-400 via-purple-400 to-pink-400"></div>
+            <div className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl relative overflow-hidden ${
+              viewMode === "referral" 
+                ? "bg-slate-900" 
+                : "bg-gradient-to-br from-teal-800 to-emerald-900"
+            }`}>
+              <div className={`absolute inset-x-0 top-0 h-1 ${
+                viewMode === "referral"
+                  ? "bg-gradient-to-r from-fuchsia-400 via-purple-400 to-pink-400"
+                  : "bg-gradient-to-r from-teal-400 via-emerald-400 to-green-400"
+              }`}></div>
               <div className="flex items-center justify-between">
                 <div className="space-y-1 sm:space-y-2">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-2 sm:p-3 bg-gradient-to-br from-fuchsia-500 to-purple-500 rounded-xl sm:rounded-2xl">
-                      <Gift className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+                    <div className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl ${
+                      viewMode === "referral"
+                        ? "bg-gradient-to-br from-fuchsia-500 to-purple-500"
+                        : "bg-gradient-to-br from-teal-500 to-emerald-500"
+                    }`}>
+                      {viewMode === "referral" ? (
+                        <Gift className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+                      ) : (
+                        <FileText className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+                      )}
                     </div>
                     <div>
-                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">Gestione Referral</h1>
+                      <div className="flex items-center gap-3">
+                        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">
+                          {viewMode === "referral" ? "Gestione Referral" : "Lead Optin"}
+                        </h1>
+                        <div className="hidden sm:flex bg-white/10 rounded-full p-1">
+                          <button
+                            onClick={() => setViewMode("referral")}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                              viewMode === "referral"
+                                ? "bg-white text-slate-900"
+                                : "text-white/70 hover:text-white"
+                            }`}
+                          >
+                            Referral
+                          </button>
+                          <button
+                            onClick={() => setViewMode("optin")}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                              viewMode === "optin"
+                                ? "bg-white text-slate-900"
+                                : "text-white/70 hover:text-white"
+                            }`}
+                          >
+                            Optin
+                          </button>
+                        </div>
+                      </div>
                       <p className="text-slate-400 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">
-                        Gestisci tutti i referral dai tuoi clienti
+                        {viewMode === "referral" 
+                          ? "Gestisci tutti i referral dai tuoi clienti"
+                          : "Lead che si sono iscritti direttamente dal tuo link optin"
+                        }
                       </p>
                     </div>
                   </div>
@@ -284,9 +392,33 @@ export default function ConsultantReferralsPage() {
                   </Button>
                 </div>
               </div>
+              
+              {/* Link Optin Box */}
+              {viewMode === "optin" && (
+                <div className="mt-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
+                    <ExternalLink className="w-4 h-4 text-teal-300 flex-shrink-0" />
+                    <span className="text-white/80 flex-shrink-0">Link Optin:</span>
+                    <code className="bg-white/20 px-2 py-1 rounded text-xs truncate max-w-[300px]">
+                      {getOptinLink()}
+                    </code>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={copyOptinLink}
+                    className="text-white hover:bg-white/20"
+                  >
+                    {linkCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                    {linkCopied ? "Copiato!" : "Copia Link"}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
+          {viewMode === "referral" ? (
+          <>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
             <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
               <CardContent className="p-3 sm:p-4 md:p-6">
@@ -536,6 +668,150 @@ export default function ConsultantReferralsPage() {
               )}
             </CardContent>
           </Card>
+          </>
+          ) : (
+            /* OPTIN VIEW */
+            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-slate-800 mb-1">Lead Optin</CardTitle>
+                    <p className="text-sm text-slate-600">
+                      Lead che si sono iscritti direttamente dal tuo link optin ({optinLeads.length} totali)
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1 sm:flex-none sm:w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <Input
+                        placeholder="Cerca lead..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 bg-white/80 border-slate-200 focus:border-teal-400 focus:ring-teal-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-4">
+                {optinLoading ? (
+                  <div className="text-center py-16">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-teal-500" />
+                    <p className="mt-4 text-slate-600">Caricamento lead optin...</p>
+                  </div>
+                ) : optinLeads.length === 0 ? (
+                  <div className="text-center py-16 px-4">
+                    <div className="w-20 h-20 bg-teal-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                      <FileText size={40} className="text-teal-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-800 mb-2">Nessun lead optin</h3>
+                    <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                      Condividi il tuo link optin per ricevere contatti diretti
+                    </p>
+                    <Button 
+                      onClick={copyOptinLink}
+                      className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copia Link Optin
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[200px]">Nome</TableHead>
+                          <TableHead className="min-w-[180px]">Contatti</TableHead>
+                          <TableHead className="min-w-[130px]">Stato</TableHead>
+                          <TableHead className="min-w-[120px]">Data</TableHead>
+                          <TableHead className="min-w-[100px] text-right">Azioni</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {optinLeads
+                          .filter(lead => {
+                            if (!searchTerm) return true;
+                            const term = searchTerm.toLowerCase();
+                            return (
+                              lead.firstName?.toLowerCase().includes(term) ||
+                              lead.lastName?.toLowerCase().includes(term) ||
+                              lead.email?.toLowerCase().includes(term) ||
+                              lead.phoneNumber?.includes(term)
+                            );
+                          })
+                          .map((lead) => (
+                          <TableRow key={lead.id} className="hover:bg-slate-50">
+                            <TableCell>
+                              <div className="space-y-1">
+                                <p className="font-medium text-slate-800">
+                                  {lead.firstName} {lead.lastName}
+                                </p>
+                                {lead.leadInfo?.obiettivi && (
+                                  <p className="text-xs text-slate-500 truncate max-w-[200px]">
+                                    {lead.leadInfo.obiettivi}
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {(lead.email || lead.leadInfo?.email) && (
+                                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                                    <Mail className="w-3 h-3" />
+                                    {lead.email || lead.leadInfo?.email}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 text-xs text-slate-500">
+                                  <Phone className="w-3 h-3" />
+                                  {lead.phoneNumber}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`${
+                                lead.status === 'converted' ? 'bg-emerald-100 text-emerald-700' :
+                                lead.status === 'responded' ? 'bg-blue-100 text-blue-700' :
+                                lead.status === 'contacted' ? 'bg-purple-100 text-purple-700' :
+                                'bg-amber-100 text-amber-700'
+                              } border-0`}>
+                                {lead.status === 'converted' ? 'Convertito' :
+                                 lead.status === 'responded' ? 'Ha risposto' :
+                                 lead.status === 'contacted' ? 'Contattato' :
+                                 'In attesa'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-slate-600">
+                                {lead.createdAt
+                                  ? format(new Date(lead.createdAt), "d MMM yyyy", { locale: it })
+                                  : "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  asChild
+                                  className="border-slate-200 hover:bg-slate-50"
+                                >
+                                  <a href={`tel:${lead.phoneNumber}`}>
+                                    <Phone className="w-4 h-4" />
+                                  </a>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

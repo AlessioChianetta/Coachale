@@ -859,4 +859,196 @@ router.post("/public/referral/:code/submit", async (req, res) => {
   }
 });
 
+// ===========================================
+// OPTIN LANDING PAGE (PUBLIC)
+// ===========================================
+
+// GET /api/public/optin/:consultantId - Get optin landing page config
+router.get("/public/optin/:consultantId", async (req, res) => {
+  try {
+    const { consultantId } = req.params;
+
+    const config = await db.query.optinLandingConfig.findFirst({
+      where: and(
+        eq(optinLandingConfig.consultantId, consultantId),
+        eq(optinLandingConfig.isActive, true)
+      ),
+    });
+
+    if (!config) {
+      return res.status(404).json({ success: false, error: "Optin landing page not found or inactive" });
+    }
+
+    const consultant = await db.query.users.findFirst({
+      where: eq(users.id, consultantId),
+      columns: { 
+        id: true, 
+        firstName: true, 
+        lastName: true, 
+        avatar: true,
+        email: true,
+      },
+    });
+
+    if (!consultant) {
+      return res.status(404).json({ success: false, error: "Consultant not found" });
+    }
+
+    res.json({
+      success: true,
+      config: {
+        headline: config.headline,
+        subheadline: config.subheadline,
+        description: config.description,
+        ctaText: config.ctaText,
+        primaryColor: config.primaryColor,
+        backgroundImage: config.backgroundImage,
+        showTestimonials: config.showTestimonials,
+        testimonials: config.testimonials,
+        thankYouMessage: config.thankYouMessage,
+        showAiChat: config.showAiChat,
+        welcomeMessage: config.welcomeMessage,
+        showQualificationFields: config.showQualificationFields,
+        qualificationConfig: config.qualificationConfig,
+      },
+      consultant: {
+        id: consultant.id,
+        name: `${consultant.firstName} ${consultant.lastName}`,
+        avatar: consultant.avatar,
+      },
+    });
+  } catch (error: any) {
+    console.error("[OPTIN] Error fetching public landing:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/public/optin/:consultantId/submit - Optin form submission (creates proactive lead with source='optin')
+router.post("/public/optin/:consultantId/submit", async (req, res) => {
+  try {
+    const { consultantId } = req.params;
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      notes,
+      qualificationRole,
+      qualificationCompanyType,
+      qualificationSector,
+      qualificationEmployeeCount,
+      qualificationAnnualRevenue,
+      qualificationCurrentCompany,
+      qualificationCurrentPosition,
+      qualificationYearsExperience,
+      qualificationFieldOfStudy,
+      qualificationUniversity,
+      qualificationMotivation,
+      qualificationBiggestProblem,
+      qualificationGoal12Months,
+      qualificationCurrentBlocker,
+    } = req.body;
+
+    if (!firstName || !email || !phone) {
+      return res.status(400).json({ success: false, error: "Nome, email e telefono sono obbligatori" });
+    }
+
+    // Verify consultant exists
+    const consultant = await db.query.users.findFirst({
+      where: eq(users.id, consultantId),
+    });
+
+    if (!consultant) {
+      return res.status(404).json({ success: false, error: "Consulente non trovato" });
+    }
+
+    // Get optin config for agent and campaign
+    const optinConfig = await db.query.optinLandingConfig.findFirst({
+      where: eq(optinLandingConfig.consultantId, consultantId),
+    });
+
+    // Check if lead with same phone already exists for this consultant
+    const existingLead = await db.query.proactiveLeads.findFirst({
+      where: and(
+        eq(proactiveLeads.consultantId, consultantId),
+        eq(proactiveLeads.phoneNumber, phone)
+      ),
+    });
+
+    if (existingLead) {
+      return res.status(409).json({ success: false, error: "Questo numero di telefono è già registrato" });
+    }
+
+    const agentConfigId = optinConfig?.agentConfigId;
+    const campaignId = optinConfig?.defaultCampaignId;
+
+    if (!agentConfigId) {
+      // Create lead without agent, just store in DB
+      console.log("[OPTIN] No agent configured, storing lead without WhatsApp agent");
+    }
+
+    // Get campaign snapshot if available
+    let campaignSnapshot = null;
+    if (campaignId) {
+      const campaign = await db.query.marketingCampaigns.findFirst({
+        where: eq(sql`id`, campaignId),
+      });
+      if (campaign) {
+        campaignSnapshot = {
+          name: campaign.name,
+          goal: campaign.goal,
+          obiettivi: campaign.obiettivi,
+          desideri: campaign.desideri,
+          uncino: campaign.uncino,
+          statoIdeale: campaign.statoIdeale,
+        };
+      }
+    }
+
+    // Build qualification notes
+    const qualificationNotes = [
+      qualificationRole && `Ruolo: ${qualificationRole}`,
+      qualificationCompanyType && `Tipo azienda: ${qualificationCompanyType}`,
+      qualificationSector && `Settore: ${qualificationSector}`,
+      qualificationEmployeeCount && `Dipendenti: ${qualificationEmployeeCount}`,
+      qualificationMotivation && `Motivazione: ${qualificationMotivation}`,
+      qualificationBiggestProblem && `Problema principale: ${qualificationBiggestProblem}`,
+      qualificationGoal12Months && `Obiettivo 12 mesi: ${qualificationGoal12Months}`,
+      notes && `Note: ${notes}`,
+    ].filter(Boolean).join(". ");
+
+    // Create proactive lead with source='optin'
+    const [lead] = await db.insert(proactiveLeads).values({
+      consultantId,
+      agentConfigId: agentConfigId || null,
+      campaignId: campaignId || null,
+      campaignSnapshot,
+      firstName,
+      lastName: lastName || "",
+      phoneNumber: phone,
+      email: email.toLowerCase(),
+      leadCategory: "tiepido", // Optin leads are typically warm leads
+      source: "optin", // This is the key field!
+      status: "pending",
+      contactSchedule: new Date(),
+      leadInfo: {
+        obiettivi: qualificationGoal12Months || "",
+        desideri: qualificationMotivation || "",
+        email: email.toLowerCase(),
+      },
+    }).returning();
+
+    console.log(`[OPTIN] New lead created: ${lead.id} for consultant ${consultantId} with source=optin`);
+
+    res.json({
+      success: true,
+      message: optinConfig?.thankYouMessage || "Grazie! Ti contatteremo presto.",
+      leadId: lead.id,
+    });
+  } catch (error: any) {
+    console.error("[OPTIN] Error submitting form:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

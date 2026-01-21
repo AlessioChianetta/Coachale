@@ -3506,6 +3506,9 @@ export const proactiveLeads = pgTable("proactive_leads", {
   // Email diretta del lead (top-level per accesso rapido, fallback a leadInfo.email)
   email: text("email"),
   
+  // Source tracking - distingue la provenienza del lead
+  source: text("source").$type<"manual" | "import" | "referral" | "optin" | "webhook" | "whatsapp">().default("manual"),
+  
   // Email di Benvenuto
   welcomeEmailEnabled: boolean("welcome_email_enabled").default(true),
   welcomeEmailSent: boolean("welcome_email_sent").default(false),
