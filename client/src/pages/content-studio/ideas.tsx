@@ -241,6 +241,7 @@ export default function ContentStudioIdeas() {
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
   const [copyType, setCopyType] = useState<"short" | "long">("short");
   const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
+  const [isGeneratingNicheTarget, setIsGeneratingNicheTarget] = useState(false);
   const [showLevelsSuggestionDialog, setShowLevelsSuggestionDialog] = useState(false);
   const [levelsSuggestion, setLevelsSuggestion] = useState<{
     awarenessLevel: string;
@@ -712,6 +713,33 @@ export default function ContentStudioIdeas() {
     setLocation(`/consultant/content-studio/posts?postId=${postId}`);
   };
 
+  const handleGenerateNicheTarget = async () => {
+    if (!useBrandVoice || Object.keys(brandVoiceData).length === 0) {
+      toast({ title: "Configura prima Brand Voice", variant: "destructive" });
+      return;
+    }
+    setIsGeneratingNicheTarget(true);
+    try {
+      const response = await fetch("/api/content/ai/suggest-niche-target", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ brandVoiceData }),
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        if (data.data.niche) setTopic(data.data.niche);
+        if (data.data.targetAudience) setTargetAudience(data.data.targetAudience);
+        toast({ title: "Nicchia e Target generati!", description: "Puoi modificarli se necessario" });
+      } else {
+        throw new Error(data.error || "Errore nella generazione");
+      }
+    } catch (error: any) {
+      toast({ title: "Errore nella generazione", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingNicheTarget(false);
+    }
+  };
+
   const handleGenerateIdeas = async () => {
     // Validazione campi obbligatori
     const hasBrandVoice = useBrandVoice && Object.keys(brandVoiceData).length > 0;
@@ -896,18 +924,33 @@ export default function ContentStudioIdeas() {
                   <div className="overflow-hidden">
                   <CardContent className="pt-4 space-y-5">
                     {/* Nicchia e Pubblico Target - Campi obbligatori */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Nicchia / Argomento *</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Nicchia e Pubblico Target *</Label>
+                        {useBrandVoice && Object.keys(brandVoiceData).length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGenerateNicheTarget}
+                            disabled={isGeneratingNicheTarget}
+                            className="h-8 text-xs gap-1.5 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800 hover:from-purple-100 hover:to-pink-100"
+                          >
+                            {isGeneratingNicheTarget ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Wand2 className="h-3 w-3" />
+                            )}
+                            Genera con AI
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
                           placeholder="es. Finanza personale, Fitness, Marketing..."
                           value={topic}
                           onChange={(e) => setTopic(e.target.value)}
                           className="h-10"
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Pubblico Target *</Label>
                         <Input
                           placeholder="es. Imprenditori 35-50, Mamme lavoratrici..."
                           value={targetAudience}

@@ -1894,6 +1894,89 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
   }
 });
 
+// Suggest niche and target audience based on Brand Voice
+router.post("/ai/suggest-niche-target", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { brandVoiceData } = req.body;
+    
+    if (!brandVoiceData || Object.keys(brandVoiceData).length === 0) {
+      return res.status(400).json({ success: false, error: "Brand Voice data richiesto" });
+    }
+    
+    const { client, metadata } = await getAIProvider(consultantId, "content-suggest-niche");
+    const { model } = getModelWithThinking(metadata?.name);
+    
+    // Build brand voice context
+    const parts = [];
+    if (brandVoiceData.consultantDisplayName) parts.push(`Consulente: ${brandVoiceData.consultantDisplayName}`);
+    if (brandVoiceData.businessName) parts.push(`Business: ${brandVoiceData.businessName}`);
+    if (brandVoiceData.businessDescription) parts.push(`Descrizione Business: ${brandVoiceData.businessDescription}`);
+    if (brandVoiceData.consultantBio) parts.push(`Bio Consulente: ${brandVoiceData.consultantBio}`);
+    if (brandVoiceData.vision) parts.push(`Vision: ${brandVoiceData.vision}`);
+    if (brandVoiceData.mission) parts.push(`Mission: ${brandVoiceData.mission}`);
+    if (brandVoiceData.values?.length) parts.push(`Valori: ${brandVoiceData.values.join(", ")}`);
+    if (brandVoiceData.usp) parts.push(`USP: ${brandVoiceData.usp}`);
+    if (brandVoiceData.whoWeHelp) parts.push(`Chi Aiutiamo: ${brandVoiceData.whoWeHelp}`);
+    if (brandVoiceData.whatWeDo) parts.push(`Cosa Facciamo: ${brandVoiceData.whatWeDo}`);
+    if (brandVoiceData.howWeDoIt) parts.push(`Come lo Facciamo: ${brandVoiceData.howWeDoIt}`);
+    if (brandVoiceData.servicesOffered?.length) {
+      const services = brandVoiceData.servicesOffered.map((s: any) => s.name).join(", ");
+      parts.push(`Servizi Offerti: ${services}`);
+    }
+    
+    const brandVoiceContext = parts.join("\n");
+    
+    const prompt = `Sei un esperto di marketing e posizionamento. Analizza i dati del Brand Voice forniti e suggerisci la nicchia di mercato ottimale e il pubblico target ideale.
+
+=== BRAND VOICE & IDENTITÀ ===
+${brandVoiceContext}
+
+=== ISTRUZIONI ===
+1. Analizza attentamente l'identità, i servizi e il posizionamento del brand
+2. Identifica la nicchia di mercato più specifica e profittevole
+3. Definisci il pubblico target ideale con caratteristiche demografiche e psicografiche
+4. Sii SPECIFICO e CONCRETO, evita risposte generiche
+
+Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
+{"niche": "<nicchia specifica in 3-8 parole, es: 'Finanza personale per professionisti under 40'>", "targetAudience": "<descrizione target in 5-15 parole, es: 'Professionisti 30-45 anni con reddito medio-alto che vogliono investire'>"}`;
+
+    const result = await client.generateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      },
+    });
+    
+    const responseText = result.response.text();
+    console.log("[SUGGEST-NICHE-TARGET] Model:", model);
+    console.log("[SUGGEST-NICHE-TARGET] Response:", responseText);
+    
+    // Remove markdown code blocks if present
+    let cleanedResponse = responseText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+    
+    // Try to find and parse JSON
+    const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("[SUGGEST-NICHE-TARGET] No JSON found in response");
+      return res.status(500).json({ success: false, error: "AI non ha fornito una risposta strutturata" });
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    console.log("[SUGGEST-NICHE-TARGET] Parsed result:", parsed);
+    
+    return res.json({ success: true, data: parsed });
+  } catch (error: any) {
+    console.error("Error suggesting niche/target:", error);
+    return res.status(500).json({ success: false, error: error.message || "Errore nella generazione" });
+  }
+});
+
 // ============================================================
 // IMAGE GENERATION (Gemini Imagen 3)
 // ============================================================
