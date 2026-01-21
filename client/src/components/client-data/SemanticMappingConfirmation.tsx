@@ -238,10 +238,10 @@ export function SemanticMappingConfirmation({
   const aiSuggestions = aiData?.data;
 
   useEffect(() => {
-    if (pendingMappings.length > 0 && !showAISuggestions) {
+    if ((pendingMappings.length > 0 || mappingResult?.analyticsEnabled) && !showAISuggestions) {
       setShowAISuggestions(true);
     }
-  }, [pendingMappings.length]);
+  }, [pendingMappings.length, mappingResult?.analyticsEnabled]);
 
   const getAISuggestionForColumn = (physicalColumn: string): ColumnAnalysis | undefined => {
     return aiSuggestions?.suggestions.find(s => s.physicalColumn === physicalColumn);
@@ -484,6 +484,33 @@ export function SemanticMappingConfirmation({
                     </Button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {aiSuggestions?.unmappedColumns && aiSuggestions.unmappedColumns.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <h4 className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
+                  <Columns className="h-4 w-4" />
+                  Colonne Non Mappate ({aiSuggestions.unmappedColumns.length})
+                </h4>
+                <p className="text-xs text-gray-500 mb-2">
+                  Queste colonne esistono nel dataset ma non sono utilizzate per l'analisi
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {aiSuggestions.unmappedColumns.slice(0, 20).map((col) => (
+                    <span 
+                      key={col}
+                      className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded border"
+                    >
+                      {col}
+                    </span>
+                  ))}
+                  {aiSuggestions.unmappedColumns.length > 20 && (
+                    <span className="text-xs text-gray-400 py-1">
+                      +{aiSuggestions.unmappedColumns.length - 20} altre
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>
