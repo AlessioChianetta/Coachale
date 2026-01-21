@@ -1074,8 +1074,22 @@ export default function ContentStudioIdeas() {
                       <h3 className="font-semibold text-foreground">Opzioni Avanzate</h3>
                       <p className="text-xs text-muted-foreground">Livelli di consapevolezza e sofisticazione</p>
                     </div>
+                    {/* Visual indicators for selected levels */}
+                    {!expandedSections.has("advanced") && (
+                      <div className="flex gap-2 ml-2">
+                        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                          {AWARENESS_LEVELS.find(l => l.value === awarenessLevel)?.label || awarenessLevel}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800">
+                          Livello {sophisticationLevel.replace("level_", "")}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("advanced") ? "rotate-180" : ""}`} />
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("advanced") ? "rotate-180" : ""}`} />
+                  </div>
                 </button>
                 
                 <div
