@@ -80,7 +80,6 @@ import {
   Wand2,
   Building2,
   Download,
-  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
