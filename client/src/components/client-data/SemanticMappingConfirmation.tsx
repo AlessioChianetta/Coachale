@@ -328,7 +328,7 @@ export function SemanticMappingConfirmation({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-[400px]">
+          <div className="max-h-[400px] overflow-y-auto pr-2">
             <div className="space-y-3">
               {confirmedMappings.map((mapping) => {
                 const roleInfo = ROLE_FUNCTIONS[mapping.logicalRole];
@@ -365,7 +365,7 @@ export function SemanticMappingConfirmation({
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
           
           {mappingResult.missingRequired && mappingResult.missingRequired.length > 0 && (
             <Alert className="mt-4 bg-amber-50 border-amber-200">
