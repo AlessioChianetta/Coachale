@@ -10,6 +10,12 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -909,57 +915,75 @@ export default function ContentStudioIdeas() {
                       </Button>
                     </div>
 
-                    {/* Awareness Level - Compact Pills */}
+                    {/* Awareness Level - Compact Pills with Tooltips */}
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">Livello di Consapevolezza</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {AWARENESS_LEVELS.map((level) => {
-                          const isSelected = awarenessLevel === level.value;
-                          const colorMap: Record<string, string> = {
-                            red: isSelected ? "bg-red-500 text-white" : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-                            orange: isSelected ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-                            yellow: isSelected ? "bg-yellow-500 text-white" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
-                            blue: isSelected ? "bg-blue-500 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-                            green: isSelected ? "bg-green-500 text-white" : "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
-                          };
-                          return (
-                            <button
-                              key={level.value}
-                              onClick={() => setAwarenessLevel(level.value as any)}
-                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${colorMap[level.color]} ${isSelected ? "shadow-md ring-2 ring-offset-2 ring-offset-background" : "hover:opacity-80"}`}
-                              style={{ ["--tw-ring-color" as any]: isSelected ? `var(--${level.color}-500)` : undefined }}
-                            >
-                              {level.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <TooltipProvider delayDuration={200}>
+                        <div className="flex flex-wrap gap-2">
+                          {AWARENESS_LEVELS.map((level) => {
+                            const isSelected = awarenessLevel === level.value;
+                            const colorMap: Record<string, string> = {
+                              red: isSelected ? "bg-red-500 text-white" : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+                              orange: isSelected ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+                              yellow: isSelected ? "bg-yellow-500 text-white" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+                              blue: isSelected ? "bg-blue-500 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+                              green: isSelected ? "bg-green-500 text-white" : "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+                            };
+                            return (
+                              <Tooltip key={level.value}>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => setAwarenessLevel(level.value as any)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${colorMap[level.color]} ${isSelected ? "shadow-md ring-2 ring-offset-2 ring-offset-background" : "hover:opacity-80"}`}
+                                    style={{ ["--tw-ring-color" as any]: isSelected ? `var(--${level.color}-500)` : undefined }}
+                                  >
+                                    {level.label}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  <p className="font-medium">{level.label}</p>
+                                  <p className="text-muted-foreground text-xs">{level.description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
+                      </TooltipProvider>
                     </div>
 
-                    {/* Sophistication Level - Compact Pills */}
+                    {/* Sophistication Level - Compact Pills with Tooltips */}
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">Sofisticazione Mercato (Schwartz)</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {SOPHISTICATION_LEVELS.map((level) => {
-                          const isSelected = sophisticationLevel === level.value;
-                          const colorMap: Record<string, string> = {
-                            emerald: isSelected ? "bg-emerald-500 text-white" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-                            blue: isSelected ? "bg-blue-500 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-                            purple: isSelected ? "bg-purple-500 text-white" : "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
-                            orange: isSelected ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-                            pink: isSelected ? "bg-pink-500 text-white" : "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300",
-                          };
-                          return (
-                            <button
-                              key={level.value}
-                              onClick={() => setSophisticationLevel(level.value as any)}
-                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${colorMap[level.color]} ${isSelected ? "shadow-md ring-2 ring-offset-2 ring-offset-background" : "hover:opacity-80"}`}
-                            >
-                              {level.label.split(" - ")[0]}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <TooltipProvider delayDuration={200}>
+                        <div className="flex flex-wrap gap-2">
+                          {SOPHISTICATION_LEVELS.map((level) => {
+                            const isSelected = sophisticationLevel === level.value;
+                            const colorMap: Record<string, string> = {
+                              emerald: isSelected ? "bg-emerald-500 text-white" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+                              blue: isSelected ? "bg-blue-500 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+                              purple: isSelected ? "bg-purple-500 text-white" : "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+                              orange: isSelected ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+                              pink: isSelected ? "bg-pink-500 text-white" : "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300",
+                            };
+                            return (
+                              <Tooltip key={level.value}>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => setSophisticationLevel(level.value as any)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${colorMap[level.color]} ${isSelected ? "shadow-md ring-2 ring-offset-2 ring-offset-background" : "hover:opacity-80"}`}
+                                  >
+                                    {level.label.split(" - ")[0]}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  <p className="font-medium">{level.label}</p>
+                                  <p className="text-muted-foreground text-xs">{level.description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
+                      </TooltipProvider>
                     </div>
 
                     {/* Additional Context */}
