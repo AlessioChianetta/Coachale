@@ -5376,7 +5376,6 @@ Non limitarti a stato attuale/ideale. Attingi da:
                     </CollapsibleContent>
                   </Card>
                 </Collapsible>
-              </div>
 
               {/* Import KB Dialog */}
               <Dialog open={nurturingKBImportOpen} onOpenChange={setNurturingKBImportOpen}>
