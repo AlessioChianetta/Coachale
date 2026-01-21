@@ -17,6 +17,7 @@ import { MetricEditor } from "@/components/client-data/MetricEditor";
 import { ReconciliationReport } from "@/components/client-data/ReconciliationReport";
 import { SemanticMappingConfirmation } from "@/components/client-data/SemanticMappingConfirmation";
 import { CustomMappingRules } from "@/components/client-data/CustomMappingRules";
+import { SemanticLayerGuide } from "@/components/client-data/SemanticLayerGuide";
 
 import {
   Database,
@@ -215,6 +216,7 @@ export default function ClientDataAnalysis() {
                 onNewDataset={() => setViewMode("upload")}
                 selectedDatasetId={selectedDataset?.id}
               />
+              <SemanticLayerGuide datasetId={selectedDataset?.id ? parseInt(selectedDataset.id) : undefined} />
               <CustomMappingRules />
             </div>
           )}

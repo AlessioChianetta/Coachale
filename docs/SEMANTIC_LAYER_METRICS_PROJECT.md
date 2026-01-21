@@ -128,20 +128,20 @@ In `ClientDataAnalysis.tsx` → viewMode "list":
 - [x] Creare endpoint GET available-metrics ✅
 
 ### FASE 2: Frontend - Componente Guide
-- [ ] Creare SemanticLayerGuide.tsx
-- [ ] Implementare sezione Ruoli Logici
-- [ ] Implementare sezione Metriche Disponibili
-- [ ] Implementare sezione Qualità Dati
-- [ ] Implementare suggerimenti dinamici
+- [x] Creare SemanticLayerGuide.tsx ✅
+- [x] Implementare sezione Ruoli Logici ✅
+- [x] Implementare sezione Metriche Disponibili ✅
+- [x] Implementare sezione Qualità Dati ✅
+- [x] Implementare suggerimenti dinamici ✅
 
 ### FASE 3: Integrazione
-- [ ] Integrare in ClientDataAnalysis.tsx
+- [x] Integrare in ClientDataAnalysis.tsx ✅
 - [ ] Testare con dataset reale
 - [ ] Verificare metriche funzionano nelle query
 
 ---
 
 ## 🔄 STATO ATTUALE
-**Ultima modifica**: Creato endpoint GET /api/client-data/datasets/:id/available-metrics
-**Fase corrente**: FASE 2A - Creare componente SemanticLayerGuide.tsx
-**Task corrente**: Frontend UI
+**Ultima modifica**: Componente SemanticLayerGuide integrato in ClientDataAnalysis
+**Fase corrente**: FASE 4 - Test e verifica
+**Task corrente**: Testing e review architetto
