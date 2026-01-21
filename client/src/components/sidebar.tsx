@@ -680,7 +680,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 {/* Category Items */}
                 {(isCategoryExpanded || isAlwaysVisible) && (
                   <div className={cn(
-                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5 ml-3 border-l border-slate-200 dark:border-slate-700 pl-2"
+                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5 ml-6 border-l border-slate-200 dark:border-slate-700 pl-2"
                   )}>
                     {category.items.map((item) => {
                       const Icon = item.icon;
