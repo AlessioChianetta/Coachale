@@ -1520,16 +1520,26 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
     
     let kbContent = "";
     if (validatedData.kbDocumentIds && validatedData.kbDocumentIds.length > 0) {
+      // Recupera i documenti dalla Knowledge Base del consulente
       const kbDocs = await db
-        .select({ content: schema.nurturingKnowledgeItems.content })
-        .from(schema.nurturingKnowledgeItems)
+        .select({ 
+          title: schema.consultantKnowledgeDocuments.title,
+          extractedContent: schema.consultantKnowledgeDocuments.extractedContent 
+        })
+        .from(schema.consultantKnowledgeDocuments)
         .where(
           and(
-            eq(schema.nurturingKnowledgeItems.consultantId, consultantId),
-            inArray(schema.nurturingKnowledgeItems.id, validatedData.kbDocumentIds)
+            eq(schema.consultantKnowledgeDocuments.consultantId, consultantId),
+            inArray(schema.consultantKnowledgeDocuments.id, validatedData.kbDocumentIds)
           )
         );
-      kbContent = kbDocs.map(d => d.content).join("\n\n---\n\n");
+      // Formatta il contenuto includendo il titolo per contesto
+      kbContent = kbDocs
+        .filter(d => d.extractedContent)
+        .map(d => `## ${d.title}\n\n${d.extractedContent}`)
+        .join("\n\n---\n\n");
+      
+      console.log(`📚 [CONTENT-AI] Loaded ${kbDocs.length} KB documents (${kbContent.length} chars) for idea generation`);
     }
     
     const result = await generateContentIdeas({

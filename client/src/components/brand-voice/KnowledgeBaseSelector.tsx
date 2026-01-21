@@ -1,11 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileText, AlertTriangle } from "lucide-react";
+import { Loader2, FileText, AlertTriangle, Upload, Plus, CheckCircle } from "lucide-react";
+import { getAuthHeaders } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
-interface NurturingKnowledgeItem {
+interface KnowledgeDocument {
   id: string;
   title: string;
   type: string;
@@ -34,46 +37,122 @@ function getTypeBadgeVariant(type: string): "default" | "secondary" | "outline" 
   }
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
 export function KnowledgeBaseSelector({
   selectedDocIds,
   onSelectionChange,
   maxTokens = 50000,
 }: KnowledgeBaseSelectorProps) {
-  const [documents, setDocuments] = useState<NurturingKnowledgeItem[]>([]);
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const fetchDocuments = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch("/api/consultant/knowledge/documents", {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Errore nel caricamento dei documenti");
+      }
+      const result = await response.json();
+      const docs = Array.isArray(result) ? result : (result.data || []);
+      setDocuments(docs.map((doc: any) => ({
+        id: doc.id,
+        title: doc.title || doc.displayName || "Documento",
+        type: doc.fileType || doc.type || "text",
+        content: doc.extractedContent || doc.content || doc.summary || "",
+        createdAt: doc.createdAt,
+      })));
+    } catch (err: any) {
+      setError(err.message || "Errore sconosciuto");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchDocuments() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        // Usa l'API corretta dei documenti Knowledge Base
-        const response = await fetch("/api/consultant/knowledge/documents", {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          throw new Error("Errore nel caricamento dei documenti");
-        }
-        const result = await response.json();
-        // I documenti sono nella root della risposta, non in result.data
-        const docs = Array.isArray(result) ? result : (result.data || []);
-        // Mappa i campi per compatibilità
-        setDocuments(docs.map((doc: any) => ({
-          id: doc.id,
-          title: doc.title || doc.displayName || "Documento",
-          type: doc.fileType || doc.type || "text",
-          content: doc.content || doc.summary || "",
-          createdAt: doc.createdAt,
-        })));
-      } catch (err: any) {
-        setError(err.message || "Errore sconosciuto");
-      } finally {
-        setIsLoading(false);
-      }
-    }
     fetchDocuments();
-  }, []);
+  }, [fetchDocuments]);
+
+  const uploadFile = async (file: File) => {
+    setIsUploading(true);
+    setUploadProgress(`Caricamento ${file.name}...`);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
+      formData.append("description", "");
+      formData.append("category", "general");
+      formData.append("priority", "50");
+
+      const response = await fetch("/api/consultant/knowledge/documents", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Errore nel caricamento");
+      }
+
+      const newDoc = await response.json();
+      
+      toast({
+        title: "Documento caricato",
+        description: `${file.name} è stato aggiunto alla Knowledge Base`,
+      });
+
+      await fetchDocuments();
+
+      if (newDoc.id) {
+        onSelectionChange([...selectedDocIds, newDoc.id]);
+      }
+    } catch (err: any) {
+      toast({
+        title: "Errore caricamento",
+        description: err.message || "Impossibile caricare il file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(null);
+    }
+  };
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      uploadFile(acceptedFiles[0]);
+    }
+  }, [selectedDocIds, fetchDocuments, onSelectionChange]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "text/plain": [".txt"],
+      "text/markdown": [".md"],
+      "text/csv": [".csv"],
+    },
+    maxSize: 10 * 1024 * 1024,
+    multiple: false,
+    disabled: isUploading,
+  });
 
   const totalSelectedTokens = useMemo(() => {
     return documents
@@ -104,33 +183,63 @@ export function KnowledgeBaseSelector({
             {isOverLimit && (
               <Badge variant="destructive" className="flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
-                Supera limite 50k tokens
+                Supera limite 50k
               </Badge>
             )}
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <div
+          {...getRootProps()}
+          className={`
+            border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors
+            ${isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}
+            ${isUploading ? "opacity-50 cursor-not-allowed" : ""}
+          `}
+        >
+          <input {...getInputProps()} />
+          {isUploading ? (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {uploadProgress}
+            </div>
+          ) : isDragActive ? (
+            <div className="flex items-center justify-center gap-2 text-sm text-primary">
+              <Upload className="h-4 w-4" />
+              Rilascia il file qui
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Plus className="h-4 w-4" />
+              Trascina un file o clicca per caricare (PDF, DOCX, TXT, MD, CSV)
+            </div>
+          )}
+        </div>
+
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-6">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="text-center py-8 text-destructive text-sm">{error}</div>
+          <div className="text-center py-6 text-destructive text-sm">{error}</div>
         ) : documents.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            Nessun documento nella Knowledge Base
+          <div className="text-center py-6 text-muted-foreground text-sm">
+            Nessun documento. Carica il tuo primo file qui sopra.
           </div>
         ) : (
-          <ScrollArea className="h-[240px]">
-            <div className="space-y-2 pr-4">
+          <ScrollArea className="h-[200px]">
+            <div className="space-y-1 pr-4">
               {documents.map((doc) => {
                 const tokens = estimateTokens(doc.content);
                 const isSelected = selectedDocIds.includes(doc.id);
                 return (
                   <div
                     key={doc.id}
-                    className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                    className={`
+                      flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors
+                      ${isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50"}
+                    `}
                     onClick={() => handleToggle(doc.id)}
                   >
                     <Checkbox
@@ -145,13 +254,20 @@ export function KnowledgeBaseSelector({
                       {doc.type || "text"}
                     </Badge>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      ~{tokens.toLocaleString()} tokens
+                      ~{tokens.toLocaleString()}
                     </span>
                   </div>
                 );
               })}
             </div>
           </ScrollArea>
+        )}
+
+        {selectedDocIds.length > 0 && (
+          <div className="flex items-center gap-2 pt-2 border-t text-sm text-muted-foreground">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            {selectedDocIds.length} documento{selectedDocIds.length > 1 ? "i" : ""} selezionato{selectedDocIds.length > 1 ? "i" : ""}
+          </div>
         )}
       </CardContent>
     </Card>
