@@ -30,6 +30,7 @@ import {
   UserPlus,
   Copy,
   Check,
+  CopyPlus,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -462,6 +463,45 @@ export default function ConsultantReferralSettingsPage() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
+  const duplicateFromOtherMode = () => {
+    if (mode === "optin") {
+      // Copia da Referral a Optin
+      setOptinFormData({
+        headline: formData.headline,
+        description: formData.description,
+        ctaButtonText: formData.ctaButtonText,
+        primaryColor: formData.primaryColor,
+        showAiChat: formData.showAiChat,
+        isActive: formData.isActive,
+        welcomeMessage: formData.welcomeMessage,
+        preferredChannel: formData.preferredChannel,
+        agentConfigId: formData.agentConfigId,
+        defaultCampaignId: formData.defaultCampaignId,
+        aiAssistantIframeUrl: formData.aiAssistantIframeUrl,
+        qualificationFieldsConfig: { ...formData.qualificationFieldsConfig },
+      });
+      toast({ title: "Impostazioni copiate", description: "Le impostazioni Referral sono state copiate in Optin" });
+    } else {
+      // Copia da Optin a Referral (mantieni i campi bonus)
+      setFormData(prev => ({
+        ...prev,
+        headline: optinFormData.headline,
+        description: optinFormData.description,
+        ctaButtonText: optinFormData.ctaButtonText,
+        primaryColor: optinFormData.primaryColor,
+        showAiChat: optinFormData.showAiChat,
+        isActive: optinFormData.isActive,
+        welcomeMessage: optinFormData.welcomeMessage,
+        preferredChannel: optinFormData.preferredChannel,
+        agentConfigId: optinFormData.agentConfigId,
+        defaultCampaignId: optinFormData.defaultCampaignId,
+        aiAssistantIframeUrl: optinFormData.aiAssistantIframeUrl,
+        qualificationFieldsConfig: { ...optinFormData.qualificationFieldsConfig },
+      }));
+      toast({ title: "Impostazioni copiate", description: "Le impostazioni Optin sono state copiate in Referral" });
+    }
+  };
+
   const LandingPreview = () => (
     <div 
       className="rounded-2xl border bg-white shadow-lg overflow-hidden"
@@ -643,22 +683,33 @@ export default function ConsultantReferralSettingsPage() {
                   </Button>
                 </div>
               </div>
-              {mode === "optin" && consultantId && (
-                <div className="mt-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-white/80">Link Optin:</span>
-                    <code className="bg-white/20 px-2 py-1 rounded text-xs">{getOptinLink()}</code>
+              <div className="mt-4 flex items-center gap-3 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={duplicateFromOtherMode}
+                  className="text-white hover:bg-white/20 border border-white/30"
+                >
+                  <CopyPlus className="h-4 w-4 mr-2" />
+                  Duplica da {mode === "optin" ? "Referral" : "Optin"}
+                </Button>
+                {mode === "optin" && consultantId && (
+                  <div className="flex-1 p-2 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-white/80">Link:</span>
+                      <code className="bg-white/20 px-2 py-1 rounded text-xs">{getOptinLink()}</code>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={copyOptinLink}
+                      className="text-white hover:bg-white/20"
+                    >
+                      {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={copyOptinLink}
-                    className="text-white hover:bg-white/20"
-                  >
-                    {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
@@ -958,7 +1009,7 @@ export default function ConsultantReferralSettingsPage() {
                       AI Assistant
                     </CardTitle>
                     <CardDescription>
-                      Configura l'assistente AI per la landing page referral
+                      Configura l'assistente AI per la landing page {mode === "referral" ? "referral" : "optin"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -971,20 +1022,26 @@ export default function ConsultantReferralSettingsPage() {
                       </div>
                       <Switch
                         id="showAiChatAssistant"
-                        checked={formData.showAiChat}
-                        onCheckedChange={(checked) => updateField("showAiChat", checked)}
+                        checked={mode === "referral" ? formData.showAiChat : optinFormData.showAiChat}
+                        onCheckedChange={(checked) => mode === "referral" 
+                          ? updateField("showAiChat", checked)
+                          : updateOptinField("showAiChat", checked)
+                        }
                       />
                     </div>
 
-                    {formData.showAiChat && (
+                    {(mode === "referral" ? formData.showAiChat : optinFormData.showAiChat) && (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="aiAssistantIframeUrl">URL iframe AI Assistant</Label>
                           <Input
                             id="aiAssistantIframeUrl"
                             placeholder="https://esempio.com/chat-widget"
-                            value={formData.aiAssistantIframeUrl || ""}
-                            onChange={(e) => updateField("aiAssistantIframeUrl", e.target.value || null)}
+                            value={(mode === "referral" ? formData.aiAssistantIframeUrl : optinFormData.aiAssistantIframeUrl) || ""}
+                            onChange={(e) => mode === "referral"
+                              ? updateField("aiAssistantIframeUrl", e.target.value || null)
+                              : updateOptinField("aiAssistantIframeUrl", e.target.value || null)
+                            }
                           />
                           <p className="text-xs text-slate-500">
                             Inserisci l'URL dell'iframe che verrà mostrato quando gli utenti cliccano sul pulsante chat flottante.
@@ -1000,8 +1057,11 @@ export default function ConsultantReferralSettingsPage() {
                           <Textarea
                             id="welcomeMessageAi"
                             placeholder="Ciao! Come posso aiutarti oggi?"
-                            value={formData.welcomeMessage}
-                            onChange={(e) => updateField("welcomeMessage", e.target.value)}
+                            value={mode === "referral" ? formData.welcomeMessage : optinFormData.welcomeMessage}
+                            onChange={(e) => mode === "referral"
+                              ? updateField("welcomeMessage", e.target.value)
+                              : updateOptinField("welcomeMessage", e.target.value)
+                            }
                             rows={4}
                           />
                           <p className="text-xs text-slate-500">
@@ -1043,29 +1103,37 @@ export default function ConsultantReferralSettingsPage() {
                       Impostazioni Generali
                     </CardTitle>
                     <CardDescription>
-                      Configura le impostazioni generali del sistema referral
+                      Configura le impostazioni generali del sistema {mode === "referral" ? "referral" : "optin"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50">
                       <div className="space-y-0.5">
-                        <Label htmlFor="isActive" className="font-semibold">Sistema Referral Attivo</Label>
+                        <Label htmlFor="isActive" className="font-semibold">
+                          {mode === "referral" ? "Sistema Referral Attivo" : "Sistema Optin Attivo"}
+                        </Label>
                         <p className="text-sm text-muted-foreground">
-                          Abilita o disabilita il sistema di referral
+                          Abilita o disabilita il sistema di {mode === "referral" ? "referral" : "contatto diretto"}
                         </p>
                       </div>
                       <Switch
                         id="isActive"
-                        checked={formData.isActive}
-                        onCheckedChange={(checked) => updateField("isActive", checked)}
+                        checked={mode === "referral" ? formData.isActive : optinFormData.isActive}
+                        onCheckedChange={(checked) => mode === "referral"
+                          ? updateField("isActive", checked)
+                          : updateOptinField("isActive", checked)
+                        }
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="preferredChannel">Canale Preferito</Label>
                       <Select
-                        value={formData.preferredChannel}
-                        onValueChange={(value: any) => updateField("preferredChannel", value)}
+                        value={mode === "referral" ? formData.preferredChannel : optinFormData.preferredChannel}
+                        onValueChange={(value: any) => mode === "referral"
+                          ? updateField("preferredChannel", value)
+                          : updateOptinField("preferredChannel", value)
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona il canale preferito" />
@@ -1085,8 +1153,11 @@ export default function ConsultantReferralSettingsPage() {
                     <div className="space-y-2">
                       <Label htmlFor="agentConfigId">Agente WhatsApp per Lead</Label>
                       <Select
-                        value={formData.agentConfigId || "none"}
-                        onValueChange={(value) => updateField("agentConfigId", value === "none" ? null : value)}
+                        value={(mode === "referral" ? formData.agentConfigId : optinFormData.agentConfigId) || "none"}
+                        onValueChange={(value) => mode === "referral"
+                          ? updateField("agentConfigId", value === "none" ? null : value)
+                          : updateOptinField("agentConfigId", value === "none" ? null : value)
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona l'agente" />
@@ -1101,15 +1172,18 @@ export default function ConsultantReferralSettingsPage() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-slate-500">
-                        L'agente WhatsApp che contatterà i lead generati dai referral
+                        L'agente WhatsApp che contatterà i lead generati
                       </p>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="defaultCampaignId">Campagna di Default</Label>
                       <Select
-                        value={formData.defaultCampaignId || "none"}
-                        onValueChange={(value) => updateField("defaultCampaignId", value === "none" ? null : value)}
+                        value={(mode === "referral" ? formData.defaultCampaignId : optinFormData.defaultCampaignId) || "none"}
+                        onValueChange={(value) => mode === "referral"
+                          ? updateField("defaultCampaignId", value === "none" ? null : value)
+                          : updateOptinField("defaultCampaignId", value === "none" ? null : value)
+                        }
                       >
                         <SelectTrigger className="text-slate-900">
                           <SelectValue placeholder="Seleziona la campagna" />
@@ -1124,7 +1198,7 @@ export default function ConsultantReferralSettingsPage() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-slate-500">
-                        La campagna associata ai lead referral (include obiettivi e desideri)
+                        La campagna associata ai lead {mode === "referral" ? "referral" : "optin"} (include obiettivi e desideri)
                       </p>
                     </div>
                   </CardContent>
