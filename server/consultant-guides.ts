@@ -13,6 +13,9 @@
  * ULTIMO AGGIORNAMENTO: 6 Gennaio 2026 - Sistema Monetizzazione e Licenze
  */
 
+import fs from 'fs';
+import path from 'path';
+
 export interface GuideStep {
   title: string;
   content: string;
@@ -4644,9 +4647,6 @@ ${section.description}
  * Legge da MANUALE-COMPLETO.md se disponibile, altrimenti usa le guide TypeScript
  */
 export function getGuideAsDocument(): { title: string; content: string } {
-  const fs = require('fs');
-  const path = require('path');
-  
   // Prova a leggere da MANUALE-COMPLETO.md
   const manualePath = path.join(process.cwd(), 'MANUALE-COMPLETO.md');
   
