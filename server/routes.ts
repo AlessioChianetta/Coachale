@@ -3291,8 +3291,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Allow consultant to update their clients (check both users table AND user_role_profiles)
       if (req.user!.role === "consultant") {
-        // Check via users table
-        const ownsViaUsersTable = targetUser.role === "client" && targetUser.consultantId === req.user!.id;
+        // Check via users table - consultantId match is enough regardless of role
+        // (user can be consultant AND client of another consultant)
+        const ownsViaUsersTable = targetUser.consultantId === req.user!.id;
         
         // Check via user_role_profiles (multi-profile system)
         const targetProfiles = await storage.getUserRoleProfiles(id);
