@@ -836,23 +836,23 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       <Link key={child.href} href={child.href}>
                         <div
                           className={cn(
-                            "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-all duration-150 cursor-pointer",
+                            "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                             isChildActive
                               ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                              : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-300"
+                              : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                           )}
                           data-testid={`link-${slugify(child.name)}`}
                           data-tour={role === "client" ? `client-submenu-${slugify(child.name)}` : undefined}
                           onClick={handleLinkClick}
                         >
                           {isChildActive && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-cyan-500 rounded-r-full" />
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
                           )}
                           <ChildIcon className={cn(
-                            "h-4 w-4 flex-shrink-0",
+                            "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                             isChildActive
                               ? "text-cyan-500"
-                              : "text-slate-600 dark:text-slate-400"
+                              : "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
                           )} />
                           <span className={cn(
                             "font-medium",
@@ -1019,22 +1019,22 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               <Link key={child.href} href={child.href}>
                                 <div
                                   className={cn(
-                                    "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-all duration-150 cursor-pointer",
+                                    "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                                     isChildActive
                                       ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-300"
+                                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                                   )}
                                   data-testid={`link-${slugify(child.name)}`}
                                   onClick={handleLinkClick}
                                 >
                                   {isChildActive && (
-                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-cyan-500 rounded-r-full" />
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
                                   )}
                                   <ChildIcon className={cn(
-                                    "h-4 w-4 flex-shrink-0",
+                                    "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                                     isChildActive
                                       ? "text-cyan-500"
-                                      : "text-slate-600 dark:text-slate-400"
+                                      : "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
                                   )} />
                                   <span className={cn(
                                     "font-medium",
