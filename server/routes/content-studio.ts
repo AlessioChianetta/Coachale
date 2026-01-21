@@ -16,7 +16,10 @@ import { eq, and, desc, gte, lte, isNull, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import fs from "fs";
+import fsPromises from "fs/promises";
 import path from "path";
+import { upload } from "../middleware/upload";
+import { extractTextFromFile } from "../services/document-processor";
 
 const router = Router();
 
@@ -1440,6 +1443,7 @@ const generateIdeasSchema = z.object({
     guarantees: z.string().optional(),
   }).optional(),
   kbDocumentIds: z.array(z.string()).optional(),
+  kbContent: z.string().optional(),
 });
 
 const generateCopySchema = z.object({
@@ -1518,9 +1522,17 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
     
     console.log(`🤖 [CONTENT-AI] Generating ideas for consultant ${consultantId} (mediaType: ${validatedData.mediaType}, copyType: ${validatedData.copyType})`);
     
-    let kbContent = "";
+    // Combina contenuto da file temporanei (kbContent diretto) e documenti KB
+    let kbContentParts: string[] = [];
+    
+    // 1. Contenuto passato direttamente (file temporanei estratti client-side)
+    if (validatedData.kbContent && validatedData.kbContent.trim().length > 0) {
+      kbContentParts.push(validatedData.kbContent);
+      console.log(`📄 [CONTENT-AI] Using direct kbContent (${validatedData.kbContent.length} chars)`);
+    }
+    
+    // 2. Documenti dalla Knowledge Base permanente
     if (validatedData.kbDocumentIds && validatedData.kbDocumentIds.length > 0) {
-      // Recupera i documenti dalla Knowledge Base del consulente
       const kbDocs = await db
         .select({ 
           title: schema.consultantKnowledgeDocuments.title,
@@ -1533,14 +1545,19 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
             inArray(schema.consultantKnowledgeDocuments.id, validatedData.kbDocumentIds)
           )
         );
-      // Formatta il contenuto includendo il titolo per contesto
-      kbContent = kbDocs
+      
+      const kbDocsContent = kbDocs
         .filter(d => d.extractedContent)
         .map(d => `## ${d.title}\n\n${d.extractedContent}`)
         .join("\n\n---\n\n");
       
-      console.log(`📚 [CONTENT-AI] Loaded ${kbDocs.length} KB documents (${kbContent.length} chars) for idea generation`);
+      if (kbDocsContent.length > 0) {
+        kbContentParts.push(kbDocsContent);
+        console.log(`📚 [CONTENT-AI] Loaded ${kbDocs.length} KB documents (${kbDocsContent.length} chars) for idea generation`);
+      }
     }
+    
+    const kbContent = kbContentParts.join("\n\n---\n\n");
     
     const result = await generateContentIdeas({
       consultantId,
@@ -2401,5 +2418,80 @@ router.patch("/folders/:id/move", authenticateToken, requireRole("consultant"), 
     });
   }
 });
+
+// ============================================================
+// TEMPORARY TEXT EXTRACTION (for Content Studio Ideas)
+// ============================================================
+
+// POST /api/content/extract-text - Extract text from file without saving to DB
+router.post(
+  "/extract-text",
+  authenticateToken,
+  requireRole("consultant"),
+  upload.single("file"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: "Nessun file caricato",
+        });
+      }
+
+      const { originalname, mimetype, path: filePath, size } = req.file;
+      
+      console.log(`📄 [CONTENT-STUDIO] Extracting text for temp use: ${originalname} (${mimetype})`);
+
+      // Extract text from file
+      let extractedText = "";
+      try {
+        extractedText = await extractTextFromFile(filePath, mimetype);
+      } catch (extractError: any) {
+        console.error("❌ [CONTENT-STUDIO] Text extraction failed:", extractError);
+        // Clean up file
+        await fsPromises.unlink(filePath).catch(() => {});
+        return res.status(400).json({
+          success: false,
+          error: `Impossibile estrarre testo: ${extractError.message}`,
+        });
+      }
+
+      // Clean up temporary file immediately
+      await fsPromises.unlink(filePath).catch(() => {});
+
+      // Get file type for badge display
+      const getFileType = (mime: string): string => {
+        if (mime === "application/pdf") return "pdf";
+        if (mime.includes("word") || mime.includes("document")) return "docx";
+        if (mime === "text/plain") return "txt";
+        if (mime === "text/markdown" || mime === "text/x-markdown") return "md";
+        if (mime === "text/csv" || mime === "application/csv") return "csv";
+        return "text";
+      };
+
+      console.log(`✅ [CONTENT-STUDIO] Extracted ${extractedText.length} chars from ${originalname}`);
+
+      res.json({
+        success: true,
+        data: {
+          title: originalname.replace(/\.[^/.]+$/, ""),
+          fileName: originalname,
+          fileType: getFileType(mimetype),
+          fileSize: size,
+          content: extractedText,
+          tokenEstimate: Math.ceil(extractedText.length / 4),
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [CONTENT-STUDIO] Error extracting text:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to extract text from file",
+      });
+    }
+  }
+);
 
 export default router;

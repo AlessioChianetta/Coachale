@@ -96,7 +96,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
-import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector } from "@/components/brand-voice";
+import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector, TempFile } from "@/components/brand-voice";
 
 interface Idea {
   id: string;
@@ -262,6 +262,7 @@ export default function ContentStudioIdeas() {
   const [brandVoiceData, setBrandVoiceData] = useState<BrandVoiceData>({});
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false);
   const [selectedKbDocIds, setSelectedKbDocIds] = useState<string[]>([]);
+  const [tempFiles, setTempFiles] = useState<TempFile[]>([]);
   
   // Agent import for Brand Voice
   const [showImportAgentDialog, setShowImportAgentDialog] = useState(false);
@@ -742,6 +743,12 @@ export default function ContentStudioIdeas() {
           sophisticationLevel,
           ...(useBrandVoice && Object.keys(brandVoiceData).length > 0 && { brandVoiceData }),
           ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
+          ...(useKnowledgeBase && tempFiles.filter(f => f.status === "success").length > 0 && { 
+            kbContent: tempFiles
+              .filter(f => f.status === "success")
+              .map(f => `## ${f.title}\n\n${f.content}`)
+              .join("\n\n---\n\n")
+          }),
         }),
       });
 
@@ -1061,6 +1068,8 @@ export default function ContentStudioIdeas() {
                         <KnowledgeBaseSelector
                           selectedDocIds={selectedKbDocIds}
                           onSelectionChange={setSelectedKbDocIds}
+                          tempFiles={tempFiles}
+                          onTempFilesChange={setTempFiles}
                           maxTokens={50000}
                         />
                       )}
