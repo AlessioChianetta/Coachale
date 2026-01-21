@@ -86,7 +86,7 @@ export function KnowledgeBaseSelector({
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, currentSelectedIds: string[]) => {
     setIsUploading(true);
     setUploadProgress(`Caricamento ${file.name}...`);
 
@@ -98,9 +98,15 @@ export function KnowledgeBaseSelector({
       formData.append("category", "general");
       formData.append("priority", "50");
 
+      const authHeaders = getAuthHeaders();
+      const headers: Record<string, string> = {};
+      if (authHeaders.Authorization) {
+        headers.Authorization = authHeaders.Authorization;
+      }
+
       const response = await fetch("/api/consultant/knowledge/documents", {
         method: "POST",
-        headers: getAuthHeaders(),
+        headers,
         credentials: "include",
         body: formData,
       });
@@ -120,7 +126,7 @@ export function KnowledgeBaseSelector({
       await fetchDocuments();
 
       if (newDoc.id) {
-        onSelectionChange([...selectedDocIds, newDoc.id]);
+        onSelectionChange([...currentSelectedIds, newDoc.id]);
       }
     } catch (err: any) {
       toast({
@@ -136,9 +142,9 @@ export function KnowledgeBaseSelector({
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      uploadFile(acceptedFiles[0]);
+      uploadFile(acceptedFiles[0], selectedDocIds);
     }
-  }, [selectedDocIds, fetchDocuments, onSelectionChange]);
+  }, [selectedDocIds, onSelectionChange, fetchDocuments, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
