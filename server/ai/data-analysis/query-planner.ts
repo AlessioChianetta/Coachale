@@ -231,6 +231,69 @@ export function detectCategoryTermInQuestion(userQuestion: string): CategoryTerm
 }
 
 /**
+ * SEMANTIC ORDER BY METRIC DETECTION
+ * Maps user intent keywords to the correct metric for ordering
+ * Example: "più profittevoli" → gross_margin, "più venduti" → quantity
+ */
+interface SemanticOrderByMetric {
+  hasSemanticMetric: boolean;
+  metricName: string | null;      // The metric to order by (e.g., 'gross_margin')
+  direction: 'ASC' | 'DESC';      // Sort direction
+  displayColumn: string | null;   // Column alias for display (e.g., 'margine_lordo')
+}
+
+const SEMANTIC_METRIC_KEYWORDS: Record<string, { metric: string; direction: 'ASC' | 'DESC'; displayColumn: string }> = {
+  // Profitability keywords → gross_margin
+  'profittevol': { metric: 'gross_margin', direction: 'DESC', displayColumn: 'margine_lordo' },
+  'profitto': { metric: 'gross_margin', direction: 'DESC', displayColumn: 'margine_lordo' },
+  'margine': { metric: 'gross_margin', direction: 'DESC', displayColumn: 'margine_lordo' },
+  'guadagno': { metric: 'gross_margin', direction: 'DESC', displayColumn: 'margine_lordo' },
+  'redditizi': { metric: 'gross_margin', direction: 'DESC', displayColumn: 'margine_lordo' },
+  'redditivit': { metric: 'gross_margin', direction: 'DESC', displayColumn: 'margine_lordo' },
+  
+  // Revenue keywords → revenue
+  'fatturato': { metric: 'revenue', direction: 'DESC', displayColumn: 'fatturato' },
+  'incasso': { metric: 'revenue', direction: 'DESC', displayColumn: 'fatturato' },
+  'ricavo': { metric: 'revenue', direction: 'DESC', displayColumn: 'fatturato' },
+  'vendite valore': { metric: 'revenue', direction: 'DESC', displayColumn: 'fatturato' },
+  
+  // Quantity keywords → quantity
+  'vendut': { metric: 'quantity', direction: 'DESC', displayColumn: 'quantita_venduta' },
+  'quantità': { metric: 'quantity', direction: 'DESC', displayColumn: 'quantita_venduta' },
+  'volum': { metric: 'quantity', direction: 'DESC', displayColumn: 'quantita_venduta' },
+  'popolar': { metric: 'quantity', direction: 'DESC', displayColumn: 'quantita_venduta' },
+  'richiest': { metric: 'quantity', direction: 'DESC', displayColumn: 'quantita_venduta' },
+  
+  // Cost keywords → cost (for "most expensive" type queries)
+  'costoso': { metric: 'cost', direction: 'DESC', displayColumn: 'costo' },
+  'caro': { metric: 'cost', direction: 'DESC', displayColumn: 'costo' },
+  'economico': { metric: 'cost', direction: 'ASC', displayColumn: 'costo' },
+  
+  // Low performers (ASC)
+  'peggior': { metric: 'gross_margin', direction: 'ASC', displayColumn: 'margine_lordo' },
+  'meno vendut': { metric: 'quantity', direction: 'ASC', displayColumn: 'quantita_venduta' },
+};
+
+export function detectSemanticOrderByMetric(userQuestion: string): SemanticOrderByMetric {
+  const questionLower = userQuestion.toLowerCase();
+  
+  // Check for semantic keywords
+  for (const [keyword, config] of Object.entries(SEMANTIC_METRIC_KEYWORDS)) {
+    if (questionLower.includes(keyword)) {
+      console.log(`[SEMANTIC-ORDERBY] Detected "${keyword}" → metric="${config.metric}", direction=${config.direction}`);
+      return {
+        hasSemanticMetric: true,
+        metricName: config.metric,
+        direction: config.direction,
+        displayColumn: config.displayColumn
+      };
+    }
+  }
+  
+  return { hasSemanticMetric: false, metricName: null, direction: 'DESC', displayColumn: null };
+}
+
+/**
  * RANKING WITH CATEGORY FILTER DETECTION
  * Detects queries like "Top 5 pizze", "i 10 drink più venduti"
  * These MUST apply category filter BEFORE ranking
@@ -1657,45 +1720,42 @@ export async function executeToolCall(
             const columnMapping = (dataset[0].columnMapping || {}) as Record<string, any>;
             const datasetColumns = Object.keys(columnMapping);
             
-            // ====== RESOLVE SEMANTIC CATEGORY FILTER (CASCADING) ======
-            // If _semanticCategoryFilter is set, resolve to physical column using cascading priority:
-            // 1. subcategory (most specific)
-            // 2. category (common)
-            // 3. product_tags (flexible)
-            // 4. FALLBACK: productIlike patterns on product_name (emergency only)
+            // ====== RESOLVE SEMANTIC CATEGORY FILTER ======
+            // If _semanticCategoryFilter is set, resolve to physical column
+            // DESIGN: We apply categoryValue to the 'category' logical role ONLY
+            // because category values like "Pizza" are category-level, not subcategory-level
+            // For subcategory filtering, we'd need subcategory-specific terms
             if (toolCall.args._semanticCategoryFilter) {
               const { value } = toolCall.args._semanticCategoryFilter;
               const categoryTerm = toolCall.args._detectedCategoryTerm || toolCall.args._rankingCategoryFilter;
               
-              // Try to find physical column in priority order
-              const CATEGORY_COLUMN_PRIORITY = ['subcategory', 'category', 'product_tags', 'family', 'product_type'];
-              let resolvedColumn: string | null = null;
-              let resolvedRole: string | null = null;
+              // First try: Find 'category' column (the logical role matching our category values)
+              const categoryPhysical = Object.entries(mappings)
+                .find(([_, logical]) => logical === 'category')?.[0];
               
-              for (const role of CATEGORY_COLUMN_PRIORITY) {
-                const physicalCol = Object.entries(mappings)
-                  .find(([_, logical]) => logical === role)?.[0];
-                
-                if (physicalCol && datasetColumns.includes(physicalCol)) {
-                  resolvedColumn = physicalCol;
-                  resolvedRole = role;
-                  break;
-                }
-              }
-              
-              if (resolvedColumn) {
-                // Found a category-like column, apply filter
+              if (categoryPhysical && datasetColumns.includes(categoryPhysical)) {
+                // Found category column, apply filter with exact match
                 if (!toolCall.args.filters) toolCall.args.filters = {};
-                toolCall.args.filters[resolvedColumn] = { operator: '=', value: value };
-                console.log(`[SEMANTIC-FILTER] CASCADE RESOLVED: ${resolvedRole} → "${resolvedColumn}" = '${value}'`);
+                toolCall.args.filters[categoryPhysical] = { operator: '=', value: value };
+                console.log(`[SEMANTIC-FILTER] RESOLVED: category → "${categoryPhysical}" = '${value}'`);
               } else {
-                // LAST FALLBACK: No category column found, use ILIKE on product names
-                const categoryDef = CATEGORY_TERMS[categoryTerm?.toLowerCase()];
-                if (categoryDef?.productIlike?.length > 0 && !toolCall.args.productIlikePatterns) {
-                  toolCall.args.productIlikePatterns = categoryDef.productIlike;
-                  console.log(`[SEMANTIC-FILTER] FALLBACK ILIKE: No category column, using ${categoryDef.productIlike.length} patterns`);
+                // Second try: Look for subcategory (might have same values)
+                const subcategoryPhysical = Object.entries(mappings)
+                  .find(([_, logical]) => logical === 'subcategory')?.[0];
+                
+                if (subcategoryPhysical && datasetColumns.includes(subcategoryPhysical)) {
+                  if (!toolCall.args.filters) toolCall.args.filters = {};
+                  toolCall.args.filters[subcategoryPhysical] = { operator: '=', value: value };
+                  console.log(`[SEMANTIC-FILTER] RESOLVED via subcategory: "${subcategoryPhysical}" = '${value}'`);
                 } else {
-                  console.warn(`[SEMANTIC-FILTER] No category column mapped and no ILIKE patterns for "${categoryTerm}"`);
+                  // LAST FALLBACK: No category/subcategory column, use ILIKE on product names
+                  const categoryDef = CATEGORY_TERMS[categoryTerm?.toLowerCase()];
+                  if (categoryDef?.productIlike?.length > 0 && !toolCall.args.productIlikePatterns) {
+                    toolCall.args.productIlikePatterns = categoryDef.productIlike;
+                    console.log(`[SEMANTIC-FILTER] FALLBACK ILIKE: No category column, using ${categoryDef.productIlike.length} patterns`);
+                  } else {
+                    console.warn(`[SEMANTIC-FILTER] No category column mapped and no ILIKE patterns for "${categoryTerm}"`);
+                  }
                 }
               }
             }
@@ -2130,6 +2190,14 @@ export async function askDataset(
   if (categoryDetection.hasCategoryTerm) {
     console.log(`[QUERY-PLANNER] CATEGORY TERM DETECTED: term="${categoryDetection.categoryTerm}", value="${categoryDetection.categoryValue}"`);
   }
+  
+  // ====== SEMANTIC ORDER BY METRIC DETECTION ======
+  // Detect semantic keywords to determine correct ORDER BY metric
+  // Example: "più profittevoli" → ORDER BY gross_margin DESC (not quantity!)
+  const semanticOrderBy = detectSemanticOrderByMetric(userQuestion);
+  if (semanticOrderBy.hasSemanticMetric) {
+    console.log(`[QUERY-PLANNER] SEMANTIC ORDERBY DETECTED: metric="${semanticOrderBy.metricName}", direction=${semanticOrderBy.direction}`);
+  }
 
   // ====== QUANTITATIVE METRIC WITH FILTER DETECTION ======
   // Intercept "quante pizze ho venduto" as execute_metric with ILIKE filter (not aggregate_group)
@@ -2394,6 +2462,29 @@ export async function askDataset(
             }
             console.log(`[SEMANTIC-CATEGORY] Ranking limit enforced: ${step.args.limit}`);
           }
+        }
+        
+        // ====== SEMANTIC ORDER BY INJECTION ======
+        // Override AI's orderBy with semantically correct metric
+        // ONLY for ranking/top-N queries or explicit "più/meno" intent
+        // Example: "più profittevoli" → ORDER BY gross_margin DESC (not totale_venduto!)
+        const hasRankingIntent = rankingFilter.isRankingWithFilter || 
+          /più|meno|migliori|peggiori|top\s*\d+|classifica/i.test(userQuestion);
+        
+        if (semanticOrderBy.hasSemanticMetric && semanticOrderBy.metricName && hasRankingIntent) {
+          // Set metricName to the semantic metric
+          step.args.metricName = semanticOrderBy.metricName;
+          console.log(`[SEMANTIC-ORDERBY] Injecting metricName: ${semanticOrderBy.metricName}`);
+          
+          // IMPORTANT: Set orderBy to use the METRIC NAME, not a display alias
+          // The metric will be resolved and aggregated in executeToolCall
+          // The aggregation will create the column with the metric name
+          step.args.orderBy = {
+            column: semanticOrderBy.metricName, // Use metric name, will be aggregated
+            direction: semanticOrderBy.direction
+          };
+          step.args._semanticOrderByApplied = true;
+          console.log(`[SEMANTIC-ORDERBY] Injecting orderBy: ${step.args.orderBy.column} ${step.args.orderBy.direction}`);
         }
       }
     }

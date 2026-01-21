@@ -84,18 +84,25 @@ A 3-layer pipeline separating intent classification from execution to prevent st
 - **Result Size Guardrail**: `checkCardinalityBeforeAggregate()` asks for user confirmation if result > 500 rows (top N, export, paginate options)
 - Wiring logs: `[WIRING-CHECK]` prefix for debugging execution flow
 
-**Ranking with Semantic Category Filter (query-planner.ts + query-executor.ts)**
-- **Problem Fixed**: "Top 5 pizze" was returning global ranking (Coperto, Caffè, Acqua) instead of filtered pizzas
-- **Detection**: `detectRankingWithCategoryFilter()` detects ranking patterns (Top N, migliori, classifica) + category terms from CATEGORY_TERMS dictionary
-- **Order Enforced**: FILTER → GROUP → AGGREGATE → ORDER → LIMIT (never the reverse)
-- **SEMANTIC FILTER (PREFERRED)**: When user says "pizze", system injects `category='Pizza'` filter (not ILIKE on product names)
+**Semantic Category Filter (ALWAYS, not just ranking) (query-planner.ts)**
+- **Problem Fixed**: "Quali pizze sono più profittevoli" was using `product_name ILIKE '%pizza%'` instead of proper category filtering
+- **detectCategoryTermInQuestion()**: Detects category terms in ANY query, not just ranking queries
+- **SEMANTIC FILTER (PREFERRED)**: When user says "pizze", system injects `category='Pizza'` filter
   - `_semanticCategoryFilter` object contains `{ logicalRole: 'category', value: 'Pizza' }`
-  - Resolved to physical column name using dataset semantic mappings
-  - Example: "Top 10 pizze per margine" → `WHERE category = 'Pizza' GROUP BY product_name ORDER BY margin DESC LIMIT 10`
-- **FALLBACK (ILIKE)**: Only used if no 'category' column is mapped in dataset
-  - Injects `productIlikePatterns` like `%margherit%`, `%diavol%` as last resort
-- **is_sellable Integration**: Also applies is_sellable filter to exclude notes/modifiers from product rankings
-- **CATEGORY_TERMS Dictionary**: Maps user terms to category values (pizze → categoryValue: 'Pizza', bevande → 'Bevande', etc.)
+  - Resolved to physical column: first tries 'category' logical role, then 'subcategory' as fallback
+  - Example: "Quali pizze sono più profittevoli" → `WHERE category = 'Pizza' GROUP BY product_name ORDER BY gross_margin DESC`
+- **FALLBACK (ILIKE)**: Only used if no 'category'/'subcategory' column is mapped in dataset
+- **CATEGORY_TERMS Dictionary**: Maps user terms to category values (pizze → 'Pizza', bevande → 'Bevande', etc.)
+
+**Semantic Order-By Detection (query-planner.ts)**
+- **detectSemanticOrderByMetric()**: Maps user intent keywords to correct ORDER BY metric
+- **Keyword → Metric Mapping**:
+  - "profittevoli", "margine", "guadagno" → ORDER BY gross_margin DESC
+  - "venduti", "quantità", "volume" → ORDER BY quantity DESC
+  - "fatturato", "incasso", "ricavo" → ORDER BY revenue DESC
+  - "peggiori", "meno venduti" → ASC direction
+- **Gated Application**: Only applied when ranking intent detected (più/meno, migliori/peggiori, top N, classifica)
+- **Order Enforced**: FILTER → GROUP → AGGREGATE → ORDER → LIMIT (never the reverse)
 
 ### Universal Semantic Layer (Enterprise-Grade)
 A domain-agnostic semantic layer supporting any CSV/Excel dataset (POS, DDT, invoices, e-commerce, ERP):
