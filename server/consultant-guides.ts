@@ -1852,11 +1852,11 @@ export const consultantGuides: ConsultantGuides = {
   },
 
   whatsappAgentsChat: {
-    emoji: "🔗",
-    title: "Link Pubblici Agenti",
+    emoji: "💬",
+    title: "Chat Agenti",
     path: "/consultant/whatsapp-agents-chat",
-    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → Tab Link Pubblici",
-    description: "Gestisci i link pubblici per i tuoi agenti WhatsApp. I lead possono iniziare conversazioni direttamente.",
+    navigation: "Sidebar → COMUNICAZIONE → I tuoi dipendenti → pulsante 'Chat Agenti' (alto destra)",
+    description: "Visualizza tutte le conversazioni dei tuoi agenti WhatsApp in un'unica interfaccia. Monitora, intervieni e gestisci le chat attive.",
     category: "automation",
     sections: [
       {
@@ -4115,6 +4115,174 @@ export const consultantGuides: ConsultantGuides = {
     ]
   },
 
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE: CONTENT STUDIO
+  // ═══════════════════════════════════════════════════════════════════
+
+  contentStudioDashboard: {
+    emoji: "📊",
+    title: "Content Studio - Dashboard",
+    path: "/consultant/content-studio",
+    navigation: "Sidebar → CONTENT STUDIO → Dashboard",
+    description: "Dashboard principale del Content Studio. Panoramica contenuti, performance e accesso rapido a tutte le funzionalità.",
+    category: "content",
+    sections: [
+      {
+        title: "PANORAMICA",
+        icon: "📈",
+        description: "Statistiche e accesso rapido.",
+        steps: [
+          { title: "Contenuti Recenti", content: "Visualizza gli ultimi contenuti creati e il loro stato." },
+          { title: "Performance", content: "Metriche di engagement e reach dei tuoi contenuti." },
+          { title: "Quick Actions", content: "Accesso rapido a: Nuova Idea, Nuovo Post, Nuova Campagna." }
+        ]
+      }
+    ]
+  },
+
+  contentStudioIdeas: {
+    emoji: "💡",
+    title: "Content Studio - Idee",
+    path: "/consultant/content-studio/ideas",
+    navigation: "Sidebar → CONTENT STUDIO → Idee",
+    description: "Genera e organizza idee per contenuti con AI. Brainstorming assistito per post, video, stories.",
+    category: "content",
+    sections: [
+      {
+        title: "GENERAZIONE IDEE",
+        icon: "✨",
+        description: "L'AI genera idee basate sul tuo settore e target.",
+        steps: [
+          { title: "Genera Idee", content: "Descrivi il tuo settore e obiettivi. L'AI propone 10+ idee originali." },
+          { title: "Filtra per Tipo", content: "Filtra idee per: Post, Stories, Video, Caroselli, Blog." },
+          { title: "Salva Preferite", content: "Salva le idee migliori per svilupparle in seguito." }
+        ]
+      }
+    ]
+  },
+
+  contentStudioPosts: {
+    emoji: "✍️",
+    title: "Content Studio - Contenuti",
+    path: "/consultant/content-studio/posts",
+    navigation: "Sidebar → CONTENT STUDIO → Contenuti",
+    description: "Crea e gestisci tutti i tuoi contenuti. Copy, caption, hashtag generati con AI.",
+    category: "content",
+    sections: [
+      {
+        title: "CREAZIONE CONTENUTI",
+        icon: "📝",
+        description: "Crea nuovi post per ogni piattaforma.",
+        steps: [
+          { title: "Nuovo Post", content: "Clicca 'Nuovo Post' in alto a destra." },
+          { title: "Scegli Piattaforma", content: "LinkedIn, Instagram, Facebook, X/Twitter, TikTok." },
+          { title: "Genera Copy", content: "L'AI crea copy completo con hook, corpo, CTA, hashtag." },
+          { title: "Varianti", content: "Genera 3 varianti per scegliere la migliore." }
+        ]
+      },
+      {
+        title: "GESTIONE",
+        icon: "📋",
+        description: "Organizza i contenuti esistenti.",
+        steps: [
+          { title: "Lista Contenuti", content: "Tutti i contenuti con stato: Bozza, In Revisione, Approvato, Pubblicato." },
+          { title: "Modifica", content: "Clicca su un contenuto per modificarlo." },
+          { title: "Pianifica", content: "Imposta data e ora di pubblicazione." }
+        ]
+      }
+    ]
+  },
+
+  contentStudioCampaigns: {
+    emoji: "🎯",
+    title: "Content Studio - Campagne",
+    path: "/consultant/content-studio/campaigns",
+    navigation: "Sidebar → CONTENT STUDIO → Campagne",
+    description: "Crea campagne marketing multi-contenuto. Pianifica serie di post coordinati con obiettivi specifici.",
+    category: "content",
+    sections: [
+      {
+        title: "CAMPAIGN BUILDER",
+        icon: "📋",
+        description: "Crea campagne complete in 6 step.",
+        steps: [
+          { title: "Obiettivo", content: "Definisci: awareness, lead generation, conversione, fidelizzazione." },
+          { title: "Target", content: "Specifica il pubblico: demografia, interessi, problemi." },
+          { title: "Messaggi Chiave", content: "Identifica i 3-5 messaggi principali della campagna." },
+          { title: "Contenuti", content: "L'AI genera contenuti per ogni canale." },
+          { title: "Visual", content: "Genera immagini coordinate per la campagna." },
+          { title: "Pianificazione", content: "Distribuisci i contenuti nel calendario." }
+        ]
+      }
+    ]
+  },
+
+  contentStudioVisuals: {
+    emoji: "🖼️",
+    title: "Content Studio - Visuals",
+    path: "/consultant/content-studio/visuals",
+    navigation: "Sidebar → CONTENT STUDIO → Visuals",
+    description: "Genera immagini con AI (Gemini Imagen 3). Crea visual originali per i tuoi contenuti social.",
+    category: "content",
+    sections: [
+      {
+        title: "GENERAZIONE IMMAGINI",
+        icon: "✨",
+        description: "Crea immagini con AI.",
+        steps: [
+          { title: "Descrivi l'Immagine", content: "Inserisci una descrizione dettagliata: soggetto, stile, colori, mood." },
+          { title: "Scegli Stile", content: "Fotografico, Illustrazione, Grafica Piatta, Artistico, Minimale." },
+          { title: "Genera", content: "L'AI crea l'immagine in pochi secondi." },
+          { title: "Scarica", content: "Download in alta risoluzione, royalty-free." }
+        ]
+      }
+    ]
+  },
+
+  contentStudioCalendar: {
+    emoji: "📅",
+    title: "Content Studio - Calendario",
+    path: "/consultant/content-studio/calendar",
+    navigation: "Sidebar → CONTENT STUDIO → Calendario",
+    description: "Calendario editoriale visuale. Pianifica e gestisci la pubblicazione dei contenuti.",
+    category: "content",
+    sections: [
+      {
+        title: "CALENDARIO CONTENUTI",
+        icon: "📆",
+        description: "Visualizza e pianifica i contenuti.",
+        steps: [
+          { title: "Vista Mensile", content: "Panoramica completa del mese con tutti i contenuti pianificati." },
+          { title: "Vista Settimanale", content: "Dettaglio settimanale per pianificazione precisa." },
+          { title: "Drag & Drop", content: "Sposta i contenuti trascinandoli per ripianificare." },
+          { title: "Stati", content: "Colori diversi per: Bozza, In Revisione, Approvato, Pubblicato." }
+        ]
+      }
+    ]
+  },
+
+  contentStudioBrand: {
+    emoji: "🎨",
+    title: "Content Studio - Brand Assets",
+    path: "/consultant/content-studio/brand",
+    navigation: "Sidebar → CONTENT STUDIO → Brand Assets",
+    description: "Gestisci gli asset del tuo brand: colori, font, logo, tone of voice. Garantisci coerenza visiva.",
+    category: "content",
+    sections: [
+      {
+        title: "BRAND GUIDELINES",
+        icon: "🏷️",
+        description: "Definisci l'identità visiva del brand.",
+        steps: [
+          { title: "Colori", content: "Definisci la palette colori: primario, secondario, accento." },
+          { title: "Font", content: "Indica i font per titoli e testo normale." },
+          { title: "Logo", content: "Carica logo in versioni: full, icon, bianco/nero." },
+          { title: "Tone of Voice", content: "Documenta il tono: formale/informale, tecnico/accessibile." }
+        ]
+      }
+    ]
+  },
+
   contentMarketingStudio: {
     emoji: "🎨",
     title: "Content Marketing Studio",
@@ -4276,6 +4444,114 @@ export const consultantGuides: ConsultantGuides = {
             content: "Documenta il tono di voce del brand: formale/informale, tecnico/accessibile, serio/leggero.",
             tips: ["Questo guida la generazione AI dei copy", "Includi esempi di frasi 'sì' e 'no'"]
           }
+        ]
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE: LAVORO QUOTIDIANO - Analisi Dati
+  // ═══════════════════════════════════════════════════════════════════
+
+  clientDataAnalysis: {
+    emoji: "📊",
+    title: "Analisi Dati",
+    path: "/consultant/client-data-analysis",
+    navigation: "Sidebar → LAVORO QUOTIDIANO → Analisi Dati",
+    description: "Analizza dataset Excel/CSV con AI. Upload, mapping colonne, query in linguaggio naturale.",
+    category: "analytics",
+    sections: [
+      {
+        title: "UPLOAD DATASET",
+        icon: "📤",
+        description: "Carica file Excel o CSV.",
+        steps: [
+          { title: "Nuovo Dataset", content: "Clicca 'Nuovo Dataset' in alto a destra." },
+          { title: "Drag & Drop", content: "Trascina il file o clicca per selezionare." },
+          { title: "Anteprima", content: "Verifica le colonne e seleziona il foglio (Excel)." }
+        ]
+      },
+      {
+        title: "MAPPING COLONNE",
+        icon: "🔗",
+        description: "Mappa colonne ai ruoli logici.",
+        steps: [
+          { title: "Discovery AI", content: "L'AI suggerisce automaticamente il mapping." },
+          { title: "Ruoli Logici", content: "Assegna: revenue_amount, quantity, product_name, category, etc." }
+        ]
+      },
+      {
+        title: "QUERY AI",
+        icon: "💬",
+        description: "Fai domande sui tuoi dati in italiano.",
+        steps: [
+          { title: "Chat", content: "Scrivi domande come 'Quali prodotti vendono di più?'" },
+          { title: "Risultati", content: "Visualizza tabelle e grafici generati." }
+        ]
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE: IMPOSTAZIONI - Automazioni Pagamento
+  // ═══════════════════════════════════════════════════════════════════
+
+  paymentAutomations: {
+    emoji: "💳",
+    title: "Automazioni Pagamento",
+    path: "/consultant/payment-automations",
+    navigation: "Sidebar → IMPOSTAZIONI → Automazioni Pagamento",
+    description: "Configura automazioni per pagamenti ricorrenti e fatturazione.",
+    category: "settings",
+    sections: [
+      {
+        title: "CONFIGURAZIONE",
+        icon: "⚙️",
+        description: "Imposta le automazioni pagamento.",
+        steps: [
+          { title: "Stripe", content: "Collega il tuo account Stripe." },
+          { title: "Piani", content: "Crea piani di abbonamento per i clienti." }
+        ]
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEZIONE: COMUNICAZIONE - Email Hub
+  // ═══════════════════════════════════════════════════════════════════
+
+  emailHub: {
+    emoji: "📧",
+    title: "Email Hub",
+    path: "/consultant/email-hub",
+    navigation: "Sidebar → COMUNICAZIONE → Email Hub",
+    description: "Gestisci tutte le email in un'unica interfaccia. Sincronizza account IMAP, risposte AI automatiche.",
+    category: "communication",
+    sections: [
+      {
+        title: "ACCOUNTS",
+        icon: "📬",
+        description: "Gestisci account email.",
+        steps: [
+          { title: "Aggiungi Account", content: "Clicca '+' nella sidebar sinistra per aggiungere account IMAP/SMTP." },
+          { title: "Sincronizza", content: "Clicca 'Sincronizza' in alto a destra per aggiornare le email." }
+        ]
+      },
+      {
+        title: "AI DRAFTS",
+        icon: "✨",
+        description: "Bozze generate dall'AI.",
+        steps: [
+          { title: "Visualizza", content: "Clicca 'AI Drafts' nella sidebar per vedere le risposte suggerite." },
+          { title: "Azioni", content: "Approva, Modifica, Rifiuta o Invia direttamente." }
+        ]
+      },
+      {
+        title: "COMPOSER",
+        icon: "✍️",
+        description: "Scrivi nuove email.",
+        steps: [
+          { title: "Nuova Email", content: "Clicca 'Nuova Email' in alto a destra." }
         ]
       }
     ]

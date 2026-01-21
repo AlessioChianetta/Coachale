@@ -123,7 +123,8 @@ Come consulente, hai accesso all'area `/consultant` dove puoi:
 |-----------|---------------|
 | 🏠 PRINCIPALE | Dashboard, AI Assistant, Setup Iniziale |
 | 📋 LAVORO QUOTIDIANO | Clienti, Calendario, Task, Email Journey |
-| 📣 COMUNICAZIONE | HUB Lead, I tuoi dipendenti (agenti WhatsApp) |
+| 📣 COMUNICAZIONE | HUB Lead, I tuoi dipendenti (agenti WhatsApp), Email Hub |
+| 🎨 CONTENT STUDIO | Dashboard, Idee (AI), Contenuti, Campagne, Visuals (AI), Calendario, Brand Assets |
 | 📚 FORMAZIONE | Università, Esercizi, Template, Corsi |
 | 📖 BASE DI CONOSCENZA | Documenti, API Esterne |
 | ⚙️ IMPOSTAZIONI | API Keys (configurazioni tecniche) |
@@ -198,7 +199,7 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 **PRINCIPALE** (sempre visibile in cima)
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
-| Dashboard | `/consultant/dashboard` | Panoramica quotidiana, KPI, accesso rapido |
+| Dashboard | `/consultant` | Panoramica quotidiana, KPI, accesso rapido |
 | AI Assistant | `/consultant/ai-assistant` | Chiedere aiuto all'AI, generare contenuti |
 | Setup Iniziale | `/consultant/setup-wizard` | Configurazione iniziale (prime settimane) |
 
@@ -206,15 +207,17 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
 | Clienti | `/consultant/clients` | Gestire profili clienti, vedere progressi |
-| Calendario | `/consultant/calendar` | Vedere/creare appuntamenti |
+| Calendario | `/consultant/appointments` | Vedere/creare appuntamenti |
 | Task | `/consultant/tasks` | Gestire i tuoi task operativi |
 | Email Journey | `/consultant/ai-config` | Configurare email automatiche |
+| Analisi Dati | `/consultant/client-data-analysis` | Analizzare dataset Excel/CSV con AI |
 
 **COMUNICAZIONE**
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
 | HUB Lead | `/consultant/lead-hub` | Centro controllo acquisizione clienti |
 | I tuoi dipendenti | `/consultant/whatsapp` | Gestire agenti AI WhatsApp |
+| Email Hub | `/consultant/email-hub` | Gestire email con risposte AI |
 
 **FORMAZIONE**
 | Voce | Dove Porta | Quando Usarla |
@@ -227,13 +230,14 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 **BASE DI CONOSCENZA**
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
-| Documenti | `/consultant/knowledge` | Caricare documenti per l'AI |
-| API Esterne | `/consultant/external-apis` | Collegare fonti dati esterne |
+| Documenti | `/consultant/knowledge-documents` | Caricare documenti per l'AI |
+| API Esterne | `/consultant/knowledge-apis` | Collegare fonti dati esterne |
 
 **IMPOSTAZIONI**
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
 | API Keys | `/consultant/api-keys-unified` | Configurare integrazioni tecniche |
+| Automazioni Pagamento | `/consultant/payment-automations` | Configurare pagamenti ricorrenti e abbonamenti |
 
 **GUIDE**
 | Voce | Dove Porta | Quando Usarla |
@@ -1289,9 +1293,9 @@ A presto!
 
 ### 8.4 Gestire le Conversazioni
 
-**Dove:** `Sidebar → COMUNICAZIONE → I tuoi dipendenti → Tab "Chat"`
+**Dove:** Clicca il pulsante "Chat Agenti" in **alto a destra** nella pagina `Sidebar → COMUNICAZIONE → I tuoi dipendenti`
 
-In questa sezione puoi:
+Questo ti porta a `/consultant/whatsapp-agents-chat` dove puoi:
 - Vedere tutte le conversazioni attive
 - Filtrare per agente, stato, data
 - Leggere i messaggi scambiati
@@ -1706,6 +1710,163 @@ Puoi abilitare/disabilitare il journey per singolo cliente:
 - Cliente già avanzato nel percorso
 - Pausa temporanea
 
+### 11.5 Email Hub
+
+**Dove trovarlo:** `Sidebar → COMUNICAZIONE → Email Hub`
+
+Gestisci tutte le email in un'unica interfaccia con risposte AI.
+
+#### Interfaccia
+
+**Pulsanti** (alto a destra):
+- **Nuova Email** - Apre il composer per scrivere email
+- **Sincronizza** - Aggiorna le email dagli account collegati
+
+**Sidebar sinistra** - Cartelle:
+- **Inbox** - Email in arrivo
+- **AI Drafts** - Bozze generate dall'AI
+- **Starred** - Email con stella
+- **Sent** - Email inviate
+- **Drafts** - Bozze manuali
+- **Trash** - Cestino
+
+#### AI Drafts: Risposte Automatiche
+
+L'AI genera automaticamente bozze di risposta per le email ricevute.
+
+Per ogni bozza puoi:
+| Azione | Cosa Fa |
+|--------|---------|
+| **Approva** | Accetta la bozza così com'è |
+| **Modifica** | Edita il testo prima di inviare |
+| **Rifiuta** | Scarta la bozza generata |
+| **Invia** | Invia direttamente la risposta |
+
+#### Collegare Account Email
+
+1. Clicca "Aggiungi Account" nella sidebar
+2. Inserisci credenziali IMAP/SMTP
+3. L'AI inizierà a sincronizzare le email
+
+---
+
+## Content Studio
+
+Il Content Studio è l'area dedicata alla creazione e gestione dei contenuti marketing.
+
+### Dashboard Content Studio
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Dashboard`
+**URL:** `/consultant/content-studio`
+
+La dashboard centrale per la gestione dei contenuti marketing. Mostra:
+- Panoramica contenuti creati
+- Statistiche di pubblicazione
+- Prossime pubblicazioni programmate
+- Accesso rapido alle funzionalità
+
+### Idee (AI)
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Idee`
+**URL:** `/consultant/content-studio/ideas`
+**Badge:** AI
+
+Genera idee per contenuti usando l'intelligenza artificiale.
+
+#### Come Funziona
+
+Il form è organizzato in 3 step:
+
+**Step 1: Brand & Target**
+- Argomento principale
+- Pubblico target
+- Livello di awareness (consapevolezza del problema)
+
+**Step 2: Objective & Format**
+- Obiettivo del contenuto (awareness, engagement, conversione)
+- Formato desiderato (post, video, carousel, articolo)
+- Piattaforma di destinazione
+
+**Step 3: Brand Voice**
+- Integrazione con la tua brand identity (opzionale)
+- Tono di voce preferito
+- Linee guida stilistiche
+
+**Pulsanti** (in basso):
+| Pulsante | Funzione |
+|----------|----------|
+| **Genera Idee** | L'AI genera suggerimenti basati sui parametri inseriti |
+| **Salva Template** | Salva la configurazione corrente per riutilizzarla |
+| **Carica Template** | Ricarica una configurazione salvata in precedenza |
+
+### Contenuti
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Contenuti`
+**URL:** `/consultant/content-studio/posts`
+
+Gestisci e crea contenuti per social media.
+
+- Lista di tutti i contenuti creati
+- Stato di ogni contenuto (bozza, programmato, pubblicato)
+- Editor per creare nuovi post
+- Anteprima per diverse piattaforme
+
+### Campagne
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Campagne`
+**URL:** `/consultant/content-studio/campaigns`
+
+Campaign builder per creare campagne marketing complete.
+
+#### Wizard a 6 Step
+
+1. **Obiettivo** - Definisci l'obiettivo della campagna
+2. **Target** - Seleziona il pubblico
+3. **Contenuti** - Crea o seleziona i contenuti
+4. **Canali** - Scegli dove pubblicare
+5. **Calendario** - Pianifica le date
+6. **Revisione** - Controlla e avvia
+
+### Visuals (AI)
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Visuals`
+**URL:** `/consultant/content-studio/visuals`
+**Badge:** AI
+
+Genera immagini con intelligenza artificiale per i tuoi contenuti.
+
+- Descrivi l'immagine che vuoi creare
+- L'AI genera varianti
+- Scarica o usa direttamente nei contenuti
+
+### Calendario Editoriale
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Calendario`
+**URL:** `/consultant/content-studio/calendar`
+
+Calendario visuale per pianificare le pubblicazioni.
+
+- Vista mensile/settimanale
+- Drag & drop per spostare contenuti
+- Codice colori per piattaforma
+- Stato di pubblicazione
+
+### Brand Assets
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Brand Assets`
+**URL:** `/consultant/content-studio/brand`
+
+Gestisci gli asset del tuo brand:
+
+| Asset | Descrizione |
+|-------|-------------|
+| **Loghi** | Carica versioni del logo (principale, alternativo, favicon) |
+| **Colori** | Definisci la palette colori del brand |
+| **Font** | Specifica i font da usare |
+| **Linee Guida** | Documenta le regole stilistiche |
+
+Questi asset vengono usati dall'AI per generare contenuti coerenti con il brand.
+
 ---
 
 ## Capitolo 12: Calendario e Gestione Consulenze
@@ -1775,6 +1936,42 @@ Gestisci i tuoi task (non quelli dei clienti):
 - Collega a cliente (opzionale)
 - Segna come completato
 
+### 12.6 Analisi Dati
+
+**Dove trovarlo:** `Sidebar → LAVORO QUOTIDIANO → Analisi Dati`
+**URL:** `/consultant/client-data-analysis`
+**Badge:** NEW
+
+Analizza dataset Excel/CSV con l'intelligenza artificiale.
+
+#### Come Usare
+
+1. Clicca **"Nuovo Dataset"** (pulsante alto a destra)
+2. Trascina il file Excel o CSV nell'area di upload
+3. L'AI mappa automaticamente le colonne riconoscendo:
+   - Date
+   - Numeri/valute
+   - Categorie
+   - Testo
+4. Fai domande in italiano sui tuoi dati
+
+#### Esempio Domande che Puoi Fare
+
+| Domanda | Cosa Ottieni |
+|---------|--------------|
+| "Quali prodotti vendono di più?" | Classifica prodotti per vendite |
+| "Qual è il fatturato mensile?" | Trend mensile del fatturato |
+| "Confronta le vendite per categoria" | Grafico comparativo |
+| "Chi sono i clienti che spendono di più?" | Top clienti per valore |
+| "Come vanno le vendite rispetto all'anno scorso?" | Analisi comparativa |
+
+#### Funzionalità Avanzate
+
+- **Query Chat** - Fai domande in linguaggio naturale
+- **Visualizzazione Risultati** - Grafici automatici
+- **Metriche Personalizzate** - Definisci calcoli custom
+- **Report Riconciliazione** - Verifica integrità dati
+
 ---
 
 ## Capitolo 13: Impostazioni e Configurazioni Avanzate
@@ -1805,7 +2002,30 @@ Centro unificato per tutte le configurazioni tecniche:
 - Metered.ca per WebRTC
 - Link meeting automatici
 
-### 13.2 Centro Guide
+### 13.2 Automazioni Pagamento
+
+**Dove trovarlo:** `Sidebar → IMPOSTAZIONI → Automazioni Pagamento`
+**URL:** `/consultant/payment-automations`
+
+Configura pagamenti ricorrenti e abbonamenti per i clienti.
+
+#### Funzionalità
+
+| Funzione | Descrizione |
+|----------|-------------|
+| **Collegamento Stripe** | Connetti il tuo account Stripe per ricevere pagamenti |
+| **Piani Abbonamento** | Crea piani mensili/annuali per i tuoi servizi |
+| **Fatturazione Automatica** | I clienti vengono addebitati automaticamente |
+| **Gestione Clienti** | Vedi chi paga, chi è in ritardo, chi ha cancellato |
+
+#### Come Configurare
+
+1. Clicca "Collega Stripe"
+2. Segui il flusso di autorizzazione Stripe
+3. Crea il tuo primo piano abbonamento
+4. Assegna il piano ai clienti
+
+### 13.3 Centro Guide
 
 **Dove:** `Sidebar → GUIDE → Centro Guide`
 
