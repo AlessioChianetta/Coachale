@@ -711,10 +711,14 @@ export default function ContentStudioIdeas() {
   };
 
   const handleGenerateIdeas = async () => {
-    if (!topic || !targetAudience || !objective) {
+    // Brand Voice e Knowledge Base sono obbligatori
+    const hasBrandVoice = useBrandVoice && Object.keys(brandVoiceData).length > 0;
+    const hasKnowledgeBase = useKnowledgeBase && selectedKbDocIds.length > 0;
+    
+    if (!hasBrandVoice || !hasKnowledgeBase) {
       toast({
         title: "Campi obbligatori",
-        description: "Compila tutti i campi per generare le idee",
+        description: "Attiva e configura Brand Voice e Knowledge Base per generare le idee",
         variant: "destructive",
       });
       return;
@@ -1191,7 +1195,7 @@ export default function ContentStudioIdeas() {
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
                       onClick={handleGenerateIdeas}
-                      disabled={isGenerating || !topic || !targetAudience || !objective}
+                      disabled={isGenerating || !useBrandVoice || Object.keys(brandVoiceData).length === 0 || !useKnowledgeBase || selectedKbDocIds.length === 0}
                       size="lg"
                       className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                     >
@@ -1208,7 +1212,7 @@ export default function ContentStudioIdeas() {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowSaveTemplateDialog(true)}
-                        disabled={!topic && !targetAudience}
+                        disabled={!useBrandVoice && !useKnowledgeBase}
                       >
                         <Save className="h-4 w-4 mr-1" />
                         Salva
