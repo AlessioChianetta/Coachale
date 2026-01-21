@@ -86,6 +86,9 @@ const LOGICAL_ROLE_OPTIONS = [
   { value: "customer_id", label: "ID Cliente" },
   { value: "document_id", label: "ID Documento" },
   { value: "payment_method", label: "Metodo Pagamento" },
+  { value: "tax_rate", label: "Aliquota IVA" },
+  { value: "is_sellable", label: "Prodotto Vendibile" },
+  { value: "line_id", label: "ID Riga" },
 ];
 
 const ROLE_FUNCTIONS: Record<string, { label: string; functions: string[] }> = {
@@ -144,6 +147,18 @@ const ROLE_FUNCTIONS: Record<string, { label: string; functions: string[] }> = {
   tax_amount: {
     label: "IVA",
     functions: ["Calcolo IVA", "Fatturato netto vs lordo"]
+  },
+  tax_rate: {
+    label: "Aliquota IVA",
+    functions: ["Breakdown per aliquota", "Fatturato 10% vs 22%", "Analisi fiscale"]
+  },
+  is_sellable: {
+    label: "Prodotto Vendibile",
+    functions: ["Filtro prodotti reali", "Escludi note/modifiche", "Ranking accurati"]
+  },
+  line_id: {
+    label: "ID Riga",
+    functions: ["Conteggio righe", "Dettaglio transazioni"]
   },
 };
 
