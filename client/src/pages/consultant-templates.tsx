@@ -1686,11 +1686,11 @@ export default function ConsultantTemplates() {
                                     >
                                       <div className="border rounded-lg overflow-hidden ml-2">
                                         <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
-                                          <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0">
+                                          <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
                                             <div className="w-6 h-6 bg-teal-500 text-white rounded flex items-center justify-center font-semibold text-xs flex-shrink-0">
                                               {mIndex + 1}
                                             </div>
-                                            <div className="text-left min-w-0">
+                                            <div className="text-left min-w-0 flex-1 overflow-hidden max-w-[180px] sm:max-w-[280px] md:max-w-[400px]">
                                               <h5 className="font-medium text-sm truncate">{module.title}</h5>
                                               <p className="text-xs text-muted-foreground">
                                                 {module.lessons?.length || 0} lezioni
