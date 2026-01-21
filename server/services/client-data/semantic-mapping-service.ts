@@ -241,21 +241,55 @@ export async function confirmSemanticMappings(
   const now = new Date();
 
   for (const conf of confirmations) {
-    const result = await db
-      .update(datasetColumnSemantics)
-      .set({
-        status: "confirmed",
-        confirmedByUserId: userId,
-        confirmedAt: now,
-        updatedAt: now,
-        ...(conf.logicalRole && { logicalRole: conf.logicalRole }),
-      })
+    // Check if the mapping already exists
+    const [existing] = await db
+      .select()
+      .from(datasetColumnSemantics)
       .where(
         and(
           eq(datasetColumnSemantics.datasetId, datasetId),
           eq(datasetColumnSemantics.physicalColumn, conf.physicalColumn)
         )
-      );
+      )
+      .limit(1);
+
+    if (existing) {
+      // Update existing mapping
+      await db
+        .update(datasetColumnSemantics)
+        .set({
+          status: "confirmed",
+          confirmedByUserId: userId,
+          confirmedAt: now,
+          updatedAt: now,
+          ...(conf.logicalRole && { logicalRole: conf.logicalRole }),
+        })
+        .where(
+          and(
+            eq(datasetColumnSemantics.datasetId, datasetId),
+            eq(datasetColumnSemantics.physicalColumn, conf.physicalColumn)
+          )
+        );
+    } else if (conf.logicalRole) {
+      // Insert new mapping for previously unmapped columns
+      const displayName = getLogicalColumnDisplayName(conf.logicalRole);
+      const isCritical = CRITICAL_ROLES.includes(conf.logicalRole as any);
+      
+      await db.insert(datasetColumnSemantics).values({
+        datasetId,
+        physicalColumn: conf.physicalColumn,
+        logicalRole: conf.logicalRole,
+        confidence: 1.0, // User-confirmed, 100% confidence
+        status: "confirmed",
+        autoApproved: false,
+        isCritical,
+        displayName,
+        confirmedByUserId: userId,
+        confirmedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
     confirmed++;
   }
 
