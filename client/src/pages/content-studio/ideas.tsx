@@ -773,29 +773,37 @@ export default function ContentStudioIdeas() {
                 >
                   <div className="overflow-hidden">
                   <CardContent className="pt-4 space-y-5">
-                    {/* Objectives as compact pills */}
+                    {/* Objectives as compact pills with tooltips */}
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">Obiettivo *</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {OBJECTIVES.map((obj) => {
-                          const IconComponent = obj.icon;
-                          const isSelected = objective === obj.value;
-                          return (
-                            <button
-                              key={obj.value}
-                              onClick={() => setObjective(obj.value)}
-                              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                                isSelected
-                                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
-                                  : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              <IconComponent className="h-4 w-4" />
-                              {obj.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <TooltipProvider delayDuration={200}>
+                        <div className="flex flex-wrap gap-2">
+                          {OBJECTIVES.map((obj) => {
+                            const IconComponent = obj.icon;
+                            const isSelected = objective === obj.value;
+                            return (
+                              <Tooltip key={obj.value}>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => setObjective(obj.value)}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                                      isSelected
+                                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
+                                        : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    <IconComponent className="h-4 w-4" />
+                                    {obj.label}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                  <p className="text-xs">{obj.description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
+                      </TooltipProvider>
                     </div>
 
                     {/* Media & Copy Type - Inline Selection */}
