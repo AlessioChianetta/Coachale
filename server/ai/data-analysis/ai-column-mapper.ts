@@ -381,12 +381,16 @@ export async function generateAIMappingSuggestions(
   datasetId: number,
   tableName: string
 ): Promise<AIMappingSuggestion> {
-  const columnsQuery = sql.raw(`
+  if (!/^cdd_[a-z0-9_]+$/i.test(tableName)) {
+    throw new Error(`Invalid table name format: ${tableName}`);
+  }
+  
+  const columnsQuery = sql`
     SELECT column_name 
     FROM information_schema.columns 
-    WHERE table_name = ${safeTableName(tableName)}
+    WHERE table_name = ${tableName}
     ORDER BY ordinal_position
-  `);
+  `;
   
   const columnsResult = await db.execute(columnsQuery);
   const physicalColumns = (columnsResult.rows as any[]).map(r => r.column_name);
