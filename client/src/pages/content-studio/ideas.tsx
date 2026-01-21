@@ -332,10 +332,10 @@ export default function ContentStudioIdeas() {
   });
   const templates = templatesResponse?.data || [];
 
-  const { data: brandVoiceResponse } = useQuery({
-    queryKey: ["/api/lead-nurturing/brand-voice"],
+  const { data: brandVoiceResponse, refetch: refetchBrandVoice } = useQuery({
+    queryKey: ["/api/content/brand-voice"],
     queryFn: async () => {
-      const response = await fetch("/api/lead-nurturing/brand-voice", {
+      const response = await fetch("/api/content/brand-voice", {
         headers: getAuthHeaders(),
       });
       if (!response.ok) return { brandVoice: {} };
@@ -343,12 +343,48 @@ export default function ContentStudioIdeas() {
     },
   });
 
+  // State for saving brand voice
+  const [isSavingBrandVoice, setIsSavingBrandVoice] = useState(false);
+
   // Sync brand voice data when loaded
   useEffect(() => {
     if (brandVoiceResponse?.brandVoice) {
       setBrandVoiceData(brandVoiceResponse.brandVoice);
     }
   }, [brandVoiceResponse]);
+
+  // Save Brand Voice to Content Studio config
+  const handleSaveBrandVoice = async () => {
+    setIsSavingBrandVoice(true);
+    try {
+      const response = await fetch("/api/content/brand-voice", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(brandVoiceData),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Salvato",
+          description: "Brand Voice salvato con successo per Content Studio",
+        });
+        refetchBrandVoice();
+      } else {
+        throw new Error("Errore nel salvataggio");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile salvare il Brand Voice",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBrandVoice(false);
+    }
+  };
 
   // Load available agents for Brand Voice import
   const loadAvailableAgents = async () => {
@@ -1017,10 +1053,11 @@ export default function ContentStudioIdeas() {
                         <BrandVoiceSection
                           data={brandVoiceData}
                           onDataChange={setBrandVoiceData}
-                          onSave={() => {}}
+                          onSave={handleSaveBrandVoice}
+                          isSaving={isSavingBrandVoice}
                           compact={true}
                           showImportButton={true}
-                          showSaveButton={false}
+                          showSaveButton={true}
                           onImportClick={() => {
                             loadAvailableAgents();
                             setShowImportAgentDialog(true);
