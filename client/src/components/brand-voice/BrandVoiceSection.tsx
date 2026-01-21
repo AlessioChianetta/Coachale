@@ -51,6 +51,7 @@ export interface BrandVoiceSectionProps {
   showImportButton?: boolean;
   onImportClick?: () => void;
   compact?: boolean;
+  showSaveButton?: boolean;
 }
 
 export function BrandVoiceSection({
@@ -60,7 +61,8 @@ export function BrandVoiceSection({
   isSaving = false,
   showImportButton = true,
   onImportClick,
-  compact = false
+  compact = false,
+  showSaveButton = true
 }: BrandVoiceSectionProps) {
   const [businessInfoOpen, setBusinessInfoOpen] = useState(!compact);
   const [authorityOpen, setAuthorityOpen] = useState(!compact);
@@ -233,14 +235,16 @@ export function BrandVoiceSection({
                   className="mt-2"
                 />
               </div>
-              <Button 
-                onClick={onSave}
-                disabled={isSaving}
-                className="w-full"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Salva Brand Voice
-              </Button>
+              {showSaveButton && (
+                <Button 
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Salva Brand Voice
+                </Button>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>
@@ -373,14 +377,16 @@ export function BrandVoiceSection({
                   />
                 </div>
               </div>
-              <Button 
-                onClick={onSave}
-                disabled={isSaving}
-                className="w-full"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Salva Brand Voice
-              </Button>
+              {showSaveButton && (
+                <Button 
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Salva Brand Voice
+                </Button>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>
@@ -536,14 +542,16 @@ export function BrandVoiceSection({
                 </div>
               </div>
 
-              <Button 
-                onClick={onSave}
-                disabled={isSaving}
-                className="w-full"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Salva Brand Voice
-              </Button>
+              {showSaveButton && (
+                <Button 
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Salva Brand Voice
+                </Button>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>
@@ -614,14 +622,16 @@ export function BrandVoiceSection({
                 />
               </div>
 
-              <Button 
-                onClick={onSave}
-                disabled={isSaving}
-                className="w-full"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Salva Brand Voice
-              </Button>
+              {showSaveButton && (
+                <Button 
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Salva Brand Voice
+                </Button>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>

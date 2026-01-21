@@ -8738,3 +8738,42 @@ export const customMappingRules = pgTable("custom_mapping_rules", {
 
 export type CustomMappingRule = typeof customMappingRules.$inferSelect;
 export type InsertCustomMappingRule = typeof customMappingRules.$inferInsert;
+
+// ============================================================
+// CONTENT STUDIO CONFIG - Brand Voice for Content Studio (independent from Lead Nurturing)
+// ============================================================
+
+export const contentStudioConfig = pgTable("content_studio_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // Brand Voice Data (dati per generazione AI personalizzata - indipendente da Lead Nurturing)
+  brandVoiceData: jsonb("brand_voice_data").$type<{
+    consultantDisplayName?: string;
+    businessName?: string;
+    businessDescription?: string;
+    consultantBio?: string;
+    vision?: string;
+    mission?: string;
+    values?: string[];
+    usp?: string;
+    whoWeHelp?: string;
+    whoWeDontHelp?: string;
+    whatWeDo?: string;
+    howWeDoIt?: string;
+    yearsExperience?: number;
+    clientsHelped?: number;
+    resultsGenerated?: string;
+    softwareCreated?: { emoji: string; name: string; description: string }[];
+    booksPublished?: { title: string; year: string }[];
+    caseStudies?: { client: string; result: string }[];
+    servicesOffered?: { name: string; price: string; description: string }[];
+    guarantees?: string;
+  }>().default(sql`'{}'::jsonb`),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ContentStudioConfig = typeof contentStudioConfig.$inferSelect;
+export type InsertContentStudioConfig = typeof contentStudioConfig.$inferInsert;

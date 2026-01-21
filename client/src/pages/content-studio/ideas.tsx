@@ -1020,6 +1020,7 @@ export default function ContentStudioIdeas() {
                           onSave={() => {}}
                           compact={true}
                           showImportButton={true}
+                          showSaveButton={false}
                           onImportClick={() => {
                             loadAvailableAgents();
                             setShowImportAgentDialog(true);
