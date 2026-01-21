@@ -39,6 +39,62 @@ const MATCH_TYPE_OPTIONS = [
   { value: "endswith", label: "Finisce con" },
 ];
 
+// Regole di sistema predefinite (legenda base)
+const SYSTEM_RULES = [
+  // Importo Fatturato (revenue_amount) - CRITICO per analytics
+  { pattern: "prezzo_finale", matchType: "startswith", role: "revenue_amount", description: "Pattern comune gestionali POS" },
+  { pattern: "prezzofinale", matchType: "startswith", role: "revenue_amount", description: "Pattern senza underscore" },
+  { pattern: "importo_riga", matchType: "contains", role: "revenue_amount", description: "Totale riga fattura" },
+  { pattern: "totale_riga", matchType: "contains", role: "revenue_amount", description: "Totale riga documento" },
+  { pattern: "importo2", matchType: "exact", role: "revenue_amount", description: "Export comuni ristoranti" },
+  
+  // ID Documento
+  { pattern: "idddt", matchType: "startswith", role: "document_id", description: "DDT italiani" },
+  { pattern: "id_ordine", matchType: "contains", role: "document_id", description: "Ordini POS" },
+  { pattern: "scontrino", matchType: "contains", role: "document_id", description: "Scontrini fiscali" },
+  { pattern: "numero_ordine", matchType: "contains", role: "document_id", description: "Numero ordine" },
+  
+  // Quantità
+  { pattern: "quantita", matchType: "contains", role: "quantity", description: "Quantità venduta" },
+  { pattern: "qta", matchType: "exact", role: "quantity", description: "Abbreviazione comune" },
+  { pattern: "qty", matchType: "exact", role: "quantity", description: "Abbreviazione inglese" },
+  
+  // Prodotto
+  { pattern: "descrizione", matchType: "exact", role: "product_name", description: "Nome prodotto" },
+  { pattern: "articolo", matchType: "contains", role: "product_name", description: "Nome articolo" },
+  { pattern: "reparto", matchType: "exact", role: "category", description: "Categoria/reparto" },
+  { pattern: "categoria", matchType: "contains", role: "category", description: "Categoria prodotto" },
+  
+  // Data
+  { pattern: "data", matchType: "startswith", role: "order_date", description: "Data transazione" },
+  { pattern: "dataordine", matchType: "contains", role: "order_date", description: "Data ordine" },
+  
+  // Costo
+  { pattern: "costo", matchType: "startswith", role: "cost", description: "Costo unitario" },
+  { pattern: "food_cost", matchType: "contains", role: "cost", description: "Food cost" },
+  { pattern: "prezzo_acquisto", matchType: "contains", role: "cost", description: "Prezzo di acquisto" },
+  
+  // Prezzo unitario
+  { pattern: "prezzo_unitario", matchType: "contains", role: "price", description: "Prezzo di listino" },
+  { pattern: "listino", matchType: "contains", role: "price", description: "Prezzo di listino" },
+  
+  // Pagamento
+  { pattern: "pagamento", matchType: "contains", role: "payment_method", description: "Metodo pagamento" },
+  { pattern: "payment", matchType: "contains", role: "payment_method", description: "Payment method" },
+  
+  // Cliente
+  { pattern: "cliente", matchType: "contains", role: "customer_name", description: "Nome cliente" },
+  { pattern: "id_cliente", matchType: "contains", role: "customer_id", description: "ID cliente" },
+  
+  // Fornitore
+  { pattern: "fornitore", matchType: "contains", role: "supplier_name", description: "Nome fornitore" },
+  { pattern: "id_fornitore", matchType: "contains", role: "supplier_id", description: "ID fornitore" },
+  
+  // IVA
+  { pattern: "iva", matchType: "contains", role: "tax_rate", description: "Aliquota IVA" },
+  { pattern: "aliquota", matchType: "contains", role: "tax_rate", description: "Aliquota fiscale" },
+];
+
 interface CustomMappingRule {
   id: number;
   consultantId: string;
@@ -417,6 +473,51 @@ export function CustomMappingRules() {
             })}
           </div>
         )}
+
+        {/* Legenda di Sistema - Regole Predefinite */}
+        <div className="mt-6 pt-4 border-t">
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              Legenda di Sistema ({SYSTEM_RULES.length} regole predefinite)
+              <span className="text-xs text-gray-400 ml-2">
+                — clicca per espandere
+              </span>
+            </summary>
+            <div className="mt-3 space-y-1">
+              <p className="text-xs text-gray-500 mb-3">
+                Queste regole vengono applicate automaticamente a tutti i dataset. 
+                Le tue regole personalizzate hanno priorità su queste.
+              </p>
+              <div className="grid gap-1 max-h-[300px] overflow-y-auto pr-2">
+                {SYSTEM_RULES.map((rule, idx) => {
+                  const roleInfo = LOGICAL_ROLE_OPTIONS.find((r) => r.value === rule.role);
+                  const matchInfo = MATCH_TYPE_OPTIONS.find((m) => m.value === rule.matchType);
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 py-1.5 px-2 rounded bg-amber-50/50 border border-amber-100 text-sm"
+                    >
+                      <span className="font-mono text-xs bg-white px-1.5 py-0.5 rounded border text-gray-700">
+                        {rule.pattern}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                        {matchInfo?.label || rule.matchType}
+                      </Badge>
+                      <ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                      <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
+                        {roleInfo?.label || rule.role}
+                      </Badge>
+                      <span className="text-[10px] text-gray-400 truncate flex-1">
+                        {rule.description}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </details>
+        </div>
       </CardContent>
     </Card>
   );
