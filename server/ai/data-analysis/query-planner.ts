@@ -1657,29 +1657,45 @@ export async function executeToolCall(
             const columnMapping = (dataset[0].columnMapping || {}) as Record<string, any>;
             const datasetColumns = Object.keys(columnMapping);
             
-            // ====== RESOLVE SEMANTIC CATEGORY FILTER ======
-            // If _semanticCategoryFilter is set (from ranking detection like "Top 5 pizze"),
-            // resolve the logical role 'category' to the physical column name
+            // ====== RESOLVE SEMANTIC CATEGORY FILTER (CASCADING) ======
+            // If _semanticCategoryFilter is set, resolve to physical column using cascading priority:
+            // 1. subcategory (most specific)
+            // 2. category (common)
+            // 3. product_tags (flexible)
+            // 4. FALLBACK: productIlike patterns on product_name (emergency only)
             if (toolCall.args._semanticCategoryFilter) {
-              const { logicalRole, value } = toolCall.args._semanticCategoryFilter;
+              const { value } = toolCall.args._semanticCategoryFilter;
+              const categoryTerm = toolCall.args._detectedCategoryTerm || toolCall.args._rankingCategoryFilter;
               
-              // Find physical column mapped to 'category' role
-              const categoryPhysical = Object.entries(mappings)
-                .find(([_, logical]) => logical === logicalRole)?.[0];
+              // Try to find physical column in priority order
+              const CATEGORY_COLUMN_PRIORITY = ['subcategory', 'category', 'product_tags', 'family', 'product_type'];
+              let resolvedColumn: string | null = null;
+              let resolvedRole: string | null = null;
               
-              if (categoryPhysical && datasetColumns.includes(categoryPhysical)) {
-                // Add category filter with physical column name
+              for (const role of CATEGORY_COLUMN_PRIORITY) {
+                const physicalCol = Object.entries(mappings)
+                  .find(([_, logical]) => logical === role)?.[0];
+                
+                if (physicalCol && datasetColumns.includes(physicalCol)) {
+                  resolvedColumn = physicalCol;
+                  resolvedRole = role;
+                  break;
+                }
+              }
+              
+              if (resolvedColumn) {
+                // Found a category-like column, apply filter
                 if (!toolCall.args.filters) toolCall.args.filters = {};
-                toolCall.args.filters[categoryPhysical] = { operator: '=', value: value };
-                console.log(`[SEMANTIC-FILTER] Resolved: ${logicalRole} → "${categoryPhysical}" = '${value}'`);
+                toolCall.args.filters[resolvedColumn] = { operator: '=', value: value };
+                console.log(`[SEMANTIC-FILTER] CASCADE RESOLVED: ${resolvedRole} → "${resolvedColumn}" = '${value}'`);
               } else {
-                // FALLBACK: No category column mapped, fall back to productIlike if available
-                const categoryDef = CATEGORY_TERMS[toolCall.args._rankingCategoryFilter?.toLowerCase()];
+                // LAST FALLBACK: No category column found, use ILIKE on product names
+                const categoryDef = CATEGORY_TERMS[categoryTerm?.toLowerCase()];
                 if (categoryDef?.productIlike?.length > 0 && !toolCall.args.productIlikePatterns) {
                   toolCall.args.productIlikePatterns = categoryDef.productIlike;
-                  console.log(`[SEMANTIC-FILTER] No category column, fallback to ILIKE: ${categoryDef.productIlike.length} patterns`);
+                  console.log(`[SEMANTIC-FILTER] FALLBACK ILIKE: No category column, using ${categoryDef.productIlike.length} patterns`);
                 } else {
-                  console.warn(`[SEMANTIC-FILTER] No category column mapped for role "${logicalRole}", skipping filter`);
+                  console.warn(`[SEMANTIC-FILTER] No category column mapped and no ILIKE patterns for "${categoryTerm}"`);
                 }
               }
             }
