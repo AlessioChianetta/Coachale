@@ -99,6 +99,76 @@ router.put("/brand-assets", authenticateToken, requireRole("consultant"), async 
 });
 
 // ============================================================
+// CONTENT STUDIO BRAND VOICE (independent from Lead Nurturing)
+// ============================================================
+
+// GET /api/content/brand-voice - Get consultant's Content Studio brand voice
+router.get("/brand-voice", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const [config] = await db.select()
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+    
+    res.json({
+      success: true,
+      brandVoice: config?.brandVoiceData || {}
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error fetching brand voice:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch brand voice"
+    });
+  }
+});
+
+// POST /api/content/brand-voice - Save consultant's Content Studio brand voice
+router.post("/brand-voice", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const brandVoiceData = req.body;
+    
+    const [existing] = await db.select()
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+    
+    if (existing) {
+      await db.update(schema.contentStudioConfig)
+        .set({
+          brandVoiceData,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.contentStudioConfig.consultantId, consultantId));
+    } else {
+      await db.insert(schema.contentStudioConfig).values({
+        consultantId,
+        brandVoiceData,
+      });
+    }
+    
+    const [updated] = await db.select()
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+    
+    res.json({ 
+      success: true, 
+      brandVoice: updated?.brandVoiceData || {} 
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error saving brand voice:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to save brand voice"
+    });
+  }
+});
+
+// ============================================================
 // CONTENT IDEAS
 // ============================================================
 
