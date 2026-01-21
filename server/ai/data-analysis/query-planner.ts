@@ -161,26 +161,42 @@ const QUANTITATIVE_KEYWORDS = [
   'how many', 'total', 'count of', 'number of'
 ];
 
-const CATEGORY_TERMS: Record<string, { searchPatterns: string[], productIlike: string[] }> = {
-  'pizza': { searchPatterns: ['pizz'], productIlike: ['%margherit%', '%diavol%', '%capriccio%', '%4 stagion%', '%marinara%', '%napole%', '%roman%'] },
-  'pizze': { searchPatterns: ['pizz'], productIlike: ['%margherit%', '%diavol%', '%capriccio%', '%4 stagion%', '%marinara%', '%napole%', '%roman%'] },
-  'bevande': { searchPatterns: ['bevand', 'drink'], productIlike: ['%acqua%', '%coca%', '%fanta%', '%sprite%', '%birra%', '%vino%'] },
-  'bevanda': { searchPatterns: ['bevand', 'drink'], productIlike: ['%acqua%', '%coca%', '%fanta%', '%sprite%', '%birra%', '%vino%'] },
-  'birre': { searchPatterns: ['birr'], productIlike: ['%birra%', '%bionda%', '%rossa%', '%ipa%', '%lager%'] },
-  'birra': { searchPatterns: ['birr'], productIlike: ['%birra%', '%bionda%', '%rossa%', '%ipa%', '%lager%'] },
-  'dolci': { searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
-  'dolce': { searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
-  'dessert': { searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
-  'coperti': { searchPatterns: ['copert'], productIlike: ['%coperto%'] },
-  'coperto': { searchPatterns: ['copert'], productIlike: ['%coperto%'] },
-  'caffè': { searchPatterns: ['caff'], productIlike: ['%caff%', '%espresso%', '%cappuccino%'] },
-  'caffe': { searchPatterns: ['caff'], productIlike: ['%caff%', '%espresso%', '%cappuccino%'] },
-  'antipasti': { searchPatterns: ['antipast'], productIlike: ['%bruschett%', '%frittur%', '%affettat%'] },
-  'antipasto': { searchPatterns: ['antipast'], productIlike: ['%bruschett%', '%frittur%', '%affettat%'] },
-  'primi': { searchPatterns: ['prim'], productIlike: ['%pasta%', '%risotto%', '%gnocchi%', '%lasagn%'] },
-  'primo': { searchPatterns: ['prim'], productIlike: ['%pasta%', '%risotto%', '%gnocchi%', '%lasagn%'] },
-  'secondi': { searchPatterns: ['second'], productIlike: ['%carne%', '%pesce%', '%grigliata%', '%tagliata%'] },
-  'secondo': { searchPatterns: ['second'], productIlike: ['%carne%', '%pesce%', '%grigliata%', '%tagliata%'] },
+/**
+ * CATEGORY_TERMS: Semantic category mapping
+ * 
+ * DESIGN DECISION: When user says "pizze", we filter by category='Pizza' (not ILIKE on product names)
+ * - categoryValue: The exact value to filter in the 'category' column (preferred)
+ * - searchPatterns: Legacy patterns for text search (fallback)
+ * - productIlike: ILIKE patterns for product_name (only if no category column available)
+ */
+const CATEGORY_TERMS: Record<string, { 
+  categoryValue: string;  // PREFERRED: Exact category filter value (e.g., 'Pizza')
+  searchPatterns: string[];
+  productIlike: string[]; 
+}> = {
+  'pizza': { categoryValue: 'Pizza', searchPatterns: ['pizz'], productIlike: ['%margherit%', '%diavol%', '%capriccio%', '%4 stagion%', '%marinara%', '%napole%', '%roman%'] },
+  'pizze': { categoryValue: 'Pizza', searchPatterns: ['pizz'], productIlike: ['%margherit%', '%diavol%', '%capriccio%', '%4 stagion%', '%marinara%', '%napole%', '%roman%'] },
+  'bevande': { categoryValue: 'Bevande', searchPatterns: ['bevand', 'drink'], productIlike: ['%acqua%', '%coca%', '%fanta%', '%sprite%', '%birra%', '%vino%'] },
+  'bevanda': { categoryValue: 'Bevande', searchPatterns: ['bevand', 'drink'], productIlike: ['%acqua%', '%coca%', '%fanta%', '%sprite%', '%birra%', '%vino%'] },
+  'birre': { categoryValue: 'Birre', searchPatterns: ['birr'], productIlike: ['%birra%', '%bionda%', '%rossa%', '%ipa%', '%lager%'] },
+  'birra': { categoryValue: 'Birre', searchPatterns: ['birr'], productIlike: ['%birra%', '%bionda%', '%rossa%', '%ipa%', '%lager%'] },
+  'dolci': { categoryValue: 'Dolci', searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
+  'dolce': { categoryValue: 'Dolci', searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
+  'dessert': { categoryValue: 'Dessert', searchPatterns: ['dolc', 'dessert'], productIlike: ['%tiramisu%', '%torta%', '%gelato%', '%panna cotta%', '%sorbetto%'] },
+  'coperti': { categoryValue: 'Coperti', searchPatterns: ['copert'], productIlike: ['%coperto%'] },
+  'coperto': { categoryValue: 'Coperti', searchPatterns: ['copert'], productIlike: ['%coperto%'] },
+  'caffè': { categoryValue: 'Caffè', searchPatterns: ['caff'], productIlike: ['%caff%', '%espresso%', '%cappuccino%'] },
+  'caffe': { categoryValue: 'Caffè', searchPatterns: ['caff'], productIlike: ['%caff%', '%espresso%', '%cappuccino%'] },
+  'antipasti': { categoryValue: 'Antipasti', searchPatterns: ['antipast'], productIlike: ['%bruschett%', '%frittur%', '%affettat%'] },
+  'antipasto': { categoryValue: 'Antipasti', searchPatterns: ['antipast'], productIlike: ['%bruschett%', '%frittur%', '%affettat%'] },
+  'primi': { categoryValue: 'Primi', searchPatterns: ['prim'], productIlike: ['%pasta%', '%risotto%', '%gnocchi%', '%lasagn%'] },
+  'primo': { categoryValue: 'Primi', searchPatterns: ['prim'], productIlike: ['%pasta%', '%risotto%', '%gnocchi%', '%lasagn%'] },
+  'secondi': { categoryValue: 'Secondi', searchPatterns: ['second'], productIlike: ['%carne%', '%pesce%', '%grigliata%', '%tagliata%'] },
+  'secondo': { categoryValue: 'Secondi', searchPatterns: ['second'], productIlike: ['%carne%', '%pesce%', '%grigliata%', '%tagliata%'] },
+  'contorni': { categoryValue: 'Contorni', searchPatterns: ['contorn'], productIlike: ['%insalat%', '%patatine%', '%verdur%'] },
+  'contorno': { categoryValue: 'Contorni', searchPatterns: ['contorn'], productIlike: ['%insalat%', '%patatine%', '%verdur%'] },
+  'vini': { categoryValue: 'Vini', searchPatterns: ['vin'], productIlike: ['%vino%', '%rosso%', '%bianco%', '%rosato%'] },
+  'vino': { categoryValue: 'Vini', searchPatterns: ['vin'], productIlike: ['%vino%', '%rosso%', '%bianco%', '%rosato%'] },
 };
 
 /**
@@ -1610,6 +1626,33 @@ export async function executeToolCall(
             const columnMapping = (dataset[0].columnMapping || {}) as Record<string, any>;
             const datasetColumns = Object.keys(columnMapping);
             
+            // ====== RESOLVE SEMANTIC CATEGORY FILTER ======
+            // If _semanticCategoryFilter is set (from ranking detection like "Top 5 pizze"),
+            // resolve the logical role 'category' to the physical column name
+            if (toolCall.args._semanticCategoryFilter) {
+              const { logicalRole, value } = toolCall.args._semanticCategoryFilter;
+              
+              // Find physical column mapped to 'category' role
+              const categoryPhysical = Object.entries(mappings)
+                .find(([_, logical]) => logical === logicalRole)?.[0];
+              
+              if (categoryPhysical && datasetColumns.includes(categoryPhysical)) {
+                // Add category filter with physical column name
+                if (!toolCall.args.filters) toolCall.args.filters = {};
+                toolCall.args.filters[categoryPhysical] = { operator: '=', value: value };
+                console.log(`[SEMANTIC-FILTER] Resolved: ${logicalRole} → "${categoryPhysical}" = '${value}'`);
+              } else {
+                // FALLBACK: No category column mapped, fall back to productIlike if available
+                const categoryDef = CATEGORY_TERMS[toolCall.args._rankingCategoryFilter?.toLowerCase()];
+                if (categoryDef?.productIlike?.length > 0 && !toolCall.args.productIlikePatterns) {
+                  toolCall.args.productIlikePatterns = categoryDef.productIlike;
+                  console.log(`[SEMANTIC-FILTER] No category column, fallback to ILIKE: ${categoryDef.productIlike.length} patterns`);
+                } else {
+                  console.warn(`[SEMANTIC-FILTER] No category column mapped for role "${logicalRole}", skipping filter`);
+                }
+              }
+            }
+            
             // PRIORITY 1: Check if dataset has explicit is_sellable column
             const isSellablePhysical = Object.entries(mappings)
               .find(([_, logical]) => logical === 'is_sellable')?.[0];
@@ -2267,20 +2310,36 @@ export async function askDataset(
           }
         }
         
-        // ====== RANKING FILTER INJECTION ======
-        // CRITICAL: For "Top 5 pizze" queries, inject ILIKE patterns BEFORE ranking
-        // This ensures filter is applied FIRST, then ranking (never the reverse)
-        if (rankingFilter.isRankingWithFilter && rankingFilter.categoryTerm && !step.args.productIlikePatterns) {
+        // ====== RANKING FILTER INJECTION (SEMANTIC CATEGORY) ======
+        // CRITICAL: For "Top 5 pizze" queries, inject category='Pizza' filter (NOT ILIKE on product names)
+        // Design: filter category FIRST, then groupBy product_name, then rank
+        // The _semanticCategoryFilter will be resolved to physical column name in aggregateGroup
+        if (rankingFilter.isRankingWithFilter && rankingFilter.categoryTerm) {
           const categoryDef = CATEGORY_TERMS[rankingFilter.categoryTerm.toLowerCase()];
-          if (categoryDef && categoryDef.productIlike && categoryDef.productIlike.length > 0) {
-            step.args.productIlikePatterns = categoryDef.productIlike;
+          if (categoryDef) {
+            // PREFERRED: Use categoryValue to filter by category column directly
+            // Pass semantic filter that will be resolved in aggregateGroup using dataset mappings
+            if (categoryDef.categoryValue) {
+              step.args._semanticCategoryFilter = {
+                logicalRole: 'category',  // Will be resolved to physical column
+                value: categoryDef.categoryValue
+              };
+              console.log(`[RANKING-FILTER] SEMANTIC INJECTION: category='${categoryDef.categoryValue}' for "${rankingFilter.categoryTerm}"`);
+            }
+            // FALLBACK: Use productIlike only if no categoryValue defined
+            else if (categoryDef.productIlike && categoryDef.productIlike.length > 0 && !step.args.productIlikePatterns) {
+              step.args.productIlikePatterns = categoryDef.productIlike;
+              console.log(`[RANKING-FILTER] FALLBACK ILIKE: ${categoryDef.productIlike.length} patterns for "${rankingFilter.categoryTerm}"`);
+            }
+            
             step.args._rankingCategoryFilter = rankingFilter.categoryTerm;
-            step.args._applyIsSellable = true; // Also filter out notes/modifiers
-            // Also enforce the limit from the ranking query
+            step.args._applyIsSellable = true;
+            
+            // Enforce limit from ranking query
             if (rankingFilter.limit && (!step.args.limit || step.args.limit > rankingFilter.limit)) {
               step.args.limit = rankingFilter.limit;
             }
-            console.log(`[RANKING-FILTER] DETERMINISTIC INJECTION: Injected ${categoryDef.productIlike.length} ILIKE patterns for "${rankingFilter.categoryTerm}" into ${step.name}, limit=${step.args.limit}, is_sellable=true`);
+            console.log(`[RANKING-FILTER] Complete: categoryValue=${categoryDef.categoryValue}, limit=${step.args.limit}, is_sellable=true`);
           }
         }
       }
