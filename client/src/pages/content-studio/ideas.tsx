@@ -711,8 +711,18 @@ export default function ContentStudioIdeas() {
   };
 
   const handleGenerateIdeas = async () => {
-    // Obiettivo e Brand Voice sono obbligatori, Knowledge Base è opzionale
+    // Validazione campi obbligatori
     const hasBrandVoice = useBrandVoice && Object.keys(brandVoiceData).length > 0;
+    
+    // topic (niche) e targetAudience sono obbligatori nel server
+    if (!topic?.trim() || !targetAudience?.trim()) {
+      toast({
+        title: "Campi obbligatori",
+        description: "Inserisci l'argomento (Niche) e il pubblico target per generare le idee",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (!objective || !hasBrandVoice) {
       toast({
