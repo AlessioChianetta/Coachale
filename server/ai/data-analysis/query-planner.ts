@@ -200,6 +200,37 @@ const CATEGORY_TERMS: Record<string, {
 };
 
 /**
+ * CATEGORY TERM DETECTION (ALWAYS, not just ranking)
+ * Detects when user mentions a category term like "pizze", "bevande", "dolci"
+ * This should trigger semantic category filtering regardless of query type
+ */
+interface CategoryTermDetection {
+  hasCategoryTerm: boolean;
+  categoryTerm: string | null;
+  categoryValue: string | null;  // The value to filter (e.g., 'Pizza')
+}
+
+export function detectCategoryTermInQuestion(userQuestion: string): CategoryTermDetection {
+  const questionLower = userQuestion.toLowerCase();
+  
+  // Check all CATEGORY_TERMS for presence in question
+  for (const [term, config] of Object.entries(CATEGORY_TERMS)) {
+    // Use word boundary to avoid false positives (e.g., "primi" in "primissimi")
+    const termRegex = new RegExp(`\\b${term}\\b`, 'i');
+    if (termRegex.test(questionLower)) {
+      console.log(`[CATEGORY-DETECT] Found category term "${term}" → categoryValue="${config.categoryValue}"`);
+      return {
+        hasCategoryTerm: true,
+        categoryTerm: term,
+        categoryValue: config.categoryValue
+      };
+    }
+  }
+  
+  return { hasCategoryTerm: false, categoryTerm: null, categoryValue: null };
+}
+
+/**
  * RANKING WITH CATEGORY FILTER DETECTION
  * Detects queries like "Top 5 pizze", "i 10 drink più venduti"
  * These MUST apply category filter BEFORE ranking
@@ -2075,6 +2106,14 @@ export async function askDataset(
     console.log(`[QUERY-PLANNER] RANKING WITH FILTER DETECTED: category="${rankingFilter.categoryTerm}", limit=${rankingFilter.limit}, metric=${rankingFilter.metricType}`);
     // We'll inject the filter into aggregate_group tool args AFTER planning (see deterministic injection section)
   }
+  
+  // ====== CATEGORY TERM DETECTION (ALWAYS, not just ranking) ======
+  // Detect category terms like "pizze", "bevande" in ANY query type
+  // This triggers semantic filtering even for questions like "Quali pizze sono più profittevoli"
+  const categoryDetection = detectCategoryTermInQuestion(userQuestion);
+  if (categoryDetection.hasCategoryTerm) {
+    console.log(`[QUERY-PLANNER] CATEGORY TERM DETECTED: term="${categoryDetection.categoryTerm}", value="${categoryDetection.categoryValue}"`);
+  }
 
   // ====== QUANTITATIVE METRIC WITH FILTER DETECTION ======
   // Intercept "quante pizze ho venduto" as execute_metric with ILIKE filter (not aggregate_group)
@@ -2310,36 +2349,34 @@ export async function askDataset(
           }
         }
         
-        // ====== RANKING FILTER INJECTION (SEMANTIC CATEGORY) ======
-        // CRITICAL: For "Top 5 pizze" queries, inject category='Pizza' filter (NOT ILIKE on product names)
-        // Design: filter category FIRST, then groupBy product_name, then rank
+        // ====== SEMANTIC CATEGORY FILTER INJECTION (ALWAYS, not just ranking) ======
+        // CRITICAL: When user mentions a category (pizze, bevande, etc.), apply semantic filter
+        // This works for ANY query: "Top 5 pizze", "Quali pizze sono più profittevoli", etc.
         // The _semanticCategoryFilter will be resolved to physical column name in aggregateGroup
-        if (rankingFilter.isRankingWithFilter && rankingFilter.categoryTerm) {
-          const categoryDef = CATEGORY_TERMS[rankingFilter.categoryTerm.toLowerCase()];
-          if (categoryDef) {
-            // PREFERRED: Use categoryValue to filter by category column directly
-            // Pass semantic filter that will be resolved in aggregateGroup using dataset mappings
-            if (categoryDef.categoryValue) {
-              step.args._semanticCategoryFilter = {
-                logicalRole: 'category',  // Will be resolved to physical column
-                value: categoryDef.categoryValue
-              };
-              console.log(`[RANKING-FILTER] SEMANTIC INJECTION: category='${categoryDef.categoryValue}' for "${rankingFilter.categoryTerm}"`);
-            }
-            // FALLBACK: Use productIlike only if no categoryValue defined
-            else if (categoryDef.productIlike && categoryDef.productIlike.length > 0 && !step.args.productIlikePatterns) {
-              step.args.productIlikePatterns = categoryDef.productIlike;
-              console.log(`[RANKING-FILTER] FALLBACK ILIKE: ${categoryDef.productIlike.length} patterns for "${rankingFilter.categoryTerm}"`);
-            }
-            
-            step.args._rankingCategoryFilter = rankingFilter.categoryTerm;
-            step.args._applyIsSellable = true;
-            
-            // Enforce limit from ranking query
-            if (rankingFilter.limit && (!step.args.limit || step.args.limit > rankingFilter.limit)) {
+        
+        // Determine which category to use: ranking detection or general category detection
+        const effectiveCategoryTerm = rankingFilter.categoryTerm || categoryDetection.categoryTerm;
+        const effectiveCategoryValue = rankingFilter.categoryTerm 
+          ? CATEGORY_TERMS[rankingFilter.categoryTerm.toLowerCase()]?.categoryValue
+          : categoryDetection.categoryValue;
+        
+        if (effectiveCategoryTerm && effectiveCategoryValue && !step.args._semanticCategoryFilter) {
+          // Inject semantic category filter - will be resolved to physical column in aggregateGroup
+          step.args._semanticCategoryFilter = {
+            logicalRole: 'category',  // Will try: subcategory → category → tags
+            value: effectiveCategoryValue
+          };
+          step.args._detectedCategoryTerm = effectiveCategoryTerm;
+          step.args._applyIsSellable = true;
+          
+          console.log(`[SEMANTIC-CATEGORY] INJECTION: category='${effectiveCategoryValue}' for term "${effectiveCategoryTerm}"`);
+          
+          // If this is a ranking query, also enforce the limit
+          if (rankingFilter.isRankingWithFilter && rankingFilter.limit) {
+            if (!step.args.limit || step.args.limit > rankingFilter.limit) {
               step.args.limit = rankingFilter.limit;
             }
-            console.log(`[RANKING-FILTER] Complete: categoryValue=${categoryDef.categoryValue}, limit=${step.args.limit}, is_sellable=true`);
+            console.log(`[SEMANTIC-CATEGORY] Ranking limit enforced: ${step.args.limit}`);
           }
         }
       }
