@@ -80,6 +80,7 @@ import {
   Wand2,
   Building2,
   Download,
+  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -999,10 +1000,24 @@ export default function ContentStudioIdeas() {
                     </div>
                     <div className="text-left">
                       <h3 className="font-semibold text-foreground">Brand Voice & Contesto</h3>
-                      <p className="text-xs text-muted-foreground">Arricchisci le idee con il tuo brand (opzionale)</p>
+                      <p className="text-xs text-muted-foreground">Brand Voice e Knowledge Base sono obbligatori</p>
                     </div>
-                    {(useBrandVoice || useKnowledgeBase) && (
+                    {/* Check verde solo se Brand Voice E Knowledge Base sono completi */}
+                    {(useBrandVoice && Object.keys(brandVoiceData).length > 0 && useKnowledgeBase && selectedKbDocIds.length > 0) ? (
                       <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
+                    ) : (useBrandVoice || useKnowledgeBase) ? (
+                      <div className="flex items-center gap-1 ml-2">
+                        <AlertCircle className="h-4 w-4 text-amber-500" />
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          {!useBrandVoice ? "Brand Voice richiesto" : Object.keys(brandVoiceData).length === 0 ? "Configura Brand Voice" : 
+                           !useKnowledgeBase ? "Knowledge Base richiesta" : selectedKbDocIds.length === 0 ? "Seleziona documenti" : ""}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 ml-2">
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <span className="text-xs text-red-600 dark:text-red-400">Obbligatorio</span>
+                      </div>
                     )}
                   </div>
                   <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("context") ? "rotate-180" : ""}`} />
