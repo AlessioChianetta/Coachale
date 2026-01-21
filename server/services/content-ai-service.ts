@@ -22,6 +22,26 @@ export interface GenerateIdeasParams {
   copyType?: "short" | "long";
   awarenessLevel?: AwarenessLevel;
   sophisticationLevel?: SophisticationLevel;
+  brandVoiceData?: {
+    consultantDisplayName?: string;
+    businessName?: string;
+    businessDescription?: string;
+    consultantBio?: string;
+    vision?: string;
+    mission?: string;
+    values?: string[];
+    usp?: string;
+    whoWeHelp?: string;
+    whatWeDo?: string;
+    howWeDoIt?: string;
+    yearsExperience?: number;
+    clientsHelped?: number;
+    resultsGenerated?: string;
+    caseStudies?: { client: string; result: string }[];
+    servicesOffered?: { name: string; price: string; description: string }[];
+    guarantees?: string;
+  };
+  kbContent?: string;
 }
 
 export interface StructuredCopyShort {
@@ -514,6 +534,41 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
 
+  let brandVoiceContext = "";
+  if (params.brandVoiceData) {
+    const bv = params.brandVoiceData;
+    const parts: string[] = [];
+    if (bv.businessName) parts.push(`Azienda: ${bv.businessName}`);
+    if (bv.consultantDisplayName) parts.push(`Consulente: ${bv.consultantDisplayName}`);
+    if (bv.businessDescription) parts.push(`Descrizione: ${bv.businessDescription}`);
+    if (bv.usp) parts.push(`USP: ${bv.usp}`);
+    if (bv.vision) parts.push(`Vision: ${bv.vision}`);
+    if (bv.mission) parts.push(`Mission: ${bv.mission}`);
+    if (bv.values?.length) parts.push(`Valori: ${bv.values.join(", ")}`);
+    if (bv.whoWeHelp) parts.push(`Target: ${bv.whoWeHelp}`);
+    if (bv.whatWeDo) parts.push(`Servizi: ${bv.whatWeDo}`);
+    if (bv.howWeDoIt) parts.push(`Metodo: ${bv.howWeDoIt}`);
+    if (bv.yearsExperience) parts.push(`Esperienza: ${bv.yearsExperience} anni`);
+    if (bv.clientsHelped) parts.push(`Clienti aiutati: ${bv.clientsHelped}+`);
+    if (bv.resultsGenerated) parts.push(`Risultati: ${bv.resultsGenerated}`);
+    if (bv.caseStudies?.length) {
+      parts.push(`Case Studies: ${bv.caseStudies.map(cs => `${cs.client} - ${cs.result}`).join("; ")}`);
+    }
+    if (bv.servicesOffered?.length) {
+      parts.push(`Offerta: ${bv.servicesOffered.map(s => `${s.name} (${s.price})`).join(", ")}`);
+    }
+    if (bv.guarantees) parts.push(`Garanzie: ${bv.guarantees}`);
+    
+    if (parts.length > 0) {
+      brandVoiceContext = `\n\n🏢 BRAND VOICE & IDENTITÀ:\n${parts.join("\n")}`;
+    }
+  }
+
+  let kbContext = "";
+  if (params.kbContent && params.kbContent.trim().length > 0) {
+    kbContext = `\n\n📚 KNOWLEDGE BASE (usa questi contenuti come riferimento):\n${params.kbContent}`;
+  }
+
   const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
   const sophisticationInfo = SOPHISTICATION_LEVEL_INSTRUCTIONS[sophisticationLevel];
 
@@ -622,7 +677,7 @@ CONTESTO:
 - Tipo Media: ${mediaType}
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
-${brandContext}
+${brandContext}${brandVoiceContext}${kbContext}
 
 🎯 LIVELLO DI CONSAPEVOLEZZA DEL PUBBLICO: ${awarenessInfo.name}
 STRATEGIA CONSAPEVOLEZZA: ${awarenessInfo.strategy}

@@ -12,7 +12,7 @@ import {
   insertContentTemplateSchema,
   insertContentFolderSchema
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, isNull, asc } from "drizzle-orm";
+import { eq, and, desc, gte, lte, isNull, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import fs from "fs";
@@ -1345,6 +1345,27 @@ const generateIdeasSchema = z.object({
   mediaType: z.enum(["video", "photo"]).default("photo"),
   copyType: z.enum(["short", "long"]).default("short"),
   awarenessLevel: z.enum(["unaware", "problem_aware", "solution_aware", "product_aware", "most_aware"]).default("problem_aware"),
+  sophisticationLevel: z.enum(["level_1", "level_2", "level_3", "level_4", "level_5"]).optional(),
+  brandVoiceData: z.object({
+    consultantDisplayName: z.string().optional(),
+    businessName: z.string().optional(),
+    businessDescription: z.string().optional(),
+    consultantBio: z.string().optional(),
+    vision: z.string().optional(),
+    mission: z.string().optional(),
+    values: z.array(z.string()).optional(),
+    usp: z.string().optional(),
+    whoWeHelp: z.string().optional(),
+    whatWeDo: z.string().optional(),
+    howWeDoIt: z.string().optional(),
+    yearsExperience: z.number().optional(),
+    clientsHelped: z.number().optional(),
+    resultsGenerated: z.string().optional(),
+    caseStudies: z.array(z.object({ client: z.string(), result: z.string() })).optional(),
+    servicesOffered: z.array(z.object({ name: z.string(), price: z.string(), description: z.string() })).optional(),
+    guarantees: z.string().optional(),
+  }).optional(),
+  kbDocumentIds: z.array(z.string()).optional(),
 });
 
 const generateCopySchema = z.object({
@@ -1385,6 +1406,20 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
     
     console.log(`🤖 [CONTENT-AI] Generating ideas for consultant ${consultantId} (mediaType: ${validatedData.mediaType}, copyType: ${validatedData.copyType})`);
     
+    let kbContent = "";
+    if (validatedData.kbDocumentIds && validatedData.kbDocumentIds.length > 0) {
+      const kbDocs = await db
+        .select({ content: schema.nurturingKnowledgeItems.content })
+        .from(schema.nurturingKnowledgeItems)
+        .where(
+          and(
+            eq(schema.nurturingKnowledgeItems.consultantId, consultantId),
+            inArray(schema.nurturingKnowledgeItems.id, validatedData.kbDocumentIds)
+          )
+        );
+      kbContent = kbDocs.map(d => d.content).join("\n\n---\n\n");
+    }
+    
     const result = await generateContentIdeas({
       consultantId,
       niche: validatedData.niche,
@@ -1395,6 +1430,9 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       mediaType: validatedData.mediaType,
       copyType: validatedData.copyType,
       awarenessLevel: validatedData.awarenessLevel,
+      sophisticationLevel: validatedData.sophisticationLevel,
+      brandVoiceData: validatedData.brandVoiceData,
+      kbContent: kbContent,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);

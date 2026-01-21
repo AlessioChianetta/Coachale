@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,7 @@ import {
   ExternalLink,
   PlayCircle,
   Wand2,
+  Building2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -93,6 +94,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import { useLocation } from "wouter";
+import { Switch } from "@/components/ui/switch";
+import { BrandVoiceSection, BrandVoiceData, KnowledgeBaseSelector } from "@/components/brand-voice";
 
 interface Idea {
   id: string;
@@ -253,6 +256,12 @@ export default function ContentStudioIdeas() {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["all"]));
   const [viewingIdea, setViewingIdea] = useState<Idea | null>(null);
   
+  // Brand Voice & KB states for idea generation
+  const [useBrandVoice, setUseBrandVoice] = useState(false);
+  const [brandVoiceData, setBrandVoiceData] = useState<BrandVoiceData>({});
+  const [useKnowledgeBase, setUseKnowledgeBase] = useState(false);
+  const [selectedKbDocIds, setSelectedKbDocIds] = useState<string[]>([]);
+  
   // Wizard accordion state
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["brand"]));
   
@@ -315,6 +324,24 @@ export default function ContentStudioIdeas() {
     },
   });
   const templates = templatesResponse?.data || [];
+
+  const { data: brandVoiceResponse } = useQuery({
+    queryKey: ["/api/lead-nurturing/brand-voice"],
+    queryFn: async () => {
+      const response = await fetch("/api/lead-nurturing/brand-voice", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { brandVoice: {} };
+      return response.json();
+    },
+  });
+
+  // Sync brand voice data when loaded
+  useEffect(() => {
+    if (brandVoiceResponse?.brandVoice) {
+      setBrandVoiceData(brandVoiceResponse.brandVoice);
+    }
+  }, [brandVoiceResponse]);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) return;
@@ -588,6 +615,8 @@ export default function ContentStudioIdeas() {
           copyType,
           awarenessLevel,
           sophisticationLevel,
+          ...(useBrandVoice && Object.keys(brandVoiceData).length > 0 && { brandVoiceData }),
+          ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
         }),
       });
 
@@ -882,7 +911,73 @@ export default function ContentStudioIdeas() {
                 </div>
               </Card>
 
-              {/* Step 3: Advanced Options (Collapsed by default) */}
+              {/* Step 3: Brand Voice & Context (optional) */}
+              <Card className="overflow-hidden">
+                <button
+                  onClick={() => toggleSection("context")}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 hover:from-teal-100 hover:to-cyan-100 dark:hover:from-teal-950/40 dark:hover:to-cyan-950/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-foreground">Brand Voice & Contesto</h3>
+                      <p className="text-xs text-muted-foreground">Arricchisci le idee con il tuo brand (opzionale)</p>
+                    </div>
+                    {(useBrandVoice || useKnowledgeBase) && (
+                      <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
+                    )}
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("context") ? "rotate-180" : ""}`} />
+                </button>
+                
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("context") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden">
+                    <CardContent className="pt-4 space-y-4">
+                      {/* Toggle for Brand Voice */}
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-teal-500" />
+                          <span className="font-medium text-sm">Usa Brand Voice</span>
+                        </div>
+                        <Switch checked={useBrandVoice} onCheckedChange={setUseBrandVoice} />
+                      </div>
+                      
+                      {useBrandVoice && (
+                        <BrandVoiceSection
+                          data={brandVoiceData}
+                          onDataChange={setBrandVoiceData}
+                          onSave={() => {}}
+                          compact={true}
+                          showImportButton={false}
+                        />
+                      )}
+                      
+                      {/* Toggle for Knowledge Base */}
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-amber-500" />
+                          <span className="font-medium text-sm">Usa Knowledge Base</span>
+                        </div>
+                        <Switch checked={useKnowledgeBase} onCheckedChange={setUseKnowledgeBase} />
+                      </div>
+                      
+                      {useKnowledgeBase && (
+                        <KnowledgeBaseSelector
+                          selectedDocIds={selectedKbDocIds}
+                          onSelectionChange={setSelectedKbDocIds}
+                          maxTokens={50000}
+                        />
+                      )}
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Step 4: Advanced Options (Collapsed by default) */}
               <Card className="overflow-hidden">
                 <button
                   onClick={() => toggleSection("advanced")}
