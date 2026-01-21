@@ -18,6 +18,14 @@ Authentication uses JWT and bcrypt. A role-based access control system supports 
 ## UI/UX Decisions
 A modern, accessible, and responsive design is achieved using `shadcn/ui` and `Tailwind CSS`. Onboarding includes interactive guided tours. Navigation is categorized with state persistence, and layouts are content-focused.
 
+### CRM Client Management
+Compact enterprise table layout with:
+- Sortable columns (name, email, date, exercises, progress)
+- Pagination (10/25/50 per page) with navigation controls
+- Bulk selection with indeterminate checkbox state
+- Inline hover actions (edit, status toggle, dropdown menu)
+- Mini avatars (24px) and dense 40px rows
+
 ## AI Integration & Automation
 The platform extensively uses AI for:
 - **Financial Insights**: Personalized financial analysis.
