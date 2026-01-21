@@ -7534,6 +7534,53 @@ export const referralLandingConfig = pgTable("referral_landing_config", {
 export type ReferralLandingConfig = typeof referralLandingConfig.$inferSelect;
 export type InsertReferralLandingConfig = typeof referralLandingConfig.$inferInsert;
 
+// Optin Landing Config - Consultant's direct contact landing page (no referral)
+export const optinLandingConfig = pgTable("optin_landing_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").unique().notNull().references(() => users.id),
+  // Landing content
+  headline: text("headline"),
+  description: text("description"),
+  profileImageUrl: text("profile_image_url"),
+  preferredChannel: text("preferred_channel").$type<"email" | "whatsapp" | "call" | "all">().default("all"),
+  // AI Assistant
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id),
+  showAiChat: boolean("show_ai_chat").default(true),
+  aiAssistantIframeUrl: text("ai_assistant_iframe_url"),
+  // Lead creation defaults
+  defaultCampaignId: varchar("default_campaign_id").references(() => marketingCampaigns.id),
+  // UI customization
+  ctaButtonText: text("cta_button_text").default("Contattami"),
+  welcomeMessage: text("welcome_message"),
+  // Style (limited)
+  accentColor: varchar("accent_color", { length: 7 }).default("#6366f1"),
+  isActive: boolean("is_active").default(true),
+  // Qualification fields configuration (JSON)
+  qualificationFieldsConfig: jsonb("qualification_fields_config").$type<{
+    role: { enabled: boolean; required: boolean };
+    companyType: { enabled: boolean; required: boolean };
+    sector: { enabled: boolean; required: boolean };
+    employeeCount: { enabled: boolean; required: boolean };
+    annualRevenue: { enabled: boolean; required: boolean };
+    currentCompany: { enabled: boolean; required: boolean };
+    currentPosition: { enabled: boolean; required: boolean };
+    yearsExperience: { enabled: boolean; required: boolean };
+    fieldOfStudy: { enabled: boolean; required: boolean };
+    university: { enabled: boolean; required: boolean };
+    motivation: { enabled: boolean; required: boolean };
+    biggestProblem: { enabled: boolean; required: boolean };
+    goal12Months: { enabled: boolean; required: boolean };
+    currentBlocker: { enabled: boolean; required: boolean };
+  }>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_optin_landing_config_consultant_id").on(table.consultantId),
+}));
+
+export type OptinLandingConfig = typeof optinLandingConfig.$inferSelect;
+export type InsertOptinLandingConfig = typeof optinLandingConfig.$inferInsert;
+
 // Insert schemas for referral tables
 export const insertReferralCodeSchema = createInsertSchema(referralCodes).omit({
   id: true,

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { referralCodes, referrals, referralLandingConfig, users, proactiveLeads } from "@shared/schema";
+import { referralCodes, referrals, referralLandingConfig, optinLandingConfig, users, proactiveLeads } from "@shared/schema";
 import { eq, and, desc, sql, count } from "drizzle-orm";
 import { z } from "zod";
 import { nanoid } from "nanoid";
@@ -488,8 +488,142 @@ router.put("/consultant/referral-landing", authenticateToken, requireRole("consu
 });
 
 // ===========================================
+// OPTIN LANDING CONFIG API (Direct Contact, no referral)
+// ===========================================
+
+// GET /api/consultant/optin-landing - Get optin landing config
+router.get("/consultant/optin-landing", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const config = await db.query.optinLandingConfig.findFirst({
+      where: eq(optinLandingConfig.consultantId, consultantId),
+    });
+
+    res.json({ success: true, config });
+  } catch (error: any) {
+    console.error("[OPTIN] Error fetching landing config:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/consultant/optin-landing - Save optin landing config
+router.put("/consultant/optin-landing", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const {
+      headline,
+      description,
+      profileImageUrl,
+      preferredChannel,
+      agentConfigId,
+      showAiChat,
+      aiAssistantIframeUrl,
+      accentColor,
+      isActive,
+      defaultCampaignId,
+      ctaButtonText,
+      welcomeMessage,
+      qualificationFieldsConfig,
+    } = req.body;
+
+    const existing = await db.query.optinLandingConfig.findFirst({
+      where: eq(optinLandingConfig.consultantId, consultantId),
+    });
+
+    const configData = {
+      headline,
+      description,
+      profileImageUrl,
+      preferredChannel,
+      agentConfigId,
+      showAiChat,
+      aiAssistantIframeUrl,
+      accentColor,
+      isActive,
+      defaultCampaignId,
+      ctaButtonText,
+      welcomeMessage,
+      qualificationFieldsConfig,
+      updatedAt: new Date(),
+    };
+
+    let config;
+    if (existing) {
+      [config] = await db.update(optinLandingConfig)
+        .set(configData)
+        .where(eq(optinLandingConfig.consultantId, consultantId))
+        .returning();
+    } else {
+      [config] = await db.insert(optinLandingConfig).values({
+        consultantId,
+        ...configData,
+      }).returning();
+    }
+
+    res.json({ success: true, config });
+  } catch (error: any) {
+    console.error("[OPTIN] Error saving landing config:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===========================================
 // PUBLIC API (no auth)
 // ===========================================
+
+// GET /api/public/optin/:consultantId - Public optin landing page data
+router.get("/public/optin/:consultantId", async (req, res) => {
+  try {
+    const { consultantId } = req.params;
+
+    const consultant = await db.query.users.findFirst({
+      where: eq(users.id, consultantId),
+      columns: { id: true, firstName: true, lastName: true, avatar: true },
+    });
+
+    if (!consultant) {
+      return res.status(404).json({ success: false, error: "Consultant not found" });
+    }
+
+    const config = await db.query.optinLandingConfig.findFirst({
+      where: and(
+        eq(optinLandingConfig.consultantId, consultantId),
+        eq(optinLandingConfig.isActive, true)
+      ),
+    });
+
+    if (!config) {
+      return res.status(404).json({ success: false, error: "Optin landing not active" });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        consultant: {
+          firstName: consultant.firstName,
+          lastName: consultant.lastName,
+          avatar: consultant.avatar,
+        },
+        config: {
+          headline: config.headline,
+          description: config.description,
+          profileImageUrl: config.profileImageUrl,
+          ctaButtonText: config.ctaButtonText,
+          accentColor: config.accentColor,
+          showAiChat: config.showAiChat,
+          aiAssistantIframeUrl: config.aiAssistantIframeUrl,
+          welcomeMessage: config.welcomeMessage,
+          qualificationFieldsConfig: config.qualificationFieldsConfig,
+          preferredChannel: config.preferredChannel,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("[OPTIN] Error fetching public landing data:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // GET /api/public/referral/:code - Public landing page data
 router.get("/public/referral/:code", async (req, res) => {

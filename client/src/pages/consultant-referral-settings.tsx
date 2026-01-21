@@ -27,6 +27,9 @@ import {
   Briefcase,
   GraduationCap,
   User,
+  UserPlus,
+  Copy,
+  Check,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -138,6 +141,38 @@ const groupLabels: Record<string, { label: string; icon: React.ReactNode }> = {
   student: { label: "Studente", icon: <GraduationCap className="h-4 w-4" /> },
 };
 
+type LandingMode = "referral" | "optin";
+
+interface OptinLandingConfig {
+  headline: string;
+  description: string;
+  ctaButtonText: string;
+  primaryColor: string;
+  showAiChat: boolean;
+  isActive: boolean;
+  welcomeMessage: string;
+  preferredChannel: "email" | "whatsapp" | "call" | "all";
+  agentConfigId: string | null;
+  defaultCampaignId: string | null;
+  aiAssistantIframeUrl: string | null;
+  qualificationFieldsConfig: QualificationFieldsConfig;
+}
+
+const defaultOptinFormData: OptinLandingConfig = {
+  headline: "Contattami per una consulenza",
+  description: "Compila il form per richiedere informazioni o prenotare una consulenza.",
+  ctaButtonText: "Contattami",
+  primaryColor: "#6366f1",
+  showAiChat: true,
+  isActive: true,
+  welcomeMessage: "Ciao! Come posso aiutarti oggi?",
+  preferredChannel: "all",
+  agentConfigId: null,
+  defaultCampaignId: null,
+  aiAssistantIframeUrl: null,
+  qualificationFieldsConfig: defaultQualificationFieldsConfig,
+};
+
 export default function ConsultantReferralSettingsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -145,8 +180,11 @@ export default function ConsultantReferralSettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("landing");
+  const [mode, setMode] = useState<LandingMode>("referral");
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const [formData, setFormData] = useState<ReferralLandingConfig>(defaultFormData);
+  const [optinFormData, setOptinFormData] = useState<OptinLandingConfig>(defaultOptinFormData);
 
   const { data: configData, isLoading } = useQuery({
     queryKey: ["/api/consultant/referral-landing"],
@@ -184,8 +222,34 @@ export default function ConsultantReferralSettingsPage() {
     },
   });
 
+  const { data: optinConfigData } = useQuery({
+    queryKey: ["/api/consultant/optin-landing"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/optin-landing", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error("Errore nel caricamento della configurazione optin");
+      }
+      return response.json();
+    },
+  });
+
+  const { data: userData } = useQuery({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/me", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return null;
+      return response.json();
+    },
+  });
+
   const agents = agentsData || [];
   const campaigns = campaignsData?.data || [];
+  const consultantId = userData?.user?.id;
 
   useEffect(() => {
     if (configData?.config) {
@@ -213,6 +277,28 @@ export default function ConsultantReferralSettingsPage() {
       });
     }
   }, [configData]);
+
+  useEffect(() => {
+    if (optinConfigData?.config) {
+      const config = optinConfigData.config;
+      setOptinFormData({
+        headline: config.headline || defaultOptinFormData.headline,
+        description: config.description || defaultOptinFormData.description,
+        ctaButtonText: config.ctaButtonText || defaultOptinFormData.ctaButtonText,
+        primaryColor: config.accentColor || defaultOptinFormData.primaryColor,
+        showAiChat: config.showAiChat ?? defaultOptinFormData.showAiChat,
+        isActive: config.isActive ?? defaultOptinFormData.isActive,
+        welcomeMessage: config.welcomeMessage || defaultOptinFormData.welcomeMessage,
+        preferredChannel: config.preferredChannel || defaultOptinFormData.preferredChannel,
+        agentConfigId: config.agentConfigId || null,
+        defaultCampaignId: config.defaultCampaignId || null,
+        aiAssistantIframeUrl: config.aiAssistantIframeUrl || null,
+        qualificationFieldsConfig: config.qualificationFieldsConfig 
+          ? { ...defaultQualificationFieldsConfig, ...config.qualificationFieldsConfig }
+          : defaultQualificationFieldsConfig,
+      });
+    }
+  }, [optinConfigData]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: ReferralLandingConfig) => {
@@ -267,8 +353,60 @@ export default function ConsultantReferralSettingsPage() {
     },
   });
 
+  const saveOptinMutation = useMutation({
+    mutationFn: async (data: OptinLandingConfig) => {
+      const payload = {
+        headline: data.headline,
+        description: data.description,
+        ctaButtonText: data.ctaButtonText,
+        accentColor: data.primaryColor,
+        showAiChat: data.showAiChat,
+        isActive: data.isActive,
+        welcomeMessage: data.welcomeMessage,
+        preferredChannel: data.preferredChannel,
+        agentConfigId: data.agentConfigId,
+        defaultCampaignId: data.defaultCampaignId,
+        aiAssistantIframeUrl: data.aiAssistantIframeUrl,
+        qualificationFieldsConfig: data.qualificationFieldsConfig,
+      };
+
+      const response = await fetch("/api/consultant/optin-landing", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Errore nel salvataggio");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/optin-landing"] });
+      toast({
+        title: "Impostazioni salvate",
+        description: "La configurazione optin è stata aggiornata con successo",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante il salvataggio delle impostazioni",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateField = <K extends keyof ReferralLandingConfig>(field: K, value: ReferralLandingConfig[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateOptinField = <K extends keyof OptinLandingConfig>(field: K, value: OptinLandingConfig[K]) => {
+    setOptinFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const updateQualificationField = (
@@ -276,21 +414,52 @@ export default function ConsultantReferralSettingsPage() {
     property: "enabled" | "required",
     value: boolean
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      qualificationFieldsConfig: {
-        ...prev.qualificationFieldsConfig,
-        [fieldKey]: {
-          ...prev.qualificationFieldsConfig[fieldKey],
-          [property]: value,
-          ...(property === "enabled" && !value ? { required: false } : {}),
+    if (mode === "referral") {
+      setFormData((prev) => ({
+        ...prev,
+        qualificationFieldsConfig: {
+          ...prev.qualificationFieldsConfig,
+          [fieldKey]: {
+            ...prev.qualificationFieldsConfig[fieldKey],
+            [property]: value,
+            ...(property === "enabled" && !value ? { required: false } : {}),
+          },
         },
-      },
-    }));
+      }));
+    } else {
+      setOptinFormData((prev) => ({
+        ...prev,
+        qualificationFieldsConfig: {
+          ...prev.qualificationFieldsConfig,
+          [fieldKey]: {
+            ...prev.qualificationFieldsConfig[fieldKey],
+            [property]: value,
+            ...(property === "enabled" && !value ? { required: false } : {}),
+          },
+        },
+      }));
+    }
   };
 
   const handleSave = () => {
-    saveMutation.mutate(formData);
+    if (mode === "referral") {
+      saveMutation.mutate(formData);
+    } else {
+      saveOptinMutation.mutate(optinFormData);
+    }
+  };
+
+  const getOptinLink = () => {
+    if (!consultantId) return "";
+    return `${window.location.origin}/optin/${consultantId}`;
+  };
+
+  const copyOptinLink = () => {
+    const link = getOptinLink();
+    navigator.clipboard.writeText(link);
+    setLinkCopied(true);
+    toast({ title: "Link copiato", description: "Il link è stato copiato negli appunti" });
+    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   const LandingPreview = () => (
@@ -342,14 +511,16 @@ export default function ConsultantReferralSettingsPage() {
     </div>
   );
 
-  const renderQualificationFieldsGroup = (group: string, fields: Array<keyof QualificationFieldsConfig>) => (
+  const renderQualificationFieldsGroup = (group: string, fields: Array<keyof QualificationFieldsConfig>) => {
+    const currentConfig = mode === "referral" ? formData.qualificationFieldsConfig : optinFormData.qualificationFieldsConfig;
+    return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-slate-700 border-b pb-2">
         {groupLabels[group].icon}
         <span>{groupLabels[group].label}</span>
       </div>
       {fields.map((fieldKey) => {
-        const fieldConfig = formData.qualificationFieldsConfig[fieldKey];
+        const fieldConfig = currentConfig[fieldKey];
         const fieldLabel = qualificationFieldLabels[fieldKey];
         return (
           <div 
@@ -386,6 +557,7 @@ export default function ConsultantReferralSettingsPage() {
       })}
     </div>
   );
+  };
 
   if (isLoading) {
     return (
@@ -406,7 +578,7 @@ export default function ConsultantReferralSettingsPage() {
 
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="mb-8">
-            <div className="bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 rounded-3xl p-8 text-white shadow-2xl">
+            <div className={`rounded-3xl p-8 text-white shadow-2xl ${mode === "referral" ? "bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600" : "bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600"}`}>
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                   <Button
@@ -418,47 +590,91 @@ export default function ConsultantReferralSettingsPage() {
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
                   <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
-                    <Gift className="w-8 h-8 text-white" />
+                    {mode === "referral" ? <Gift className="w-8 h-8 text-white" /> : <UserPlus className="w-8 h-8 text-white" />}
                   </div>
                   <div>
-                    <h1 className="text-3xl md:text-4xl font-bold">Impostazioni Referral</h1>
-                    <p className="text-purple-100 text-lg">
-                      Configura la landing page e il sistema di bonus
+                    <h1 className="text-3xl md:text-4xl font-bold">
+                      {mode === "referral" ? "Impostazioni Referral" : "Impostazioni Optin"}
+                    </h1>
+                    <p className={`text-lg ${mode === "referral" ? "text-purple-100" : "text-emerald-100"}`}>
+                      {mode === "referral" 
+                        ? "Configura la landing page e il sistema di bonus" 
+                        : "Configura la landing page per contatto diretto"}
                     </p>
                   </div>
                 </div>
-                <Button
-                  onClick={handleSave}
-                  disabled={saveMutation.isPending}
-                  className="bg-white text-purple-600 hover:bg-purple-50"
-                >
-                  {saveMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Salvataggio...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-5 w-5" />
-                      Salva
-                    </>
-                  )}
-                </Button>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-xl p-2">
+                    <Button
+                      variant={mode === "referral" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => { setMode("referral"); setActiveTab("landing"); }}
+                      className={mode === "referral" ? "bg-white text-purple-600" : "text-white hover:bg-white/20"}
+                    >
+                      <Gift className="h-4 w-4 mr-1" />
+                      Referral
+                    </Button>
+                    <Button
+                      variant={mode === "optin" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => { setMode("optin"); setActiveTab("landing"); }}
+                      className={mode === "optin" ? "bg-white text-teal-600" : "text-white hover:bg-white/20"}
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Optin
+                    </Button>
+                  </div>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saveMutation.isPending || saveOptinMutation.isPending}
+                    className={mode === "referral" ? "bg-white text-purple-600 hover:bg-purple-50" : "bg-white text-teal-600 hover:bg-teal-50"}
+                  >
+                    {(saveMutation.isPending || saveOptinMutation.isPending) ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Salvataggio...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-5 w-5" />
+                        Salva
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
+              {mode === "optin" && consultantId && (
+                <div className="mt-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-white/80">Link Optin:</span>
+                    <code className="bg-white/20 px-2 py-1 rounded text-xs">{getOptinLink()}</code>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={copyOptinLink}
+                    className="text-white hover:bg-white/20"
+                  >
+                    {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5 h-12">
+              <TabsList className={`grid w-full h-12 ${mode === "referral" ? "grid-cols-5" : "grid-cols-4"}`}>
                 <TabsTrigger value="landing" className="flex items-center gap-2">
                   <Layout className="h-4 w-4" />
                   <span className="hidden sm:inline">Landing</span>
                 </TabsTrigger>
-                <TabsTrigger value="bonus" className="flex items-center gap-2">
-                  <Gift className="h-4 w-4" />
-                  <span className="hidden sm:inline">Bonus</span>
-                </TabsTrigger>
+                {mode === "referral" && (
+                  <TabsTrigger value="bonus" className="flex items-center gap-2">
+                    <Gift className="h-4 w-4" />
+                    <span className="hidden sm:inline">Bonus</span>
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="ai-assistant" className="flex items-center gap-2">
                   <Bot className="h-4 w-4" />
                   <span className="hidden sm:inline">AI Assistant</span>
@@ -482,7 +698,9 @@ export default function ConsultantReferralSettingsPage() {
                         Editor Landing Page
                       </CardTitle>
                       <CardDescription>
-                        Personalizza il contenuto della tua landing page referral
+                        {mode === "referral" 
+                          ? "Personalizza il contenuto della tua landing page referral"
+                          : "Personalizza il contenuto della tua landing page contatto"}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -492,13 +710,16 @@ export default function ConsultantReferralSettingsPage() {
                         </Label>
                         <Input
                           id="headline"
-                          placeholder="Inizia il tuo percorso con me"
-                          value={formData.headline}
-                          onChange={(e) => updateField("headline", e.target.value.slice(0, 100))}
+                          placeholder={mode === "referral" ? "Inizia il tuo percorso con me" : "Contattami per una consulenza"}
+                          value={mode === "referral" ? formData.headline : optinFormData.headline}
+                          onChange={(e) => mode === "referral" 
+                            ? updateField("headline", e.target.value.slice(0, 100))
+                            : updateOptinField("headline", e.target.value.slice(0, 100))
+                          }
                           maxLength={100}
                         />
                         <p className="text-xs text-slate-500 text-right">
-                          {formData.headline.length}/100
+                          {(mode === "referral" ? formData.headline : optinFormData.headline).length}/100
                         </p>
                       </div>
 
@@ -509,33 +730,41 @@ export default function ConsultantReferralSettingsPage() {
                         <Textarea
                           id="description"
                           placeholder="Sono qui per aiutarti a raggiungere i tuoi obiettivi..."
-                          value={formData.description}
-                          onChange={(e) => updateField("description", e.target.value.slice(0, 500))}
+                          value={mode === "referral" ? formData.description : optinFormData.description}
+                          onChange={(e) => mode === "referral"
+                            ? updateField("description", e.target.value.slice(0, 500))
+                            : updateOptinField("description", e.target.value.slice(0, 500))
+                          }
                           rows={4}
                           maxLength={500}
                         />
                         <p className="text-xs text-slate-500 text-right">
-                          {formData.description.length}/500
+                          {(mode === "referral" ? formData.description : optinFormData.description).length}/500
                         </p>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="bonusText">Testo Bonus</Label>
-                        <Input
-                          id="bonusText"
-                          placeholder="Una consulenza gratuita"
-                          value={formData.bonusText}
-                          onChange={(e) => updateField("bonusText", e.target.value)}
-                        />
-                      </div>
+                      {mode === "referral" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="bonusText">Testo Bonus</Label>
+                          <Input
+                            id="bonusText"
+                            placeholder="Una consulenza gratuita"
+                            value={formData.bonusText}
+                            onChange={(e) => updateField("bonusText", e.target.value)}
+                          />
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                         <Label htmlFor="ctaButtonText">Testo Pulsante CTA</Label>
                         <Input
                           id="ctaButtonText"
-                          placeholder="Richiedi il tuo bonus"
-                          value={formData.ctaButtonText}
-                          onChange={(e) => updateField("ctaButtonText", e.target.value)}
+                          placeholder={mode === "referral" ? "Richiedi il tuo bonus" : "Contattami"}
+                          value={mode === "referral" ? formData.ctaButtonText : optinFormData.ctaButtonText}
+                          onChange={(e) => mode === "referral"
+                            ? updateField("ctaButtonText", e.target.value)
+                            : updateOptinField("ctaButtonText", e.target.value)
+                          }
                         />
                       </div>
 
@@ -548,13 +777,19 @@ export default function ConsultantReferralSettingsPage() {
                           <input
                             type="color"
                             id="primaryColor"
-                            value={formData.primaryColor}
-                            onChange={(e) => updateField("primaryColor", e.target.value)}
+                            value={mode === "referral" ? formData.primaryColor : optinFormData.primaryColor}
+                            onChange={(e) => mode === "referral"
+                              ? updateField("primaryColor", e.target.value)
+                              : updateOptinField("primaryColor", e.target.value)
+                            }
                             className="w-12 h-10 rounded border cursor-pointer"
                           />
                           <Input
-                            value={formData.primaryColor}
-                            onChange={(e) => updateField("primaryColor", e.target.value)}
+                            value={mode === "referral" ? formData.primaryColor : optinFormData.primaryColor}
+                            onChange={(e) => mode === "referral"
+                              ? updateField("primaryColor", e.target.value)
+                              : updateOptinField("primaryColor", e.target.value)
+                            }
                             placeholder="#6366f1"
                             className="flex-1"
                           />
@@ -573,8 +808,11 @@ export default function ConsultantReferralSettingsPage() {
                         </div>
                         <Checkbox
                           id="showAiChat"
-                          checked={formData.showAiChat}
-                          onCheckedChange={(checked) => updateField("showAiChat", checked as boolean)}
+                          checked={mode === "referral" ? formData.showAiChat : optinFormData.showAiChat}
+                          onCheckedChange={(checked) => mode === "referral"
+                            ? updateField("showAiChat", checked as boolean)
+                            : updateOptinField("showAiChat", checked as boolean)
+                          }
                         />
                       </div>
                     </CardContent>
@@ -591,7 +829,47 @@ export default function ConsultantReferralSettingsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <LandingPreview />
+                      {mode === "referral" ? (
+                        <LandingPreview />
+                      ) : (
+                        <div 
+                          className="rounded-2xl border bg-white shadow-lg overflow-hidden"
+                          style={{ minHeight: "400px" }}
+                        >
+                          <div 
+                            className="p-6 text-white"
+                            style={{ backgroundColor: optinFormData.primaryColor }}
+                          >
+                            <div className="flex items-center gap-4 mb-4">
+                              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                                <UserPlus className="h-8 w-8 text-white" />
+                              </div>
+                              <div>
+                                <h2 className="text-2xl font-bold">{optinFormData.headline || "Il tuo titolo"}</h2>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-6 space-y-4">
+                            <p className="text-slate-600">
+                              {optinFormData.description || "La tua descrizione apparirà qui..."}
+                            </p>
+                            <Button 
+                              className="w-full text-white"
+                              style={{ backgroundColor: optinFormData.primaryColor }}
+                            >
+                              {optinFormData.ctaButtonText || "Contattami"}
+                            </Button>
+                            {optinFormData.showAiChat && (
+                              <div className="mt-4 p-4 bg-slate-50 rounded-xl border">
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <MessageSquare className="h-5 w-5" />
+                                  <span className="text-sm">Chat AI attiva</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
