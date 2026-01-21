@@ -7,10 +7,10 @@
  */
 
 import { db } from "../../db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { LOGICAL_COLUMNS, COLUMN_AUTO_DETECT_PATTERNS, getLogicalColumnDisplayName } from "./logical-columns";
 import { getAIProvider } from "../ai-provider";
-import { CRITICAL_ROLES, type SemanticLogicalRole } from "../../../shared/schema";
+import { CRITICAL_ROLES, type SemanticLogicalRole, semanticColumnMappings } from "../../../shared/schema";
 import { safeTableName, safeColumnName } from "./sql-utils";
 
 export interface ColumnStatistics {
@@ -393,7 +393,18 @@ export async function generateAIMappingSuggestions(
   `;
   
   const columnsResult = await db.execute(columnsQuery);
-  const physicalColumns = (columnsResult.rows as any[]).map(r => r.column_name);
+  const allPhysicalColumns = (columnsResult.rows as any[]).map(r => r.column_name);
+  
+  const confirmedMappings = await db
+    .select({ physicalColumn: semanticColumnMappings.physicalColumn })
+    .from(semanticColumnMappings)
+    .where(eq(semanticColumnMappings.datasetId, datasetId));
+  
+  const confirmedColumnSet = new Set(confirmedMappings.map(m => m.physicalColumn));
+  
+  const physicalColumns = allPhysicalColumns.filter(col => !confirmedColumnSet.has(col));
+  
+  console.log(`[AI-MAPPER] Dataset ${datasetId}: ${allPhysicalColumns.length} total columns, ${confirmedColumnSet.size} already confirmed, analyzing ${physicalColumns.length}`);
   
   return analyzeColumnsWithAI(datasetId, tableName, physicalColumns);
 }

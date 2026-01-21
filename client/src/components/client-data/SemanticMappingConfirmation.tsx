@@ -224,6 +224,7 @@ export function SemanticMappingConfirmation({
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: [`/api/client-data/datasets/${datasetId}/semantic-mappings`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/client-data/datasets/${datasetId}/ai-mapping-suggestions`] });
       queryClient.invalidateQueries({ queryKey: [`/api/client-data/datasets`] });
       setSelectedMappings(new Map());
       toast({

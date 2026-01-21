@@ -8716,3 +8716,25 @@ export const datasetColumnMappings = pgTable("dataset_column_mappings", {
 
 export type DatasetColumnMapping = typeof datasetColumnMappings.$inferSelect;
 export type InsertDatasetColumnMapping = typeof datasetColumnMappings.$inferInsert;
+
+// ============================================================
+// CUSTOM MAPPING RULES - Consultant-defined auto-mapping rules
+// ============================================================
+
+export const customMappingRules = pgTable("custom_mapping_rules", {
+  id: serial("id").primaryKey(),
+  consultantId: varchar("consultant_id", { length: 255 }).notNull(),
+  columnPattern: varchar("column_pattern", { length: 255 }).notNull(),
+  logicalRole: varchar("logical_role", { length: 100 }).notNull().$type<SemanticLogicalRole>(),
+  matchType: varchar("match_type", { length: 20 }).notNull().default("contains").$type<"exact" | "contains" | "startswith" | "endswith">(),
+  caseSensitive: boolean("case_sensitive").default(false),
+  priority: integer("priority").default(0),
+  description: text("description"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_custom_mapping_rules_consultant").on(table.consultantId),
+}));
+
+export type CustomMappingRule = typeof customMappingRules.$inferSelect;
+export type InsertCustomMappingRule = typeof customMappingRules.$inferInsert;
