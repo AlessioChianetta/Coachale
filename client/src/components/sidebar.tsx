@@ -688,19 +688,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                              "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                               isActive
-                                ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                                ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white border-cyan-500"
                                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onClick={handleLinkClick}
                           >
-                            {/* Active indicator bar */}
-                            {isActive && (
-                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
-                            )}
-
                             {/* Icon without box */}
                             <Icon className={cn(
                               "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
@@ -756,9 +751,9 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               <Link href={item.href}>
                 <div
                   className={cn(
-                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                     isActive
-                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white border-cyan-500"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
                     isCollapsed && "justify-center px-2"
                   )}
@@ -782,11 +777,6 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   }}
                   title={isCollapsed ? item.name : undefined}
                 >
-                  {/* Active indicator bar */}
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
-                  )}
-
                   {/* Icon without box */}
                   <Icon className={cn(
                     "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
@@ -836,23 +826,20 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       <Link key={child.href} href={child.href}>
                         <div
                           className={cn(
-                            "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                            "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                             isChildActive
-                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white border-cyan-500"
                               : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                           )}
                           data-testid={`link-${slugify(child.name)}`}
                           data-tour={role === "client" ? `client-submenu-${slugify(child.name)}` : undefined}
                           onClick={handleLinkClick}
                         >
-                          {isChildActive && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
-                          )}
                           <ChildIcon className={cn(
                             "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                             isChildActive
                               ? "text-cyan-500"
-                              : "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
+                              : child.color || "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
                           )} />
                           <span className={cn(
                             "font-medium",
@@ -885,7 +872,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <Link key={agent.id} href={`/agent/${agent.publicSlug}/chat`}>
                   <div
                     className={cn(
-                      "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                      "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                       "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                     )}
                     data-testid={`link-agent-${agent.publicSlug}`}
@@ -910,7 +897,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               <Link href={`/c/${consultantInfo.data.slug}/select-agent`}>
                 <div
                   className={cn(
-                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                     "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                   )}
                   data-testid="link-consultant-agents"
@@ -960,9 +947,9 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       <Link href={item.href}>
                         <div
                           className={cn(
-                            "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                            "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                             isActive
-                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white border-cyan-500"
                               : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                           )}
                           data-testid={`link-${slugify(item.name)}`}
@@ -983,9 +970,6 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             }
                           }}
                         >
-                          {isActive && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
-                          )}
                           <Icon className={cn(
                             "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
                             isActive
@@ -1019,22 +1003,19 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               <Link key={child.href} href={child.href}>
                                 <div
                                   className={cn(
-                                    "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                                    "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                                     isChildActive
-                                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white border-cyan-500"
                                       : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                                   )}
                                   data-testid={`link-${slugify(child.name)}`}
                                   onClick={handleLinkClick}
                                 >
-                                  {isChildActive && (
-                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full" />
-                                  )}
                                   <ChildIcon className={cn(
                                     "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                                     isChildActive
                                       ? "text-cyan-500"
-                                      : "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
+                                      : child.color || "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
                                   )} />
                                   <span className={cn(
                                     "font-medium",
@@ -1082,7 +1063,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {/* ConOrbitale - Gestione Finanziaria */}
               <div
                 className={cn(
-                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                   "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
                   isLoadingFinancial && "bg-slate-50 dark:bg-slate-800 animate-pulse",
                   isCollapsed && "justify-center px-2"
@@ -1108,7 +1089,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {/* ContractAle */}
               <div
                 className={cn(
-                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                   "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
                   isCollapsed && "justify-center px-2"
                 )}
@@ -1128,7 +1109,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {/* CrmAle */}
               <div
                 className={cn(
-                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                   "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
                   isCollapsed && "justify-center px-2"
                 )}
@@ -1149,7 +1130,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {user?.siteUrl && (
                 <div
                   className={cn(
-                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2 border-transparent hover:border-cyan-400",
                     "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
                     isCollapsed && "justify-center px-2"
                   )}
