@@ -285,14 +285,16 @@ export default function ContentStudioIdeas() {
     });
   };
   
-  // Calculate form completion progress - Obiettivo e Brand Voice sono obbligatori, Knowledge Base è opzionale
+  // Calculate form completion progress - Nicchia, Target, Obiettivo e Brand Voice sono obbligatori
   const formProgress = useMemo(() => {
     let completed = 0;
-    const total = 2; // Solo Obiettivo e Brand Voice
+    const total = 4; // Nicchia, Target, Obiettivo, Brand Voice
+    if (topic?.trim()) completed++; // Nicchia compilata
+    if (targetAudience?.trim()) completed++; // Pubblico Target compilato
     if (objective) completed++; // Obiettivo selezionato
     if (useBrandVoice && Object.keys(brandVoiceData).length > 0) completed++; // Brand Voice configurato
     return { completed, total, percentage: Math.round((completed / total) * 100) };
-  }, [objective, useBrandVoice, brandVoiceData]);
+  }, [topic, targetAudience, objective, useBrandVoice, brandVoiceData]);
 
   const toggleFilter = (filter: string) => {
     setActiveFilters(prev => {
@@ -881,7 +883,7 @@ export default function ContentStudioIdeas() {
                       <h3 className="font-semibold text-foreground">Obiettivo & Formato</h3>
                       <p className="text-xs text-muted-foreground">Cosa vuoi ottenere e come</p>
                     </div>
-                    {objective && (
+                    {objective && topic?.trim() && targetAudience?.trim() && (
                       <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
                     )}
                   </div>
@@ -893,6 +895,28 @@ export default function ContentStudioIdeas() {
                 >
                   <div className="overflow-hidden">
                   <CardContent className="pt-4 space-y-5">
+                    {/* Nicchia e Pubblico Target - Campi obbligatori */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Nicchia / Argomento *</Label>
+                        <Input
+                          placeholder="es. Finanza personale, Fitness, Marketing..."
+                          value={topic}
+                          onChange={(e) => setTopic(e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Pubblico Target *</Label>
+                        <Input
+                          placeholder="es. Imprenditori 35-50, Mamme lavoratrici..."
+                          value={targetAudience}
+                          onChange={(e) => setTargetAudience(e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+
                     {/* Objectives as compact pills with tooltips */}
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">Obiettivo *</Label>
