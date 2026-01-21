@@ -284,15 +284,14 @@ export default function ContentStudioIdeas() {
     });
   };
   
-  // Calculate form completion progress - Brand Voice e Knowledge Base sono obbligatori
+  // Calculate form completion progress - Obiettivo e Brand Voice sono obbligatori, Knowledge Base è opzionale
   const formProgress = useMemo(() => {
     let completed = 0;
-    const total = 3;
+    const total = 2; // Solo Obiettivo e Brand Voice
     if (objective) completed++; // Obiettivo selezionato
     if (useBrandVoice && Object.keys(brandVoiceData).length > 0) completed++; // Brand Voice configurato
-    if (useKnowledgeBase && selectedKbDocIds.length > 0) completed++; // Knowledge Base con documenti
     return { completed, total, percentage: Math.round((completed / total) * 100) };
-  }, [objective, useBrandVoice, brandVoiceData, useKnowledgeBase, selectedKbDocIds]);
+  }, [objective, useBrandVoice, brandVoiceData]);
 
   const toggleFilter = (filter: string) => {
     setActiveFilters(prev => {
@@ -711,14 +710,13 @@ export default function ContentStudioIdeas() {
   };
 
   const handleGenerateIdeas = async () => {
-    // Obiettivo, Brand Voice e Knowledge Base sono obbligatori
+    // Obiettivo e Brand Voice sono obbligatori, Knowledge Base è opzionale
     const hasBrandVoice = useBrandVoice && Object.keys(brandVoiceData).length > 0;
-    const hasKnowledgeBase = useKnowledgeBase && selectedKbDocIds.length > 0;
     
-    if (!objective || !hasBrandVoice || !hasKnowledgeBase) {
+    if (!objective || !hasBrandVoice) {
       toast({
         title: "Campi obbligatori",
-        description: "Seleziona un obiettivo, attiva Brand Voice e Knowledge Base per generare le idee",
+        description: "Seleziona un obiettivo e configura Brand Voice per generare le idee",
         variant: "destructive",
       });
       return;
@@ -999,23 +997,20 @@ export default function ContentStudioIdeas() {
                     </div>
                     <div className="text-left">
                       <h3 className="font-semibold text-foreground">Brand Voice & Contesto</h3>
-                      <p className="text-xs text-muted-foreground">Brand Voice e Knowledge Base sono obbligatori</p>
+                      <p className="text-xs text-muted-foreground">Brand Voice obbligatorio, Knowledge Base opzionale</p>
                     </div>
-                    {/* Check verde solo se Brand Voice E Knowledge Base sono completi */}
-                    {(useBrandVoice && Object.keys(brandVoiceData).length > 0 && useKnowledgeBase && selectedKbDocIds.length > 0) ? (
+                    {/* Check verde se Brand Voice è completo (Knowledge Base è opzionale) */}
+                    {(useBrandVoice && Object.keys(brandVoiceData).length > 0) ? (
                       <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
-                    ) : (useBrandVoice || useKnowledgeBase) ? (
+                    ) : useBrandVoice ? (
                       <div className="flex items-center gap-1 ml-2">
                         <AlertCircle className="h-4 w-4 text-amber-500" />
-                        <span className="text-xs text-amber-600 dark:text-amber-400">
-                          {!useBrandVoice ? "Brand Voice richiesto" : Object.keys(brandVoiceData).length === 0 ? "Configura Brand Voice" : 
-                           !useKnowledgeBase ? "Knowledge Base richiesta" : selectedKbDocIds.length === 0 ? "Seleziona documenti" : ""}
-                        </span>
+                        <span className="text-xs text-amber-600 dark:text-amber-400">Configura Brand Voice</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 ml-2">
                         <AlertCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-xs text-red-600 dark:text-red-400">Obbligatorio</span>
+                        <span className="text-xs text-red-600 dark:text-red-400">Brand Voice richiesto</span>
                       </div>
                     )}
                   </div>
@@ -1223,7 +1218,7 @@ export default function ContentStudioIdeas() {
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
                       onClick={handleGenerateIdeas}
-                      disabled={isGenerating || !objective || !useBrandVoice || Object.keys(brandVoiceData).length === 0 || !useKnowledgeBase || selectedKbDocIds.length === 0}
+                      disabled={isGenerating || !objective || !useBrandVoice || Object.keys(brandVoiceData).length === 0}
                       size="lg"
                       className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                     >

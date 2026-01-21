@@ -48,14 +48,24 @@ export function KnowledgeBaseSelector({
       try {
         setIsLoading(true);
         setError(null);
-        const response = await fetch("/api/lead-nurturing/knowledge", {
+        // Usa l'API corretta dei documenti Knowledge Base
+        const response = await fetch("/api/consultant/knowledge/documents", {
           credentials: "include",
         });
         if (!response.ok) {
           throw new Error("Errore nel caricamento dei documenti");
         }
         const result = await response.json();
-        setDocuments(result.data || []);
+        // I documenti sono nella root della risposta, non in result.data
+        const docs = Array.isArray(result) ? result : (result.data || []);
+        // Mappa i campi per compatibilità
+        setDocuments(docs.map((doc: any) => ({
+          id: doc.id,
+          title: doc.title || doc.displayName || "Documento",
+          type: doc.fileType || doc.type || "text",
+          content: doc.content || doc.summary || "",
+          createdAt: doc.createdAt,
+        })));
       } catch (err: any) {
         setError(err.message || "Errore sconosciuto");
       } finally {
