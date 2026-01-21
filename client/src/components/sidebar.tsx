@@ -624,14 +624,6 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
           return (
             <div key={category.name}>
-              {/* Separator between categories (except first) */}
-              {idx > 0 && !isAlwaysVisible && (
-                <div className="group/sep relative h-4 my-1 mx-2 flex items-center cursor-default">
-                  <div className="absolute inset-x-0 h-px bg-slate-200 dark:bg-slate-700/50" />
-                  <div className="absolute left-0 h-px bg-gradient-to-r from-cyan-400 to-teal-400 w-0 group-hover/sep:w-full transition-all duration-500 ease-out" />
-                </div>
-              )}
-
               <div className="space-y-0.5">
                 {/* Category Header - hide for always visible sections */}
                 {!isAlwaysVisible && (() => {
