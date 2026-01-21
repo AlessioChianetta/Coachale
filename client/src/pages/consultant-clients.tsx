@@ -668,6 +668,12 @@ export default function ConsultantClientsPage() {
                           <th className="w-10 px-3 py-3">
                             <Checkbox 
                               checked={selectedClients.size === sortedAndPaginatedClients.length && sortedAndPaginatedClients.length > 0}
+                              ref={(ref) => {
+                                if (ref) {
+                                  const isPartial = selectedClients.size > 0 && selectedClients.size < sortedAndPaginatedClients.length;
+                                  (ref as any).indeterminate = isPartial;
+                                }
+                              }}
                               onCheckedChange={(checked) => handleSelectAll(!!checked)}
                               className="border-slate-300"
                             />
