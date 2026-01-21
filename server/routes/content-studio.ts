@@ -1972,13 +1972,16 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
       }
     }
     
-    // If parsing failed or incomplete, try to extract fields manually
+    // If parsing failed or incomplete, try to extract fields manually (handles truncated responses)
     if (!parsed.niche || !parsed.targetAudience) {
-      const nicheMatch = cleanedResponse.match(/"niche"\s*:\s*"([^"]+)"/);
-      const targetMatch = cleanedResponse.match(/"targetAudience"\s*:\s*"([^"]+)"/);
+      // First try complete values, then fall back to partial extraction for truncated responses
+      const nicheMatch = cleanedResponse.match(/"niche"\s*:\s*"([^"]+)"/) || 
+                         cleanedResponse.match(/"niche"\s*:\s*"([^"]{10,})/);
+      const targetMatch = cleanedResponse.match(/"targetAudience"\s*:\s*"([^"]+)"/) || 
+                          cleanedResponse.match(/"targetAudience"\s*:\s*"([^"]{10,})/);
       
-      if (nicheMatch) parsed.niche = nicheMatch[1];
-      if (targetMatch) parsed.targetAudience = targetMatch[1];
+      if (nicheMatch && !parsed.niche) parsed.niche = nicheMatch[1].replace(/["\s]+$/, '');
+      if (targetMatch && !parsed.targetAudience) parsed.targetAudience = targetMatch[1].replace(/["\s]+$/, '');
     }
     
     // If we still don't have both fields, return error
