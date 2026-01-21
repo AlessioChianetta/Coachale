@@ -121,10 +121,10 @@ In `ClientDataAnalysis.tsx` → viewMode "list":
 ## 📝 WORKFLOW DI SVILUPPO
 
 ### FASE 1: Backend - Nuove Metriche
-- [ ] Aggiungere 5 metriche Data Quality
-- [ ] Aggiungere 2 metriche Menu Engineering  
-- [ ] Aggiungere 2 metriche Medie Ponderate
-- [ ] Aggiungere 2 metriche Mix/Incidenze
+- [x] Aggiungere 5 metriche Data Quality ✅
+- [x] Aggiungere 2 metriche Menu Engineering ✅
+- [x] Aggiungere 2 metriche Medie Ponderate ✅
+- [x] Aggiungere 2 metriche Mix/Incidenze ✅
 - [ ] Creare endpoint GET available-metrics
 
 ### FASE 2: Frontend - Componente Guide
@@ -142,6 +142,6 @@ In `ClientDataAnalysis.tsx` → viewMode "list":
 ---
 
 ## 🔄 STATO ATTUALE
-**Ultima modifica**: In attesa di inizio
-**Fase corrente**: FASE 1 - Backend
-**Task corrente**: -
+**Ultima modifica**: Aggiunte 11 nuove metriche a metric-templates.ts
+**Fase corrente**: FASE 1E - Creare endpoint available-metrics
+**Task corrente**: Creazione API endpoint

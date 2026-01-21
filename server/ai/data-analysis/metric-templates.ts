@@ -311,6 +311,175 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
     isPrimary: false,
     version: 1,
   },
+
+  // ============================================
+  // DATA QUALITY METRICS (Sanity Checks)
+  // ============================================
+  lines_count: {
+    name: "lines_count",
+    displayName: "Conteggio Righe",
+    description: "Numero totale di righe nel dataset",
+    sqlTemplate: 'COUNT(*)',
+    requiredLogicalColumns: [],
+    unit: "count",
+    validationRules: {
+      mustBePositive: true,
+      mustBeInteger: true,
+      minValue: 0,
+    },
+    isPrimary: false,
+    version: 1,
+  },
+  missing_cost_lines: {
+    name: "missing_cost_lines",
+    displayName: "Righe Senza Costo",
+    description: "Conteggio righe con costo mancante o zero (indicatore qualità dati)",
+    sqlTemplate: 'SUM(CASE WHEN {cost} IS NULL OR CAST({cost} AS NUMERIC) = 0 THEN 1 ELSE 0 END)',
+    requiredLogicalColumns: ["cost"],
+    unit: "count",
+    validationRules: {
+      mustBeInteger: true,
+      minValue: 0,
+      warningThreshold: 1,
+      warningMessage: "Righe con costo mancante - i calcoli di margine potrebbero essere imprecisi",
+    },
+    isPrimary: false,
+    version: 1,
+  },
+  missing_price_lines: {
+    name: "missing_price_lines",
+    displayName: "Righe Senza Prezzo",
+    description: "Conteggio righe con prezzo mancante o zero (indicatore qualità dati)",
+    sqlTemplate: 'SUM(CASE WHEN {price} IS NULL OR CAST({price} AS NUMERIC) = 0 THEN 1 ELSE 0 END)',
+    requiredLogicalColumns: ["price"],
+    unit: "count",
+    validationRules: {
+      mustBeInteger: true,
+      minValue: 0,
+      warningThreshold: 1,
+      warningMessage: "Righe con prezzo mancante - i calcoli di fatturato potrebbero essere imprecisi",
+    },
+    isPrimary: false,
+    version: 1,
+  },
+  negative_revenue_lines: {
+    name: "negative_revenue_lines",
+    displayName: "Righe Fatturato Negativo",
+    description: "Conteggio righe con fatturato negativo o zero (resi, errori, omaggi)",
+    sqlTemplate: 'SUM(CASE WHEN {revenue_amount} IS NULL OR CAST({revenue_amount} AS NUMERIC) <= 0 THEN 1 ELSE 0 END)',
+    requiredLogicalColumns: ["revenue_amount"],
+    unit: "count",
+    validationRules: {
+      mustBeInteger: true,
+      minValue: 0,
+    },
+    isPrimary: false,
+    version: 1,
+  },
+  unmapped_category_lines: {
+    name: "unmapped_category_lines",
+    displayName: "Righe Senza Categoria",
+    description: "Conteggio righe con categoria mancante o vuota (indicatore qualità dati)",
+    sqlTemplate: "SUM(CASE WHEN {category} IS NULL OR TRIM({category}) = '' THEN 1 ELSE 0 END)",
+    requiredLogicalColumns: ["category"],
+    unit: "count",
+    validationRules: {
+      mustBeInteger: true,
+      minValue: 0,
+      warningThreshold: 1,
+      warningMessage: "Righe senza categoria - le analisi per categoria saranno incomplete",
+    },
+    isPrimary: false,
+    version: 1,
+  },
+
+  // ============================================
+  // MENU ENGINEERING METRICS (Unit Margins)
+  // ============================================
+  gross_margin_per_item: {
+    name: "gross_margin_per_item",
+    displayName: "Margine per Unità",
+    description: "Margine lordo medio per singola unità venduta (per menu engineering)",
+    sqlTemplate: 'SUM((CAST({price} AS NUMERIC) - CAST({cost} AS NUMERIC)) * CAST({quantity} AS NUMERIC)) / NULLIF(SUM(CAST({quantity} AS NUMERIC)), 0)',
+    requiredLogicalColumns: ["price", "cost", "quantity"],
+    unit: "currency",
+    validationRules: {},
+    isPrimary: true,
+    version: 1,
+  },
+  gross_margin_per_document: {
+    name: "gross_margin_per_document",
+    displayName: "Margine per Documento",
+    description: "Margine lordo medio per documento/scontrino",
+    sqlTemplate: 'SUM((CAST({price} AS NUMERIC) - CAST({cost} AS NUMERIC)) * CAST({quantity} AS NUMERIC)) / NULLIF(COUNT(DISTINCT {document_id}), 0)',
+    requiredLogicalColumns: ["price", "cost", "quantity", "document_id"],
+    unit: "currency",
+    validationRules: {},
+    isPrimary: false,
+    version: 1,
+  },
+
+  // ============================================
+  // WEIGHTED AVERAGES (More accurate than simple AVG)
+  // ============================================
+  avg_unit_price_weighted: {
+    name: "avg_unit_price_weighted",
+    displayName: "Prezzo Medio Ponderato",
+    description: "Prezzo medio ponderato per quantità venduta (più accurato di AVG semplice)",
+    sqlTemplate: 'SUM(CAST({price} AS NUMERIC) * CAST({quantity} AS NUMERIC)) / NULLIF(SUM(CAST({quantity} AS NUMERIC)), 0)',
+    requiredLogicalColumns: ["price", "quantity"],
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: true,
+    version: 1,
+  },
+  avg_unit_cost_weighted: {
+    name: "avg_unit_cost_weighted",
+    displayName: "Costo Medio Ponderato",
+    description: "Costo medio ponderato per quantità (più accurato di AVG semplice)",
+    sqlTemplate: 'SUM(CAST({cost} AS NUMERIC) * CAST({quantity} AS NUMERIC)) / NULLIF(SUM(CAST({quantity} AS NUMERIC)), 0)',
+    requiredLogicalColumns: ["cost", "quantity"],
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: false,
+    version: 1,
+  },
+
+  // ============================================
+  // MIX / INCIDENCE METRICS (for category analysis)
+  // Note: These calculate the share within a GROUP BY query
+  // ============================================
+  category_revenue_share: {
+    name: "category_revenue_share",
+    displayName: "Incidenza Fatturato %",
+    description: "Percentuale del fatturato totale per categoria (richiede GROUP BY category)",
+    sqlTemplate: 'SUM(CAST({revenue_amount} AS NUMERIC))',
+    requiredLogicalColumns: ["revenue_amount", "category"],
+    unit: "currency",
+    validationRules: {
+      mustBePositive: true,
+      minValue: 0,
+    },
+    isPrimary: false,
+    version: 1,
+  },
+  category_margin_share: {
+    name: "category_margin_share",
+    displayName: "Incidenza Margine %",
+    description: "Percentuale del margine totale per categoria (richiede GROUP BY category)",
+    sqlTemplate: 'SUM((CAST({price} AS NUMERIC) - CAST({cost} AS NUMERIC)) * CAST({quantity} AS NUMERIC))',
+    requiredLogicalColumns: ["price", "cost", "quantity", "category"],
+    unit: "currency",
+    validationRules: {},
+    isPrimary: false,
+    version: 1,
+  },
 };
 
 export function getMetricTemplate(name: string): MetricTemplate | null {
