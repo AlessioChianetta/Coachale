@@ -302,7 +302,8 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
       config.consultantId, 
       config.id,
       proactiveMatch.isProactiveLead,
-      proactiveMatch.proactiveLeadId || undefined
+      proactiveMatch.proactiveLeadId || undefined,
+      proactiveMatch.leadData?.email || null
     );
   }
 
@@ -518,7 +519,8 @@ export async function handleIncomingWhatsAppMessage(
 async function classifyParticipant(
   normalizedPhone: string,
   consultantId: string,
-  tx: any
+  tx: any,
+  proactiveLeadEmail?: string | null
 ): Promise<{ type: "receptionist" | "consultant" | "client" | "unknown"; userId: string | null; userRole: string | null }> {
   // Check if receptionist
   if (normalizedPhone === "+393500220129") {
@@ -531,31 +533,54 @@ async function classifyParticipant(
     .from(users)
     .where(eq(users.phoneNumber, normalizedPhone));
 
-  if (usersWithPhone.length === 0) {
-    return { type: "unknown", userId: null, userRole: null };
-  }
-
-  // PRIORITY 1: Check if sender IS the agent owner (same consultant)
-  // Only give consultant access if the phone belongs to THE consultant who owns this agent
+  // PRIORITY 1: Check if sender IS the agent owner (same consultant) by phone
   const ownerConsultant = usersWithPhone.find((u: any) => u.role === "consultant" && u.id === consultantId);
   if (ownerConsultant) {
     console.log(`👨‍💼 [PARTICIPANT] Recognized AGENT OWNER: ${ownerConsultant.firstName} ${ownerConsultant.lastName}`);
     return { type: "consultant", userId: ownerConsultant.id, userRole: "consultant" };
   }
 
-  // PRIORITY 2: Check if sender is a client of the agent owner
-  // This takes precedence even if the sender is a consultant elsewhere
-  const client = usersWithPhone.find((u: any) => u.role === "client" && u.consultantId === consultantId);
-  if (client) {
-    console.log(`👤 [PARTICIPANT] Recognized CLIENT: ${client.firstName} ${client.lastName}`);
-    return { type: "client", userId: client.id, userRole: "client" };
+  // PRIORITY 2: Check if sender is a client of the agent owner by phone
+  // FIX: Check consultantId match regardless of role (user could be consultant elsewhere but still client here)
+  const clientByPhone = usersWithPhone.find((u: any) => u.consultantId === consultantId);
+  if (clientByPhone) {
+    console.log(`👤 [PARTICIPANT] Recognized CLIENT by phone: ${clientByPhone.firstName} ${clientByPhone.lastName} (role: ${clientByPhone.role})`);
+    return { type: "client", userId: clientByPhone.id, userRole: clientByPhone.role };
   }
 
-  // PRIORITY 3: Anyone else (including consultants of other accounts) is treated as unknown/lead
-  // This prevents cross-tenant data exposure
-  const otherConsultant = usersWithPhone.find((u: any) => u.role === "consultant");
-  if (otherConsultant) {
-    console.log(`⚠️ [PARTICIPANT] Consultant ${otherConsultant.firstName} ${otherConsultant.lastName} writing to another consultant's agent - treating as LEAD for security`);
+  // PRIORITY 3: If phone lookup failed, try email lookup from proactive lead data
+  if (proactiveLeadEmail) {
+    console.log(`📧 [PARTICIPANT] Phone not matched, trying email lookup: ${proactiveLeadEmail}`);
+    const usersWithEmail = await tx
+      .select()
+      .from(users)
+      .where(eq(users.email, proactiveLeadEmail.toLowerCase()));
+    
+    // Check if any user with this email is a client of this consultant
+    const clientByEmail = usersWithEmail.find((u: any) => u.consultantId === consultantId);
+    if (clientByEmail) {
+      console.log(`👤 [PARTICIPANT] Recognized CLIENT by email: ${clientByEmail.firstName} ${clientByEmail.lastName} (role: ${clientByEmail.role})`);
+      return { type: "client", userId: clientByEmail.id, userRole: clientByEmail.role };
+    }
+    
+    // Check if the agent owner is writing from a different phone
+    const ownerByEmail = usersWithEmail.find((u: any) => u.role === "consultant" && u.id === consultantId);
+    if (ownerByEmail) {
+      console.log(`👨‍💼 [PARTICIPANT] Recognized AGENT OWNER by email: ${ownerByEmail.firstName} ${ownerByEmail.lastName}`);
+      return { type: "consultant", userId: ownerByEmail.id, userRole: "consultant" };
+    }
+  }
+
+  // PRIORITY 4: If still no match, try broader email search from phone-matched users
+  // This handles case where user has email in system but different phone
+  if (usersWithPhone.length > 0) {
+    // Log why we didn't match anyone
+    const otherConsultant = usersWithPhone.find((u: any) => u.role === "consultant");
+    if (otherConsultant) {
+      console.log(`⚠️ [PARTICIPANT] Consultant ${otherConsultant.firstName} ${otherConsultant.lastName} writing to another consultant's agent - treating as LEAD for security`);
+    }
+  } else {
+    console.log(`🔍 [PARTICIPANT] No user found with phone ${normalizedPhone}, treating as new lead`);
   }
 
   return { type: "unknown", userId: null, userRole: null };
@@ -663,7 +688,8 @@ export async function findOrCreateConversation(
   consultantId: string,
   agentConfigId?: string,
   isProactiveLead: boolean = false,
-  proactiveLeadId?: string
+  proactiveLeadId?: string,
+  proactiveLeadEmail?: string | null
 ) {
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
   const callTimestamp = new Date().toISOString();
@@ -714,7 +740,8 @@ export async function findOrCreateConversation(
       console.log(`✅ [CONVERSATION FOUND] id=${conversation.id}, agentConfigId=${conversation.agentConfigId}, isLead=${conversation.isLead}, isProactiveLead=${conversation.isProactiveLead}`);
       
       // Classify participant and update metadata if not already classified
-      const participant = await classifyParticipant(normalizedPhone, consultantId, tx);
+      // FIX: Pass proactiveLeadEmail for email-based fallback lookup
+      const participant = await classifyParticipant(normalizedPhone, consultantId, tx, proactiveLeadEmail);
       const currentMetadata = conversation.metadata || {};
       
       if (!currentMetadata.participantType) {
@@ -780,7 +807,8 @@ export async function findOrCreateConversation(
     console.log(`\n🆕🆕🆕 [CONVERSATION CREATE] Creating NEW conversation at ${new Date().toISOString()} 🆕🆕🆕`);
     
     // Classify participant for new conversation
-    const participant = await classifyParticipant(normalizedPhone, consultantId, tx);
+    // FIX: Pass proactiveLeadEmail for email-based fallback lookup
+    const participant = await classifyParticipant(normalizedPhone, consultantId, tx, proactiveLeadEmail);
     
     // Determine userId and isLead based on participant type
     let userId = participant.userId;

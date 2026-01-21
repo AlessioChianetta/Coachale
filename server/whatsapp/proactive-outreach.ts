@@ -456,7 +456,8 @@ async function processLead(
             lead.consultantId,
             lead.agentConfigId,
             true,
-            lead.id
+            lead.id,
+            lead.email || null
           );
           
           await db.insert(whatsappMessages).values({
@@ -553,7 +554,8 @@ async function processLead(
       lead.consultantId,
       lead.agentConfigId,
       true, // isProactiveLead
-      lead.id // proactiveLeadId
+      lead.id, // proactiveLeadId
+      lead.email || null // proactiveLeadEmail for client recognition
     );
 
     // Ensure conversation is marked as lead and has correct agent
