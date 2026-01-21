@@ -46,11 +46,19 @@ Provides AI-powered tools for content idea generation, social media copy, a 6-st
 
 ### Content Studio Ideas - Wizard UI
 Redesigned idea generation form with:
-- **3-Step Accordion Structure**: Brand & Target, Objective & Format, Advanced Options (collapsed by default)
+- **3-Step Accordion Structure**: Brand & Target, Objective & Format, Brand Voice & Contesto (collapsed by default)
 - **Progress Bar**: Visual completion tracker for required fields (topic, targetAudience, objective)
 - **Compact Pill Buttons**: Awareness/Sophistication levels as colored pills instead of cards
 - **Sticky Action Bar**: Generate/Save/Load buttons always visible at bottom
 - **CSS Grid Animations**: Smooth expand/collapse using grid-rows-[1fr]/grid-rows-[0fr] technique
+- **Brand Voice Integration**: Optional toggle to include brand identity (business info, USP, credentials, services) in AI prompts
+- **Knowledge Base Integration**: Optional document selector with token counter (50k limit) to enrich AI context
+
+### Reusable Brand Voice Components
+Shared components in `client/src/components/brand-voice/`:
+- **BrandVoiceSection**: 4 collapsible cards (Business Info, Authority, Credentials, Services) with Import from Agent functionality
+- **KnowledgeBaseSelector**: Document picker with checkbox selection and token counter (50k limit warning)
+- Used in: Content Studio Ideas, Consultant AI Config page
 
 ## Lead Nurturing 365 System
 An automated 365-day email nurturing sequence uses AI-generated content, brand voice integration, and dynamic templates. A cron scheduler handles daily sending with GDPR compliance and email tracking.
