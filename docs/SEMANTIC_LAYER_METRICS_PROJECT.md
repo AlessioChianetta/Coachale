@@ -125,7 +125,7 @@ In `ClientDataAnalysis.tsx` → viewMode "list":
 - [x] Aggiungere 2 metriche Menu Engineering ✅
 - [x] Aggiungere 2 metriche Medie Ponderate ✅
 - [x] Aggiungere 2 metriche Mix/Incidenze ✅
-- [ ] Creare endpoint GET available-metrics
+- [x] Creare endpoint GET available-metrics ✅
 
 ### FASE 2: Frontend - Componente Guide
 - [ ] Creare SemanticLayerGuide.tsx
@@ -142,6 +142,6 @@ In `ClientDataAnalysis.tsx` → viewMode "list":
 ---
 
 ## 🔄 STATO ATTUALE
-**Ultima modifica**: Aggiunte 11 nuove metriche a metric-templates.ts
-**Fase corrente**: FASE 1E - Creare endpoint available-metrics
-**Task corrente**: Creazione API endpoint
+**Ultima modifica**: Creato endpoint GET /api/client-data/datasets/:id/available-metrics
+**Fase corrente**: FASE 2A - Creare componente SemanticLayerGuide.tsx
+**Task corrente**: Frontend UI

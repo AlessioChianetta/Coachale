@@ -2169,6 +2169,138 @@ router.get(
   }
 );
 
+router.get(
+  "/datasets/:id/available-metrics",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const semanticMappings = await getSemanticMappings(dataset.id);
+      const mappedLogicalRoles = new Set(
+        semanticMappings.mappings
+          .filter((m: any) => m.status === 'confirmed' || m.status === 'auto')
+          .map((m: any) => m.logicalRole)
+      );
+
+      const { METRIC_TEMPLATES } = await import("../ai/data-analysis/metric-templates");
+
+      const availableMetrics: Array<{
+        name: string;
+        displayName: string;
+        description: string;
+        unit: string;
+        available: boolean;
+        missingColumns: string[];
+        category: string;
+      }> = [];
+
+      const categoryMap: Record<string, string> = {
+        lines_count: "data_quality",
+        missing_cost_lines: "data_quality",
+        missing_price_lines: "data_quality",
+        negative_revenue_lines: "data_quality",
+        unmapped_category_lines: "data_quality",
+        revenue: "fatturato",
+        revenue_gross: "fatturato",
+        revenue_net: "fatturato",
+        revenue_calculated: "fatturato",
+        document_count: "conteggio",
+        order_count: "conteggio",
+        customer_count: "conteggio",
+        product_count: "conteggio",
+        supplier_count: "conteggio",
+        quantity_total: "conteggio",
+        food_cost: "costi_margini",
+        food_cost_percent: "costi_margini",
+        gross_margin: "costi_margini",
+        gross_margin_percent: "costi_margini",
+        gross_margin_per_item: "menu_engineering",
+        gross_margin_per_document: "menu_engineering",
+        ticket_medio: "medie",
+        avg_unit_price: "medie",
+        avg_unit_price_weighted: "medie",
+        avg_unit_cost_weighted: "medie",
+        avg_items_per_document: "medie",
+        avg_quantity_per_line: "medie",
+        discount_total: "sconti",
+        discount_percent_on_revenue: "sconti",
+        category_revenue_share: "mix_incidenze",
+        category_margin_share: "mix_incidenze",
+      };
+
+      for (const [name, template] of Object.entries(METRIC_TEMPLATES)) {
+        const missingColumns = template.requiredLogicalColumns.filter(
+          (col: string) => !mappedLogicalRoles.has(col)
+        );
+
+        availableMetrics.push({
+          name,
+          displayName: template.displayName,
+          description: template.description,
+          unit: template.unit,
+          available: missingColumns.length === 0,
+          missingColumns,
+          category: categoryMap[name] || "altro",
+        });
+      }
+
+      const logicalRolesStatus = [
+        "document_id", "line_id", "revenue_amount", "price", "cost", "quantity",
+        "product_id", "product_name", "category", "customer_id", "customer_name",
+        "supplier_id", "supplier_name", "order_date", "payment_method", "status", "warehouse"
+      ].map(role => ({
+        role,
+        mapped: mappedLogicalRoles.has(role),
+        physicalColumn: semanticMappings.mappings.find((m: any) => m.logicalRole === role)?.physicalColumn || null,
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          datasetId: dataset.id,
+          datasetName: dataset.name,
+          logicalRoles: logicalRolesStatus,
+          metrics: availableMetrics,
+          summary: {
+            totalMetrics: availableMetrics.length,
+            availableMetrics: availableMetrics.filter(m => m.available).length,
+            unavailableMetrics: availableMetrics.filter(m => !m.available).length,
+            mappedRoles: Array.from(mappedLogicalRoles),
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching available metrics:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch available metrics",
+      });
+    }
+  }
+);
+
 router.post(
   "/datasets/:id/semantic-mappings/confirm",
   authenticateToken,
