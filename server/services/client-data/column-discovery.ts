@@ -240,7 +240,7 @@ export function detectPatterns(columnName: string, values: any[]): { dataType: s
   const emailRatio = emailCount / totalCount;
   const booleanRatio = booleanCount / totalCount;
   
-  if (dateRatio >= 0.8) {
+  if (dateRatio >= 0.7) {
     results.push({ dataType: "DATE", confidence: dateRatio, pattern: "DATE" });
   }
   
@@ -248,11 +248,11 @@ export function detectPatterns(columnName: string, values: any[]): { dataType: s
     results.push({ dataType: "TEXT", confidence: emailRatio, pattern: "EMAIL" });
   }
   
-  if (booleanRatio >= 0.8) {
+  if (booleanRatio >= 0.7) {
     results.push({ dataType: "BOOLEAN", confidence: booleanRatio, pattern: "BOOLEAN" });
   }
   
-  if (numericRatio >= 0.8) {
+  if (numericRatio >= 0.7) {
     const hasDecimals = decimalCount > 0;
     const isAllIntegers = integerOnlyCount === numericCount && !hasDecimals;
     
@@ -275,11 +275,14 @@ export function detectPatterns(columnName: string, values: any[]): { dataType: s
       }
     }
     
-    if (results.length === 0 && nameHint.confidence >= 0.9) {
-      if ((nameHint.dataType === "NUMERIC" || nameHint.dataType === "INTEGER") && numericRatio >= 0.85) {
-        results.push({ dataType: "NUMERIC", confidence: numericRatio, pattern: "NAME_HINT" });
-      } else if (nameHint.dataType === "DATE" && dateRatio >= 0.85) {
-        results.push({ dataType: "DATE", confidence: dateRatio, pattern: "NAME_HINT" });
+    if (results.length === 0 && nameHint.confidence >= 0.85) {
+      if ((nameHint.dataType === "NUMERIC" || nameHint.dataType === "INTEGER") && numericRatio >= 0.5) {
+        console.log(`[COLUMN-DISCOVERY] Using name hint for "${columnName}": ${nameHint.dataType} (numericRatio: ${numericRatio.toFixed(2)})`);
+        results.push({ dataType: "NUMERIC", confidence: Math.max(numericRatio, 0.75), pattern: "NAME_HINT" });
+      } else if (nameHint.dataType === "DATE" && dateRatio >= 0.5) {
+        results.push({ dataType: "DATE", confidence: Math.max(dateRatio, 0.75), pattern: "NAME_HINT" });
+      } else if (nameHint.dataType === "BOOLEAN" && booleanRatio >= 0.5) {
+        results.push({ dataType: "BOOLEAN", confidence: Math.max(booleanRatio, 0.75), pattern: "NAME_HINT" });
       }
     }
   }
