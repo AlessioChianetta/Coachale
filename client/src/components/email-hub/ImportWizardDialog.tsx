@@ -141,9 +141,12 @@ export function ImportWizardDialog({
   const [currentStep, setCurrentStep] = useState(1);
   const [accountConfigs, setAccountConfigs] = useState<Map<string, AccountConfig>>(new Map());
 
+  // Ensure settings is always an array to prevent iteration errors
+  const settings = importPreview?.settings ?? [];
+
   const initializeConfigs = () => {
     const configs = new Map<string, AccountConfig>();
-    importPreview.settings.forEach((setting) => {
+    settings.forEach((setting) => {
       const defaultType: AccountType = setting.provider.requiresManualImap ? "smtp_only" : "full";
       configs.set(setting.id, {
         smtpSettingId: setting.id,
@@ -159,11 +162,11 @@ export function ImportWizardDialog({
   };
 
   useEffect(() => {
-    if (open && importPreview.settings.length > 0) {
+    if (open && settings.length > 0) {
       initializeConfigs();
       setCurrentStep(1);
     }
-  }, [open, importPreview.settings]);
+  }, [open, settings]);
 
   const updateAccountConfig = (settingId: string, updates: Partial<AccountConfig>) => {
     setAccountConfigs((prev) => {
@@ -183,7 +186,7 @@ export function ImportWizardDialog({
       
       // Per Register.it, auto-genera l'host IMAP basato sul dominio email
       if (presetKey === 'register.it' && !preset.imapHost) {
-        const setting = importPreview.settings.find(s => s.id === settingId);
+        const setting = settings.find(s => s.id === settingId);
         if (setting?.fromEmail) {
           const domain = setting.fromEmail.split('@')[1];
           if (domain) {
@@ -208,7 +211,7 @@ export function ImportWizardDialog({
   };
 
   const isConfigValid = useMemo(() => {
-    for (const setting of importPreview.settings) {
+    for (const setting of settings) {
       const config = accountConfigs.get(setting.id);
       if (!config) return false;
       
@@ -219,12 +222,12 @@ export function ImportWizardDialog({
       }
     }
     return true;
-  }, [accountConfigs, importPreview.settings]);
+  }, [accountConfigs, settings]);
 
   const importMutation = useMutation({
     mutationFn: async () => {
       const accounts = Array.from(accountConfigs.values()).map((config) => {
-        const setting = importPreview.settings.find((s) => s.id === config.smtpSettingId);
+        const setting = settings.find((s) => s.id === config.smtpSettingId);
         const needsImap = setting ? needsImapConfig(setting, config) : false;
         
         return {
@@ -328,7 +331,7 @@ export function ImportWizardDialog({
 
       <ScrollArea className="h-[300px] pr-4">
         <div className="space-y-3">
-          {importPreview.settings.map((setting) => (
+          {settings.map((setting) => (
             <div
               key={setting.id}
               className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
@@ -389,7 +392,7 @@ export function ImportWizardDialog({
 
       <ScrollArea className="h-[400px] pr-4">
         <div className="space-y-6">
-          {importPreview.settings.map((setting) => {
+          {settings.map((setting) => {
             const config = accountConfigs.get(setting.id);
             if (!config) return null;
 
@@ -549,7 +552,7 @@ export function ImportWizardDialog({
   );
 
   const renderStep3 = () => {
-    const summary = importPreview.settings.map((setting) => {
+    const summary = settings.map((setting) => {
       const config = accountConfigs.get(setting.id);
       return { setting, config };
     });
