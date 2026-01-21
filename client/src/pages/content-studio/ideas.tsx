@@ -246,6 +246,31 @@ export default function ContentStudioIdeas() {
   
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["all"]));
   const [viewingIdea, setViewingIdea] = useState<Idea | null>(null);
+  
+  // Wizard accordion state
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["brand"]));
+  
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
+  };
+  
+  // Calculate form completion progress
+  const formProgress = useMemo(() => {
+    let completed = 0;
+    const total = 3;
+    if (topic.trim()) completed++;
+    if (targetAudience.trim()) completed++;
+    if (objective) completed++;
+    return { completed, total, percentage: Math.round((completed / total) * 100) };
+  }, [topic, targetAudience, objective]);
 
   const toggleFilter = (filter: string) => {
     setActiveFilters(prev => {
@@ -643,311 +668,369 @@ export default function ContentStudioIdeas() {
               </div>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-500" />
-                  Genera Nuove Idee
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="topic">Topic / Argomento</Label>
-                  <Textarea
-                    id="topic"
-                    placeholder="Descrivi l'argomento o la nicchia del tuo contenuto. Es: Sono un personal trainer specializzato in crossfit e fitness funzionale. Il mio metodo si chiama..."
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="targetAudience">Target Audience</Label>
-                  <Textarea
-                    id="targetAudience"
-                    placeholder="Descrivi il tuo pubblico ideale. Es: Sportivi amatoriali 25-45 anni che vogliono migliorare le prestazioni, professionisti stressati che cercano equilibrio..."
-                    value={targetAudience}
-                    onChange={(e) => setTargetAudience(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Obiettivo</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {OBJECTIVES.map((obj) => {
-                      const IconComponent = obj.icon;
-                      const isSelected = objective === obj.value;
-                      return (
-                        <motion.div
-                          key={obj.value}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setObjective(obj.value)}
-                          className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${
-                            isSelected
-                              ? "border-2 border-purple-500 bg-purple-50 dark:bg-purple-900/20"
-                              : "border-border hover:border-purple-300"
-                          }`}
-                        >
-                          <div className="flex flex-col items-center text-center gap-2">
-                            <IconComponent className={`h-6 w-6 ${isSelected ? "text-purple-500" : "text-muted-foreground"}`} />
-                            <h4 className={`font-medium text-sm ${isSelected ? "text-purple-700 dark:text-purple-300" : ""}`}>{obj.label}</h4>
-                            <p className="text-xs text-muted-foreground">{obj.description}</p>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <Label>Tipo Media</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setMediaType("video")}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          mediaType === "video"
-                            ? "border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                            : "border-border hover:border-blue-300"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center text-center gap-2">
-                          <Video className={`h-6 w-6 ${mediaType === "video" ? "text-blue-500" : "text-muted-foreground"}`} />
-                          <h4 className={`font-medium text-sm ${mediaType === "video" ? "text-blue-700 dark:text-blue-300" : ""}`}>Video</h4>
-                          <p className="text-xs text-muted-foreground">Script parlato per video</p>
-                        </div>
-                      </motion.div>
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setMediaType("photo")}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          mediaType === "photo"
-                            ? "border-2 border-green-500 bg-green-50 dark:bg-green-900/20"
-                            : "border-border hover:border-green-300"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center text-center gap-2">
-                          <Camera className={`h-6 w-6 ${mediaType === "photo" ? "text-green-500" : "text-muted-foreground"}`} />
-                          <h4 className={`font-medium text-sm ${mediaType === "photo" ? "text-green-700 dark:text-green-300" : ""}`}>Foto</h4>
-                          <p className="text-xs text-muted-foreground">Descrizione immagine + overlay</p>
-                        </div>
-                      </motion.div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label>Tipo Copy</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setCopyType("short")}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          copyType === "short"
-                            ? "border-2 border-orange-500 bg-orange-50 dark:bg-orange-900/20"
-                            : "border-border hover:border-orange-300"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center text-center gap-2">
-                          <FileTextIcon className={`h-6 w-6 ${copyType === "short" ? "text-orange-500" : "text-muted-foreground"}`} />
-                          <h4 className={`font-medium text-sm ${copyType === "short" ? "text-orange-700 dark:text-orange-300" : ""}`}>Copy Corto</h4>
-                          <p className="text-xs text-muted-foreground">Diretto, 3-4 blocchi</p>
-                        </div>
-                      </motion.div>
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setCopyType("long")}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          copyType === "long"
-                            ? "border-2 border-purple-500 bg-purple-50 dark:bg-purple-900/20"
-                            : "border-border hover:border-purple-300"
-                        }`}
-                      >
-                        <div className="flex flex-col items-center text-center gap-2">
-                          <AlignLeft className={`h-6 w-6 ${copyType === "long" ? "text-purple-500" : "text-muted-foreground"}`} />
-                          <h4 className={`font-medium text-sm ${copyType === "long" ? "text-purple-700 dark:text-purple-300" : ""}`}>Copy Lungo</h4>
-                          <p className="text-xs text-muted-foreground">Narrativo, emotivo, storytelling</p>
-                        </div>
-                      </motion.div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSuggestLevels}
-                    disabled={isSuggestingLevels || (!topic && !targetAudience)}
-                    className="gap-2"
-                  >
-                    {isSuggestingLevels ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                    AI Suggerisci Livelli
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Livello di Consapevolezza (Piramide)</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    {AWARENESS_LEVELS.map((level) => {
-                      const IconComponent = level.icon;
-                      const isSelected = awarenessLevel === level.value;
-                      const colorClasses: Record<string, string> = {
-                        red: isSelected ? "border-2 border-red-500 bg-red-50 dark:bg-red-900/20" : "border-border hover:border-red-300",
-                        orange: isSelected ? "border-2 border-orange-500 bg-orange-50 dark:bg-orange-900/20" : "border-border hover:border-orange-300",
-                        yellow: isSelected ? "border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20" : "border-border hover:border-yellow-300",
-                        blue: isSelected ? "border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300",
-                        green: isSelected ? "border-2 border-green-500 bg-green-50 dark:bg-green-900/20" : "border-border hover:border-green-300",
-                      };
-                      const iconColorClasses: Record<string, string> = {
-                        red: isSelected ? "text-red-500" : "text-muted-foreground",
-                        orange: isSelected ? "text-orange-500" : "text-muted-foreground",
-                        yellow: isSelected ? "text-yellow-500" : "text-muted-foreground",
-                        blue: isSelected ? "text-blue-500" : "text-muted-foreground",
-                        green: isSelected ? "text-green-500" : "text-muted-foreground",
-                      };
-                      return (
-                        <motion.div
-                          key={level.value}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setAwarenessLevel(level.value as any)}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${colorClasses[level.color]}`}
-                        >
-                          <div className="flex flex-col items-center text-center gap-1">
-                            <IconComponent className={`h-5 w-5 ${iconColorClasses[level.color]}`} />
-                            <h4 className="font-medium text-xs">{level.label}</h4>
-                            <p className="text-[10px] text-muted-foreground leading-tight">{level.description}</p>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Sofisticazione Mercato (Schwartz)</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    {SOPHISTICATION_LEVELS.map((level) => {
-                      const IconComponent = level.icon;
-                      const isSelected = sophisticationLevel === level.value;
-                      const colorClasses: Record<string, string> = {
-                        emerald: isSelected ? "border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" : "border-border hover:border-emerald-300",
-                        blue: isSelected ? "border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300",
-                        purple: isSelected ? "border-2 border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-border hover:border-purple-300",
-                        orange: isSelected ? "border-2 border-orange-500 bg-orange-50 dark:bg-orange-900/20" : "border-border hover:border-orange-300",
-                        pink: isSelected ? "border-2 border-pink-500 bg-pink-50 dark:bg-pink-900/20" : "border-border hover:border-pink-300",
-                      };
-                      const iconColorClasses: Record<string, string> = {
-                        emerald: isSelected ? "text-emerald-600" : "text-muted-foreground",
-                        blue: isSelected ? "text-blue-600" : "text-muted-foreground",
-                        purple: isSelected ? "text-purple-600" : "text-muted-foreground",
-                        orange: isSelected ? "text-orange-600" : "text-muted-foreground",
-                        pink: isSelected ? "text-pink-600" : "text-muted-foreground",
-                      };
-                      return (
-                        <motion.div
-                          key={level.value}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setSophisticationLevel(level.value as any)}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-lg ${colorClasses[level.color]}`}
-                        >
-                          <div className="flex flex-col items-center text-center gap-1">
-                            <IconComponent className={`h-5 w-5 ${iconColorClasses[level.color]}`} />
-                            <h4 className="font-medium text-xs">{level.label}</h4>
-                            <p className="text-[10px] text-muted-foreground leading-tight">{level.description}</p>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Numero Idee da Generare</Label>
+            {/* Wizard Form - Clean 3-Step Structure */}
+            <div className="space-y-4">
+              {/* Progress Bar */}
+              <Card className="border-0 shadow-sm bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-muted-foreground">
-                      {ideaCount}
+                      Completamento: {formProgress.completed}/{formProgress.total} campi obbligatori
+                    </span>
+                    <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                      {formProgress.percentage}%
                     </span>
                   </div>
-                  <Slider
-                    value={[ideaCount]}
-                    onValueChange={(value) => setIdeaCount(value[0])}
-                    min={1}
-                    max={5}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
+                  <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${formProgress.percentage}%` }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-                <div className="space-y-2">
-                  <Label htmlFor="additionalContext">Contesto Aggiuntivo (opzionale)</Label>
-                  <Textarea
-                    id="additionalContext"
-                    placeholder="Aggiungi dettagli specifici, stagionalità, eventi, o informazioni sul tuo brand..."
-                    value={additionalContext}
-                    onChange={(e) => setAdditionalContext(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={handleGenerateIdeas}
-                    disabled={isGenerating}
-                    className="flex-1 sm:flex-none"
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-2" />
+              {/* Step 1: Brand & Target */}
+              <Card className="overflow-hidden">
+                <button
+                  onClick={() => toggleSection("brand")}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-950/40 dark:hover:to-orange-950/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">1</div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-foreground">Il Tuo Brand</h3>
+                      <p className="text-xs text-muted-foreground">Topic e Target Audience</p>
+                    </div>
+                    {topic && targetAudience && (
+                      <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
                     )}
-                    {isGenerating ? "Generazione in corso..." : "Genera Idee con AI"}
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowSaveTemplateDialog(true)}
-                    disabled={!topic && !targetAudience}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Salva Template
-                  </Button>
-                  
-                  {templates.length > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
-                          <FolderOpen className="h-4 w-4 mr-2" />
-                          Carica Template
-                          <ChevronDown className="h-4 w-4 ml-2" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        {templates.map((template: any) => (
-                          <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template)}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            {template.name}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("brand") ? "rotate-180" : ""}`} />
+                </button>
+                
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("brand") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden">
+                    <CardContent className="pt-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="topic" className="text-sm font-medium">Topic / Argomento *</Label>
+                        <Textarea
+                          id="topic"
+                          placeholder="Es: Sono un personal trainer specializzato in crossfit e fitness funzionale..."
+                          value={topic}
+                          onChange={(e) => setTopic(e.target.value)}
+                          rows={3}
+                          className="resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="targetAudience" className="text-sm font-medium">Target Audience *</Label>
+                        <Textarea
+                          id="targetAudience"
+                          placeholder="Es: Sportivi amatoriali 25-45 anni che vogliono migliorare le prestazioni..."
+                          value={targetAudience}
+                          onChange={(e) => setTargetAudience(e.target.value)}
+                          rows={2}
+                          className="resize-none"
+                        />
+                      </div>
+                    </CardContent>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </Card>
+
+              {/* Step 2: Objective & Format */}
+              <Card className="overflow-hidden">
+                <button
+                  onClick={() => toggleSection("objective")}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-950/40 dark:hover:to-pink-950/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-sm">2</div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-foreground">Obiettivo & Formato</h3>
+                      <p className="text-xs text-muted-foreground">Cosa vuoi ottenere e come</p>
+                    </div>
+                    {objective && (
+                      <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
+                    )}
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("objective") ? "rotate-180" : ""}`} />
+                </button>
+                
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("objective") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden">
+                  <CardContent className="pt-4 space-y-5">
+                    {/* Objectives as compact pills */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Obiettivo *</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {OBJECTIVES.map((obj) => {
+                          const IconComponent = obj.icon;
+                          const isSelected = objective === obj.value;
+                          return (
+                            <button
+                              key={obj.value}
+                              onClick={() => setObjective(obj.value)}
+                              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                                isSelected
+                                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
+                                  : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <IconComponent className="h-4 w-4" />
+                              {obj.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Media & Copy Type - Inline Selection */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Tipo Media</Label>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setMediaType("video")}
+                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                              mediaType === "video"
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
+                                : "border-border hover:border-blue-300"
+                            }`}
+                          >
+                            <Video className="h-4 w-4" />
+                            <span className="font-medium text-sm">Video</span>
+                          </button>
+                          <button
+                            onClick={() => setMediaType("photo")}
+                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                              mediaType === "photo"
+                                ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300"
+                                : "border-border hover:border-green-300"
+                            }`}
+                          >
+                            <Camera className="h-4 w-4" />
+                            <span className="font-medium text-sm">Foto</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Tipo Copy</Label>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setCopyType("short")}
+                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                              copyType === "short"
+                                ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300"
+                                : "border-border hover:border-orange-300"
+                            }`}
+                          >
+                            <FileTextIcon className="h-4 w-4" />
+                            <span className="font-medium text-sm">Corto</span>
+                          </button>
+                          <button
+                            onClick={() => setCopyType("long")}
+                            className={`flex-1 px-3 py-2.5 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                              copyType === "long"
+                                ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300"
+                                : "border-border hover:border-purple-300"
+                            }`}
+                          >
+                            <AlignLeft className="h-4 w-4" />
+                            <span className="font-medium text-sm">Lungo</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Number of ideas - compact */}
+                    <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                      <Label className="text-sm font-medium whitespace-nowrap">Numero Idee:</Label>
+                      <Slider
+                        value={[ideaCount]}
+                        onValueChange={(value) => setIdeaCount(value[0])}
+                        min={1}
+                        max={5}
+                        step={1}
+                        className="flex-1"
+                      />
+                      <span className="text-lg font-bold text-purple-600 dark:text-purple-400 min-w-[2rem] text-center">{ideaCount}</span>
+                    </div>
+                  </CardContent>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Step 3: Advanced Options (Collapsed by default) */}
+              <Card className="overflow-hidden">
+                <button
+                  onClick={() => toggleSection("advanced")}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/30 hover:from-slate-100 hover:to-gray-100 dark:hover:from-slate-950/40 dark:hover:to-gray-950/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-slate-500 flex items-center justify-center text-white font-bold text-sm">
+                      <Cog className="h-4 w-4" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-foreground">Opzioni Avanzate</h3>
+                      <p className="text-xs text-muted-foreground">Livelli di consapevolezza e sofisticazione</p>
+                    </div>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("advanced") ? "rotate-180" : ""}`} />
+                </button>
+                
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("advanced") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden">
+                  <CardContent className="pt-4 space-y-5">
+                    {/* AI Suggest Button */}
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSuggestLevels}
+                        disabled={isSuggestingLevels || (!topic && !targetAudience)}
+                        className="gap-2"
+                      >
+                        {isSuggestingLevels ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Wand2 className="h-4 w-4" />
+                        )}
+                        AI Suggerisci Livelli
+                      </Button>
+                    </div>
+
+                    {/* Awareness Level - Compact Pills */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Livello di Consapevolezza</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {AWARENESS_LEVELS.map((level) => {
+                          const isSelected = awarenessLevel === level.value;
+                          const colorMap: Record<string, string> = {
+                            red: isSelected ? "bg-red-500 text-white" : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+                            orange: isSelected ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+                            yellow: isSelected ? "bg-yellow-500 text-white" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+                            blue: isSelected ? "bg-blue-500 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+                            green: isSelected ? "bg-green-500 text-white" : "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+                          };
+                          return (
+                            <button
+                              key={level.value}
+                              onClick={() => setAwarenessLevel(level.value as any)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${colorMap[level.color]} ${isSelected ? "shadow-md ring-2 ring-offset-2 ring-offset-background" : "hover:opacity-80"}`}
+                              style={{ ["--tw-ring-color" as any]: isSelected ? `var(--${level.color}-500)` : undefined }}
+                            >
+                              {level.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Sophistication Level - Compact Pills */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Sofisticazione Mercato (Schwartz)</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {SOPHISTICATION_LEVELS.map((level) => {
+                          const isSelected = sophisticationLevel === level.value;
+                          const colorMap: Record<string, string> = {
+                            emerald: isSelected ? "bg-emerald-500 text-white" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+                            blue: isSelected ? "bg-blue-500 text-white" : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+                            purple: isSelected ? "bg-purple-500 text-white" : "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+                            orange: isSelected ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+                            pink: isSelected ? "bg-pink-500 text-white" : "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300",
+                          };
+                          return (
+                            <button
+                              key={level.value}
+                              onClick={() => setSophisticationLevel(level.value as any)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${colorMap[level.color]} ${isSelected ? "shadow-md ring-2 ring-offset-2 ring-offset-background" : "hover:opacity-80"}`}
+                            >
+                              {level.label.split(" - ")[0]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Additional Context */}
+                    <div className="space-y-2">
+                      <Label htmlFor="additionalContext" className="text-sm font-medium">Contesto Aggiuntivo (opzionale)</Label>
+                      <Textarea
+                        id="additionalContext"
+                        placeholder="Stagionalità, eventi, informazioni extra sul tuo brand..."
+                        value={additionalContext}
+                        onChange={(e) => setAdditionalContext(e.target.value)}
+                        rows={2}
+                        className="resize-none"
+                      />
+                    </div>
+                  </CardContent>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Action Buttons - Sticky Bottom */}
+              <Card className="sticky bottom-4 z-10 shadow-lg border-2 border-purple-200 dark:border-purple-800">
+                <CardContent className="py-3 px-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      onClick={handleGenerateIdeas}
+                      disabled={isGenerating || !topic || !targetAudience || !objective}
+                      size="lg"
+                      className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-5 w-5 mr-2" />
+                      )}
+                      {isGenerating ? "Generazione..." : "Genera Idee"}
+                    </Button>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSaveTemplateDialog(true)}
+                        disabled={!topic && !targetAudience}
+                      >
+                        <Save className="h-4 w-4 mr-1" />
+                        Salva
+                      </Button>
+                      
+                      {templates.length > 0 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <FolderOpen className="h-4 w-4 mr-1" />
+                              Carica
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            {templates.map((template: any) => (
+                              <DropdownMenuItem key={template.id} onClick={() => handleLoadTemplate(template)}>
+                                <FileText className="h-4 w-4 mr-2" />
+                                {template.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">

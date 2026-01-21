@@ -44,6 +44,14 @@ A multi-tier subscription system offers AI agent subscriptions with consultant l
 ## Content Marketing Studio
 Provides AI-powered tools for content idea generation, social media copy, a 6-step campaign builder, AI image generation, and content organization with a calendar and brand asset management.
 
+### Content Studio Ideas - Wizard UI
+Redesigned idea generation form with:
+- **3-Step Accordion Structure**: Brand & Target, Objective & Format, Advanced Options (collapsed by default)
+- **Progress Bar**: Visual completion tracker for required fields (topic, targetAudience, objective)
+- **Compact Pill Buttons**: Awareness/Sophistication levels as colored pills instead of cards
+- **Sticky Action Bar**: Generate/Save/Load buttons always visible at bottom
+- **CSS Grid Animations**: Smooth expand/collapse using grid-rows-[1fr]/grid-rows-[0fr] technique
+
 ## Lead Nurturing 365 System
 An automated 365-day email nurturing sequence uses AI-generated content, brand voice integration, and dynamic templates. A cron scheduler handles daily sending with GDPR compliance and email tracking.
 
