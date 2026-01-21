@@ -231,7 +231,9 @@ export function SemanticMappingConfirmation({
   });
 
   const mappingResult = data?.data;
-  const pendingMappings = mappingResult?.mappings.filter((m) => m.status === "pending" && m.isCritical) || [];
+  const pendingMappings = mappingResult?.mappings.filter((m) => m.status === "pending") || [];
+  const pendingCritical = pendingMappings.filter((m) => m.isCritical);
+  const pendingNonCritical = pendingMappings.filter((m) => !m.isCritical);
   const confirmedMappings = mappingResult?.mappings.filter((m) => m.status === "confirmed") || [];
   const aiSuggestions = aiData?.data;
 
@@ -315,56 +317,175 @@ export function SemanticMappingConfirmation({
     );
   }
 
-  if (mappingResult?.analyticsEnabled && pendingMappings.length === 0) {
+  if (mappingResult?.analyticsEnabled && pendingCritical.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <CardTitle className="text-lg">Mapping Confermato</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CardTitle className="text-lg">Mapping Colonne</CardTitle>
+            </div>
+            {pendingNonCritical.length > 0 && (
+              <Button 
+                size="sm" 
+                onClick={() => {
+                  const confirmations = pendingNonCritical.map((m) => ({ 
+                    physicalColumn: m.physicalColumn,
+                    logicalRole: m.logicalRole,
+                  }));
+                  confirmMutation.mutate(confirmations);
+                }}
+                disabled={confirmMutation.isPending}
+              >
+                {confirmMutation.isPending ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                )}
+                Conferma {pendingNonCritical.length} in attesa
+              </Button>
+            )}
           </div>
           <CardDescription>
             Ecco come le colonne sono mappate per l'AI e quali funzioni abilitano
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="max-h-[400px] overflow-y-auto pr-2">
-            <div className="space-y-3">
-              {confirmedMappings.map((mapping) => {
-                const roleInfo = ROLE_FUNCTIONS[mapping.logicalRole];
-                return (
-                  <div 
-                    key={mapping.id}
-                    className="p-3 rounded-lg border bg-gradient-to-r from-green-50 to-white"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-mono text-sm bg-white px-2 py-0.5 rounded border text-gray-700">
-                        {mapping.physicalColumn}
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-gray-400" />
-                      <Badge className="bg-green-100 text-green-800 border-green-200">
-                        {roleInfo?.label || mapping.displayName}
-                      </Badge>
-                    </div>
-                    {roleInfo?.functions && (
-                      <div className="flex items-start gap-2 mt-2">
-                        <Sparkles className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
-                        <div className="flex flex-wrap gap-1">
-                          {roleInfo.functions.map((fn, idx) => (
-                            <span 
-                              key={idx}
-                              className="text-xs px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full"
-                            >
-                              {fn}
-                            </span>
-                          ))}
+          <div className="max-h-[500px] overflow-y-auto pr-2">
+            {confirmedMappings.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Colonne Confermate ({confirmedMappings.length})
+                </h4>
+                <div className="space-y-2">
+                  {confirmedMappings.map((mapping) => {
+                    const roleInfo = ROLE_FUNCTIONS[mapping.logicalRole];
+                    return (
+                      <div 
+                        key={mapping.id}
+                        className="p-3 rounded-lg border bg-gradient-to-r from-green-50 to-white"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-mono text-sm bg-white px-2 py-0.5 rounded border text-gray-700">
+                            {mapping.physicalColumn}
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-gray-400" />
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            {roleInfo?.label || mapping.displayName}
+                          </Badge>
                         </div>
+                        {roleInfo?.functions && (
+                          <div className="flex items-start gap-2 mt-2">
+                            <Sparkles className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex flex-wrap gap-1">
+                              {roleInfo.functions.map((fn, idx) => (
+                                <span 
+                                  key={idx}
+                                  className="text-xs px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full"
+                                >
+                                  {fn}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {pendingNonCritical.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-amber-700 mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Colonne in Attesa di Conferma ({pendingNonCritical.length})
+                </h4>
+                <div className="space-y-2">
+                  {pendingNonCritical.map((mapping) => {
+                    const roleInfo = ROLE_FUNCTIONS[mapping.logicalRole];
+                    const isSelected = selectedMappings.has(mapping.physicalColumn);
+                    return (
+                      <div 
+                        key={mapping.id}
+                        className={`p-3 rounded-lg border transition-all ${
+                          isSelected 
+                            ? "bg-violet-50 border-violet-300" 
+                            : "bg-amber-50 border-amber-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleMapping(mapping.physicalColumn, mapping.logicalRole)}
+                          />
+                          <span className="font-mono text-sm bg-white px-2 py-0.5 rounded border text-gray-700">
+                            {mapping.physicalColumn}
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-gray-400" />
+                          <Select 
+                            value={selectedMappings.get(mapping.physicalColumn) || mapping.logicalRole} 
+                            onValueChange={(value) => updateMappingRole(mapping.physicalColumn, value)}
+                          >
+                            <SelectTrigger className="w-[180px] h-8 bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {LOGICAL_ROLE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {roleInfo?.functions && (
+                          <div className="flex items-start gap-2 mt-2 ml-6">
+                            <Sparkles className="h-3 w-3 text-violet-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex flex-wrap gap-1">
+                              {roleInfo.functions.slice(0, 3).map((fn, idx) => (
+                                <span 
+                                  key={idx}
+                                  className="text-xs px-1.5 py-0.5 bg-violet-50 text-violet-600 rounded"
+                                >
+                                  {fn}
+                                </span>
+                              ))}
+                              {roleInfo.functions.length > 3 && (
+                                <span className="text-xs text-gray-400">
+                                  +{roleInfo.functions.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {selectedMappings.size > 0 && (
+                  <div className="flex justify-end mt-3">
+                    <Button
+                      onClick={handleConfirm}
+                      disabled={confirmMutation.isPending}
+                      size="sm"
+                      className="bg-violet-600 hover:bg-violet-700"
+                    >
+                      {confirmMutation.isPending ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                      )}
+                      Conferma {selectedMappings.size} Selezionate
+                    </Button>
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+            )}
           </div>
           
           {mappingResult.missingRequired && mappingResult.missingRequired.length > 0 && (
