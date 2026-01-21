@@ -284,15 +284,15 @@ export default function ContentStudioIdeas() {
     });
   };
   
-  // Calculate form completion progress
+  // Calculate form completion progress - Brand Voice e Knowledge Base sono obbligatori
   const formProgress = useMemo(() => {
     let completed = 0;
     const total = 3;
-    if (topic.trim()) completed++;
-    if (targetAudience.trim()) completed++;
-    if (objective) completed++;
+    if (objective) completed++; // Obiettivo selezionato
+    if (useBrandVoice && Object.keys(brandVoiceData).length > 0) completed++; // Brand Voice configurato
+    if (useKnowledgeBase && selectedKbDocIds.length > 0) completed++; // Knowledge Base con documenti
     return { completed, total, percentage: Math.round((completed / total) * 100) };
-  }, [topic, targetAudience, objective]);
+  }, [objective, useBrandVoice, brandVoiceData, useKnowledgeBase, selectedKbDocIds]);
 
   const toggleFilter = (filter: string) => {
     setActiveFilters(prev => {
@@ -711,14 +711,14 @@ export default function ContentStudioIdeas() {
   };
 
   const handleGenerateIdeas = async () => {
-    // Brand Voice e Knowledge Base sono obbligatori
+    // Obiettivo, Brand Voice e Knowledge Base sono obbligatori
     const hasBrandVoice = useBrandVoice && Object.keys(brandVoiceData).length > 0;
     const hasKnowledgeBase = useKnowledgeBase && selectedKbDocIds.length > 0;
     
-    if (!hasBrandVoice || !hasKnowledgeBase) {
+    if (!objective || !hasBrandVoice || !hasKnowledgeBase) {
       toast({
         title: "Campi obbligatori",
-        description: "Attiva e configura Brand Voice e Knowledge Base per generare le idee",
+        description: "Seleziona un obiettivo, attiva Brand Voice e Knowledge Base per generare le idee",
         variant: "destructive",
       });
       return;
@@ -1195,7 +1195,7 @@ export default function ContentStudioIdeas() {
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
                       onClick={handleGenerateIdeas}
-                      disabled={isGenerating || !useBrandVoice || Object.keys(brandVoiceData).length === 0 || !useKnowledgeBase || selectedKbDocIds.length === 0}
+                      disabled={isGenerating || !objective || !useBrandVoice || Object.keys(brandVoiceData).length === 0 || !useKnowledgeBase || selectedKbDocIds.length === 0}
                       size="lg"
                       className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                     >
