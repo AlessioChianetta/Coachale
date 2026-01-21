@@ -1960,14 +1960,33 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
       .replace(/```\s*/g, '')
       .trim();
     
-    // Try to find and parse JSON
-    const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("[SUGGEST-NICHE-TARGET] No JSON found in response");
-      return res.status(500).json({ success: false, error: "AI non ha fornito una risposta strutturata" });
+    // Try to find and parse JSON - handle potentially truncated responses
+    let jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+    let parsed: { niche?: string; targetAudience?: string } = {};
+    
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (parseErr) {
+        console.log("[SUGGEST-NICHE-TARGET] JSON parse failed, trying to extract fields manually");
+      }
     }
     
-    const parsed = JSON.parse(jsonMatch[0]);
+    // If parsing failed or incomplete, try to extract fields manually
+    if (!parsed.niche || !parsed.targetAudience) {
+      const nicheMatch = cleanedResponse.match(/"niche"\s*:\s*"([^"]+)"/);
+      const targetMatch = cleanedResponse.match(/"targetAudience"\s*:\s*"([^"]+)"/);
+      
+      if (nicheMatch) parsed.niche = nicheMatch[1];
+      if (targetMatch) parsed.targetAudience = targetMatch[1];
+    }
+    
+    // If we still don't have both fields, return error
+    if (!parsed.niche && !parsed.targetAudience) {
+      console.error("[SUGGEST-NICHE-TARGET] Could not extract any fields from response");
+      return res.status(500).json({ success: false, error: "AI non ha fornito una risposta valida" });
+    }
+    
     console.log("[SUGGEST-NICHE-TARGET] Parsed result:", parsed);
     
     return res.json({ success: true, data: parsed });
