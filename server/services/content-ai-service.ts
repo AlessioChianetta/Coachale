@@ -115,6 +115,28 @@ export interface GeneratePostCopyParams {
   idea: string;
   platform: Platform;
   brandVoice?: string;
+  brandVoiceData?: {
+    consultantDisplayName?: string;
+    businessName?: string;
+    businessDescription?: string;
+    consultantBio?: string;
+    vision?: string;
+    mission?: string;
+    values?: string[];
+    usp?: string;
+    whoWeHelp?: string;
+    whoWeDontHelp?: string;
+    whatWeDo?: string;
+    howWeDoIt?: string;
+    yearsExperience?: number;
+    clientsHelped?: number;
+    resultsGenerated?: string;
+    softwareCreated?: { emoji: string; name: string; description: string }[];
+    booksPublished?: { title: string; year: string }[];
+    caseStudies?: { client: string; result: string }[];
+    servicesOffered?: { name: string; price: string; description: string }[];
+    guarantees?: string;
+  };
   keywords?: string[];
   tone?: string;
   maxLength?: number;
@@ -147,6 +169,28 @@ export interface GenerateCampaignParams {
   duration?: string;
   uniqueSellingPoints?: string[];
   brandVoice?: string;
+  brandVoiceData?: {
+    consultantDisplayName?: string;
+    businessName?: string;
+    businessDescription?: string;
+    consultantBio?: string;
+    vision?: string;
+    mission?: string;
+    values?: string[];
+    usp?: string;
+    whoWeHelp?: string;
+    whoWeDontHelp?: string;
+    whatWeDo?: string;
+    howWeDoIt?: string;
+    yearsExperience?: number;
+    clientsHelped?: number;
+    resultsGenerated?: string;
+    softwareCreated?: { emoji: string; name: string; description: string }[];
+    booksPublished?: { title: string; year: string }[];
+    caseStudies?: { client: string; result: string }[];
+    servicesOffered?: { name: string; price: string; description: string }[];
+    guarantees?: string;
+  };
 }
 
 export interface CampaignHook {
@@ -262,6 +306,40 @@ async function getBrandAssets(consultantId: string) {
     console.error("[CONTENT-AI] Error fetching brand assets:", error);
     return null;
   }
+}
+
+// Helper function to build brand voice context from brandVoiceData
+function buildBrandVoiceContext(brandVoiceData?: GenerateContentIdeasParams["brandVoiceData"]): string {
+  if (!brandVoiceData) return "";
+  
+  const bv = brandVoiceData;
+  const parts: string[] = [];
+  
+  if (bv.businessName) parts.push(`Azienda: ${bv.businessName}`);
+  if (bv.consultantDisplayName) parts.push(`Consulente: ${bv.consultantDisplayName}`);
+  if (bv.businessDescription) parts.push(`Descrizione: ${bv.businessDescription}`);
+  if (bv.usp) parts.push(`USP: ${bv.usp}`);
+  if (bv.vision) parts.push(`Vision: ${bv.vision}`);
+  if (bv.mission) parts.push(`Mission: ${bv.mission}`);
+  if (bv.values?.length) parts.push(`Valori: ${bv.values.join(", ")}`);
+  if (bv.whoWeHelp) parts.push(`Target: ${bv.whoWeHelp}`);
+  if (bv.whatWeDo) parts.push(`Servizi: ${bv.whatWeDo}`);
+  if (bv.howWeDoIt) parts.push(`Metodo: ${bv.howWeDoIt}`);
+  if (bv.yearsExperience) parts.push(`Esperienza: ${bv.yearsExperience} anni`);
+  if (bv.clientsHelped) parts.push(`Clienti aiutati: ${bv.clientsHelped}+`);
+  if (bv.resultsGenerated) parts.push(`Risultati: ${bv.resultsGenerated}`);
+  if (bv.caseStudies?.length) {
+    parts.push(`Case Studies: ${bv.caseStudies.map(cs => `${cs.client} - ${cs.result}`).join("; ")}`);
+  }
+  if (bv.servicesOffered?.length) {
+    parts.push(`Offerta: ${bv.servicesOffered.map(s => `${s.name} (${s.price})`).join(", ")}`);
+  }
+  if (bv.guarantees) parts.push(`Garanzie: ${bv.guarantees}`);
+  
+  if (parts.length > 0) {
+    return `\n\n🏢 BRAND VOICE & IDENTITÀ:\n${parts.join("\n")}`;
+  }
+  return "";
 }
 
 function buildCompleteBrandContext(assets: Awaited<ReturnType<typeof getBrandAssets>>): string {
@@ -534,35 +612,7 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
 
-  let brandVoiceContext = "";
-  if (params.brandVoiceData) {
-    const bv = params.brandVoiceData;
-    const parts: string[] = [];
-    if (bv.businessName) parts.push(`Azienda: ${bv.businessName}`);
-    if (bv.consultantDisplayName) parts.push(`Consulente: ${bv.consultantDisplayName}`);
-    if (bv.businessDescription) parts.push(`Descrizione: ${bv.businessDescription}`);
-    if (bv.usp) parts.push(`USP: ${bv.usp}`);
-    if (bv.vision) parts.push(`Vision: ${bv.vision}`);
-    if (bv.mission) parts.push(`Mission: ${bv.mission}`);
-    if (bv.values?.length) parts.push(`Valori: ${bv.values.join(", ")}`);
-    if (bv.whoWeHelp) parts.push(`Target: ${bv.whoWeHelp}`);
-    if (bv.whatWeDo) parts.push(`Servizi: ${bv.whatWeDo}`);
-    if (bv.howWeDoIt) parts.push(`Metodo: ${bv.howWeDoIt}`);
-    if (bv.yearsExperience) parts.push(`Esperienza: ${bv.yearsExperience} anni`);
-    if (bv.clientsHelped) parts.push(`Clienti aiutati: ${bv.clientsHelped}+`);
-    if (bv.resultsGenerated) parts.push(`Risultati: ${bv.resultsGenerated}`);
-    if (bv.caseStudies?.length) {
-      parts.push(`Case Studies: ${bv.caseStudies.map(cs => `${cs.client} - ${cs.result}`).join("; ")}`);
-    }
-    if (bv.servicesOffered?.length) {
-      parts.push(`Offerta: ${bv.servicesOffered.map(s => `${s.name} (${s.price})`).join(", ")}`);
-    }
-    if (bv.guarantees) parts.push(`Garanzie: ${bv.guarantees}`);
-    
-    if (parts.length > 0) {
-      brandVoiceContext = `\n\n🏢 BRAND VOICE & IDENTITÀ:\n${parts.join("\n")}`;
-    }
-  }
+  const brandVoiceContext = buildBrandVoiceContext(params.brandVoiceData);
 
   let kbContext = "";
   if (params.kbContent && params.kbContent.trim().length > 0) {
@@ -850,12 +900,13 @@ RISPONDI SOLO con un JSON valido nel formato:
 }
 
 export async function generatePostCopy(params: GeneratePostCopyParams): Promise<GeneratePostCopyResult> {
-  const { consultantId, idea, platform, brandVoice, keywords, tone, maxLength } = params;
+  const { consultantId, idea, platform, brandVoice, brandVoiceData, keywords, tone, maxLength } = params;
   
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
+  const brandVoiceContext = buildBrandVoiceContext(brandVoiceData);
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
 
   const platformGuidelines: Record<Platform, string> = {
@@ -868,7 +919,7 @@ export async function generatePostCopy(params: GeneratePostCopyParams): Promise<
   };
 
   const prompt = `Sei un copywriter esperto di social media italiano. Crea il copy completo per un post usando il FRAMEWORK PERSUASIVO a 6 step.
-${brandContext}
+${brandContext}${brandVoiceContext}
 IDEA DEL CONTENUTO:
 ${idea}
 
@@ -997,10 +1048,11 @@ function getPromptForOutputType(
   effectiveBrandVoice: string,
   effectiveTone: string,
   keywords?: string[],
-  maxLength?: number
+  maxLength?: number,
+  brandVoiceContext?: string
 ): string {
   const baseContext = `Sei un copywriter esperto di social media italiano.
-
+${brandVoiceContext || ''}
 IDEA DEL CONTENUTO:
 ${idea}
 
@@ -1293,12 +1345,13 @@ function parseVariationsResponse(responseText: string, outputType: CopyOutputTyp
 }
 
 export async function generatePostCopyVariations(params: GeneratePostCopyVariationsParams): Promise<GeneratePostCopyVariationsResult> {
-  const { consultantId, idea, platform, brandVoice, keywords, tone, maxLength, outputType = "copy_long" } = params;
+  const { consultantId, idea, platform, brandVoice, brandVoiceData, keywords, tone, maxLength, outputType = "copy_long" } = params;
   
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
+  const brandVoiceContext = buildBrandVoiceContext(brandVoiceData);
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
   const effectiveTone = tone || 'friendly professional';
 
@@ -1319,7 +1372,8 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
     effectiveBrandVoice,
     effectiveTone,
     keywords,
-    maxLength
+    maxLength,
+    brandVoiceContext
   );
 
   try {
@@ -1350,16 +1404,17 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
 }
 
 export async function generateCampaignContent(params: GenerateCampaignParams): Promise<GenerateCampaignResult> {
-  const { consultantId, productOrService, targetAudience, objective, budget, duration, uniqueSellingPoints, brandVoice } = params;
+  const { consultantId, productOrService, targetAudience, objective, budget, duration, uniqueSellingPoints, brandVoice, brandVoiceData } = params;
   
   await rateLimitCheck(consultantId);
   
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
+  const brandVoiceContext = buildBrandVoiceContext(brandVoiceData);
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
 
   const prompt = `Sei un esperto di marketing e advertising italiano. Crea una strategia di campagna completa seguendo la struttura a 6 step.
-${brandContext}
+${brandContext}${brandVoiceContext}
 PRODOTTO/SERVIZIO: ${productOrService}
 TARGET AUDIENCE: ${targetAudience}
 OBIETTIVO: ${objective}
