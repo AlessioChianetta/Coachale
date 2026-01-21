@@ -142,6 +142,13 @@ In `ClientDataAnalysis.tsx` → viewMode "list":
 ---
 
 ## 🔄 STATO ATTUALE
-**Ultima modifica**: Componente SemanticLayerGuide integrato in ClientDataAnalysis
-**Fase corrente**: FASE 4 - Test e verifica
-**Task corrente**: Testing e review architetto
+**Ultima modifica**: Fix mix metrics con window functions per vere % share, fix <= 0 per data quality
+**Fase corrente**: COMPLETATO
+**Task corrente**: Pronto per uso
+
+### Correzioni Applicate (v2):
+- `category_revenue_share`: ora usa `SUM() / SUM(SUM()) OVER () * 100` per vera percentuale
+- `category_margin_share`: stesso pattern window function
+- `missing_cost_lines` e `missing_price_lines`: cambiato `= 0` in `<= 0`
+- Unit type cambiato da "currency" a "percentage" per share metrics
+- Aggiunto `maxValue: 100` nelle validation rules

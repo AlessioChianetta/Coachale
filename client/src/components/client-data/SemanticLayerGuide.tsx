@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
 
 interface LogicalRole {
   role: string;
+  description?: string;
   mapped: boolean;
   physicalColumn: string | null;
 }
@@ -108,7 +110,14 @@ export function SemanticLayerGuide({ datasetId }: SemanticLayerGuideProps) {
   const [qualityOpen, setQualityOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery<AvailableMetricsResponse>({
-    queryKey: [`/api/client-data/datasets/${datasetId}/available-metrics`],
+    queryKey: ["available-metrics", datasetId],
+    queryFn: async () => {
+      const response = await apiRequest(
+        "GET",
+        `/api/client-data/datasets/${datasetId}/available-metrics`
+      );
+      return response.data;
+    },
     enabled: !!datasetId,
   });
 

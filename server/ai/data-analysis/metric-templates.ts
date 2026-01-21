@@ -334,7 +334,7 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
     name: "missing_cost_lines",
     displayName: "Righe Senza Costo",
     description: "Conteggio righe con costo mancante o zero (indicatore qualità dati)",
-    sqlTemplate: 'SUM(CASE WHEN {cost} IS NULL OR CAST({cost} AS NUMERIC) = 0 THEN 1 ELSE 0 END)',
+    sqlTemplate: 'SUM(CASE WHEN {cost} IS NULL OR CAST({cost} AS NUMERIC) <= 0 THEN 1 ELSE 0 END)',
     requiredLogicalColumns: ["cost"],
     unit: "count",
     validationRules: {
@@ -350,7 +350,7 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
     name: "missing_price_lines",
     displayName: "Righe Senza Prezzo",
     description: "Conteggio righe con prezzo mancante o zero (indicatore qualità dati)",
-    sqlTemplate: 'SUM(CASE WHEN {price} IS NULL OR CAST({price} AS NUMERIC) = 0 THEN 1 ELSE 0 END)',
+    sqlTemplate: 'SUM(CASE WHEN {price} IS NULL OR CAST({price} AS NUMERIC) <= 0 THEN 1 ELSE 0 END)',
     requiredLogicalColumns: ["price"],
     unit: "count",
     validationRules: {
@@ -453,32 +453,37 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
 
   // ============================================
   // MIX / INCIDENCE METRICS (for category analysis)
-  // Note: These calculate the share within a GROUP BY query
+  // Use window functions for true share % calculations
+  // Formula: category_value / total_value * 100
   // ============================================
   category_revenue_share: {
     name: "category_revenue_share",
     displayName: "Incidenza Fatturato %",
-    description: "Percentuale del fatturato totale per categoria (richiede GROUP BY category)",
-    sqlTemplate: 'SUM(CAST({revenue_amount} AS NUMERIC))',
+    description: "Percentuale del fatturato totale per categoria (usa window function per calcolo corretto)",
+    sqlTemplate: 'SUM(CAST({revenue_amount} AS NUMERIC)) / NULLIF(SUM(SUM(CAST({revenue_amount} AS NUMERIC))) OVER (), 0) * 100',
     requiredLogicalColumns: ["revenue_amount", "category"],
-    unit: "currency",
+    unit: "percentage",
     validationRules: {
       mustBePositive: true,
       minValue: 0,
+      maxValue: 100,
     },
     isPrimary: false,
-    version: 1,
+    version: 2,
   },
   category_margin_share: {
     name: "category_margin_share",
     displayName: "Incidenza Margine %",
-    description: "Percentuale del margine totale per categoria (richiede GROUP BY category)",
-    sqlTemplate: 'SUM((CAST({price} AS NUMERIC) - CAST({cost} AS NUMERIC)) * CAST({quantity} AS NUMERIC))',
+    description: "Percentuale del margine totale per categoria (usa window function per calcolo corretto)",
+    sqlTemplate: 'SUM((CAST({price} AS NUMERIC) - CAST({cost} AS NUMERIC)) * CAST({quantity} AS NUMERIC)) / NULLIF(SUM(SUM((CAST({price} AS NUMERIC) - CAST({cost} AS NUMERIC)) * CAST({quantity} AS NUMERIC))) OVER (), 0) * 100',
     requiredLogicalColumns: ["price", "cost", "quantity", "category"],
-    unit: "currency",
-    validationRules: {},
+    unit: "percentage",
+    validationRules: {
+      minValue: 0,
+      maxValue: 100,
+    },
     isPrimary: false,
-    version: 1,
+    version: 2,
   },
 };
 

@@ -2216,39 +2216,23 @@ router.get(
         category: string;
       }> = [];
 
-      const categoryMap: Record<string, string> = {
-        lines_count: "data_quality",
-        missing_cost_lines: "data_quality",
-        missing_price_lines: "data_quality",
-        negative_revenue_lines: "data_quality",
-        unmapped_category_lines: "data_quality",
-        revenue: "fatturato",
-        revenue_gross: "fatturato",
-        revenue_net: "fatturato",
-        revenue_calculated: "fatturato",
-        document_count: "conteggio",
-        order_count: "conteggio",
-        customer_count: "conteggio",
-        product_count: "conteggio",
-        supplier_count: "conteggio",
-        quantity_total: "conteggio",
-        food_cost: "costi_margini",
-        food_cost_percent: "costi_margini",
-        gross_margin: "costi_margini",
-        gross_margin_percent: "costi_margini",
-        gross_margin_per_item: "menu_engineering",
-        gross_margin_per_document: "menu_engineering",
-        ticket_medio: "medie",
-        avg_unit_price: "medie",
-        avg_unit_price_weighted: "medie",
-        avg_unit_cost_weighted: "medie",
-        avg_items_per_document: "medie",
-        avg_quantity_per_line: "medie",
-        discount_total: "sconti",
-        discount_percent_on_revenue: "sconti",
-        category_revenue_share: "mix_incidenze",
-        category_margin_share: "mix_incidenze",
-      };
+      function deriveMetricCategory(metricName: string): string {
+        if (metricName.includes("missing_") || metricName.includes("unmapped_") || metricName.includes("negative_") || metricName === "lines_count") {
+          return "data_quality";
+        }
+        if (metricName.includes("revenue")) return "fatturato";
+        if (metricName.includes("_count") || metricName === "quantity_total") return "conteggio";
+        if (metricName.includes("food_cost") || metricName.includes("gross_margin")) {
+          if (metricName.includes("per_item") || metricName.includes("per_document")) {
+            return "menu_engineering";
+          }
+          return "costi_margini";
+        }
+        if (metricName.includes("avg_") || metricName.includes("ticket_medio")) return "medie";
+        if (metricName.includes("discount")) return "sconti";
+        if (metricName.includes("_share")) return "mix_incidenze";
+        return "altro";
+      }
 
       for (const [name, template] of Object.entries(METRIC_TEMPLATES)) {
         const missingColumns = template.requiredLogicalColumns.filter(
@@ -2262,16 +2246,40 @@ router.get(
           unit: template.unit,
           available: missingColumns.length === 0,
           missingColumns,
-          category: categoryMap[name] || "altro",
+          category: deriveMetricCategory(name),
         });
       }
 
-      const logicalRolesStatus = [
-        "document_id", "line_id", "revenue_amount", "price", "cost", "quantity",
-        "product_id", "product_name", "category", "customer_id", "customer_name",
-        "supplier_id", "supplier_name", "order_date", "payment_method", "status", "warehouse"
-      ].map(role => ({
+      const ROLE_DESCRIPTIONS: Record<string, string> = {
+        price: "Prezzo unitario di vendita",
+        cost: "Costo unitario di acquisto",
+        quantity: "Quantità venduta",
+        order_date: "Data della transazione",
+        order_id: "ID ordine/documento",
+        document_id: "ID documento (alias order_id)",
+        line_id: "ID riga/dettaglio",
+        revenue_amount: "Importo riga (già calcolato)",
+        customer_id: "ID cliente",
+        customer_name: "Nome cliente",
+        product_id: "ID prodotto",
+        product_name: "Nome prodotto",
+        category: "Categoria prodotto",
+        subcategory: "Sotto-categoria prodotto",
+        supplier_id: "ID fornitore",
+        supplier_name: "Nome fornitore",
+        discount_percent: "Percentuale sconto",
+        total_net: "Totale netto riga",
+        tax_rate: "Aliquota IVA",
+        payment_method: "Metodo di pagamento",
+        staff: "Operatore/cassiere",
+        status: "Stato ordine",
+        warehouse: "Magazzino/punto vendita",
+        is_sellable: "Flag prodotto vendibile",
+      };
+
+      const logicalRolesStatus = Object.keys(ROLE_DESCRIPTIONS).map(role => ({
         role,
+        description: ROLE_DESCRIPTIONS[role],
         mapped: mappedLogicalRoles.has(role),
         physicalColumn: semanticMappings.mappings.find((m: any) => m.logicalRole === role)?.physicalColumn || null,
       }));
