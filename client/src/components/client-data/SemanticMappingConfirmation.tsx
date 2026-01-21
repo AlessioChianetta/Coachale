@@ -88,6 +88,65 @@ const LOGICAL_ROLE_OPTIONS = [
   { value: "payment_method", label: "Metodo Pagamento" },
 ];
 
+const ROLE_FUNCTIONS: Record<string, { label: string; functions: string[] }> = {
+  price: { 
+    label: "Prezzo di Vendita", 
+    functions: ["Fatturato lordo", "Ricavo calcolato", "Food Cost %", "Prezzo medio"] 
+  },
+  cost: { 
+    label: "Costo Unitario", 
+    functions: ["Food Cost", "Food Cost %", "Margine lordo", "Margine %", "Analisi profittabilità"] 
+  },
+  quantity: { 
+    label: "Quantità", 
+    functions: ["Fatturato", "Food Cost", "Quantità totale", "Margine", "Top prodotti venduti"] 
+  },
+  revenue_amount: { 
+    label: "Importo Fatturato", 
+    functions: ["Fatturato totale", "Ticket medio", "Trend vendite", "Analisi per categoria"] 
+  },
+  order_date: { 
+    label: "Data Ordine", 
+    functions: ["Trend temporali", "Confronto periodi", "Stagionalità", "Pattern giornalieri"] 
+  },
+  product_name: { 
+    label: "Nome Prodotto", 
+    functions: ["Top/Flop prodotti", "Analisi ABC", "Performance per prodotto"] 
+  },
+  category: { 
+    label: "Categoria", 
+    functions: ["Breakdown per categoria", "Mix vendite", "Confronto categorie"] 
+  },
+  customer_id: { 
+    label: "ID Cliente", 
+    functions: ["Clienti unici", "Frequenza acquisto", "Top clienti", "Analisi RFM"] 
+  },
+  document_id: { 
+    label: "ID Documento", 
+    functions: ["Conteggio ordini", "Ticket medio", "Ordini per periodo"] 
+  },
+  payment_method: { 
+    label: "Metodo Pagamento", 
+    functions: ["Distribuzione pagamenti", "Preferenze clienti", "Trend metodi"] 
+  },
+  supplier_name: {
+    label: "Fornitore",
+    functions: ["Analisi fornitori", "Costi per fornitore", "Volumi acquisto"]
+  },
+  waiter: {
+    label: "Cameriere",
+    functions: ["Performance camerieri", "Vendite per operatore", "Confronto staff"]
+  },
+  discount_amount: {
+    label: "Importo Sconto",
+    functions: ["Totale sconti", "Impatto sconti su margine"]
+  },
+  tax_amount: {
+    label: "IVA",
+    functions: ["Calcolo IVA", "Fatturato netto vs lordo"]
+  },
+};
+
 interface SemanticMappingConfirmationProps {
   datasetId: number;
   onConfirmed?: () => void;
@@ -258,12 +317,68 @@ export function SemanticMappingConfirmation({
 
   if (mappingResult?.analyticsEnabled && pendingMappings.length === 0) {
     return (
-      <Alert className="bg-green-50 border-green-200">
-        <CheckCircle2 className="h-4 w-4 text-green-600" />
-        <AlertDescription className="text-green-800">
-          Mapping confermato! Puoi analizzare i tuoi dati.
-        </AlertDescription>
-      </Alert>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <CardTitle className="text-lg">Mapping Confermato</CardTitle>
+          </div>
+          <CardDescription>
+            Ecco come le colonne sono mappate per l'AI e quali funzioni abilitano
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-3">
+              {confirmedMappings.map((mapping) => {
+                const roleInfo = ROLE_FUNCTIONS[mapping.logicalRole];
+                return (
+                  <div 
+                    key={mapping.id}
+                    className="p-3 rounded-lg border bg-gradient-to-r from-green-50 to-white"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-mono text-sm bg-white px-2 py-0.5 rounded border text-gray-700">
+                        {mapping.physicalColumn}
+                      </span>
+                      <ArrowRight className="h-4 w-4 text-gray-400" />
+                      <Badge className="bg-green-100 text-green-800 border-green-200">
+                        {roleInfo?.label || mapping.displayName}
+                      </Badge>
+                    </div>
+                    {roleInfo?.functions && (
+                      <div className="flex items-start gap-2 mt-2">
+                        <Sparkles className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex flex-wrap gap-1">
+                          {roleInfo.functions.map((fn, idx) => (
+                            <span 
+                              key={idx}
+                              className="text-xs px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full"
+                            >
+                              {fn}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+          
+          {mappingResult.missingRequired && mappingResult.missingRequired.length > 0 && (
+            <Alert className="mt-4 bg-amber-50 border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                <strong>Colonne mancanti:</strong> {mappingResult.missingRequired.join(", ")}
+                <br />
+                <span className="text-sm">Alcune funzioni avanzate potrebbero non essere disponibili.</span>
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
