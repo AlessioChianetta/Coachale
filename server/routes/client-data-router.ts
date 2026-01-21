@@ -15,6 +15,9 @@ import { askDataset, type QueryExecutionResult } from "../ai/data-analysis/query
 import { explainResults, generateNaturalLanguageResponse } from "../ai/data-analysis/result-explainer";
 import { runReconciliationTests, compareAggregations, type ReconciliationReport } from "../services/client-data/reconciliation";
 import { detectAndSaveSemanticMappings, getSemanticMappings, confirmSemanticMappings, rejectSemanticMapping, checkAnalyticsEnabled } from "../services/client-data/semantic-mapping-service";
+import { generateAIMappingSuggestions } from "../ai/data-analysis/ai-column-mapper";
+import { generateSmartQuestions } from "../ai/data-analysis/smart-questions";
+import { runFullAudit } from "../ai/data-analysis/full-audit";
 import fs from "fs";
 import path from "path";
 
@@ -2273,6 +2276,58 @@ router.post(
 );
 
 router.get(
+  "/datasets/:id/ai-mapping-suggestions",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (!dataset.tableName) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Dataset non ha una tabella associata" 
+        });
+      }
+
+      console.log(`[CLIENT-DATA] Generating AI mapping suggestions for dataset ${id}`);
+      const suggestions = await generateAIMappingSuggestions(dataset.id, dataset.tableName);
+
+      res.json({
+        success: true,
+        data: suggestions,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error generating AI mapping suggestions:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to generate AI mapping suggestions",
+      });
+    }
+  }
+);
+
+router.get(
   "/datasets/:id/analytics-status",
   authenticateToken,
   requireAnyRole(["consultant", "client"]),
@@ -2311,6 +2366,98 @@ router.get(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to check analytics status",
+      });
+    }
+  }
+);
+
+router.get(
+  "/datasets/:id/smart-questions",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const consultantId = dataset.consultantId || userId;
+      console.log(`[CLIENT-DATA] Generating smart questions for dataset ${id}`);
+      const result = await generateSmartQuestions(dataset.id, consultantId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error generating smart questions:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to generate smart questions",
+      });
+    }
+  }
+);
+
+router.post(
+  "/datasets/:id/full-audit",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+
+      const [dataset] = await db
+        .select()
+        .from(clientDataDatasets)
+        .where(eq(clientDataDatasets.id, parseInt(id)))
+        .limit(1);
+
+      if (!dataset) {
+        return res.status(404).json({ success: false, error: "Dataset not found" });
+      }
+
+      if (userRole === "consultant" && dataset.consultantId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      if (userRole === "client" && dataset.clientId !== userId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+
+      const consultantId = dataset.consultantId || userId;
+      console.log(`[CLIENT-DATA] Starting full audit for dataset ${id}`);
+      const result = await runFullAudit(dataset.id, consultantId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error running full audit:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to run full audit",
       });
     }
   }

@@ -11,6 +11,7 @@ import { getAuthHeaders } from "@/lib/auth";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea, AIModel, ThinkingLevel } from "@/components/ai-assistant/InputArea";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
+import { FullAuditDialog } from "./FullAuditDialog";
 import {
   Sparkles,
   Bot,
@@ -27,6 +28,8 @@ import {
   ArrowRight,
   Settings,
   ShieldAlert,
+  RefreshCw,
+  Zap,
 } from "lucide-react";
 import {
   Dialog,
@@ -106,13 +109,21 @@ interface AIPreferences {
   writingStyle?: string;
 }
 
-const exampleQueries = [
+const fallbackQueries = [
   "Mostrami il totale delle vendite per mese",
   "Quali sono i 10 prodotti più venduti?",
   "Calcola la media degli ordini per cliente",
   "Confronta le vendite tra Q1 e Q2",
   "Trova gli outlier nei prezzi",
 ];
+
+interface SmartQuestionsResult {
+  questions: string[];
+  availableMetrics: string[];
+  dimensions: Record<string, string[]>;
+  generatedAt: string;
+  analysisTime: number;
+}
 
 function formatToolCallsAsThinking(toolCalls?: Array<{ toolName: string; params?: object }>): string | undefined {
   if (!toolCalls || toolCalls.length === 0) return undefined;
@@ -166,6 +177,21 @@ export function DataAnalysisChat({
       return response.json();
     },
   });
+
+  const { data: smartQuestionsData, isLoading: smartQuestionsLoading, refetch: refetchSmartQuestions } = useQuery<{ success: boolean; data: SmartQuestionsResult }>({
+    queryKey: [`/api/client-data/datasets/${datasetId}/smart-questions`],
+    queryFn: async () => {
+      const response = await fetch(`/api/client-data/datasets/${datasetId}/smart-questions`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch smart questions");
+      return response.json();
+    },
+    staleTime: 10 * 60 * 1000,
+    enabled: messages.length === 0,
+  });
+
+  const smartQuestions = smartQuestionsData?.data?.questions || fallbackQueries;
 
   useEffect(() => {
     if (preferences) {
@@ -408,6 +434,7 @@ export function DataAnalysisChat({
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <FullAuditDialog datasetId={datasetId} datasetName={datasetName} disabled={isTyping} />
             <AIPreferencesSheet />
             {onClose && (
               <Button 
@@ -500,26 +527,55 @@ export function DataAnalysisChat({
                   )}
 
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4 text-amber-500" />
-                      Prova con queste domande
-                    </p>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                        {smartQuestionsLoading ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 text-violet-500 animate-spin" />
+                            Analisi dati in corso...
+                          </>
+                        ) : smartQuestionsData?.data ? (
+                          <>
+                            <Zap className="h-4 w-4 text-amber-500" />
+                            Domande intelligenti
+                          </>
+                        ) : (
+                          <>
+                            <Lightbulb className="h-4 w-4 text-amber-500" />
+                            Prova con queste domande
+                          </>
+                        )}
+                      </p>
+                      {smartQuestionsData?.data && (
+                        <span className="text-xs text-gray-400">
+                          {smartQuestionsData.data.availableMetrics.length} metriche disponibili
+                        </span>
+                      )}
+                    </div>
                     <div className="grid gap-2">
-                      {exampleQueries.map((query, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleExampleClick(query)}
-                          disabled={isTyping}
-                          className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all group disabled:opacity-50"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-violet-700 dark:group-hover:text-violet-300">
-                              {query}
-                            </span>
-                            <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all" />
-                          </div>
-                        </button>
-                      ))}
+                      {smartQuestionsLoading ? (
+                        <div className="space-y-2">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-12 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                          ))}
+                        </div>
+                      ) : (
+                        smartQuestions.map((query, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleExampleClick(query)}
+                            disabled={isTyping}
+                            className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all group disabled:opacity-50"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-violet-700 dark:group-hover:text-violet-300">
+                                {query}
+                              </span>
+                              <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all" />
+                            </div>
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>

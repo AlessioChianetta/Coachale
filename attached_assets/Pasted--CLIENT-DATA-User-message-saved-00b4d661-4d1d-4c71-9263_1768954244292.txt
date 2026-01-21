@@ -1,0 +1,81 @@
+[CLIENT-DATA] User message saved: 00b4d661-4d1d-4c71-9263-77b275a514c7
+[CLIENT-DATA] Loaded 2 messages for context
+[CLIENT-DATA] Processing message: "analizzi quali sono i 10 prodotti "Star" che hanno generato il maggior margine di contribuzione totale nell'ultimo periodo" on dataset 8
+[QUERY-PLANNER] Processing question: "analizzi quali sono i 10 prodotti "Star" che hanno generato il maggior margine di contribuzione totale nell'ultimo periodo" for 1 datasets
+[QUERY-PLANNER] Conversation history: 2 messages
+[WIRING-CHECK] semantic contract detected - requestsAll=false, requestsTopN=false, keywords=[]
+[WIRING-CHECK] extractFiltersFromQuestion called - found 0 filters: {}
+[WIRING-CHECK] groupByIntent - isProductListing=false, productColumn=product_name
+[INTENT-ROUTER] Classifying question: "analizzi quali sono i 10 prodotti "Star" che hanno generato il maggior margine d..."
+[INTENT-ROUTER] Conversation context: 2 messages
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[INTENT-ROUTER] Using provider: Google AI Studio
+[INTENT-ROUTER] Raw response (1038ms): ```json
+{
+  "intent": "analytics",
+  "requires_metrics": true,
+  "suggested_tools": [
+    "aggregate_group"
+  ],
+  "confidence": 0.98
+}
+```
+[INTENT-ROUTER] Classification result: intent=analytics, requires_metrics=true, confidence=0.98, tools=[aggregate_group]
+[QUERY-PLANNER] Router result: intent=analytics, requires_metrics=true, confidence=0.98
+[POLICY-ENGINE] Getting policy for intent: analytics
+[QUERY-PLANNER] Policy: allowedTools=[execute_metric,aggregate_group,compare_periods,filter_data,get_schema], requireToolCall=true
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[QUERY-PLANNER] Conversation context for planner: 2 messages
+[QUERY-PLANNER] Allowed tools for AI: [execute_metric, query_metric, compare_periods, filter_data, aggregate_group, get_schema]
+[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+[POLICY-ENGINE] ALLOWED: aggregate_group
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=true, hasOnlyMetadata=false
+[POLICY-ENGINE] VALIDATION OK: compute tool present
+[RANKING-DIRECTION] Detected WORST pattern: /ultim[oi]/i
+[AGGREGATE-GROUP] Full args from Gemini: {
+  "groupBy": [
+    "product_name"
+  ],
+  "datasetId": "8",
+  "metricName": "gross_margin",
+  "orderBy": {},
+  "limit": 10
+}
+[AGGREGATE-GROUP] datasetId: 8
+[AGGREGATE-GROUP] groupBy: ["product_name"]
+[AGGREGATE-GROUP] metricName: gross_margin
+[AGGREGATE-GROUP] aggregations: undefined
+[AGGREGATE-GROUP] orderBy: {}
+[AGGREGATE-GROUP] filters: undefined
+[WIRING-CHECK] checkCardinalityBeforeAggregate called for columns: ["product_name"]
+[CARDINALITY-PROBE] Running: SELECT COUNT(DISTINCT "product_name") AS distinct_count, COUNT(*) AS total_rows FROM "cdd_0c73bbe5_ristorante_simulato_120k_8bea9f38"
+[CARDINALITY-PROBE] Column "product_name": 321 distinct values, 120000 total rows (1774ms)
+[CARDINALITY-CHECK] OK: 321 distinct values in "product_name" is within limit 500
+[AGGREGATE-GROUP] Pre-validation failed: Non posso calcolare "Margine Lordo" perché mancano le colonne: Costo Unitario. Suggerimento: Costo Unitario: cerca colonne tipo "costo, costo_unitario, cost, unit_cost, prezzo_acquisto".
+[QUERY-PLANNER] Tool aggregate_group failed: Non posso calcolare "Margine Lordo" perché mancano le colonne: Costo Unitario. Suggerimento: Costo Unitario: cerca colonne tipo "costo, costo_unitario, cost, unit_cost, prezzo_acquisto".
+[QUERY-PLANNER] Execution complete in 2088ms, success: false
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: aggregate_group: Non posso calcolare "Margine Lordo" perché mancano le colonne: Costo Unitario. Suggerimento: Costo Unitario: cerca colonne tipo "costo, costo_unitario, cost, unit_cost, prezzo_acquisto".
+[CLIENT-DATA] Assistant message saved: 505a8af1-fb52-4857-82fd-2d5f8a3cf504
+12:09:42 AM [express] POST /api/client-data/conversations/bd9ffc27-9c15-42c0-a682-888ba342a077/messag…
+⏰ [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle triggered
+🔍 [FOLLOWUP-SCHEDULER] Starting HOT/WARM follow-up evaluation cycle...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
