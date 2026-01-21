@@ -79,6 +79,7 @@ import {
   PlayCircle,
   Wand2,
   Building2,
+  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -262,6 +263,12 @@ export default function ContentStudioIdeas() {
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false);
   const [selectedKbDocIds, setSelectedKbDocIds] = useState<string[]>([]);
   
+  // Agent import for Brand Voice
+  const [showImportAgentDialog, setShowImportAgentDialog] = useState(false);
+  const [availableAgents, setAvailableAgents] = useState<any[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [isImportingBrandVoice, setIsImportingBrandVoice] = useState(false);
+  
   // Wizard accordion state
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["brand"]));
   
@@ -342,6 +349,66 @@ export default function ContentStudioIdeas() {
       setBrandVoiceData(brandVoiceResponse.brandVoice);
     }
   }, [brandVoiceResponse]);
+
+  // Load available agents for Brand Voice import
+  const loadAvailableAgents = async () => {
+    setSelectedAgentId(""); // Reset selection on each open
+    try {
+      const res = await fetch("/api/whatsapp/agent-chat/agents", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const response = await res.json();
+        setAvailableAgents(response.data || []);
+      } else {
+        setAvailableAgents([]);
+        toast({ title: "Errore", description: "Impossibile caricare gli agenti", variant: "destructive" });
+      }
+    } catch (error: any) {
+      setAvailableAgents([]);
+      toast({ title: "Errore", description: "Impossibile caricare gli agenti", variant: "destructive" });
+    }
+  };
+
+  // Handle import Brand Voice from agent
+  const handleImportFromAgent = async () => {
+    if (!selectedAgentId) return;
+    setIsImportingBrandVoice(true);
+    try {
+      const res = await fetch(`/api/whatsapp/agents/${selectedAgentId}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento agente");
+      const agent = await res.json();
+      if (agent) {
+        setBrandVoiceData({
+          consultantDisplayName: agent.consultantDisplayName,
+          businessName: agent.businessName,
+          businessDescription: agent.businessDescription,
+          consultantBio: agent.consultantBio,
+          vision: agent.vision,
+          mission: agent.mission,
+          values: agent.values,
+          usp: agent.usp,
+          whoWeHelp: agent.whoWeHelp,
+          whoWeDontHelp: agent.whoWeDontHelp,
+          whatWeDo: agent.whatWeDo,
+          howWeDoIt: agent.howWeDoIt,
+          yearsExperience: agent.yearsExperience,
+          clientsHelped: agent.clientsHelped,
+          resultsGenerated: agent.resultsGenerated,
+          softwareCreated: agent.softwareCreated,
+          booksPublished: agent.booksPublished,
+          caseStudies: agent.caseStudies,
+          servicesOffered: agent.servicesOffered,
+          guarantees: agent.guarantees,
+        });
+        toast({ title: "Dati importati", description: "Brand Voice importato dall'agente" });
+        setShowImportAgentDialog(false);
+        setUseBrandVoice(true);
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsImportingBrandVoice(false);
+    }
+  };
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) return;
@@ -952,7 +1019,11 @@ export default function ContentStudioIdeas() {
                           onDataChange={setBrandVoiceData}
                           onSave={() => {}}
                           compact={true}
-                          showImportButton={false}
+                          showImportButton={true}
+                          onImportClick={() => {
+                            loadAvailableAgents();
+                            setShowImportAgentDialog(true);
+                          }}
                         />
                       )}
                       
@@ -1892,6 +1963,79 @@ export default function ContentStudioIdeas() {
             </div>
           );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Brand Voice from Agent Dialog */}
+      <Dialog open={showImportAgentDialog} onOpenChange={setShowImportAgentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Importa Brand Voice da Agente
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Seleziona un agente WhatsApp per importare i dati del Brand Voice
+          </p>
+          <div className="space-y-4 py-4">
+            {availableAgents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Nessun agente WhatsApp configurato.</p>
+                <p className="text-xs mt-2">Configura prima un agente nella sezione WhatsApp.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {availableAgents.map((agent: any) => (
+                  <div
+                    key={agent.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedAgentId === agent.id
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-muted-foreground/50"
+                    }`}
+                    onClick={() => setSelectedAgentId(agent.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        checked={selectedAgentId === agent.id}
+                        onChange={() => setSelectedAgentId(agent.id)}
+                        className="h-4 w-4 text-primary"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{agent.agentName || agent.businessName || "Agente senza nome"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {agent.businessName || agent.agentType || "Nessuna descrizione"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowImportAgentDialog(false)}>
+                Annulla
+              </Button>
+              <Button
+                onClick={handleImportFromAgent}
+                disabled={!selectedAgentId || isImportingBrandVoice}
+              >
+                {isImportingBrandVoice ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importazione...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Importa
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
