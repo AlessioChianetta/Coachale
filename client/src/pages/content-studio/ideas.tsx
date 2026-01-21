@@ -346,16 +346,22 @@ export default function ContentStudioIdeas() {
   // State for saving brand voice
   const [isSavingBrandVoice, setIsSavingBrandVoice] = useState(false);
 
-  // Sync brand voice data when loaded
+  // Sync brand voice data and enabled state when loaded
   useEffect(() => {
     if (brandVoiceResponse?.brandVoice) {
       setBrandVoiceData(brandVoiceResponse.brandVoice);
     }
+    if (brandVoiceResponse?.enabled !== undefined) {
+      setUseBrandVoice(brandVoiceResponse.enabled);
+    }
   }, [brandVoiceResponse]);
 
   // Save Brand Voice to Content Studio config
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  
   const handleSaveBrandVoice = async () => {
     setIsSavingBrandVoice(true);
+    setSaveSuccess(false);
     try {
       const response = await fetch("/api/content/brand-voice", {
         method: "POST",
@@ -363,15 +369,21 @@ export default function ContentStudioIdeas() {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(brandVoiceData),
+        body: JSON.stringify({
+          brandVoice: brandVoiceData,
+          enabled: useBrandVoice,
+        }),
       });
       
       if (response.ok) {
+        setSaveSuccess(true);
         toast({
           title: "Salvato",
           description: "Brand Voice salvato con successo per Content Studio",
         });
         refetchBrandVoice();
+        // Reset success state after animation
+        setTimeout(() => setSaveSuccess(false), 2000);
       } else {
         throw new Error("Errore nel salvataggio");
       }
@@ -1055,6 +1067,7 @@ export default function ContentStudioIdeas() {
                           onDataChange={setBrandVoiceData}
                           onSave={handleSaveBrandVoice}
                           isSaving={isSavingBrandVoice}
+                          saveSuccess={saveSuccess}
                           compact={true}
                           showImportButton={true}
                           showSaveButton={true}

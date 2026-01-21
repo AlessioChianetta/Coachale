@@ -17,7 +17,8 @@ import {
   X,
   Download,
   Save,
-  Loader2
+  Loader2,
+  Check
 } from "lucide-react";
 
 export interface BrandVoiceData {
@@ -48,6 +49,7 @@ export interface BrandVoiceSectionProps {
   onDataChange: (data: BrandVoiceData) => void;
   onSave: () => void;
   isSaving?: boolean;
+  saveSuccess?: boolean;
   showImportButton?: boolean;
   onImportClick?: () => void;
   compact?: boolean;
@@ -59,6 +61,7 @@ export function BrandVoiceSection({
   onDataChange,
   onSave,
   isSaving = false,
+  saveSuccess = false,
   showImportButton = true,
   onImportClick,
   compact = false,
@@ -239,10 +242,16 @@ export function BrandVoiceSection({
                 <Button 
                   onClick={onSave}
                   disabled={isSaving}
-                  className="w-full"
+                  className={`w-full transition-all duration-300 ${saveSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
                 >
-                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Salva Brand Voice
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : saveSuccess ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saveSuccess ? 'Salvato!' : 'Salva Brand Voice'}
                 </Button>
               )}
             </CardContent>
@@ -381,10 +390,16 @@ export function BrandVoiceSection({
                 <Button 
                   onClick={onSave}
                   disabled={isSaving}
-                  className="w-full"
+                  className={`w-full transition-all duration-300 ${saveSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
                 >
-                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Salva Brand Voice
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : saveSuccess ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saveSuccess ? 'Salvato!' : 'Salva Brand Voice'}
                 </Button>
               )}
             </CardContent>
@@ -546,10 +561,16 @@ export function BrandVoiceSection({
                 <Button 
                   onClick={onSave}
                   disabled={isSaving}
-                  className="w-full"
+                  className={`w-full transition-all duration-300 ${saveSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
                 >
-                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Salva Brand Voice
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : saveSuccess ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saveSuccess ? 'Salvato!' : 'Salva Brand Voice'}
                 </Button>
               )}
             </CardContent>
@@ -626,10 +647,16 @@ export function BrandVoiceSection({
                 <Button 
                   onClick={onSave}
                   disabled={isSaving}
-                  className="w-full"
+                  className={`w-full transition-all duration-300 ${saveSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
                 >
-                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Salva Brand Voice
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : saveSuccess ? (
+                    <Check className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saveSuccess ? 'Salvato!' : 'Salva Brand Voice'}
                 </Button>
               )}
             </CardContent>

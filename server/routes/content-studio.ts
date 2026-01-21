@@ -114,7 +114,8 @@ router.get("/brand-voice", authenticateToken, requireRole("consultant"), async (
     
     res.json({
       success: true,
-      brandVoice: config?.brandVoiceData || {}
+      brandVoice: config?.brandVoiceData || {},
+      enabled: config?.brandVoiceEnabled ?? false
     });
   } catch (error: any) {
     console.error("❌ [CONTENT-STUDIO] Error fetching brand voice:", error);
@@ -129,7 +130,7 @@ router.get("/brand-voice", authenticateToken, requireRole("consultant"), async (
 router.post("/brand-voice", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const brandVoiceData = req.body;
+    const { brandVoice, enabled } = req.body;
     
     const [existing] = await db.select()
       .from(schema.contentStudioConfig)
@@ -139,14 +140,16 @@ router.post("/brand-voice", authenticateToken, requireRole("consultant"), async 
     if (existing) {
       await db.update(schema.contentStudioConfig)
         .set({
-          brandVoiceData,
+          brandVoiceData: brandVoice,
+          brandVoiceEnabled: enabled ?? true,
           updatedAt: new Date(),
         })
         .where(eq(schema.contentStudioConfig.consultantId, consultantId));
     } else {
       await db.insert(schema.contentStudioConfig).values({
         consultantId,
-        brandVoiceData,
+        brandVoiceData: brandVoice,
+        brandVoiceEnabled: enabled ?? true,
       });
     }
     
@@ -157,7 +160,8 @@ router.post("/brand-voice", authenticateToken, requireRole("consultant"), async 
     
     res.json({ 
       success: true, 
-      brandVoice: updated?.brandVoiceData || {} 
+      brandVoice: updated?.brandVoiceData || {},
+      enabled: updated?.brandVoiceEnabled ?? false
     });
   } catch (error: any) {
     console.error("❌ [CONTENT-STUDIO] Error saving brand voice:", error);

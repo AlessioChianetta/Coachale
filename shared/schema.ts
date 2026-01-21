@@ -8771,6 +8771,9 @@ export const contentStudioConfig = pgTable("content_studio_config", {
     guarantees?: string;
   }>().default(sql`'{}'::jsonb`),
   
+  // Whether Brand Voice is enabled for AI generation
+  brandVoiceEnabled: boolean("brand_voice_enabled").default(false),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
