@@ -2472,19 +2472,73 @@ export async function askDataset(
           /più|meno|migliori|peggiori|top\s*\d+|classifica/i.test(userQuestion);
         
         if (semanticOrderBy.hasSemanticMetric && semanticOrderBy.metricName && hasRankingIntent) {
-          // Set metricName to the semantic metric
-          step.args.metricName = semanticOrderBy.metricName;
-          console.log(`[SEMANTIC-ORDERBY] Injecting metricName: ${semanticOrderBy.metricName}`);
+          // CRITICAL: Validate metric availability BEFORE injection
+          // If dataset lacks required columns (e.g., cost for gross_margin), skip injection
+          const datasetIdForValidation = step.args.datasetId;
+          let metricIsAvailable = false;
           
-          // IMPORTANT: Set orderBy to use the METRIC NAME, not a display alias
-          // The metric will be resolved and aggregated in executeToolCall
-          // The aggregation will create the column with the metric name
-          step.args.orderBy = {
-            column: semanticOrderBy.metricName, // Use metric name, will be aggregated
-            direction: semanticOrderBy.direction
-          };
-          step.args._semanticOrderByApplied = true;
-          console.log(`[SEMANTIC-ORDERBY] Injecting orderBy: ${step.args.orderBy.column} ${step.args.orderBy.direction}`);
+          if (datasetIdForValidation) {
+            const metricValidation = await validateMetricForDataset(
+              semanticOrderBy.metricName, 
+              datasetIdForValidation
+            );
+            metricIsAvailable = metricValidation.valid;
+            
+            if (!metricIsAvailable) {
+              console.log(`[SEMANTIC-ORDERBY] SKIP: Metric "${semanticOrderBy.metricName}" not available for dataset ${datasetIdForValidation}`);
+              console.log(`[SEMANTIC-ORDERBY] Reason: ${metricValidation.error || 'Missing required columns'}`);
+              
+              // CRITICAL: Clear any metricName that AI may have set to prevent downstream errors
+              if (step.args.metricName === semanticOrderBy.metricName) {
+                delete step.args.metricName;
+                console.log(`[SEMANTIC-ORDERBY] Cleared invalid metricName: ${semanticOrderBy.metricName}`);
+              }
+              
+              // FALLBACK: Use existing aggregation alias for orderBy
+              // This ensures the query still has a valid orderBy even if semantic metric unavailable
+              if (step.args.aggregations && step.args.aggregations.length > 0) {
+                const firstAggAlias = step.args.aggregations[0].alias;
+                if (firstAggAlias) {
+                  // Override AI's orderBy with valid aggregation alias + semantic direction
+                  step.args.orderBy = {
+                    column: firstAggAlias,
+                    direction: semanticOrderBy.direction
+                  };
+                  console.log(`[SEMANTIC-ORDERBY] FALLBACK: Using aggregation "${firstAggAlias}" ${semanticOrderBy.direction} for orderBy`);
+                }
+              } else if (step.args.orderBy) {
+                // Verify AI's orderBy column exists in groupBy, otherwise remove it
+                const groupByCols = step.args.groupBy || [];
+                if (groupByCols.includes(step.args.orderBy.column)) {
+                  step.args.orderBy.direction = semanticOrderBy.direction;
+                  console.log(`[SEMANTIC-ORDERBY] FALLBACK: Keeping AI orderBy "${step.args.orderBy.column}" with semantic direction ${semanticOrderBy.direction}`);
+                } else {
+                  // Invalid orderBy column - remove to prevent error
+                  delete step.args.orderBy;
+                  console.log(`[SEMANTIC-ORDERBY] FALLBACK: Removed invalid orderBy (column not in groupBy)`);
+                }
+              }
+            }
+          } else {
+            // No datasetId - cannot validate, skip semantic injection entirely
+            console.log(`[SEMANTIC-ORDERBY] SKIP: No datasetId available for validation`);
+          }
+          
+          if (metricIsAvailable) {
+            // Set metricName to the semantic metric
+            step.args.metricName = semanticOrderBy.metricName;
+            console.log(`[SEMANTIC-ORDERBY] Injecting metricName: ${semanticOrderBy.metricName}`);
+            
+            // IMPORTANT: Set orderBy to use the METRIC NAME, not a display alias
+            // The metric will be resolved and aggregated in executeToolCall
+            // The aggregation will create the column with the metric name
+            step.args.orderBy = {
+              column: semanticOrderBy.metricName, // Use metric name, will be aggregated
+              direction: semanticOrderBy.direction
+            };
+            step.args._semanticOrderByApplied = true;
+            console.log(`[SEMANTIC-ORDERBY] Injecting orderBy: ${step.args.orderBy.column} ${step.args.orderBy.direction}`);
+          }
         }
       }
     }
