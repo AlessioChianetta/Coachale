@@ -675,8 +675,8 @@ export default function ContentStudioIdeas() {
   };
 
   const handleSuggestLevels = async () => {
-    if (!topic && !targetAudience) {
-      toast({ title: "Inserisci prima Topic o Target Audience", variant: "destructive" });
+    if (!topic && !targetAudience && !brandVoiceData) {
+      toast({ title: "Inserisci Topic, Target Audience o Brand Voice", variant: "destructive" });
       return;
     }
     setIsSuggestingLevels(true);
@@ -684,7 +684,15 @@ export default function ContentStudioIdeas() {
       const response = await fetch("/api/content/ai/suggest-levels", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, targetAudience, objective }),
+        body: JSON.stringify({ 
+          topic, 
+          targetAudience, 
+          objective,
+          mediaType,
+          copyType,
+          additionalContext,
+          brandVoiceData: useBrandVoice ? brandVoiceData : null,
+        }),
       });
       const data = await response.json();
       if (data.awarenessLevel) setAwarenessLevel(data.awarenessLevel);
@@ -842,65 +850,14 @@ export default function ContentStudioIdeas() {
                 </CardContent>
               </Card>
 
-              {/* Step 1: Brand & Target */}
-              <Card className="overflow-hidden">
-                <button
-                  onClick={() => toggleSection("brand")}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-950/40 dark:hover:to-orange-950/40 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">1</div>
-                    <div className="text-left">
-                      <h3 className="font-semibold text-foreground">Il Tuo Brand</h3>
-                      <p className="text-xs text-muted-foreground">Topic e Target Audience</p>
-                    </div>
-                    {topic && targetAudience && (
-                      <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
-                    )}
-                  </div>
-                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("brand") ? "rotate-180" : ""}`} />
-                </button>
-                
-                <div
-                  className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("brand") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-                >
-                  <div className="overflow-hidden">
-                    <CardContent className="pt-4 space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="topic" className="text-sm font-medium">Topic / Argomento *</Label>
-                        <Textarea
-                          id="topic"
-                          placeholder="Es: Sono un personal trainer specializzato in crossfit e fitness funzionale..."
-                          value={topic}
-                          onChange={(e) => setTopic(e.target.value)}
-                          rows={3}
-                          className="resize-none"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="targetAudience" className="text-sm font-medium">Target Audience *</Label>
-                        <Textarea
-                          id="targetAudience"
-                          placeholder="Es: Sportivi amatoriali 25-45 anni che vogliono migliorare le prestazioni..."
-                          value={targetAudience}
-                          onChange={(e) => setTargetAudience(e.target.value)}
-                          rows={2}
-                          className="resize-none"
-                        />
-                      </div>
-                    </CardContent>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Step 2: Objective & Format */}
+              {/* Step 1: Objective & Format */}
               <Card className="overflow-hidden">
                 <button
                   onClick={() => toggleSection("objective")}
                   className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-950/40 dark:hover:to-pink-950/40 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-sm">2</div>
+                    <div className="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-sm">1</div>
                     <div className="text-left">
                       <h3 className="font-semibold text-foreground">Obiettivo & Formato</h3>
                       <p className="text-xs text-muted-foreground">Cosa vuoi ottenere e come</p>
@@ -1026,7 +983,7 @@ export default function ContentStudioIdeas() {
                 </div>
               </Card>
 
-              {/* Step 3: Brand Voice & Context (optional) */}
+              {/* Step 2: Brand Voice & Context (optional) */}
               <Card className="overflow-hidden">
                 <button
                   onClick={() => toggleSection("context")}
@@ -1128,7 +1085,7 @@ export default function ContentStudioIdeas() {
                         variant="outline"
                         size="sm"
                         onClick={handleSuggestLevels}
-                        disabled={isSuggestingLevels || (!topic && !targetAudience)}
+                        disabled={isSuggestingLevels || (!topic && !targetAudience && !brandVoiceData)}
                         className="gap-2"
                       >
                         {isSuggestingLevels ? (

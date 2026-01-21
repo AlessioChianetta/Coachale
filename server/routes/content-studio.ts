@@ -1740,14 +1740,33 @@ router.post("/ai/generate-image-prompt", authenticateToken, requireRole("consult
 router.post("/ai/suggest-levels", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const { topic, targetAudience, objective } = req.body;
+    const { topic, targetAudience, objective, mediaType, copyType, additionalContext, brandVoiceData } = req.body;
     
-    if (!topic && !targetAudience) {
-      return res.status(400).json({ error: "Fornisci almeno topic o target audience" });
+    if (!topic && !targetAudience && !brandVoiceData) {
+      return res.status(400).json({ error: "Fornisci almeno topic, target audience o brand voice" });
     }
     
     const { client, metadata } = await getAIProvider(consultantId, "content-suggest-levels");
     const { model } = getModelWithThinking(metadata?.name);
+    
+    // Build brand voice context if available
+    let brandVoiceContext = "";
+    if (brandVoiceData) {
+      const parts = [];
+      if (brandVoiceData.nameDisplayConsultant) parts.push(`Consulente: ${brandVoiceData.nameDisplayConsultant}`);
+      if (brandVoiceData.nameBusiness) parts.push(`Business: ${brandVoiceData.nameBusiness}`);
+      if (brandVoiceData.descriptionBusiness) parts.push(`Descrizione Business: ${brandVoiceData.descriptionBusiness}`);
+      if (brandVoiceData.vision) parts.push(`Vision: ${brandVoiceData.vision}`);
+      if (brandVoiceData.mission) parts.push(`Mission: ${brandVoiceData.mission}`);
+      if (brandVoiceData.values) parts.push(`Valori: ${brandVoiceData.values}`);
+      if (brandVoiceData.usp) parts.push(`USP: ${brandVoiceData.usp}`);
+      if (brandVoiceData.whatWeDo) parts.push(`Cosa Facciamo: ${brandVoiceData.whatWeDo}`);
+      if (brandVoiceData.whatWeDoNot) parts.push(`Cosa NON Facciamo: ${brandVoiceData.whatWeDoNot}`);
+      if (brandVoiceData.howWeDoIt) parts.push(`Come lo Facciamo: ${brandVoiceData.howWeDoIt}`);
+      if (parts.length > 0) {
+        brandVoiceContext = `\n\n=== BRAND VOICE & IDENTITÀ ===\n${parts.join("\n")}`;
+      }
+    }
     
     const prompt = `Sei un esperto di marketing strategico. Analizza attentamente i dati forniti e suggerisci i livelli OTTIMALI per questa specifica campagna.
 
@@ -1755,6 +1774,9 @@ router.post("/ai/suggest-levels", authenticateToken, requireRole("consultant"), 
 Topic/Nicchia: "${topic || "Non specificato"}"
 Target Audience: "${targetAudience || "Non specificato"}"  
 Obiettivo: "${objective || "Non specificato"}"
+Tipo Media: "${mediaType || "Non specificato"}"
+Tipo Copy: "${copyType || "Non specificato"}"
+Contesto Aggiuntivo: "${additionalContext || "Non specificato"}"${brandVoiceContext}
 
 === LIVELLI DI CONSAPEVOLEZZA (Piramide Eugene Schwartz) ===
 - unaware: Il pubblico NON sa di avere un problema. Serve educazione.
