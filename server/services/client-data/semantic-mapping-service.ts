@@ -1,6 +1,6 @@
 import { db } from "../../db";
-import { datasetColumnSemantics, clientDataDatasets, CRITICAL_ROLES, type SemanticLogicalRole, type SemanticMappingStatus } from "../../../shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { datasetColumnSemantics, clientDataDatasets, customMappingRules, CRITICAL_ROLES, type SemanticLogicalRole, type SemanticMappingStatus } from "../../../shared/schema";
+import { eq, and, sql, desc } from "drizzle-orm";
 import { autoDetectAllColumns, getLogicalColumnDisplayName } from "../../ai/data-analysis/logical-columns";
 
 export interface SemanticMapping {
@@ -25,13 +25,96 @@ export interface SemanticMappingResult {
 const AUTO_APPROVE_THRESHOLD = 0.90;
 const MIN_CONFIDENCE_THRESHOLD = 0.70;
 
+interface CustomRule {
+  columnPattern: string;
+  logicalRole: string;
+  matchType: "exact" | "contains" | "startswith" | "endswith";
+  caseSensitive: boolean;
+  priority: number;
+}
+
+function matchColumnWithRule(columnName: string, rule: CustomRule): boolean {
+  const col = rule.caseSensitive ? columnName : columnName.toLowerCase();
+  const pattern = rule.caseSensitive ? rule.columnPattern : rule.columnPattern.toLowerCase();
+  
+  switch (rule.matchType) {
+    case "exact":
+      return col === pattern;
+    case "contains":
+      return col.includes(pattern);
+    case "startswith":
+      return col.startsWith(pattern);
+    case "endswith":
+      return col.endsWith(pattern);
+    default:
+      return col.includes(pattern);
+  }
+}
+
+async function applyCustomRules(
+  consultantId: string,
+  physicalColumns: string[]
+): Promise<Map<string, { logicalRole: SemanticLogicalRole; confidence: number }>> {
+  const customMatches = new Map<string, { logicalRole: SemanticLogicalRole; confidence: number }>();
+  
+  try {
+    const rules = await db
+      .select()
+      .from(customMappingRules)
+      .where(eq(customMappingRules.consultantId, consultantId))
+      .orderBy(desc(customMappingRules.priority));
+    
+    if (rules.length === 0) {
+      return customMatches;
+    }
+    
+    console.log(`[SEMANTIC] Applying ${rules.length} custom mapping rules for consultant ${consultantId}`);
+    
+    for (const col of physicalColumns) {
+      for (const rule of rules) {
+        if (matchColumnWithRule(col, rule as CustomRule)) {
+          customMatches.set(col, {
+            logicalRole: rule.logicalRole as SemanticLogicalRole,
+            confidence: 0.98,
+          });
+          console.log(`[SEMANTIC] Custom rule matched: "${col}" -> ${rule.logicalRole} (pattern: "${rule.columnPattern}")`);
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[SEMANTIC] Error applying custom rules:", error);
+  }
+  
+  return customMatches;
+}
+
 export async function detectAndSaveSemanticMappings(
   datasetId: number,
   physicalColumns: string[]
 ): Promise<SemanticMappingResult> {
   console.log(`[SEMANTIC] Auto-detecting mappings for dataset ${datasetId} with ${physicalColumns.length} columns`);
 
-  const detectedMappings = autoDetectAllColumns(physicalColumns);
+  const [dataset] = await db
+    .select({ consultantId: clientDataDatasets.consultantId })
+    .from(clientDataDatasets)
+    .where(eq(clientDataDatasets.id, datasetId))
+    .limit(1);
+
+  const customMatches = dataset?.consultantId 
+    ? await applyCustomRules(dataset.consultantId, physicalColumns)
+    : new Map<string, { logicalRole: SemanticLogicalRole; confidence: number }>();
+
+  const columnsForAutoDetect = physicalColumns.filter(col => !customMatches.has(col));
+  const detectedMappings = autoDetectAllColumns(columnsForAutoDetect);
+  
+  for (const [col, match] of customMatches.entries()) {
+    detectedMappings.set(col, {
+      logicalColumn: match.logicalRole,
+      confidence: match.confidence,
+      patternMatched: "custom_rule",
+    });
+  }
 
   const mappingsToInsert: Array<{
     datasetId: number;

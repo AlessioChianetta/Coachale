@@ -16,6 +16,7 @@ import { ResultsDisplay } from "@/components/client-data/ResultsDisplay";
 import { MetricEditor } from "@/components/client-data/MetricEditor";
 import { ReconciliationReport } from "@/components/client-data/ReconciliationReport";
 import { SemanticMappingConfirmation } from "@/components/client-data/SemanticMappingConfirmation";
+import { CustomMappingRules } from "@/components/client-data/CustomMappingRules";
 
 import {
   Database,
@@ -207,12 +208,15 @@ export default function ClientDataAnalysis() {
 
         <div className="flex-1 overflow-auto p-6">
           {viewMode === "list" && (
-            <DatasetList
-              onSelectDataset={handleSelectDataset}
-              onQueryDataset={handleQueryDataset}
-              onNewDataset={() => setViewMode("upload")}
-              selectedDatasetId={selectedDataset?.id}
-            />
+            <div className="space-y-6">
+              <DatasetList
+                onSelectDataset={handleSelectDataset}
+                onQueryDataset={handleQueryDataset}
+                onNewDataset={() => setViewMode("upload")}
+                selectedDatasetId={selectedDataset?.id}
+              />
+              <CustomMappingRules />
+            </div>
           )}
 
           {viewMode === "upload" && (

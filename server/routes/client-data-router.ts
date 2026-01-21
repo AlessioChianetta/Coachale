@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { db } from "../db";
-import { clientDataDatasets, users, consultantColumnMappings, clientDataMetrics, clientDataConversations, clientDataMessages, clientDataAiPreferences } from "../../shared/schema";
+import { clientDataDatasets, users, consultantColumnMappings, clientDataMetrics, clientDataConversations, clientDataMessages, clientDataAiPreferences, customMappingRules } from "../../shared/schema";
 import { eq, and, desc, or } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../middleware/auth";
 import { upload } from "../middleware/upload";
@@ -2458,6 +2458,184 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to run full audit",
+      });
+    }
+  }
+);
+
+// ============================================================
+// CUSTOM MAPPING RULES ENDPOINTS
+// ============================================================
+
+router.get(
+  "/mapping-rules",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const rules = await db
+        .select()
+        .from(customMappingRules)
+        .where(eq(customMappingRules.consultantId, consultantId))
+        .orderBy(desc(customMappingRules.priority), customMappingRules.columnPattern);
+
+      res.json({
+        success: true,
+        data: rules,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error fetching custom mapping rules:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch custom mapping rules",
+      });
+    }
+  }
+);
+
+router.post(
+  "/mapping-rules",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const { columnPattern, logicalRole, matchType, caseSensitive, priority, description } = req.body;
+
+      if (!columnPattern || !logicalRole) {
+        return res.status(400).json({
+          success: false,
+          error: "columnPattern e logicalRole sono obbligatori",
+        });
+      }
+
+      const [newRule] = await db
+        .insert(customMappingRules)
+        .values({
+          consultantId,
+          columnPattern,
+          logicalRole,
+          matchType: matchType || "contains",
+          caseSensitive: caseSensitive ?? false,
+          priority: priority ?? 0,
+          description,
+        })
+        .returning();
+
+      console.log(`[MAPPING-RULES] Created rule ${newRule.id} for consultant ${consultantId}: "${columnPattern}" -> ${logicalRole}`);
+
+      res.json({
+        success: true,
+        data: newRule,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error creating custom mapping rule:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to create custom mapping rule",
+      });
+    }
+  }
+);
+
+router.put(
+  "/mapping-rules/:id",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const ruleId = parseInt(req.params.id);
+      const { columnPattern, logicalRole, matchType, caseSensitive, priority, description } = req.body;
+
+      const [existing] = await db
+        .select()
+        .from(customMappingRules)
+        .where(and(
+          eq(customMappingRules.id, ruleId),
+          eq(customMappingRules.consultantId, consultantId)
+        ))
+        .limit(1);
+
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          error: "Regola non trovata",
+        });
+      }
+
+      const [updated] = await db
+        .update(customMappingRules)
+        .set({
+          columnPattern: columnPattern ?? existing.columnPattern,
+          logicalRole: logicalRole ?? existing.logicalRole,
+          matchType: matchType ?? existing.matchType,
+          caseSensitive: caseSensitive ?? existing.caseSensitive,
+          priority: priority ?? existing.priority,
+          description: description ?? existing.description,
+          updatedAt: new Date(),
+        })
+        .where(eq(customMappingRules.id, ruleId))
+        .returning();
+
+      console.log(`[MAPPING-RULES] Updated rule ${ruleId} for consultant ${consultantId}`);
+
+      res.json({
+        success: true,
+        data: updated,
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error updating custom mapping rule:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update custom mapping rule",
+      });
+    }
+  }
+);
+
+router.delete(
+  "/mapping-rules/:id",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const ruleId = parseInt(req.params.id);
+
+      const [existing] = await db
+        .select()
+        .from(customMappingRules)
+        .where(and(
+          eq(customMappingRules.id, ruleId),
+          eq(customMappingRules.consultantId, consultantId)
+        ))
+        .limit(1);
+
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          error: "Regola non trovata",
+        });
+      }
+
+      await db
+        .delete(customMappingRules)
+        .where(eq(customMappingRules.id, ruleId));
+
+      console.log(`[MAPPING-RULES] Deleted rule ${ruleId} for consultant ${consultantId}`);
+
+      res.json({
+        success: true,
+        message: "Regola eliminata",
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Error deleting custom mapping rule:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to delete custom mapping rule",
       });
     }
   }
