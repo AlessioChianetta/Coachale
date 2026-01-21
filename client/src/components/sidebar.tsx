@@ -647,25 +647,25 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   return (
                     <button
                       onClick={() => handleCategoryToggle(category.name)}
-                      className="w-full flex items-center justify-between px-3 py-1.5 group hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-md transition-colors"
+                      className="w-full flex items-center justify-between px-3 py-2.5 mt-2 mb-1 group hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors border-l-2 border-transparent hover:border-cyan-400"
                     >
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         {CategoryIcon && (
                           <CategoryIcon className={cn(
-                            "h-3.5 w-3.5 transition-all duration-200",
+                            "h-4.5 w-4.5 transition-all duration-200",
                             theme.iconColor,
-                            "group-hover:scale-105"
+                            "group-hover:scale-110"
                           )} />
                         )}
                         <span className={cn(
-                          "text-[10px] font-semibold uppercase tracking-widest",
+                          "text-xs font-bold uppercase tracking-wide",
                           theme.textColor
                         )}>
                           {category.name}
                         </span>
                       </div>
                       <ChevronRight className={cn(
-                        "h-3 w-3 text-slate-400 transition-transform duration-200",
+                        "h-3.5 w-3.5 text-slate-400 transition-transform duration-200",
                         isCategoryExpanded && "rotate-90"
                       )} />
                     </button>
