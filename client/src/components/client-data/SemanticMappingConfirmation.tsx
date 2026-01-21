@@ -511,19 +511,71 @@ export function SemanticMappingConfirmation({
                 <p className="text-xs text-gray-500 mb-2">
                   Queste colonne esistono nel dataset ma non sono utilizzate per l'analisi
                 </p>
-                <div className="flex flex-wrap gap-1">
-                  {aiSuggestions.unmappedColumns.slice(0, 20).map((col) => (
-                    <span 
-                      key={col}
-                      className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded border"
-                    >
-                      {col}
-                    </span>
-                  ))}
-                  {aiSuggestions.unmappedColumns.length > 20 && (
-                    <span className="text-xs text-gray-400 py-1">
-                      +{aiSuggestions.unmappedColumns.length - 20} altre
-                    </span>
+                <div className="space-y-2">
+                  {aiSuggestions.unmappedColumns
+                    .filter(col => !["id", "riga_originale", "consultant_id", "client_id", "created_at"].includes(col))
+                    .map((col) => {
+                      const isSelected = selectedMappings.has(col);
+                      return (
+                        <div 
+                          key={col}
+                          className={`p-2 rounded border flex items-center gap-2 ${
+                            isSelected ? "bg-violet-50 border-violet-300" : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => {
+                              if (isSelected) {
+                                const newSelected = new Map(selectedMappings);
+                                newSelected.delete(col);
+                                setSelectedMappings(newSelected);
+                              } else {
+                                const newSelected = new Map(selectedMappings);
+                                newSelected.set(col, "revenue_amount");
+                                setSelectedMappings(newSelected);
+                              }
+                            }}
+                          />
+                          <span className="font-mono text-sm bg-white px-2 py-0.5 rounded border text-gray-700">
+                            {col}
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-gray-400" />
+                          <Select 
+                            value={selectedMappings.get(col) || ""} 
+                            onValueChange={(value) => {
+                              const newSelected = new Map(selectedMappings);
+                              newSelected.set(col, value);
+                              setSelectedMappings(newSelected);
+                            }}
+                          >
+                            <SelectTrigger className="w-[180px] h-8 bg-white">
+                              <SelectValue placeholder="Seleziona ruolo..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {LOGICAL_ROLE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                  {aiSuggestions.unmappedColumns.filter(col => 
+                    ["id", "riga_originale", "consultant_id", "client_id", "created_at"].includes(col)
+                  ).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t border-dashed">
+                      <span className="text-xs text-gray-400 mr-1">Colonne di sistema:</span>
+                      {aiSuggestions.unmappedColumns
+                        .filter(col => ["id", "riga_originale", "consultant_id", "client_id", "created_at"].includes(col))
+                        .map((col) => (
+                          <span key={col} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-400 rounded">
+                            {col}
+                          </span>
+                        ))}
+                    </div>
                   )}
                 </div>
               </div>
