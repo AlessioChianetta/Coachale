@@ -636,14 +636,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 {!isAlwaysVisible && (() => {
                   const CategoryIcon = category.icon;
                   const categoryThemes: Record<string, { iconColor: string; textColor: string }> = {
-                    "LAVORO QUOTIDIANO": { iconColor: "text-teal-400", textColor: "text-slate-500 dark:text-slate-400" },
-                    "COMUNICAZIONE": { iconColor: "text-cyan-400", textColor: "text-slate-500 dark:text-slate-400" },
-                    "CONTENT STUDIO": { iconColor: "text-purple-400", textColor: "text-slate-500 dark:text-slate-400" },
-                    "FORMAZIONE": { iconColor: "text-amber-400", textColor: "text-slate-500 dark:text-slate-400" },
-                    "BASE DI CONOSCENZA": { iconColor: "text-blue-400", textColor: "text-slate-500 dark:text-slate-400" },
-                    "IMPOSTAZIONI": { iconColor: "text-slate-400", textColor: "text-slate-500 dark:text-slate-400" },
-                    "GUIDE": { iconColor: "text-rose-400", textColor: "text-slate-500 dark:text-slate-400" },
-                    "AI AVANZATO": { iconColor: "text-emerald-400", textColor: "text-slate-500 dark:text-slate-400" },
+                    "LAVORO QUOTIDIANO": { iconColor: "text-teal-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "COMUNICAZIONE": { iconColor: "text-cyan-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "CONTENT STUDIO": { iconColor: "text-purple-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "FORMAZIONE": { iconColor: "text-amber-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "BASE DI CONOSCENZA": { iconColor: "text-blue-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "IMPOSTAZIONI": { iconColor: "text-slate-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "GUIDE": { iconColor: "text-rose-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "AI AVANZATO": { iconColor: "text-emerald-500", textColor: "text-slate-800 dark:text-slate-200" },
                   };
                   const theme = categoryThemes[category.name] || { iconColor: "text-slate-400", textColor: "text-slate-500 dark:text-slate-400" };
                   
