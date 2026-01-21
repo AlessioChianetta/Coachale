@@ -49,8 +49,10 @@ import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ConsultantClientsPage() {
   const isMobile = useIsMobile();
@@ -76,6 +78,17 @@ export default function ConsultantClientsPage() {
     username: '',
     geminiApiKeys: [] as string[]
   });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<'name' | 'email' | 'date' | 'exercises' | 'progress'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // Bulk selection state
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -320,6 +333,97 @@ export default function ConsultantClientsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Sort and paginate clients
+  const sortedAndPaginatedClients = useMemo(() => {
+    // First, enrich clients with computed data
+    const enrichedClients = filteredClients.map((client: any) => {
+      const clientAssignments = assignments.filter((a: any) => a.clientId === client.id);
+      const completedCount = clientAssignments.filter((a: any) => a.status === 'completed').length;
+      const completionRate = clientAssignments.length > 0 ? 
+        Math.round((completedCount / clientAssignments.length) * 100) : 0;
+      return {
+        ...client,
+        _assignmentsCount: clientAssignments.length,
+        _completedCount: completedCount,
+        _completionRate: completionRate
+      };
+    });
+
+    // Sort
+    const sorted = [...enrichedClients].sort((a, b) => {
+      let comparison = 0;
+      switch (sortColumn) {
+        case 'name':
+          comparison = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+          break;
+        case 'email':
+          comparison = (a.email || '').localeCompare(b.email || '');
+          break;
+        case 'date':
+          comparison = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+          break;
+        case 'exercises':
+          comparison = a._assignmentsCount - b._assignmentsCount;
+          break;
+        case 'progress':
+          comparison = a._completionRate - b._completionRate;
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    // Paginate
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return sorted.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredClients, assignments, sortColumn, sortDirection, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (value: "all" | "active" | "inactive") => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleSort = (column: typeof sortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedClients(new Set(sortedAndPaginatedClients.map((c: any) => c.id)));
+    } else {
+      setSelectedClients(new Set());
+    }
+  };
+
+  const handleSelectClient = (clientId: string, checked: boolean) => {
+    const newSelected = new Set(selectedClients);
+    if (checked) {
+      newSelected.add(clientId);
+    } else {
+      newSelected.delete(clientId);
+    }
+    setSelectedClients(newSelected);
+  };
+
+  const SortIcon = ({ column }: { column: typeof sortColumn }) => {
+    if (sortColumn !== column) return <ChevronUp className="w-3 h-3 opacity-30" />;
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="w-3 h-3 text-cyan-600" />
+      : <ChevronDown className="w-3 h-3 text-cyan-600" />;
+  };
+
   if (clientsLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
@@ -502,14 +606,14 @@ export default function ConsultantClientsPage() {
                     <Input
                       placeholder="Cerca clienti..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => handleSearchChange(e.target.value)}
                       className="pl-9 bg-white/80 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                     />
                   </div>
                   <div className="flex gap-2">
                     <select
                       value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value as any)}
+                      onChange={(e) => handleStatusFilterChange(e.target.value as any)}
                       className="px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     >
                       <option value="all">Tutti i clienti</option>
@@ -533,7 +637,7 @@ export default function ConsultantClientsPage() {
               </div>
             </CardHeader>
             
-            <CardContent className="p-4">
+            <CardContent className="p-0">
               {filteredClients.length === 0 ? (
                 <div className="text-center py-16 px-4">
                   <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
@@ -549,205 +653,315 @@ export default function ConsultantClientsPage() {
                     }
                   </p>
                   {searchTerm && (
-                    <Button variant="outline" onClick={() => setSearchTerm("")}>
+                    <Button variant="outline" onClick={() => handleSearchChange("")}>
                       Rimuovi filtri
                     </Button>
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {filteredClients.map((client: any) => {
-                    const clientAssignments = assignments.filter((a: any) => a.clientId === client.id);
-                    const completedCount = clientAssignments.filter((a: any) => a.status === 'completed').length;
-                    const completionRate = clientAssignments.length > 0 ? 
-                      Math.round((completedCount / clientAssignments.length) * 100) : 0;
-
-                    return (
-                      <Card 
-                        key={client.id}
-                        className="border border-slate-200 hover:border-cyan-300 hover:shadow-md transition-all duration-200 bg-white"
-                      >
-                        <CardContent className="p-3 lg:p-4">
-                          <div className="grid grid-cols-12 gap-2 lg:gap-3 items-center">
-                            {/* Cliente */}
-                            <div className="col-span-12 lg:col-span-2 flex items-center gap-2">
-                              <Avatar className="w-9 h-9 lg:w-10 lg:h-10 ring-2 ring-slate-100">
-                                <AvatarImage src={client.avatar} />
-                                <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-semibold text-xs">
-                                  {client.firstName?.[0]}{client.lastName?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <p className="font-semibold text-slate-800 text-sm truncate">
-                                    {client.firstName} {client.lastName}
-                                  </p>
-                                  {client.role === 'consultant' && (
-                                    <Badge className="text-[10px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200">
-                                      <UserCog className="w-2.5 h-2.5 mr-0.5" />
-                                      Cons
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-xs text-slate-500 truncate">@{client.username}</p>
-                              </div>
+                <>
+                  {/* Compact Enterprise Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="w-10 px-3 py-3">
+                            <Checkbox 
+                              checked={selectedClients.size === sortedAndPaginatedClients.length && sortedAndPaginatedClients.length > 0}
+                              onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                              className="border-slate-300"
+                            />
+                          </th>
+                          <th className="w-10 px-2 py-3"></th>
+                          <th 
+                            className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                            onClick={() => handleSort('name')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Cliente
+                              <SortIcon column="name" />
                             </div>
-
-                            {/* Contatti */}
-                            <div className="col-span-6 lg:col-span-3">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-xs text-slate-600 truncate">
-                                  <Mail className="w-3 h-3 flex-shrink-0 text-slate-400" />
-                                  <span className="truncate">{client.email}</span>
-                                </div>
-                                {client.phoneNumber && (
-                                  <div className="flex items-center gap-2 text-xs text-slate-600 truncate">
-                                    <Phone className="w-3 h-3 flex-shrink-0 text-slate-400" />
-                                    <span className="truncate">{client.phoneNumber}</span>
-                                  </div>
-                                )}
-                              </div>
+                          </th>
+                          <th 
+                            className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors hidden md:table-cell"
+                            onClick={() => handleSort('email')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Email
+                              <SortIcon column="email" />
                             </div>
-
-                            {/* Registrazione */}
-                            <div className="col-span-6 lg:col-span-2">
-                              <div className="flex items-center gap-2 text-xs text-slate-600">
-                                <Calendar className="w-3 h-3 text-slate-400" />
-                                <span>{client.createdAt ? new Date(client.createdAt).toLocaleDateString('it-IT') : 'N/A'}</span>
-                              </div>
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                            Telefono
+                          </th>
+                          <th 
+                            className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors hidden lg:table-cell"
+                            onClick={() => handleSort('date')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Data
+                              <SortIcon column="date" />
                             </div>
-
-                            {/* Esercizi */}
-                            <div className="col-span-4 lg:col-span-2 text-center">
-                              <div className="text-sm font-semibold text-slate-800">
-                                {clientAssignments.length}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                assegnati
-                              </div>
+                          </th>
+                          <th 
+                            className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                            onClick={() => handleSort('exercises')}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              Esercizi
+                              <SortIcon column="exercises" />
                             </div>
-
-                            {/* Completati */}
-                            <div className="col-span-4 lg:col-span-1 text-center">
-                              <div className="text-sm font-semibold text-slate-800">
-                                {completedCount}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                completati
-                              </div>
+                          </th>
+                          <th 
+                            className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                            onClick={() => handleSort('progress')}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              Progresso
+                              <SortIcon column="progress" />
                             </div>
-
-                            {/* Progresso */}
-                            <div className="col-span-4 lg:col-span-1 text-center">
-                              <div className="text-base lg:text-lg font-bold text-slate-800">
-                                {completionRate}%
-                              </div>
-                            </div>
-
-                            {/* Azioni */}
-                            <div className="col-span-12 lg:col-span-1 flex items-center justify-end gap-1">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                title="Modifica cliente"
-                                onClick={() => handleEditClient(client)}
-                                className="h-8 w-8 p-0 hover:bg-cyan-100 hover:text-cyan-600"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    title="Altre azioni"
-                                    className="h-8 w-8 p-0 hover:bg-slate-100 hover:text-slate-600"
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56">
-                                  {client.role === 'consultant' ? (
-                                    <DropdownMenuItem 
-                                      onClick={() => removeConsultantProfileMutation.mutate(client.id)}
-                                      disabled={removeConsultantProfileMutation.isPending}
-                                      className="text-orange-600 focus:text-orange-700"
-                                    >
-                                      <UserMinus className="w-4 h-4 mr-2" />
-                                      Rimuovi profilo consulente
-                                    </DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem 
-                                      onClick={() => addConsultantProfileMutation.mutate(client.id)}
-                                      disabled={addConsultantProfileMutation.isPending}
-                                      className="text-violet-600 focus:text-violet-700"
-                                    >
-                                      <UserCog className="w-4 h-4 mr-2" />
-                                      Abilita come consulente
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-
-                          {/* Status Bar */}
-                          <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between">
-                            <div className="flex items-center gap-3">
-                              <Switch
-                                checked={client.isActive !== false}
-                                onCheckedChange={async (checked) => {
-                                  try {
-                                    await fetch(`/api/users/${client.id}`, {
-                                      method: 'PATCH',
-                                      headers: {
-                                        ...getAuthHeaders(),
-                                        'Content-Type': 'application/json',
-                                      },
-                                      body: JSON.stringify({ isActive: checked }),
-                                    });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-                                    toast({
-                                      title: checked ? "Cliente attivato" : "Cliente disattivato",
-                                      description: `${client.firstName} ${client.lastName} è stato ${checked ? 'attivato' : 'disattivato'} con successo.`,
-                                    });
-                                  } catch (error) {
-                                    console.error('Error updating client status:', error);
-                                    toast({
-                                      title: "Errore",
-                                      description: "Impossibile aggiornare lo stato del cliente.",
-                                      variant: "destructive",
-                                    });
-                                  }
-                                }}
+                          </th>
+                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            Azioni
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {sortedAndPaginatedClients.map((client: any) => (
+                          <tr 
+                            key={client.id}
+                            className="hover:bg-cyan-50/50 transition-colors group"
+                          >
+                            <td className="px-3 py-2.5">
+                              <Checkbox 
+                                checked={selectedClients.has(client.id)}
+                                onCheckedChange={(checked) => handleSelectClient(client.id, !!checked)}
+                                className="border-slate-300"
                               />
-                              <Badge 
-                                variant={client.isActive !== false ? "default" : "secondary"}
-                                className={`text-xs ${client.isActive !== false
-                                  ? "bg-emerald-100 text-emerald-800 border-emerald-200" 
-                                  : "bg-slate-100 text-slate-600 border-slate-200"
-                                }`}
-                              >
-                                <div className={`w-2 h-2 rounded-full mr-2 ${client.isActive !== false ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
-                                {client.isActive !== false ? "Attivo" : "Disattivato"}
-                              </Badge>
-                            </div>
-                            
-                            {/* Progress Bar */}
-                            <div className="flex-1 w-full sm:w-auto sm:max-w-xs lg:max-w-md">
-                              <div className="w-full bg-slate-200 rounded-full h-2">
-                                <div 
-                                  className="bg-gradient-to-r from-cyan-500 to-teal-500 h-2 rounded-full transition-all duration-300" 
-                                  style={{ width: `${completionRate}%` }}
-                                ></div>
+                            </td>
+                            <td className="px-2 py-2.5">
+                              <div className={`w-2 h-2 rounded-full ${client.isActive !== false ? 'bg-emerald-500' : 'bg-slate-300'}`} 
+                                   title={client.isActive !== false ? 'Attivo' : 'Inattivo'} />
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="w-7 h-7 flex-shrink-0">
+                                  <AvatarImage src={client.avatar} />
+                                  <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-medium text-[10px]">
+                                    {client.firstName?.[0]}{client.lastName?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-medium text-sm text-slate-800 truncate">
+                                      {client.firstName} {client.lastName}
+                                    </span>
+                                    {client.role === 'consultant' && (
+                                      <Badge className="text-[9px] px-1 py-0 bg-violet-100 text-violet-700 border-violet-200 flex-shrink-0">
+                                        <UserCog className="w-2 h-2 mr-0.5" />
+                                        C
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                            </td>
+                            <td className="px-3 py-2.5 hidden md:table-cell">
+                              <span className="text-xs text-slate-600 truncate max-w-[180px] block">{client.email}</span>
+                            </td>
+                            <td className="px-3 py-2.5 hidden lg:table-cell">
+                              <span className="text-xs text-slate-500">{client.phoneNumber || '—'}</span>
+                            </td>
+                            <td className="px-3 py-2.5 hidden lg:table-cell">
+                              <span className="text-xs text-slate-500">
+                                {client.createdAt ? new Date(client.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              <span className="text-xs font-medium text-slate-700">
+                                {client._completedCount}/{client._assignmentsCount}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-16 bg-slate-200 rounded-full h-1.5">
+                                  <div 
+                                    className="bg-gradient-to-r from-cyan-500 to-teal-500 h-1.5 rounded-full transition-all" 
+                                    style={{ width: `${client._completionRate}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-semibold text-slate-700 w-8 text-right">{client._completionRate}%</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Switch
+                                  checked={client.isActive !== false}
+                                  onCheckedChange={async (checked) => {
+                                    try {
+                                      await fetch(`/api/users/${client.id}`, {
+                                        method: 'PATCH',
+                                        headers: {
+                                          ...getAuthHeaders(),
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({ isActive: checked }),
+                                      });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+                                      toast({
+                                        title: checked ? "Cliente attivato" : "Cliente disattivato",
+                                        description: `${client.firstName} ${client.lastName} è stato ${checked ? 'attivato' : 'disattivato'}.`,
+                                      });
+                                    } catch (error) {
+                                      console.error('Error updating client status:', error);
+                                      toast({
+                                        title: "Errore",
+                                        description: "Impossibile aggiornare lo stato.",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                  className="scale-75"
+                                />
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  title="Modifica"
+                                  onClick={() => handleEditClient(client)}
+                                  className="h-7 w-7 p-0 hover:bg-cyan-100 hover:text-cyan-600"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0 hover:bg-slate-100"
+                                    >
+                                      <MoreHorizontal className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-52">
+                                    {client.role === 'consultant' ? (
+                                      <DropdownMenuItem 
+                                        onClick={() => removeConsultantProfileMutation.mutate(client.id)}
+                                        disabled={removeConsultantProfileMutation.isPending}
+                                        className="text-orange-600 focus:text-orange-700"
+                                      >
+                                        <UserMinus className="w-4 h-4 mr-2" />
+                                        Rimuovi consulente
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem 
+                                        onClick={() => addConsultantProfileMutation.mutate(client.id)}
+                                        disabled={addConsultantProfileMutation.isPending}
+                                        className="text-violet-600 focus:text-violet-700"
+                                      >
+                                        <UserCog className="w-4 h-4 mr-2" />
+                                        Abilita consulente
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <span>Mostra</span>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="px-2 py-1 text-sm border border-slate-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                      </select>
+                      <span>per pagina</span>
+                      <span className="text-slate-400 mx-2">|</span>
+                      <span className="font-medium">
+                        {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, filteredClients.length)} di {filteredClients.length}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      
+                      <div className="flex items-center gap-1 mx-2">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={currentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`h-8 w-8 p-0 ${currentPage === pageNum ? 'bg-cyan-600 hover:bg-cyan-700' : ''}`}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
