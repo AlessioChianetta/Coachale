@@ -556,210 +556,203 @@ export default function ConsultantPricingSettingsPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="generale" className="space-y-6">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Link className="h-6 w-6" />
-                      URL Pagina Prezzi
-                    </CardTitle>
-                    <CardDescription>
-                      Scegli un identificatore unico per la tua pagina prezzi
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pricingPageSlug" className="text-sm font-semibold">
-                        Slug URL *
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="pricingPageSlug"
-                          type="text"
-                          placeholder="il-mio-studio"
-                          value={formData.pricingPageSlug}
-                          onChange={(e) => updateField("pricingPageSlug", e.target.value)}
-                          className="h-11"
-                        />
-                        {checkingSlug && (
-                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-gray-400" />
-                        )}
-                        {!checkingSlug && slugAvailable === true && formData.pricingPageSlug && (
-                          <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
-                        )}
-                        {!checkingSlug && slugAvailable === false && (
-                          <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-red-500" />
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Solo lettere minuscole, numeri e trattini. Esempio: studio-rossi
-                      </p>
-                      {slugAvailable === false && (
-                        <p className="text-xs text-red-500">
-                          Questo slug è già in uso. Scegli un altro identificatore.
-                        </p>
-                      )}
-                    </div>
-
-                    {getPreviewUrl() && (
-                      <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                          Anteprima URL:
-                        </p>
-                        <a
-                          href={getPreviewUrl()!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-blue-600 hover:underline font-mono text-sm"
-                        >
-                          {getPreviewUrl()}
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Layout className="h-6 w-6" />
-                      Sezione Hero
-                    </CardTitle>
-                    <CardDescription>
-                      Configura il titolo e sottotitolo della pagina prezzi
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="heroTitle">Titolo Principale</Label>
-                      <Input
-                        id="heroTitle"
-                        placeholder="Scegli il piano perfetto per te"
-                        value={formData.heroTitle}
-                        onChange={(e) => updateField("heroTitle", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="heroSubtitle">Sottotitolo</Label>
-                      <Textarea
-                        id="heroSubtitle"
-                        placeholder="Descrivi brevemente i benefici dei tuoi piani..."
-                        value={formData.heroSubtitle}
-                        onChange={(e) => updateField("heroSubtitle", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="heroBadgeText">Badge (opzionale)</Label>
-                      <Input
-                        id="heroBadgeText"
-                        placeholder="es. Offerta Limitata"
-                        value={formData.heroBadgeText}
-                        onChange={(e) => updateField("heroBadgeText", e.target.value)}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-6 w-6" />
-                      Garanzia
-                    </CardTitle>
-                    <CardDescription>
-                      Configura una garanzia soddisfatti o rimborsati
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="guaranteeEnabled">Abilita Garanzia</Label>
-                      <Switch
-                        id="guaranteeEnabled"
-                        checked={formData.guaranteeEnabled}
-                        onCheckedChange={(checked) => updateField("guaranteeEnabled", checked)}
-                      />
-                    </div>
-                    {formData.guaranteeEnabled && (
-                      <>
-                        <div className="space-y-2">
-                          <Label htmlFor="guaranteeDays">Giorni di Garanzia</Label>
+              <TabsContent value="generale" className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card className="border-0 shadow-lg">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Layout className="h-5 w-5" />
+                        Pagina & Hero
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="pricingPageSlug" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                          <Link className="h-3.5 w-3.5" />
+                          Slug URL *
+                        </Label>
+                        <div className="relative">
                           <Input
-                            id="guaranteeDays"
-                            type="number"
-                            min="1"
-                            value={formData.guaranteeDays}
-                            onChange={(e) => updateField("guaranteeDays", parseInt(e.target.value) || 30)}
+                            id="pricingPageSlug"
+                            type="text"
+                            placeholder="il-mio-studio"
+                            value={formData.pricingPageSlug}
+                            onChange={(e) => updateField("pricingPageSlug", e.target.value)}
+                            className="h-9"
                           />
+                          {checkingSlug && (
+                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                          )}
+                          {!checkingSlug && slugAvailable === true && formData.pricingPageSlug && (
+                            <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                          )}
+                          {!checkingSlug && slugAvailable === false && (
+                            <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                          )}
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="guaranteeText">Testo Garanzia</Label>
-                          <Textarea
-                            id="guaranteeText"
-                            placeholder="Garanzia soddisfatti o rimborsati..."
-                            value={formData.guaranteeText}
-                            onChange={(e) => updateField("guaranteeText", e.target.value)}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
+                        <p className="text-xs text-gray-500">
+                          Solo lettere minuscole, numeri e trattini
+                        </p>
+                        {slugAvailable === false && (
+                          <p className="text-xs text-red-500">Slug già in uso</p>
+                        )}
+                      </div>
 
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-6 w-6" />
-                      Footer
-                    </CardTitle>
-                    <CardDescription>
-                      Informazioni di contatto e link legali
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="footerText">Testo Footer</Label>
-                      <Textarea
-                        id="footerText"
-                        placeholder="© 2025 Il Tuo Studio. Tutti i diritti riservati."
-                        value={formData.footerText}
-                        onChange={(e) => updateField("footerText", e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="contactEmail">Email di Contatto</Label>
-                        <Input
-                          id="contactEmail"
-                          type="email"
-                          placeholder="info@tuostudio.it"
-                          value={formData.contactEmail}
-                          onChange={(e) => updateField("contactEmail", e.target.value)}
-                        />
+                      {getPreviewUrl() && (
+                        <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-md">
+                          <a
+                            href={getPreviewUrl()!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-blue-600 hover:underline font-mono text-xs"
+                          >
+                            {getPreviewUrl()}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="border-t pt-3 space-y-3">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                          <Layout className="h-3.5 w-3.5" />
+                          Sezione Hero
+                        </Label>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="heroTitle" className="text-xs">Titolo Principale</Label>
+                          <Input
+                            id="heroTitle"
+                            placeholder="Scegli il piano perfetto per te"
+                            value={formData.heroTitle}
+                            onChange={(e) => updateField("heroTitle", e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="heroSubtitle" className="text-xs">Sottotitolo</Label>
+                          <Textarea
+                            id="heroSubtitle"
+                            placeholder="Descrivi brevemente i benefici dei tuoi piani..."
+                            value={formData.heroSubtitle}
+                            onChange={(e) => updateField("heroSubtitle", e.target.value)}
+                            className="min-h-[60px]"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="heroBadgeText" className="text-xs">Badge (opzionale)</Label>
+                          <Input
+                            id="heroBadgeText"
+                            placeholder="es. Offerta Limitata"
+                            value={formData.heroBadgeText}
+                            onChange={(e) => updateField("heroBadgeText", e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="termsUrl">URL Termini e Condizioni</Label>
-                        <Input
-                          id="termsUrl"
-                          type="url"
-                          placeholder="https://tuostudio.it/termini"
-                          value={formData.termsUrl}
-                          onChange={(e) => updateField("termsUrl", e.target.value)}
-                        />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-lg">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Shield className="h-5 w-5" />
+                        Garanzia & Footer
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="space-y-3">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                          <Shield className="h-3.5 w-3.5" />
+                          Garanzia
+                        </Label>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="guaranteeEnabled" className="text-sm">Abilita Garanzia</Label>
+                          <Switch
+                            id="guaranteeEnabled"
+                            checked={formData.guaranteeEnabled}
+                            onCheckedChange={(checked) => updateField("guaranteeEnabled", checked)}
+                          />
+                        </div>
+                        {formData.guaranteeEnabled && (
+                          <>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="guaranteeDays" className="text-xs">Giorni di Garanzia</Label>
+                              <Input
+                                id="guaranteeDays"
+                                type="number"
+                                min="1"
+                                value={formData.guaranteeDays}
+                                onChange={(e) => updateField("guaranteeDays", parseInt(e.target.value) || 30)}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="guaranteeText" className="text-xs">Testo Garanzia</Label>
+                              <Textarea
+                                id="guaranteeText"
+                                placeholder="Garanzia soddisfatti o rimborsati..."
+                                value={formData.guaranteeText}
+                                onChange={(e) => updateField("guaranteeText", e.target.value)}
+                                className="min-h-[60px]"
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="privacyUrl">URL Privacy Policy</Label>
-                      <Input
-                        id="privacyUrl"
-                        type="url"
-                        placeholder="https://tuostudio.it/privacy"
-                        value={formData.privacyUrl}
-                        onChange={(e) => updateField("privacyUrl", e.target.value)}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+
+                      <div className="border-t pt-3 space-y-3">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                          <FileText className="h-3.5 w-3.5" />
+                          Footer
+                        </Label>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="footerText" className="text-xs">Testo Footer</Label>
+                          <Textarea
+                            id="footerText"
+                            placeholder="© 2025 Il Tuo Studio. Tutti i diritti riservati."
+                            value={formData.footerText}
+                            onChange={(e) => updateField("footerText", e.target.value)}
+                            className="min-h-[50px]"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="contactEmail" className="text-xs">Email</Label>
+                            <Input
+                              id="contactEmail"
+                              type="email"
+                              placeholder="info@tuostudio.it"
+                              value={formData.contactEmail}
+                              onChange={(e) => updateField("contactEmail", e.target.value)}
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="termsUrl" className="text-xs">URL Termini</Label>
+                            <Input
+                              id="termsUrl"
+                              type="url"
+                              placeholder="https://..."
+                              value={formData.termsUrl}
+                              onChange={(e) => updateField("termsUrl", e.target.value)}
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="privacyUrl" className="text-xs">URL Privacy Policy</Label>
+                          <Input
+                            id="privacyUrl"
+                            type="url"
+                            placeholder="https://tuostudio.it/privacy"
+                            value={formData.privacyUrl}
+                            onChange={(e) => updateField("privacyUrl", e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               <TabsContent value="piani" className="space-y-6">
