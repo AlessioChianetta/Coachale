@@ -346,6 +346,12 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
 
     console.log(`[WEEKLY-CHECKIN] Results: eligible=${eligible.length}, excluded=${excluded.length}`);
     
+    res.set({
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
+    });
+    
     res.json({
       eligible,
       excluded,
