@@ -48,6 +48,9 @@ export const users = pgTable("users", {
   // File Search Configuration (per-client setting, controlled by consultant)
   fileSearchEnabled: boolean("file_search_enabled").default(true), // If true, use File Search RAG for this client; if false, use traditional context
 
+  // Weekly Check-in Configuration (per-client setting, controlled by consultant)
+  enabledForWeeklyCheckin: boolean("enabled_for_weekly_checkin").default(false), // If true, client will receive weekly check-in messages
+
   // External Services Configuration
   siteUrl: text("site_url"), // Custom site URL for SiteAle external service (e.g., client's website)
 
