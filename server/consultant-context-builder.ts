@@ -1130,6 +1130,7 @@ export async function buildConsultantContext(
 
   const today = new Date().toISOString().split('T')[0];
   const now = new Date();
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -1902,10 +1903,10 @@ export async function buildConsultantContext(
         })()
       : Promise.resolve([]),
 
-    // WhatsApp Conversations Detailed (ultime 20)
+    // WhatsApp Conversations Detailed (ultime 24h - storico completo in File Search)
     shouldLoadWhatsAppDetailed
       ? (async () => {
-          console.log(`🔍 [Q27] Fetching detailed WhatsApp conversations...`);
+          console.log(`🔍 [Q27] Fetching detailed WhatsApp conversations (last 24h)...`);
           const result = await db.select({
             id: whatsappConversations.id,
             phoneNumber: whatsappConversations.phoneNumber,
@@ -1919,18 +1920,21 @@ export async function buildConsultantContext(
             isLead: whatsappConversations.isLead,
           })
           .from(whatsappConversations)
-          .where(eq(whatsappConversations.consultantId, consultantId))
+          .where(and(
+            eq(whatsappConversations.consultantId, consultantId),
+            gte(whatsappConversations.lastMessageAt, twentyFourHoursAgo)
+          ))
           .orderBy(desc(whatsappConversations.lastMessageAt))
-          .limit(20);
-          console.log(`✅ [Q27] Detailed WhatsApp conversations fetched: ${result.length}`);
+          .limit(50);
+          console.log(`✅ [Q27] Detailed WhatsApp conversations fetched (24h): ${result.length}`);
           return result;
         })()
       : Promise.resolve([]),
 
-    // WhatsApp Recent Messages (per le ultime conversazioni)
+    // WhatsApp Recent Messages (ultime 24h - storico completo in File Search)
     shouldLoadWhatsAppDetailed
       ? (async () => {
-          console.log(`🔍 [Q28] Fetching recent WhatsApp messages...`);
+          console.log(`🔍 [Q28] Fetching recent WhatsApp messages (last 24h)...`);
           const result = await db
             .select({
               id: whatsappMessages.id,
@@ -1941,10 +1945,13 @@ export async function buildConsultantContext(
             })
             .from(whatsappMessages)
             .innerJoin(whatsappConversations, eq(whatsappMessages.conversationId, whatsappConversations.id))
-            .where(eq(whatsappConversations.consultantId, consultantId))
+            .where(and(
+              eq(whatsappConversations.consultantId, consultantId),
+              gte(whatsappMessages.createdAt, twentyFourHoursAgo)
+            ))
             .orderBy(desc(whatsappMessages.createdAt))
-            .limit(100);
-          console.log(`✅ [Q28] Recent WhatsApp messages fetched: ${result.length}`);
+            .limit(200);
+          console.log(`✅ [Q28] Recent WhatsApp messages fetched (24h): ${result.length}`);
           return result;
         })()
       : Promise.resolve([]),
@@ -2111,10 +2118,10 @@ export async function buildConsultantContext(
         })()
       : Promise.resolve(null),
 
-    // Q40: Proactive Leads - Fixed: leadInfo is JSONB, not separate fields
+    // Q40: Proactive Leads (ultime 24h - storico completo in File Search)
     shouldLoadLeads
       ? (async () => {
-          console.log(`🔍 [Q40] Fetching proactive leads...`);
+          console.log(`🔍 [Q40] Fetching proactive leads (last 24h)...`);
           const result = await db.select({
             id: proactiveLeads.id,
             firstName: proactiveLeads.firstName,
@@ -2130,12 +2137,16 @@ export async function buildConsultantContext(
             idealState: proactiveLeads.idealState,
             leadInfo: proactiveLeads.leadInfo,
             metadata: proactiveLeads.metadata,
+            createdAt: proactiveLeads.createdAt,
           })
           .from(proactiveLeads)
-          .where(eq(proactiveLeads.consultantId, consultantId))
+          .where(and(
+            eq(proactiveLeads.consultantId, consultantId),
+            sql`(${proactiveLeads.lastContactedAt} >= ${twentyFourHoursAgo} OR ${proactiveLeads.createdAt} >= ${twentyFourHoursAgo})`
+          ))
           .orderBy(desc(proactiveLeads.createdAt))
           .limit(100);
-          console.log(`✅ [Q40] Proactive leads fetched: ${result.length}`);
+          console.log(`✅ [Q40] Proactive leads fetched (24h): ${result.length}`);
           return result;
         })()
       : Promise.resolve([]),
