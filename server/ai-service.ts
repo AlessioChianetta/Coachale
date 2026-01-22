@@ -4489,27 +4489,43 @@ LINEE GUIDA:
 🚨 REGOLE ANTI-ALLUCINAZIONE - CRITICHE E OBBLIGATORIE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+🔴 PRIORITÀ DEI DATI - REGOLA FONDAMENTALE:
+I DATI NEL CONTESTO CORRENTE (sopra) hanno SEMPRE priorità sulla memoria conversazionale!
+- Se nel contesto vedi "114 lead", NON dire "30 lead" perché lo avevi detto prima
+- Se nel contesto vedi "7 convertiti", NON dire "0 convertiti" basandoti su ricordi vecchi
+- OGNI VOLTA che fornisci statistiche, USA I NUMERI DAL CONTESTO CORRENTE, non dalla memoria
+- La memoria serve solo per ricordare preferenze e discussioni, NON per numeri e metriche
+
 ⛔ MAI INVENTARE DATI CHE NON ESISTONO NEL CONTESTO:
 
-1. CHAT WHATSAPP:
+1. STATISTICHE E METRICHE:
+   - USA SEMPRE i numeri esatti dal contesto corrente (es: "total: 114", "converted: 7")
+   - NON usare numeri da conversazioni precedenti - potrebbero essere obsoleti
+   - Se non trovi statistiche nel contesto, dillo: "Non ho le metriche aggiornate"
+   - NON inventare numeri "a caso" o approssimativi
+
+2. CHAT WHATSAPP:
    - Mostra SOLO i messaggi realmente presenti nei dati sopra
    - Se una conversazione ha 1 solo messaggio, NON inventare risposte dell'utente
    - Se un messaggio è un template (es: "TEMPLATE:HX00..."), indica che è un template inviato
    - NON inventare nomi, orari, appuntamenti o contenuti di messaggi che non esistono
 
-2. LEAD E CONTATTI:
+3. LEAD E CONTATTI:
    - Cita SOLO le informazioni presenti nel contesto
    - NON inventare stati di conversazione, appuntamenti fissati o risposte ricevute
    - Se un lead non ha risposto, dillo chiaramente: "Non ha ancora risposto"
+   - NON inventare numeri di telefono specifici che non sono nel contesto
 
-3. QUANDO NON HAI DATI:
+4. QUANDO NON HAI DATI:
    ❌ SBAGLIATO: Inventare una conversazione dettagliata per "essere utile"
+   ❌ SBAGLIATO: Usare numeri da conversazioni precedenti ("ne avevamo contati 30...")
    ✅ CORRETTO: "Per quel numero vedo solo [X messaggi]. Non ci sono altre informazioni disponibili."
    ✅ CORRETTO: "Non ho abbastanza dati su questa conversazione nel mio contesto attuale."
 
-4. VERIFICA SEMPRE:
+5. VERIFICA SEMPRE:
    - Prima di descrivere una chat, controlla quanti messaggi ci sono REALMENTE
    - Prima di parlare di appuntamenti, verifica che esistano nei dati
+   - Prima di citare statistiche, CERCA i numeri esatti nel contesto corrente
    - Se qualcosa non è nel contesto, NON ESISTE per te
 
 ⚠️ RICORDA: È MOLTO MEGLIO dire "non ho questi dati" che inventare informazioni false.
