@@ -48,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface FAQ {
@@ -762,29 +763,103 @@ export default function ConsultantPricingSettingsPage() {
               </TabsContent>
 
               <TabsContent value="piani" className="space-y-6">
-                <Card className="border-0 shadow-lg border-l-4 border-l-amber-500">
-                  <CardHeader>
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="pb-4">
                     <CardTitle className="flex items-center gap-2">
-                      <Award className="h-6 w-6 text-amber-600" />
-                      Livello 1 - Bronze (Gratuito)
+                      <CreditCard className="h-6 w-6" />
+                      Configurazione Piani
                     </CardTitle>
                     <CardDescription>
-                      Piano gratuito con accesso limitato
+                      Configura i tre livelli di abbonamento in un'unica vista
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="level1Name">Nome Piano</Label>
+                  <CardContent className="space-y-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-0 border rounded-lg overflow-hidden">
+                      <div className="bg-slate-50 p-3 font-semibold text-sm border-b lg:border-b-0 lg:border-r flex items-center">
+                        Campo
+                      </div>
+                      <div className="bg-amber-50 p-3 font-semibold text-sm border-b lg:border-b-0 lg:border-r text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Award className="h-4 w-4 text-amber-600" />
+                          <span className="text-amber-700">Bronze</span>
+                        </div>
+                        <p className="text-xs font-normal text-amber-600 mt-1">Gratuito</p>
+                      </div>
+                      <div className="bg-slate-100 p-3 font-semibold text-sm border-b lg:border-b-0 lg:border-r text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Award className="h-4 w-4 text-slate-500" />
+                          <span className="text-slate-700">Silver</span>
+                        </div>
+                        <p className="text-xs font-normal text-slate-500 mt-1">Da €49/mese</p>
+                      </div>
+                      <div className="bg-yellow-50 p-3 font-semibold text-sm text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Award className="h-4 w-4 text-yellow-600" />
+                          <span className="text-yellow-700">Gold</span>
+                        </div>
+                        <p className="text-xs font-normal text-yellow-600 mt-1">Da €99/mese</p>
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-center">
+                        <Label className="text-xs font-medium">Nome Piano</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
                         <Input
                           id="level1Name"
                           placeholder="Bronze"
                           value={formData.level1Name}
                           onChange={(e) => updateField("level1Name", e.target.value)}
+                          className="h-8 text-sm"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="level1DailyMessageLimit">Limite Messaggi Mensili (max 100)</Label>
+                      <div className="p-2 border-t lg:border-r">
+                        <Input
+                          id="level2Name"
+                          placeholder="Silver"
+                          value={formData.level2Name}
+                          onChange={(e) => updateField("level2Name", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="p-2 border-t">
+                        <Input
+                          id="level3Name"
+                          placeholder="Gold"
+                          value={formData.level3Name}
+                          onChange={(e) => updateField("level3Name", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-center">
+                        <Label className="text-xs font-medium">Badge</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-muted-foreground italic">—</span>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <Input
+                          id="level2Badge"
+                          placeholder="es. Consigliato"
+                          value={formData.level2Badge}
+                          onChange={(e) => updateField("level2Badge", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="p-2 border-t">
+                        <Input
+                          id="level3Badge"
+                          placeholder="Più Popolare"
+                          value={formData.level3Badge}
+                          onChange={(e) => updateField("level3Badge", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-center">
+                        <Label className="text-xs font-medium">Limite Msg/Mese</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
                         <Input
                           id="level1DailyMessageLimit"
                           type="number"
@@ -792,163 +867,25 @@ export default function ConsultantPricingSettingsPage() {
                           max="100"
                           value={formData.level1DailyMessageLimit}
                           onChange={(e) => updateField("level1DailyMessageLimit", Math.min(100, parseInt(e.target.value) || 5))}
-                        />
-                        <p className="text-xs text-muted-foreground">I messaggi si resettano ogni mese</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level1Description">Descrizione</Label>
-                      <Textarea
-                        id="level1Description"
-                        placeholder="Ideale per chi vuole provare il servizio..."
-                        value={formData.level1Description}
-                        onChange={(e) => updateField("level1Description", e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Funzionalità Incluse</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addArrayItem("level1Features", "")}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Aggiungi
-                        </Button>
-                      </div>
-                      {formData.level1Features.map((feature, index) => (
-                        <div key={index} className="flex gap-2 items-center">
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveArrayItem("level1Features", index, "up")}
-                              disabled={index === 0}
-                            >
-                              <ChevronUp className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveArrayItem("level1Features", index, "down")}
-                              disabled={index === formData.level1Features.length - 1}
-                            >
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <Input
-                            value={feature}
-                            onChange={(e) => updateArrayItem("level1Features", index, e.target.value)}
-                            placeholder="Funzionalità..."
-                            className="flex-1"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeArrayItem("level1Features", index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="space-y-3 pt-4 border-t">
-                      <div>
-                        <Label className="text-base font-semibold">Agenti abilitati per Bronze</Label>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Seleziona quali agenti sono disponibili per gli utenti Bronze. Se non selezioni nessuno, tutti gli agenti di livello 1 saranno disponibili.
-                        </p>
-                      </div>
-                      {level1Agents.length === 0 ? (
-                        <p className="text-sm text-gray-400 italic">
-                          Nessun agente di livello 1 configurato.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {level1Agents.map((agent: any) => (
-                            <div key={agent.id} className="flex items-center space-x-3">
-                              <Checkbox
-                                id={`level1-agent-${agent.id}`}
-                                checked={formData.level1EnabledAgents.includes(agent.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    updateField("level1EnabledAgents", [...formData.level1EnabledAgents, agent.id]);
-                                  } else {
-                                    updateField("level1EnabledAgents", formData.level1EnabledAgents.filter((id) => id !== agent.id));
-                                  }
-                                }}
-                              />
-                              <Label htmlFor={`level1-agent-${agent.id}`} className="cursor-pointer">
-                                {agent.agentName || agent.name || "Agente senza nome"}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg border-l-4 border-l-slate-400">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Award className="h-6 w-6 text-slate-500" />
-                      Livello 2 - Silver
-                    </CardTitle>
-                    <CardDescription>
-                      Piano intermedio a pagamento
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="level2Name">Nome Piano</Label>
-                        <Input
-                          id="level2Name"
-                          placeholder="Silver"
-                          value={formData.level2Name}
-                          onChange={(e) => updateField("level2Name", e.target.value)}
+                          className="h-8 text-sm"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="level2Badge">Badge (opzionale)</Label>
-                        <Input
-                          id="level2Badge"
-                          placeholder="es. Consigliato"
-                          value={formData.level2Badge}
-                          onChange={(e) => updateField("level2Badge", e.target.value)}
-                        />
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-muted-foreground">Illimitati</span>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level2ShortDescription">Descrizione Breve</Label>
-                      <Input
-                        id="level2ShortDescription"
-                        placeholder="Per professionisti in crescita"
-                        value={formData.level2ShortDescription}
-                        onChange={(e) => updateField("level2ShortDescription", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level2Description">Descrizione Completa</Label>
-                      <Textarea
-                        id="level2Description"
-                        placeholder="Descrivi in dettaglio cosa include questo piano..."
-                        value={formData.level2Description}
-                        onChange={(e) => updateField("level2Description", e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="level2MonthlyPriceEuros">Prezzo Mensile (€) - Minimo €49</Label>
+                      <div className="p-2 border-t">
+                        <span className="text-xs text-muted-foreground">Illimitati</span>
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-center">
+                        <Label className="text-xs font-medium">Prezzo Mensile</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-green-600 font-medium">Gratis</span>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
                         <div className="relative">
-                          <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                           <Input
                             id="level2MonthlyPriceEuros"
                             type="number"
@@ -957,181 +894,13 @@ export default function ConsultantPricingSettingsPage() {
                             placeholder="49.00"
                             value={formData.level2MonthlyPriceEuros}
                             onChange={(e) => updateField("level2MonthlyPriceEuros", e.target.value)}
-                            className="pl-10"
+                            className="pl-6 h-8 text-sm"
                           />
                         </div>
-                        <p className="text-xs text-amber-600">50% commissione piattaforma</p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="level2YearlyPriceEuros">Prezzo Annuale (€) - Minimo €490</Label>
+                      <div className="p-2 border-t">
                         <div className="relative">
-                          <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <Input
-                            id="level2YearlyPriceEuros"
-                            type="number"
-                            step="0.01"
-                            min="490"
-                            placeholder="490.00"
-                            value={formData.level2YearlyPriceEuros}
-                            onChange={(e) => updateField("level2YearlyPriceEuros", e.target.value)}
-                            className="pl-10"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level2CtaText">Testo Pulsante CTA</Label>
-                      <Input
-                        id="level2CtaText"
-                        placeholder="Inizia Ora"
-                        value={formData.level2CtaText}
-                        onChange={(e) => updateField("level2CtaText", e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Funzionalità Incluse</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addArrayItem("level2Features", "")}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Aggiungi
-                        </Button>
-                      </div>
-                      {formData.level2Features.map((feature, index) => (
-                        <div key={index} className="flex gap-2 items-center">
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveArrayItem("level2Features", index, "up")}
-                              disabled={index === 0}
-                            >
-                              <ChevronUp className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveArrayItem("level2Features", index, "down")}
-                              disabled={index === formData.level2Features.length - 1}
-                            >
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <Input
-                            value={feature}
-                            onChange={(e) => updateArrayItem("level2Features", index, e.target.value)}
-                            placeholder="Funzionalità..."
-                            className="flex-1"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeArrayItem("level2Features", index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="space-y-3 pt-4 border-t">
-                      <div>
-                        <Label className="text-base font-semibold">Agenti abilitati per Argento</Label>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Seleziona quali agenti sono disponibili per gli utenti Argento. Se non selezioni nessuno, tutti gli agenti di livello 2 saranno disponibili.
-                        </p>
-                      </div>
-                      {level2Agents.length === 0 ? (
-                        <p className="text-sm text-gray-400 italic">
-                          Nessun agente di livello 2 configurato.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {level2Agents.map((agent: any) => (
-                            <div key={agent.id} className="flex items-center space-x-3">
-                              <Checkbox
-                                id={`level2-agent-${agent.id}`}
-                                checked={formData.level2EnabledAgents.includes(agent.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    updateField("level2EnabledAgents", [...formData.level2EnabledAgents, agent.id]);
-                                  } else {
-                                    updateField("level2EnabledAgents", formData.level2EnabledAgents.filter((id) => id !== agent.id));
-                                  }
-                                }}
-                              />
-                              <Label htmlFor={`level2-agent-${agent.id}`} className="cursor-pointer">
-                                {agent.agentName || agent.name || "Agente senza nome"}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg border-l-4 border-l-yellow-500">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Award className="h-6 w-6 text-yellow-600" />
-                      Livello 3 - Gold
-                    </CardTitle>
-                    <CardDescription>
-                      Piano premium con tutte le funzionalità
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="level3Name">Nome Piano</Label>
-                        <Input
-                          id="level3Name"
-                          placeholder="Gold"
-                          value={formData.level3Name}
-                          onChange={(e) => updateField("level3Name", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="level3Badge">Badge</Label>
-                        <Input
-                          id="level3Badge"
-                          placeholder="Più Popolare"
-                          value={formData.level3Badge}
-                          onChange={(e) => updateField("level3Badge", e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level3ShortDescription">Descrizione Breve</Label>
-                      <Input
-                        id="level3ShortDescription"
-                        placeholder="Per chi vuole il massimo"
-                        value={formData.level3ShortDescription}
-                        onChange={(e) => updateField("level3ShortDescription", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level3Description">Descrizione Completa</Label>
-                      <Textarea
-                        id="level3Description"
-                        placeholder="Descrivi in dettaglio cosa include questo piano..."
-                        value={formData.level3Description}
-                        onChange={(e) => updateField("level3Description", e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="level3MonthlyPriceEuros">Prezzo Mensile (€) - Minimo €99</Label>
-                        <div className="relative">
-                          <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                           <Input
                             id="level3MonthlyPriceEuros"
                             type="number"
@@ -1140,15 +909,35 @@ export default function ConsultantPricingSettingsPage() {
                             placeholder="99.00"
                             value={formData.level3MonthlyPriceEuros}
                             onChange={(e) => updateField("level3MonthlyPriceEuros", e.target.value)}
-                            className="pl-10"
+                            className="pl-6 h-8 text-sm"
                           />
                         </div>
-                        <p className="text-xs text-amber-600">50% commissione piattaforma</p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="level3YearlyPriceEuros">Prezzo Annuale (€) - Minimo €990</Label>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-center">
+                        <Label className="text-xs font-medium">Prezzo Annuale</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-green-600 font-medium">Gratis</span>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
                         <div className="relative">
-                          <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                          <Input
+                            id="level2YearlyPriceEuros"
+                            type="number"
+                            step="0.01"
+                            min="490"
+                            placeholder="490.00"
+                            value={formData.level2YearlyPriceEuros}
+                            onChange={(e) => updateField("level2YearlyPriceEuros", e.target.value)}
+                            className="pl-6 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-2 border-t">
+                        <div className="relative">
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                           <Input
                             id="level3YearlyPriceEuros"
                             type="number"
@@ -1157,155 +946,452 @@ export default function ConsultantPricingSettingsPage() {
                             placeholder="990.00"
                             value={formData.level3YearlyPriceEuros}
                             onChange={(e) => updateField("level3YearlyPriceEuros", e.target.value)}
-                            className="pl-10"
+                            className="pl-6 h-8 text-sm"
                           />
                         </div>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="level3CtaText">Testo Pulsante CTA</Label>
-                      <Input
-                        id="level3CtaText"
-                        placeholder="Inizia Ora"
-                        value={formData.level3CtaText}
-                        onChange={(e) => updateField("level3CtaText", e.target.value)}
-                      />
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-center">
+                        <Label className="text-xs font-medium">Testo CTA</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-muted-foreground italic">—</span>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <Input
+                          id="level2CtaText"
+                          placeholder="Inizia Ora"
+                          value={formData.level2CtaText}
+                          onChange={(e) => updateField("level2CtaText", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="p-2 border-t">
+                        <Input
+                          id="level3CtaText"
+                          placeholder="Inizia Ora"
+                          value={formData.level3CtaText}
+                          onChange={(e) => updateField("level3CtaText", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-start">
+                        <Label className="text-xs font-medium">Descrizione Breve</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-muted-foreground italic">—</span>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <Input
+                          id="level2ShortDescription"
+                          placeholder="Per professionisti"
+                          value={formData.level2ShortDescription}
+                          onChange={(e) => updateField("level2ShortDescription", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="p-2 border-t">
+                        <Input
+                          id="level3ShortDescription"
+                          placeholder="Per chi vuole il max"
+                          value={formData.level3ShortDescription}
+                          onChange={(e) => updateField("level3ShortDescription", e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-start">
+                        <Label className="text-xs font-medium">Descrizione</Label>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <Textarea
+                          id="level1Description"
+                          placeholder="Per iniziare..."
+                          value={formData.level1Description}
+                          onChange={(e) => updateField("level1Description", e.target.value)}
+                          className="min-h-[60px] text-sm resize-none"
+                        />
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <Textarea
+                          id="level2Description"
+                          placeholder="Accesso completo..."
+                          value={formData.level2Description}
+                          onChange={(e) => updateField("level2Description", e.target.value)}
+                          className="min-h-[60px] text-sm resize-none"
+                        />
+                      </div>
+                      <div className="p-2 border-t">
+                        <Textarea
+                          id="level3Description"
+                          placeholder="Tutto incluso..."
+                          value={formData.level3Description}
+                          onChange={(e) => updateField("level3Description", e.target.value)}
+                          className="min-h-[60px] text-sm resize-none"
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Funzionalità Incluse</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addArrayItem("level3Features", "")}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Aggiungi
-                        </Button>
+                    <div className="mt-6 space-y-4">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Funzionalità per Piano
+                      </h4>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <Collapsible defaultOpen className="border rounded-lg">
+                          <CollapsibleTrigger className="w-full p-3 bg-amber-50 rounded-t-lg flex items-center justify-between hover:bg-amber-100 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Award className="h-4 w-4 text-amber-600" />
+                              <span className="font-medium text-sm text-amber-700">Features Bronze</span>
+                              <span className="text-xs text-amber-500">({formData.level1Features.length})</span>
+                            </div>
+                            <ChevronDown className="h-4 w-4 text-amber-600" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="p-3 space-y-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => addArrayItem("level1Features", "")}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Aggiungi
+                            </Button>
+                            {formData.level1Features.map((feature, index) => (
+                              <div key={index} className="flex gap-1 items-center">
+                                <div className="flex flex-col">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveArrayItem("level1Features", index, "up")}
+                                    disabled={index === 0}
+                                  >
+                                    <ChevronUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveArrayItem("level1Features", index, "down")}
+                                    disabled={index === formData.level1Features.length - 1}
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <Input
+                                  value={feature}
+                                  onChange={(e) => updateArrayItem("level1Features", index, e.target.value)}
+                                  placeholder="Funzionalità..."
+                                  className="flex-1 h-8 text-sm"
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-700"
+                                  onClick={() => removeArrayItem("level1Features", index)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        <Collapsible defaultOpen className="border rounded-lg">
+                          <CollapsibleTrigger className="w-full p-3 bg-slate-100 rounded-t-lg flex items-center justify-between hover:bg-slate-200 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Award className="h-4 w-4 text-slate-500" />
+                              <span className="font-medium text-sm text-slate-700">Features Silver</span>
+                              <span className="text-xs text-slate-500">({formData.level2Features.length})</span>
+                            </div>
+                            <ChevronDown className="h-4 w-4 text-slate-500" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="p-3 space-y-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => addArrayItem("level2Features", "")}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Aggiungi
+                            </Button>
+                            {formData.level2Features.map((feature, index) => (
+                              <div key={index} className="flex gap-1 items-center">
+                                <div className="flex flex-col">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveArrayItem("level2Features", index, "up")}
+                                    disabled={index === 0}
+                                  >
+                                    <ChevronUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveArrayItem("level2Features", index, "down")}
+                                    disabled={index === formData.level2Features.length - 1}
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <Input
+                                  value={feature}
+                                  onChange={(e) => updateArrayItem("level2Features", index, e.target.value)}
+                                  placeholder="Funzionalità..."
+                                  className="flex-1 h-8 text-sm"
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-700"
+                                  onClick={() => removeArrayItem("level2Features", index)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        <Collapsible defaultOpen className="border rounded-lg">
+                          <CollapsibleTrigger className="w-full p-3 bg-yellow-50 rounded-t-lg flex items-center justify-between hover:bg-yellow-100 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Award className="h-4 w-4 text-yellow-600" />
+                              <span className="font-medium text-sm text-yellow-700">Features Gold</span>
+                              <span className="text-xs text-yellow-500">({formData.level3Features.length})</span>
+                            </div>
+                            <ChevronDown className="h-4 w-4 text-yellow-600" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="p-3 space-y-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => addArrayItem("level3Features", "")}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Aggiungi
+                            </Button>
+                            {formData.level3Features.map((feature, index) => (
+                              <div key={index} className="flex gap-1 items-center">
+                                <div className="flex flex-col">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveArrayItem("level3Features", index, "up")}
+                                    disabled={index === 0}
+                                  >
+                                    <ChevronUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveArrayItem("level3Features", index, "down")}
+                                    disabled={index === formData.level3Features.length - 1}
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <Input
+                                  value={feature}
+                                  onChange={(e) => updateArrayItem("level3Features", index, e.target.value)}
+                                  placeholder="Funzionalità..."
+                                  className="flex-1 h-8 text-sm"
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-700"
+                                  onClick={() => removeArrayItem("level3Features", index)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
                       </div>
-                      {formData.level3Features.map((feature, index) => (
-                        <div key={index} className="flex gap-2 items-center">
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveArrayItem("level3Features", index, "up")}
-                              disabled={index === 0}
-                            >
-                              <ChevronUp className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveArrayItem("level3Features", index, "down")}
-                              disabled={index === formData.level3Features.length - 1}
-                            >
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <Input
-                            value={feature}
-                            onChange={(e) => updateArrayItem("level3Features", index, e.target.value)}
-                            placeholder="Funzionalità..."
-                            className="flex-1"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeArrayItem("level3Features", index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Agenti Abilitati
+                      </h4>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <Collapsible className="border rounded-lg">
+                          <CollapsibleTrigger className="w-full p-3 bg-amber-50 rounded-t-lg flex items-center justify-between hover:bg-amber-100 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Award className="h-4 w-4 text-amber-600" />
+                              <span className="font-medium text-sm text-amber-700">Agenti Bronze</span>
+                            </div>
+                            <ChevronDown className="h-4 w-4 text-amber-600" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="p-3">
+                            <p className="text-xs text-gray-500 mb-2">
+                              Se non selezioni nessuno, tutti gli agenti di livello 1 saranno disponibili.
+                            </p>
+                            {level1Agents.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic">Nessun agente di livello 1 configurato.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {level1Agents.map((agent: any) => (
+                                  <div key={agent.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`level1-agent-${agent.id}`}
+                                      checked={formData.level1EnabledAgents.includes(agent.id)}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          updateField("level1EnabledAgents", [...formData.level1EnabledAgents, agent.id]);
+                                        } else {
+                                          updateField("level1EnabledAgents", formData.level1EnabledAgents.filter((id) => id !== agent.id));
+                                        }
+                                      }}
+                                    />
+                                    <Label htmlFor={`level1-agent-${agent.id}`} className="text-sm cursor-pointer">
+                                      {agent.agentName || agent.name || "Agente senza nome"}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        <Collapsible className="border rounded-lg">
+                          <CollapsibleTrigger className="w-full p-3 bg-slate-100 rounded-t-lg flex items-center justify-between hover:bg-slate-200 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <Award className="h-4 w-4 text-slate-500" />
+                              <span className="font-medium text-sm text-slate-700">Agenti Silver</span>
+                            </div>
+                            <ChevronDown className="h-4 w-4 text-slate-500" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="p-3">
+                            <p className="text-xs text-gray-500 mb-2">
+                              Se non selezioni nessuno, tutti gli agenti di livello 2 saranno disponibili.
+                            </p>
+                            {level2Agents.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic">Nessun agente di livello 2 configurato.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {level2Agents.map((agent: any) => (
+                                  <div key={agent.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`level2-agent-${agent.id}`}
+                                      checked={formData.level2EnabledAgents.includes(agent.id)}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          updateField("level2EnabledAgents", [...formData.level2EnabledAgents, agent.id]);
+                                        } else {
+                                          updateField("level2EnabledAgents", formData.level2EnabledAgents.filter((id) => id !== agent.id));
+                                        }
+                                      }}
+                                    />
+                                    <Label htmlFor={`level2-agent-${agent.id}`} className="text-sm cursor-pointer">
+                                      {agent.agentName || agent.name || "Agente senza nome"}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Layout className="h-6 w-6" />
-                      Tabella Comparativa
-                    </CardTitle>
-                    <CardDescription>
-                      Mostra una tabella di confronto tra i piani
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="showComparisonTable">Mostra Tabella Comparativa</Label>
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Layout className="h-5 w-5" />
+                          Tabella Comparativa
+                        </CardTitle>
+                        <CardDescription className="text-xs mt-1">
+                          Confronto tra i piani
+                        </CardDescription>
+                      </div>
                       <Switch
                         id="showComparisonTable"
                         checked={formData.showComparisonTable}
                         onCheckedChange={(checked) => updateField("showComparisonTable", checked)}
                       />
                     </div>
-                    {formData.showComparisonTable && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label>Funzionalità da Comparare</Label>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addArrayItem("comparisonFeatures", { name: "", bronze: false, silver: false, gold: true })}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Aggiungi Riga
-                          </Button>
-                        </div>
-                        <div className="border rounded-lg overflow-hidden">
-                          <div className="grid grid-cols-5 gap-2 p-3 bg-slate-100 font-semibold text-sm">
-                            <div>Funzionalità</div>
-                            <div className="text-center">Bronze</div>
-                            <div className="text-center">Silver</div>
-                            <div className="text-center">Gold</div>
-                            <div></div>
-                          </div>
-                          {formData.comparisonFeatures.map((feature, index) => (
-                            <div key={index} className="grid grid-cols-5 gap-2 p-3 border-t items-center">
-                              <Input
-                                value={feature.name}
-                                onChange={(e) => updateArrayItem("comparisonFeatures", index, { ...feature, name: e.target.value })}
-                                placeholder="Nome funzionalità"
-                                className="h-9"
-                              />
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={feature.bronze === true || feature.bronze === "true"}
-                                  onCheckedChange={(checked) => updateArrayItem("comparisonFeatures", index, { ...feature, bronze: checked })}
-                                />
-                              </div>
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={feature.silver === true || feature.silver === "true"}
-                                  onCheckedChange={(checked) => updateArrayItem("comparisonFeatures", index, { ...feature, silver: checked })}
-                                />
-                              </div>
-                              <div className="flex justify-center">
-                                <Switch
-                                  checked={feature.gold === true || feature.gold === "true"}
-                                  onCheckedChange={(checked) => updateArrayItem("comparisonFeatures", index, { ...feature, gold: checked })}
-                                />
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeArrayItem("comparisonFeatures", index)}
-                                className="text-red-500 hover:text-red-700 h-9 w-9"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
+                  </CardHeader>
+                  {formData.showComparisonTable && (
+                    <CardContent className="pt-0">
+                      <div className="flex justify-end mb-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addArrayItem("comparisonFeatures", { name: "", bronze: false, silver: false, gold: true })}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Aggiungi
+                        </Button>
                       </div>
-                    )}
-                  </CardContent>
+                      <div className="border rounded-lg overflow-hidden text-sm">
+                        <div className="grid grid-cols-5 gap-1 p-2 bg-slate-100 font-medium text-xs">
+                          <div>Funzionalità</div>
+                          <div className="text-center text-amber-700">Bronze</div>
+                          <div className="text-center text-slate-600">Silver</div>
+                          <div className="text-center text-yellow-700">Gold</div>
+                          <div></div>
+                        </div>
+                        {formData.comparisonFeatures.map((feature, index) => (
+                          <div key={index} className="grid grid-cols-5 gap-1 p-2 border-t items-center">
+                            <Input
+                              value={feature.name}
+                              onChange={(e) => updateArrayItem("comparisonFeatures", index, { ...feature, name: e.target.value })}
+                              placeholder="Nome funzionalità"
+                              className="h-7 text-xs"
+                            />
+                            <div className="flex justify-center">
+                              <Switch
+                                checked={feature.bronze === true || feature.bronze === "true"}
+                                onCheckedChange={(checked) => updateArrayItem("comparisonFeatures", index, { ...feature, bronze: checked })}
+                              />
+                            </div>
+                            <div className="flex justify-center">
+                              <Switch
+                                checked={feature.silver === true || feature.silver === "true"}
+                                onCheckedChange={(checked) => updateArrayItem("comparisonFeatures", index, { ...feature, silver: checked })}
+                              />
+                            </div>
+                            <div className="flex justify-center">
+                              <Switch
+                                checked={feature.gold === true || feature.gold === "true"}
+                                onCheckedChange={(checked) => updateArrayItem("comparisonFeatures", index, { ...feature, gold: checked })}
+                              />
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeArrayItem("comparisonFeatures", index)}
+                              className="text-red-500 hover:text-red-700 h-7 w-7"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        {formData.comparisonFeatures.length === 0 && (
+                          <div className="p-4 text-center text-xs text-muted-foreground">
+                            Nessuna funzionalità comparativa. Clicca "Aggiungi" per iniziare.
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  )}
                 </Card>
               </TabsContent>
 
