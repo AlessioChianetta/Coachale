@@ -260,9 +260,9 @@ export default function BronzeAuth() {
   }
 
   const planName = data?.pricing.level1Name || "Bronze";
-  const dailyLimit = data?.pricing.level1DailyMessageLimit || 15;
+  const monthlyLimit = data?.pricing.level1DailyMessageLimit || 15; // Rinominato ma campo DB rimane uguale
   const features = data?.pricing.level1Features || [
-    `${dailyLimit} messaggi gratuiti al giorno`,
+    `${monthlyLimit} messaggi gratuiti al mese`,
     "Risposte AI intelligenti",
     "Disponibilità 24/7",
   ];
@@ -318,7 +318,7 @@ export default function BronzeAuth() {
 
               <div className="flex items-center gap-2 text-violet-600 font-medium mb-4">
                 <MessageSquare className="h-5 w-5" />
-                <span>{dailyLimit} messaggi al giorno</span>
+                <span>{monthlyLimit} messaggi al mese</span>
               </div>
 
               <ul className="space-y-3">

@@ -12118,7 +12118,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             level2Used: 0,
             level3Total: 10,
             level3Used: 0,
-            employeeTotal: 0,
+            employeeTotal: 5, // 5 licenze gratis per dipendenti
             employeeUsed: 0,
           })
           .returning();

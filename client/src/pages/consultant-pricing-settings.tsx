@@ -129,7 +129,7 @@ const defaultFormData: FormData = {
   level1Description: "Per iniziare a scoprire il tuo assistente AI",
   level1DailyMessageLimit: 15,
   level1Features: [
-    "Messaggi limitati al giorno",
+    "Messaggi limitati al mese (max 100)",
     "Accesso senza registrazione",
     "Risposte AI immediate",
     "Disponibile 24/7"
@@ -137,8 +137,8 @@ const defaultFormData: FormData = {
   level2Name: "Argento",
   level2Description: "Per chi vuole il massimo dal proprio assistente",
   level2ShortDescription: "Accesso illimitato e personalizzato",
-  level2MonthlyPriceEuros: "29.00",
-  level2YearlyPriceEuros: "290.00",
+  level2MonthlyPriceEuros: "49.00",
+  level2YearlyPriceEuros: "588.00",
   level2Features: [
     "Messaggi illimitati",
     "Tutto del piano Bronze",
@@ -151,8 +151,8 @@ const defaultFormData: FormData = {
   level3Name: "Oro",
   level3Description: "Per professionisti che vogliono tutto",
   level3ShortDescription: "Piattaforma completa con dashboard",
-  level3MonthlyPriceEuros: "58.00",
-  level3YearlyPriceEuros: "580.00",
+  level3MonthlyPriceEuros: "99.00",
+  level3YearlyPriceEuros: "1188.00",
   level3Features: [
     "Accesso completo al software",
     "Tutto del piano Argento",
@@ -784,14 +784,16 @@ export default function ConsultantPricingSettingsPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="level1DailyMessageLimit">Limite Messaggi Giornalieri</Label>
+                        <Label htmlFor="level1DailyMessageLimit">Limite Messaggi Mensili (max 100)</Label>
                         <Input
                           id="level1DailyMessageLimit"
                           type="number"
                           min="1"
+                          max="100"
                           value={formData.level1DailyMessageLimit}
-                          onChange={(e) => updateField("level1DailyMessageLimit", parseInt(e.target.value) || 5)}
+                          onChange={(e) => updateField("level1DailyMessageLimit", Math.min(100, parseInt(e.target.value) || 5))}
                         />
+                        <p className="text-xs text-muted-foreground">I messaggi si resettano ogni mese</p>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -944,31 +946,32 @@ export default function ConsultantPricingSettingsPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="level2MonthlyPriceEuros">Prezzo Mensile (€)</Label>
+                        <Label htmlFor="level2MonthlyPriceEuros">Prezzo Mensile (€) - Minimo €49</Label>
                         <div className="relative">
                           <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <Input
                             id="level2MonthlyPriceEuros"
                             type="number"
                             step="0.01"
-                            min="0"
-                            placeholder="29.99"
+                            min="49"
+                            placeholder="49.00"
                             value={formData.level2MonthlyPriceEuros}
                             onChange={(e) => updateField("level2MonthlyPriceEuros", e.target.value)}
                             className="pl-10"
                           />
                         </div>
+                        <p className="text-xs text-amber-600">50% commissione piattaforma</p>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="level2YearlyPriceEuros">Prezzo Annuale (€)</Label>
+                        <Label htmlFor="level2YearlyPriceEuros">Prezzo Annuale (€) - Minimo €588</Label>
                         <div className="relative">
                           <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <Input
                             id="level2YearlyPriceEuros"
                             type="number"
                             step="0.01"
-                            min="0"
-                            placeholder="299.99"
+                            min="588"
+                            placeholder="588.00"
                             value={formData.level2YearlyPriceEuros}
                             onChange={(e) => updateField("level2YearlyPriceEuros", e.target.value)}
                             className="pl-10"
@@ -1126,31 +1129,32 @@ export default function ConsultantPricingSettingsPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="level3MonthlyPriceEuros">Prezzo Mensile (€)</Label>
+                        <Label htmlFor="level3MonthlyPriceEuros">Prezzo Mensile (€) - Minimo €99</Label>
                         <div className="relative">
                           <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <Input
                             id="level3MonthlyPriceEuros"
                             type="number"
                             step="0.01"
-                            min="0"
-                            placeholder="99.99"
+                            min="99"
+                            placeholder="99.00"
                             value={formData.level3MonthlyPriceEuros}
                             onChange={(e) => updateField("level3MonthlyPriceEuros", e.target.value)}
                             className="pl-10"
                           />
                         </div>
+                        <p className="text-xs text-amber-600">50% commissione piattaforma</p>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="level3YearlyPriceEuros">Prezzo Annuale (€)</Label>
+                        <Label htmlFor="level3YearlyPriceEuros">Prezzo Annuale (€) - Minimo €1188</Label>
                         <div className="relative">
                           <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <Input
                             id="level3YearlyPriceEuros"
                             type="number"
                             step="0.01"
-                            min="0"
-                            placeholder="999.99"
+                            min="1188"
+                            placeholder="1188.00"
                             value={formData.level3YearlyPriceEuros}
                             onChange={(e) => updateField("level3YearlyPriceEuros", e.target.value)}
                             className="pl-10"

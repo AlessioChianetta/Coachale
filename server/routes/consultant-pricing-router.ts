@@ -68,12 +68,12 @@ router.post("/consultant/pricing-page", authenticateToken, requireRole("consulta
     }
     
     if (pricingPageConfig) {
-      // Validate and parse Level 2 prices
+      // Validate and parse Level 2 prices (Silver) - Minimo €49/mese
       if (pricingPageConfig.level2MonthlyPriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level2MonthlyPriceCents);
-        if (isNaN(price) || price < 100) {
+        if (isNaN(price) || price < 4900) {
           return res.status(400).json({ 
-            error: "Il prezzo mensile Level 2 deve essere almeno 1€" 
+            error: "Il prezzo mensile Silver deve essere almeno €49" 
           });
         }
         pricingPageConfig.level2MonthlyPriceCents = price;
@@ -81,20 +81,20 @@ router.post("/consultant/pricing-page", authenticateToken, requireRole("consulta
       
       if (pricingPageConfig.level2YearlyPriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level2YearlyPriceCents);
-        if (isNaN(price) || price < 100) {
+        if (isNaN(price) || price < 58800) { // €49 * 12 = €588
           return res.status(400).json({ 
-            error: "Il prezzo annuale Level 2 deve essere almeno 1€" 
+            error: "Il prezzo annuale Silver deve essere almeno €588 (€49/mese)" 
           });
         }
         pricingPageConfig.level2YearlyPriceCents = price;
       }
       
-      // Validate and parse Level 3 prices
+      // Validate and parse Level 3 prices (Gold) - Minimo €99/mese
       if (pricingPageConfig.level3MonthlyPriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level3MonthlyPriceCents);
-        if (isNaN(price) || price < 100) {
+        if (isNaN(price) || price < 9900) {
           return res.status(400).json({ 
-            error: "Il prezzo mensile Level 3 deve essere almeno 1€" 
+            error: "Il prezzo mensile Gold deve essere almeno €99" 
           });
         }
         pricingPageConfig.level3MonthlyPriceCents = price;
@@ -102,34 +102,36 @@ router.post("/consultant/pricing-page", authenticateToken, requireRole("consulta
       
       if (pricingPageConfig.level3YearlyPriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level3YearlyPriceCents);
-        if (isNaN(price) || price < 100) {
+        if (isNaN(price) || price < 118800) { // €99 * 12 = €1188
           return res.status(400).json({ 
-            error: "Il prezzo annuale Level 3 deve essere almeno 1€" 
+            error: "Il prezzo annuale Gold deve essere almeno €1188 (€99/mese)" 
           });
         }
         pricingPageConfig.level3YearlyPriceCents = price;
       }
       
-      // Backwards compatibility - also validate old price fields
+      // Backwards compatibility - also validate old price fields with new minimums
       if (pricingPageConfig.level2PriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level2PriceCents);
-        if (!isNaN(price) && price >= 100) {
+        if (!isNaN(price) && price >= 4900) {
           pricingPageConfig.level2PriceCents = price;
         }
       }
       
       if (pricingPageConfig.level3PriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level3PriceCents);
-        if (!isNaN(price) && price >= 100) {
+        if (!isNaN(price) && price >= 9900) {
           pricingPageConfig.level3PriceCents = price;
         }
       }
       
-      // Validate Level 1 daily message limit
+      // Validate Level 1 monthly message limit (max 100 messaggi/mese)
       if (pricingPageConfig.level1DailyMessageLimit !== undefined) {
         const limit = parseInt(pricingPageConfig.level1DailyMessageLimit);
-        if (!isNaN(limit) && limit >= 1) {
+        if (!isNaN(limit) && limit >= 1 && limit <= 100) {
           pricingPageConfig.level1DailyMessageLimit = limit;
+        } else if (limit > 100) {
+          pricingPageConfig.level1DailyMessageLimit = 100; // max 100 al mese
         } else {
           pricingPageConfig.level1DailyMessageLimit = 15; // default
         }

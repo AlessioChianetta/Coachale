@@ -2086,6 +2086,8 @@ router.put("/consultant/default-onboarding-preferences", authenticateToken, requ
         level2Used: 0,
         level3Total: 10,
         level3Used: 0,
+        employeeTotal: 5, // 5 licenze gratis per dipendenti
+        employeeUsed: 0,
         defaultOnboardingPreferences: preferences,
       });
     }

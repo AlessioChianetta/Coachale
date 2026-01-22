@@ -21,10 +21,10 @@ export function UpgradeBanner({ onUpgradeClick, onViewPlansClick }: UpgradeBanne
               
               <div className="flex-1 min-w-0">
                 <h3 className="text-base sm:text-lg font-semibold text-amber-900 dark:text-amber-100">
-                  Hai esaurito i 15 messaggi giornalieri
+                  Hai esaurito i messaggi mensili
                 </h3>
                 <p className="mt-1 text-sm text-amber-700 dark:text-amber-300/80">
-                  Passa ad Argento per messaggi illimitati e risposte più veloci, oppure torna domani per altri messaggi gratis.
+                  Passa ad Argento per messaggi illimitati e risposte più veloci, oppure torna il mese prossimo per altri messaggi gratis.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4">

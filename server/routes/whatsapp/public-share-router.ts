@@ -566,13 +566,15 @@ async function validateBronzeAuth(
 }
 
 /**
- * Helper function to check if it's a new day (for message limit reset)
+ * Helper function to check if it's a new month (for message limit reset)
+ * Cambiato da giornaliero a mensile
  */
-function isNewDay(lastResetAt: Date | null): boolean {
+function isNewMonth(lastResetAt: Date | null): boolean {
   if (!lastResetAt) return true;
   const now = new Date();
   const lastReset = new Date(lastResetAt);
-  return now.toDateString() !== lastReset.toDateString();
+  // Reset se siamo in un mese diverso o anno diverso
+  return now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
 }
 
 /**
@@ -1258,9 +1260,9 @@ router.post(
         let dailyUsed = freshBronzeUser.dailyMessagesUsed;
         const dailyLimit = freshBronzeUser.dailyMessageLimit;
         
-        // Reset counter if new day
-        if (isNewDay(freshBronzeUser.lastMessageResetAt)) {
-          console.log(`   📅 New day detected, resetting counter`);
+        // Reset counter if new month
+        if (isNewMonth(freshBronzeUser.lastMessageResetAt)) {
+          console.log(`   📅 New month detected, resetting counter`);
           dailyUsed = 0;
           await db
             .update(schema.bronzeUsers)

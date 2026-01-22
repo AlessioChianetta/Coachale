@@ -360,7 +360,7 @@ export default function PublicAIChat() {
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
             <span className="text-orange-800">
-              Hai raggiunto il limite giornaliero di messaggi gratuiti.
+              Hai raggiunto il limite mensile di messaggi gratuiti.
             </span>
             {/* SECURITY FIX 2.3: Only show upgrade button if consultantSlug is valid and not empty */}
             {agentInfo.consultantSlug && agentInfo.consultantSlug.trim() !== '' && agentInfo.consultantSlug !== 'null' ? (

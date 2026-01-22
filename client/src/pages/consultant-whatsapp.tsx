@@ -2476,10 +2476,17 @@ export default function ConsultantWhatsAppPage() {
                     Licenze Dipendenti
                   </CardTitle>
                   <CardDescription>
-                    Acquista licenze per il tuo team
+                    5 licenze gratis incluse + acquista licenze aggiuntive
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Info 5 licenze gratis */}
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                      <strong>5 licenze gratis</strong> per i tuoi dipendenti sono incluse nel tuo piano!
+                    </p>
+                  </div>
+                  
                   {/* Current Employee Licenses */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -2503,7 +2510,7 @@ export default function ConsultantWhatsAppPage() {
                     />
                     {licenses.employeeTotal === 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Non hai ancora acquistato licenze dipendenti
+                        Non hai ancora licenze dipendenti attive
                       </p>
                     )}
                   </div>

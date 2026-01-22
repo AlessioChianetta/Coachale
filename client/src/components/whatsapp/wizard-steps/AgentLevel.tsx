@@ -156,21 +156,21 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
 
             <div className="space-y-3">
               <Label htmlFor="dailyMessageLimit" className="text-base font-medium">
-                Limite Messaggi Giornalieri
+                Limite Messaggi Mensili (max 100)
               </Label>
               <div className="space-y-2">
                 <Input
                   id="dailyMessageLimit"
                   type="number"
                   min={1}
-                  max={1000}
+                  max={100}
                   value={formData.dailyMessageLimit || 15}
                   onChange={(e) => handleDailyLimitChange(e.target.value)}
                   className="text-base w-32"
                 />
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
-                  Limite messaggi al giorno per utenti non registrati
+                  Limite messaggi al mese per utenti non registrati (max 100)
                 </p>
               </div>
             </div>
@@ -179,8 +179,8 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
               <AlertCircle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-800">
                 <strong>Livello 1 - Bronzo:</strong> Gli utenti possono accedere all'agente 
-                tramite link pubblico senza registrazione. Il limite giornaliero di messaggi 
-                previene abusi.
+                tramite link pubblico senza registrazione. Il limite mensile di messaggi 
+                previene abusi. I messaggi si resettano ogni mese.
               </AlertDescription>
             </Alert>
           </CardContent>

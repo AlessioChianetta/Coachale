@@ -28,11 +28,13 @@ export interface BronzeAuthRequest extends Request {
   };
 }
 
-function isNewDay(lastResetAt: Date | null): boolean {
+// Cambiato da giornaliero a mensile - reset a inizio mese
+function isNewMonth(lastResetAt: Date | null): boolean {
   if (!lastResetAt) return true;
   const now = new Date();
   const lastReset = new Date(lastResetAt);
-  return now.toDateString() !== lastReset.toDateString();
+  // Reset se siamo in un mese diverso o anno diverso
+  return now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
 }
 
 export async function authenticateBronzeToken(req: BronzeAuthRequest, res: Response, next: Function) {
@@ -297,7 +299,7 @@ router.post("/:slug/login", async (req: Request, res: Response) => {
       lastLoginAt: new Date(),
     };
 
-    if (isNewDay(bronzeUser.lastMessageResetAt)) {
+    if (isNewMonth(bronzeUser.lastMessageResetAt)) {
       updates.dailyMessagesUsed = 0;
       updates.lastMessageResetAt = new Date();
       dailyMessagesUsed = 0;
@@ -359,7 +361,7 @@ router.get("/me", authenticateBronzeToken, async (req: BronzeAuthRequest, res: R
     }
 
     let dailyMessagesUsed = bronzeUser.dailyMessagesUsed;
-    if (isNewDay(bronzeUser.lastMessageResetAt)) {
+    if (isNewMonth(bronzeUser.lastMessageResetAt)) {
       await db
         .update(bronzeUsers)
         .set({ dailyMessagesUsed: 0, lastMessageResetAt: new Date() })
@@ -404,7 +406,7 @@ router.post("/increment-message", authenticateBronzeToken, async (req: BronzeAut
     }
 
     let dailyMessagesUsed = bronzeUser.dailyMessagesUsed;
-    let shouldReset = isNewDay(bronzeUser.lastMessageResetAt);
+    let shouldReset = isNewMonth(bronzeUser.lastMessageResetAt);
 
     if (shouldReset) {
       dailyMessagesUsed = 0;
