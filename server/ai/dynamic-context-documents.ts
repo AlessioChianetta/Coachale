@@ -66,27 +66,47 @@ function estimateTokens(text: string): number {
  * for File Search indexing (~50k token limit per document recommended)
  */
 export async function generateConversationHistoryDocument(consultantId: string): Promise<string> {
+  console.log(`📄 [ConvHistory] Starting for consultant ${consultantId.substring(0, 8)}...`);
+  
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const conversations = await db
-    .select({
-      id: whatsappConversations.id,
-      phoneNumber: whatsappConversations.phoneNumber,
-      agentConfigId: whatsappConversations.agentConfigId,
-      isLead: whatsappConversations.isLead,
-      lastMessageAt: whatsappConversations.lastMessageAt,
-      messageCount: whatsappConversations.messageCount,
-    })
-    .from(whatsappConversations)
-    .where(
-      and(
-        eq(whatsappConversations.consultantId, consultantId),
-        gte(whatsappConversations.lastMessageAt, thirtyDaysAgo)
+  console.log(`📄 [ConvHistory] Querying conversations since ${thirtyDaysAgo.toISOString()}...`);
+  
+  let conversations: {
+    id: string;
+    phoneNumber: string | null;
+    agentConfigId: string | null;
+    isLead: boolean | null;
+    lastMessageAt: Date | null;
+    messageCount: number | null;
+  }[] = [];
+  
+  try {
+    conversations = await db
+      .select({
+        id: whatsappConversations.id,
+        phoneNumber: whatsappConversations.phoneNumber,
+        agentConfigId: whatsappConversations.agentConfigId,
+        isLead: whatsappConversations.isLead,
+        lastMessageAt: whatsappConversations.lastMessageAt,
+        messageCount: whatsappConversations.messageCount,
+      })
+      .from(whatsappConversations)
+      .where(
+        and(
+          eq(whatsappConversations.consultantId, consultantId),
+          gte(whatsappConversations.lastMessageAt, thirtyDaysAgo)
+        )
       )
-    )
-    .orderBy(desc(whatsappConversations.lastMessageAt))
-    .limit(200);
+      .orderBy(desc(whatsappConversations.lastMessageAt))
+      .limit(200);
+  } catch (queryError: any) {
+    console.error(`📄 [ConvHistory] Query error:`, queryError.message);
+    throw queryError;
+  }
+
+  console.log(`📄 [ConvHistory] Found ${conversations.length} conversations`);
 
   if (conversations.length === 0) {
     return `# Storico Conversazioni WhatsApp
@@ -98,14 +118,14 @@ Generato il: ${formatItalianDate(new Date())}
   }
 
   const conversationIds = conversations.map((c) => c.id).filter(Boolean);
+  console.log(`📄 [ConvHistory] Valid conversation IDs: ${conversationIds.length}`);
 
   let messages: {
     id: string;
     conversationId: string;
     messageText: string | null;
     sender: string | null;
-    status: string | null;
-    templateName: string | null;
+    twilioStatus: string | null;
     createdAt: Date | null;
   }[] = [];
 
@@ -116,8 +136,7 @@ Generato il: ${formatItalianDate(new Date())}
         conversationId: whatsappMessages.conversationId,
         messageText: whatsappMessages.messageText,
         sender: whatsappMessages.sender,
-        status: whatsappMessages.status,
-        templateName: whatsappMessages.templateName,
+        twilioStatus: whatsappMessages.twilioStatus,
         createdAt: whatsappMessages.createdAt,
       })
       .from(whatsappMessages)
@@ -171,10 +190,9 @@ inclusi numeri di telefono, messaggi, template utilizzati e orari di invio.
     } else {
       for (const msg of convMessages) {
         const senderLabel = msg.sender === "user" ? "👤 Cliente" : "🤖 AI/Consulente";
-        const templateInfo = msg.templateName ? ` [Template: ${msg.templateName}]` : "";
-        const statusInfo = msg.status ? ` (${msg.status})` : "";
+        const statusInfo = msg.twilioStatus ? ` (${msg.twilioStatus})` : "";
 
-        document += `**${formatItalianDate(msg.createdAt)}** - ${senderLabel}${templateInfo}${statusInfo}
+        document += `**${formatItalianDate(msg.createdAt)}** - ${senderLabel}${statusInfo}
 > ${msg.messageText || "_messaggio vuoto_"}
 
 `;
@@ -190,7 +208,6 @@ inclusi numeri di telefono, messaggi, template utilizzati e orari di invio.
 ## Statistiche Riepilogo
 - **Conversazioni analizzate**: ${conversations.length}
 - **Messaggi totali**: ${messages.length}
-- **Template utilizzati**: ${[...new Set(messages.filter((m) => m.templateName).map((m) => m.templateName))].join(", ") || "Nessuno"}
 - **Agenti coinvolti**: ${[...new Set(conversations.filter((c) => c.agentConfigId).map((c) => agentMap.get(c.agentConfigId!) || "Sconosciuto"))].join(", ") || "Nessuno"}
 
 Generato il: ${formatItalianDate(new Date())}
@@ -522,7 +539,9 @@ export async function syncDynamicDocuments(consultantId: string): Promise<SyncRe
   };
 
   try {
+    console.log(`📄 [DynamicDocs] Generating conversation history document...`);
     const conversationDoc = await generateConversationHistoryDocument(consultantId);
+    console.log(`📄 [DynamicDocs] Document generated, length: ${conversationDoc.length} chars`);
     const convResult = await fileSearchService.uploadDocumentFromContent({
       content: conversationDoc,
       displayName: "Storico Conversazioni WhatsApp (Auto-generato)",
@@ -543,6 +562,7 @@ export async function syncDynamicDocuments(consultantId: string): Promise<SyncRe
   } catch (error: any) {
     results.conversationHistory = { success: false, error: error.message };
     console.error(`❌ [DynamicDocs] Conversation history error:`, error.message);
+    console.error(`❌ [DynamicDocs] Stack trace:`, error.stack);
   }
 
   try {
