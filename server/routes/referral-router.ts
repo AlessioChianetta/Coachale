@@ -195,6 +195,10 @@ router.post("/referral/invite", authenticateToken, async (req: AuthRequest, res)
           leadCategory: "referral",
           status: "pending",
           notes: `Referral da ${req.user!.firstName} ${req.user!.lastName}. ${notes || ""}`,
+          // Email settings - enable welcome email and nurturing by default for referral leads
+          welcomeEmailEnabled: true,
+          nurturingEnabled: true,
+          nurturingStartDate: new Date(),
         }).returning();
         proactiveLeadId = lead.id;
       }
@@ -805,6 +809,10 @@ router.post("/public/referral/:code/submit", async (req, res) => {
         status: "pending",
         contactSchedule: new Date(),
         notes: `Referral da landing page. Invitato da ${referrer?.firstName || ""} ${referrer?.lastName || ""}. ${notes || ""}`,
+        // Email settings - enable welcome email and nurturing by default for referral leads
+        welcomeEmailEnabled: true,
+        nurturingEnabled: true,
+        nurturingStartDate: new Date(),
       }).returning();
       proactiveLeadId = lead.id;
     }
