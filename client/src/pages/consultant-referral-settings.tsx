@@ -202,12 +202,12 @@ export default function ConsultantReferralSettingsPage() {
   });
 
   const { data: agentsData } = useQuery({
-    queryKey: ["/api/followup/agents"],
+    queryKey: ["/api/whatsapp/config/proactive"],
     queryFn: async () => {
-      const response = await fetch("/api/followup/agents", {
+      const response = await fetch("/api/whatsapp/config/proactive", {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) return [];
+      if (!response.ok) return { configs: [] };
       return response.json();
     },
   });
@@ -248,7 +248,7 @@ export default function ConsultantReferralSettingsPage() {
     },
   });
 
-  const agents = agentsData || [];
+  const agents = agentsData?.configs || [];
   const campaigns = campaignsData?.data || [];
   const consultantId = userData?.user?.id;
 
