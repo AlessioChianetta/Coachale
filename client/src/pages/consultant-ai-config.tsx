@@ -3194,70 +3194,70 @@ Non limitarti a stato attuale/ideale. Attingi da:
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-800 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <Settings className="h-4 w-4" />
-                <span className="hidden lg:inline">Controllo</span>
+                <span className="hidden lg:inline">Impostazioni</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="drafts" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <FileText className="h-4 w-4" />
-                <span className="hidden lg:inline">Bozze</span>
+                <span className="hidden lg:inline">Bozze Email</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="echo" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <Sparkles className="h-4 w-4" />
-                <span className="hidden lg:inline">Echo</span>
+                <span className="hidden lg:inline">AI Echo</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="consultation-summary" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <Mail className="h-4 w-4" />
-                <span className="hidden lg:inline">Riepilogo</span>
+                <span className="hidden lg:inline">Consulenze</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="statistics" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <BarChart3 className="h-4 w-4" />
-                <span className="hidden lg:inline">Statistiche</span>
+                <span className="hidden lg:inline">Metriche</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="clients" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <Users className="h-4 w-4" />
-                <span className="hidden lg:inline">Clienti</span>
+                <span className="hidden lg:inline">Email Clienti</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="journey" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <Route className="h-4 w-4" />
-                <span className="hidden lg:inline">Journey</span>
+                <span className="hidden lg:inline">Percorso</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="updates" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <Megaphone className="h-4 w-4" />
-                <span className="hidden lg:inline">Updates</span>
+                <span className="hidden lg:inline">Annunci</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="test" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <Zap className="h-4 w-4" />
-                <span className="hidden lg:inline">Test</span>
+                <span className="hidden lg:inline">Simulatore</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="nurturing" 
                 className="flex items-center gap-2 py-3 px-3 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
               >
                 <CalendarDays className="h-4 w-4" />
-                <span className="hidden lg:inline">Nurturing</span>
+                <span className="hidden lg:inline">Lead 365</span>
               </TabsTrigger>
             </TabsList>
 
