@@ -1,81 +1,57 @@
 import { Router } from "express";
 import { db } from "../db";
 import * as schema from "../../shared/schema";
-import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, or, isNull, isNotNull, ne } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
 import twilio from "twilio";
 
 const router = Router();
 
-interface TwilioTemplateInfo {
+interface ApprovedTemplateInfo {
   id: string;
   friendlyName: string;
   bodyText: string;
+  twilioContentSid: string;
   approvalStatus: string;
 }
 
-async function fetchTwilioTemplatesForConsultant(
+async function fetchApprovedTemplatesForConsultant(
   consultantId: string
-): Promise<TwilioTemplateInfo[]> {
-  const templates: TwilioTemplateInfo[] = [];
-
-  const configs = await db
+): Promise<ApprovedTemplateInfo[]> {
+  const templates = await db
     .select({
-      twilioAccountSid: schema.consultantWhatsappConfig.twilioAccountSid,
-      twilioAuthToken: schema.consultantWhatsappConfig.twilioAuthToken,
+      id: schema.whatsappCustomTemplates.id,
+      name: schema.whatsappCustomTemplates.templateName,
+      twilioContentSid: schema.whatsappTemplateVersions.twilioContentSid,
+      bodyText: schema.whatsappTemplateVersions.body,
     })
-    .from(schema.consultantWhatsappConfig)
-    .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
-    .limit(1);
+    .from(schema.whatsappCustomTemplates)
+    .innerJoin(
+      schema.whatsappTemplateVersions,
+      and(
+        eq(schema.whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
+        eq(schema.whatsappTemplateVersions.isActive, true)
+      )
+    )
+    .where(
+      and(
+        eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+        isNotNull(schema.whatsappTemplateVersions.twilioContentSid),
+        ne(schema.whatsappTemplateVersions.twilioContentSid, '')
+      )
+    )
+    .orderBy(schema.whatsappCustomTemplates.templateName);
 
-  if (configs.length === 0 || !configs[0].twilioAccountSid || !configs[0].twilioAuthToken) {
-    return templates;
-  }
+  const result: ApprovedTemplateInfo[] = templates.map(t => ({
+    id: t.twilioContentSid!,
+    friendlyName: t.name,
+    bodyText: t.bodyText || '',
+    twilioContentSid: t.twilioContentSid!,
+    approvalStatus: 'approved',
+  }));
 
-  const { twilioAccountSid, twilioAuthToken } = configs[0];
-
-  try {
-    const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
-    const contentList = await twilioClient.content.v1.contents.list({ limit: 100 });
-
-    const extractWhatsAppBody = (types: any): string => {
-      if (types?.['twilio/whatsapp']?.template?.components) {
-        const bodyComponent = types['twilio/whatsapp'].template.components.find(
-          (component: any) => component.type === 'BODY'
-        );
-        return bodyComponent?.text || '';
-      }
-      return types?.['twilio/text']?.body || '';
-    };
-
-    const getApprovalStatus = (content: any): string => {
-      const whatsappTypes = content.types?.['twilio/whatsapp'];
-      if (whatsappTypes?.template?.approvalStatus) {
-        return whatsappTypes.template.approvalStatus.status || 'unknown';
-      }
-      return 'approved';
-    };
-
-    for (const content of contentList) {
-      if (content.sid.startsWith('HX')) {
-        const status = getApprovalStatus(content);
-        if (status === 'approved') {
-          templates.push({
-            id: content.sid,
-            friendlyName: content.friendlyName || content.sid,
-            bodyText: extractWhatsAppBody(content.types),
-            approvalStatus: status,
-          });
-        }
-      }
-    }
-
-    console.log(`[WEEKLY-CHECKIN] Fetched ${templates.length} approved WhatsApp templates for consultant ${consultantId}`);
-  } catch (error: any) {
-    console.error("[WEEKLY-CHECKIN] Error fetching Twilio templates:", error.message);
-  }
-
-  return templates;
+  console.log(`[WEEKLY-CHECKIN] Found ${result.length} approved WhatsApp templates for consultant ${consultantId}`);
+  return result;
 }
 
 router.get("/config", authenticateToken, requireRole("consultant"), async (req, res) => {
@@ -259,10 +235,10 @@ router.get("/logs", authenticateToken, requireRole("consultant"), async (req, re
 
 router.get("/templates", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
-    const templates = await fetchTwilioTemplatesForConsultant(req.user!.id);
+    const templates = await fetchApprovedTemplatesForConsultant(req.user!.id);
     res.json(templates);
   } catch (error: any) {
-    console.error("Error fetching WhatsApp templates:", error);
+    console.error("Error fetching approved WhatsApp templates:", error);
     res.status(500).json({ message: error.message });
   }
 });
