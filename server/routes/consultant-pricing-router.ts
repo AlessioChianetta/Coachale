@@ -81,15 +81,15 @@ router.post("/consultant/pricing-page", authenticateToken, requireRole("consulta
       
       if (pricingPageConfig.level2YearlyPriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level2YearlyPriceCents);
-        if (isNaN(price) || price < 58800) { // €49 * 12 = €588
+        if (isNaN(price) || price < 49000) { // €490 minimo annuale Silver
           return res.status(400).json({ 
-            error: "Il prezzo annuale Silver deve essere almeno €588 (€49/mese)" 
+            error: "Il prezzo annuale Silver deve essere almeno €490" 
           });
         }
         pricingPageConfig.level2YearlyPriceCents = price;
       }
       
-      // Validate and parse Level 3 prices (Gold) - Minimo €99/mese
+      // Validate and parse Level 3 prices (Gold) - Minimo €99/mese, €990/anno
       if (pricingPageConfig.level3MonthlyPriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level3MonthlyPriceCents);
         if (isNaN(price) || price < 9900) {
@@ -102,9 +102,9 @@ router.post("/consultant/pricing-page", authenticateToken, requireRole("consulta
       
       if (pricingPageConfig.level3YearlyPriceCents !== undefined) {
         const price = parseInt(pricingPageConfig.level3YearlyPriceCents);
-        if (isNaN(price) || price < 118800) { // €99 * 12 = €1188
+        if (isNaN(price) || price < 99000) { // €990 minimo annuale Gold
           return res.status(400).json({ 
-            error: "Il prezzo annuale Gold deve essere almeno €1188 (€99/mese)" 
+            error: "Il prezzo annuale Gold deve essere almeno €990" 
           });
         }
         pricingPageConfig.level3YearlyPriceCents = price;
