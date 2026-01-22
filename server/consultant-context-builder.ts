@@ -3411,7 +3411,8 @@ export async function buildConsultantContext(
           const statusMap = new Map(leadStatsByStatusResult.map(s => [s.status, s.count]));
           const categoryMap = new Map(leadStatsByCategoryResult.map(c => [c.category, c.count]));
           
-          const totalLeads = proactiveLeadsResult.length;
+          // Use aggregate counts from Q41 (all leads) instead of filtered proactiveLeadsResult
+          const totalLeads = Array.from(statusMap.values()).reduce((sum, count) => sum + count, 0);
           const convertedLeads = statusMap.get('converted') || 0;
           const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
           
