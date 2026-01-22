@@ -249,9 +249,11 @@ export function WeeklyCheckinCard() {
               <MessageSquare className="h-4 w-4" />
               Template WhatsApp Approvati
             </h4>
-            <Badge variant="secondary" className="text-xs">
-              {(config?.templateIds || []).length} selezionati
-            </Badge>
+            {(config?.templateIds || []).length > 0 && (
+              <Badge className="bg-purple-500 text-white text-xs px-3 py-1">
+                {(config?.templateIds || []).length} selezionati
+              </Badge>
+            )}
           </div>
 
           {templatesLoading ? (
@@ -267,34 +269,42 @@ export function WeeklyCheckinCard() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {templates.map((template) => (
-                <div
-                  key={template.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
-                >
-                  <Checkbox
-                    checked={config?.templateIds?.includes(template.id) || false}
-                    onCheckedChange={(checked) => handleTemplateToggle(template.id, checked as boolean)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm text-gray-900 dark:text-white">
-                        {template.friendlyName}
-                      </span>
-                      <Badge variant="outline" className="text-xs text-green-600 border-green-200">
-                        Approvato
-                      </Badge>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              {templates.map((template) => {
+                const isSelected = config?.templateIds?.includes(template.id) || false;
+                return (
+                  <label
+                    key={template.id}
+                    className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
+                      isSelected
+                        ? "border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-200 hover:bg-gray-50 dark:hover:bg-gray-750"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleTemplateToggle(template.id, checked as boolean)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {template.friendlyName}
+                        </span>
+                        <Badge className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400">
+                          Approvato
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
+                        {template.bodyText || "Template senza corpo visibile"}
+                      </p>
+                      <p className="text-xs text-gray-400 font-mono mt-2">
+                        {template.id}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
-                      {template.bodyText || "Template senza corpo visibile"}
-                    </p>
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">
-                      {template.id}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                  </label>
+                );
+              })}
             </div>
           )}
         </div>
