@@ -1,0 +1,748 @@
+[WEEKLY-CHECKIN] Fetching eligible clients...
+3VM6 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+VM6 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110955296 401 (Unauthorized)
+apply @ VM6 injected.js:214
+queryFn @ VM129 WeeklyCheckinCard.tsx:121
+fetchFn @ VM25 @tanstack_react-query.js:1101
+run @ VM25 @tanstack_react-query.js:800
+start @ VM25 @tanstack_react-query.js:843
+fetch @ VM25 @tanstack_react-query.js:1148
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19432
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM20 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18718
+workLoop @ VM20 chunk-RPCDYKBN.js:197
+flushWork @ VM20 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM20 chunk-RPCDYKBN.js:384Understand this error
+VM6 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM6 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110955320 401 (Unauthorized)
+apply @ VM6 injected.js:214
+queryFn @ VM129 WeeklyCheckinCard.tsx:121
+fetchFn @ VM25 @tanstack_react-query.js:1101
+run @ VM25 @tanstack_react-query.js:800
+start @ VM25 @tanstack_react-query.js:843
+fetch @ VM25 @tanstack_react-query.js:1148
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+setOptions @ VM25 @tanstack_react-query.js:1401
+(anonymous) @ VM25 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19432
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM20 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18718
+workLoop @ VM20 chunk-RPCDYKBN.js:197
+flushWork @ VM20 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM20 chunk-RPCDYKBN.js:384Understand this error
+VM6 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM6 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110955760 401 (Unauthorized)
+apply @ VM6 injected.js:214
+queryFn @ VM129 WeeklyCheckinCard.tsx:121
+fetchFn @ VM25 @tanstack_react-query.js:1101
+run @ VM25 @tanstack_react-query.js:800
+start @ VM25 @tanstack_react-query.js:843
+fetch @ VM25 @tanstack_react-query.js:1148
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+setOptions @ VM25 @tanstack_react-query.js:1401
+(anonymous) @ VM25 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19432
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM20 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18718
+workLoop @ VM20 chunk-RPCDYKBN.js:197
+flushWork @ VM20 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM20 chunk-RPCDYKBN.js:384Understand this error
+VM6 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM6 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+VM6 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110955773 401 (Unauthorized)
+apply @ VM6 injected.js:214
+queryFn @ VM129 WeeklyCheckinCard.tsx:121
+fetchFn @ VM25 @tanstack_react-query.js:1101
+run @ VM25 @tanstack_react-query.js:800
+start @ VM25 @tanstack_react-query.js:843
+fetch @ VM25 @tanstack_react-query.js:1148
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+setOptions @ VM25 @tanstack_react-query.js:1401
+(anonymous) @ VM25 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19432
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM20 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18718
+workLoop @ VM20 chunk-RPCDYKBN.js:197
+flushWork @ VM20 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM20 chunk-RPCDYKBN.js:384Understand this error
+VM6 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM6 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+VM6 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110956169 401 (Unauthorized)
+apply @ VM6 injected.js:214
+queryFn @ VM129 WeeklyCheckinCard.tsx:121
+fetchFn @ VM25 @tanstack_react-query.js:1101
+run @ VM25 @tanstack_react-query.js:800
+start @ VM25 @tanstack_react-query.js:843
+fetch @ VM25 @tanstack_react-query.js:1148
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+setOptions @ VM25 @tanstack_react-query.js:1401
+(anonymous) @ VM25 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19432
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM20 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18718
+workLoop @ VM20 chunk-RPCDYKBN.js:197
+flushWork @ VM20 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM20 chunk-RPCDYKBN.js:384Understand this error
+VM6 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM6 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110956327 401 (Unauthorized)
+apply @ VM6 injected.js:214
+queryFn @ VM129 WeeklyCheckinCard.tsx:121
+fetchFn @ VM25 @tanstack_react-query.js:1101
+run @ VM25 @tanstack_react-query.js:800
+start @ VM25 @tanstack_react-query.js:843
+fetch @ VM25 @tanstack_react-query.js:1148
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+setOptions @ VM25 @tanstack_react-query.js:1401
+(anonymous) @ VM25 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19432
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM20 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18718
+workLoop @ VM20 chunk-RPCDYKBN.js:197
+flushWork @ VM20 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM20 chunk-RPCDYKBN.js:384Understand this error
+VM6 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM6 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+VM6 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110956495 401 (Unauthorized)
+apply @ VM6 injected.js:214
+queryFn @ VM129 WeeklyCheckinCard.tsx:121
+fetchFn @ VM25 @tanstack_react-query.js:1101
+run @ VM25 @tanstack_react-query.js:800
+start @ VM25 @tanstack_react-query.js:843
+fetch @ VM25 @tanstack_react-query.js:1148
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+setOptions @ VM25 @tanstack_react-query.js:1401
+(anonymous) @ VM25 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+fetch @ VM25 @tanstack_react-query.js:1177
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+setOptions @ VM25 @tanstack_react-query.js:1401
+(anonymous) @ VM25 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19416
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM20 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM25 @tanstack_react-query.js:103
+flush @ VM25 @tanstack_react-query.js:615
+batch @ VM25 @tanstack_react-query.js:633
+dispatch_fn @ VM25 @tanstack_react-query.js:1260
+setData @ VM25 @tanstack_react-query.js:935
+fetch @ VM25 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM25 @tanstack_react-query.js:1651
+onSubscribe @ VM25 @tanstack_react-query.js:1344
+subscribe @ VM25 @tanstack_react-query.js:24
+(anonymous) @ VM25 @tanstack_react-query.js:3313
+subscribeToStore @ VM20 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM20 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM20 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM20 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM20 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM20 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM20 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM20 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM20 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM20 chunk-RPCDYKBN.js:19432
+commitRoot @ VM20 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM20 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM20 chunk-RPCDYKBN.js:18718
+workLoop @ VM20 chunk-RPCDYKBN.js:197
+flushWork @ VM20 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM20 chunk-RPCDYKBN.js:384Understand this error
+VM6 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM6 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+VM176 client:536 WebSocket connection to 'wss://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/?token=k9Q2o-eP2xLW' failed: 
+setupWebSocket @ VM176 client:536
+(anonymous) @ VM176 client:531Understand this error
+VM176 client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=k9Q2o-eP2xLW' is invalid.
+    at setupWebSocket (VM176 client:536:19)
+    at fallback (VM176 client:509:16)
+    at WebSocket.<anonymous> (VM176 client:555:7)
+setupWebSocket @ VM176 client:536
+fallback @ VM176 client:509
+(anonymous) @ VM176 client:555Understand this error
+VM170 injected.js:37 Activity tracker init: {isLoginSuccess: 'true', existingSessionId: '2b0372d6-0f0e-4dc0-b839-a5bfaa846d6a', sessionId: null, userId: '0c73bbe5-51e1-4108-866b-6be7a52fce3b'}
+VM170 injected.js:37 Fresh login detected, starting new session
+VM170 injected.js:37 🔄 Starting session attempt 1 - token exists: true - user ID: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+VM170 injected.js:37 Making request to start session...
+VM170 injected.js:37 Session start response status: 201
+VM170 injected.js:37 ✅ Session started successfully: 99830213-f307-4869-9dd5-97aad2e84085
+VM170 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+5VM170 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+VM170 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110971046 401 (Unauthorized)
+apply @ VM170 injected.js:214
+queryFn @ VM306 WeeklyCheckinCard.tsx:121
+fetchFn @ VM190 @tanstack_react-query.js:1101
+run @ VM190 @tanstack_react-query.js:800
+start @ VM190 @tanstack_react-query.js:843
+fetch @ VM190 @tanstack_react-query.js:1148
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+onSubscribe @ VM190 @tanstack_react-query.js:1344
+subscribe @ VM190 @tanstack_react-query.js:24
+(anonymous) @ VM190 @tanstack_react-query.js:3313
+subscribeToStore @ VM184 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19416
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM184 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM190 @tanstack_react-query.js:103
+flush @ VM190 @tanstack_react-query.js:615
+batch @ VM190 @tanstack_react-query.js:633
+dispatch_fn @ VM190 @tanstack_react-query.js:1260
+setData @ VM190 @tanstack_react-query.js:935
+fetch @ VM190 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+onSubscribe @ VM190 @tanstack_react-query.js:1344
+subscribe @ VM190 @tanstack_react-query.js:24
+(anonymous) @ VM190 @tanstack_react-query.js:3313
+subscribeToStore @ VM184 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19432
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM184 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18718
+workLoop @ VM184 chunk-RPCDYKBN.js:197
+flushWork @ VM184 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM184 chunk-RPCDYKBN.js:384Understand this error
+VM170 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM170 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110971065 401 (Unauthorized)
+apply @ VM170 injected.js:214
+queryFn @ VM306 WeeklyCheckinCard.tsx:121
+fetchFn @ VM190 @tanstack_react-query.js:1101
+run @ VM190 @tanstack_react-query.js:800
+start @ VM190 @tanstack_react-query.js:843
+fetch @ VM190 @tanstack_react-query.js:1148
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+setOptions @ VM190 @tanstack_react-query.js:1401
+(anonymous) @ VM190 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19416
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM184 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM190 @tanstack_react-query.js:103
+flush @ VM190 @tanstack_react-query.js:615
+batch @ VM190 @tanstack_react-query.js:633
+dispatch_fn @ VM190 @tanstack_react-query.js:1260
+setData @ VM190 @tanstack_react-query.js:935
+fetch @ VM190 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+onSubscribe @ VM190 @tanstack_react-query.js:1344
+subscribe @ VM190 @tanstack_react-query.js:24
+(anonymous) @ VM190 @tanstack_react-query.js:3313
+subscribeToStore @ VM184 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19432
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM184 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18718
+workLoop @ VM184 chunk-RPCDYKBN.js:197
+flushWork @ VM184 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM184 chunk-RPCDYKBN.js:384Understand this error
+VM170 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM170 injected.js:37 [WEEKLY-CHECKIN] Fetching eligible clients...
+VM170 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110971113 401 (Unauthorized)
+apply @ VM170 injected.js:214
+queryFn @ VM306 WeeklyCheckinCard.tsx:121
+fetchFn @ VM190 @tanstack_react-query.js:1101
+run @ VM190 @tanstack_react-query.js:800
+start @ VM190 @tanstack_react-query.js:843
+fetch @ VM190 @tanstack_react-query.js:1148
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+setOptions @ VM190 @tanstack_react-query.js:1401
+(anonymous) @ VM190 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19416
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM184 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM190 @tanstack_react-query.js:103
+flush @ VM190 @tanstack_react-query.js:615
+batch @ VM190 @tanstack_react-query.js:633
+dispatch_fn @ VM190 @tanstack_react-query.js:1260
+setData @ VM190 @tanstack_react-query.js:935
+fetch @ VM190 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+onSubscribe @ VM190 @tanstack_react-query.js:1344
+subscribe @ VM190 @tanstack_react-query.js:24
+(anonymous) @ VM190 @tanstack_react-query.js:3313
+subscribeToStore @ VM184 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19432
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM184 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18718
+workLoop @ VM184 chunk-RPCDYKBN.js:197
+flushWork @ VM184 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM184 chunk-RPCDYKBN.js:384Understand this error
+VM170 injected.js:37 Auth error detected, logging out: HTTP error! status: 401
+VM170 injected.js:214  GET https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/api/weekly-checkin/eligible-clients?nocache=1769110971147 401 (Unauthorized)
+apply @ VM170 injected.js:214
+queryFn @ VM306 WeeklyCheckinCard.tsx:121
+fetchFn @ VM190 @tanstack_react-query.js:1101
+run @ VM190 @tanstack_react-query.js:800
+start @ VM190 @tanstack_react-query.js:843
+fetch @ VM190 @tanstack_react-query.js:1148
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+setOptions @ VM190 @tanstack_react-query.js:1401
+(anonymous) @ VM190 @tanstack_react-query.js:3323
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19416
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM184 chunk-RPCDYKBN.js:18627
+setTimeout
+systemSetTimeoutZero @ VM190 @tanstack_react-query.js:103
+flush @ VM190 @tanstack_react-query.js:615
+batch @ VM190 @tanstack_react-query.js:633
+dispatch_fn @ VM190 @tanstack_react-query.js:1260
+setData @ VM190 @tanstack_react-query.js:935
+fetch @ VM190 @tanstack_react-query.js:1157
+await in fetch
+executeFetch_fn @ VM190 @tanstack_react-query.js:1651
+onSubscribe @ VM190 @tanstack_react-query.js:1344
+subscribe @ VM190 @tanstack_react-query.js:24
+(anonymous) @ VM190 @tanstack_react-query.js:3313
+subscribeToStore @ VM184 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM184 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM184 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM184 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM184 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM184 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM184 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM184 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM184 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM184 chunk-RPCDYKBN.js:19432
+commitRoot @ VM184 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM184 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM184 chunk-RPCDYKBN.js:18718
+workLoop @ VM184 chunk-RPCDYKBN.js:197
+flushWork @ VM184 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM184 chunk-RPCDYKBN.js:384Understand this error
+VM170 injected.js:37 Auth error detected, logging out: HTTP error! status: 

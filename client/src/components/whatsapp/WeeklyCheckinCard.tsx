@@ -186,30 +186,27 @@ export function WeeklyCheckinCard() {
   });
 
   const { data: eligibleData, isLoading: eligibleLoading, refetch: refetchEligible } = useQuery<EligibleClientsResponse>({
-    queryKey: ["/api/weekly-checkin/eligible-clients", Date.now()],
+    queryKey: ["/api/weekly-checkin/eligible-clients"],
     queryFn: async () => {
       console.log("[WEEKLY-CHECKIN] Fetching eligible clients...");
-      const response = await fetch(`/api/weekly-checkin/eligible-clients?nocache=${Date.now()}`, {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache",
-          "Expires": "0",
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      try {
+        const response = await apiRequest("GET", "/api/weekly-checkin/eligible-clients");
+        const data = await response.json();
+        console.log("[WEEKLY-CHECKIN] Eligible clients response:", data);
+        console.log("[WEEKLY-CHECKIN] Eligible count:", data?.eligible?.length || 0);
+        console.log("[WEEKLY-CHECKIN] Excluded count:", data?.excluded?.length || 0);
+        return data;
+      } catch (error: any) {
+        console.log("[WEEKLY-CHECKIN] Error fetching clients:", error?.message);
+        if (error?.message?.includes("401")) {
+          return { eligible: [], excluded: [] };
+        }
+        throw error;
       }
-      const data = await response.json();
-      console.log("[WEEKLY-CHECKIN] Eligible clients response:", JSON.stringify(data));
-      console.log("[WEEKLY-CHECKIN] Eligible count:", data?.eligible?.length || 0);
-      console.log("[WEEKLY-CHECKIN] Excluded count:", data?.excluded?.length || 0);
-      return data;
     },
     staleTime: 0,
     refetchOnMount: "always",
-    gcTime: 0,
+    retry: false,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
