@@ -261,12 +261,13 @@ async function scheduleCheckinForConsultant(
         eq(users.consultantId, consultantId),
         eq(users.role, 'client'),
         eq(users.isActive, true),
+        eq(users.enabledForWeeklyCheckin, true),
         isNotNull(users.phoneNumber)
       )
     );
 
   if (activeClients.length === 0) {
-    console.log(`💤 [WEEKLY-CHECKIN] Consultant ${consultantId}: no active clients with phone numbers`);
+    console.log(`💤 [WEEKLY-CHECKIN] Consultant ${consultantId}: no clients enabled for weekly check-in`);
     return 0;
   }
 

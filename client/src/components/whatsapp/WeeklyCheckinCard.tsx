@@ -97,8 +97,10 @@ interface EligibleClient {
   lastName: string;
   phoneNumber: string;
   isActive: boolean;
+  enabledForWeeklyCheckin: boolean;
   lastCheckinSent: string | null;
   daysSinceLastContact: number | null;
+  blockingReason?: string | null;
   exclusionReason?: string;
 }
 
@@ -230,6 +232,21 @@ export function WeeklyCheckinCard() {
       setTestDialogOpen(false);
       setSelectedClientId("");
       toast({ title: "Check-in di test programmato" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleClientMutation = useMutation({
+    mutationFn: ({ clientId, enabled }: { clientId: string; enabled: boolean }) => 
+      apiRequest("POST", "/api/weekly-checkin/toggle-client", { clientId, enabled }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/eligible-clients"] });
+      toast({ 
+        title: variables.enabled ? "Cliente aggiunto" : "Cliente rimosso",
+        description: variables.enabled ? "Riceverà i check-in settimanali" : "Non riceverà più i check-in"
+      });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -468,19 +485,30 @@ export function WeeklyCheckinCard() {
                       {eligibleData?.eligible?.length || 0} clienti
                     </Badge>
                   </div>
-                  <ScrollArea className="h-[200px] rounded-lg border border-gray-200 dark:border-gray-700 p-2">
+                  <ScrollArea className="h-[200px] rounded-lg border border-green-200 dark:border-green-800 p-2 bg-green-50/30 dark:bg-green-950/20">
                     {(eligibleData?.eligible || []).length === 0 ? (
                       <div className="text-center py-6 text-gray-400 text-sm">
-                        Nessun cliente eligibile al momento
+                        <UserCheck className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                        <p>Nessun cliente selezionato</p>
+                        <p className="text-xs mt-1">Clicca + sui clienti qui sotto per aggiungerli</p>
                       </div>
                     ) : (
                       <div className="space-y-1">
                         {(eligibleData?.eligible || []).map((client) => (
                           <div
                             key={client.id}
-                            className="flex items-center justify-between p-2 rounded-lg bg-green-50/50 dark:bg-green-900/10 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                            className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-gray-800 border border-green-100 dark:border-green-900 hover:border-green-300 transition-colors"
                           >
                             <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => toggleClientMutation.mutate({ clientId: client.id, enabled: false })}
+                                disabled={toggleClientMutation.isPending}
+                              >
+                                <XCircle className="h-5 w-5" />
+                              </Button>
                               <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center text-green-600 font-medium text-sm">
                                 {client.firstName?.[0] || "?"}
                               </div>
@@ -490,17 +518,23 @@ export function WeeklyCheckinCard() {
                                 </p>
                                 <p className="text-xs text-gray-500 flex items-center gap-1">
                                   <Phone className="h-3 w-3" />
-                                  {client.phoneNumber}
+                                  {client.phoneNumber || "Nessun telefono"}
                                 </p>
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex items-center gap-2">
+                              {client.blockingReason && (
+                                <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 border-orange-200">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  {client.blockingReason}
+                                </Badge>
+                              )}
                               {client.daysSinceLastContact !== null ? (
                                 <p className="text-xs text-gray-500">
-                                  Ultimo: {client.daysSinceLastContact} giorni fa
+                                  {client.daysSinceLastContact}g fa
                                 </p>
                               ) : (
-                                <p className="text-xs text-gray-400">Mai contattato</p>
+                                <p className="text-xs text-gray-400">Mai</p>
                               )}
                             </div>
                           </div>
@@ -515,46 +549,70 @@ export function WeeklyCheckinCard() {
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                       <UserX className="h-4 w-4 text-gray-400" />
-                      Clienti Esclusi
+                      Tutti i Clienti
                     </h4>
                     <Badge variant="outline" className="text-gray-500">
-                      {eligibleData?.excluded?.length || 0} clienti
+                      {eligibleData?.excluded?.length || 0} disponibili
                     </Badge>
                   </div>
                   <ScrollArea className="h-[200px] rounded-lg border border-gray-200 dark:border-gray-700 p-2">
                     {(eligibleData?.excluded || []).length === 0 ? (
                       <div className="text-center py-6 text-gray-400 text-sm">
-                        Nessun cliente escluso
+                        Tutti i clienti sono stati selezionati
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        {(eligibleData?.excluded || []).map((client) => (
-                          <div
-                            key={client.id}
-                            className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 font-medium text-sm">
-                                {client.firstName?.[0] || "?"}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                                  {client.firstName} {client.lastName}
-                                </p>
-                                {client.phoneNumber && (
-                                  <p className="text-xs text-gray-400 flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    {client.phoneNumber}
+                        {(eligibleData?.excluded || []).map((client) => {
+                          const canAdd = client.phoneNumber && client.isActive !== false;
+                          return (
+                            <div
+                              key={client.id}
+                              className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
+                                canAdd 
+                                  ? "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-100 dark:border-gray-700" 
+                                  : "bg-gray-100 dark:bg-gray-800/50 opacity-60"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-green-500 hover:text-green-700 hover:bg-green-50 disabled:opacity-30"
+                                  onClick={() => toggleClientMutation.mutate({ clientId: client.id, enabled: true })}
+                                  disabled={!canAdd || toggleClientMutation.isPending}
+                                  title={!canAdd ? client.exclusionReason : "Aggiungi al check-in"}
+                                >
+                                  <CheckCircle2 className="h-5 w-5" />
+                                </Button>
+                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 font-medium text-sm">
+                                  {client.firstName?.[0] || "?"}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                    {client.firstName} {client.lastName}
                                   </p>
-                                )}
+                                  {client.phoneNumber ? (
+                                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                                      <Phone className="h-3 w-3" />
+                                      {client.phoneNumber}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-red-400 flex items-center gap-1">
+                                      <Phone className="h-3 w-3" />
+                                      Nessun telefono
+                                    </p>
+                                  )}
+                                </div>
                               </div>
+                              {client.exclusionReason && client.exclusionReason !== "Non selezionato" && (
+                                <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 border-orange-200">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  {client.exclusionReason}
+                                </Badge>
+                              )}
                             </div>
-                            <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 border-orange-200">
-                              <AlertCircle className="h-3 w-3 mr-1" />
-                              {client.exclusionReason}
-                            </Badge>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </ScrollArea>
