@@ -18,40 +18,48 @@ interface ApprovedTemplateInfo {
 async function fetchApprovedTemplatesForConsultant(
   consultantId: string
 ): Promise<ApprovedTemplateInfo[]> {
-  const templates = await db
-    .select({
-      id: schema.whatsappCustomTemplates.id,
-      name: schema.whatsappCustomTemplates.templateName,
-      twilioContentSid: schema.whatsappTemplateVersions.twilioContentSid,
-      bodyText: schema.whatsappTemplateVersions.body,
-    })
-    .from(schema.whatsappCustomTemplates)
-    .innerJoin(
-      schema.whatsappTemplateVersions,
-      and(
-        eq(schema.whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
-        eq(schema.whatsappTemplateVersions.isActive, true)
+  console.log(`[WEEKLY-CHECKIN] Fetching approved templates for consultant ${consultantId}`);
+  
+  try {
+    const templates = await db
+      .select({
+        id: schema.whatsappCustomTemplates.id,
+        name: schema.whatsappCustomTemplates.templateName,
+        twilioContentSid: schema.whatsappTemplateVersions.twilioContentSid,
+        bodyText: schema.whatsappTemplateVersions.bodyText,
+        useCase: schema.whatsappCustomTemplates.useCase,
+      })
+      .from(schema.whatsappCustomTemplates)
+      .innerJoin(
+        schema.whatsappTemplateVersions,
+        and(
+          eq(schema.whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
+          eq(schema.whatsappTemplateVersions.isActive, true)
+        )
       )
-    )
-    .where(
-      and(
-        eq(schema.whatsappCustomTemplates.consultantId, consultantId),
-        isNotNull(schema.whatsappTemplateVersions.twilioContentSid),
-        ne(schema.whatsappTemplateVersions.twilioContentSid, '')
+      .where(
+        and(
+          eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+          isNotNull(schema.whatsappTemplateVersions.twilioContentSid),
+          ne(schema.whatsappTemplateVersions.twilioContentSid, '')
+        )
       )
-    )
-    .orderBy(schema.whatsappCustomTemplates.templateName);
+      .orderBy(schema.whatsappCustomTemplates.templateName);
 
-  const result: ApprovedTemplateInfo[] = templates.map(t => ({
-    id: t.twilioContentSid!,
-    friendlyName: t.name,
-    bodyText: t.bodyText || '',
-    twilioContentSid: t.twilioContentSid!,
-    approvalStatus: 'approved',
-  }));
+    const result: ApprovedTemplateInfo[] = templates.map(t => ({
+      id: t.twilioContentSid!,
+      friendlyName: t.name,
+      bodyText: t.bodyText || '',
+      twilioContentSid: t.twilioContentSid!,
+      approvalStatus: 'approved',
+    }));
 
-  console.log(`[WEEKLY-CHECKIN] Found ${result.length} approved WhatsApp templates for consultant ${consultantId}`);
-  return result;
+    console.log(`[WEEKLY-CHECKIN] Found ${result.length} approved WhatsApp templates for consultant ${consultantId}`);
+    return result;
+  } catch (error: any) {
+    console.error(`[WEEKLY-CHECKIN] Error in fetchApprovedTemplatesForConsultant:`, error);
+    throw error;
+  }
 }
 
 router.get("/config", authenticateToken, requireRole("consultant"), async (req, res) => {
