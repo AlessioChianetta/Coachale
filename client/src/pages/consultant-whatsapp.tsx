@@ -1479,16 +1479,6 @@ export default function ConsultantWhatsAppPage() {
                   </div>
                 </div>
                 
-                {/* Sezione Leaderboard + Activity Feed */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <AgentLeaderboard 
-                    agents={agentStats}
-                    isLoading={isLoadingStats}
-                    onSelectAgent={(agent) => setSelectedAgent(agent)}
-                  />
-                  <ActivityFeed />
-                </div>
-                
                 {/* Check-in Settimanale Automatico */}
                 <div className="mt-6">
                   <WeeklyCheckinCard />
