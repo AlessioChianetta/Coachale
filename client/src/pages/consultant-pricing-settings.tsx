@@ -1388,38 +1388,35 @@ export default function ConsultantPricingSettingsPage() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="contenuti" className="space-y-6">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <HelpCircle className="h-6 w-6" />
-                      FAQ
-                    </CardTitle>
-                    <CardDescription>
-                      Domande frequenti da mostrare nella pagina prezzi
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label>Domande e Risposte</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addArrayItem("faqs", { question: "", answer: "" })}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Aggiungi FAQ
-                      </Button>
-                    </div>
-                    {formData.faqs.map((faq, index) => (
-                      <Card key={index} className="bg-slate-50">
-                        <CardContent className="pt-4 space-y-3">
-                          <div className="flex justify-between items-start gap-2">
-                            <div className="flex flex-col gap-1">
+              <TabsContent value="contenuti" className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card className="border-0 shadow-lg">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <HelpCircle className="h-4 w-4" />
+                          FAQ
+                        </CardTitle>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => addArrayItem("faqs", { question: "", answer: "" })}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Aggiungi
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {formData.faqs.map((faq, index) => (
+                        <Collapsible key={index} className="bg-slate-50 rounded-md border">
+                          <div className="flex items-center gap-1 p-2">
+                            <div className="flex flex-col">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6"
+                                className="h-5 w-5"
                                 onClick={() => moveArrayItem("faqs", index, "up")}
                                 disabled={index === 0}
                               >
@@ -1428,76 +1425,81 @@ export default function ConsultantPricingSettingsPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6"
+                                className="h-5 w-5"
                                 onClick={() => moveArrayItem("faqs", index, "down")}
                                 disabled={index === formData.faqs.length - 1}
                               >
                                 <ChevronDown className="h-3 w-3" />
                               </Button>
                             </div>
-                            <div className="flex-1 space-y-3">
-                              <Input
-                                value={faq.question}
-                                onChange={(e) => updateArrayItem("faqs", index, { ...faq, question: e.target.value })}
-                                placeholder="Domanda..."
-                              />
-                              <Textarea
-                                value={faq.answer}
-                                onChange={(e) => updateArrayItem("faqs", index, { ...faq, answer: e.target.value })}
-                                placeholder="Risposta..."
-                              />
-                            </div>
+                            <CollapsibleTrigger className="flex-1 text-left">
+                              <div className="flex items-center gap-2">
+                                <HelpCircle className="h-3 w-3 text-muted-foreground shrink-0" />
+                                <span className="text-sm font-medium truncate">
+                                  {faq.question || "Nuova domanda..."}
+                                </span>
+                              </div>
+                            </CollapsibleTrigger>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-6 w-6"
                               onClick={() => removeArrayItem("faqs", index)}
-                              className="text-red-500 hover:text-red-700"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3 text-red-500" />
                             </Button>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {formData.faqs.length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        Nessuna FAQ aggiunta. Clicca "Aggiungi FAQ" per iniziare.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                          <CollapsibleContent className="px-2 pb-2 space-y-2">
+                            <Input
+                              value={faq.question}
+                              onChange={(e) => updateArrayItem("faqs", index, { ...faq, question: e.target.value })}
+                              placeholder="Domanda..."
+                              className="h-8 text-sm"
+                            />
+                            <Textarea
+                              value={faq.answer}
+                              onChange={(e) => updateArrayItem("faqs", index, { ...faq, answer: e.target.value })}
+                              placeholder="Risposta..."
+                              className="min-h-[60px] text-sm"
+                            />
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ))}
+                      {formData.faqs.length === 0 && (
+                        <p className="text-xs text-gray-500 text-center py-3">
+                          Nessuna FAQ aggiunta
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
 
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-6 w-6" />
-                      Testimonianze
-                    </CardTitle>
-                    <CardDescription>
-                      Recensioni e testimonianze dei clienti
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label>Testimonianze</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addArrayItem("testimonials", { name: "", role: "", company: "", content: "", avatarUrl: "", rating: 5 })}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Aggiungi Testimonianza
-                      </Button>
-                    </div>
-                    {formData.testimonials.map((testimonial, index) => (
-                      <Card key={index} className="bg-slate-50">
-                        <CardContent className="pt-4 space-y-3">
-                          <div className="flex justify-between items-start gap-2">
-                            <div className="flex flex-col gap-1">
+                  <Card className="border-0 shadow-lg">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <MessageSquare className="h-4 w-4" />
+                          Testimonianze
+                        </CardTitle>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => addArrayItem("testimonials", { name: "", role: "", company: "", content: "", avatarUrl: "", rating: 5 })}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Aggiungi
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {formData.testimonials.map((testimonial, index) => (
+                        <div key={index} className="bg-slate-50 rounded-md border p-2 space-y-2">
+                          <div className="flex items-start gap-1">
+                            <div className="flex flex-col">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6"
+                                className="h-5 w-5"
                                 onClick={() => moveArrayItem("testimonials", index, "up")}
                                 disabled={index === 0}
                               >
@@ -1506,41 +1508,45 @@ export default function ConsultantPricingSettingsPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6"
+                                className="h-5 w-5"
                                 onClick={() => moveArrayItem("testimonials", index, "down")}
                                 disabled={index === formData.testimonials.length - 1}
                               >
                                 <ChevronDown className="h-3 w-3" />
                               </Button>
                             </div>
-                            <div className="flex-1 space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="flex-1 space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
                                 <Input
                                   value={testimonial.name}
                                   onChange={(e) => updateArrayItem("testimonials", index, { ...testimonial, name: e.target.value })}
                                   placeholder="Nome"
+                                  className="h-8 text-sm"
                                 />
                                 <Input
                                   value={testimonial.role || ""}
                                   onChange={(e) => updateArrayItem("testimonials", index, { ...testimonial, role: e.target.value })}
-                                  placeholder="Ruolo (opzionale)"
+                                  placeholder="Ruolo"
+                                  className="h-8 text-sm"
                                 />
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="grid grid-cols-2 gap-2">
                                 <Input
                                   value={testimonial.company || ""}
                                   onChange={(e) => updateArrayItem("testimonials", index, { ...testimonial, company: e.target.value })}
-                                  placeholder="Azienda (opzionale)"
+                                  placeholder="Azienda"
+                                  className="h-8 text-sm"
                                 />
                                 <Input
                                   value={testimonial.avatarUrl || ""}
                                   onChange={(e) => updateArrayItem("testimonials", index, { ...testimonial, avatarUrl: e.target.value })}
-                                  placeholder="URL Avatar (opzionale)"
+                                  placeholder="URL Avatar"
+                                  className="h-8 text-sm"
                                 />
                               </div>
                               <div className="flex items-center gap-2">
-                                <Label className="text-sm">Valutazione:</Label>
-                                <div className="flex gap-1">
+                                <Label className="text-xs">Rating:</Label>
+                                <div className="flex gap-0.5">
                                   {[1, 2, 3, 4, 5].map((star) => (
                                     <button
                                       key={star}
@@ -1549,7 +1555,7 @@ export default function ConsultantPricingSettingsPage() {
                                       className="focus:outline-none"
                                     >
                                       <Star
-                                        className={`h-5 w-5 ${(testimonial.rating || 5) >= star ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                                        className={`h-4 w-4 ${(testimonial.rating || 5) >= star ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
                                       />
                                     </button>
                                   ))}
@@ -1558,241 +1564,221 @@ export default function ConsultantPricingSettingsPage() {
                               <Textarea
                                 value={testimonial.content}
                                 onChange={(e) => updateArrayItem("testimonials", index, { ...testimonial, content: e.target.value })}
-                                placeholder="Contenuto della testimonianza..."
+                                placeholder="Testimonianza..."
+                                className="min-h-[50px] text-sm"
                               />
                             </div>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-6 w-6"
                               onClick={() => removeArrayItem("testimonials", index)}
-                              className="text-red-500 hover:text-red-700"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3 text-red-500" />
                             </Button>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {formData.testimonials.length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        Nessuna testimonianza aggiunta. Clicca "Aggiungi Testimonianza" per iniziare.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Award className="h-6 w-6" />
-                      Badge di Fiducia
-                    </CardTitle>
-                    <CardDescription>
-                      Icone e testi che aumentano la fiducia dei visitatori
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label>Badge</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addArrayItem("trustBadges", { icon: "shield", text: "" })}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Aggiungi Badge
-                      </Button>
-                    </div>
-                    {formData.trustBadges.map((badge, index) => (
-                      <div key={index} className="flex gap-2 items-center">
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => moveArrayItem("trustBadges", index, "up")}
-                            disabled={index === 0}
-                          >
-                            <ChevronUp className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => moveArrayItem("trustBadges", index, "down")}
-                            disabled={index === formData.trustBadges.length - 1}
-                          >
-                            <ChevronDown className="h-3 w-3" />
-                          </Button>
                         </div>
-                        <Select
-                          value={badge.icon}
-                          onValueChange={(value) => updateArrayItem("trustBadges", index, { ...badge, icon: value })}
-                        >
-                          <SelectTrigger className="w-40">
-                            <SelectValue placeholder="Icona" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="shield">Scudo</SelectItem>
-                            <SelectItem value="lock">Lucchetto</SelectItem>
-                            <SelectItem value="check">Spunta</SelectItem>
-                            <SelectItem value="star">Stella</SelectItem>
-                            <SelectItem value="award">Premio</SelectItem>
-                            <SelectItem value="users">Utenti</SelectItem>
-                            <SelectItem value="clock">Orologio</SelectItem>
-                            <SelectItem value="heart">Cuore</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          value={badge.text}
-                          onChange={(e) => updateArrayItem("trustBadges", index, { ...badge, text: e.target.value })}
-                          placeholder="Testo del badge..."
-                          className="flex-1"
-                        />
+                      ))}
+                      {formData.testimonials.length === 0 && (
+                        <p className="text-xs text-gray-500 text-center py-3">
+                          Nessuna testimonianza aggiunta
+                        </p>
+                      )}
+                    </CardContent>
+
+                    <div className="border-t mx-4" />
+
+                    <CardHeader className="pb-3 pt-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <Award className="h-4 w-4" />
+                          Badge di Fiducia
+                        </CardTitle>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeArrayItem("trustBadges", index)}
-                          className="text-red-500 hover:text-red-700"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => addArrayItem("trustBadges", { icon: "shield", text: "" })}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Plus className="h-3 w-3 mr-1" />
+                          Aggiungi
                         </Button>
                       </div>
-                    ))}
-                    {formData.trustBadges.length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        Nessun badge aggiunto. Clicca "Aggiungi Badge" per iniziare.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardHeader>
+                    <CardContent className="space-y-2 pt-0">
+                      {formData.trustBadges.map((badge, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <div className="flex flex-col">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => moveArrayItem("trustBadges", index, "up")}
+                              disabled={index === 0}
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => moveArrayItem("trustBadges", index, "down")}
+                              disabled={index === formData.trustBadges.length - 1}
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <Select
+                            value={badge.icon}
+                            onValueChange={(value) => updateArrayItem("trustBadges", index, { ...badge, icon: value })}
+                          >
+                            <SelectTrigger className="w-28 h-8 text-sm">
+                              <SelectValue placeholder="Icona" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="shield">Scudo</SelectItem>
+                              <SelectItem value="lock">Lucchetto</SelectItem>
+                              <SelectItem value="check">Spunta</SelectItem>
+                              <SelectItem value="star">Stella</SelectItem>
+                              <SelectItem value="award">Premio</SelectItem>
+                              <SelectItem value="users">Utenti</SelectItem>
+                              <SelectItem value="clock">Orologio</SelectItem>
+                              <SelectItem value="heart">Cuore</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            value={badge.text}
+                            onChange={(e) => updateArrayItem("trustBadges", index, { ...badge, text: e.target.value })}
+                            placeholder="Testo badge..."
+                            className="flex-1 h-8 text-sm"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => removeArrayItem("trustBadges", index)}
+                          >
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                      {formData.trustBadges.length === 0 && (
+                        <p className="text-xs text-gray-500 text-center py-3">
+                          Nessun badge aggiunto
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
-              <TabsContent value="stile" className="space-y-6">
+              <TabsContent value="stile" className="space-y-4">
                 <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Palette className="h-6 w-6" />
-                      Colori e Stile
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Palette className="h-4 w-4" />
+                      Aspetto e Branding
                     </CardTitle>
-                    <CardDescription>
-                      Personalizza l'aspetto della tua pagina prezzi
-                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="accentColor">Colore Accento</Label>
-                      <div className="flex gap-3 items-center">
-                        <input
-                          type="color"
-                          id="accentColorPicker"
-                          value={formData.accentColor}
-                          onChange={(e) => updateField("accentColor", e.target.value)}
-                          className="w-12 h-12 rounded-lg border cursor-pointer"
-                        />
-                        <Input
-                          id="accentColor"
-                          type="text"
-                          placeholder="#6366f1"
-                          value={formData.accentColor}
-                          onChange={(e) => updateField("accentColor", e.target.value)}
-                          className="font-mono flex-1"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Colore principale per pulsanti e accenti (formato HEX)
-                      </p>
-                    </div>
-
-                    {formData.accentColor && (
-                      <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                          Anteprima Colore:
-                        </p>
-                        <div className="flex items-center gap-4">
-                          <div
-                            className="w-16 h-16 rounded-lg shadow-md"
-                            style={{ backgroundColor: formData.accentColor }}
-                          />
-                          <div className="space-y-2">
-                            <Button
-                              size="sm"
-                              style={{ backgroundColor: formData.accentColor }}
-                              className="text-white"
-                            >
-                              Pulsante Esempio
-                            </Button>
-                            <p className="text-sm font-mono">{formData.accentColor}</p>
+                  <CardContent>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="accentColor" className="text-sm">Colore Accento</Label>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="color"
+                              id="accentColorPicker"
+                              value={formData.accentColor}
+                              onChange={(e) => updateField("accentColor", e.target.value)}
+                              className="w-10 h-10 rounded-md border cursor-pointer shrink-0"
+                            />
+                            <Input
+                              id="accentColor"
+                              type="text"
+                              placeholder="#6366f1"
+                              value={formData.accentColor}
+                              onChange={(e) => updateField("accentColor", e.target.value)}
+                              className="font-mono h-8 text-sm flex-1"
+                            />
                           </div>
+                          {formData.accentColor && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <div
+                                className="w-10 h-10 rounded-md shadow-sm shrink-0"
+                                style={{ backgroundColor: formData.accentColor }}
+                              />
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs text-white"
+                                style={{ backgroundColor: formData.accentColor }}
+                              >
+                                Esempio
+                              </Button>
+                              <span className="text-xs font-mono text-muted-foreground">{formData.accentColor}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="backgroundStyle" className="text-sm">Stile Sfondo</Label>
+                          <Select
+                            value={formData.backgroundStyle}
+                            onValueChange={(value: "gradient" | "solid" | "pattern") => updateField("backgroundStyle", value)}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Seleziona stile" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gradient">Gradiente</SelectItem>
+                              <SelectItem value="solid">Colore Solido</SelectItem>
+                              <SelectItem value="pattern">Pattern</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    )}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="backgroundStyle">Stile Sfondo</Label>
-                      <Select
-                        value={formData.backgroundStyle}
-                        onValueChange={(value: "gradient" | "solid" | "pattern") => updateField("backgroundStyle", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona stile" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="gradient">Gradiente</SelectItem>
-                          <SelectItem value="solid">Colore Solido</SelectItem>
-                          <SelectItem value="pattern">Pattern</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Image className="h-6 w-6" />
-                      Logo
-                    </CardTitle>
-                    <CardDescription>
-                      Aggiungi il logo del tuo brand
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="logoUrl">URL Logo</Label>
-                      <div className="relative">
-                        <Image className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <Input
-                          id="logoUrl"
-                          type="url"
-                          placeholder="https://esempio.com/logo.png"
-                          value={formData.logoUrl}
-                          onChange={(e) => updateField("logoUrl", e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        URL dell'immagine del tuo logo (consigliato: formato PNG trasparente)
-                      </p>
-                    </div>
-
-                    {formData.logoUrl && (
-                      <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                          Anteprima Logo:
-                        </p>
-                        <div className="flex items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-lg">
-                          <img
-                            src={formData.logoUrl}
-                            alt="Logo preview"
-                            className="max-h-24 max-w-full object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
-                          />
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="logoUrl" className="text-sm flex items-center gap-1.5">
+                            <Image className="h-3.5 w-3.5" />
+                            Logo URL
+                          </Label>
+                          <div className="relative">
+                            <Image className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              id="logoUrl"
+                              type="url"
+                              placeholder="https://esempio.com/logo.png"
+                              value={formData.logoUrl}
+                              onChange={(e) => updateField("logoUrl", e.target.value)}
+                              className="pl-9 h-8 text-sm"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Formato PNG trasparente consigliato
+                          </p>
                         </div>
+
+                        {formData.logoUrl && (
+                          <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-md">
+                            <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
+                              Anteprima:
+                            </p>
+                            <div className="flex items-center justify-center p-2 bg-white dark:bg-slate-900 rounded-md">
+                              <img
+                                src={formData.logoUrl}
+                                alt="Logo preview"
+                                className="max-h-16 max-w-full object-contain"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
