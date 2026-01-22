@@ -254,6 +254,8 @@ router.get("/templates", authenticateToken, requireRole("consultant"), async (re
 
 router.get("/eligible-clients", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
+    console.log(`[WEEKLY-CHECKIN] Fetching eligible clients for consultant ${req.user!.id}`);
+    
     const [config] = await db
       .select()
       .from(schema.weeklyCheckinConfig)
@@ -261,6 +263,7 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
       .limit(1);
 
     const minDays = config?.minDaysSinceLastContact || 5;
+    console.log(`[WEEKLY-CHECKIN] Config minDays: ${minDays}`);
 
     const allClients = await db
       .select({
@@ -279,6 +282,15 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
         )
       )
       .orderBy(schema.users.firstName);
+    
+    console.log(`[WEEKLY-CHECKIN] Total clients found: ${allClients.length}`);
+    console.log(`[WEEKLY-CHECKIN] Sample clients:`, allClients.slice(0, 3).map(c => ({
+      id: c.id,
+      name: `${c.firstName} ${c.lastName}`,
+      phone: c.phoneNumber ? 'yes' : 'no',
+      isActive: c.isActive,
+      enabledForWeeklyCheckin: c.enabledForWeeklyCheckin
+    })));
 
     const recentLogs = await db
       .select({
@@ -332,6 +344,8 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
       }
     }
 
+    console.log(`[WEEKLY-CHECKIN] Results: eligible=${eligible.length}, excluded=${excluded.length}`);
+    
     res.json({
       eligible,
       excluded,

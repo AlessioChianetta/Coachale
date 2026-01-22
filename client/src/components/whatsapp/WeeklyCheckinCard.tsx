@@ -187,7 +187,14 @@ export function WeeklyCheckinCard() {
 
   const { data: eligibleData, isLoading: eligibleLoading } = useQuery<EligibleClientsResponse>({
     queryKey: ["/api/weekly-checkin/eligible-clients"],
-    queryFn: () => apiRequest("GET", "/api/weekly-checkin/eligible-clients").then(r => r.json()),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/weekly-checkin/eligible-clients");
+      const data = await response.json();
+      console.log("[WEEKLY-CHECKIN] Eligible clients response:", data);
+      console.log("[WEEKLY-CHECKIN] Eligible count:", data?.eligible?.length || 0);
+      console.log("[WEEKLY-CHECKIN] Excluded count:", data?.excluded?.length || 0);
+      return data;
+    },
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
