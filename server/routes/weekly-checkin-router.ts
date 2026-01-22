@@ -46,12 +46,13 @@ async function fetchApprovedTemplatesForConsultant(
       )
       .orderBy(schema.whatsappCustomTemplates.templateName);
 
-    const result: ApprovedTemplateInfo[] = templates.map(t => ({
+    const result = templates.map(t => ({
       id: t.twilioContentSid!,
       friendlyName: t.name,
       bodyText: t.bodyText || '',
       twilioContentSid: t.twilioContentSid!,
       approvalStatus: 'approved',
+      useCase: t.useCase || '',
     }));
 
     console.log(`[WEEKLY-CHECKIN] Found ${result.length} approved WhatsApp templates for consultant ${consultantId}`);

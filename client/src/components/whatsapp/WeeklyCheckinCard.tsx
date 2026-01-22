@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -23,7 +24,8 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  ChevronDown
 } from "lucide-react";
 
 interface CheckinConfig {
@@ -46,7 +48,18 @@ interface WhatsAppTemplate {
   friendlyName: string;
   bodyText: string;
   approvalStatus: string;
+  useCase?: string;
 }
+
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; icon: string }> = {
+  "Setter": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", icon: "bg-blue-500" },
+  "Receptionist": { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", icon: "bg-green-500" },
+  "Follow-up": { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", icon: "bg-orange-500" },
+  "Check-in": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: "bg-purple-500" },
+  "Riattivazione": { bg: "bg-pink-50", text: "text-pink-700", border: "border-pink-200", icon: "bg-pink-500" },
+  "Notifica": { bg: "bg-cyan-50", text: "text-cyan-700", border: "border-cyan-200", icon: "bg-cyan-500" },
+  "Generale": { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", icon: "bg-gray-500" },
+};
 
 interface CheckinLog {
   id: string;
@@ -83,6 +96,7 @@ export function WeeklyCheckinCard() {
   const queryClient = useQueryClient();
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
 
   const { data: config, isLoading: configLoading } = useQuery<CheckinConfig | null>({
     queryKey: ["/api/weekly-checkin/config"],
@@ -91,6 +105,29 @@ export function WeeklyCheckinCard() {
   const { data: templates = [], isLoading: templatesLoading } = useQuery<WhatsAppTemplate[]>({
     queryKey: ["/api/weekly-checkin/templates"],
   });
+
+  const categorizeTemplate = (template: WhatsAppTemplate): string => {
+    const name = (template.friendlyName || "").toLowerCase();
+    const useCase = (template.useCase || "").toLowerCase();
+    
+    if (name.includes("setter") || useCase.includes("setter")) return "Setter";
+    if (name.includes("receptionist") || useCase.includes("receptionist")) return "Receptionist";
+    if (name.includes("follow-up") || name.includes("followup") || useCase.includes("follow")) return "Follow-up";
+    if (name.includes("check") || useCase.includes("check")) return "Check-in";
+    if (name.includes("riattivazione") || name.includes("riattiva") || useCase.includes("riattiva")) return "Riattivazione";
+    if (name.includes("notifica") || name.includes("promemoria") || useCase.includes("notifica")) return "Notifica";
+    return "Generale";
+  };
+
+  const templatesByCategory = useMemo(() => {
+    const grouped: Record<string, WhatsAppTemplate[]> = {};
+    templates.forEach((template) => {
+      const category = categorizeTemplate(template);
+      if (!grouped[category]) grouped[category] = [];
+      grouped[category].push(template);
+    });
+    return grouped;
+  }, [templates]);
 
   const { data: logs = [] } = useQuery<CheckinLog[]>({
     queryKey: ["/api/weekly-checkin/logs?limit=5"],
@@ -269,40 +306,87 @@ export function WeeklyCheckinCard() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-              {templates.map((template) => {
-                const isSelected = config?.templateIds?.includes(template.id) || false;
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+              {Object.entries(templatesByCategory).map(([categoryName, categoryTemplates]) => {
+                const isOpen = openCategories.has(categoryName);
+                const colors = CATEGORY_COLORS[categoryName] || CATEGORY_COLORS["Generale"];
+                const selectedInCategory = categoryTemplates.filter(t => 
+                  config?.templateIds?.includes(t.id)
+                ).length;
+                
                 return (
-                  <label
-                    key={template.id}
-                    className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
-                      isSelected
-                        ? "border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-200 hover:bg-gray-50 dark:hover:bg-gray-750"
-                    }`}
+                  <Collapsible
+                    key={categoryName}
+                    open={isOpen}
+                    onOpenChange={(open) => {
+                      setOpenCategories(prev => {
+                        const newSet = new Set(prev);
+                        if (open) {
+                          newSet.add(categoryName);
+                        } else {
+                          newSet.delete(categoryName);
+                        }
+                        return newSet;
+                      });
+                    }}
                   >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked) => handleTemplateToggle(template.id, checked as boolean)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {template.friendlyName}
-                        </span>
-                        <Badge className="text-xs bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400">
-                          Approvato
-                        </Badge>
+                    <CollapsibleTrigger asChild>
+                      <div className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full ${colors.icon}`}></div>
+                          <span className={`font-semibold ${colors.text}`}>{categoryName}</span>
+                          <Badge variant="outline" className={`text-xs ${colors.bg} ${colors.text} ${colors.border}`}>
+                            {categoryTemplates.length} template
+                          </Badge>
+                          {selectedInCategory > 0 && (
+                            <Badge className="bg-purple-500 text-white text-xs">
+                              {selectedInCategory} selezionati
+                            </Badge>
+                          )}
+                        </div>
+                        <ChevronDown className={`h-4 w-4 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
-                        {template.bodyText || "Template senza corpo visibile"}
-                      </p>
-                      <p className="text-xs text-gray-400 font-mono mt-2">
-                        {template.id}
-                      </p>
-                    </div>
-                  </label>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <div className="space-y-2 pl-2">
+                        {categoryTemplates.map((template) => {
+                          const isSelected = config?.templateIds?.includes(template.id) || false;
+                          return (
+                            <label
+                              key={template.id}
+                              className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
+                                isSelected
+                                  ? "border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-200 hover:bg-gray-50"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => handleTemplateToggle(template.id, checked as boolean)}
+                                className="mt-1"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {template.friendlyName}
+                                  </span>
+                                  <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+                                    Approvato
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
+                                  {template.bodyText || "Template senza corpo visibile"}
+                                </p>
+                                <p className="text-xs text-gray-400 font-mono mt-2">
+                                  {template.id}
+                                </p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 );
               })}
             </div>
