@@ -126,6 +126,7 @@ import { EmployeeRoster } from "@/components/whatsapp/EmployeeRoster";
 import { AgentProfilePanel } from "@/components/whatsapp/AgentProfilePanel";
 import { AgentLeaderboard } from "@/components/whatsapp/AgentLeaderboard";
 import { ActivityFeed } from "@/components/whatsapp/ActivityFeed";
+import { WeeklyCheckinCard } from "@/components/whatsapp/WeeklyCheckinCard";
 import { LevelBadge } from "@/components/whatsapp/LevelBadge";
 import { Progress } from "@/components/ui/progress";
 import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_avatar.png";
@@ -1486,6 +1487,11 @@ export default function ConsultantWhatsAppPage() {
                     onSelectAgent={(agent) => setSelectedAgent(agent)}
                   />
                   <ActivityFeed />
+                </div>
+                
+                {/* Check-in Settimanale Automatico */}
+                <div className="mt-6">
+                  <WeeklyCheckinCard />
                 </div>
               </div>
             )}

@@ -105,6 +105,7 @@ import clientGoogleDriveRouter from "./routes/client/client-google-drive";
 import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
 import followupApiRouter from "./routes/followup-api";
+import weeklyCheckinRouter from "./routes/weekly-checkin-router";
 import fileSearchRouter from "./routes/file-search";
 import echoRouter from "./routes/echo";
 import aiAssistantRouter from "./routes/ai-assistant-router";
@@ -12612,6 +12613,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Follow-up Automation API routes
   app.use("/api/followup", followupApiRouter);
+
+  // Weekly Check-in Automation API routes
+  app.use("/api/weekly-checkin", weeklyCheckinRouter);
 
   // Gemini File Search routes (RAG document retrieval)
   app.use("/api/file-search", fileSearchRouter);

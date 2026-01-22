@@ -2403,6 +2403,61 @@ Quando apri una conversazione, puoi:
 
 ---
 
+### 8.4 Check-in Settimanale Automatico
+
+Sistema di contatto proattivo che invia messaggi personalizzati ai tuoi clienti ogni settimana per verificare come stanno e se hanno bisogno di aiuto.
+
+**📍 Dove Trovarlo**
+```
+Sidebar → COMUNICAZIONE → WhatsApp → Tab "I Miei Agenti"
+Scorri in basso fino alla card "Check-in Settimanale Automatico"
+```
+
+**🎯 Cosa Fa**
+
+Il sistema:
+- Contatta automaticamente ~1/7 dei tuoi clienti ogni giorno
+- Usa template diversi in rotazione per evitare ripetitività
+- Personalizza i messaggi con AI (nome, ultimo esercizio, progressi)
+- Invia a orari variabili per sembrare più naturale
+- Traccia risposte e statistiche
+
+**⚙️ Configurazione**
+
+| Impostazione | Descrizione |
+|--------------|-------------|
+| Toggle ON/OFF | Attiva o disattiva la funzionalità |
+| Orario invio | Finestra oraria per l'invio (es. 09:00 - 18:00) |
+| Giorni attivi | Giorni in cui inviare (escludi weekend se vuoi) |
+| Personalizzazione AI | Arricchisce i messaggi con contesto cliente |
+| Giorni esclusione | Non contattare clienti sentiti negli ultimi N giorni |
+
+**📝 Template Predefiniti**
+
+5 template di sistema inclusi:
+1. Check-in Amichevole - "Ciao! Come stai?"
+2. Focus Progressi - "Come sta andando questa settimana?"
+3. Focus Esercizi - "Come procede con [esercizio]?"
+4. Offerta Supporto - "Se hai bisogno, sono qui!"
+5. Post Consulenza - "Come stai mettendo in pratica?"
+
+Puoi anche creare template personalizzati dalla card.
+
+**📊 Statistiche Visualizzate**
+
+- Messaggi inviati totali
+- Risposte ricevute
+- Tasso di risposta (%)
+
+**💡 Best Practice**
+
+1. Inizia con template semplici e amichevoli
+2. Attiva la personalizzazione AI per messaggi più coinvolgenti
+3. Escludi weekend per non disturbare i clienti
+4. Controlla le statistiche settimanalmente per ottimizzare
+
+---
+
 # Capitolo 8b: Instagram DM Integration
 
 ## 📍 Dove Trovarlo

@@ -22,6 +22,7 @@ import { initFileSearchScheduler } from "./cron/file-search-scheduler";
 import { initMemorySummaryScheduler } from "./cron/memory-summary-scheduler";
 import { startNurturingScheduler } from "./cron/nurturing-scheduler";
 import { initDynamicContextScheduler } from "./cron/dynamic-context-scheduler";
+import { startWeeklyCheckinScheduler } from "./cron/weekly-checkin-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -382,6 +383,17 @@ app.use((req, res, next) => {
     log("✅ Follow-up scheduler started");
   } else {
     log("⚡ Follow-up scheduler is disabled (set FOLLOWUP_SCHEDULER_ENABLED=true to enable)");
+  }
+
+  // Setup Weekly Check-in Scheduler for automated client check-ins
+  const weeklyCheckinEnabled = schedulersMasterEnabled && process.env.WEEKLY_CHECKIN_ENABLED !== "false";
+  
+  if (weeklyCheckinEnabled) {
+    log("📅 Weekly check-in scheduler enabled - starting scheduler...");
+    startWeeklyCheckinScheduler();
+    log("✅ Weekly check-in scheduler started (08:00 Europe/Rome daily)");
+  } else {
+    log("📅 Weekly check-in scheduler is disabled (set WEEKLY_CHECKIN_ENABLED=true to enable)");
   }
   
   // Start nurturing scheduler for 365-day email sequences
