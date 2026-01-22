@@ -548,15 +548,15 @@ async function validateBronzeAuth(
       });
     }
     
-    // Get the monthly limit from consultant's pricing settings (not from user record)
-    const [pricingConfig] = await db
-      .select({ level1DailyMessageLimit: schema.pricingPageConfigs.level1DailyMessageLimit })
-      .from(schema.pricingPageConfigs)
-      .where(eq(schema.pricingPageConfigs.consultantId, bronzeUser.consultantId))
+    // Get the monthly limit from consultant's pricing settings (pricingPageConfig in users table)
+    const [consultantData] = await db
+      .select({ pricingPageConfig: schema.users.pricingPageConfig })
+      .from(schema.users)
+      .where(eq(schema.users.id, bronzeUser.consultantId))
       .limit(1);
     
     // Use consultant's configured limit, fallback to 100 (monthly max)
-    const monthlyLimit = pricingConfig?.level1DailyMessageLimit || 100;
+    const monthlyLimit = (consultantData?.pricingPageConfig as any)?.level1DailyMessageLimit || 100;
     
     // Attach Bronze user info to request
     req.bronzeUser = {
@@ -1267,15 +1267,15 @@ router.post(
           return res.status(401).json({ error: 'Utente Bronze non trovato' });
         }
         
-        // Get the monthly limit from consultant's pricing settings (not from user record)
-        const [pricingConfig] = await db
-          .select({ level1DailyMessageLimit: schema.pricingPageConfigs.level1DailyMessageLimit })
-          .from(schema.pricingPageConfigs)
-          .where(eq(schema.pricingPageConfigs.consultantId, agentConfig.consultantId))
+        // Get the monthly limit from consultant's pricing settings (pricingPageConfig in users table)
+        const [consultantData] = await db
+          .select({ pricingPageConfig: schema.users.pricingPageConfig })
+          .from(schema.users)
+          .where(eq(schema.users.id, agentConfig.consultantId))
           .limit(1);
         
         // Use consultant's configured limit, fallback to 100 (monthly max)
-        const monthlyLimit = pricingConfig?.level1DailyMessageLimit || 100;
+        const monthlyLimit = (consultantData?.pricingPageConfig as any)?.level1DailyMessageLimit || 100;
         
         let monthlyUsed = freshBronzeUser.dailyMessagesUsed;
         

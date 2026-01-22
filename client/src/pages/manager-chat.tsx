@@ -1683,11 +1683,20 @@ export default function ManagerChat() {
             </div>
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {bronzeUsage && (
-                <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30">
-                  <MessageSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-600 dark:text-amber-400" />
-                  <span className="text-[10px] sm:text-xs font-medium text-amber-700 dark:text-amber-300">
-                    {bronzeUsage.dailyMessagesUsed}/{bronzeUsage.dailyMessageLimit}
-                  </span>
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
+                  <MessageSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <div className="flex flex-col gap-0.5 min-w-[50px]">
+                    <span className="text-[10px] sm:text-xs font-medium text-amber-700 dark:text-amber-300">
+                      {bronzeUsage.dailyMessagesUsed}/{bronzeUsage.dailyMessageLimit}
+                    </span>
+                    <div className="h-1 bg-amber-200 dark:bg-amber-900/50 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-amber-500 dark:bg-amber-400 rounded-full transition-all duration-300"
+                        style={{ width: `${bronzeUsage.dailyMessageLimit > 0 ? Math.min(100, (bronzeUsage.dailyMessagesUsed / bronzeUsage.dailyMessageLimit) * 100) : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="hidden sm:block text-[9px] text-amber-600 dark:text-amber-400/80">/mese</span>
                 </div>
               )}
               {managerInfo && (
