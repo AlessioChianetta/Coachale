@@ -260,6 +260,9 @@ router.get("/consultant/pricing/users/bronze", authenticateToken, requireRole("c
 router.get("/consultant/pricing/users/silver", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
 
     const silverUsers = await db.select({
       id: clientLevelSubscriptions.id,
@@ -279,7 +282,9 @@ router.get("/consultant/pricing/users/silver", authenticateToken, requireRole("c
           eq(clientLevelSubscriptions.level, "2")
         )
       )
-      .orderBy(clientLevelSubscriptions.createdAt);
+      .orderBy(clientLevelSubscriptions.createdAt)
+      .limit(limit)
+      .offset(offset);
 
     const totalResult = await db.select({ count: count() })
       .from(clientLevelSubscriptions)
@@ -290,9 +295,14 @@ router.get("/consultant/pricing/users/silver", authenticateToken, requireRole("c
         )
       );
 
+    const total = Number(totalResult[0]?.count || 0);
+    const totalPages = Math.ceil(total / limit);
+
     res.json({
       users: silverUsers,
-      total: totalResult[0]?.count || 0,
+      total,
+      page,
+      totalPages,
     });
   } catch (error) {
     console.error("[Consultant Pricing] Get silver users error:", error);
@@ -304,6 +314,9 @@ router.get("/consultant/pricing/users/silver", authenticateToken, requireRole("c
 router.get("/consultant/pricing/users/gold", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
 
     const goldUsers = await db.select({
       id: clientLevelSubscriptions.id,
@@ -323,7 +336,9 @@ router.get("/consultant/pricing/users/gold", authenticateToken, requireRole("con
           eq(clientLevelSubscriptions.level, "3")
         )
       )
-      .orderBy(clientLevelSubscriptions.createdAt);
+      .orderBy(clientLevelSubscriptions.createdAt)
+      .limit(limit)
+      .offset(offset);
 
     const totalResult = await db.select({ count: count() })
       .from(clientLevelSubscriptions)
@@ -334,9 +349,14 @@ router.get("/consultant/pricing/users/gold", authenticateToken, requireRole("con
         )
       );
 
+    const total = Number(totalResult[0]?.count || 0);
+    const totalPages = Math.ceil(total / limit);
+
     res.json({
       users: goldUsers,
-      total: totalResult[0]?.count || 0,
+      total,
+      page,
+      totalPages,
     });
   } catch (error) {
     console.error("[Consultant Pricing] Get gold users error:", error);

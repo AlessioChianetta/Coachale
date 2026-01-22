@@ -409,6 +409,8 @@ export default function ConsultantWhatsAppPage() {
   // Stati per gestione utenti (sezione Licenze)
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [bronzeCurrentPage, setBronzeCurrentPage] = useState(1);
+  const [silverCurrentPage, setSilverCurrentPage] = useState(1);
+  const [goldCurrentPage, setGoldCurrentPage] = useState(1);
   const [userManagementTab, setUserManagementTab] = useState<"bronze" | "silver" | "gold">("bronze");
   const [userToDelete, setUserToDelete] = useState<{ id: string; email: string } | null>(null);
   const [subscriptionSourceTab, setSubscriptionSourceTab] = useState<"stripe_connect" | "direct_link">("stripe_connect");
@@ -691,17 +693,19 @@ export default function ConsultantWhatsAppPage() {
   });
 
   const silverUsersQuery = useQuery({
-    queryKey: ["/api/consultant/pricing/users/silver"],
+    queryKey: ["/api/consultant/pricing/users/silver", silverCurrentPage],
     queryFn: async () => {
-      const res = await fetch("/api/consultant/pricing/users/silver", { headers: getAuthHeaders() });
+      const params = new URLSearchParams({ page: silverCurrentPage.toString(), limit: "10" });
+      const res = await fetch(`/api/consultant/pricing/users/silver?${params}`, { headers: getAuthHeaders() });
       return res.json();
     }
   });
 
   const goldUsersQuery = useQuery({
-    queryKey: ["/api/consultant/pricing/users/gold"],
+    queryKey: ["/api/consultant/pricing/users/gold", goldCurrentPage],
     queryFn: async () => {
-      const res = await fetch("/api/consultant/pricing/users/gold", { headers: getAuthHeaders() });
+      const params = new URLSearchParams({ page: goldCurrentPage.toString(), limit: "10" });
+      const res = await fetch(`/api/consultant/pricing/users/gold?${params}`, { headers: getAuthHeaders() });
       return res.json();
     }
   });
@@ -2879,6 +2883,18 @@ export default function ConsultantWhatsAppPage() {
 
                   {/* Silver Users Tab */}
                   <TabsContent value="silver" className="space-y-4">
+                    {/* Info bar */}
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>
+                        {silverUsersQuery.data?.total || 0} utenti Argento totali
+                      </span>
+                      {silverUsersQuery.data?.totalPages > 1 && (
+                        <span>
+                          Pagina {silverCurrentPage} di {silverUsersQuery.data.totalPages}
+                        </span>
+                      )}
+                    </div>
+                    
                     {silverUsersQuery.isLoading ? (
                       <div className="flex items-center justify-center p-8">
                         <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
@@ -2966,12 +2982,49 @@ export default function ConsultantWhatsAppPage() {
                             </div>
                           ))}
                         </div>
+                        
+                        {/* Pagination */}
+                        {silverUsersQuery.data.totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSilverCurrentPage(p => Math.max(1, p - 1))}
+                              disabled={silverCurrentPage === 1}
+                            >
+                              Precedente
+                            </Button>
+                            <span className="text-sm text-gray-500">
+                              Pagina {silverCurrentPage} di {silverUsersQuery.data.totalPages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSilverCurrentPage(p => Math.min(silverUsersQuery.data.totalPages, p + 1))}
+                              disabled={silverCurrentPage >= silverUsersQuery.data.totalPages}
+                            >
+                              Successiva
+                            </Button>
+                          </div>
+                        )}
                       </>
                     )}
                   </TabsContent>
 
                   {/* Gold Users Tab */}
                   <TabsContent value="gold" className="space-y-4">
+                    {/* Info bar */}
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>
+                        {goldUsersQuery.data?.total || 0} utenti Oro totali
+                      </span>
+                      {goldUsersQuery.data?.totalPages > 1 && (
+                        <span>
+                          Pagina {goldCurrentPage} di {goldUsersQuery.data.totalPages}
+                        </span>
+                      )}
+                    </div>
+                    
                     {goldUsersQuery.isLoading ? (
                       <div className="flex items-center justify-center p-8">
                         <Loader2 className="h-6 w-6 animate-spin text-yellow-500" />
@@ -3036,6 +3089,31 @@ export default function ConsultantWhatsAppPage() {
                             </div>
                           ))}
                         </div>
+                        
+                        {/* Pagination */}
+                        {goldUsersQuery.data.totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setGoldCurrentPage(p => Math.max(1, p - 1))}
+                              disabled={goldCurrentPage === 1}
+                            >
+                              Precedente
+                            </Button>
+                            <span className="text-sm text-gray-500">
+                              Pagina {goldCurrentPage} di {goldUsersQuery.data.totalPages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setGoldCurrentPage(p => Math.min(goldUsersQuery.data.totalPages, p + 1))}
+                              disabled={goldCurrentPage >= goldUsersQuery.data.totalPages}
+                            >
+                              Successiva
+                            </Button>
+                          </div>
+                        )}
                       </>
                     )}
                   </TabsContent>
