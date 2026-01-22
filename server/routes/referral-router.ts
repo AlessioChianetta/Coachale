@@ -975,6 +975,10 @@ router.post("/public/optin/:consultantId/submit", async (req, res) => {
       source: "optin", // This is the key field!
       status: "pending",
       contactSchedule: new Date(),
+      // Email settings - enable welcome email and nurturing by default for optin leads
+      welcomeEmailEnabled: true,
+      nurturingEnabled: true,
+      nurturingStartDate: new Date(),
       leadInfo: {
         email: email.toLowerCase(),
         // Qualification fields
