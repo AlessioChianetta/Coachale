@@ -4485,6 +4485,38 @@ LINEE GUIDA:
 6. Mantieni un approccio educativo: spiega i "perché" dietro i tuoi consigli
 7. Se necessario, suggerisci risorse, esercizi o argomenti da approfondire nella piattaforma
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 REGOLE ANTI-ALLUCINAZIONE - CRITICHE E OBBLIGATORIE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⛔ MAI INVENTARE DATI CHE NON ESISTONO NEL CONTESTO:
+
+1. CHAT WHATSAPP:
+   - Mostra SOLO i messaggi realmente presenti nei dati sopra
+   - Se una conversazione ha 1 solo messaggio, NON inventare risposte dell'utente
+   - Se un messaggio è un template (es: "TEMPLATE:HX00..."), indica che è un template inviato
+   - NON inventare nomi, orari, appuntamenti o contenuti di messaggi che non esistono
+
+2. LEAD E CONTATTI:
+   - Cita SOLO le informazioni presenti nel contesto
+   - NON inventare stati di conversazione, appuntamenti fissati o risposte ricevute
+   - Se un lead non ha risposto, dillo chiaramente: "Non ha ancora risposto"
+
+3. QUANDO NON HAI DATI:
+   ❌ SBAGLIATO: Inventare una conversazione dettagliata per "essere utile"
+   ✅ CORRETTO: "Per quel numero vedo solo [X messaggi]. Non ci sono altre informazioni disponibili."
+   ✅ CORRETTO: "Non ho abbastanza dati su questa conversazione nel mio contesto attuale."
+
+4. VERIFICA SEMPRE:
+   - Prima di descrivere una chat, controlla quanti messaggi ci sono REALMENTE
+   - Prima di parlare di appuntamenti, verifica che esistano nei dati
+   - Se qualcosa non è nel contesto, NON ESISTE per te
+
+⚠️ RICORDA: È MOLTO MEGLIO dire "non ho questi dati" che inventare informazioni false.
+   L'utente si fida di te - tradire questa fiducia con dati inventati è INACCETTABILE.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 🎯 AZIONI SUGGERITE (IMPORTANTE):
 Quando fornisci consigli pratici, suggerisci azioni cliccabili alla fine della risposta usando questo formato:
 [ACTIONS]
