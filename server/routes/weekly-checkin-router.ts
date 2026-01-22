@@ -261,8 +261,6 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
       .limit(1);
 
     const minDays = config?.minDaysSinceLastContact || 5;
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - minDays);
 
     const allClients = await db
       .select({
@@ -271,6 +269,7 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
         lastName: schema.users.lastName,
         phoneNumber: schema.users.phoneNumber,
         isActive: schema.users.isActive,
+        enabledForWeeklyCheckin: schema.users.enabledForWeeklyCheckin,
       })
       .from(schema.users)
       .where(
@@ -307,25 +306,29 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
         : null;
 
       const clientData = {
-        ...client,
+        id: client.id,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        phoneNumber: client.phoneNumber,
+        isActive: client.isActive,
+        enabledForWeeklyCheckin: client.enabledForWeeklyCheckin,
         lastCheckinSent: lastSent?.toISOString() || null,
         daysSinceLastContact,
       };
 
-      let exclusionReason: string | null = null;
-
+      let blockingReason: string | null = null;
       if (!client.phoneNumber) {
-        exclusionReason = "Nessun numero di telefono";
+        blockingReason = "Nessun numero di telefono";
       } else if (client.isActive === false) {
-        exclusionReason = "Cliente non attivo";
+        blockingReason = "Cliente non attivo";
       } else if (daysSinceLastContact !== null && daysSinceLastContact < minDays) {
-        exclusionReason = `Contattato ${daysSinceLastContact} giorni fa (minimo: ${minDays})`;
+        blockingReason = `Contattato ${daysSinceLastContact} giorni fa (minimo: ${minDays})`;
       }
 
-      if (exclusionReason) {
-        excluded.push({ ...clientData, exclusionReason });
+      if (client.enabledForWeeklyCheckin === true) {
+        eligible.push({ ...clientData, blockingReason });
       } else {
-        eligible.push(clientData);
+        excluded.push({ ...clientData, exclusionReason: blockingReason || "Non selezionato" });
       }
     }
 
@@ -339,6 +342,47 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
     });
   } catch (error: any) {
     console.error("Error fetching eligible clients:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post("/toggle-client", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const { clientId, enabled } = req.body;
+
+    if (!clientId || typeof enabled !== "boolean") {
+      return res.status(400).json({ message: "clientId and enabled (boolean) are required" });
+    }
+
+    const [client] = await db
+      .select()
+      .from(schema.users)
+      .where(
+        and(
+          eq(schema.users.id, clientId),
+          eq(schema.users.consultantId, req.user!.id),
+          eq(schema.users.role, "client")
+        )
+      )
+      .limit(1);
+
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    await db
+      .update(schema.users)
+      .set({ enabledForWeeklyCheckin: enabled })
+      .where(eq(schema.users.id, clientId));
+
+    res.json({ 
+      success: true, 
+      clientId, 
+      enabled,
+      message: enabled ? "Cliente abilitato per check-in" : "Cliente rimosso dal check-in"
+    });
+  } catch (error: any) {
+    console.error("Error toggling client check-in status:", error);
     res.status(500).json({ message: error.message });
   }
 });
