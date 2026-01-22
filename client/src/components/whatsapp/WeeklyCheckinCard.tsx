@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,7 +27,15 @@ import {
   XCircle,
   Loader2,
   MessageSquare,
-  ChevronDown
+  ChevronDown,
+  History,
+  UserCheck,
+  UserX,
+  Phone,
+  AlertCircle,
+  BarChart3,
+  Settings,
+  PlayCircle
 } from "lucide-react";
 
 interface CheckinConfig {
@@ -81,6 +91,36 @@ interface Client {
   phoneNumber: string;
 }
 
+interface EligibleClient {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  status: string;
+  lastCheckinSent: string | null;
+  daysSinceLastContact: number | null;
+  exclusionReason?: string;
+}
+
+interface EligibleClientsResponse {
+  eligible: EligibleClient[];
+  excluded: (EligibleClient & { exclusionReason: string })[];
+  config: {
+    isEnabled: boolean;
+    minDaysSinceLastContact: number;
+  };
+}
+
+interface LogsResponse {
+  logs: CheckinLog[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 const DAYS = [
   { value: 0, label: "Dom" },
   { value: 1, label: "Lun" },
@@ -129,12 +169,22 @@ export function WeeklyCheckinCard() {
     return grouped;
   }, [templates]);
 
-  const { data: logs = [] } = useQuery<CheckinLog[]>({
-    queryKey: ["/api/weekly-checkin/logs?limit=5"],
+  const [logsPage, setLogsPage] = useState(1);
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  const { data: logsData } = useQuery<LogsResponse>({
+    queryKey: ["/api/weekly-checkin/logs", logsPage],
+    queryFn: () => apiRequest("GET", `/api/weekly-checkin/logs?page=${logsPage}&limit=10`).then(r => r.json()),
   });
 
-  const { data: stats } = useQuery<{ totalSent: number; totalResponses: number; responseRate: number }>({
+  const logs = logsData?.logs || [];
+
+  const { data: stats } = useQuery<{ totalSent: number; totalResponses: number; responseRate: number; lastRunAt: string | null }>({
     queryKey: ["/api/weekly-checkin/stats"],
+  });
+
+  const { data: eligibleData, isLoading: eligibleLoading } = useQuery<EligibleClientsResponse>({
+    queryKey: ["/api/weekly-checkin/eligible-clients"],
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
@@ -256,29 +306,351 @@ export function WeeklyCheckinCard() {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats?.totalSent || 0}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Messaggi Inviati</div>
-          </div>
-          <div className="text-center p-4 rounded-xl bg-green-50 dark:bg-green-900/20">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {stats?.totalResponses || 0}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Risposte</div>
-          </div>
-          <div className="text-center p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20">
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {stats?.responseRate || 0}%
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Tasso Risposta</div>
-          </div>
-        </div>
+      <CardContent className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsTrigger value="dashboard" className="text-xs gap-1">
+              <BarChart3 className="h-3 w-3" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="clients" className="text-xs gap-1">
+              <Users className="h-3 w-3" />
+              Clienti
+            </TabsTrigger>
+            <TabsTrigger value="history" className="text-xs gap-1">
+              <History className="h-3 w-3" />
+              Cronologia
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs gap-1">
+              <Settings className="h-3 w-3" />
+              Impostazioni
+            </TabsTrigger>
+          </TabsList>
 
-        <Separator />
+          <TabsContent value="dashboard" className="space-y-4 mt-0">
+            {/* Statistiche */}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="text-center p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  {stats?.totalSent || 0}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Inviati</div>
+              </div>
+              <div className="text-center p-3 rounded-xl bg-green-50 dark:bg-green-900/20">
+                <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                  {stats?.totalResponses || 0}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Risposte</div>
+              </div>
+              <div className="text-center p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20">
+                <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                  {stats?.responseRate || 0}%
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Tasso</div>
+              </div>
+              <div className="text-center p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20">
+                <div className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                  {eligibleData?.eligible?.length || 0}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Prossimi</div>
+              </div>
+            </div>
+
+            {/* Ultimi invii */}
+            {logs.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  Ultimi Check-in
+                </h4>
+                <div className="space-y-2">
+                  {logs.slice(0, 3).map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center gap-3 p-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
+                    >
+                      {getStatusIcon(log.status)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {log.clientName || log.phoneNumber}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {log.status === "sent" ? "Inviato" : log.status === "replied" ? "Risposto" : log.status}
+                      </Badge>
+                      <span className="text-xs text-gray-400 whitespace-nowrap">
+                        {formatDate(log.sentAt || log.scheduledFor)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {logs.length > 3 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full text-xs text-blue-600"
+                    onClick={() => setActiveTab("history")}
+                  >
+                    Vedi tutta la cronologia
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Quick Test */}
+            <div className="pt-2">
+              <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full gap-2">
+                    <PlayCircle className="h-4 w-4" />
+                    Invia Check-in di Test
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Invia Check-in di Test</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <p className="text-sm text-gray-500">
+                      Invia un messaggio di test a un cliente per verificare che tutto funzioni correttamente.
+                    </p>
+                    <div className="space-y-2">
+                      <Label>Seleziona Cliente</Label>
+                      <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Scegli un cliente..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients
+                            .filter((c: any) => c.phoneNumber)
+                            .map((client: any) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.firstName} {client.lastName} - {client.phoneNumber}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      onClick={() => testMutation.mutate(selectedClientId)}
+                      disabled={!selectedClientId || testMutation.isPending}
+                      className="w-full"
+                    >
+                      {testMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2" />
+                      )}
+                      Invia Test
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="clients" className="space-y-4 mt-0">
+            {eligibleLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Clienti Eligibili */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-green-500" />
+                      Clienti che Riceveranno il Check-in
+                    </h4>
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      {eligibleData?.eligible?.length || 0} clienti
+                    </Badge>
+                  </div>
+                  <ScrollArea className="h-[200px] rounded-lg border border-gray-200 dark:border-gray-700 p-2">
+                    {(eligibleData?.eligible || []).length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 text-sm">
+                        Nessun cliente eligibile al momento
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {(eligibleData?.eligible || []).map((client) => (
+                          <div
+                            key={client.id}
+                            className="flex items-center justify-between p-2 rounded-lg bg-green-50/50 dark:bg-green-900/10 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center text-green-600 font-medium text-sm">
+                                {client.firstName?.[0] || "?"}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {client.firstName} {client.lastName}
+                                </p>
+                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {client.phoneNumber}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {client.daysSinceLastContact !== null ? (
+                                <p className="text-xs text-gray-500">
+                                  Ultimo: {client.daysSinceLastContact} giorni fa
+                                </p>
+                              ) : (
+                                <p className="text-xs text-gray-400">Mai contattato</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+
+                {/* Clienti Esclusi */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <UserX className="h-4 w-4 text-gray-400" />
+                      Clienti Esclusi
+                    </h4>
+                    <Badge variant="outline" className="text-gray-500">
+                      {eligibleData?.excluded?.length || 0} clienti
+                    </Badge>
+                  </div>
+                  <ScrollArea className="h-[200px] rounded-lg border border-gray-200 dark:border-gray-700 p-2">
+                    {(eligibleData?.excluded || []).length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 text-sm">
+                        Nessun cliente escluso
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {(eligibleData?.excluded || []).map((client) => (
+                          <div
+                            key={client.id}
+                            className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 font-medium text-sm">
+                                {client.firstName?.[0] || "?"}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                  {client.firstName} {client.lastName}
+                                </p>
+                                {client.phoneNumber && (
+                                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                                    <Phone className="h-3 w-3" />
+                                    {client.phoneNumber}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 border-orange-200">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {client.exclusionReason}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4 mt-0">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  Cronologia Invii
+                </h4>
+                {logsData?.pagination && (
+                  <span className="text-xs text-gray-400">
+                    {logsData.pagination.total} totali
+                  </span>
+                )}
+              </div>
+
+              <ScrollArea className="h-[350px] rounded-lg border border-gray-200 dark:border-gray-700 p-2">
+                {logs.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nessun check-in inviato</p>
+                    <p className="text-xs mt-1">I messaggi appariranno qui dopo l'invio</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {logs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
+                      >
+                        {getStatusIcon(log.status)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {log.clientName || log.phoneNumber}
+                            </p>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                log.status === "sent" ? "text-blue-600 bg-blue-50 border-blue-200" :
+                                log.status === "replied" ? "text-green-600 bg-green-50 border-green-200" :
+                                log.status === "failed" ? "text-red-600 bg-red-50 border-red-200" :
+                                "text-gray-600"
+                              }`}
+                            >
+                              {log.status === "sent" ? "Inviato" : 
+                               log.status === "replied" ? "Risposto" : 
+                               log.status === "failed" ? "Fallito" :
+                               log.status === "scheduled" ? "Programmato" : log.status}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                            {log.personalizedMessage || log.templateName}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {formatDate(log.sentAt || log.scheduledFor)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+
+              {logsData?.pagination && logsData.pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLogsPage(p => Math.max(1, p - 1))}
+                    disabled={logsPage === 1}
+                  >
+                    Precedente
+                  </Button>
+                  <span className="text-xs text-gray-500">
+                    Pagina {logsPage} di {logsData.pagination.totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLogsPage(p => Math.min(logsData.pagination.totalPages, p + 1))}
+                    disabled={logsPage === logsData.pagination.totalPages}
+                  >
+                    Successiva
+                  </Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-4 mt-0">
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -519,83 +891,8 @@ export function WeeklyCheckinCard() {
             </div>
           </div>
         </div>
-
-        {Array.isArray(logs) && logs.length > 0 && (
-          <>
-            <Separator />
-            <div className="space-y-3">
-              <h4 className="font-semibold text-gray-900 dark:text-white">Ultimi Check-in</h4>
-              <div className="space-y-2">
-                {logs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
-                  >
-                    {getStatusIcon(log.status)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {log.clientName || log.phoneNumber}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {log.personalizedMessage || log.templateName}
-                      </p>
-                    </div>
-                    <span className="text-xs text-gray-400 whitespace-nowrap">
-                      {formatDate(log.sentAt || log.scheduledFor)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        <div className="pt-2">
-          <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full gap-2">
-                <Send className="h-4 w-4" />
-                Invia Check-in di Test
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Invia Check-in di Test</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Seleziona Cliente</Label>
-                  <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Scegli un cliente..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients
-                        .filter((c: any) => c.phoneNumber)
-                        .map((client: any) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.firstName} {client.lastName} - {client.phoneNumber}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  onClick={() => testMutation.mutate(selectedClientId)}
-                  disabled={!selectedClientId || testMutation.isPending}
-                  className="w-full"
-                >
-                  {testMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Invia Test
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

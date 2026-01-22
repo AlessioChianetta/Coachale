@@ -252,6 +252,100 @@ router.get("/templates", authenticateToken, requireRole("consultant"), async (re
   }
 });
 
+router.get("/eligible-clients", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const [config] = await db
+      .select()
+      .from(schema.weeklyCheckinConfig)
+      .where(eq(schema.weeklyCheckinConfig.consultantId, req.user!.id))
+      .limit(1);
+
+    const minDays = config?.minDaysSinceLastContact || 5;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - minDays);
+
+    const allClients = await db
+      .select({
+        id: schema.users.id,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        phoneNumber: schema.users.phoneNumber,
+        status: schema.users.status,
+        excludeFromCheckin: schema.users.excludeFromCheckin,
+      })
+      .from(schema.users)
+      .where(
+        and(
+          eq(schema.users.consultantId, req.user!.id),
+          eq(schema.users.role, "client")
+        )
+      )
+      .orderBy(schema.users.firstName);
+
+    const recentLogs = await db
+      .select({
+        clientId: schema.weeklyCheckinLogs.clientId,
+        lastSent: sql<string>`MAX(${schema.weeklyCheckinLogs.sentAt})`,
+      })
+      .from(schema.weeklyCheckinLogs)
+      .where(
+        and(
+          eq(schema.weeklyCheckinLogs.consultantId, req.user!.id),
+          isNotNull(schema.weeklyCheckinLogs.sentAt)
+        )
+      )
+      .groupBy(schema.weeklyCheckinLogs.clientId);
+
+    const recentLogMap = new Map(recentLogs.map(l => [l.clientId, new Date(l.lastSent)]));
+
+    const eligible: any[] = [];
+    const excluded: any[] = [];
+
+    for (const client of allClients) {
+      const lastSent = recentLogMap.get(client.id);
+      const daysSinceLastContact = lastSent 
+        ? Math.floor((Date.now() - lastSent.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      const clientData = {
+        ...client,
+        lastCheckinSent: lastSent?.toISOString() || null,
+        daysSinceLastContact,
+      };
+
+      let exclusionReason: string | null = null;
+
+      if (!client.phoneNumber) {
+        exclusionReason = "Nessun numero di telefono";
+      } else if (client.excludeFromCheckin) {
+        exclusionReason = "Escluso manualmente";
+      } else if (client.status === "inactive" || client.status === "archived") {
+        exclusionReason = `Cliente ${client.status}`;
+      } else if (daysSinceLastContact !== null && daysSinceLastContact < minDays) {
+        exclusionReason = `Contattato ${daysSinceLastContact} giorni fa (minimo: ${minDays})`;
+      }
+
+      if (exclusionReason) {
+        excluded.push({ ...clientData, exclusionReason });
+      } else {
+        eligible.push(clientData);
+      }
+    }
+
+    res.json({
+      eligible,
+      excluded,
+      config: {
+        isEnabled: config?.isEnabled || false,
+        minDaysSinceLastContact: minDays,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching eligible clients:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.post("/test", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { clientId, templateId } = req.body;
