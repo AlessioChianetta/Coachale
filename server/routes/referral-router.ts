@@ -976,9 +976,25 @@ router.post("/public/optin/:consultantId/submit", async (req, res) => {
       status: "pending",
       contactSchedule: new Date(),
       leadInfo: {
+        email: email.toLowerCase(),
+        // Qualification fields
+        role: qualificationRole || null,
+        companyType: qualificationCompanyType || null,
+        sector: qualificationSector || null,
+        employeeCount: qualificationEmployeeCount || null,
+        annualRevenue: qualificationAnnualRevenue || null,
+        currentCompany: qualificationCurrentCompany || null,
+        currentPosition: qualificationCurrentPosition || null,
+        yearsExperience: qualificationYearsExperience || null,
+        fieldOfStudy: qualificationFieldOfStudy || null,
+        university: qualificationUniversity || null,
+        motivation: qualificationMotivation || null,
+        biggestProblem: qualificationBiggestProblem || null,
+        goal12Months: qualificationGoal12Months || null,
+        currentBlocker: qualificationCurrentBlocker || null,
+        // Legacy fields for compatibility
         obiettivi: qualificationGoal12Months || "",
         desideri: qualificationMotivation || "",
-        email: email.toLowerCase(),
       },
     }).returning();
 
