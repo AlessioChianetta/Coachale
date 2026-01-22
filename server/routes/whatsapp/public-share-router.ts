@@ -548,16 +548,26 @@ async function validateBronzeAuth(
       });
     }
     
+    // Get the monthly limit from consultant's pricing settings (not from user record)
+    const [pricingConfig] = await db
+      .select({ level1DailyMessageLimit: schema.pricingPageConfigs.level1DailyMessageLimit })
+      .from(schema.pricingPageConfigs)
+      .where(eq(schema.pricingPageConfigs.consultantId, bronzeUser.consultantId))
+      .limit(1);
+    
+    // Use consultant's configured limit, fallback to 100 (monthly max)
+    const monthlyLimit = pricingConfig?.level1DailyMessageLimit || 100;
+    
     // Attach Bronze user info to request
     req.bronzeUser = {
       bronzeUserId: bronzeUser.id,
       consultantId: bronzeUser.consultantId,
       email: bronzeUser.email,
       dailyMessagesUsed: bronzeUser.dailyMessagesUsed,
-      dailyMessageLimit: bronzeUser.dailyMessageLimit,
+      dailyMessageLimit: monthlyLimit,
     };
     
-    console.log(`✅ [BRONZE AUTH] Valid token for user ${bronzeUser.email}`);
+    console.log(`✅ [BRONZE AUTH] Valid token for user ${bronzeUser.email}, monthly limit: ${monthlyLimit}`);
     next();
   } catch (error: any) {
     console.error('Bronze auth validation error:', error);
@@ -1244,7 +1254,7 @@ router.post(
       // Bronze user message limit check (Level 1 agents only)
       let bronzeUsageInfo: { dailyMessagesUsed: number; dailyMessageLimit: number; remaining: number } | null = null;
       if (bronzeUser && agentConfig.level === "1") {
-        console.log(`\n🔒 [BRONZE LIMIT] Checking message limits for ${bronzeUser.email}...`);
+        console.log(`\n🔒 [BRONZE LIMIT] Checking monthly message limits for ${bronzeUser.email}...`);
         
         // Get fresh Bronze user data
         const [freshBronzeUser] = await db
@@ -1257,13 +1267,22 @@ router.post(
           return res.status(401).json({ error: 'Utente Bronze non trovato' });
         }
         
-        let dailyUsed = freshBronzeUser.dailyMessagesUsed;
-        const dailyLimit = freshBronzeUser.dailyMessageLimit;
+        // Get the monthly limit from consultant's pricing settings (not from user record)
+        const [pricingConfig] = await db
+          .select({ level1DailyMessageLimit: schema.pricingPageConfigs.level1DailyMessageLimit })
+          .from(schema.pricingPageConfigs)
+          .where(eq(schema.pricingPageConfigs.consultantId, agentConfig.consultantId))
+          .limit(1);
+        
+        // Use consultant's configured limit, fallback to 100 (monthly max)
+        const monthlyLimit = pricingConfig?.level1DailyMessageLimit || 100;
+        
+        let monthlyUsed = freshBronzeUser.dailyMessagesUsed;
         
         // Reset counter if new month
         if (isNewMonth(freshBronzeUser.lastMessageResetAt)) {
           console.log(`   📅 New month detected, resetting counter`);
-          dailyUsed = 0;
+          monthlyUsed = 0;
           await db
             .update(schema.bronzeUsers)
             .set({
@@ -1274,22 +1293,22 @@ router.post(
         }
         
         // Check if limit reached - return SSE stream with friendly message instead of 429
-        if (dailyUsed >= dailyLimit) {
-          console.log(`   ⛔ Daily limit reached: ${dailyUsed}/${dailyLimit}`);
+        if (monthlyUsed >= monthlyLimit) {
+          console.log(`   ⛔ Monthly limit reached: ${monthlyUsed}/${monthlyLimit}`);
           
           // Setup SSE headers for streaming response
           res.setHeader('Content-Type', 'text/event-stream');
           res.setHeader('Cache-Control', 'no-cache');
           res.setHeader('Connection', 'keep-alive');
           
-          const limitMessage = `Hey! 😊 Hai raggiunto il limite di ${dailyLimit} messaggi giornalieri del piano Bronze gratuito.\n\nPuoi:\n• 🔄 **Tornare domani** per altri ${dailyLimit} messaggi gratis\n• ⬆️ **Passare al piano Argento** per messaggi illimitati e risposte più veloci\n\nClicca sull'icona del profilo in alto a destra per vedere le opzioni di upgrade! 🚀`;
+          const limitMessage = `Hey! 😊 Hai raggiunto il limite di ${monthlyLimit} messaggi mensili del piano Bronze gratuito.\n\nPuoi:\n• 🔄 **Attendere il prossimo mese** per altri ${monthlyLimit} messaggi gratis\n• ⬆️ **Passare al piano Argento** per messaggi illimitati e risposte più veloci\n\nClicca sull'icona del profilo in alto a destra per vedere le opzioni di upgrade! 🚀`;
           
           res.write(`data: ${JSON.stringify({ type: 'chunk', content: limitMessage })}\n\n`);
           res.write(`data: ${JSON.stringify({ 
             type: 'complete', 
             conversationId: null,
-            dailyMessagesUsed: dailyUsed,
-            dailyMessageLimit: dailyLimit,
+            dailyMessagesUsed: monthlyUsed,
+            dailyMessageLimit: monthlyLimit,
             remaining: 0,
             limitReached: true
           })}\n\n`);
@@ -1297,7 +1316,7 @@ router.post(
         }
         
         // Increment usage counter
-        const newUsage = dailyUsed + 1;
+        const newUsage = monthlyUsed + 1;
         await db
           .update(schema.bronzeUsers)
           .set({
@@ -1307,11 +1326,11 @@ router.post(
         
         bronzeUsageInfo = {
           dailyMessagesUsed: newUsage,
-          dailyMessageLimit: dailyLimit,
-          remaining: dailyLimit - newUsage,
+          dailyMessageLimit: monthlyLimit,
+          remaining: monthlyLimit - newUsage,
         };
         
-        console.log(`   ✅ Message allowed: ${newUsage}/${dailyLimit} (remaining: ${bronzeUsageInfo.remaining})`);
+        console.log(`   ✅ Message allowed: ${newUsage}/${monthlyLimit} (remaining: ${bronzeUsageInfo.remaining})`);
       }
       
       // Get or create conversation
