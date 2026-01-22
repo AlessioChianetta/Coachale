@@ -121,6 +121,12 @@ export function detectIntent(message: string): UserIntent {
     return 'consultations';
   }
 
+  // Lead Management - domande sui lead proattivi, statistiche, conversioni
+  if (lower.match(/lead|contatt[io].*proattiv[io]|quanti.*contatt[io]|quanti.*potenzial[io]|convert[it]|conversion[ei]|campagn[ae].*market|nurturing|prospect/i)) {
+    console.log(`🎯 [INTENT: lead_management] Domanda sui lead rilevata → carico statistiche lead complete`);
+    return 'lead_management';
+  }
+
   return 'general';
 }
 
