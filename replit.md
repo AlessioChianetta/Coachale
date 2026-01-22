@@ -15,6 +15,7 @@ AI is extensively integrated throughout the platform, providing:
 - Consultation summarization, generating summary emails and tasks from transcripts.
 - AI-powered WhatsApp Business and Instagram Direct Messaging integration via Twilio and Meta Graph API.
 - Configurable AI sales agents and a 100% AI-driven follow-up system.
+- Automated weekly client check-ins via WhatsApp with AI-personalized messages, template rotation, and response tracking.
 - AI tools for generating courses, pathways, and multi-language exercises.
 - A ChatGPT-style AI Assistant with dynamic model selection, reasoning visualization, and conversation memory, supported by a hybrid AI context system combining real-time data and file search documents with hourly automatic synchronization.
 - Token optimization strategies combining intent detection, conditional queries, caching, and RAG.

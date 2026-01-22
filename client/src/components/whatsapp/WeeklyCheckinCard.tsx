@@ -102,7 +102,7 @@ export function WeeklyCheckinCard() {
   });
 
   const { data: logs = [], isLoading: logsLoading } = useQuery<CheckinLog[]>({
-    queryKey: ["/api/weekly-checkin/logs", { limit: 5 }],
+    queryKey: ["/api/weekly-checkin/logs?limit=5"],
   });
 
   const { data: stats } = useQuery<{ totalSent: number; totalResponses: number; responseRate: number }>({
