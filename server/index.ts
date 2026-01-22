@@ -21,6 +21,7 @@ import { initInstagramWindowCleanup } from "./cron/instagram-window-cleanup";
 import { initFileSearchScheduler } from "./cron/file-search-scheduler";
 import { initMemorySummaryScheduler } from "./cron/memory-summary-scheduler";
 import { startNurturingScheduler } from "./cron/nurturing-scheduler";
+import { initDynamicContextScheduler } from "./cron/dynamic-context-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -424,6 +425,17 @@ app.use((req, res, next) => {
     log("✅ Memory summary scheduler started");
   } else {
     log("🧠 Memory summary scheduler is disabled (set MEMORY_SUMMARY_ENABLED=true to enable)");
+  }
+
+  // Setup Dynamic Context Scheduler (Hourly at :30)
+  const dynamicContextEnabled = schedulersMasterEnabled && process.env.DYNAMIC_CONTEXT_ENABLED !== "false";
+  
+  if (dynamicContextEnabled) {
+    log("📄 Dynamic context scheduler enabled - starting scheduler (every hour at :30 Europe/Rome)...");
+    initDynamicContextScheduler();
+    log("✅ Dynamic context scheduler started");
+  } else {
+    log("📄 Dynamic context scheduler is disabled (set DYNAMIC_CONTEXT_ENABLED=true to enable)");
   }
 
   // Setup Finance Data Pre-fetch Scheduler (Daily at 6:00 AM)

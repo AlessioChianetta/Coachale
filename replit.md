@@ -36,6 +36,11 @@ The platform extensively uses AI for:
 - **Follow-up Automation**: 100% AI-driven follow-up system.
 - **Content Generation**: AI tools for creating courses, pathways, and multi-language exercises.
 - **AI Assistant**: A ChatGPT-style interface with dynamic model selection, reasoning visualization, and conversation memory.
+- **AI Context System (Hybrid)**: Combines real-time data (consultant-context-builder) with File Search documents for deep historical context:
+  - Real-time: Lead metrics, client data, exercises, calendar events
+  - File Search: WhatsApp conversation history (200 conversations, 30 days), Lead Hub metrics, AI limitations document
+  - Hourly automatic sync (cron at :30) + manual sync button in AI Assistant UI
+  - Endpoint: POST /api/ai-assistant/sync-context
 - **Token Optimization**: A hybrid strategy combining intent detection, conditional queries, caching, and RAG to reduce AI token consumption.
 
 ## Subscription & Licensing

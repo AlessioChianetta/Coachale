@@ -13,6 +13,7 @@ import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth"
 import { buildWhatsAppAgentPrompt } from "../whatsapp/agent-consultant-chat-service";
 import { conversationMemoryService } from "../services/conversation-memory/memory-service";
 import { getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import { syncDynamicDocuments, previewDynamicDocuments } from "../ai/dynamic-context-documents";
 
 const router = Router();
 
@@ -1041,6 +1042,57 @@ router.post("/memory/manager/:subscriptionId/generate", authenticateToken, requi
   } catch (error: any) {
     console.error("[AI Assistant] Error generating manager memory:", error);
     res.status(500).json({ error: error.message || "Failed to generate manager memory" });
+  }
+});
+
+/**
+ * POST /api/ai-assistant/sync-context
+ * Sync dynamic context documents to File Search
+ * This uploads/updates conversation history, lead metrics, and AI limitations docs
+ */
+router.post("/sync-context", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    console.log(`🔄 [AI Context Sync] Manual sync triggered by consultant ${consultantId.substring(0, 8)}...`);
+
+    const result = await syncDynamicDocuments(consultantId);
+
+    res.json({
+      success: result.totalDocuments > 0,
+      message: `Sincronizzati ${result.totalDocuments}/3 documenti`,
+      details: {
+        conversationHistory: result.conversationHistory,
+        leadHubMetrics: result.leadHubMetrics,
+        aiLimitations: result.aiLimitations,
+      },
+      syncedAt: result.syncedAt,
+    });
+  } catch (error: any) {
+    console.error("[AI Context Sync] Error syncing context:", error);
+    res.status(500).json({ error: error.message || "Errore durante la sincronizzazione" });
+  }
+});
+
+/**
+ * GET /api/ai-assistant/sync-context/preview
+ * Preview what would be synced without actually uploading
+ */
+router.get("/sync-context/preview", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const preview = await previewDynamicDocuments(consultantId);
+
+    res.json({
+      success: true,
+      preview,
+      totalTokensEstimate: 
+        preview.conversationHistory.tokensEstimate + 
+        preview.leadHubMetrics.tokensEstimate + 
+        preview.aiLimitations.tokensEstimate,
+    });
+  } catch (error: any) {
+    console.error("[AI Context Sync] Error generating preview:", error);
+    res.status(500).json({ error: error.message || "Errore durante la generazione dell'anteprima" });
   }
 });
 

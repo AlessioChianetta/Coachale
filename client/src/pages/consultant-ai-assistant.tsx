@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2, Filter, Brain } from "lucide-react";
+import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2, Filter, Brain, RefreshCw } from "lucide-react";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea, AIModel, ThinkingLevel, AttachedFile } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
@@ -183,6 +183,30 @@ export default function ConsultantAIAssistant() {
     : conversationFilter === "base"
       ? conversations.filter((c) => !c.agentId || c.agentId === null)
       : conversations.filter((c) => c.agentId === conversationFilter);
+
+  const syncContextMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/ai-assistant/sync-context", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to sync context");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Contesto sincronizzato",
+        description: data.message || "I documenti di contesto sono stati aggiornati",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Non è stato possibile sincronizzare il contesto",
+        variant: "destructive",
+      });
+    },
+  });
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
@@ -615,6 +639,17 @@ export default function ConsultantAIAssistant() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => syncContextMutation.mutate()}
+                    disabled={syncContextMutation.isPending}
+                    className="text-slate-600 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
+                    title="Sincronizza contesto AI (conversazioni, metriche lead)"
+                  >
+                    <RefreshCw className={cn("h-4 w-4", syncContextMutation.isPending && "animate-spin")} />
+                    <span className="ml-1 hidden sm:inline text-xs">Sync</span>
+                  </Button>
                   <ConversationMemoryPopover />
                   <AIPreferencesSheet />
                   <ClientAIPreferencesManager />
