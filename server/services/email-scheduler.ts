@@ -5,6 +5,31 @@ import { storage } from "../storage";
 import { generateMotivationalEmail } from "../ai/email-template-generator";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
+
+const ITALY_TIMEZONE = "Europe/Rome";
+const SEND_HOUR = 13; // 13:00 Italian time
+
+/**
+ * Get the current time in Italian timezone.
+ * This ensures all date calculations use Italian time.
+ */
+function getItalianNow(): Date {
+  return toZonedTime(new Date(), ITALY_TIMEZONE);
+}
+
+/**
+ * Set a date to 13:00 Italian time (Europe/Rome timezone).
+ * This ensures emails are always scheduled at 13:00 Italian time regardless of server timezone.
+ */
+function setToItalianTime(date: Date, hour: number = SEND_HOUR): Date {
+  // Convert UTC date to Italian timezone to get the correct day
+  const italianDate = toZonedTime(date, ITALY_TIMEZONE);
+  // Set to the desired hour in Italian time
+  italianDate.setHours(hour, 0, 0, 0);
+  // Convert back from Italian time to UTC
+  return fromZonedTime(italianDate, ITALY_TIMEZONE);
+}
 
 /**
  * Calculate which template day to use based on current day and month length.
@@ -185,13 +210,13 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
     const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
     const emailFrequencyDays = smtpSettings?.emailFrequencyDays || 2; // Default to 2 days if not configured
     
-    // Calculate today's template day (with end-of-month remapping)
-    const now = new Date();
+    // Calculate today's template day (with end-of-month remapping) using Italian timezone
+    const now = getItalianNow();
     const currentDay = now.getDate();
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const todayTemplateDay = calculateTemplateDay(currentDay, lastDayOfMonth);
     
-    console.log(`📅 Today: ${now.toLocaleDateString('it-IT')} → Calendar day ${currentDay}, Template ${todayTemplateDay}/${lastDayOfMonth}`);
+    console.log(`📅 Today (Italy): ${now.toLocaleDateString('it-IT')} → Calendar day ${currentDay}, Template ${todayTemplateDay}/${lastDayOfMonth}`);
     
     // Check which clients should receive a new email for today's template
     const clientsToEmail = [];
@@ -257,10 +282,10 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
         const lastEmailDate = lastEmail.sentAt ? new Date(lastEmail.sentAt) : new Date();
         
         // Calculate the scheduled send date (last email date + frequency days)
-        const scheduledSendDate = new Date(lastEmailDate);
-        scheduledSendDate.setDate(scheduledSendDate.getDate() + emailFrequencyDays);
-        // Always set to 13:00 of that day
-        scheduledSendDate.setHours(13, 0, 0, 0);
+        const scheduledSendDateBase = new Date(lastEmailDate);
+        scheduledSendDateBase.setDate(scheduledSendDateBase.getDate() + emailFrequencyDays);
+        // Always set to 13:00 Italian time (Europe/Rome)
+        const scheduledSendDate = setToItalianTime(scheduledSendDateBase);
         
         // Generate email only if current time is >= scheduled send time (13:00 of the scheduled day)
         if (now >= scheduledSendDate) {
@@ -333,14 +358,14 @@ async function sendAutomatedEmailToClient(client: {
       );
     }
     
-    // ⚡ USE CURRENT CALENDAR DAY instead of journey counter
-    const now = new Date();
-    const currentDay = now.getDate(); // Get day of month (1-31) from current date
+    // ⚡ USE CURRENT CALENDAR DAY in Italian timezone instead of journey counter
+    const now = getItalianNow();
+    const currentDay = now.getDate(); // Get day of month (1-31) from current date in Italian timezone
     
     // Calculate last day of current month
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     
-    console.log(`📅 Calendario: ${now.toLocaleDateString('it-IT')} → Giorno ${currentDay}/${lastDayOfMonth} del mese`);
+    console.log(`📅 Calendario (Italy): ${now.toLocaleDateString('it-IT')} → Giorno ${currentDay}/${lastDayOfMonth} del mese`);
     
     // Use dynamic template selection based on calendar day
     const templateDay = calculateTemplateDay(currentDay, lastDayOfMonth);
@@ -714,10 +739,10 @@ export async function sendAutomatedEmails(): Promise<{
           
           // Update lastSchedulerRun and reset schedulerStatus (releases lock)
           const emailFrequencyDays = smtpSettings.emailFrequencyDays || 2;
-          const nextRun = new Date(executionStartTime);
-          nextRun.setDate(nextRun.getDate() + emailFrequencyDays);
-          // Always set next run to 13:00 (1:00 PM)
-          nextRun.setHours(13, 0, 0, 0);
+          const nextRunBase = new Date(executionStartTime);
+          nextRunBase.setDate(nextRunBase.getDate() + emailFrequencyDays);
+          // Always set next run to 13:00 Italian time (Europe/Rome)
+          const nextRun = setToItalianTime(nextRunBase);
           
           await withRetry(() => storage.updateSchedulerStatus(consultant.id, {
             lastSchedulerRun: executionStartTime,
@@ -772,10 +797,10 @@ export async function sendAutomatedEmails(): Promise<{
         
         // Update lastSchedulerRun, nextSchedulerRun and reset schedulerStatus (releases lock)
         const emailFrequencyDays = smtpSettings.emailFrequencyDays || 2;
-        const nextRun = new Date(executionStartTime);
-        nextRun.setDate(nextRun.getDate() + emailFrequencyDays);
-        // Always set next run to 13:00 (1:00 PM)
-        nextRun.setHours(13, 0, 0, 0);
+        const nextRunBase = new Date(executionStartTime);
+        nextRunBase.setDate(nextRunBase.getDate() + emailFrequencyDays);
+        // Always set next run to 13:00 Italian time (Europe/Rome)
+        const nextRun = setToItalianTime(nextRunBase);
         
         await withRetry(() => storage.updateSchedulerStatus(consultant.id, {
           lastSchedulerRun: executionStartTime,
