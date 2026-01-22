@@ -159,6 +159,7 @@ interface HierarchicalData {
       exercises: SyncedDocument[];
       university: SyncedDocument[];
       consultantGuide: SyncedDocument[];
+      dynamicContext: SyncedDocument[];
       other: SyncedDocument[];
     };
     totals: {
@@ -167,7 +168,10 @@ interface HierarchicalData {
       exercises: number;
       university: number;
       consultantGuide: number;
+      dynamicContext: number;
     };
+    dynamicContextAutoSync?: boolean;
+    lastDynamicContextSync?: string | null;
   };
   clientStores: Array<{
     clientId: string;
@@ -315,6 +319,12 @@ interface AuditData {
       indexed: number;
       missing: Array<{ id: string; title: string }>;
       outdated?: OutdatedDocument[];
+    };
+    dynamicContext?: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; title: string }>;
+      outdated: Array<{ id: string; title: string; indexedAt: Date | null }>;
     };
   };
   clients: Array<{
@@ -1753,6 +1763,35 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
+  const updateDynamicContextAutoSyncMutation = useMutation({
+    mutationFn: async (autoSync: boolean) => {
+      const response = await fetch("/api/file-search/stores/consultant/dynamic-context-settings", {
+        method: "PATCH",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ autoSync }),
+      });
+      if (!response.ok) throw new Error("Failed to update dynamic context settings");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      toast({
+        title: "Impostazioni aggiornate",
+        description: data.message || "Sincronizzazione automatica contesto AI aggiornata.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'aggiornamento delle impostazioni",
+        variant: "destructive",
+      });
+    },
+  });
+
   const [openAuditCategories, setOpenAuditCategories] = useState<Record<string, boolean>>({});
   const [openExternalDocsClients, setOpenExternalDocsClients] = useState<Record<string, boolean>>({});
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
@@ -2413,7 +2452,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           (hData?.consultantStore.totals.knowledgeBase || 0) + 
                                           (hData?.consultantStore.totals.exercises || 0) + 
                                           (hData?.consultantStore.totals.university || 0) +
-                                          (hData?.consultantStore.totals.consultantGuide || 0);
+                                          (hData?.consultantStore.totals.consultantGuide || 0) +
+                                          (hData?.consultantStore.totals.dynamicContext || 0);
                   const clientsTotal = hData?.clientStores.reduce((sum, c) => sum + c.totals.total, 0) || 0;
                   
                   const groupByDocumentType = (docs: SyncedDocument[]) => {
@@ -2578,6 +2618,31 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                         ))
                                       ) : (
                                         <p className="text-gray-400 text-sm p-2 italic">Nessuna guida piattaforma</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['dynamicContext']} onOpenChange={() => toggleCategory('dynamicContext')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-purple-50 rounded-lg transition-colors border border-transparent hover:border-purple-100">
+                                      {openCategories['dynamicContext'] ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                                      <Brain className="h-5 w-5 text-purple-600" />
+                                      <span className="font-medium text-gray-800">Contesto AI Dinamico</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.dynamicContext || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.dynamicContext || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.dynamicContext || []).length > 0 ? (
+                                        (hData.consultantStore.documents.dynamicContext || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento di contesto AI</p>
                                       )}
                                     </CollapsibleContent>
                                   </Collapsible>
@@ -3865,6 +3930,75 @@ export default function ConsultantFileSearchAnalyticsPage() {
                   </CardContent>
                 </Card>
 
+                <Card className="border-purple-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-purple-700">
+                      <Brain className="h-5 w-5" />
+                      Contesto AI Dinamico
+                    </CardTitle>
+                    <CardDescription>
+                      Configura la sincronizzazione automatica dei documenti di contesto AI generati dalla piattaforma.
+                      Questi documenti includono lo storico conversazioni WhatsApp, le metriche Lead Hub e le limitazioni dell'assistente.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="space-y-1">
+                        <Label className="text-base font-medium text-purple-900">Sincronizzazione Automatica</Label>
+                        <p className="text-sm text-purple-700">
+                          Sincronizza automaticamente i documenti di contesto AI ogni ora (alle :30)
+                        </p>
+                      </div>
+                      <Switch
+                        checked={analytics?.hierarchicalData?.consultantStore?.dynamicContextAutoSync ?? true}
+                        onCheckedChange={(checked) => updateDynamicContextAutoSyncMutation.mutate(checked)}
+                        disabled={updateDynamicContextAutoSyncMutation.isPending}
+                      />
+                    </div>
+                    
+                    {analytics?.hierarchicalData?.consultantStore?.lastDynamicContextSync && (
+                      <p className="text-sm text-purple-600 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Ultima sincronizzazione: {new Date(analytics.hierarchicalData.consultantStore.lastDynamicContextSync).toLocaleString('it-IT')}
+                      </p>
+                    )}
+                    
+                    <div className="pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                        onClick={() => syncSingleMutation.mutate({ type: 'dynamic_context', id: 'all' })}
+                        disabled={syncSingleMutation.isPending}
+                      >
+                        {syncSingleMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Sincronizza Ora
+                      </Button>
+                    </div>
+                    
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <h5 className="font-medium text-sm text-gray-700 mb-2">Documenti inclusi:</h5>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        <li className="flex items-center gap-2">
+                          <MessageSquare className="h-3 w-3 text-green-500" />
+                          Storico Conversazioni WhatsApp (ultime 200 conversazioni)
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <BarChart3 className="h-3 w-3 text-blue-500" />
+                          Metriche Hub Lead Proattivo
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <AlertCircle className="h-3 w-3 text-amber-500" />
+                          Limitazioni Assistente AI
+                        </li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card className="border-red-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-red-600">
@@ -4176,6 +4310,105 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                       variant="outline"
                                       className="border-amber-300 text-amber-700 hover:bg-amber-100"
                                       onClick={() => syncSingleMutation.mutate({ type: 'consultant_guide', id: 'guide' })}
+                                      disabled={syncSingleMutation.isPending}
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="h-3 w-3 mr-1" />
+                                          Aggiorna
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    <Collapsible open={openAuditCategories['dynamicContext']} onOpenChange={() => toggleAuditCategory('dynamicContext')}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
+                        {openAuditCategories['dynamicContext'] ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                        <Brain className="h-4 w-4 text-purple-600" />
+                        <span className="font-medium text-purple-900">Contesto AI Dinamico</span>
+                        <div className="ml-auto flex items-center gap-2">
+                          {(auditData?.consultant?.dynamicContext?.missing?.length || 0) > 0 && (
+                            <Badge className="bg-red-200 text-red-800">
+                              {auditData?.consultant?.dynamicContext?.missing?.length || 0} mancanti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.dynamicContext?.outdated?.length || 0) > 0 && (
+                            <Badge className="bg-amber-200 text-amber-800">
+                              {auditData?.consultant?.dynamicContext?.outdated?.length || 0} obsoleti
+                            </Badge>
+                          )}
+                          {(auditData?.consultant?.dynamicContext?.missing?.length || 0) === 0 && (auditData?.consultant?.dynamicContext?.outdated?.length || 0) === 0 && (
+                            <Badge className="bg-emerald-200 text-emerald-800">
+                              Sincronizzato
+                            </Badge>
+                          )}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        {auditData?.consultant?.dynamicContext?.missing?.length === 0 && auditData?.consultant?.dynamicContext?.outdated?.length === 0 ? (
+                          <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            Tutti i documenti di contesto AI sono indicizzati e aggiornati
+                          </p>
+                        ) : (
+                          <>
+                            {auditData?.consultant?.dynamicContext?.missing?.map(doc => (
+                              <div key={doc.id} className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                                <div className="flex items-center gap-2">
+                                  <Brain className="h-4 w-4 text-red-400" />
+                                  <span className="text-sm">{doc.title}</span>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="border-red-300 text-red-700"
+                                  onClick={() => syncSingleMutation.mutate({ type: 'dynamic_context', id: 'all' })}
+                                  disabled={syncSingleMutation.isPending}
+                                >
+                                  {syncSingleMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            ))}
+                            {(auditData?.consultant?.dynamicContext?.outdated?.length || 0) > 0 && (
+                              <div className="mt-2">
+                                <h5 className="text-sm font-medium text-amber-700 mb-2 flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Documenti da aggiornare
+                                </h5>
+                                {auditData?.consultant?.dynamicContext?.outdated?.map(doc => (
+                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-amber-50 rounded border border-amber-200">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <Brain className="h-4 w-4 text-amber-500" />
+                                        <span className="text-sm font-medium">{doc.title}</span>
+                                      </div>
+                                      {doc.indexedAt && (
+                                        <p className="text-xs text-amber-600 mt-1">
+                                          Ultima sincronizzazione: {new Date(doc.indexedAt.toString()).toLocaleDateString('it-IT')}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'dynamic_context', id: 'all' })}
                                       disabled={syncSingleMutation.isPending}
                                     >
                                       {syncSingleMutation.isPending ? (
@@ -5857,7 +6090,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                   <div className="space-y-4">
                                     {/* SEZIONE 1: Store Consulente */}
                                     {(() => {
-                                      const consultantCategories = ['library', 'knowledgeBase', 'exercises', 'university', 'consultantGuide', 'consultations'];
+                                      const consultantCategories = ['library', 'knowledgeBase', 'exercises', 'university', 'consultantGuide', 'dynamicContext', 'consultations'];
                                       const consultantData = Object.entries(report.categoryDetails)
                                         .filter(([key]) => consultantCategories.includes(key))
                                         .filter(([, detail]) => detail.processed > 0 || detail.synced > 0);
@@ -5887,6 +6120,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   {key === 'exercises' && <Dumbbell className="h-3 w-3 text-orange-500" />}
                                                   {key === 'university' && <GraduationCap className="h-3 w-3 text-indigo-500" />}
                                                   {key === 'consultantGuide' && <FileText className="h-3 w-3 text-green-500" />}
+                                                  {key === 'dynamicContext' && <Brain className="h-3 w-3 text-purple-500" />}
                                                   {key === 'consultations' && <MessageSquare className="h-3 w-3 text-teal-500" />}
                                                   <span className="font-medium text-gray-700">{detail.name}</span>
                                                 </div>

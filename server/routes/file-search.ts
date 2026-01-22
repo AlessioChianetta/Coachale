@@ -2476,4 +2476,58 @@ router.post('/external-docs/sync-all', authenticateToken, requireRole('consultan
   }
 });
 
+/**
+ * PATCH /api/file-search/stores/consultant/dynamic-context-settings
+ * Update dynamic context auto-sync settings for consultant store
+ */
+router.patch('/stores/consultant/dynamic-context-settings', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { autoSync } = req.body;
+    
+    if (typeof autoSync !== 'boolean') {
+      return res.status(400).json({ error: 'autoSync must be a boolean' });
+    }
+    
+    // Get or create consultant store
+    let consultantStore = await db.select()
+      .from(fileSearchStores)
+      .where(and(
+        eq(fileSearchStores.consultantId, consultantId),
+        eq(fileSearchStores.storeType, 'consultant')
+      ))
+      .limit(1)
+      .then(rows => rows[0]);
+    
+    if (!consultantStore) {
+      // Create store if not exists
+      const [newStore] = await db.insert(fileSearchStores)
+        .values({
+          consultantId,
+          storeType: 'consultant',
+          displayName: 'Store Globale Consulente',
+          dynamicContextAutoSync: autoSync,
+        })
+        .returning();
+      consultantStore = newStore;
+    } else {
+      // Update existing store
+      await db.update(fileSearchStores)
+        .set({ dynamicContextAutoSync: autoSync })
+        .where(eq(fileSearchStores.id, consultantStore.id));
+    }
+    
+    console.log(`[FileSearch API] Dynamic context auto-sync set to ${autoSync} for consultant ${consultantId.substring(0, 8)}`);
+    
+    res.json({ 
+      success: true, 
+      autoSync,
+      message: autoSync ? 'Sincronizzazione automatica attivata' : 'Sincronizzazione automatica disattivata'
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error updating dynamic context settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
