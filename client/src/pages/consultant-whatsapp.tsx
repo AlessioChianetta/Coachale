@@ -466,11 +466,11 @@ export default function ConsultantWhatsAppPage() {
   });
 
   const licenses = licensesQuery.data?.data || {
-    level2Total: 20,
+    level2Total: 0, // Illimitate - nessun limite
     level2Used: 0,
-    level3Total: 10,
+    level3Total: 0, // Illimitate - nessun limite
     level3Used: 0,
-    employeeTotal: 0,
+    employeeTotal: 5, // 5 licenze gratis incluse
     employeeUsed: 0,
   };
 
@@ -2388,7 +2388,7 @@ export default function ConsultantWhatsAppPage() {
                     </div>
                   ) : (
                     <>
-                      {/* Level 2 (Bronze) Progress */}
+                      {/* Level 2 (Bronze) - Illimitate */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -2397,29 +2397,16 @@ export default function ConsultantWhatsAppPage() {
                               Licenze Bronze
                             </span>
                           </div>
-                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {licenses.level2Used}/{licenses.level2Total}
+                          <span className="text-sm font-semibold text-amber-600">
+                            {licenses.level2Used} attive - Illimitate
                           </span>
                         </div>
-                        <Progress 
-                          value={(licenses.level2Used / licenses.level2Total) * 100} 
-                          className={`h-3 ${
-                            licenses.level2Used / licenses.level2Total >= 0.9 
-                              ? "[&>div]:bg-red-500" 
-                              : licenses.level2Used / licenses.level2Total >= 0.7 
-                              ? "[&>div]:bg-amber-500" 
-                              : "[&>div]:bg-amber-600"
-                          }`}
-                        />
-                        {licenses.level2Used / licenses.level2Total >= 0.9 && (
-                          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                            <AlertTriangle className="h-4 w-4" />
-                            <span className="text-xs font-medium">Stai per raggiungere il limite!</span>
-                          </div>
-                        )}
+                        <p className="text-xs text-gray-500">
+                          Puoi avere quante licenze Bronze desideri
+                        </p>
                       </div>
 
-                      {/* Level 3 (Silver) Progress */}
+                      {/* Level 3 (Silver) - Illimitate */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -2428,38 +2415,25 @@ export default function ConsultantWhatsAppPage() {
                               Licenze Silver
                             </span>
                           </div>
-                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {licenses.level3Used}/{licenses.level3Total}
+                          <span className="text-sm font-semibold text-slate-600">
+                            {licenses.level3Used} attive - Illimitate
                           </span>
                         </div>
-                        <Progress 
-                          value={(licenses.level3Used / licenses.level3Total) * 100} 
-                          className={`h-3 ${
-                            licenses.level3Used / licenses.level3Total >= 0.9 
-                              ? "[&>div]:bg-red-500" 
-                              : licenses.level3Used / licenses.level3Total >= 0.7 
-                              ? "[&>div]:bg-amber-500" 
-                              : "[&>div]:bg-slate-500"
-                          }`}
-                        />
-                        {licenses.level3Used / licenses.level3Total >= 0.9 && (
-                          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                            <AlertTriangle className="h-4 w-4" />
-                            <span className="text-xs font-medium">Stai per raggiungere il limite!</span>
-                          </div>
-                        )}
+                        <p className="text-xs text-gray-500">
+                          Puoi avere quante licenze Silver desideri
+                        </p>
                       </div>
 
                       {/* Summary */}
                       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                         <div className="grid grid-cols-2 gap-4 text-center">
                           <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
-                            <p className="text-2xl font-bold text-amber-600">{licenses.level2Total - licenses.level2Used}</p>
-                            <p className="text-xs text-amber-700 dark:text-amber-400">Bronze disponibili</p>
+                            <p className="text-2xl font-bold text-amber-600">{licenses.level2Used}</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-400">Bronze attive</p>
                           </div>
                           <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                            <p className="text-2xl font-bold text-slate-600">{licenses.level3Total - licenses.level3Used}</p>
-                            <p className="text-xs text-slate-700 dark:text-slate-400">Silver disponibili</p>
+                            <p className="text-2xl font-bold text-slate-600">{licenses.level3Used}</p>
+                            <p className="text-xs text-slate-700 dark:text-slate-400">Silver attive</p>
                           </div>
                         </div>
                       </div>

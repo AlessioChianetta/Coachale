@@ -12132,7 +12132,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           level2Used: license.level2Used,
           level3Total: license.level3Total,
           level3Used: license.level3Used,
-          employeeTotal: license.employeeTotal || 0,
+          employeeTotal: Math.max(license.employeeTotal || 0, 5), // Minimo 5 licenze gratis
           employeeUsed: license.employeeUsed || 0,
         },
       });
