@@ -42,10 +42,12 @@ export interface SyncResult {
   syncedAt: Date;
 }
 
-function formatItalianDate(date: Date | string | null): string {
+function formatItalianDate(date: Date | string | null | undefined): string {
   if (!date) return "N/A";
   try {
     const d = typeof date === "string" ? new Date(date) : date;
+    // Check for Invalid Date
+    if (isNaN(d.getTime())) return "N/A";
     return formatInTimeZone(d, "Europe/Rome", "dd/MM/yyyy HH:mm");
   } catch {
     return "N/A";
