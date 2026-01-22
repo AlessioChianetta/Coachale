@@ -4036,6 +4036,35 @@ ${context.whatsappLeads.recentConversations.slice(0, 5).map(conv => `
 `).join('\n')}
 ` : ''}
 
+${context.leadManagement ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 STATISTICHE LEAD PROATTIVI (DATI CORRENTI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ USA QUESTI NUMERI - NON la memoria delle conversazioni precedenti!
+
+TOTALE LEAD: ${context.leadManagement.stats.total}
+
+📈 PER STATO:
+  - Pending (da contattare): ${context.leadManagement.stats.byStatus.pending}
+  - Contacted (contattati): ${context.leadManagement.stats.byStatus.contacted}
+  - Responded (hanno risposto): ${context.leadManagement.stats.byStatus.responded}
+  - CONVERTED (CONVERTITI): ${context.leadManagement.stats.byStatus.converted}
+  - Inactive: ${context.leadManagement.stats.byStatus.inactive}
+
+📊 TASSO DI CONVERSIONE: ${context.leadManagement.stats.conversionRate}%
+
+🔥 PER TEMPERATURA:
+  - Freddo: ${context.leadManagement.stats.byCategory.freddo}
+  - Tiepido: ${context.leadManagement.stats.byCategory.tiepido}
+  - Caldo: ${context.leadManagement.stats.byCategory.caldo}
+  - Recupero: ${context.leadManagement.stats.byCategory.recupero}
+  - Referral: ${context.leadManagement.stats.byCategory.referral}
+
+📅 SCHEDULATI:
+  - Oggi: ${context.leadManagement.stats.scheduledToday}
+  - Questa settimana: ${context.leadManagement.stats.scheduledThisWeek}
+` : ''}
+
 Statistiche WhatsApp:
 - Lead totali: ${context.whatsappLeads.stats.totalLeads}
 - Lead qualificati: ${context.whatsappLeads.stats.qualifiedLeads}
