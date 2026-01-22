@@ -256,7 +256,7 @@ router.post("/:slug/login", async (req: Request, res: Response) => {
     }
 
     const [consultant] = await db
-      .select({ id: users.id })
+      .select({ id: users.id, pricingPageConfig: users.pricingPageConfig })
       .from(users)
       .where(
         and(
@@ -293,6 +293,9 @@ router.post("/:slug/login", async (req: Request, res: Response) => {
     if (!validPassword) {
       return res.status(401).json({ error: "Credenziali non valide" });
     }
+
+    // Get the monthly limit from consultant's pricing settings
+    const monthlyLimit = (consultant.pricingPageConfig as any)?.level1DailyMessageLimit || 100;
 
     let dailyMessagesUsed = bronzeUser.dailyMessagesUsed;
     const updates: { lastLoginAt: Date; dailyMessagesUsed?: number; lastMessageResetAt?: Date } = {
@@ -333,7 +336,7 @@ router.post("/:slug/login", async (req: Request, res: Response) => {
         firstName: bronzeUser.firstName,
         lastName: bronzeUser.lastName,
         dailyMessagesUsed,
-        dailyMessageLimit: bronzeUser.dailyMessageLimit,
+        dailyMessageLimit: monthlyLimit,
       },
     });
   } catch (error: any) {
@@ -360,6 +363,15 @@ router.get("/me", authenticateBronzeToken, async (req: BronzeAuthRequest, res: R
       return res.status(403).json({ error: "Account disattivato" });
     }
 
+    // Get the monthly limit from consultant's pricing settings
+    const [consultant] = await db
+      .select({ pricingPageConfig: users.pricingPageConfig })
+      .from(users)
+      .where(eq(users.id, bronzeUser.consultantId))
+      .limit(1);
+    
+    const monthlyLimit = (consultant?.pricingPageConfig as any)?.level1DailyMessageLimit || 100;
+
     let dailyMessagesUsed = bronzeUser.dailyMessagesUsed;
     if (isNewMonth(bronzeUser.lastMessageResetAt)) {
       await db
@@ -376,7 +388,7 @@ router.get("/me", authenticateBronzeToken, async (req: BronzeAuthRequest, res: R
       lastName: bronzeUser.lastName,
       consultantId: bronzeUser.consultantId,
       dailyMessagesUsed,
-      dailyMessageLimit: bronzeUser.dailyMessageLimit,
+      dailyMessageLimit: monthlyLimit,
       isActive: bronzeUser.isActive,
       createdAt: bronzeUser.createdAt,
       lastLoginAt: bronzeUser.lastLoginAt,
@@ -405,6 +417,15 @@ router.post("/increment-message", authenticateBronzeToken, async (req: BronzeAut
       return res.status(403).json({ error: "Account disattivato", allowed: false, remaining: 0 });
     }
 
+    // Get the monthly limit from consultant's pricing settings
+    const [consultant] = await db
+      .select({ pricingPageConfig: users.pricingPageConfig })
+      .from(users)
+      .where(eq(users.id, bronzeUser.consultantId))
+      .limit(1);
+    
+    const monthlyLimit = (consultant?.pricingPageConfig as any)?.level1DailyMessageLimit || 100;
+
     let dailyMessagesUsed = bronzeUser.dailyMessagesUsed;
     let shouldReset = isNewMonth(bronzeUser.lastMessageResetAt);
 
@@ -412,17 +433,17 @@ router.post("/increment-message", authenticateBronzeToken, async (req: BronzeAut
       dailyMessagesUsed = 0;
     }
 
-    if (dailyMessagesUsed >= bronzeUser.dailyMessageLimit) {
+    if (dailyMessagesUsed >= monthlyLimit) {
       return res.json({
         allowed: false,
         remaining: 0,
         dailyMessagesUsed,
-        dailyMessageLimit: bronzeUser.dailyMessageLimit,
+        dailyMessageLimit: monthlyLimit,
       });
     }
 
     const newCount = dailyMessagesUsed + 1;
-    const remaining = Math.max(0, bronzeUser.dailyMessageLimit - newCount);
+    const remaining = Math.max(0, monthlyLimit - newCount);
 
     const updateData: { dailyMessagesUsed: number; lastMessageResetAt?: Date } = {
       dailyMessagesUsed: newCount,
@@ -441,7 +462,7 @@ router.post("/increment-message", authenticateBronzeToken, async (req: BronzeAut
       allowed: true,
       remaining,
       dailyMessagesUsed: newCount,
-      dailyMessageLimit: bronzeUser.dailyMessageLimit,
+      dailyMessageLimit: monthlyLimit,
     });
   } catch (error: any) {
     console.error("[BRONZE AUTH] Increment message error:", error);
