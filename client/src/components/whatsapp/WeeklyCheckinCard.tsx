@@ -96,7 +96,7 @@ interface EligibleClient {
   firstName: string;
   lastName: string;
   phoneNumber: string;
-  status: string;
+  isActive: boolean;
   lastCheckinSent: string | null;
   daysSinceLastContact: number | null;
   exclusionReason?: string;
@@ -185,6 +185,7 @@ export function WeeklyCheckinCard() {
 
   const { data: eligibleData, isLoading: eligibleLoading } = useQuery<EligibleClientsResponse>({
     queryKey: ["/api/weekly-checkin/eligible-clients"],
+    queryFn: () => apiRequest("GET", "/api/weekly-checkin/eligible-clients").then(r => r.json()),
   });
 
   const { data: clients = [] } = useQuery<Client[]>({

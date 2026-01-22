@@ -270,8 +270,7 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
         firstName: schema.users.firstName,
         lastName: schema.users.lastName,
         phoneNumber: schema.users.phoneNumber,
-        status: schema.users.status,
-        excludeFromCheckin: schema.users.excludeFromCheckin,
+        isActive: schema.users.isActive,
       })
       .from(schema.users)
       .where(
@@ -317,10 +316,8 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
 
       if (!client.phoneNumber) {
         exclusionReason = "Nessun numero di telefono";
-      } else if (client.excludeFromCheckin) {
-        exclusionReason = "Escluso manualmente";
-      } else if (client.status === "inactive" || client.status === "archived") {
-        exclusionReason = `Cliente ${client.status}`;
+      } else if (client.isActive === false) {
+        exclusionReason = "Cliente non attivo";
       } else if (daysSinceLastContact !== null && daysSinceLastContact < minDays) {
         exclusionReason = `Contattato ${daysSinceLastContact} giorni fa (minimo: ${minDays})`;
       }
