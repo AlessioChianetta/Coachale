@@ -142,7 +142,7 @@ interface SyncedDocument {
   displayName: string;
   mimeType: string;
   status: 'pending' | 'processing' | 'indexed' | 'failed';
-  sourceType: 'library' | 'knowledge_base' | 'manual' | 'exercise' | 'consultation' | 'university' | 'consultant_guide' | 'exercise_external_doc';
+  sourceType: 'library' | 'knowledge_base' | 'manual' | 'exercise' | 'consultation' | 'university' | 'consultant_guide' | 'exercise_external_doc' | 'dynamic_context';
   sourceId: string | null;
   uploadedAt: string;
   storeDisplayName?: string;
