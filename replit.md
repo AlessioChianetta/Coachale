@@ -41,6 +41,11 @@ The platform extensively uses AI for:
   - File Search: WhatsApp conversation history (200 conversations, 30 days), Lead Hub metrics, AI limitations document
   - Hourly automatic sync (cron at :30) + manual sync button in AI Assistant UI
   - Endpoint: POST /api/ai-assistant/sync-context
+  - **Dynamic Context Documents** (sourceType: 'dynamic_context'):
+    - 3 auto-generated docs: WhatsApp history, Lead Hub metrics, AI limitations
+    - Audit system detects missing/outdated (>24h) with health score impact
+    - Settings: Auto-sync toggle in File Search Analytics > Impostazioni > Contesto AI Dinamico
+    - Frontend: Visible in Contenuti tab, Audit tab, and dedicated Settings card
 - **Token Optimization**: A hybrid strategy combining intent detection, conditional queries, caching, and RAG to reduce AI token consumption.
 
 ## Subscription & Licensing
