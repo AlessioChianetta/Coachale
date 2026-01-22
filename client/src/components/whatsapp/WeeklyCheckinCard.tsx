@@ -395,78 +395,128 @@ export function WeeklyCheckinCard() {
 
         <Separator />
 
-        <div className="space-y-4">
-          <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Impostazioni
-          </h4>
+        <div className="space-y-5">
+          <div>
+            <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Clock className="h-4 w-4 text-blue-500" />
+              Configurazione Check-in
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Personalizza quando e come vengono inviati i messaggi automatici ai tuoi clienti
+            </p>
+          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">Orario Invio</Label>
-              <div className="flex items-center gap-2">
+          <div className="space-y-4">
+            {/* Orario Invio */}
+            <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                  <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Fascia Oraria</h5>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    I messaggi vengono inviati in modo casuale all'interno di questa fascia, così sembrano più naturali e non automatici
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 ml-11">
                 <Input
                   type="time"
                   value={config?.preferredTimeStart || "09:00"}
                   onChange={(e) => updateConfigMutation.mutate({ preferredTimeStart: e.target.value })}
-                  className="w-24"
+                  className="w-28 bg-white dark:bg-gray-800"
                 />
-                <span className="text-gray-400">-</span>
+                <span className="text-gray-400 text-sm">fino alle</span>
                 <Input
                   type="time"
                   value={config?.preferredTimeEnd || "18:00"}
                   onChange={(e) => updateConfigMutation.mutate({ preferredTimeEnd: e.target.value })}
-                  className="w-24"
+                  className="w-28 bg-white dark:bg-gray-800"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">Giorni Attivi</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {DAYS.map((day) => (
-                  <button
-                    key={day.value}
-                    onClick={() => handleDayToggle(day.value, config?.excludedDays?.includes(day.value) || false)}
-                    className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
-                      config?.excludedDays?.includes(day.value)
-                        ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
-                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                    }`}
-                  >
-                    {day.label}
-                  </button>
-                ))}
+
+            {/* Giorni Attivi */}
+            <div className="p-4 rounded-xl border border-green-100 dark:border-green-900/50 bg-green-50/50 dark:bg-green-950/20 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
+                  <CalendarCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Giorni di Invio</h5>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Seleziona i giorni in cui vuoi che vengano inviati i check-in. Evita i weekend se i tuoi clienti preferiscono non essere contattati
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 ml-11">
+                {DAYS.map((day) => {
+                  const isActive = !config?.excludedDays?.includes(day.value);
+                  return (
+                    <button
+                      key={day.value}
+                      onClick={() => handleDayToggle(day.value, !isActive)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                        isActive
+                          ? "bg-green-500 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-purple-500" />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Personalizza messaggi con AI
-              </span>
+            {/* Personalizzazione AI */}
+            <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-900/50 bg-purple-50/50 dark:bg-purple-950/20">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                    <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="font-medium text-gray-900 dark:text-white text-sm">Personalizzazione AI</h5>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      L'AI adatta il messaggio in base al nome del cliente e al suo percorso, rendendo ogni check-in unico e personale
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={config?.useAiPersonalization || false}
+                  onCheckedChange={(checked) => updateConfigMutation.mutate({ useAiPersonalization: checked })}
+                />
+              </div>
             </div>
-            <Switch
-              checked={config?.useAiPersonalization || false}
-              onCheckedChange={(checked) => updateConfigMutation.mutate({ useAiPersonalization: checked })}
-            />
-          </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-            <Users className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Escludi clienti contattati negli ultimi
-            </span>
-            <Input
-              type="number"
-              value={config?.minDaysSinceLastContact || 5}
-              onChange={(e) => updateConfigMutation.mutate({ minDaysSinceLastContact: parseInt(e.target.value) || 5 })}
-              className="w-16 text-center"
-              min={1}
-              max={30}
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">giorni</span>
+            {/* Esclusione Contatti Recenti */}
+            <div className="p-4 rounded-xl border border-orange-100 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50">
+                  <Users className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="flex-1">
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Evita Spam</h5>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Non inviare check-in ai clienti che hai già contattato di recente. Così eviti di sembrare insistente
+                  </p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Escludi se contattati negli ultimi</span>
+                    <Input
+                      type="number"
+                      value={config?.minDaysSinceLastContact || 5}
+                      onChange={(e) => updateConfigMutation.mutate({ minDaysSinceLastContact: parseInt(e.target.value) || 5 })}
+                      className="w-16 text-center bg-white dark:bg-gray-800"
+                      min={1}
+                      max={30}
+                    />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">giorni</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
