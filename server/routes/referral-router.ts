@@ -597,26 +597,30 @@ router.get("/public/optin/:consultantId", async (req, res) => {
       return res.status(404).json({ success: false, error: "Optin landing not active" });
     }
 
+    // Return in format expected by frontend (public-optin-landing.tsx)
     res.json({
       success: true,
-      data: {
-        consultant: {
-          firstName: consultant.firstName,
-          lastName: consultant.lastName,
-          avatar: consultant.avatar,
-        },
-        config: {
-          headline: config.headline,
-          description: config.description,
-          profileImageUrl: config.profileImageUrl,
-          ctaButtonText: config.ctaButtonText,
-          accentColor: config.accentColor,
-          showAiChat: config.showAiChat,
-          aiAssistantIframeUrl: config.aiAssistantIframeUrl,
-          welcomeMessage: config.welcomeMessage,
-          qualificationFieldsConfig: config.qualificationFieldsConfig,
-          preferredChannel: config.preferredChannel,
-        },
+      config: {
+        headline: config.headline,
+        subheadline: config.subheadline,
+        description: config.description,
+        ctaText: config.ctaButtonText || config.ctaText,
+        primaryColor: config.primaryColor || config.accentColor || "#0d9488",
+        backgroundImage: config.backgroundImage,
+        showTestimonials: config.showTestimonials || false,
+        testimonials: config.testimonials,
+        thankYouMessage: config.thankYouMessage,
+        showAiChat: config.showAiChat || false,
+        aiAssistantIframeUrl: config.aiAssistantIframeUrl,
+        welcomeMessage: config.welcomeMessage,
+        showQualificationFields: config.showQualificationFields || false,
+        qualificationConfig: config.qualificationFieldsConfig,
+        preferredChannel: config.preferredChannel,
+      },
+      consultant: {
+        id: consultant.id,
+        name: `${consultant.firstName || ''} ${consultant.lastName || ''}`.trim() || 'Consulente',
+        avatar: consultant.avatar,
       },
     });
   } catch (error: any) {
@@ -862,66 +866,6 @@ router.post("/public/referral/:code/submit", async (req, res) => {
 // ===========================================
 // OPTIN LANDING PAGE (PUBLIC)
 // ===========================================
-
-// GET /api/public/optin/:consultantId - Get optin landing page config
-router.get("/public/optin/:consultantId", async (req, res) => {
-  try {
-    const { consultantId } = req.params;
-
-    const config = await db.query.optinLandingConfig.findFirst({
-      where: and(
-        eq(optinLandingConfig.consultantId, consultantId),
-        eq(optinLandingConfig.isActive, true)
-      ),
-    });
-
-    if (!config) {
-      return res.status(404).json({ success: false, error: "Optin landing page not found or inactive" });
-    }
-
-    const consultant = await db.query.users.findFirst({
-      where: eq(users.id, consultantId),
-      columns: { 
-        id: true, 
-        firstName: true, 
-        lastName: true, 
-        avatar: true,
-        email: true,
-      },
-    });
-
-    if (!consultant) {
-      return res.status(404).json({ success: false, error: "Consultant not found" });
-    }
-
-    res.json({
-      success: true,
-      config: {
-        headline: config.headline,
-        subheadline: config.subheadline,
-        description: config.description,
-        ctaText: config.ctaText,
-        primaryColor: config.primaryColor,
-        backgroundImage: config.backgroundImage,
-        showTestimonials: config.showTestimonials,
-        testimonials: config.testimonials,
-        thankYouMessage: config.thankYouMessage,
-        showAiChat: config.showAiChat,
-        welcomeMessage: config.welcomeMessage,
-        showQualificationFields: config.showQualificationFields,
-        qualificationConfig: config.qualificationConfig,
-      },
-      consultant: {
-        id: consultant.id,
-        name: `${consultant.firstName} ${consultant.lastName}`,
-        avatar: consultant.avatar,
-      },
-    });
-  } catch (error: any) {
-    console.error("[OPTIN] Error fetching public landing:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // POST /api/public/optin/:consultantId/submit - Optin form submission (creates proactive lead with source='optin')
 router.post("/public/optin/:consultantId/submit", async (req, res) => {
