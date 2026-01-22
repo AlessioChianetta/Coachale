@@ -133,6 +133,7 @@ const PricingSuccess = lazy(() => import("@/pages/pricing-success"));
 const BronzeAuth = lazy(() => import("@/pages/bronze-auth"));
 const SelectAgent = lazy(() => import("@/pages/select-agent"));
 const PublicReferralLanding = lazy(() => import("@/pages/public-referral-landing"));
+const PublicOptinLanding = lazy(() => import("@/pages/public-optin-landing"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
@@ -184,6 +185,9 @@ function Router() {
 
           {/* Public Referral Landing - no auth required */}
           <Route path="/r/:code" component={PublicReferralLanding} />
+
+          {/* Public Optin Landing - no auth required */}
+          <Route path="/optin/:consultantId" component={PublicOptinLanding} />
 
           {/* Public Consultation Invite Lobby - no auth required */}
           <Route path="/invite/:token" component={ConsultationInviteLobby} />
@@ -904,7 +908,7 @@ function Router() {
 function App() {
   const [location] = useLocation();
   const user = getAuthUser();
-  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/meet/') || location.startsWith('/live-consultation') || location.startsWith('/agent/') || location === '/login' || location === '/register' || location === '/change-password' || location === '/' || location === '/consulenti';
+  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/meet/') || location.startsWith('/live-consultation') || location.startsWith('/agent/') || location.startsWith('/optin/') || location === '/login' || location === '/register' || location === '/change-password' || location === '/' || location === '/consulenti';
 
   // Only track activity for authenticated users on non-public routes
   const { logPageView } = useActivityTracker({ disabled: !user || isPublicRoute });

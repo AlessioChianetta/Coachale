@@ -146,7 +146,7 @@ export default function PublicOptinLanding() {
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !data.config) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-100">
         <div className="text-center p-8 max-w-md">
@@ -161,7 +161,7 @@ export default function PublicOptinLanding() {
   }
 
   const { config, consultant } = data;
-  const primaryColor = config.primaryColor || '#0d9488';
+  const primaryColor = config?.primaryColor || '#0d9488';
 
   if (submitted) {
     return (

@@ -113,6 +113,23 @@ interface ProactiveLead {
     email?: string;
     obiettivi?: string;
     desideri?: string;
+    uncino?: string;
+    fonte?: string;
+    role?: string;
+    motivation?: string;
+    biggestProblem?: string;
+    goal12Months?: string;
+    currentBlocker?: string;
+    companyType?: string;
+    sector?: string;
+    employeeCount?: string;
+    annualRevenue?: string;
+    currentCompany?: string;
+    currentPosition?: string;
+    yearsExperience?: string;
+    fieldOfStudy?: string;
+    university?: string;
+    notes?: string;
   };
 }
 
@@ -133,6 +150,10 @@ export default function ConsultantReferralsPage() {
   const [selectedReferral, setSelectedReferral] = useState<Referral | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editNotes, setEditNotes] = useState("");
+  
+  // Stato per dialog dettagli lead optin
+  const [selectedOptinLead, setSelectedOptinLead] = useState<ProactiveLead | null>(null);
+  const [optinDetailsModalOpen, setOptinDetailsModalOpen] = useState(false);
 
   const { data: statsData, isLoading: statsLoading } = useQuery<{ success: boolean; stats: ReferralStats }>({
     queryKey: ["/api/consultant/referral-stats"],
@@ -794,6 +815,17 @@ export default function ConsultantReferralsPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={() => {
+                                    setSelectedOptinLead(lead);
+                                    setOptinDetailsModalOpen(true);
+                                  }}
+                                  className="border-slate-200 hover:bg-slate-50"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   asChild
                                   className="border-slate-200 hover:bg-slate-50"
                                 >
@@ -814,6 +846,224 @@ export default function ConsultantReferralsPage() {
           )}
         </div>
       </div>
+
+      {/* Dialog Dettagli Lead Optin */}
+      <Dialog open={optinDetailsModalOpen} onOpenChange={setOptinDetailsModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-teal-500" />
+              Dettagli Lead Optin
+            </DialogTitle>
+            <DialogDescription>
+              Informazioni complete del lead iscritto tramite link optin
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOptinLead && (
+            <div className="space-y-6 py-4">
+              {/* Info Base */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-slate-500">Nome Completo</Label>
+                  <p className="font-medium text-slate-800">
+                    {selectedOptinLead.firstName} {selectedOptinLead.lastName}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500">Stato</Label>
+                  <Badge className={`${
+                    selectedOptinLead.status === 'converted' ? 'bg-emerald-100 text-emerald-700' :
+                    selectedOptinLead.status === 'responded' ? 'bg-blue-100 text-blue-700' :
+                    selectedOptinLead.status === 'contacted' ? 'bg-purple-100 text-purple-700' :
+                    'bg-amber-100 text-amber-700'
+                  } border-0 mt-1`}>
+                    {selectedOptinLead.status === 'converted' ? 'Convertito' :
+                     selectedOptinLead.status === 'responded' ? 'Ha risposto' :
+                     selectedOptinLead.status === 'contacted' ? 'Contattato' :
+                     'In attesa'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Contatti */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-slate-500">Email</Label>
+                  <p className="font-medium text-slate-800">
+                    {selectedOptinLead.email || selectedOptinLead.leadInfo?.email || "-"}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500">Telefono</Label>
+                  <a href={`tel:${selectedOptinLead.phoneNumber}`} className="font-medium text-teal-600 hover:underline">
+                    {selectedOptinLead.phoneNumber}
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs text-slate-500">Data Iscrizione</Label>
+                <p className="font-medium text-slate-800">
+                  {selectedOptinLead.createdAt
+                    ? format(new Date(selectedOptinLead.createdAt), "d MMMM yyyy, HH:mm", { locale: it })
+                    : "-"}
+                </p>
+              </div>
+
+              {/* Sezione Qualificazione - mostra solo se ci sono dati */}
+              {selectedOptinLead.leadInfo && Object.keys(selectedOptinLead.leadInfo).some(k => 
+                selectedOptinLead.leadInfo?.[k as keyof typeof selectedOptinLead.leadInfo]
+              ) && (
+                <>
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-teal-500" />
+                      Informazioni di Qualificazione
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedOptinLead.leadInfo.obiettivi && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Obiettivi</Label>
+                          <p className="text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedOptinLead.leadInfo.obiettivi}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.motivation && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Motivazione</Label>
+                          <p className="text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedOptinLead.leadInfo.motivation}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.biggestProblem && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Problema Principale</Label>
+                          <p className="text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedOptinLead.leadInfo.biggestProblem}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.goal12Months && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Obiettivo a 12 Mesi</Label>
+                          <p className="text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedOptinLead.leadInfo.goal12Months}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.currentBlocker && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Blocchi Attuali</Label>
+                          <p className="text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedOptinLead.leadInfo.currentBlocker}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.role && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Ruolo</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.role}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.companyType && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Tipo Azienda</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.companyType}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.sector && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Settore</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.sector}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.employeeCount && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Numero Dipendenti</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.employeeCount}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.annualRevenue && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Fatturato Annuo</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.annualRevenue}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.currentCompany && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Azienda Attuale</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.currentCompany}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.currentPosition && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Posizione Attuale</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.currentPosition}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.yearsExperience && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Anni di Esperienza</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.yearsExperience}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.fieldOfStudy && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Campo di Studio</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.fieldOfStudy}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.university && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Università</Label>
+                          <p className="text-slate-700">{selectedOptinLead.leadInfo.university}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.desideri && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Desideri</Label>
+                          <p className="text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedOptinLead.leadInfo.desideri}</p>
+                        </div>
+                      )}
+                      
+                      {selectedOptinLead.leadInfo.notes && (
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Note</Label>
+                          <p className="text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedOptinLead.leadInfo.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOptinDetailsModalOpen(false)}>
+              Chiudi
+            </Button>
+            <Button
+              asChild
+              className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
+            >
+              <a href={`tel:${selectedOptinLead?.phoneNumber}`}>
+                <Phone className="w-4 h-4 mr-2" />
+                Chiama
+              </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
         <DialogContent className="sm:max-w-lg">

@@ -1,0 +1,25 @@
+public-optin-landing.tsx:164 Uncaught TypeError: Cannot read properties of undefined (reading 'primaryColor')
+    at PublicOptinLanding (public-optin-landing.tsx:164:31)
+public-optin-landing.tsx:164 Uncaught TypeError: Cannot read properties of undefined (reading 'primaryColor')
+    at PublicOptinLanding (public-optin-landing.tsx:164:31)
+chunk-RPCDYKBN.js?v=c120c4b5:14032 The above error occurred in the <PublicOptinLanding> component:
+
+    at PublicOptinLanding (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/src/pages/public-optin-landing.tsx:40:28)
+    at Route (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c120c4b5:226:16)
+    at Switch (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c120c4b5:283:17)
+    at Suspense
+    at Router (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/src/App.tsx?t=1769099402875&v=MKjjXT91SBlRzanQTRjIw:302:35)
+    at Provider (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=c120c4b5:44:15)
+    at TooltipProvider (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=c120c4b5:158:5)
+    at TourProvider (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=c120c4b5:3096:3)
+    at V (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=c120c4b5:44:25)
+    at J (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=c120c4b5:42:18)
+    at App (https://932d5a1b-5c09-46d8-af71-07225bfa07f8-00-2ldf1ddlivp95.worf.replit.dev/src/App.tsx?t=1769099402875&v=MKjjXT91SBlRzanQTRjIw:1899:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+chunk-RPCDYKBN.js?v=c120c4b5:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'primaryColor')
+    at PublicOptinLanding (public-optin-landing.tsx:164:31)

@@ -76,6 +76,7 @@ import {
   Send,
   RefreshCw,
   Mail,
+  Eye,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
@@ -305,6 +306,10 @@ export default function ProactiveLeadsPage() {
   const [emailPreviewHtml, setEmailPreviewHtml] = useState<string | null>(null);
   const [emailPreviewOpen, setEmailPreviewOpen] = useState(false);
   const [triggeringLeadId, setTriggeringLeadId] = useState<string | null>(null);
+  
+  // Stato per dialog visualizzazione dettagli lead
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [selectedViewLead, setSelectedViewLead] = useState<ProactiveLead | null>(null);
 
   // Bulk selection state
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
@@ -1790,6 +1795,23 @@ export default function ProactiveLeadsPage() {
                                       </Tooltip>
                                     </TooltipProvider>
                                   )}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setSelectedViewLead(lead);
+                                            setViewDetailsOpen(true);
+                                          }}
+                                        >
+                                          <Eye className="h-4 w-4 text-teal-600" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Vedi Dettagli</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -3168,6 +3190,145 @@ export default function ProactiveLeadsPage() {
           <div className="flex justify-end pt-4 border-t">
             <Button variant="outline" onClick={() => setEmailPreviewOpen(false)}>
               Chiudi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Visualizzazione Dettagli Lead */}
+      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-teal-600" />
+              Dettagli Lead
+            </DialogTitle>
+            <DialogDescription>
+              Informazioni complete del lead
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedViewLead && (
+            <div className="space-y-6 py-4">
+              {/* Info Base */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-gray-500">Nome Completo</Label>
+                  <p className="font-medium text-gray-800">
+                    {selectedViewLead.firstName} {selectedViewLead.lastName}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Stato</Label>
+                  <Badge className={`${
+                    selectedViewLead.status === 'converted' ? 'bg-emerald-100 text-emerald-700' :
+                    selectedViewLead.status === 'responded' ? 'bg-blue-100 text-blue-700' :
+                    selectedViewLead.status === 'contacted' ? 'bg-purple-100 text-purple-700' :
+                    selectedViewLead.status === 'in_progress' ? 'bg-cyan-100 text-cyan-700' :
+                    selectedViewLead.status === 'completed' ? 'bg-green-100 text-green-700' :
+                    selectedViewLead.status === 'failed' ? 'bg-red-100 text-red-700' :
+                    'bg-amber-100 text-amber-700'
+                  } border-0 mt-1`}>
+                    {selectedViewLead.status === 'converted' ? 'Convertito' :
+                     selectedViewLead.status === 'responded' ? 'Ha risposto' :
+                     selectedViewLead.status === 'contacted' ? 'Contattato' :
+                     selectedViewLead.status === 'in_progress' ? 'In corso' :
+                     selectedViewLead.status === 'completed' ? 'Completato' :
+                     selectedViewLead.status === 'failed' ? 'Fallito' :
+                     'In attesa'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Contatti */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-gray-500">Telefono</Label>
+                  <a href={`tel:${selectedViewLead.phoneNumber}`} className="font-medium text-teal-600 hover:underline flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {selectedViewLead.phoneNumber}
+                  </a>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Email</Label>
+                  <p className="font-medium text-gray-800">
+                    {selectedViewLead.email || selectedViewLead.leadInfo?.email || "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-gray-500">Fonte</Label>
+                  <p className="font-medium text-gray-800">{selectedViewLead.source || "-"}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Data Creazione</Label>
+                  <p className="font-medium text-gray-800">
+                    {selectedViewLead.createdAt
+                      ? format(new Date(selectedViewLead.createdAt), "d MMMM yyyy, HH:mm", { locale: it })
+                      : "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sezione Qualificazione - mostra solo se ci sono dati */}
+              {selectedViewLead.leadInfo && Object.keys(selectedViewLead.leadInfo).some(k => 
+                selectedViewLead.leadInfo?.[k as keyof typeof selectedViewLead.leadInfo]
+              ) && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Target className="h-4 w-4 text-teal-500" />
+                    Informazioni di Qualificazione
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedViewLead.leadInfo.obiettivi && (
+                      <div className="col-span-2">
+                        <Label className="text-xs text-gray-500">Obiettivi</Label>
+                        <p className="text-gray-700 bg-gray-50 p-2 rounded-lg">{selectedViewLead.leadInfo.obiettivi}</p>
+                      </div>
+                    )}
+                    
+                    {selectedViewLead.leadInfo.desideri && (
+                      <div className="col-span-2">
+                        <Label className="text-xs text-gray-500">Desideri</Label>
+                        <p className="text-gray-700 bg-gray-50 p-2 rounded-lg">{selectedViewLead.leadInfo.desideri}</p>
+                      </div>
+                    )}
+                    
+                    {selectedViewLead.leadInfo.uncino && (
+                      <div className="col-span-2">
+                        <Label className="text-xs text-gray-500">Uncino</Label>
+                        <p className="text-gray-700 bg-gray-50 p-2 rounded-lg">{selectedViewLead.leadInfo.uncino}</p>
+                      </div>
+                    )}
+                    
+                    {selectedViewLead.leadInfo.fonte && (
+                      <div>
+                        <Label className="text-xs text-gray-500">Fonte Lead</Label>
+                        <p className="text-gray-700">{selectedViewLead.leadInfo.fonte}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setViewDetailsOpen(false)}>
+              Chiudi
+            </Button>
+            <Button
+              onClick={() => {
+                setViewDetailsOpen(false);
+                if (selectedViewLead) handleEdit(selectedViewLead);
+              }}
+              className="bg-teal-600 hover:bg-teal-700"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Modifica
             </Button>
           </div>
         </DialogContent>
