@@ -4714,6 +4714,7 @@ export class FileSearchSyncService {
       exercises: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> };
       university: { total: number; indexed: number; missing: Array<{ id: string; title: string; lessonTitle: string }>; outdated: Array<{ id: string; title: string; lessonTitle: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> };
       consultantGuide: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null }> };
+      dynamicContext: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null }> };
     };
     clients: Array<{
       clientId: string;
@@ -4871,6 +4872,7 @@ export class FileSearchSyncService {
     const indexedExerciseMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
     const indexedUniversityMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
     const indexedGuideMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
+    const indexedDynamicContextMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
     
     for (const doc of indexedDocs) {
       if (!doc.sourceId) continue;
@@ -4881,6 +4883,7 @@ export class FileSearchSyncService {
         case 'exercise': indexedExerciseMap.set(doc.sourceId, entry); break;
         case 'university_lesson': indexedUniversityMap.set(doc.sourceId, entry); break;
         case 'consultant_guide': indexedGuideMap.set(doc.sourceId, entry); break;
+        case 'dynamic_context': indexedDynamicContextMap.set(doc.sourceId, entry); break;
       }
     }
     
@@ -4967,6 +4970,30 @@ export class FileSearchSyncService {
     const exercisesResult = { total: allExercises.length, indexed: allExercises.length - exercisesMissing.length, missing: exercisesMissing, outdated: exercisesOutdated };
     const universityResult = { total: universityLessonsList.length, indexed: universityLessonsList.length - universityMissing.length, missing: universityMissing, outdated: universityOutdated };
     const consultantGuideResult = { total: 1, indexed: guideIndexed ? 1 : 0, missing: consultantGuideMissing, outdated: consultantGuideOutdated };
+
+    // Dynamic Context Documents: check if the 3 auto-generated AI context docs exist
+    const dynamicContextDocs = [
+      { sourceId: `dynamic_conversations_${consultantId}`, title: 'Storico Conversazioni WhatsApp' },
+      { sourceId: `dynamic_metrics_${consultantId}`, title: 'Metriche Hub Lead Proattivo' },
+      { sourceId: `dynamic_limitations_${consultantId}`, title: 'Limitazioni Assistente AI' },
+    ];
+    const dynamicContextMissing: Array<{ id: string; title: string }> = [];
+    const dynamicContextOutdated: Array<{ id: string; title: string; indexedAt: Date | null }> = [];
+    let dynamicContextIndexed = 0;
+
+    for (const doc of dynamicContextDocs) {
+      const indexed = indexedDynamicContextMap.get(doc.sourceId);
+      if (!indexed) {
+        dynamicContextMissing.push({ id: doc.sourceId, title: doc.title });
+      } else {
+        dynamicContextIndexed++;
+        // Check if more than 24 hours old (dynamic docs should be refreshed daily)
+        if (indexed.indexedAt && (Date.now() - new Date(indexed.indexedAt).getTime() > 24 * 60 * 60 * 1000)) {
+          dynamicContextOutdated.push({ id: doc.sourceId, title: doc.title, indexedAt: indexed.indexedAt });
+        }
+      }
+    }
+    const dynamicContextResult = { total: 3, indexed: dynamicContextIndexed, missing: dynamicContextMissing, outdated: dynamicContextOutdated };
     
     console.log(`📊 [Audit] Phase 3 complete in ${Date.now() - phase3Start}ms`);
 
@@ -5546,14 +5573,14 @@ export class FileSearchSyncService {
     console.log(`📊 [Audit] Phase 6: Auditing WhatsApp agents and Email accounts...`);
     
     const consultantMissing = libraryResult.missing.length + knowledgeBaseResult.missing.length + 
-                              exercisesResult.missing.length + universityResult.missing.length + consultantGuideResult.missing.length;
+                              exercisesResult.missing.length + universityResult.missing.length + consultantGuideResult.missing.length + dynamicContextResult.missing.length;
     const consultantOutdated = libraryResult.outdated.length + knowledgeBaseResult.outdated.length + 
-                               exercisesResult.outdated.length + universityResult.outdated.length + consultantGuideResult.outdated.length;
+                               exercisesResult.outdated.length + universityResult.outdated.length + consultantGuideResult.outdated.length + dynamicContextResult.outdated.length;
     const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing + totalEmailAccountsMissing;
     const totalOutdated = consultantOutdated + totalClientsOutdated;
 
     const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total + 
-                      consultantGuideResult.total +
+                      consultantGuideResult.total + dynamicContextResult.total +
                       clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total +
                         c.assignedExercises.total + c.assignedLibrary.total + c.assignedUniversity.total + c.goals.total + c.tasks.total, 0) +
                       whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.total, 0) +
@@ -5562,7 +5589,7 @@ export class FileSearchSyncService {
                          (knowledgeBaseResult.total - knowledgeBaseResult.missing.length) +
                          (exercisesResult.total - exercisesResult.missing.length) + 
                          (universityResult.total - universityResult.missing.length) +
-                         consultantGuideResult.indexed +
+                         consultantGuideResult.indexed + dynamicContextResult.indexed +
                          clientsAudit.reduce((sum, c) => 
                            sum + (c.exerciseResponses.total - c.exerciseResponses.missing.length) + 
                            (c.consultationNotes.total - c.consultationNotes.missing.length) + 
@@ -5629,6 +5656,12 @@ export class FileSearchSyncService {
     if (consultantGuideResult.outdated.length > 0) {
       recommendations.push(`⏰ La guida piattaforma consulente è stata aggiornata e deve essere ri-sincronizzata`);
     }
+    if (dynamicContextResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${dynamicContextResult.missing.length} documenti contesto AI dinamico mancanti`);
+    }
+    if (dynamicContextResult.outdated.length > 0) {
+      recommendations.push(`⏰ ${dynamicContextResult.outdated.length} documenti contesto AI dinamico sono obsoleti (>24h)`);
+    }
     
     // Calculate missing assigned content for detailed recommendations
     const totalAssignedExercisesMissing = clientsAudit.reduce((sum, c) => sum + c.assignedExercises.missing.length, 0);
@@ -5669,6 +5702,7 @@ export class FileSearchSyncService {
     console.log(`\n${'═'.repeat(60)}`);
     console.log(`✅ [FileSync] OPTIMIZED Comprehensive Audit Complete in ${totalAuditTime}ms`);
     console.log(`   📖 Consultant Guide: ${consultantGuideResult.indexed}/${consultantGuideResult.total} indexed, ${consultantGuideResult.outdated.length} outdated`);
+    console.log(`   🤖 Dynamic Context: ${dynamicContextResult.indexed}/${dynamicContextResult.total} indexed, ${dynamicContextResult.outdated.length} outdated`);
     console.log(`   📚 Library: ${libraryResult.total - libraryResult.missing.length}/${libraryResult.total} indexed, ${libraryResult.outdated.length} outdated`);
     console.log(`   📖 Knowledge Base: ${knowledgeBaseResult.total - knowledgeBaseResult.missing.length}/${knowledgeBaseResult.total} indexed, ${knowledgeBaseResult.outdated.length} outdated`);
     console.log(`   🏋️ Exercises: ${exercisesResult.total - exercisesResult.missing.length}/${exercisesResult.total} indexed, ${exercisesResult.outdated.length} outdated`);
@@ -5692,6 +5726,7 @@ export class FileSearchSyncService {
         exercises: exercisesResult,
         university: universityResult,
         consultantGuide: consultantGuideResult,
+        dynamicContext: dynamicContextResult,
       },
       clients: clientsAudit,
       whatsappAgents: whatsappAgentsAudit,

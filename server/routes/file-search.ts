@@ -1098,13 +1098,16 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
     const consultantStore = {
       storeId: consultantStoreRecord?.id || '',
       storeName: consultantStoreRecord?.displayName || 'Store Globale Consulente',
+      dynamicContextAutoSync: (consultantStoreRecord as any)?.dynamicContextAutoSync ?? true,
+      lastDynamicContextSync: (consultantStoreRecord as any)?.lastDynamicContextSync || null,
       documents: {
         consultantGuide: consultantDocs.filter(d => d.sourceType === 'consultant_guide'),
         library: consultantDocs.filter(d => d.sourceType === 'library'),
         knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base'),
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise'),
         university: consultantDocs.filter(d => d.sourceType === 'university' || d.sourceType === 'university_lesson'),
-        other: consultantDocs.filter(d => !['consultant_guide', 'library', 'knowledge_base', 'exercise', 'university', 'university_lesson'].includes(d.sourceType)),
+        dynamicContext: consultantDocs.filter(d => d.sourceType === 'dynamic_context'),
+        other: consultantDocs.filter(d => !['consultant_guide', 'library', 'knowledge_base', 'exercise', 'university', 'university_lesson', 'dynamic_context'].includes(d.sourceType)),
       },
       totals: {
         consultantGuide: consultantDocs.filter(d => d.sourceType === 'consultant_guide').length,
@@ -1112,6 +1115,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base').length,
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise').length,
         university: consultantDocs.filter(d => d.sourceType === 'university' || d.sourceType === 'university_lesson').length,
+        dynamicContext: consultantDocs.filter(d => d.sourceType === 'dynamic_context').length,
       },
     };
     
@@ -1415,6 +1419,15 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
         break;
       case 'consultant_guide':
         result = await fileSearchSyncService.syncConsultantGuide(consultantId);
+        break;
+      case 'dynamic_context':
+        // Sync dynamic context documents (WhatsApp history, Lead Hub metrics, AI limitations)
+        const { syncDynamicDocuments } = await import('../ai/dynamic-context-documents');
+        const syncResult = await syncDynamicDocuments(consultantId);
+        result = { 
+          success: syncResult.totalDocuments > 0, 
+          error: syncResult.totalDocuments === 0 ? 'Nessun documento dinamico sincronizzato' : undefined 
+        };
         break;
       case 'client_guide':
         if (!clientId) {

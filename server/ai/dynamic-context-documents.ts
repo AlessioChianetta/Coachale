@@ -95,21 +95,33 @@ Generato il: ${formatItalianDate(new Date())}
 `;
   }
 
-  const conversationIds = conversations.map((c) => c.id);
+  const conversationIds = conversations.map((c) => c.id).filter(Boolean);
 
-  const messages = await db
-    .select({
-      id: whatsappMessages.id,
-      conversationId: whatsappMessages.conversationId,
-      messageText: whatsappMessages.messageText,
-      sender: whatsappMessages.sender,
-      status: whatsappMessages.status,
-      templateName: whatsappMessages.templateName,
-      createdAt: whatsappMessages.createdAt,
-    })
-    .from(whatsappMessages)
-    .where(inArray(whatsappMessages.conversationId, conversationIds))
-    .orderBy(whatsappMessages.createdAt);
+  let messages: {
+    id: string;
+    conversationId: string;
+    messageText: string | null;
+    sender: string | null;
+    status: string | null;
+    templateName: string | null;
+    createdAt: Date | null;
+  }[] = [];
+
+  if (conversationIds.length > 0) {
+    messages = await db
+      .select({
+        id: whatsappMessages.id,
+        conversationId: whatsappMessages.conversationId,
+        messageText: whatsappMessages.messageText,
+        sender: whatsappMessages.sender,
+        status: whatsappMessages.status,
+        templateName: whatsappMessages.templateName,
+        createdAt: whatsappMessages.createdAt,
+      })
+      .from(whatsappMessages)
+      .where(inArray(whatsappMessages.conversationId, conversationIds))
+      .orderBy(whatsappMessages.createdAt);
+  }
 
   const agents = await db
     .select({
@@ -513,7 +525,7 @@ export async function syncDynamicDocuments(consultantId: string): Promise<SyncRe
       content: conversationDoc,
       displayName: "Storico Conversazioni WhatsApp (Auto-generato)",
       storeId,
-      sourceType: "consultant_guide",
+      sourceType: "dynamic_context",
       sourceId: `dynamic_conversations_${consultantId}`,
       userId: consultantId,
       skipHashCheck: true,
@@ -537,7 +549,7 @@ export async function syncDynamicDocuments(consultantId: string): Promise<SyncRe
       content: metricsDoc,
       displayName: "Metriche Hub Lead Proattivo (Auto-generato)",
       storeId,
-      sourceType: "consultant_guide",
+      sourceType: "dynamic_context",
       sourceId: `dynamic_metrics_${consultantId}`,
       userId: consultantId,
       skipHashCheck: true,
@@ -561,7 +573,7 @@ export async function syncDynamicDocuments(consultantId: string): Promise<SyncRe
       content: limitationsDoc,
       displayName: "Limitazioni Assistente AI (Auto-generato)",
       storeId,
-      sourceType: "consultant_guide",
+      sourceType: "dynamic_context",
       sourceId: `dynamic_limitations_${consultantId}`,
       userId: consultantId,
       skipHashCheck: true,

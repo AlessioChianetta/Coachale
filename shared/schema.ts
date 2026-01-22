@@ -6573,6 +6573,8 @@ export const fileSearchStores = pgTable("file_search_stores", {
   ownerType: text("owner_type").$type<"consultant" | "client" | "system" | "whatsapp_agent" | "email_account">().notNull(),
   documentCount: integer("document_count").default(0).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  dynamicContextAutoSync: boolean("dynamic_context_auto_sync").default(true).notNull(),
+  lastDynamicContextSync: timestamp("last_dynamic_context_sync"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -6590,7 +6592,7 @@ export const fileSearchDocuments = pgTable("file_search_documents", {
   displayName: text("display_name").notNull(),
   mimeType: text("mime_type").notNull(),
   status: text("status").$type<"pending" | "processing" | "indexed" | "failed">().default("pending").notNull(),
-  sourceType: text("source_type").$type<"library" | "knowledge_base" | "exercise" | "consultation" | "university" | "university_lesson" | "manual" | "financial_data" | "whatsapp_agent_knowledge" | "exercise_response" | "consultant_guide" | "exercise_external_doc">().notNull(),
+  sourceType: text("source_type").$type<"library" | "knowledge_base" | "exercise" | "consultation" | "university" | "university_lesson" | "manual" | "financial_data" | "whatsapp_agent_knowledge" | "exercise_response" | "consultant_guide" | "exercise_external_doc" | "dynamic_context">().notNull(),
   sourceId: varchar("source_id"),
   contentHash: text("content_hash"),
   contentSize: integer("content_size"),
