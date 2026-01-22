@@ -2570,6 +2570,14 @@ export default function ConsultantWhatsAppPage() {
 
                   {/* Stripe Connect Subscriptions */}
                   <TabsContent value="stripe_connect" className="space-y-4">
+                    {/* Info bar */}
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>
+                        {[...(silverUsersQuery.data?.users || []), ...(goldUsersQuery.data?.users || [])]
+                          .filter((u: any) => u.paymentSource === "stripe_connect" || !u.paymentSource).length} sottoscrizioni Stripe Connect totali
+                      </span>
+                    </div>
+                    
                     {silverUsersQuery.isLoading || goldUsersQuery.isLoading ? (
                       <div className="flex items-center justify-center p-8">
                         <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
@@ -2627,6 +2635,14 @@ export default function ConsultantWhatsAppPage() {
 
                   {/* Direct Link Subscriptions */}
                   <TabsContent value="direct_link" className="space-y-4">
+                    {/* Info bar */}
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>
+                        {[...(silverUsersQuery.data?.users || []), ...(goldUsersQuery.data?.users || [])]
+                          .filter((u: any) => u.paymentSource === "direct_link").length} sottoscrizioni Link Diretto totali
+                      </span>
+                    </div>
+                    
                     {silverUsersQuery.isLoading || goldUsersQuery.isLoading ? (
                       <div className="flex items-center justify-center p-8">
                         <Loader2 className="h-6 w-6 animate-spin text-green-500" />
@@ -2733,6 +2749,18 @@ export default function ConsultantWhatsAppPage() {
 
                   {/* Bronze Users Tab */}
                   <TabsContent value="bronze" className="space-y-4">
+                    {/* Info bar */}
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>
+                        {bronzeUsersQuery.data?.total || 0} utenti Bronze totali
+                      </span>
+                      {bronzeUsersQuery.data?.totalPages > 1 && (
+                        <span>
+                          Pagina {bronzeCurrentPage} di {bronzeUsersQuery.data.totalPages}
+                        </span>
+                      )}
+                    </div>
+                    
                     <div className="flex items-center gap-2">
                       <Input
                         placeholder="Cerca per email o nome..."
