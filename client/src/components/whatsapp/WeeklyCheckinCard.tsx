@@ -190,8 +190,7 @@ export function WeeklyCheckinCard() {
     queryFn: async () => {
       console.log("[WEEKLY-CHECKIN] Fetching eligible clients...");
       try {
-        const response = await apiRequest("GET", "/api/weekly-checkin/eligible-clients");
-        const data = await response.json();
+        const data = await apiRequest("GET", "/api/weekly-checkin/eligible-clients");
         console.log("[WEEKLY-CHECKIN] Eligible clients response:", data);
         console.log("[WEEKLY-CHECKIN] Eligible count:", data?.eligible?.length || 0);
         console.log("[WEEKLY-CHECKIN] Excluded count:", data?.excluded?.length || 0);
@@ -199,7 +198,7 @@ export function WeeklyCheckinCard() {
       } catch (error: any) {
         console.log("[WEEKLY-CHECKIN] Error fetching clients:", error?.message);
         if (error?.message?.includes("401")) {
-          return { eligible: [], excluded: [] };
+          return { eligible: [], excluded: [], config: { isEnabled: false, minDaysSinceLastContact: 5 } };
         }
         throw error;
       }
