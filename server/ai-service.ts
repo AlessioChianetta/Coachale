@@ -4051,7 +4051,9 @@ TOTALE LEAD: ${context.leadManagement.stats.total}
   - CONVERTED (CONVERTITI): ${context.leadManagement.stats.byStatus.converted}
   - Inactive: ${context.leadManagement.stats.byStatus.inactive}
 
-📊 TASSO DI CONVERSIONE: ${context.leadManagement.stats.conversionRate}%
+📊 TASSI DI CONVERSIONE:
+  - Su lead totali: ${context.leadManagement.stats.conversionRate}% (${context.leadManagement.stats.byStatus.converted}/${context.leadManagement.stats.total})
+  - Su chi ha risposto: ${context.leadManagement.stats.byStatus.responded > 0 ? Math.round((context.leadManagement.stats.byStatus.converted / context.leadManagement.stats.byStatus.responded) * 100) : 0}% (${context.leadManagement.stats.byStatus.converted}/${context.leadManagement.stats.byStatus.responded})
 
 🔥 PER TEMPERATURA:
   - Freddo: ${context.leadManagement.stats.byCategory.freddo}
