@@ -1410,6 +1410,223 @@ export default function ConsultantSetupWizard() {
                         </>
                       )}
 
+                      {activeStep === "instagram_dm" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Instagram className="h-4 w-4 text-pink-600" />
+                            Come Collegare Instagram Business
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">📱 Cosa ti serve prima di iniziare:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>Un account Instagram <strong>Business</strong> (non personale)</li>
+                              <li>Una Pagina Facebook collegata all'account Instagram</li>
+                              <li>Essere amministratore della Pagina Facebook</li>
+                            </ul>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Passaggi per configurare:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Impostazioni → API Esterne → Instagram</strong></li>
+                              <li>Clicca su <strong>"Collega Instagram"</strong></li>
+                              <li>Accedi con il tuo account Facebook</li>
+                              <li>Seleziona la Pagina collegata a Instagram</li>
+                              <li>Autorizza l'accesso ai messaggi</li>
+                            </ol>
+                            
+                            <p className="text-xs mt-3 italic bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
+                              💡 <strong>Suggerimento:</strong> Se non vedi il tuo account Instagram, verifica che sia convertito in account Business e collegato alla Pagina Facebook.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "approved_template" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-green-600" />
+                            Come Creare e Far Approvare un Template WhatsApp
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">📋 Cos'è un Template WhatsApp?</p>
+                            <p>I template sono messaggi pre-approvati da Meta/WhatsApp che puoi usare per contattare i clienti per primi. Senza template approvati, non puoi iniziare conversazioni!</p>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Come crearne uno:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Template WhatsApp</strong> nel menu</li>
+                              <li>Clicca <strong>"Nuovo Template"</strong></li>
+                              <li>Scegli un nome descrittivo (es: "benvenuto_lead")</li>
+                              <li>Scrivi il messaggio - puoi usare variabili come {"{nome}"}</li>
+                              <li>Clicca <strong>"Invia per Approvazione"</strong></li>
+                              <li>Attendi 1-2 giorni lavorativi per l'approvazione</li>
+                            </ol>
+                            
+                            <p className="text-xs mt-3 italic bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                              ✅ <strong>Consiglio:</strong> Crea template professionali, senza spam o contenuti promozionali aggressivi per aumentare le probabilità di approvazione.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "first_campaign" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Rocket className="h-4 w-4 text-purple-600" />
+                            Come Creare la Tua Prima Campagna Marketing
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">🎯 Cos'è una Campagna Marketing?</p>
+                            <p>Una campagna collega insieme: i tuoi lead, un template WhatsApp approvato, e un agente AI che gestisce le conversazioni automaticamente.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">📋 Cosa ti serve prima:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>Almeno un template WhatsApp approvato (Step 6)</li>
+                              <li>Almeno un agente configurato</li>
+                              <li>Una lista di lead (puoi importarla dopo)</li>
+                            </ul>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Come creare la campagna:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Lead & Campagne → Campagne Marketing</strong></li>
+                              <li>Clicca <strong>"Nuova Campagna"</strong></li>
+                              <li>Dai un nome alla campagna (es: "Lead Gennaio 2026")</li>
+                              <li>Scrivi un <strong>"Uncino"</strong> - la frase che cattura l'attenzione</li>
+                              <li>Seleziona il template WhatsApp da usare</li>
+                              <li>Seleziona l'agente AI che gestirà le risposte</li>
+                              <li>Salva e attiva la campagna!</li>
+                            </ol>
+                            
+                            <p className="text-xs mt-3 italic bg-purple-50 dark:bg-purple-900/20 p-2 rounded">
+                              🚀 <strong>Pronto!</strong> Ora puoi importare lead nella campagna e l'agente AI li contatterà automaticamente.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "stripe_connect" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-indigo-600" />
+                            Come Collegare Stripe per Ricevere Pagamenti
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">💳 Perché serve Stripe?</p>
+                            <p>Stripe ti permette di ricevere pagamenti dai tuoi clienti per abbonamenti e licenze direttamente sul tuo conto.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Come collegarlo:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Gestione Agenti WhatsApp → tab Licenze</strong></li>
+                              <li>Clicca su <strong>"Collega Stripe"</strong></li>
+                              <li>Verrai reindirizzato a Stripe per creare/collegare un account</li>
+                              <li>Completa la verifica dell'identità richiesta da Stripe</li>
+                              <li>Una volta verificato, tornerai automaticamente alla piattaforma</li>
+                            </ol>
+                            
+                            <p className="font-medium text-foreground mt-4">📊 Stati possibili:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li><strong>Pending</strong>: In attesa di verifica</li>
+                              <li><strong>Restricted</strong>: Servono altri documenti</li>
+                              <li><strong>Active</strong>: Tutto ok, puoi ricevere pagamenti! ✅</li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "email_journey" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <MailPlus className="h-4 w-4 text-cyan-600" />
+                            Come Configurare l'Email Journey per i Clienti
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">📧 Cos'è l'Email Journey?</p>
+                            <p>È un sistema che invia email automatiche ai tuoi clienti in momenti specifici del loro percorso (benvenuto, promemoria, follow-up, etc.).</p>
+                            
+                            <p className="font-medium text-foreground mt-4">📋 Cosa ti serve prima:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>SMTP configurato (Step 2)</li>
+                            </ul>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Come configurarlo:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Configurazione AI → tab AI Email</strong></li>
+                              <li>Attiva l'automazione email</li>
+                              <li>Scegli la modalità: <strong>Bozze</strong> (le rivedi prima) o <strong>Automatico</strong> (invio diretto)</li>
+                              <li>Personalizza i template per ogni giorno del journey</li>
+                              <li>L'AI genererà il contenuto basandosi sul profilo del cliente</li>
+                            </ol>
+                            
+                            <p className="text-xs mt-3 italic bg-cyan-50 dark:bg-cyan-900/20 p-2 rounded">
+                              💡 <strong>Consiglio:</strong> Inizia con la modalità "Bozze" per controllare cosa viene inviato, poi passa ad "Automatico" quando ti fidi del sistema.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "nurturing_emails" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <MailPlus className="h-4 w-4 text-orange-600" />
+                            Email Nurturing 365: Un Anno di Email Automatiche
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">📆 Cos'è l'Email Nurturing 365?</p>
+                            <p>È un sistema che genera automaticamente 365 email - una per ogni giorno dell'anno - per "nutrire" i tuoi lead nel tempo e mantenerli interessati.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">🎯 A chi serve?</p>
+                            <p>Serve per i <strong>lead</strong> (potenziali clienti), non per i clienti già attivi. Mantiene vivo l'interesse mentre decidono se acquistare.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Come attivarlo:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Configurazione AI → tab Lead Nurturing</strong></li>
+                              <li>Clicca <strong>"Genera Email con AI"</strong></li>
+                              <li>L'AI creerà 365 email personalizzate per il tuo business</li>
+                              <li>Puoi rivedere e modificare ogni email</li>
+                              <li>Attiva il sistema e le email partiranno automaticamente!</li>
+                            </ol>
+                            
+                            <p className="text-xs mt-3 italic bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
+                              ⏰ <strong>Nota:</strong> Le email vengono inviate con fuso orario Europe/Rome e rispettano le normative GDPR (opt-out incluso).
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "email_hub" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Inbox className="h-4 w-4 text-teal-600" />
+                            Email Hub: La Tua Casella Email Intelligente
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">📬 Cos'è l'Email Hub?</p>
+                            <p>È un sistema che collega la tua casella email (Gmail, Outlook, etc.) alla piattaforma. Puoi vedere, rispondere e far generare risposte dall'AI direttamente da qui.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">✨ Cosa puoi fare:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>Vedere tutte le email ricevute in un unico posto</li>
+                              <li>Far generare risposte intelligenti dall'AI</li>
+                              <li>Usare la Knowledge Base per risposte accurate</li>
+                              <li>Gestire più account email contemporaneamente</li>
+                            </ul>
+                            
+                            <p className="font-medium text-foreground mt-4">🔧 Come collegare un account:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Email Hub</strong> nel menu</li>
+                              <li>Clicca <strong>"Aggiungi Account"</strong></li>
+                              <li>Inserisci i dati del tuo server IMAP (vedi sotto)</li>
+                              <li>Inserisci email e password (o App Password per Gmail)</li>
+                              <li>Salva e l'account sarà collegato!</li>
+                            </ol>
+                            
+                            <p className="font-medium text-foreground mt-4">📧 Dati IMAP comuni:</p>
+                            <div className="bg-white dark:bg-slate-800 p-2 rounded text-xs">
+                              <p><strong>Gmail:</strong> imap.gmail.com, porta 993</p>
+                              <p><strong>Outlook:</strong> outlook.office365.com, porta 993</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {activeStep === "whatsapp_ai" && (
                         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
