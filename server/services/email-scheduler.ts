@@ -32,6 +32,53 @@ function setToItalianTime(date: Date, hour: number = SEND_HOUR): Date {
 }
 
 /**
+ * Calculate the next real send time based on current Italian time.
+ * Uses the same setToItalianTime() function used for actual scheduling.
+ * If current time < today at SEND_HOUR, returns today at 13:00.
+ * If current time >= today at SEND_HOUR, returns tomorrow at 13:00.
+ */
+function getNextSendTime(): { nextSendTime: Date; nextSendTimeItaly: Date; isToday: boolean; hoursUntil: number; minutesUntil: number } {
+  const nowItaly = getItalianNow();
+  
+  // Calculate today's send time using the same function used for scheduling
+  const todaySendTime = setToItalianTime(new Date());
+  const todaySendTimeItaly = toZonedTime(todaySendTime, ITALY_TIMEZONE);
+  
+  // Compare full datetime (not just hour) to determine if we're before or after send time
+  const isBeforeSendTime = nowItaly.getTime() < todaySendTimeItaly.getTime();
+  
+  // If before today's send time, next send is today
+  // If at or after today's send time, next send is tomorrow
+  let nextSendTime: Date;
+  let nextSendTimeItaly: Date;
+  
+  if (isBeforeSendTime) {
+    nextSendTime = todaySendTime;
+    nextSendTimeItaly = todaySendTimeItaly;
+  } else {
+    // Tomorrow at SEND_HOUR
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    nextSendTime = setToItalianTime(tomorrow);
+    nextSendTimeItaly = toZonedTime(nextSendTime, ITALY_TIMEZONE);
+  }
+  
+  // Calculate time until next send
+  const diffMs = nextSendTimeItaly.getTime() - nowItaly.getTime();
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const hoursUntil = Math.floor(totalMinutes / 60);
+  const minutesUntil = totalMinutes % 60;
+  
+  return {
+    nextSendTime,
+    nextSendTimeItaly,
+    isToday: isBeforeSendTime,
+    hoursUntil,
+    minutesUntil
+  };
+}
+
+/**
  * Calculate which template day to use based on current day and month length.
  * Uses dynamic template selection for end-of-month templates (28-31).
  * 
@@ -216,7 +263,15 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const todayTemplateDay = calculateTemplateDay(currentDay, lastDayOfMonth);
     
-    console.log(`📅 Today (Italy): ${now.toLocaleDateString('it-IT')} → Calendar day ${currentDay}, Template ${todayTemplateDay}/${lastDayOfMonth}`);
+    // Calculate next real send time using the dedicated function
+    const { nextSendTimeItaly, isToday, hoursUntil, minutesUntil } = getNextSendTime();
+    const nowTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const nextSendDateStr = nextSendTimeItaly.toLocaleDateString('it-IT');
+    const nextSendTimeStr = `${nextSendTimeItaly.getHours().toString().padStart(2, '0')}:${nextSendTimeItaly.getMinutes().toString().padStart(2, '0')}`;
+    const timeUntilStr = `${hoursUntil}h ${minutesUntil}m`;
+    
+    console.log(`📅 Italy: ${now.toLocaleDateString('it-IT')} ${nowTimeStr} → Calendar day ${currentDay}, Template ${todayTemplateDay}/${lastDayOfMonth}`);
+    console.log(`⏰ Prossimo invio: ${isToday ? 'OGGI' : 'DOMANI'} ${nextSendDateStr} alle ${nextSendTimeStr} (tra ${timeUntilStr})`);
     
     // Check which clients should receive a new email for today's template
     const clientsToEmail = [];
