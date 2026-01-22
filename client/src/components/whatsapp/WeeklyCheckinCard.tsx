@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -18,15 +18,12 @@ import {
   MessageCircle, 
   TrendingUp, 
   Clock, 
-  Plus, 
-  Trash2, 
   Sparkles,
   Users,
-  RefreshCw,
   CheckCircle2,
-  Eye,
   XCircle,
-  Loader2
+  Loader2,
+  MessageSquare
 } from "lucide-react";
 
 interface CheckinConfig {
@@ -44,14 +41,11 @@ interface CheckinConfig {
   totalResponses: number;
 }
 
-interface CheckinTemplate {
+interface WhatsAppTemplate {
   id: string;
-  name: string;
-  body: string;
-  category: string;
-  isSystemTemplate: boolean;
-  isActive: boolean;
-  timesUsed: number;
+  friendlyName: string;
+  bodyText: string;
+  approvalStatus: string;
 }
 
 interface CheckinLog {
@@ -89,19 +83,16 @@ export function WeeklyCheckinCard() {
   const queryClient = useQueryClient();
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const [newTemplateName, setNewTemplateName] = useState("");
-  const [newTemplateBody, setNewTemplateBody] = useState("");
-  const [showAddTemplate, setShowAddTemplate] = useState(false);
 
   const { data: config, isLoading: configLoading } = useQuery<CheckinConfig | null>({
     queryKey: ["/api/weekly-checkin/config"],
   });
 
-  const { data: templates = [], isLoading: templatesLoading } = useQuery<CheckinTemplate[]>({
+  const { data: templates = [], isLoading: templatesLoading } = useQuery<WhatsAppTemplate[]>({
     queryKey: ["/api/weekly-checkin/templates"],
   });
 
-  const { data: logs = [], isLoading: logsLoading } = useQuery<CheckinLog[]>({
+  const { data: logs = [] } = useQuery<CheckinLog[]>({
     queryKey: ["/api/weekly-checkin/logs?limit=5"],
   });
 
@@ -144,78 +135,58 @@ export function WeeklyCheckinCard() {
     },
   });
 
-  const createTemplateMutation = useMutation({
-    mutationFn: (data: { name: string; body: string }) => apiRequest("POST", "/api/weekly-checkin/templates", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/templates"] });
-      setNewTemplateName("");
-      setNewTemplateBody("");
-      setShowAddTemplate(false);
-      toast({ title: "Template creato" });
-    },
-  });
-
-  const deleteTemplateMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/weekly-checkin/templates/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/templates"] });
-      toast({ title: "Template eliminato" });
-    },
-  });
-
   const testMutation = useMutation({
     mutationFn: (clientId: string) => apiRequest("POST", "/api/weekly-checkin/test", { clientId }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/logs"] });
       setTestDialogOpen(false);
-      toast({ title: "Check-in di test inviato!" });
+      setSelectedClientId("");
+      toast({ title: "Check-in di test programmato" });
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
 
-  const handleTemplateToggle = (templateId: string, checked: boolean) => {
+  const handleTemplateToggle = (templateId: string, isChecked: boolean) => {
     const currentIds = config?.templateIds || [];
-    const newIds = checked 
+    const newIds = isChecked
       ? [...currentIds, templateId]
-      : currentIds.filter(id => id !== templateId);
+      : currentIds.filter((id) => id !== templateId);
     updateConfigMutation.mutate({ templateIds: newIds });
   };
 
-  const handleDayToggle = (day: number, checked: boolean) => {
-    const currentDays = config?.excludedDays || [];
-    const newDays = checked 
-      ? currentDays.filter(d => d !== day)
-      : [...currentDays, day];
-    updateConfigMutation.mutate({ excludedDays: newDays });
+  const handleDayToggle = (day: number, isExcluded: boolean) => {
+    const currentExcluded = config?.excludedDays || [];
+    const newExcluded = isExcluded
+      ? currentExcluded.filter((d) => d !== day)
+      : [...currentExcluded, day];
+    updateConfigMutation.mutate({ excludedDays: newExcluded });
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "sent": return <Send className="h-4 w-4 text-blue-500" />;
-      case "delivered": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "read": return <Eye className="h-4 w-4 text-purple-500" />;
-      case "replied": return <MessageCircle className="h-4 w-4 text-emerald-500" />;
-      case "failed": return <XCircle className="h-4 w-4 text-red-500" />;
-      case "scheduled": return <Clock className="h-4 w-4 text-amber-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-400" />;
+      case "sent":
+      case "delivered":
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case "replied":
+        return <MessageCircle className="h-4 w-4 text-blue-500" />;
+      case "failed":
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-400" />;
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "-";
     const date = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return `Oggi ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
-    if (diffDays === 1) return `Ieri ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
-    return `${diffDays} gg fa`;
+    return date.toLocaleDateString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
   };
-
-  const responseRate = stats?.totalSent ? Math.round((stats.totalResponses / stats.totalSent) * 100) : 0;
 
   if (configLoading) {
     return (
-      <Card className="rounded-2xl border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 shadow-xl">
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </CardContent>
@@ -224,15 +195,15 @@ export function WeeklyCheckinCard() {
   }
 
   return (
-    <Card className="rounded-2xl border-0 bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-blue-950/20 shadow-xl overflow-hidden">
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/25">
-              <CalendarCheck className="h-6 w-6 text-white" />
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg">
+              <CalendarCheck className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
                 Check-in Settimanale Automatico
               </CardTitle>
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -240,132 +211,92 @@ export function WeeklyCheckinCard() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {config?.isEnabled ? "Attivo" : "Disattivato"}
-            </span>
-            <Switch
-              checked={config?.isEnabled || false}
-              onCheckedChange={() => toggleMutation.mutate()}
-              disabled={toggleMutation.isPending}
-            />
-          </div>
+          <Switch
+            checked={config?.isEnabled || false}
+            onCheckedChange={() => toggleMutation.mutate()}
+            disabled={toggleMutation.isPending}
+          />
         </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
         <div className="grid grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
-              <Send className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wide">Inviati</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="text-center p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {stats?.totalSent || 0}
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wide">Risposte</span>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Messaggi Inviati</div>
+          </div>
+          <div className="text-center p-4 rounded-xl bg-green-50 dark:bg-green-900/20">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {stats?.totalResponses || 0}
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wide">Tasso</span>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {responseRate}%
-            </p>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Risposte</div>
+          </div>
+          <div className="text-center p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {stats?.responseRate || 0}%
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Tasso Risposta</div>
           </div>
         </div>
 
         <Separator />
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Template in Rotazione
+              <MessageSquare className="h-4 w-4" />
+              Template WhatsApp Approvati
             </h4>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowAddTemplate(!showAddTemplate)}
-              className="gap-1"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Aggiungi
-            </Button>
+            <Badge variant="secondary" className="text-xs">
+              {(config?.templateIds || []).length} selezionati
+            </Badge>
           </div>
 
-          {showAddTemplate && (
-            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 space-y-3">
-              <Input
-                placeholder="Nome template"
-                value={newTemplateName}
-                onChange={(e) => setNewTemplateName(e.target.value)}
-              />
-              <Input
-                placeholder="Testo template (usa {nome_cliente} per il nome)"
-                value={newTemplateBody}
-                onChange={(e) => setNewTemplateBody(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => createTemplateMutation.mutate({ name: newTemplateName, body: newTemplateBody })}
-                  disabled={!newTemplateName || !newTemplateBody || createTemplateMutation.isPending}
+          {templatesLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            </div>
+          ) : templates.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">Nessun template WhatsApp approvato trovato</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Configura i template nella sezione WhatsApp Templates
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {templates.map((template) => (
+                <div
+                  key={template.id}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
                 >
-                  Salva
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowAddTemplate(false)}>
-                  Annulla
-                </Button>
-              </div>
+                  <Checkbox
+                    checked={config?.templateIds?.includes(template.id) || false}
+                    onCheckedChange={(checked) => handleTemplateToggle(template.id, checked as boolean)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm text-gray-900 dark:text-white">
+                        {template.friendlyName}
+                      </span>
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                        Approvato
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                      {template.bodyText || "Template senza corpo visibile"}
+                    </p>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">
+                      {template.id}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {templates.map((template) => (
-              <div
-                key={template.id}
-                className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
-              >
-                <Checkbox
-                  checked={config?.templateIds?.includes(template.id) || false}
-                  onCheckedChange={(checked) => handleTemplateToggle(template.id, checked as boolean)}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-gray-900 dark:text-white">
-                      {template.name}
-                    </span>
-                    {template.isSystemTemplate && (
-                      <Badge variant="secondary" className="text-xs">Sistema</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {template.body}
-                  </p>
-                </div>
-                {!template.isSystemTemplate && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    onClick={() => deleteTemplateMutation.mutate(template.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
 
         <Separator />
@@ -445,7 +376,7 @@ export function WeeklyCheckinCard() {
           </div>
         </div>
 
-        {logs.length > 0 && (
+        {Array.isArray(logs) && logs.length > 0 && (
           <>
             <Separator />
             <div className="space-y-3">

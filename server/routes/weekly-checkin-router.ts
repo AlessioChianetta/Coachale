@@ -3,8 +3,80 @@ import { db } from "../db";
 import * as schema from "../../shared/schema";
 import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
+import twilio from "twilio";
 
 const router = Router();
+
+interface TwilioTemplateInfo {
+  id: string;
+  friendlyName: string;
+  bodyText: string;
+  approvalStatus: string;
+}
+
+async function fetchTwilioTemplatesForConsultant(
+  consultantId: string
+): Promise<TwilioTemplateInfo[]> {
+  const templates: TwilioTemplateInfo[] = [];
+
+  const configs = await db
+    .select({
+      twilioAccountSid: schema.consultantWhatsappConfig.twilioAccountSid,
+      twilioAuthToken: schema.consultantWhatsappConfig.twilioAuthToken,
+    })
+    .from(schema.consultantWhatsappConfig)
+    .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
+    .limit(1);
+
+  if (configs.length === 0 || !configs[0].twilioAccountSid || !configs[0].twilioAuthToken) {
+    return templates;
+  }
+
+  const { twilioAccountSid, twilioAuthToken } = configs[0];
+
+  try {
+    const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
+    const contentList = await twilioClient.content.v1.contents.list({ limit: 100 });
+
+    const extractWhatsAppBody = (types: any): string => {
+      if (types?.['twilio/whatsapp']?.template?.components) {
+        const bodyComponent = types['twilio/whatsapp'].template.components.find(
+          (component: any) => component.type === 'BODY'
+        );
+        return bodyComponent?.text || '';
+      }
+      return types?.['twilio/text']?.body || '';
+    };
+
+    const getApprovalStatus = (content: any): string => {
+      const whatsappTypes = content.types?.['twilio/whatsapp'];
+      if (whatsappTypes?.template?.approvalStatus) {
+        return whatsappTypes.template.approvalStatus.status || 'unknown';
+      }
+      return 'approved';
+    };
+
+    for (const content of contentList) {
+      if (content.sid.startsWith('HX')) {
+        const status = getApprovalStatus(content);
+        if (status === 'approved') {
+          templates.push({
+            id: content.sid,
+            friendlyName: content.friendlyName || content.sid,
+            bodyText: extractWhatsAppBody(content.types),
+            approvalStatus: status,
+          });
+        }
+      }
+    }
+
+    console.log(`[WEEKLY-CHECKIN] Fetched ${templates.length} approved WhatsApp templates for consultant ${consultantId}`);
+  } catch (error: any) {
+    console.error("[WEEKLY-CHECKIN] Error fetching Twilio templates:", error.message);
+  }
+
+  return templates;
+}
 
 router.get("/config", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
@@ -82,23 +154,23 @@ router.post("/config", authenticateToken, requireRole("consultant"), async (req,
 
 router.patch("/config/toggle", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
-    const [existing] = await db
+    const [config] = await db
       .select()
       .from(schema.weeklyCheckinConfig)
       .where(eq(schema.weeklyCheckinConfig.consultantId, req.user!.id))
       .limit(1);
 
-    if (!existing) {
-      return res.status(404).json({ message: "Configuration not found. Create a configuration first." });
+    if (!config) {
+      return res.status(404).json({ message: "Configuration not found" });
     }
 
     const [updated] = await db
       .update(schema.weeklyCheckinConfig)
       .set({
-        isEnabled: !existing.isEnabled,
+        isEnabled: !config.isEnabled,
         updatedAt: new Date(),
       })
-      .where(eq(schema.weeklyCheckinConfig.id, existing.id))
+      .where(eq(schema.weeklyCheckinConfig.id, config.id))
       .returning();
 
     res.json(updated);
@@ -187,79 +259,10 @@ router.get("/logs", authenticateToken, requireRole("consultant"), async (req, re
 
 router.get("/templates", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
-    const templates = await db
-      .select()
-      .from(schema.weeklyCheckinTemplates)
-      .where(
-        or(
-          eq(schema.weeklyCheckinTemplates.isSystemTemplate, true),
-          eq(schema.weeklyCheckinTemplates.consultantId, req.user!.id)
-        )
-      )
-      .orderBy(desc(schema.weeklyCheckinTemplates.isSystemTemplate), desc(schema.weeklyCheckinTemplates.createdAt));
-
+    const templates = await fetchTwilioTemplatesForConsultant(req.user!.id);
     res.json(templates);
   } catch (error: any) {
-    console.error("Error fetching weekly checkin templates:", error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.post("/templates", authenticateToken, requireRole("consultant"), async (req, res) => {
-  try {
-    const { name, body, category } = req.body;
-
-    if (!name || !body) {
-      return res.status(400).json({ message: "Name and body are required" });
-    }
-
-    const [created] = await db
-      .insert(schema.weeklyCheckinTemplates)
-      .values({
-        consultantId: req.user!.id,
-        name,
-        body,
-        category: category || "general",
-        isSystemTemplate: false,
-        isActive: true,
-      })
-      .returning();
-
-    res.status(201).json(created);
-  } catch (error: any) {
-    console.error("Error creating weekly checkin template:", error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.delete("/templates/:id", authenticateToken, requireRole("consultant"), async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const [template] = await db
-      .select()
-      .from(schema.weeklyCheckinTemplates)
-      .where(
-        and(
-          eq(schema.weeklyCheckinTemplates.id, id),
-          eq(schema.weeklyCheckinTemplates.consultantId, req.user!.id)
-        )
-      )
-      .limit(1);
-
-    if (!template) {
-      return res.status(404).json({ message: "Template not found" });
-    }
-
-    if (template.isSystemTemplate) {
-      return res.status(403).json({ message: "Cannot delete system templates" });
-    }
-
-    await db.delete(schema.weeklyCheckinTemplates).where(eq(schema.weeklyCheckinTemplates.id, id));
-
-    res.json({ message: "Template deleted successfully" });
-  } catch (error: any) {
-    console.error("Error deleting weekly checkin template:", error);
+    console.error("Error fetching WhatsApp templates:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -291,15 +294,6 @@ router.post("/test", authenticateToken, requireRole("consultant"), async (req, r
       return res.status(400).json({ message: "Client has no phone number" });
     }
 
-    let template = null;
-    if (templateId) {
-      [template] = await db
-        .select()
-        .from(schema.weeklyCheckinTemplates)
-        .where(eq(schema.weeklyCheckinTemplates.id, templateId))
-        .limit(1);
-    }
-
     const [config] = await db
       .select()
       .from(schema.weeklyCheckinConfig)
@@ -308,6 +302,12 @@ router.post("/test", authenticateToken, requireRole("consultant"), async (req, r
 
     if (!config) {
       return res.status(400).json({ message: "Weekly check-in not configured. Please create a configuration first." });
+    }
+
+    let templateInfo = null;
+    if (templateId && templateId.startsWith('HX')) {
+      const templates = await fetchTwilioTemplatesForConsultant(req.user!.id);
+      templateInfo = templates.find(t => t.id === templateId);
     }
 
     const now = new Date();
@@ -321,10 +321,10 @@ router.post("/test", authenticateToken, requireRole("consultant"), async (req, r
         scheduledFor: now,
         scheduledDay: now.getDay(),
         scheduledHour: now.getHours(),
-        templateId: template?.id || null,
-        templateName: template?.name || "Test Message",
-        originalTemplateBody: template?.body || "Test check-in message",
-        personalizedMessage: template?.body?.replace("{nome_cliente}", client.firstName || "Cliente") || `Ciao ${client.firstName || "Cliente"}! Questo è un messaggio di test del sistema di check-in settimanale.`,
+        templateId: templateInfo?.id || null,
+        templateName: templateInfo?.friendlyName || "Test Message",
+        originalTemplateBody: templateInfo?.bodyText || "Test check-in message",
+        personalizedMessage: templateInfo?.bodyText?.replace(/\{\{1\}\}/g, client.firstName || "Cliente") || `Ciao ${client.firstName || "Cliente"}! Questo è un messaggio di test del sistema di check-in settimanale.`,
         status: "scheduled",
         aiPersonalizationContext: {
           clientName: client.firstName || undefined,

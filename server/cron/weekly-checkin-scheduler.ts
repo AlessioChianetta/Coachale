@@ -4,6 +4,8 @@
  * 
  * CRON 1 (08:00 Europe/Rome): Schedula check-in per la giornata
  * CRON 2 (ogni minuto): Processa e invia messaggi schedulati
+ * 
+ * Usa template WhatsApp approvati da Meta (HX prefix) per garantire la consegna.
  */
 
 import cron from 'node-cron';
@@ -11,26 +13,30 @@ import { db } from '../db';
 import {
   weeklyCheckinConfig,
   weeklyCheckinLogs,
-  weeklyCheckinTemplates,
   users,
   whatsappConversations,
   exercises,
   consultations,
   consultantWhatsappConfig
 } from '../../shared/schema';
-import { eq, and, lte, isNotNull, desc, sql, gte, inArray } from 'drizzle-orm';
+import { eq, and, lte, isNotNull, desc, sql, gte } from 'drizzle-orm';
 import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
-import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
-import { decryptForConsultant } from '../encryption';
+import twilio from 'twilio';
 
 let dailySchedulingJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
 let isDailySchedulingRunning = false;
 let isProcessingRunning = false;
 
-const DAILY_SCHEDULING_INTERVAL = '0 8 * * *'; // Daily at 08:00
-const PROCESSING_INTERVAL = '* * * * *';       // Every minute
+const DAILY_SCHEDULING_INTERVAL = '0 8 * * *';
+const PROCESSING_INTERVAL = '* * * * *';
 const TIMEZONE = 'Europe/Rome';
+
+interface TwilioTemplate {
+  id: string;
+  friendlyName: string;
+  bodyText: string;
+}
 
 interface ClientContext {
   clientName?: string;
@@ -38,17 +44,8 @@ interface ClientContext {
   exerciseStatus?: string;
   daysSinceLastContact?: number;
   lastConsultationTopic?: string;
-  progressContext?: string;
 }
 
-interface PersonalizationResult {
-  personalizedMessage: string;
-  context: ClientContext;
-}
-
-/**
- * Start the weekly check-in scheduler
- */
 export function startWeeklyCheckinScheduler(): void {
   console.log('🚀 [WEEKLY-CHECKIN] Initializing weekly check-in scheduler...');
   
@@ -85,9 +82,6 @@ export function startWeeklyCheckinScheduler(): void {
   console.log(`   📋 Processing: ${PROCESSING_INTERVAL} (every minute)`);
 }
 
-/**
- * Stop the weekly check-in scheduler
- */
 export function stopWeeklyCheckinScheduler(): void {
   console.log('🛑 [WEEKLY-CHECKIN] Stopping weekly check-in scheduler...');
   
@@ -106,9 +100,6 @@ export function stopWeeklyCheckinScheduler(): void {
   console.log('✅ [WEEKLY-CHECKIN] Scheduler stopped');
 }
 
-/**
- * Run daily scheduling manually (for testing)
- */
 export async function runDailySchedulingNow(): Promise<void> {
   if (isDailySchedulingRunning) {
     console.log('⚠️ [WEEKLY-CHECKIN] Daily scheduling already running, skipping...');
@@ -169,15 +160,94 @@ export async function runDailySchedulingNow(): Promise<void> {
   }
 }
 
-/**
- * Schedule check-ins for a single consultant
- */
+async function fetchTwilioTemplates(
+  twilioAccountSid: string,
+  twilioAuthToken: string,
+  templateIds: string[]
+): Promise<TwilioTemplate[]> {
+  const templates: TwilioTemplate[] = [];
+  
+  if (templateIds.length === 0 || !twilioAccountSid || !twilioAuthToken) {
+    return templates;
+  }
+
+  try {
+    const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
+    
+    const extractWhatsAppBody = (types: any): string => {
+      if (types?.['twilio/whatsapp']?.template?.components) {
+        const bodyComponent = types['twilio/whatsapp'].template.components.find(
+          (component: any) => component.type === 'BODY'
+        );
+        return bodyComponent?.text || '';
+      }
+      return types?.['twilio/text']?.body || '';
+    };
+
+    for (const templateId of templateIds) {
+      if (!templateId.startsWith('HX')) continue;
+      
+      try {
+        const content = await twilioClient.content.v1.contents(templateId).fetch();
+        templates.push({
+          id: content.sid,
+          friendlyName: content.friendlyName || content.sid,
+          bodyText: extractWhatsAppBody(content.types),
+        });
+      } catch (err: any) {
+        console.warn(`[WEEKLY-CHECKIN] Failed to fetch template ${templateId}: ${err.message}`);
+      }
+    }
+  } catch (error: any) {
+    console.error('[WEEKLY-CHECKIN] Error fetching Twilio templates:', error.message);
+  }
+
+  return templates;
+}
+
 async function scheduleCheckinForConsultant(
   config: typeof weeklyCheckinConfig.$inferSelect,
   currentDay: number
 ): Promise<number> {
   const consultantId = config.consultantId;
   
+  const [agentConfig] = await db
+    .select({
+      id: consultantWhatsappConfig.id,
+      twilioAccountSid: consultantWhatsappConfig.twilioAccountSid,
+      twilioAuthToken: consultantWhatsappConfig.twilioAuthToken,
+    })
+    .from(consultantWhatsappConfig)
+    .where(
+      and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        eq(consultantWhatsappConfig.isActive, true)
+      )
+    )
+    .limit(1);
+
+  if (!agentConfig || !agentConfig.twilioAccountSid || !agentConfig.twilioAuthToken) {
+    console.log(`⚠️ [WEEKLY-CHECKIN] Consultant ${consultantId}: no active WhatsApp agent configured`);
+    return 0;
+  }
+
+  const templateIds = config.templateIds || [];
+  if (templateIds.length === 0) {
+    console.log(`⚠️ [WEEKLY-CHECKIN] Consultant ${consultantId}: no templates selected`);
+    return 0;
+  }
+
+  const templates = await fetchTwilioTemplates(
+    agentConfig.twilioAccountSid,
+    agentConfig.twilioAuthToken,
+    templateIds
+  );
+
+  if (templates.length === 0) {
+    console.log(`⚠️ [WEEKLY-CHECKIN] Consultant ${consultantId}: no valid Twilio templates found`);
+    return 0;
+  }
+
   const activeClients = await db
     .select({
       id: users.id,
@@ -240,34 +310,7 @@ async function scheduleCheckinForConsultant(
 
   console.log(`📊 [WEEKLY-CHECKIN] Consultant ${consultantId}: ${selectedClients.length}/${eligibleClients.length} clients selected (quota: ${dailyQuota})`);
 
-  const templateIds = config.templateIds || [];
   let templateIndex = 0;
-  
-  const templates = templateIds.length > 0
-    ? await db
-        .select()
-        .from(weeklyCheckinTemplates)
-        .where(
-          and(
-            inArray(weeklyCheckinTemplates.id, templateIds),
-            eq(weeklyCheckinTemplates.isActive, true)
-          )
-        )
-    : await db
-        .select()
-        .from(weeklyCheckinTemplates)
-        .where(
-          and(
-            eq(weeklyCheckinTemplates.isSystemTemplate, true),
-            eq(weeklyCheckinTemplates.isActive, true)
-          )
-        );
-
-  if (templates.length === 0) {
-    console.log(`⚠️ [WEEKLY-CHECKIN] Consultant ${consultantId}: no active templates available`);
-    return 0;
-  }
-
   let scheduled = 0;
 
   for (const client of selectedClients) {
@@ -280,50 +323,23 @@ async function scheduleCheckinForConsultant(
       const template = templates[templateIndex % templates.length];
       templateIndex++;
 
-      let personalizedMessage: string | null = null;
-      let aiContext: ClientContext | null = null;
-
-      if (config.useAiPersonalization) {
-        try {
-          const result = await personalizeMessage(
-            consultantId,
-            client.id,
-            `${client.firstName} ${client.lastName}`,
-            template.body
-          );
-          personalizedMessage = result.personalizedMessage;
-          aiContext = result.context;
-        } catch (error) {
-          console.error(`⚠️ [WEEKLY-CHECKIN] AI personalization failed for client ${client.id}:`, error);
-        }
-      }
-
-      const conversation = await db
-        .select({ id: whatsappConversations.id })
-        .from(whatsappConversations)
-        .where(
-          and(
-            eq(whatsappConversations.consultantId, consultantId),
-            eq(whatsappConversations.clientId, client.id)
-          )
-        )
-        .limit(1);
-
       await db.insert(weeklyCheckinLogs).values({
         configId: config.id,
-        consultantId: consultantId,
+        consultantId,
         clientId: client.id,
         phoneNumber: client.phoneNumber!,
-        conversationId: conversation[0]?.id || null,
         scheduledFor: scheduledTime,
         scheduledDay: currentDay,
         scheduledHour: scheduledTime.getHours(),
         templateId: template.id,
-        templateName: template.name,
-        originalTemplateBody: template.body,
-        personalizedMessage: personalizedMessage,
-        aiPersonalizationContext: aiContext,
-        status: 'scheduled'
+        templateName: template.friendlyName,
+        originalTemplateBody: template.bodyText,
+        personalizedMessage: null,
+        status: 'scheduled',
+        retryCount: 0,
+        aiPersonalizationContext: {
+          clientName: client.firstName || undefined,
+        },
       });
 
       scheduled++;
@@ -332,18 +348,15 @@ async function scheduleCheckinForConsultant(
     }
   }
 
-  console.log(`✅ [WEEKLY-CHECKIN] Consultant ${consultantId}: scheduled ${scheduled} check-ins`);
+  console.log(`✅ [WEEKLY-CHECKIN] Consultant ${consultantId}: ${scheduled} check-ins scheduled`);
   return scheduled;
 }
 
-/**
- * Generate a random time between start and end time strings (HH:MM format)
- */
-function generateRandomTime(startTimeStr: string, endTimeStr: string): Date {
+function generateRandomTime(startTime: string, endTime: string): Date {
   const now = new Date();
   
-  const [startHour, startMin] = startTimeStr.split(':').map(Number);
-  const [endHour, endMin] = endTimeStr.split(':').map(Number);
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
   
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
@@ -360,142 +373,6 @@ function generateRandomTime(startTimeStr: string, endTimeStr: string): Date {
   return scheduledTime;
 }
 
-/**
- * Personalize a template message using AI
- */
-async function personalizeMessage(
-  consultantId: string,
-  clientId: string,
-  clientName: string,
-  templateBody: string
-): Promise<PersonalizationResult> {
-  const context: ClientContext = {
-    clientName
-  };
-
-  const [lastExercise] = await db
-    .select({
-      title: exercises.title,
-      status: exercises.status
-    })
-    .from(exercises)
-    .where(eq(exercises.assignedTo, clientId))
-    .orderBy(desc(exercises.createdAt))
-    .limit(1);
-
-  if (lastExercise) {
-    context.lastExercise = lastExercise.title;
-    context.exerciseStatus = lastExercise.status || 'in_progress';
-  }
-
-  const [lastConsultation] = await db
-    .select({
-      summary: consultations.summary,
-      topic: consultations.title
-    })
-    .from(consultations)
-    .where(eq(consultations.clientId, clientId))
-    .orderBy(desc(consultations.scheduledAt))
-    .limit(1);
-
-  if (lastConsultation) {
-    context.lastConsultationTopic = lastConsultation.topic || undefined;
-  }
-
-  const [lastConv] = await db
-    .select({
-      lastMessageAt: whatsappConversations.lastMessageAt
-    })
-    .from(whatsappConversations)
-    .where(eq(whatsappConversations.clientId, clientId))
-    .orderBy(desc(whatsappConversations.lastMessageAt))
-    .limit(1);
-
-  if (lastConv?.lastMessageAt) {
-    const daysSince = Math.floor(
-      (Date.now() - new Date(lastConv.lastMessageAt).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    context.daysSinceLastContact = daysSince;
-  }
-
-  try {
-    const consultant = await db
-      .select({ encryptionSalt: users.encryptionSalt })
-      .from(users)
-      .where(eq(users.id, consultantId))
-      .limit(1);
-
-    const { provider, metadata } = await getAIProvider(consultantId);
-    const { model, useThinking, thinkingLevel } = getModelWithThinking(metadata?.name);
-
-    const prompt = `You are a friendly wellness consultant assistant. Personalize this check-in message template for a client.
-
-TEMPLATE:
-${templateBody}
-
-CLIENT CONTEXT:
-- Name: ${context.clientName}
-${context.lastExercise ? `- Last exercise assigned: "${context.lastExercise}" (status: ${context.exerciseStatus})` : '- No recent exercises assigned'}
-${context.lastConsultationTopic ? `- Last consultation topic: "${context.lastConsultationTopic}"` : ''}
-${context.daysSinceLastContact ? `- Days since last contact: ${context.daysSinceLastContact}` : ''}
-
-INSTRUCTIONS:
-1. Personalize the template by naturally incorporating the client's context
-2. Keep the message concise (max 200 characters for WhatsApp)
-3. Maintain a warm, caring, and professional tone
-4. Use the client's first name naturally
-5. If they have an exercise in progress, gently ask about it
-6. Do NOT include any metadata, just the final message text
-
-Return ONLY the personalized message text, nothing else.`;
-
-    const generateConfig: any = {
-      model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    };
-
-    if (useThinking) {
-      generateConfig.config = {
-        thinkingConfig: { thinkingBudget: thinkingLevel === 'low' ? 1024 : 2048 }
-      };
-    }
-
-    const response = await provider.models.generateContent(generateConfig);
-    
-    let personalizedText = '';
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.text && !part.thought) {
-          personalizedText += part.text;
-        }
-      }
-    }
-
-    personalizedText = personalizedText.trim();
-    
-    if (!personalizedText || personalizedText.length < 10) {
-      return {
-        personalizedMessage: templateBody.replace('{{nome}}', context.clientName || 'ciao'),
-        context
-      };
-    }
-
-    return {
-      personalizedMessage: personalizedText,
-      context
-    };
-  } catch (error) {
-    console.error('❌ [WEEKLY-CHECKIN] AI personalization error:', error);
-    return {
-      personalizedMessage: templateBody.replace('{{nome}}', context.clientName || 'ciao'),
-      context
-    };
-  }
-}
-
-/**
- * Process scheduled check-in messages
- */
 async function processScheduledCheckins(): Promise<void> {
   if (isProcessingRunning) {
     return;
@@ -548,18 +425,34 @@ async function processScheduledCheckins(): Promise<void> {
           continue;
         }
 
-        const messageText = checkin.personalizedMessage || checkin.originalTemplateBody || 'Ciao! Come stai? 😊';
-
-        const messageSid = await sendWhatsAppMessage(
-          checkin.consultantId,
-          checkin.phoneNumber,
-          messageText,
-          undefined,
-          {
-            agentConfigId: agentConfig.id,
-            conversationId: checkin.conversationId || undefined
-          }
-        );
+        const isTemplateMessage = checkin.templateId?.startsWith('HX');
+        
+        let messageSid: string;
+        
+        if (isTemplateMessage && checkin.templateId) {
+          messageSid = await sendWhatsAppMessage(
+            checkin.consultantId,
+            checkin.phoneNumber,
+            undefined,
+            checkin.templateId,
+            {
+              agentConfigId: agentConfig.id,
+              conversationId: checkin.conversationId || undefined
+            }
+          );
+        } else {
+          const messageText = checkin.personalizedMessage || checkin.originalTemplateBody || 'Ciao! Come stai? 😊';
+          messageSid = await sendWhatsAppMessage(
+            checkin.consultantId,
+            checkin.phoneNumber,
+            messageText,
+            undefined,
+            {
+              agentConfigId: agentConfig.id,
+              conversationId: checkin.conversationId || undefined
+            }
+          );
+        }
 
         await db.update(weeklyCheckinLogs)
           .set({
@@ -577,17 +470,7 @@ async function processScheduledCheckins(): Promise<void> {
           })
           .where(eq(weeklyCheckinConfig.id, checkin.configId));
 
-        if (checkin.templateId) {
-          await db.update(weeklyCheckinTemplates)
-            .set({
-              timesUsed: sql`${weeklyCheckinTemplates.timesUsed} + 1`,
-              lastUsedAt: new Date(),
-              updatedAt: new Date()
-            })
-            .where(eq(weeklyCheckinTemplates.id, checkin.templateId));
-        }
-
-        console.log(`✅ [WEEKLY-CHECKIN] Sent check-in ${checkin.id} to ${checkin.phoneNumber}`);
+        console.log(`✅ [WEEKLY-CHECKIN] Sent check-in ${checkin.id} to ${checkin.phoneNumber} (template: ${checkin.templateId || 'text'})`);
       } catch (error: any) {
         console.error(`❌ [WEEKLY-CHECKIN] Error sending check-in ${checkin.id}:`, error);
         

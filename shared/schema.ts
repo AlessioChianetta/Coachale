@@ -8913,8 +8913,8 @@ export const weeklyCheckinLogs = pgTable("weekly_checkin_logs", {
   scheduledDay: integer("scheduled_day").notNull(),
   scheduledHour: integer("scheduled_hour").notNull(),
   
-  // Template usato
-  templateId: varchar("template_id").references(() => weeklyCheckinTemplates.id, { onDelete: "set null" }),
+  // Template usato (Twilio HX content SID o template interno)
+  templateId: varchar("template_id"),
   templateName: varchar("template_name"),
   
   // Messaggio
