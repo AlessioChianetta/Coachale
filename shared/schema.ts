@@ -8832,3 +8832,123 @@ export const contentStudioConfig = pgTable("content_studio_config", {
 
 export type ContentStudioConfig = typeof contentStudioConfig.$inferSelect;
 export type InsertContentStudioConfig = typeof contentStudioConfig.$inferInsert;
+
+// ============================================================================
+// WEEKLY CHECK-IN TABLES
+// ============================================================================
+
+// Weekly Check-in Config - Configurazione per ogni consulente
+export const weeklyCheckinConfig = pgTable("weekly_checkin_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // Stato
+  isEnabled: boolean("is_enabled").default(false).notNull(),
+  
+  // Configurazione orario
+  preferredTimeStart: varchar("preferred_time_start").default('09:00'),
+  preferredTimeEnd: varchar("preferred_time_end").default('18:00'),
+  excludedDays: integer("excluded_days").array().default(sql`'{}'::integer[]`),
+  
+  // Template rotation
+  templateIds: varchar("template_ids").array().default(sql`'{}'::varchar[]`),
+  useAiPersonalization: boolean("use_ai_personalization").default(true),
+  
+  // Filtri clienti
+  targetAudience: text("target_audience").default("all_active"),
+  minDaysSinceLastContact: integer("min_days_since_last_contact").default(5),
+  
+  // Statistiche cache
+  lastRunAt: timestamp("last_run_at"),
+  totalSent: integer("total_sent").default(0),
+  totalResponses: integer("total_responses").default(0),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type WeeklyCheckinConfig = typeof weeklyCheckinConfig.$inferSelect;
+export type InsertWeeklyCheckinConfig = typeof weeklyCheckinConfig.$inferInsert;
+
+// Weekly Check-in Templates - Template predefiniti e custom
+export const weeklyCheckinTemplates = pgTable("weekly_checkin_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Può essere NULL per template di sistema, o consultant_id per custom
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  
+  // Template info
+  name: varchar("name").notNull(),
+  body: text("body").notNull(),
+  category: text("category").default("general"),
+  
+  // Stato
+  isSystemTemplate: boolean("is_system_template").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Usage stats
+  timesUsed: integer("times_used").default(0),
+  lastUsedAt: timestamp("last_used_at"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type WeeklyCheckinTemplate = typeof weeklyCheckinTemplates.$inferSelect;
+export type InsertWeeklyCheckinTemplate = typeof weeklyCheckinTemplates.$inferInsert;
+
+// Weekly Check-in Logs - Log di ogni check-in inviato
+export const weeklyCheckinLogs = pgTable("weekly_checkin_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  configId: varchar("config_id").references(() => weeklyCheckinConfig.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Target
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "set null" }),
+  phoneNumber: varchar("phone_number").notNull(),
+  conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "set null" }),
+  
+  // Scheduling
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  scheduledDay: integer("scheduled_day").notNull(),
+  scheduledHour: integer("scheduled_hour").notNull(),
+  
+  // Template usato
+  templateId: varchar("template_id").references(() => weeklyCheckinTemplates.id, { onDelete: "set null" }),
+  templateName: varchar("template_name"),
+  
+  // Messaggio
+  originalTemplateBody: text("original_template_body"),
+  personalizedMessage: text("personalized_message"),
+  aiPersonalizationContext: jsonb("ai_personalization_context").$type<{
+    clientName?: string;
+    lastExercise?: string;
+    exerciseStatus?: string;
+    daysSinceLastContact?: number;
+    lastConsultationTopic?: string;
+    progressContext?: string;
+  }>(),
+  
+  // Stato invio
+  status: text("status").$type<"scheduled" | "sent" | "delivered" | "read" | "replied" | "failed" | "cancelled">().default("scheduled").notNull(),
+  
+  // Tracking Twilio
+  twilioMessageSid: varchar("twilio_message_sid"),
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at"),
+  
+  // Risposta cliente
+  repliedAt: timestamp("replied_at"),
+  replyMessagePreview: text("reply_message_preview"),
+  
+  // Errori
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type WeeklyCheckinLog = typeof weeklyCheckinLogs.$inferSelect;
+export type InsertWeeklyCheckinLog = typeof weeklyCheckinLogs.$inferInsert;
