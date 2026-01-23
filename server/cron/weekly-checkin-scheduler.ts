@@ -13,6 +13,7 @@ import { db } from '../db';
 import {
   weeklyCheckinConfig,
   weeklyCheckinLogs,
+  weeklyCheckinSchedule,
   users,
   whatsappConversations,
   whatsappMessages,
@@ -21,6 +22,7 @@ import {
   consultantWhatsappConfig
 } from '../../shared/schema';
 import { eq, and, lte, isNotNull, desc, sql, gte } from 'drizzle-orm';
+import { format } from 'date-fns-tz';
 import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
 import twilio from 'twilio';
 import { generateCheckinVariables } from '../ai/checkin-personalization-service';
@@ -177,37 +179,53 @@ export async function runDailySchedulingNow(): Promise<void> {
     console.log('📅 [WEEKLY-CHECKIN] Starting daily check-in scheduling...');
     
     const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd', { timeZone: TIMEZONE });
     const currentDay = now.getDay();
     
-    const enabledConfigs = await db
-      .select()
-      .from(weeklyCheckinConfig)
-      .where(eq(weeklyCheckinConfig.isEnabled, true));
+    // NEW APPROACH: Activate entries from the pre-planned schedule table
+    const activatedCount = await activateTodaysScheduleEntries(todayStr);
     
-    console.log(`📊 [WEEKLY-CHECKIN] Found ${enabledConfigs.length} enabled consultant configs`);
-    
-    if (enabledConfigs.length === 0) {
-      console.log('💤 [WEEKLY-CHECKIN] No enabled configs, nothing to schedule');
-      return;
+    if (activatedCount > 0) {
+      console.log(`📊 [WEEKLY-CHECKIN] Activated ${activatedCount} pre-planned entries for today`);
     }
-
-    let totalScheduled = 0;
-    let totalSkipped = 0;
-
-    for (const config of enabledConfigs) {
-      try {
-        const excludedDays = config.excludedDays || [];
-        if (excludedDays.includes(currentDay)) {
-          console.log(`⏭️ [WEEKLY-CHECKIN] Consultant ${config.consultantId}: day ${currentDay} is excluded`);
-          continue;
-        }
-
-        const scheduled = await scheduleCheckinForConsultant(config, currentDay);
-        totalScheduled += scheduled;
-      } catch (error) {
-        console.error(`❌ [WEEKLY-CHECKIN] Error scheduling for consultant ${config.consultantId}:`, error);
-        totalSkipped++;
+    
+    // LEGACY FALLBACK: If no pre-planned entries, fall back to old on-the-fly scheduling
+    if (activatedCount === 0) {
+      console.log('💡 [WEEKLY-CHECKIN] No pre-planned entries, using legacy scheduling...');
+      
+      const enabledConfigs = await db
+        .select()
+        .from(weeklyCheckinConfig)
+        .where(eq(weeklyCheckinConfig.isEnabled, true));
+      
+      console.log(`📊 [WEEKLY-CHECKIN] Found ${enabledConfigs.length} enabled consultant configs`);
+      
+      if (enabledConfigs.length === 0) {
+        console.log('💤 [WEEKLY-CHECKIN] No enabled configs, nothing to schedule');
+        return;
       }
+
+      let totalScheduled = 0;
+      let totalSkipped = 0;
+
+      for (const config of enabledConfigs) {
+        try {
+          const excludedDays = config.excludedDays || [];
+          if (excludedDays.includes(currentDay)) {
+            console.log(`⏭️ [WEEKLY-CHECKIN] Consultant ${config.consultantId}: day ${currentDay} is excluded`);
+            continue;
+          }
+
+          const scheduled = await scheduleCheckinForConsultant(config, currentDay);
+          totalScheduled += scheduled;
+        } catch (error) {
+          console.error(`❌ [WEEKLY-CHECKIN] Error scheduling for consultant ${config.consultantId}:`, error);
+          totalSkipped++;
+        }
+      }
+      
+      console.log(`   📅 Legacy scheduled: ${totalScheduled}`);
+      console.log(`   ⏭️ Legacy skipped: ${totalSkipped}`);
     }
 
     await db.update(weeklyCheckinConfig)
@@ -216,12 +234,84 @@ export async function runDailySchedulingNow(): Promise<void> {
 
     const duration = Date.now() - startTime;
     console.log(`📈 [WEEKLY-CHECKIN] Daily scheduling completed in ${duration}ms`);
-    console.log(`   📅 Total scheduled: ${totalScheduled}`);
-    console.log(`   ⏭️ Total skipped: ${totalSkipped}`);
     
   } finally {
     isDailySchedulingRunning = false;
   }
+}
+
+/**
+ * Activate today's pre-planned schedule entries
+ * Changes status from 'planned' to 'pending' and creates corresponding log entries
+ */
+async function activateTodaysScheduleEntries(todayStr: string): Promise<number> {
+  // Find all 'planned' entries for today
+  const todaysEntries = await db
+    .select()
+    .from(weeklyCheckinSchedule)
+    .where(
+      and(
+        eq(weeklyCheckinSchedule.scheduledDate, todayStr),
+        eq(weeklyCheckinSchedule.status, 'planned')
+      )
+    );
+  
+  if (todaysEntries.length === 0) {
+    return 0;
+  }
+  
+  console.log(`📋 [WEEKLY-CHECKIN] Found ${todaysEntries.length} planned entries for ${todayStr}`);
+  
+  let activated = 0;
+  
+  for (const entry of todaysEntries) {
+    try {
+      // Create scheduled time from entry data
+      const scheduledFor = new Date(`${entry.scheduledDate}T${String(entry.scheduledHour).padStart(2, '0')}:${String(entry.scheduledMinute).padStart(2, '0')}:00`);
+      
+      // Create a log entry for processing
+      const [logEntry] = await db.insert(weeklyCheckinLogs).values({
+        configId: entry.configId,
+        consultantId: entry.consultantId,
+        clientId: entry.clientId,
+        phoneNumber: entry.phoneNumber,
+        scheduledFor,
+        scheduledDay: entry.dayOfWeek,
+        scheduledHour: entry.scheduledHour,
+        templateId: entry.templateId,
+        templateName: entry.templateName,
+        originalTemplateBody: null,
+        personalizedMessage: null,
+        status: 'scheduled',
+        retryCount: 0,
+        aiPersonalizationContext: null,
+      }).returning({ id: weeklyCheckinLogs.id });
+      
+      // Update schedule entry to 'pending' and link to log
+      await db.update(weeklyCheckinSchedule)
+        .set({
+          status: 'pending',
+          executedLogId: logEntry.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(weeklyCheckinSchedule.id, entry.id));
+      
+      activated++;
+    } catch (error) {
+      console.error(`❌ [WEEKLY-CHECKIN] Error activating schedule entry ${entry.id}:`, error);
+      
+      // Mark as skipped with error
+      await db.update(weeklyCheckinSchedule)
+        .set({
+          status: 'skipped',
+          skipReason: `Activation error: ${error instanceof Error ? error.message : 'Unknown'}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(weeklyCheckinSchedule.id, entry.id));
+    }
+  }
+  
+  return activated;
 }
 
 async function fetchTwilioTemplates(

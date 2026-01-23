@@ -155,6 +155,28 @@ interface NextSendResponse {
   noSendsToday?: boolean;
 }
 
+interface ScheduleEntry {
+  id: string;
+  clientId: string;
+  clientName: string;
+  templateId: string;
+  templateName: string | null;
+  scheduledHour: number;
+  scheduledMinute: number;
+  status: "planned" | "pending" | "sent" | "failed" | "skipped" | "cancelled";
+  weekNumber: number;
+  dayOfWeek: number;
+  executedAt: string | null;
+  skipReason: string | null;
+}
+
+interface ScheduleResponse {
+  success: boolean;
+  schedule: Record<string, ScheduleEntry[]>;
+  totalEntries: number;
+  dateRange: { from: string; to: string };
+}
+
 const DAYS = [
   { value: 0, label: "Dom" },
   { value: 1, label: "Lun" },
@@ -268,6 +290,13 @@ export function WeeklyCheckinCard() {
   const { data: nextSendData } = useQuery<NextSendResponse>({
     queryKey: ["/api/weekly-checkin/next-send"],
     refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Query for schedule data from database
+  const { data: scheduleData, isLoading: scheduleLoading, refetch: refetchSchedule } = useQuery<ScheduleResponse>({
+    queryKey: ["/api/weekly-checkin/schedule"],
+    queryFn: () => apiRequest("GET", "/api/weekly-checkin/schedule?weeks=4"),
+    enabled: !!config?.isEnabled,
   });
 
   // Live countdown state
@@ -397,6 +426,26 @@ export function WeeklyCheckinCard() {
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const generateScheduleMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/weekly-checkin/generate-schedule", { weeks: 4 });
+    },
+    onSuccess: (data: any) => {
+      toast({ 
+        title: "Calendario generato", 
+        description: data.message || `${data.scheduledCount} check-in programmati.` 
+      });
+      refetchSchedule();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Errore", 
+        description: error.message || "Errore durante la generazione", 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -1019,10 +1068,9 @@ export function WeeklyCheckinCard() {
 
           <TabsContent value="calendar" className="space-y-4 mt-0">
             {(() => {
-              // Calcola le date della settimana corrente + offset
               const today = new Date();
               const startOfWeek = new Date(today);
-              startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (calendarWeekOffset * 7)); // Lunedì
+              startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (calendarWeekOffset * 7));
               
               const weekDays = Array.from({ length: 7 }, (_, i) => {
                 const date = new Date(startOfWeek);
@@ -1031,94 +1079,13 @@ export function WeeklyCheckinCard() {
               });
               
               const excludedDays = config?.excludedDays || [];
-              const preferredStart = config?.preferredTimeStart || "09:00";
-              const preferredEnd = config?.preferredTimeEnd || "18:00";
-              const minDays = config?.minDaysSinceLastContact || 7;
               
-              // Tutti i clienti eleggibili (inclusi quelli bloccati)
-              const allEligibleClients = eligibleData?.eligible || [];
-              
-              // Calcola orario casuale deterministico per ogni giorno
-              const getScheduledTime = (date: Date) => {
-                const [startH, startM] = preferredStart.split(':').map(Number);
-                const [endH, endM] = preferredEnd.split(':').map(Number);
-                const startMinutes = startH * 60 + startM;
-                const endMinutes = endH * 60 + endM;
-                const windowSize = Math.max(endMinutes - startMinutes, 1);
-                const seed = date.getDate() + date.getMonth() * 31;
-                const randomOffset = (seed * 17) % windowSize;
-                const targetMinutes = startMinutes + randomOffset;
-                const h = Math.floor(targetMinutes / 60);
-                const m = targetMinutes % 60;
-                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-              };
-              
-              // Template selezionati per la rotazione
-              const selectedTemplateIds = config?.templateIds || [];
-              const selectedTemplates = templates.filter(t => selectedTemplateIds.includes(t.id));
-              
-              // Simula invii futuri considerando che dopo ogni invio il cliente è bloccato per minDays
-              // Questo crea una mappa di quale cliente riceve il messaggio in quale giorno
-              const simulateSchedule = () => {
-                const schedule: Map<string, { client: any; template: any; dateKey: string }> = new Map();
-                const clientLastSendDate: Map<string, Date> = new Map();
-                
-                // Inizializza con i blocchi attuali dei clienti
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                
-                allEligibleClients.forEach(client => {
-                  if (client.daysSinceLastContact !== null && client.daysSinceLastContact < minDays) {
-                    // Cliente bloccato - calcola quando è stato contattato l'ultima volta
-                    const lastContact = new Date(today);
-                    lastContact.setDate(lastContact.getDate() - client.daysSinceLastContact);
-                    clientLastSendDate.set(client.id, lastContact);
-                  }
-                });
-                
-                // Simula 30 giorni in avanti
-                for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
-                  const checkDate = new Date(today);
-                  checkDate.setDate(today.getDate() + dayOffset);
-                  const dayOfWeek = checkDate.getDay();
-                  const dateKey = checkDate.toISOString().split('T')[0];
-                  
-                  // Salta giorni esclusi
-                  if (excludedDays.includes(dayOfWeek)) continue;
-                  
-                  // Trova clienti eleggibili per questa data
-                  const eligibleForDate = allEligibleClients.filter(client => {
-                    const lastSend = clientLastSendDate.get(client.id);
-                    if (!lastSend) return true; // Mai contattato = eleggibile
-                    
-                    const daysSinceLast = Math.floor((checkDate.getTime() - lastSend.getTime()) / (1000 * 60 * 60 * 24));
-                    return daysSinceLast >= minDays;
-                  });
-                  
-                  if (eligibleForDate.length > 0 && selectedTemplates.length > 0) {
-                    // Seleziona cliente in rotazione deterministica
-                    const seed = checkDate.getDate() + checkDate.getMonth() * 31;
-                    const selectedClient = eligibleForDate[seed % eligibleForDate.length];
-                    
-                    // Seleziona template in rotazione (diverso seed per variare)
-                    const templateSeed = checkDate.getDate() + checkDate.getMonth() * 31 + checkDate.getFullYear();
-                    const selectedTemplate = selectedTemplates[templateSeed % selectedTemplates.length];
-                    
-                    // Registra l'invio
-                    schedule.set(dateKey, { client: selectedClient, template: selectedTemplate, dateKey });
-                    clientLastSendDate.set(selectedClient.id, new Date(checkDate));
-                  }
-                }
-                
-                return schedule;
-              };
-              
-              const scheduleMap = simulateSchedule();
-              
-              // Trova programmazione per una data specifica
-              const getScheduleForDay = (date: Date) => {
-                const dateKey = date.toISOString().split('T')[0];
-                return scheduleMap.get(dateKey) || null;
+              const getScheduleEntriesForDay = (date: Date): ScheduleEntry[] => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const dateKey = `${year}-${month}-${day}`;
+                return scheduleData?.schedule?.[dateKey] || [];
               };
               
               const formatWeekRange = () => {
@@ -1146,9 +1113,30 @@ export function WeeklyCheckinCard() {
                 return d < t;
               };
               
+              const getStatusBadge = (status: ScheduleEntry["status"]) => {
+                switch (status) {
+                  case "planned":
+                    return <Badge className="bg-blue-100 text-blue-700 border-blue-200">Pianificato</Badge>;
+                  case "pending":
+                    return <Badge className="bg-amber-100 text-amber-700 border-amber-200">In attesa</Badge>;
+                  case "sent":
+                    return <Badge className="bg-green-100 text-green-700 border-green-200">Inviato</Badge>;
+                  case "failed":
+                    return <Badge className="bg-red-100 text-red-700 border-red-200">Fallito</Badge>;
+                  case "skipped":
+                    return <Badge className="bg-gray-100 text-gray-600 border-gray-200">Saltato</Badge>;
+                  case "cancelled":
+                    return <Badge className="bg-gray-100 text-gray-500 border-gray-200 line-through">Cancellato</Badge>;
+                  default:
+                    return null;
+                }
+              };
+              
+              const hasScheduleData = scheduleData && scheduleData.totalEntries > 0;
+              
               return (
                 <div className="space-y-4">
-                  {/* Header navigazione */}
+                  {/* Header navigazione con bottone genera */}
                   <div className="flex items-center justify-between">
                     <Button
                       variant="outline"
@@ -1179,9 +1167,9 @@ export function WeeklyCheckinCard() {
                     </Button>
                   </div>
                   
-                  {/* Torna a oggi */}
-                  {calendarWeekOffset !== 0 && (
-                    <div className="text-center">
+                  {/* Bottone genera calendario + Torna a oggi */}
+                  <div className="flex items-center justify-between">
+                    {calendarWeekOffset !== 0 ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1190,129 +1178,208 @@ export function WeeklyCheckinCard() {
                       >
                         Torna a oggi
                       </Button>
-                    </div>
-                  )}
+                    ) : (
+                      <div />
+                    )}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => generateScheduleMutation.mutate()}
+                      disabled={generateScheduleMutation.isPending}
+                      className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                    >
+                      {generateScheduleMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Zap className="h-4 w-4" />
+                      )}
+                      {hasScheduleData ? "Rigenera Calendario" : "Genera Calendario"}
+                    </Button>
+                  </div>
                   
-                  {/* Griglia calendario */}
-                  <div className="space-y-2">
-                    {weekDays.map((date, index) => {
-                      const dayOfWeek = date.getDay();
-                      const isExcluded = excludedDays.includes(dayOfWeek);
-                      const dayPast = isPast(date);
-                      const dayToday = isToday(date);
-                      const scheduledTime = getScheduledTime(date);
-                      const schedule = getScheduleForDay(date);
-                      const client = schedule?.client;
-                      const template = schedule?.template;
-                      const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-                      
-                      return (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-xl border transition-all ${
-                            dayToday
-                              ? 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-700 ring-2 ring-indigo-200'
-                              : isExcluded
-                              ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-700 opacity-60'
-                              : dayPast
-                              ? 'border-gray-200 bg-gray-50/50 dark:bg-gray-800/20 dark:border-gray-700 opacity-50'
-                              : 'border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center ${
+                  {/* Placeholder se non ci sono dati */}
+                  {scheduleLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                    </div>
+                  ) : !hasScheduleData ? (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                      <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Nessun calendario generato
+                      </h4>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-md mx-auto">
+                        Genera il calendario per pianificare automaticamente i check-in delle prossime 4 settimane.
+                      </p>
+                      <Button
+                        onClick={() => generateScheduleMutation.mutate()}
+                        disabled={generateScheduleMutation.isPending}
+                        className="gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                      >
+                        {generateScheduleMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4" />
+                        )}
+                        Genera Calendario
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Griglia calendario */}
+                      <div className="space-y-2">
+                        {weekDays.map((date, index) => {
+                          const dayOfWeek = date.getDay();
+                          const isExcluded = excludedDays.includes(dayOfWeek);
+                          const dayPast = isPast(date);
+                          const dayToday = isToday(date);
+                          const scheduleEntries = getScheduleEntriesForDay(date);
+                          const entry = scheduleEntries[0];
+                          const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+                          
+                          const scheduledTime = entry 
+                            ? `${String(entry.scheduledHour).padStart(2, '0')}:${String(entry.scheduledMinute).padStart(2, '0')}`
+                            : null;
+                          
+                          return (
+                            <div
+                              key={index}
+                              className={`p-3 rounded-xl border transition-all ${
                                 dayToday
-                                  ? 'bg-indigo-500 text-white'
+                                  ? 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-700 ring-2 ring-indigo-200'
                                   : isExcluded
-                                  ? 'bg-gray-200 text-gray-500 dark:bg-gray-700'
-                                  : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
-                              }`}>
-                                <span className="text-lg font-bold">{date.getDate()}</span>
-                                <span className="text-[10px] uppercase">{dayNames[dayOfWeek].slice(0, 3)}</span>
-                              </div>
-                              <div>
-                                <p className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                                  {dayNames[dayOfWeek]}
-                                  {dayToday && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">OGGI</Badge>}
-                                </p>
-                                {isExcluded ? (
-                                  <p className="text-xs text-gray-400">Giorno escluso dalla configurazione</p>
-                                ) : dayPast ? (
-                                  <p className="text-xs text-gray-400">Passato</p>
-                                ) : client ? (
-                                  <p className="text-xs text-green-600 dark:text-green-400">
-                                    Invio alle <span className="font-semibold">{scheduledTime}</span>
-                                  </p>
-                                ) : (
-                                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                                    Nessun cliente pronto
-                                  </p>
+                                  ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-700 opacity-60'
+                                  : dayPast
+                                  ? 'border-gray-200 bg-gray-50/50 dark:bg-gray-800/20 dark:border-gray-700 opacity-50'
+                                  : entry
+                                  ? 'border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800'
+                                  : 'border-gray-200 bg-white dark:bg-gray-800/30 dark:border-gray-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center ${
+                                    dayToday
+                                      ? 'bg-indigo-500 text-white'
+                                      : isExcluded
+                                      ? 'bg-gray-200 text-gray-500 dark:bg-gray-700'
+                                      : entry
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                                      : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                  }`}>
+                                    <span className="text-lg font-bold">{date.getDate()}</span>
+                                    <span className="text-[10px] uppercase">{dayNames[dayOfWeek].slice(0, 3)}</span>
+                                  </div>
+                                  <div>
+                                    <p className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                      {dayNames[dayOfWeek]}
+                                      {dayToday && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">OGGI</Badge>}
+                                    </p>
+                                    {isExcluded ? (
+                                      <p className="text-xs text-gray-400">Giorno escluso dalla configurazione</p>
+                                    ) : dayPast && entry ? (
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-xs text-gray-500">
+                                          {scheduledTime && `Ore ${scheduledTime}`}
+                                        </p>
+                                        {getStatusBadge(entry.status)}
+                                      </div>
+                                    ) : dayPast ? (
+                                      <p className="text-xs text-gray-400">Passato</p>
+                                    ) : entry ? (
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-xs text-green-600 dark:text-green-400">
+                                          Invio alle <span className="font-semibold">{scheduledTime}</span>
+                                        </p>
+                                        {getStatusBadge(entry.status)}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-gray-400">
+                                        Nessun invio programmato
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Info cliente e template */}
+                                {entry && (
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-right">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {entry.clientName}
+                                      </p>
+                                      {entry.templateName && (
+                                        <Badge variant="outline" className="mt-1 text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
+                                          <MessageSquare className="h-2.5 w-2.5 mr-1" />
+                                          {entry.templateName.slice(0, 25)}
+                                          {entry.templateName.length > 25 ? "..." : ""}
+                                        </Badge>
+                                      )}
+                                      {entry.skipReason && (
+                                        <p className="text-xs text-gray-400 mt-1">{entry.skipReason}</p>
+                                      )}
+                                    </div>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                                      entry.status === 'sent' 
+                                        ? 'bg-green-100 dark:bg-green-900/50 text-green-600'
+                                        : entry.status === 'failed'
+                                        ? 'bg-red-100 dark:bg-red-900/50 text-red-600'
+                                        : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600'
+                                    }`}>
+                                      {entry.clientName?.[0]?.toUpperCase() || '?'}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {isExcluded && (
+                                  <Badge variant="outline" className="text-gray-400">
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Escluso
+                                  </Badge>
                                 )}
                               </div>
                             </div>
-                            
-                            {/* Info cliente e template */}
-                            {!isExcluded && !dayPast && client && (
-                              <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {client.firstName} {client.lastName}
-                                  </p>
-                                  <p className="text-xs text-gray-500">{client.phoneNumber}</p>
-                                  {template && (
-                                    <Badge variant="outline" className="mt-1 text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
-                                      <MessageSquare className="h-2.5 w-2.5 mr-1" />
-                                      {template.friendlyName?.slice(0, 25) || "Template"}
-                                      {template.friendlyName?.length > 25 ? "..." : ""}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center text-green-600 font-semibold">
-                                  {client.firstName?.[0]}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {isExcluded && (
-                              <Badge variant="outline" className="text-gray-400">
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Escluso
-                              </Badge>
-                            )}
-                          </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Legenda */}
+                      <div className="flex flex-wrap gap-4 pt-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-indigo-500"></div>
+                          <span>Oggi</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Legenda */}
-                  <div className="flex flex-wrap gap-4 pt-2 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded bg-indigo-500"></div>
-                      <span>Oggi</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded bg-green-100 border border-green-300"></div>
-                      <span>Invio programmato</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded bg-gray-200"></div>
-                      <span>Giorno escluso</span>
-                    </div>
-                  </div>
-                  
-                  {/* Info */}
-                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                      <span>
-                        Questa è una <strong>stima</strong> basata sulla tua configurazione. 
-                        Gli orari esatti vengono calcolati alle 08:00 di ogni giorno dallo scheduler.
-                        I clienti con blocchi temporanei (contattati di recente) non appariranno finché non scade il periodo minimo.
-                      </span>
-                    </p>
-                  </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-blue-200 border border-blue-400"></div>
+                          <span>Pianificato</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-green-200 border border-green-400"></div>
+                          <span>Inviato</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-red-200 border border-red-400"></div>
+                          <span>Fallito</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-gray-200"></div>
+                          <span>Escluso</span>
+                        </div>
+                      </div>
+                      
+                      {/* Info */}
+                      <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                          <span>
+                            Calendario generato per le prossime 4 settimane. 
+                            {scheduleData?.totalEntries && ` Totale: ${scheduleData.totalEntries} check-in programmati.`}
+                            {' '}Clicca "Rigenera Calendario" per aggiornare la pianificazione.
+                          </span>
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })()}
