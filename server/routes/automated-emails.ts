@@ -1684,11 +1684,14 @@ router.post("/consultant/smtp-settings", authenticateToken, requireRole("consult
         emailSignature: existingSettings.emailSignature || undefined,
         automationEnabled: req.body.automationEnabled ?? existingSettings.automationEnabled,
         emailFrequencyDays: emailFrequencyDays,
+        sendWindowStart: req.body.sendWindowStart ?? existingSettings.sendWindowStart ?? "13:00",
+        sendWindowEnd: req.body.sendWindowEnd ?? existingSettings.sendWindowEnd ?? "14:00",
       };
 
       console.log(`💾 [SMTP POST] Updating automation settings...`);
       console.log(`   automationEnabled: ${validatedData.automationEnabled}`);
       console.log(`   emailFrequencyDays: ${validatedData.emailFrequencyDays}`);
+      console.log(`   sendWindow: ${validatedData.sendWindowStart} - ${validatedData.sendWindowEnd}`);
 
       const settings = await storage.upsertConsultantSmtpSettings(validatedData);
       console.log(`✅ [SMTP POST] Settings saved successfully`);

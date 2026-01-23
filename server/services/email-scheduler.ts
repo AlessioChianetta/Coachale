@@ -8,7 +8,8 @@ import type { Transporter } from "nodemailer";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 const ITALY_TIMEZONE = "Europe/Rome";
-const SEND_HOUR = 13; // 13:00 Italian time
+const DEFAULT_SEND_WINDOW_START = "13:00";
+const DEFAULT_SEND_WINDOW_END = "14:00";
 
 /**
  * Get the current time in Italian timezone.
@@ -16,6 +17,31 @@ const SEND_HOUR = 13; // 13:00 Italian time
  */
 function getItalianNow(): Date {
   return toZonedTime(new Date(), ITALY_TIMEZONE);
+}
+
+/**
+ * Parse time string "HH:MM" to hours and minutes.
+ */
+function parseTimeString(timeStr: string): { hours: number; minutes: number } {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return { hours: hours || 0, minutes: minutes || 0 };
+}
+
+/**
+ * Check if current Italian time is within the configured send window.
+ * Returns true if current time is >= windowStart AND < windowEnd.
+ */
+function isWithinSendWindow(nowItaly: Date, windowStart: string, windowEnd: string): boolean {
+  const currentHour = nowItaly.getHours();
+  const currentMinute = nowItaly.getMinutes();
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+  
+  const start = parseTimeString(windowStart);
+  const end = parseTimeString(windowEnd);
+  const startTotalMinutes = start.hours * 60 + start.minutes;
+  const endTotalMinutes = end.hours * 60 + end.minutes;
+  
+  return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < endTotalMinutes;
 }
 
 /**
@@ -236,6 +262,23 @@ export async function sendEmail(params: {
 // Get clients who should receive an email for a specific consultant
 async function getClientsForEmail(consultantId: string): Promise<Array<{ id: string; email: string; firstName: string; consultantId: string }>> {
   try {
+    // Get SMTP settings first to check send window
+    const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
+    const windowStart = smtpSettings?.sendWindowStart || DEFAULT_SEND_WINDOW_START;
+    const windowEnd = smtpSettings?.sendWindowEnd || DEFAULT_SEND_WINDOW_END;
+    
+    // Check if current Italian time is within the send window
+    const nowItaly = getItalianNow();
+    const inWindow = isWithinSendWindow(nowItaly, windowStart, windowEnd);
+    const nowTimeStr = `${nowItaly.getHours().toString().padStart(2, '0')}:${nowItaly.getMinutes().toString().padStart(2, '0')}`;
+    
+    if (!inWindow) {
+      console.log(`⏰ [EMAIL SCHEDULER] Current time ${nowTimeStr} is OUTSIDE send window (${windowStart}-${windowEnd}). Waiting for window...`);
+      return [];
+    }
+    
+    console.log(`✅ [EMAIL SCHEDULER] Current time ${nowTimeStr} is WITHIN send window (${windowStart}-${windowEnd}). Processing emails...`);
+    
     // Get all active clients for this consultant
     const allClients = await storage.getClientsByConsultant(consultantId, true); // activeOnly = true
     

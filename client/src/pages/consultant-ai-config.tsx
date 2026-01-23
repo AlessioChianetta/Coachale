@@ -1349,6 +1349,8 @@ export default function ConsultantAIConfigPage() {
   const [automationEnabled, setAutomationEnabled] = useState(false);
   const [emailFrequency, setEmailFrequency] = useState(7);
   const [emailSendTime, setEmailSendTime] = useState("10:00");
+  const [sendWindowStart, setSendWindowStart] = useState("13:00");
+  const [sendWindowEnd, setSendWindowEnd] = useState("14:00");
   const [selectedUpdatesClients, setSelectedUpdatesClients] = useState<string[]>([]);
   const [updatesSystemPrompt, setUpdatesSystemPrompt] = useState("");
   const [updatesDescription, setUpdatesDescription] = useState("");
@@ -1425,6 +1427,8 @@ export default function ConsultantAIConfigPage() {
       const data = await response.json();
       setAutomationEnabled(data.automationEnabled || false);
       setEmailFrequency(data.emailFrequencyDays || 7);
+      setSendWindowStart(data.sendWindowStart || "13:00");
+      setSendWindowEnd(data.sendWindowEnd || "14:00");
       return data;
     },
   });
@@ -2998,8 +3002,11 @@ export default function ConsultantAIConfigPage() {
     const payload = {
       automationEnabled: enabled !== undefined ? enabled : automationEnabled,
       emailFrequencyDays: validFrequency,
+      sendWindowStart: sendWindowStart,
+      sendWindowEnd: sendWindowEnd,
     };
     console.log('💾 [SAVE AUTOMATION] Mutation payload:', payload);
+    console.log('💾 [SAVE AUTOMATION] Send window:', sendWindowStart, '-', sendWindowEnd);
 
     updateSmtpMutation.mutate(payload);
   };
@@ -3331,6 +3338,35 @@ Non limitarti a stato attuale/ideale. Attingi da:
                       <span className="text-sm text-muted-foreground">
                         Invia email ogni {emailFrequency || 2} giorni
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Finestra Oraria Invio (ora italiana)</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Le email verranno inviate SOLO in questa fascia oraria. Fuori da questa finestra, il sistema aspetterà.
+                    </p>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="send-window-start" className="text-sm whitespace-nowrap">Dalle:</Label>
+                        <Input
+                          id="send-window-start"
+                          type="time"
+                          value={sendWindowStart}
+                          onChange={(e) => setSendWindowStart(e.target.value)}
+                          className="w-[120px]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="send-window-end" className="text-sm whitespace-nowrap">Alle:</Label>
+                        <Input
+                          id="send-window-end"
+                          type="time"
+                          value={sendWindowEnd}
+                          onChange={(e) => setSendWindowEnd(e.target.value)}
+                          className="w-[120px]"
+                        />
+                      </div>
                       <Button
                         onClick={() => handleSaveAutomationSettings()}
                         disabled={updateSmtpMutation.isPending}
@@ -3344,11 +3380,14 @@ Non limitarti a stato attuale/ideale. Attingi da:
                         ) : (
                           <>
                             <CheckCircle className="mr-2 h-4 w-4" />
-                            Salva Frequenza
+                            Salva Impostazioni
                           </>
                         )}
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Esempio: 13:00 - 14:00 significa che le email saranno inviate solo tra le 13:00 e le 14:00 ora italiana
+                    </p>
                   </div>
                 </CardContent>
               </Card>

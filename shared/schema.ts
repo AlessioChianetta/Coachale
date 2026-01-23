@@ -647,6 +647,8 @@ export const consultantSmtpSettings = pgTable("consultant_smtp_settings", {
   automationEnabled: boolean("automation_enabled").notNull().default(false),
   emailFrequencyDays: integer("email_frequency_days").notNull().default(2),
   emailSendTime: text("email_send_time").notNull().default("10:00"), // HH:MM format (24h)
+  sendWindowStart: text("send_window_start").default("13:00"), // Start of send window (HH:MM format, Italian time)
+  sendWindowEnd: text("send_window_end").default("14:00"), // End of send window (HH:MM format, Italian time)
   isActive: boolean("is_active").notNull().default(true),
   lastTestedAt: timestamp("last_tested_at"),
   // Scheduler control fields
