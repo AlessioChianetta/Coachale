@@ -44,3 +44,7 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
 - **Fathom**: Consultation recording and transcription.
 - **Driver.js**: Interactive guided tours.
 - **Twilio API**: WhatsApp Business messaging.
+
+# Recent Changes (January 2026)
+- **Weekly Check-in AI Fix**: Fixed "Failed to extract text from response" error in FILE_SEARCH mode. The checkin-personalization-service now uses `ai.models.generateContent()` directly (like ai-service.ts) instead of GeminiClientAdapter wrapper, with `response.text` property access instead of method call.
+- **Dual-Mode Check-in Architecture**: File Search mode (primary) uses minimal prompts with AI searching via file_search tool; Fallback mode injects full context with NO truncations for 150-300 word personalized messages.
