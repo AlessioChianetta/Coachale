@@ -156,21 +156,20 @@ export function WeeklyCheckinCard() {
     queryKey: ["/api/weekly-checkin/templates"],
   });
 
-  const { data: whatsappAgentsData } = useQuery<WhatsAppAgent[]>({
+  const { data: whatsappConfigData } = useQuery<{ configured: boolean; configs: any[] }>({
     queryKey: ["/api/whatsapp/config"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/whatsapp/config");
-      const configs = response?.configs || [];
-      if (!Array.isArray(configs)) return [];
-      return configs.map((config: any) => ({
-        id: config.id,
-        agentName: config.agentName || "Agente WhatsApp",
-        phoneNumber: config.twilioWhatsappNumber || "",
-        isActive: config.isActive,
-      }));
-    },
   });
-  const whatsappAgents = Array.isArray(whatsappAgentsData) ? whatsappAgentsData : [];
+  
+  const whatsappAgents: WhatsAppAgent[] = useMemo(() => {
+    const configs = whatsappConfigData?.configs;
+    if (!configs || !Array.isArray(configs)) return [];
+    return configs.map((config: any) => ({
+      id: config.id,
+      agentName: config.agentName || "Agente WhatsApp",
+      phoneNumber: config.twilioWhatsappNumber || "",
+      isActive: config.isActive,
+    }));
+  }, [whatsappConfigData]);
 
   const categorizeTemplate = (template: WhatsAppTemplate): string => {
     const name = (template.friendlyName || "").toLowerCase();
@@ -200,14 +199,14 @@ export function WeeklyCheckinCard() {
 
   const { data: logsData } = useQuery<LogsResponse>({
     queryKey: ["/api/weekly-checkin/logs", logsPage],
-    queryFn: () => apiRequest("GET", `/api/weekly-checkin/logs?page=${logsPage}&limit=10`).then(r => r.json()),
+    queryFn: () => apiRequest("GET", `/api/weekly-checkin/logs?page=${logsPage}&limit=10`),
   });
 
   const logs = logsData?.logs || [];
 
   const { data: pendingLogsData } = useQuery<{ logs: CheckinLog[] }>({
     queryKey: ["/api/weekly-checkin/pending-logs"],
-    queryFn: () => apiRequest("GET", "/api/weekly-checkin/pending-logs?limit=10").then(r => r.json()),
+    queryFn: () => apiRequest("GET", "/api/weekly-checkin/pending-logs?limit=10"),
     refetchInterval: 30000,
   });
 
