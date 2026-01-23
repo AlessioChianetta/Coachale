@@ -46,6 +46,15 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
 - **Twilio API**: WhatsApp Business messaging.
 
 # Recent Changes (January 2026)
+- **Pre-Planned 4-Week Calendar System**: Replaced the daily on-the-fly scheduling approach with a persistent `weekly_checkin_schedule` table that stores the full 4-week calendar at planning time:
+  - Status flow: planned → pending → sent/failed/skipped
+  - Deterministic time generation using hash-based function (dateKey + clientId) instead of Math.random()
+  - Template rotation formula: (dayOffset + month*31 + year) % templates.length
+  - Auto-regeneration trigger when config is saved
+  - CRON at 08:00 Europe/Rome activates today's entries (planned → pending)
+  - Duplicate activation prevention with executedLogId check
+  - REST endpoints: GET /schedule, POST /generate-schedule, DELETE /schedule/:id, GET /schedule/summary
+  - UI shows colored status badges for each scheduled entry
 - **Weekly Check-in AI Fix**: Fixed "Failed to extract text from response" error in FILE_SEARCH mode. The checkin-personalization-service now uses `ai.models.generateContent()` directly (like ai-service.ts) instead of GeminiClientAdapter wrapper, with `response.text` property access instead of method call.
 - **Dual-Mode Check-in Architecture**: File Search mode (primary) uses minimal prompts with AI searching via file_search tool; Fallback mode injects full context with NO truncations for 150-300 word personalized messages.
 - **Live Countdown Feature for Weekly Check-ins**: Implemented GET /api/weekly-checkin/next-send endpoint with live countdown (days/hours/minutes/seconds), template preview, and explicit state machine:
