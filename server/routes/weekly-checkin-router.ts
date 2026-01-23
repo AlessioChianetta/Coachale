@@ -4,6 +4,71 @@ import * as schema from "../../shared/schema";
 import { eq, and, desc, sql, or, isNull, isNotNull, ne } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
 import twilio from "twilio";
+import { normalizePhoneNumber } from "../whatsapp/webhook-handler";
+
+/**
+ * Get or create a WhatsApp conversation for check-in messages
+ * This ensures the check-in message appears in conversation history for AI context
+ */
+async function getOrCreateConversation(
+  phoneNumber: string,
+  consultantId: string,
+  agentConfigId: string,
+  clientId?: string
+): Promise<{ id: string }> {
+  // Use consistent phone normalization from webhook-handler
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  
+  // Try to find existing conversation with this agent
+  let [conversation] = await db
+    .select({ id: schema.whatsappConversations.id })
+    .from(schema.whatsappConversations)
+    .where(
+      and(
+        eq(schema.whatsappConversations.phoneNumber, normalizedPhone),
+        eq(schema.whatsappConversations.consultantId, consultantId),
+        eq(schema.whatsappConversations.agentConfigId, agentConfigId)
+      )
+    )
+    .limit(1);
+  
+  if (conversation) {
+    return conversation;
+  }
+  
+  // Try to find any existing conversation for this phone/consultant
+  [conversation] = await db
+    .select({ id: schema.whatsappConversations.id })
+    .from(schema.whatsappConversations)
+    .where(
+      and(
+        eq(schema.whatsappConversations.phoneNumber, normalizedPhone),
+        eq(schema.whatsappConversations.consultantId, consultantId)
+      )
+    )
+    .limit(1);
+  
+  if (conversation) {
+    return conversation;
+  }
+  
+  // Create new conversation
+  const [newConversation] = await db
+    .insert(schema.whatsappConversations)
+    .values({
+      phoneNumber: normalizedPhone,
+      consultantId,
+      userId: clientId || null,
+      isLead: !clientId,
+      aiEnabled: true,
+      isActive: true,
+      agentConfigId,
+    })
+    .returning({ id: schema.whatsappConversations.id });
+  
+  console.log(`[WEEKLY-CHECKIN] Created new conversation ${newConversation.id} for ${normalizedPhone}`);
+  return newConversation;
+}
 
 const router = Router();
 
@@ -585,6 +650,14 @@ router.post("/send-test", authenticateToken, requireRole("consultant"), async (r
 
     const messageText = `Ciao ${contentVariables?.['1'] || 'Cliente'}! ${contentVariables?.['2'] || 'Come stai questa settimana?'}`;
 
+    // Get or create conversation for this client to save message in history
+    const conversation = await getOrCreateConversation(
+      client.phoneNumber,
+      req.user!.id,
+      config.agentConfigId,
+      client.id
+    );
+
     const messageSid = await sendWhatsAppMessage(
       req.user!.id,
       client.phoneNumber,
@@ -594,10 +667,28 @@ router.post("/send-test", authenticateToken, requireRole("consultant"), async (r
         contentSid: templateId,
         contentVariables,
         agentConfigId: config.agentConfigId,
+        conversationId: conversation.id,
       }
     );
 
     const now = new Date();
+    
+    // Save check-in message to conversation history so AI has context when client responds
+    // Use twilioSid (not twilioMessageSid) to match schema, with onConflictDoNothing for retry safety
+    await db.insert(schema.whatsappMessages).values({
+      conversationId: conversation.id,
+      messageText: messageText,
+      direction: "outbound",
+      sender: "ai",
+      twilioSid: messageSid,
+      metadata: {
+        type: "weekly_checkin",
+        templateId: templateId,
+        isAutomated: true,
+      },
+    }).onConflictDoNothing();
+    console.log(`[WEEKLY-CHECKIN] Saved check-in message to conversation history (conversation: ${conversation.id})`);
+    
     await db
       .insert(schema.weeklyCheckinLogs)
       .values({

@@ -15,6 +15,7 @@ import {
   weeklyCheckinLogs,
   users,
   whatsappConversations,
+  whatsappMessages,
   exercises,
   consultations,
   consultantWhatsappConfig
@@ -23,6 +24,68 @@ import { eq, and, lte, isNotNull, desc, sql, gte } from 'drizzle-orm';
 import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
 import twilio from 'twilio';
 import { generateCheckinVariables } from '../ai/checkin-personalization-service';
+import { normalizePhoneNumber } from '../whatsapp/webhook-handler';
+
+/**
+ * Get or create a WhatsApp conversation for check-in messages
+ * This ensures the check-in message appears in conversation history for AI context
+ */
+async function getOrCreateConversationForCheckin(
+  phoneNumber: string,
+  consultantId: string,
+  agentConfigId: string,
+  clientId?: string | null
+): Promise<string> {
+  // Use consistent phone normalization from webhook-handler
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  
+  let [conversation] = await db
+    .select({ id: whatsappConversations.id })
+    .from(whatsappConversations)
+    .where(
+      and(
+        eq(whatsappConversations.phoneNumber, normalizedPhone),
+        eq(whatsappConversations.consultantId, consultantId),
+        eq(whatsappConversations.agentConfigId, agentConfigId)
+      )
+    )
+    .limit(1);
+  
+  if (conversation) {
+    return conversation.id;
+  }
+  
+  [conversation] = await db
+    .select({ id: whatsappConversations.id })
+    .from(whatsappConversations)
+    .where(
+      and(
+        eq(whatsappConversations.phoneNumber, normalizedPhone),
+        eq(whatsappConversations.consultantId, consultantId)
+      )
+    )
+    .limit(1);
+  
+  if (conversation) {
+    return conversation.id;
+  }
+  
+  const [newConversation] = await db
+    .insert(whatsappConversations)
+    .values({
+      phoneNumber: normalizedPhone,
+      consultantId,
+      userId: clientId || null,
+      isLead: !clientId,
+      aiEnabled: true,
+      isActive: true,
+      agentConfigId,
+    })
+    .returning({ id: whatsappConversations.id });
+  
+  console.log(`[WEEKLY-CHECKIN] Created new conversation ${newConversation.id} for ${normalizedPhone}`);
+  return newConversation.id;
+}
 
 let dailySchedulingJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
@@ -468,19 +531,53 @@ async function processScheduledCheckins(): Promise<void> {
             // Continue with fallback - template without personalization
           }
           
+          // Get or create conversation for history tracking
+          const conversationId = checkin.conversationId || await getOrCreateConversationForCheckin(
+            checkin.phoneNumber,
+            checkin.consultantId,
+            agentConfig.id,
+            checkin.clientId
+          );
+          
+          const messageTextToSend = `Ciao ${contentVariables?.['1'] || 'Cliente'}! ${contentVariables?.['2'] || 'Come stai questa settimana?'}`;
+          
           messageSid = await sendWhatsAppMessage(
             checkin.consultantId,
             checkin.phoneNumber,
-            `Ciao ${contentVariables?.['1'] || 'Cliente'}! ${contentVariables?.['2'] || 'Come stai questa settimana?'}`,
+            messageTextToSend,
             undefined,
             {
               contentSid: checkin.templateId,
               contentVariables,
               agentConfigId: agentConfig.id,
-              conversationId: checkin.conversationId || undefined
+              conversationId
             }
           );
+          
+          // Save message to conversation history so AI has context when client responds
+          // Use twilioSid (not twilioMessageSid) to match schema, with onConflictDoNothing for retry safety
+          await db.insert(whatsappMessages).values({
+            conversationId,
+            messageText: messageTextToSend,
+            direction: "outbound",
+            sender: "ai",
+            twilioSid: messageSid,
+            metadata: {
+              type: "weekly_checkin",
+              templateId: checkin.templateId,
+              isAutomated: true,
+            },
+          }).onConflictDoNothing();
+          console.log(`[WEEKLY-CHECKIN] Saved check-in message to conversation history (conversation: ${conversationId})`);
         } else {
+          // Get or create conversation for history tracking
+          const conversationId = checkin.conversationId || await getOrCreateConversationForCheckin(
+            checkin.phoneNumber,
+            checkin.consultantId,
+            agentConfig.id,
+            checkin.clientId
+          );
+          
           const messageText = checkin.personalizedMessage || checkin.originalTemplateBody || 'Ciao! Come stai? 😊';
           messageSid = await sendWhatsAppMessage(
             checkin.consultantId,
@@ -489,9 +586,24 @@ async function processScheduledCheckins(): Promise<void> {
             undefined,
             {
               agentConfigId: agentConfig.id,
-              conversationId: checkin.conversationId || undefined
+              conversationId
             }
           );
+          
+          // Save message to conversation history so AI has context when client responds
+          // Use twilioSid (not twilioMessageSid) to match schema, with onConflictDoNothing for retry safety
+          await db.insert(whatsappMessages).values({
+            conversationId,
+            messageText: messageText,
+            direction: "outbound",
+            sender: "ai",
+            twilioSid: messageSid,
+            metadata: {
+              type: "weekly_checkin",
+              isAutomated: true,
+            },
+          }).onConflictDoNothing();
+          console.log(`[WEEKLY-CHECKIN] Saved check-in message to conversation history (conversation: ${conversationId})`);
         }
 
         await db.update(weeklyCheckinLogs)
