@@ -29,7 +29,8 @@ function parseTimeString(timeStr: string): { hours: number; minutes: number } {
 
 /**
  * Check if current Italian time is within the configured send window.
- * Returns true if current time is >= windowStart AND < windowEnd.
+ * Handles both same-day windows (13:00-14:00) and midnight-crossing windows (22:00-02:00).
+ * Returns true if current time is within the window.
  */
 function isWithinSendWindow(nowItaly: Date, windowStart: string, windowEnd: string): boolean {
   const currentHour = nowItaly.getHours();
@@ -41,6 +42,13 @@ function isWithinSendWindow(nowItaly: Date, windowStart: string, windowEnd: stri
   const startTotalMinutes = start.hours * 60 + start.minutes;
   const endTotalMinutes = end.hours * 60 + end.minutes;
   
+  // Handle midnight-crossing windows (e.g., 22:00-02:00)
+  if (startTotalMinutes > endTotalMinutes) {
+    // Window crosses midnight: valid if current >= start OR current < end
+    return currentTotalMinutes >= startTotalMinutes || currentTotalMinutes < endTotalMinutes;
+  }
+  
+  // Normal same-day window (e.g., 13:00-14:00)
   return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < endTotalMinutes;
 }
 
@@ -296,19 +304,17 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
     
     console.log(`📊 ${enabledClients.length}/${allClients.length} clients have automation enabled`);
     
-    // Get SMTP settings for this consultant to get emailFrequencyDays
-    const smtpSettings = await storage.getConsultantSmtpSettings(consultantId);
+    // Get emailFrequencyDays from smtpSettings (already fetched at function start)
     const emailFrequencyDays = smtpSettings?.emailFrequencyDays || 2; // Default to 2 days if not configured
     
     // Calculate today's template day (with end-of-month remapping) using Italian timezone
-    const now = getItalianNow();
+    const now = nowItaly; // Use nowItaly already calculated at function start
     const currentDay = now.getDate();
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const todayTemplateDay = calculateTemplateDay(currentDay, lastDayOfMonth);
     
     // Calculate next real send time using the dedicated function
     const { nextSendTimeItaly, isToday, hoursUntil, minutesUntil } = getNextSendTime();
-    const nowTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     const nextSendDateStr = nextSendTimeItaly.toLocaleDateString('it-IT');
     const nextSendTimeStr = `${nextSendTimeItaly.getHours().toString().padStart(2, '0')}:${nextSendTimeItaly.getMinutes().toString().padStart(2, '0')}`;
     const timeUntilStr = `${hoursUntil}h ${minutesUntil}m`;

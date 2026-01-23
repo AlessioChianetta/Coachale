@@ -122,6 +122,8 @@ interface SMTPSettings {
   fromName: string;
   automationEnabled: boolean;
   emailFrequencyDays: number;
+  sendWindowStart?: string;
+  sendWindowEnd?: string;
   // Backend returns these property names
   smtpHost?: string;
   smtpUser?: string;
