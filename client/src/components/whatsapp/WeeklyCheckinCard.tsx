@@ -41,6 +41,7 @@ import {
 interface CheckinConfig {
   id: string;
   consultantId: string;
+  agentConfigId: string | null;
   isEnabled: boolean;
   preferredTimeStart: string;
   preferredTimeEnd: string;
@@ -51,6 +52,13 @@ interface CheckinConfig {
   minDaysSinceLastContact: number;
   totalSent: number;
   totalResponses: number;
+}
+
+interface WhatsAppAgent {
+  id: string;
+  agentName: string;
+  phoneNumber: string;
+  isActive: boolean;
 }
 
 interface WhatsAppTemplate {
@@ -148,6 +156,14 @@ export function WeeklyCheckinCard() {
     queryKey: ["/api/weekly-checkin/templates"],
   });
 
+  const { data: whatsappAgents = [] } = useQuery<WhatsAppAgent[]>({
+    queryKey: ["/api/whatsapp/agents"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/whatsapp/agents");
+      return response?.agents || [];
+    },
+  });
+
   const categorizeTemplate = (template: WhatsAppTemplate): string => {
     const name = (template.friendlyName || "").toLowerCase();
     const useCase = (template.useCase || "").toLowerCase();
@@ -180,6 +196,7 @@ export function WeeklyCheckinCard() {
   });
 
   const logs = logsData?.logs || [];
+  const pendingLogs = logs.filter(log => log.status === 'scheduled');
 
   const { data: stats } = useQuery<{ totalSent: number; totalResponses: number; responseRate: number; lastRunAt: string | null }>({
     queryKey: ["/api/weekly-checkin/stats"],
@@ -253,6 +270,22 @@ export function WeeklyCheckinCard() {
     },
     onError: (error: any) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const testSendMutation = useMutation({
+    mutationFn: (clientId: string) => apiRequest("POST", "/api/weekly-checkin/send-test", { clientId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/logs"] });
+      setTestDialogOpen(false);
+      setSelectedClientId("");
+      toast({ 
+        title: "Test inviato!",
+        description: "Il messaggio di check-in è stato inviato con successo."
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore nell'invio", description: error.message, variant: "destructive" });
     },
   });
 
@@ -430,6 +463,38 @@ export function WeeklyCheckinCard() {
                     Vedi tutta la cronologia
                   </Button>
                 )}
+              </div>
+            )}
+
+            {/* Prossimi Invii Programmati */}
+            {pendingLogs.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  Prossimi Invii Programmati
+                </h4>
+                <div className="space-y-2">
+                  {pendingLogs.slice(0, 5).map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center gap-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700"
+                    >
+                      <Clock className="h-4 w-4 text-amber-500" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {log.clientName || log.phoneNumber}
+                        </p>
+                        <p className="text-xs text-gray-500">{log.templateName}</p>
+                      </div>
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
+                        In coda
+                      </Badge>
+                      <span className="text-xs text-amber-600 font-medium whitespace-nowrap">
+                        {formatDate(log.scheduledFor)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -856,6 +921,48 @@ export function WeeklyCheckinCard() {
           </div>
 
           <div className="space-y-4">
+            {/* Selezione Agente WhatsApp */}
+            <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/50">
+                  <Phone className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="flex-1">
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Agente WhatsApp</h5>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Seleziona da quale numero WhatsApp vuoi inviare i check-in
+                  </p>
+                </div>
+              </div>
+              <div className="ml-11">
+                <Select
+                  value={config?.agentConfigId || ""}
+                  onValueChange={(value) => updateConfigMutation.mutate({ agentConfigId: value || null })}
+                >
+                  <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                    <SelectValue placeholder="Seleziona un agente WhatsApp..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {whatsappAgents.filter(a => a.isActive).map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3 w-3" />
+                          <span>{agent.agentName}</span>
+                          <span className="text-gray-400">({agent.phoneNumber})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!config?.agentConfigId && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Devi selezionare un agente per poter inviare i check-in
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* Orario Invio */}
             <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 space-y-3">
               <div className="flex items-start gap-3">
@@ -968,9 +1075,99 @@ export function WeeklyCheckinCard() {
             </div>
           </div>
         </div>
+
+            {/* Pulsante Test */}
+            <div className="p-4 rounded-xl border border-cyan-100 dark:border-cyan-900/50 bg-cyan-50/50 dark:bg-cyan-950/20 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/50">
+                  <Send className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <div className="flex-1">
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm">Invia Test</h5>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Invia un messaggio di prova per verificare che tutto funzioni correttamente
+                  </p>
+                  <Button
+                    onClick={() => setTestDialogOpen(true)}
+                    disabled={!config?.agentConfigId || (config?.templateIds?.length || 0) === 0}
+                    className="mt-3 bg-cyan-500 hover:bg-cyan-600 text-white"
+                    size="sm"
+                  >
+                    <Send className="h-3 w-3 mr-1" />
+                    Invia Test Check-in
+                  </Button>
+                  {(!config?.agentConfigId || (config?.templateIds?.length || 0) === 0) && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      Seleziona un agente e almeno un template per inviare un test
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {/* Dialog per Test */}
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-cyan-500" />
+              Invia Check-in di Test
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Seleziona un cliente a cui inviare un messaggio di test. Il messaggio verrà inviato immediatamente usando il template selezionato.
+            </p>
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <Select
+                value={selectedClientId}
+                onValueChange={setSelectedClientId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona un cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleData?.eligible?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="h-3 w-3 text-green-500" />
+                        <span>{client.firstName} {client.lastName}</span>
+                        <span className="text-gray-400 text-xs">({client.phoneNumber})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setTestDialogOpen(false)}>
+                Annulla
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedClientId) {
+                    testSendMutation.mutate(selectedClientId);
+                  }
+                }}
+                disabled={!selectedClientId || testSendMutation.isPending}
+                className="bg-cyan-500 hover:bg-cyan-600"
+              >
+                {testSendMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Invia Test
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

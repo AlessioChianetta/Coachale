@@ -8845,6 +8845,9 @@ export const weeklyCheckinConfig = pgTable("weekly_checkin_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
   
+  // Agente WhatsApp da usare per gli invii
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "set null" }),
+  
   // Stato
   isEnabled: boolean("is_enabled").default(false).notNull(),
   

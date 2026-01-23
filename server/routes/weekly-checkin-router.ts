@@ -89,6 +89,7 @@ router.post("/config", authenticateToken, requireRole("consultant"), async (req,
       useAiPersonalization,
       targetAudience,
       minDaysSinceLastContact,
+      agentConfigId,
     } = req.body;
 
     const [existing] = await db
@@ -109,6 +110,7 @@ router.post("/config", authenticateToken, requireRole("consultant"), async (req,
           useAiPersonalization: useAiPersonalization ?? existing.useAiPersonalization,
           targetAudience: targetAudience ?? existing.targetAudience,
           minDaysSinceLastContact: minDaysSinceLastContact ?? existing.minDaysSinceLastContact,
+          agentConfigId: agentConfigId !== undefined ? agentConfigId : existing.agentConfigId,
           updatedAt: new Date(),
         })
         .where(eq(schema.weeklyCheckinConfig.id, existing.id))
@@ -127,6 +129,7 @@ router.post("/config", authenticateToken, requireRole("consultant"), async (req,
           useAiPersonalization: useAiPersonalization ?? true,
           targetAudience: targetAudience ?? "all_active",
           minDaysSinceLastContact: minDaysSinceLastContact ?? 5,
+          agentConfigId: agentConfigId ?? null,
         })
         .returning();
       res.status(201).json(created);
@@ -480,6 +483,123 @@ router.post("/test", authenticateToken, requireRole("consultant"), async (req, r
     res.status(201).json({
       message: "Test check-in scheduled",
       log,
+    });
+  } catch (error: any) {
+    console.error("Error sending test check-in:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post("/send-test", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const { clientId } = req.body;
+
+    if (!clientId) {
+      return res.status(400).json({ message: "clientId is required" });
+    }
+
+    const [client] = await db
+      .select()
+      .from(schema.users)
+      .where(
+        and(
+          eq(schema.users.id, clientId),
+          eq(schema.users.consultantId, req.user!.id)
+        )
+      )
+      .limit(1);
+
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    if (!client.phoneNumber) {
+      return res.status(400).json({ message: "Client has no phone number" });
+    }
+
+    const [config] = await db
+      .select()
+      .from(schema.weeklyCheckinConfig)
+      .where(eq(schema.weeklyCheckinConfig.consultantId, req.user!.id))
+      .limit(1);
+
+    if (!config) {
+      return res.status(400).json({ message: "Weekly check-in not configured" });
+    }
+
+    if (!config.agentConfigId) {
+      return res.status(400).json({ message: "Nessun agente WhatsApp selezionato. Vai nelle impostazioni e seleziona un agente." });
+    }
+
+    if (!config.templateIds || config.templateIds.length === 0) {
+      return res.status(400).json({ message: "Nessun template selezionato. Vai nelle impostazioni e seleziona almeno un template." });
+    }
+
+    const templateId = config.templateIds[0];
+
+    const { sendWhatsAppMessage } = await import("../whatsapp/twilio-client");
+    const { generateCheckinVariables } = await import("../ai/checkin-personalization-service");
+
+    let contentVariables: Record<string, string> | undefined;
+
+    try {
+      const variables = await generateCheckinVariables(clientId, req.user!.id);
+      if (variables) {
+        contentVariables = {
+          '1': variables.name,
+          '2': variables.aiMessage,
+        };
+      }
+    } catch (aiError) {
+      console.error("[WEEKLY-CHECKIN] AI personalization failed:", aiError);
+      contentVariables = {
+        '1': client.firstName || 'Cliente',
+        '2': 'spero che questa settimana stia andando bene per te',
+      };
+    }
+
+    const messageText = `Ciao ${contentVariables?.['1'] || 'Cliente'}! ${contentVariables?.['2'] || 'Come stai questa settimana?'}`;
+
+    const messageSid = await sendWhatsAppMessage(
+      req.user!.id,
+      client.phoneNumber,
+      messageText,
+      undefined,
+      {
+        contentSid: templateId,
+        contentVariables,
+        agentConfigId: config.agentConfigId,
+      }
+    );
+
+    const now = new Date();
+    await db
+      .insert(schema.weeklyCheckinLogs)
+      .values({
+        configId: config.id,
+        consultantId: req.user!.id,
+        clientId: client.id,
+        phoneNumber: client.phoneNumber,
+        scheduledFor: now,
+        scheduledDay: now.getDay(),
+        scheduledHour: now.getHours(),
+        templateId: templateId,
+        templateName: "Test Check-in",
+        personalizedMessage: contentVariables?.['2'] || null,
+        status: "sent",
+        sentAt: now,
+        twilioMessageSid: messageSid,
+        aiPersonalizationContext: contentVariables ? {
+          clientName: contentVariables['1'],
+          aiMessage: contentVariables['2'],
+          generatedAt: now.toISOString(),
+        } : null,
+      });
+
+    res.json({
+      success: true,
+      message: "Test check-in inviato con successo!",
+      messageSid,
     });
   } catch (error: any) {
     console.error("Error sending test check-in:", error);
