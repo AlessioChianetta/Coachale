@@ -245,6 +245,29 @@ router.get("/logs", authenticateToken, requireRole("consultant"), async (req, re
   }
 });
 
+router.get("/pending-logs", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const pendingLogs = await db
+      .select()
+      .from(schema.weeklyCheckinLogs)
+      .where(
+        and(
+          eq(schema.weeklyCheckinLogs.consultantId, req.user!.id),
+          eq(schema.weeklyCheckinLogs.status, "scheduled")
+        )
+      )
+      .orderBy(schema.weeklyCheckinLogs.scheduledFor)
+      .limit(limit);
+
+    res.json({ logs: pendingLogs });
+  } catch (error: any) {
+    console.error("Error fetching pending weekly checkin logs:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.get("/templates", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const templates = await fetchApprovedTemplatesForConsultant(req.user!.id);

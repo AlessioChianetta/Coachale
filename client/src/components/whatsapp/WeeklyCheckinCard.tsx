@@ -196,7 +196,14 @@ export function WeeklyCheckinCard() {
   });
 
   const logs = logsData?.logs || [];
-  const pendingLogs = logs.filter(log => log.status === 'scheduled');
+
+  const { data: pendingLogsData } = useQuery<{ logs: CheckinLog[] }>({
+    queryKey: ["/api/weekly-checkin/pending-logs"],
+    queryFn: () => apiRequest("GET", "/api/weekly-checkin/pending-logs?limit=10").then(r => r.json()),
+    refetchInterval: 30000,
+  });
+
+  const pendingLogs = pendingLogsData?.logs || [];
 
   const { data: stats } = useQuery<{ totalSent: number; totalResponses: number; responseRate: number; lastRunAt: string | null }>({
     queryKey: ["/api/weekly-checkin/stats"],

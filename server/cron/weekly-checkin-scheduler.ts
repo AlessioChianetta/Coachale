@@ -212,6 +212,11 @@ async function scheduleCheckinForConsultant(
 ): Promise<number> {
   const consultantId = config.consultantId;
   
+  if (!config.agentConfigId) {
+    console.log(`⚠️ [WEEKLY-CHECKIN] Consultant ${consultantId}: no WhatsApp agent selected in config`);
+    return 0;
+  }
+
   const [agentConfig] = await db
     .select({
       id: consultantWhatsappConfig.id,
@@ -221,6 +226,7 @@ async function scheduleCheckinForConsultant(
     .from(consultantWhatsappConfig)
     .where(
       and(
+        eq(consultantWhatsappConfig.id, config.agentConfigId),
         eq(consultantWhatsappConfig.consultantId, consultantId),
         eq(consultantWhatsappConfig.isActive, true)
       )
@@ -228,7 +234,7 @@ async function scheduleCheckinForConsultant(
     .limit(1);
 
   if (!agentConfig || !agentConfig.twilioAccountSid || !agentConfig.twilioAuthToken) {
-    console.log(`⚠️ [WEEKLY-CHECKIN] Consultant ${consultantId}: no active WhatsApp agent configured`);
+    console.log(`⚠️ [WEEKLY-CHECKIN] Consultant ${consultantId}: selected WhatsApp agent not active or missing credentials`);
     return 0;
   }
 
