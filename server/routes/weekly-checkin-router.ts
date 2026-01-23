@@ -1,13 +1,18 @@
 import { Router } from "express";
 import { db } from "../db";
 import * as schema from "../../shared/schema";
-import { eq, and, desc, sql, or, isNull, isNotNull, ne, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, or, isNull, isNotNull, ne, inArray, gte, lte, asc } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
 import twilio from "twilio";
 import { normalizePhoneNumber } from "../whatsapp/webhook-handler";
 import { toZonedTime, fromZonedTime, format } from "date-fns-tz";
 import { addDays, setHours, setMinutes, getDay } from "date-fns";
 import { runDailySchedulingNow } from "../cron/weekly-checkin-scheduler";
+import { 
+  generateScheduleForWeeks, 
+  getScheduleForConsultant,
+  cancelScheduleEntry 
+} from "../services/weekly-checkin-schedule-service";
 
 /**
  * Get or create a WhatsApp conversation for check-in messages
@@ -1053,6 +1058,202 @@ router.post("/trigger-now", authenticateToken, requireRole("consultant"), async 
       success: false, 
       message: error.message || "Errore durante l'avvio dello scheduler" 
     });
+  }
+});
+
+/**
+ * GET /schedule - Ritorna il calendario pre-pianificato per 4 settimane
+ * Legge dalla tabella weekly_checkin_schedule
+ */
+router.get("/schedule", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const weeks = parseInt(req.query.weeks as string) || 4;
+    
+    const startDate = new Date();
+    const endDate = addDays(startDate, weeks * 7);
+    
+    const schedule = await getScheduleForConsultant(consultantId, startDate, endDate);
+    
+    // Raggruppa per data per facilitare la visualizzazione calendario
+    const scheduleByDate: Record<string, any[]> = {};
+    
+    for (const entry of schedule) {
+      const dateKey = entry.scheduledDate;
+      if (!scheduleByDate[dateKey]) {
+        scheduleByDate[dateKey] = [];
+      }
+      scheduleByDate[dateKey].push({
+        id: entry.id,
+        clientId: entry.clientId,
+        clientName: entry.clientName,
+        templateId: entry.templateId,
+        templateName: entry.templateName,
+        scheduledHour: entry.scheduledHour,
+        scheduledMinute: entry.scheduledMinute,
+        status: entry.status,
+        weekNumber: entry.weekNumber,
+        dayOfWeek: entry.dayOfWeek,
+        executedAt: entry.executedAt,
+        skipReason: entry.skipReason,
+      });
+    }
+    
+    res.json({
+      success: true,
+      schedule: scheduleByDate,
+      totalEntries: schedule.length,
+      dateRange: {
+        from: startDate.toISOString(),
+        to: endDate.toISOString(),
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching weekly checkin schedule:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /generate-schedule - Genera/rigenera il calendario per 4 settimane
+ * Elimina le entry "planned" esistenti e crea nuove
+ */
+router.post("/generate-schedule", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const weeks = parseInt(req.body.weeks as string) || 4;
+    
+    console.log(`📅 [WEEKLY-CHECKIN] Generating ${weeks}-week schedule for consultant ${consultantId}`);
+    
+    const result = await generateScheduleForWeeks(consultantId, weeks);
+    
+    console.log(`✅ [WEEKLY-CHECKIN] Schedule generated: ${result.scheduledCount} entries for ${result.clients.length} clients`);
+    
+    res.json({
+      success: true,
+      message: `Calendario generato! ${result.scheduledCount} check-in programmati per le prossime ${weeks} settimane.`,
+      scheduledCount: result.scheduledCount,
+      clientsIncluded: result.clients.length,
+      dateRange: result.dateRange,
+    });
+  } catch (error: any) {
+    console.error("Error generating weekly checkin schedule:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Errore durante la generazione del calendario" 
+    });
+  }
+});
+
+/**
+ * DELETE /schedule/:id - Cancella una entry del calendario
+ */
+router.delete("/schedule/:id", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const scheduleId = req.params.id;
+    const reason = req.body.reason || "Cancellato manualmente";
+    
+    // Verifica che l'entry appartenga a questo consulente
+    const [entry] = await db
+      .select()
+      .from(schema.weeklyCheckinSchedule)
+      .where(
+        and(
+          eq(schema.weeklyCheckinSchedule.id, scheduleId),
+          eq(schema.weeklyCheckinSchedule.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+    
+    if (!entry) {
+      return res.status(404).json({ success: false, message: "Entry non trovata" });
+    }
+    
+    if (entry.status !== 'planned') {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Impossibile cancellare entry con status '${entry.status}'` 
+      });
+    }
+    
+    await cancelScheduleEntry(scheduleId, reason);
+    
+    res.json({ success: true, message: "Entry cancellata" });
+  } catch (error: any) {
+    console.error("Error canceling schedule entry:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /schedule/summary - Statistiche riassuntive del calendario
+ */
+router.get("/schedule/summary", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // Count by status
+    const statusCounts = await db
+      .select({
+        status: schema.weeklyCheckinSchedule.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.weeklyCheckinSchedule)
+      .where(eq(schema.weeklyCheckinSchedule.consultantId, consultantId))
+      .groupBy(schema.weeklyCheckinSchedule.status);
+    
+    // Count today's entries
+    const [todayCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.weeklyCheckinSchedule)
+      .where(
+        and(
+          eq(schema.weeklyCheckinSchedule.consultantId, consultantId),
+          eq(schema.weeklyCheckinSchedule.scheduledDate, todayStr)
+        )
+      );
+    
+    // Get next planned entry
+    const [nextEntry] = await db
+      .select({
+        scheduledDate: schema.weeklyCheckinSchedule.scheduledDate,
+        scheduledHour: schema.weeklyCheckinSchedule.scheduledHour,
+        scheduledMinute: schema.weeklyCheckinSchedule.scheduledMinute,
+        templateName: schema.weeklyCheckinSchedule.templateName,
+      })
+      .from(schema.weeklyCheckinSchedule)
+      .where(
+        and(
+          eq(schema.weeklyCheckinSchedule.consultantId, consultantId),
+          eq(schema.weeklyCheckinSchedule.status, 'planned'),
+          gte(schema.weeklyCheckinSchedule.scheduledDate, todayStr)
+        )
+      )
+      .orderBy(asc(schema.weeklyCheckinSchedule.scheduledDate), asc(schema.weeklyCheckinSchedule.scheduledHour))
+      .limit(1);
+    
+    const statusMap = Object.fromEntries(statusCounts.map(s => [s.status, s.count]));
+    
+    res.json({
+      success: true,
+      summary: {
+        planned: statusMap['planned'] || 0,
+        pending: statusMap['pending'] || 0,
+        sent: statusMap['sent'] || 0,
+        failed: statusMap['failed'] || 0,
+        skipped: statusMap['skipped'] || 0,
+        cancelled: statusMap['cancelled'] || 0,
+        todayCount: todayCount?.count || 0,
+        nextEntry: nextEntry || null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching schedule summary:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
