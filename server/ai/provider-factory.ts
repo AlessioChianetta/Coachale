@@ -1554,3 +1554,92 @@ export async function getGoogleAIStudioClientForFileSearch(
     return null;
   }
 }
+
+/**
+ * Get raw GoogleGenAI instance for File Search mode.
+ * This returns the raw SDK instance instead of the GeminiClientAdapter wrapper.
+ * Use this when you need to call ai.models.generateContent directly.
+ * 
+ * The raw SDK returns response.text as a property, not a method.
+ * This is required for file_search tool responses which have different structure.
+ * 
+ * @param userId - User ID (consultant or client)
+ * @returns Raw GoogleGenAI instance with metadata, or null if API key not available
+ */
+export async function getRawGoogleGenAIForFileSearch(
+  userId: string
+): Promise<{ ai: GoogleGenAI; metadata: AiProviderMetadata } | null> {
+  try {
+    // Priority 1: Environment API key (GEMINI_API_KEY)
+    const envApiKey = process.env.GEMINI_API_KEY;
+    if (envApiKey) {
+      console.log(`✅ [Raw GenAI] Using GEMINI_API_KEY from environment for File Search`);
+      
+      const ai = new GoogleGenAI({ apiKey: envApiKey });
+      
+      return {
+        ai,
+        metadata: {
+          name: "Google AI Studio",
+        },
+      };
+    }
+    
+    // Get user to check preferences
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      console.error(`❌ [Raw GenAI] User ${userId} not found`);
+      return null;
+    }
+
+    // Priority 2: SuperAdmin Gemini keys (if user opted in)
+    if (user.useSuperadminGemini !== false) {
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.keys.length > 0) {
+        const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+        const apiKey = superAdminKeys.keys[index];
+        console.log(`✅ [Raw GenAI] Using SuperAdmin Gemini key for File Search (${index + 1}/${superAdminKeys.keys.length})`);
+        
+        const ai = new GoogleGenAI({ apiKey });
+        
+        return {
+          ai,
+          metadata: {
+            name: "Google AI Studio",
+          },
+        };
+      }
+    }
+
+    // Priority 3: User's own API keys
+    const apiKeys = user.geminiApiKeys || [];
+    const currentIndex = user.geminiApiKeyIndex || 0;
+
+    if (apiKeys.length === 0) {
+      console.error(`❌ [Raw GenAI] No Gemini API keys available for File Search`);
+      return null;
+    }
+
+    const validIndex = currentIndex % apiKeys.length;
+    const apiKey = apiKeys[validIndex];
+
+    console.log(`✅ [Raw GenAI] Using user's Gemini API key for File Search`);
+    
+    const ai = new GoogleGenAI({ apiKey });
+
+    return {
+      ai,
+      metadata: {
+        name: "Google AI Studio",
+      },
+    };
+  } catch (error: any) {
+    console.error(`❌ [Raw GenAI] Failed to create GoogleGenAI instance:`, error.message);
+    return null;
+  }
+}

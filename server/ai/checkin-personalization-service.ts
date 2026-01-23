@@ -12,7 +12,7 @@
 import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
-import { getGoogleAIStudioClientForFileSearch, getModelWithThinking } from "./provider-factory";
+import { getRawGoogleGenAIForFileSearch, getModelWithThinking } from "./provider-factory";
 import { fileSearchService } from "./file-search-service";
 import { buildUserContext, UserContext } from "../ai-context-builder";
 
@@ -389,8 +389,9 @@ export async function generateCheckinAiMessage(
   context: ClientCheckinContext
 ): Promise<PersonalizedCheckinResult> {
   try {
-    // Get AI provider using proper credential resolution (respects user preferences)
-    const providerResult = await getGoogleAIStudioClientForFileSearch(context.consultantId);
+    // Get raw GoogleGenAI instance for direct SDK access (required for file_search responses)
+    // The raw SDK returns response.text as a property, not a method
+    const providerResult = await getRawGoogleGenAIForFileSearch(context.consultantId);
     
     if (!providerResult) {
       console.log('[CHECKIN-AI] No AI provider available for File Search');
@@ -400,7 +401,7 @@ export async function generateCheckinAiMessage(
       };
     }
 
-    const { client, metadata } = providerResult;
+    const { ai, metadata } = providerResult;
     
     // Get correct model based on provider (Gemini 3 for Google AI Studio)
     const { model } = getModelWithThinking(metadata.name);
@@ -450,19 +451,21 @@ export async function generateCheckinAiMessage(
     console.log(`[CHECKIN-AI] Generating message for ${context.clientName} using ${metadata.name}`);
     console.log(`[CHECKIN-AI]   Mode: ${useFileSearchMode ? 'FILE_SEARCH' : 'FALLBACK'}`);
 
-    const result = await client.generateContent({
+    // Use ai.models.generateContent directly (like ai-service.ts)
+    // This returns response.text as a property, not a method
+    const response = await ai.models.generateContent({
       model,
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
-      generationConfig: {
+      config: {
+        systemInstruction: systemPrompt,
         temperature: 0.9,
         maxOutputTokens: 10000,
+        ...(fileSearchTool && { tools: [fileSearchTool] }),
       },
-      ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
 
-    // Extract text from response
-    const aiMessage = result.response.text()?.trim();
+    // Extract text from response - response.text is a property (not a method)
+    const aiMessage = response.text?.trim() || '';
 
     if (!aiMessage) {
       console.log(`[CHECKIN-AI] AI returned empty response for ${context.clientName}`);
@@ -475,7 +478,7 @@ export async function generateCheckinAiMessage(
     // Log File Search citations if available
     if (fileSearchTool) {
       try {
-        const citations = fileSearchService.parseCitations(result);
+        const citations = fileSearchService.parseCitations(response);
         if (citations.length > 0) {
           console.log(`[CHECKIN-AI] File Search used ${citations.length} citations:`);
           citations.forEach((c, i) => {
