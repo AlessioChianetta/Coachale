@@ -503,7 +503,7 @@ export function WeeklyCheckinCard() {
                       {eligibleData?.eligible?.length || 0} clienti
                     </Badge>
                   </div>
-                  <ScrollArea className="h-[200px] rounded-lg border border-green-200 dark:border-green-800 p-2 bg-green-50/30 dark:bg-green-950/20">
+                  <ScrollArea className="h-[300px] rounded-lg border border-green-200 dark:border-green-800 p-2 bg-green-50/30 dark:bg-green-950/20">
                     {(eligibleData?.eligible || []).length === 0 ? (
                       <div className="text-center py-6 text-gray-400 text-sm">
                         <UserCheck className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -573,7 +573,7 @@ export function WeeklyCheckinCard() {
                       {eligibleData?.excluded?.length || 0} disponibili
                     </Badge>
                   </div>
-                  <ScrollArea className="h-[200px] rounded-lg border border-gray-200 dark:border-gray-700 p-2">
+                  <ScrollArea className="h-[400px] rounded-lg border border-gray-200 dark:border-gray-700 p-2">
                     {(eligibleData?.excluded || []).length === 0 ? (
                       <div className="text-center py-6 text-gray-400 text-sm">
                         Tutti i clienti sono stati selezionati
@@ -581,7 +581,7 @@ export function WeeklyCheckinCard() {
                     ) : (
                       <div className="space-y-1">
                         {(eligibleData?.excluded || []).map((client) => {
-                          const canAdd = client.phoneNumber && client.isActive !== false;
+                          const canAdd = !!client.phoneNumber;
                           return (
                             <div
                               key={client.id}
