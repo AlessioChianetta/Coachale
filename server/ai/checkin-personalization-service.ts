@@ -199,17 +199,19 @@ Basandoti su questi dati, scrivi un messaggio personalizzato e specifico.`;
     const result = await client.generateContent({
       model,
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-      config: {
-        systemInstruction: systemPrompt,
+      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+      generationConfig: {
         temperature: 0.9,
         maxOutputTokens: 500,
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
 
-    const aiMessage = result.text?.trim();
+    // Extract text from response - GeminiClientAdapter returns { response: { text: () => string } }
+    const aiMessage = result.response.text()?.trim();
 
     if (!aiMessage) {
+      console.log(`[CHECKIN-AI] AI returned empty response for ${context.clientName}`);
       return {
         success: false,
         error: 'AI returned empty response',
