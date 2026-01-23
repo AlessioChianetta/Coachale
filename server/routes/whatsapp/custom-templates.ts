@@ -851,6 +851,177 @@ router.post(
 );
 
 /**
+ * POST /api/whatsapp/custom-templates/import-checkin-templates
+ * Import 10 weekly check-in templates with {{1}} (name) and {{2}} (AI phrase) variables
+ * These are designed for automated weekly check-ins with AI-personalized content
+ */
+router.post(
+  "/whatsapp/custom-templates/import-checkin-templates",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      // 10 Check-in templates with {{1}} = nome cliente, {{2}} = frase AI personalizzata
+      const CHECKIN_TEMPLATES = [
+        {
+          templateName: "Check-in Settimanale 1 - Saluto Amichevole",
+          description: "Check-in settimanale con saluto amichevole e frase AI personalizzata",
+          body: "Ciao {{1}}! 👋\n\n{{2}}\n\nSono qui se hai bisogno! 😊",
+        },
+        {
+          templateName: "Check-in Settimanale 2 - Come Stai",
+          description: "Check-in settimanale con domanda su come sta il cliente",
+          body: "Buongiorno {{1}}! ☀️\n\n{{2}}\n\nCome posso aiutarti oggi?",
+        },
+        {
+          templateName: "Check-in Settimanale 3 - Supporto",
+          description: "Check-in settimanale con offerta di supporto",
+          body: "Ciao {{1}}! 💬\n\n{{2}}\n\nFammi sapere se hai domande!",
+        },
+        {
+          templateName: "Check-in Settimanale 4 - Motivazionale",
+          description: "Check-in settimanale con messaggio motivazionale",
+          body: "{{1}}, buona giornata! 💪\n\n{{2}}\n\nContinua così!",
+        },
+        {
+          templateName: "Check-in Settimanale 5 - Disponibilità",
+          description: "Check-in settimanale con disponibilità a supportare",
+          body: "Ciao {{1}}! 🌟\n\n{{2}}\n\nResto a disposizione per qualsiasi cosa.",
+        },
+        {
+          templateName: "Check-in Settimanale 6 - Recap",
+          description: "Check-in settimanale con recap del percorso",
+          body: "Buongiorno {{1}}! 📊\n\n{{2}}\n\nScrivimi se vuoi fare il punto insieme.",
+        },
+        {
+          templateName: "Check-in Settimanale 7 - Obiettivi",
+          description: "Check-in settimanale focalizzato sugli obiettivi",
+          body: "Ciao {{1}}! 🎯\n\n{{2}}\n\nCome sta andando verso i tuoi obiettivi?",
+        },
+        {
+          templateName: "Check-in Settimanale 8 - Gentile",
+          description: "Check-in settimanale gentile e discreto",
+          body: "{{1}}, un saluto! 🙌\n\n{{2}}\n\nSe hai bisogno, sai dove trovarmi.",
+        },
+        {
+          templateName: "Check-in Settimanale 9 - Energia",
+          description: "Check-in settimanale energico e positivo",
+          body: "Ciao {{1}}! 🚀\n\n{{2}}\n\nPronte/o per una nuova settimana?",
+        },
+        {
+          templateName: "Check-in Settimanale 10 - Cura",
+          description: "Check-in settimanale attento al benessere del cliente",
+          body: "Buongiorno {{1}}! ❤️\n\n{{2}}\n\nSpero che tutto proceda al meglio!",
+        },
+      ];
+
+      let created = 0;
+      let skipped = 0;
+      const createdTemplateIds: string[] = [];
+
+      // Load variable catalog for mapping
+      const catalogVariables = await db
+        .select({
+          id: whatsappVariableCatalog.id,
+          variableKey: whatsappVariableCatalog.variableKey,
+        })
+        .from(whatsappVariableCatalog);
+      
+      const catalogMap = new Map(catalogVariables.map(v => [v.variableKey, v.id]));
+
+      for (const template of CHECKIN_TEMPLATES) {
+        // Check if already exists
+        const existingTemplate = await db
+          .select({ id: schema.whatsappCustomTemplates.id })
+          .from(schema.whatsappCustomTemplates)
+          .where(
+            and(
+              eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+              eq(schema.whatsappCustomTemplates.templateName, template.templateName)
+            )
+          );
+
+        if (existingTemplate.length > 0) {
+          skipped++;
+          continue;
+        }
+
+        // Create the template
+        const [newTemplate] = await db
+          .insert(schema.whatsappCustomTemplates)
+          .values({
+            consultantId,
+            templateName: template.templateName,
+            description: template.description,
+            body: template.body,
+            useCase: "customer_care",
+            targetAgentType: "customer_success",
+            templateType: "weekly_checkin",
+            isSystemTemplate: true,
+            isActive: true,
+          })
+          .returning();
+
+        console.log(`✅ [CHECKIN TEMPLATE] Created: ${template.templateName} (ID: ${newTemplate.id})`);
+
+        // Create version
+        const [newVersion] = await db
+          .insert(whatsappTemplateVersions)
+          .values({
+            templateId: newTemplate.id,
+            versionNumber: 1,
+            bodyText: template.body,
+            isActive: true,
+            createdBy: consultantId,
+          })
+          .returning();
+
+        // Map variables: {{1}} = nome_lead, {{2}} = checkin_ai_message
+        const variableMappings = [
+          { key: "nome_lead", position: 1 },
+          { key: "checkin_ai_message", position: 2 },
+        ];
+
+        for (const mapping of variableMappings) {
+          const catalogId = catalogMap.get(mapping.key);
+          if (catalogId) {
+            await db
+              .insert(whatsappTemplateVariables)
+              .values({
+                templateVersionId: newVersion.id,
+                variableCatalogId: catalogId,
+                position: mapping.position,
+              });
+            console.log(`  ✅ Mapped variable {${mapping.key}} -> position ${mapping.position}`);
+          } else {
+            console.log(`  ⚠️ Variable {${mapping.key}} not found in catalog (will be added dynamically)`);
+          }
+        }
+
+        created++;
+        createdTemplateIds.push(newTemplate.id);
+      }
+
+      res.json({
+        success: true,
+        message: `Importati ${created} template Check-in Settimanale${skipped > 0 ? ` (${skipped} già esistenti)` : ""}`,
+        created,
+        skipped,
+        templateIds: createdTemplateIds,
+      });
+    } catch (error: any) {
+      console.error("❌ [CHECKIN TEMPLATES] Error importing:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to import check-in templates",
+      });
+    }
+  }
+);
+
+/**
  * POST /api/whatsapp/custom-templates/fix-missing-variables
  * Fix templates that are missing variable mappings (for already loaded templates)
  */

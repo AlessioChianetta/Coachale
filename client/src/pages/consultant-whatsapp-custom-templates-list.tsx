@@ -94,6 +94,7 @@ import {
   Layers,
   Star,
   Rocket,
+  CalendarCheck,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
@@ -408,6 +409,35 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
       toast({
         title: "📅 Template Notifica Booking Importato!",
         description: data.message || "Il template è pronto per le notifiche appuntamento.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation to import the 10 weekly check-in templates
+  const importCheckinTemplatesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/whatsapp/custom-templates/import-checkin-templates", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to import check-in templates");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "📋 Template Check-in Importati!",
+        description: data.message || "10 template per check-in settimanale pronti per l'uso.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates"] });
     },
@@ -1393,6 +1423,25 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Aggiungi Template Notifica Booking</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => importCheckinTemplatesMutation.mutate()}
+                            size="sm"
+                            variant="outline"
+                            disabled={importCheckinTemplatesMutation.isPending}
+                            className="bg-purple-500/20 border-purple-300/50 text-white hover:bg-purple-500/30"
+                          >
+                            {importCheckinTemplatesMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CalendarCheck className="h-4 w-4" />
+                            )}
+                            <span className="hidden xl:inline ml-2">Check-in</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Aggiungi 10 Template Check-in Settimanale</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
