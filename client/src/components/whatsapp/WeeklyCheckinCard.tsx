@@ -1080,8 +1080,6 @@ export function WeeklyCheckinCard() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
             {/* Pulsante Test */}
             <div className="p-4 rounded-xl border border-cyan-100 dark:border-cyan-900/50 bg-cyan-50/50 dark:bg-cyan-950/20 space-y-3">
@@ -1112,6 +1110,7 @@ export function WeeklyCheckinCard() {
               </div>
             </div>
           </div>
+        </div>
           </TabsContent>
         </Tabs>
       </CardContent>
