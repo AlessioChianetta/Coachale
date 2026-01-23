@@ -307,7 +307,7 @@ Basandoti sui DATI REALI sopra, genera un messaggio di check-in PERSONALIZZATO c
 5. SII DI SUPPORTO se ha esercizi in ritardo o difficoltà
 
 Il messaggio deve essere:
-- COMPLETO E DETTAGLIATO (5-8 frasi, 150-250 parole)
+- COMPLETO E DETTAGLIATO
 - CALDO e PERSONALE, come se scrivessi a un cliente che conosci bene
 - SPECIFICO - DEVI menzionare TUTTI i dettagli rilevanti dai dati:
   * Esercizi completati o in sospeso (titoli specifici!)
@@ -345,8 +345,8 @@ IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, senza spieg
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
       generationConfig: {
-        temperature: 0.8, // Slightly lower for more focused output
-        maxOutputTokens: 1000, // Increased for detailed, personalized messages
+        temperature: 1, // Slightly lower for more focused output
+        maxOutputTokens: 10000, // Increased for detailed, personalized messages
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
