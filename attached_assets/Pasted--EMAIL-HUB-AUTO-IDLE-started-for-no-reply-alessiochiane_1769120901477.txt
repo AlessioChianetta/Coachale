@@ -1,0 +1,32 @@
+[EMAIL-HUB AUTO] IDLE started for no-reply@alessiochianetta.it
+[CHECKIN-AI] Error fetching client context: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:16)
+    at <anonymous> (/home/runner/workspace/node_modules/src/utils.ts:88:19)
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:32)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:979:23)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase._prepare (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:978:17)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1009:16)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase.execute (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1008:17)
+    at PgSelectBase.then (/home/runner/workspace/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+✅ Using explicitly specified agent: Marco setter (760bb513-098f-4722-b02a-a700160c2fc3)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Marco setter
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+3935002201299 (Agent: Marco setter)
+📤 [DRY RUN] Would send WhatsApp message with template: HX3f671c08d8898c69c7afa1dff8d72275
+📋 Template Details:
+   From: whatsapp:+3935002201299
+   To: whatsapp:+393519272875
+   Template SID: HX3f671c08d8898c69c7afa1dff8d72275
+   Variables: undefined
+   Message Text (fallback): Ciao Cliente! Come stai questa settimana?
+✅ [DRY RUN] Simulated template message: DRY_RUN_TEMPLATE_1769135304836_y29ly
+2:28:24 AM [express] POST /api/weekly-checkin/send-test 200 in 1130ms :: {"success":true,"message":"…
+2:28:25 AM [express] GET /api/weekly-

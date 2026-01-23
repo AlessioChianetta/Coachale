@@ -126,7 +126,7 @@ export async function fetchClientContext(
     // Fetch last consultation
     const [lastConsultation] = await db
       .select({
-        title: consultations.title,
+        notes: consultations.notes,
         scheduledAt: consultations.scheduledAt,
       })
       .from(consultations)
@@ -147,7 +147,7 @@ export async function fetchClientContext(
       lastExercise,
       exerciseProgress,
       lastConsultation: lastConsultation ? {
-        topic: lastConsultation.title || 'consulenza',
+        topic: lastConsultation.notes || 'consulenza',
         date: lastConsultation.scheduledAt!,
       } : undefined,
     };
