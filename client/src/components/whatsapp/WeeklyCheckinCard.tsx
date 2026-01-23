@@ -28,6 +28,8 @@ import {
   Loader2,
   MessageSquare,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   History,
   UserCheck,
   UserX,
@@ -36,7 +38,8 @@ import {
   BarChart3,
   Settings,
   PlayCircle,
-  Timer
+  Timer,
+  Calendar
 } from "lucide-react";
 
 interface CheckinConfig {
@@ -167,6 +170,7 @@ export function WeeklyCheckinCard() {
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [calendarWeekOffset, setCalendarWeekOffset] = useState(0);
 
   const { data: config, isLoading: configLoading } = useQuery<CheckinConfig | null>({
     queryKey: ["/api/weekly-checkin/config"],
@@ -452,7 +456,7 @@ export function WeeklyCheckinCard() {
 
       <CardContent className="space-y-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className="grid w-full grid-cols-5 mb-4">
             <TabsTrigger value="dashboard" className="text-xs gap-1">
               <BarChart3 className="h-3 w-3" />
               Dashboard
@@ -460,6 +464,10 @@ export function WeeklyCheckinCard() {
             <TabsTrigger value="clients" className="text-xs gap-1">
               <Users className="h-3 w-3" />
               Clienti
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="text-xs gap-1">
+              <CalendarCheck className="h-3 w-3" />
+              Calendario
             </TabsTrigger>
             <TabsTrigger value="history" className="text-xs gap-1">
               <History className="h-3 w-3" />
@@ -974,6 +982,267 @@ export function WeeklyCheckinCard() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-4 mt-0">
+            {(() => {
+              // Calcola le date della settimana corrente + offset
+              const today = new Date();
+              const startOfWeek = new Date(today);
+              startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (calendarWeekOffset * 7)); // Lunedì
+              
+              const weekDays = Array.from({ length: 7 }, (_, i) => {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                return date;
+              });
+              
+              const excludedDays = config?.excludedDays || [];
+              const preferredStart = config?.preferredTimeStart || "09:00";
+              const preferredEnd = config?.preferredTimeEnd || "18:00";
+              const minDays = config?.minDaysSinceLastContact || 7;
+              
+              // Tutti i clienti eleggibili (inclusi quelli bloccati)
+              const allEligibleClients = eligibleData?.eligible || [];
+              
+              // Calcola orario casuale deterministico per ogni giorno
+              const getScheduledTime = (date: Date) => {
+                const [startH, startM] = preferredStart.split(':').map(Number);
+                const [endH, endM] = preferredEnd.split(':').map(Number);
+                const startMinutes = startH * 60 + startM;
+                const endMinutes = endH * 60 + endM;
+                const windowSize = Math.max(endMinutes - startMinutes, 1);
+                const seed = date.getDate() + date.getMonth() * 31;
+                const randomOffset = (seed * 17) % windowSize;
+                const targetMinutes = startMinutes + randomOffset;
+                const h = Math.floor(targetMinutes / 60);
+                const m = targetMinutes % 60;
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+              };
+              
+              // Calcola giorni rimanenti per un cliente bloccato
+              const getDaysUntilEligible = (client: any) => {
+                if (!client.blockingReason) return 0;
+                const daysSince = client.daysSinceLastContact ?? 0;
+                return Math.max(0, minDays - daysSince);
+              };
+              
+              // Trova cliente disponibile per una data specifica
+              const getClientForDay = (date: Date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const targetDate = new Date(date);
+                targetDate.setHours(0, 0, 0, 0);
+                const daysFromToday = Math.floor((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                
+                // Trova clienti che saranno eleggibili in quella data
+                const eligibleOnDate = allEligibleClients.filter(client => {
+                  const daysUntil = getDaysUntilEligible(client);
+                  return daysUntil <= daysFromToday;
+                });
+                
+                if (eligibleOnDate.length === 0) return null;
+                
+                // Rotazione deterministica basata sulla data
+                const seed = date.getDate() + date.getMonth() * 31;
+                return eligibleOnDate[seed % eligibleOnDate.length];
+              };
+              
+              // Trova prossima data in cui un cliente bloccato diventerà eleggibile
+              const getUnblockDate = (client: any) => {
+                const daysUntil = getDaysUntilEligible(client);
+                if (daysUntil === 0) return null;
+                const unblockDate = new Date();
+                unblockDate.setDate(unblockDate.getDate() + daysUntil);
+                return unblockDate;
+              };
+              
+              const formatWeekRange = () => {
+                const start = weekDays[0];
+                const end = weekDays[6];
+                const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+                if (start.getMonth() === end.getMonth()) {
+                  return `${start.getDate()} - ${end.getDate()} ${monthNames[start.getMonth()]} ${start.getFullYear()}`;
+                }
+                return `${start.getDate()} ${monthNames[start.getMonth()]} - ${end.getDate()} ${monthNames[end.getMonth()]} ${end.getFullYear()}`;
+              };
+              
+              const isToday = (date: Date) => {
+                const t = new Date();
+                return date.getDate() === t.getDate() && 
+                       date.getMonth() === t.getMonth() && 
+                       date.getFullYear() === t.getFullYear();
+              };
+              
+              const isPast = (date: Date) => {
+                const t = new Date();
+                t.setHours(0, 0, 0, 0);
+                const d = new Date(date);
+                d.setHours(0, 0, 0, 0);
+                return d < t;
+              };
+              
+              return (
+                <div className="space-y-4">
+                  {/* Header navigazione */}
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCalendarWeekOffset(prev => prev - 1)}
+                      className="gap-1"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Settimana prec.
+                    </Button>
+                    <div className="text-center">
+                      <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 justify-center">
+                        <Calendar className="h-4 w-4 text-indigo-500" />
+                        {formatWeekRange()}
+                      </h4>
+                      {calendarWeekOffset === 0 && (
+                        <Badge className="mt-1 bg-indigo-100 text-indigo-700">Settimana corrente</Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCalendarWeekOffset(prev => prev + 1)}
+                      className="gap-1"
+                    >
+                      Settimana succ.
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Torna a oggi */}
+                  {calendarWeekOffset !== 0 && (
+                    <div className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCalendarWeekOffset(0)}
+                        className="text-indigo-600 hover:text-indigo-700"
+                      >
+                        Torna a oggi
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Griglia calendario */}
+                  <div className="space-y-2">
+                    {weekDays.map((date, index) => {
+                      const dayOfWeek = date.getDay();
+                      const isExcluded = excludedDays.includes(dayOfWeek);
+                      const dayPast = isPast(date);
+                      const dayToday = isToday(date);
+                      const scheduledTime = getScheduledTime(date);
+                      const client = getClientForDay(date);
+                      const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+                      
+                      return (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-xl border transition-all ${
+                            dayToday
+                              ? 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-700 ring-2 ring-indigo-200'
+                              : isExcluded
+                              ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-700 opacity-60'
+                              : dayPast
+                              ? 'border-gray-200 bg-gray-50/50 dark:bg-gray-800/20 dark:border-gray-700 opacity-50'
+                              : 'border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center ${
+                                dayToday
+                                  ? 'bg-indigo-500 text-white'
+                                  : isExcluded
+                                  ? 'bg-gray-200 text-gray-500 dark:bg-gray-700'
+                                  : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                              }`}>
+                                <span className="text-lg font-bold">{date.getDate()}</span>
+                                <span className="text-[10px] uppercase">{dayNames[dayOfWeek].slice(0, 3)}</span>
+                              </div>
+                              <div>
+                                <p className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                  {dayNames[dayOfWeek]}
+                                  {dayToday && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">OGGI</Badge>}
+                                </p>
+                                {isExcluded ? (
+                                  <p className="text-xs text-gray-400">Giorno escluso dalla configurazione</p>
+                                ) : dayPast ? (
+                                  <p className="text-xs text-gray-400">Passato</p>
+                                ) : client ? (
+                                  <p className="text-xs text-green-600 dark:text-green-400">
+                                    Invio alle <span className="font-semibold">{scheduledTime}</span>
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                                    Nessun cliente pronto
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Info cliente */}
+                            {!isExcluded && !dayPast && client && (
+                              <div className="flex items-center gap-2">
+                                <div className="text-right">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {client.firstName} {client.lastName}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{client.phoneNumber}</p>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center text-green-600 font-semibold">
+                                  {client.firstName?.[0]}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {isExcluded && (
+                              <Badge variant="outline" className="text-gray-400">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Escluso
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Legenda */}
+                  <div className="flex flex-wrap gap-4 pt-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-indigo-500"></div>
+                      <span>Oggi</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-green-100 border border-green-300"></div>
+                      <span>Invio programmato</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-gray-200"></div>
+                      <span>Giorno escluso</span>
+                    </div>
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <span>
+                        Questa è una <strong>stima</strong> basata sulla tua configurazione. 
+                        Gli orari esatti vengono calcolati alle 08:00 di ogni giorno dallo scheduler.
+                        I clienti con blocchi temporanei (contattati di recente) non appariranno finché non scade il periodo minimo.
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4 mt-0">
