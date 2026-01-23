@@ -27,6 +27,7 @@ import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
 import twilio from 'twilio';
 import { generateCheckinVariables } from '../ai/checkin-personalization-service';
 import { normalizePhoneNumber } from '../whatsapp/webhook-handler';
+import { generateScheduleForWeeks } from '../services/weekly-checkin-schedule-service';
 
 /**
  * Get or create a WhatsApp conversation for check-in messages
@@ -182,7 +183,26 @@ export async function runDailySchedulingNow(): Promise<void> {
     const todayStr = format(now, 'yyyy-MM-dd', { timeZone: TIMEZONE });
     const currentDay = now.getDay();
     
-    // NEW APPROACH: Activate entries from the pre-planned schedule table
+    // STEP 1: Auto-regenerate calendars for all enabled consultants
+    console.log('🔄 [WEEKLY-CHECKIN] Auto-regenerating calendars for all enabled consultants...');
+    const enabledConfigs = await db
+      .select()
+      .from(weeklyCheckinConfig)
+      .where(eq(weeklyCheckinConfig.isEnabled, true));
+    
+    let totalRegenerated = 0;
+    for (const config of enabledConfigs) {
+      try {
+        const result = await generateScheduleForWeeks(config.consultantId, 4);
+        console.log(`   ✅ Consultant ${config.consultantId}: ${result.scheduledCount} entries generated`);
+        totalRegenerated += result.scheduledCount;
+      } catch (error) {
+        console.error(`   ❌ Failed to regenerate for ${config.consultantId}:`, error);
+      }
+    }
+    console.log(`📊 [WEEKLY-CHECKIN] Regenerated ${totalRegenerated} total entries for ${enabledConfigs.length} consultants`);
+    
+    // STEP 2: Activate today's entries from the pre-planned schedule table
     const activatedCount = await activateTodaysScheduleEntries(todayStr);
     
     if (activatedCount > 0) {
