@@ -131,59 +131,59 @@ export async function fetchClientContext(
 }
 
 /**
- * Build a rich context string from UserContext for the AI prompt
+ * Build FULL context string from UserContext - NO TRUNCATION
+ * Used only in FALLBACK mode (when File Search is not available)
  */
-function buildContextFromUserContext(userContext: UserContext): string {
+function buildFullContextForFallback(userContext: UserContext): string {
   const sections: string[] = [];
   
-  // 1. CONSULENZE (PRIMA) - Passate e prossime
+  // 1. CONSULENZE COMPLETE - NESSUN TRONCAMENTO - TUTTE
   if (userContext.consultations?.recent && userContext.consultations.recent.length > 0) {
-    const recentConsultations = userContext.consultations.recent.slice(0, 5);
-    const consultationList = recentConsultations.map(c => {
-      let line = `- ${new Date(c.scheduledAt).toLocaleDateString('it-IT')}`;
+    const consultationList = userContext.consultations.recent.map(c => {
+      let line = `- Data: ${new Date(c.scheduledAt).toLocaleDateString('it-IT')}`;
       if (c.notes) {
-        // Mostra più contenuto delle note (300 chars)
-        const notesPreview = c.notes.substring(0, 300).replace(/\n/g, ' ');
-        line += `:\n  "${notesPreview}${c.notes.length > 300 ? '...' : ''}"`;
+        line += `\n  NOTE COMPLETE: "${c.notes}"`;
       }
       if (c.summaryEmail) {
-        const summaryPreview = c.summaryEmail.substring(0, 200).replace(/\n/g, ' ');
-        line += `\n  Riepilogo: ${summaryPreview}${c.summaryEmail.length > 200 ? '...' : ''}`;
+        line += `\n  RIEPILOGO EMAIL COMPLETO: "${c.summaryEmail}"`;
+      }
+      if (c.transcript) {
+        line += `\n  TRASCRIZIONE: "${c.transcript}"`;
       }
       return line;
     }).join('\n\n');
     
-    sections.push(`1. CONSULENZE PASSATE (${userContext.consultations.recent.length} recenti):
+    sections.push(`1. CONSULENZE PASSATE (${userContext.consultations.recent.length} totali - TUTTE INCLUSE):
 ${consultationList}`);
   }
   
-  // Prossime consulenze
+  // Prossime consulenze - TUTTE
   if (userContext.consultations?.upcoming && userContext.consultations.upcoming.length > 0) {
-    const upcomingList = userContext.consultations.upcoming.slice(0, 3).map(c => {
+    const upcomingList = userContext.consultations.upcoming.map(c => {
       const date = new Date(c.scheduledAt);
-      return `- ${date.toLocaleDateString('it-IT')} ore ${date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} (${c.duration} min)${c.consultantType ? ` - ${c.consultantType}` : ''}`;
+      return `- ${date.toLocaleDateString('it-IT')} ore ${date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} (${c.duration} min)${c.consultantType ? ` - ${c.consultantType}` : ''}${c.notes ? `\n  Note: ${c.notes}` : ''}`;
     }).join('\n');
     
-    sections.push(`PROSSIME CONSULENZE:
+    sections.push(`PROSSIME CONSULENZE (${userContext.consultations.upcoming.length} totali):
 ${upcomingList}`);
   }
   
-  // 2. TASK DA CONSULENZE (compiti assegnati)
+  // 2. TASK DA CONSULENZE - TUTTI
   if (userContext.consultationTasks && userContext.consultationTasks.length > 0) {
-    const taskList = userContext.consultationTasks.slice(0, 5).map(t => {
+    const taskList = userContext.consultationTasks.map(t => {
       const done = t.completed ? '[COMPLETATO]' : '[DA FARE]';
       const priority = t.priority === 'high' ? ' [PRIORITA ALTA]' : '';
       const due = t.dueDate ? ` | Scadenza: ${new Date(t.dueDate).toLocaleDateString('it-IT')}` : '';
-      return `${done}${priority} ${t.title}${due}${t.description ? `\n  ${t.description}` : ''}`;
+      return `${done}${priority} ${t.title}${due}${t.description ? `\n  Descrizione: ${t.description}` : ''}`;
     }).join('\n');
     
-    sections.push(`2. TASK ASSEGNATI DA CONSULENZE (${userContext.consultationTasks.length} totali):
+    sections.push(`2. TASK ASSEGNATI DA CONSULENZE (${userContext.consultationTasks.length} totali - TUTTI):
 ${taskList}`);
   }
   
-  // 3. ESERCIZI
+  // 3. ESERCIZI - TUTTI CON FEEDBACK COMPLETO
   if (userContext.exercises?.all && userContext.exercises.all.length > 0) {
-    const exerciseList = userContext.exercises.all.slice(0, 10).map(e => {
+    const exerciseList = userContext.exercises.all.map(e => {
       const status = e.status === 'completed' ? '[COMPLETATO]' : e.status === 'in_progress' ? '[IN CORSO]' : '[DA FARE]';
       let line = `${status} ${e.title} (${e.category})`;
       if (e.dueDate) {
@@ -192,41 +192,59 @@ ${taskList}`);
       if (e.score) {
         line += ` | Punteggio: ${e.score}`;
       }
+      if (e.completedAt) {
+        line += ` | Completato: ${new Date(e.completedAt).toLocaleDateString('it-IT')}`;
+      }
+      if (e.clientNotes) {
+        line += `\n  Note cliente: "${e.clientNotes}"`;
+      }
       if (e.consultantFeedback && e.consultantFeedback.length > 0) {
-        const lastFeedback = e.consultantFeedback[e.consultantFeedback.length - 1];
-        line += `\n  Feedback: "${lastFeedback.feedback.substring(0, 100)}${lastFeedback.feedback.length > 100 ? '...' : ''}"`;
+        e.consultantFeedback.forEach((f, i) => {
+          line += `\n  Feedback ${i + 1}: "${f.feedback}"`;
+        });
       }
       return line;
-    }).join('\n');
+    }).join('\n\n');
     
-    sections.push(`3. ESERCIZI (${userContext.exercises.all.length} totali):
+    sections.push(`3. ESERCIZI (${userContext.exercises.all.length} totali - TUTTI CON FEEDBACK COMPLETO):
 ${exerciseList}`);
   }
   
-  // 4. OBIETTIVI
+  // 4. OBIETTIVI - TUTTI
   if (userContext.goals && userContext.goals.length > 0) {
-    const goalList = userContext.goals.slice(0, 5).map(g => {
+    const goalList = userContext.goals.map(g => {
       const status = g.status === 'completed' ? '[RAGGIUNTO]' : '[IN CORSO]';
       const target = g.targetDate ? ` | Target: ${new Date(g.targetDate).toLocaleDateString('it-IT')}` : '';
-      return `${status} ${g.title} (${g.currentValue}/${g.targetValue})${target}`;
+      return `${status} ${g.title} (Progresso: ${g.currentValue}/${g.targetValue})${target}`;
     }).join('\n');
     
-    sections.push(`4. OBIETTIVI:
+    sections.push(`4. OBIETTIVI (${userContext.goals.length} totali):
 ${goalList}`);
   }
   
-  // 5. MOMENTUM E PROGRESSI
+  // 5. TASK GIORNALIERI
+  if (userContext.dailyActivity?.todayTasks && userContext.dailyActivity.todayTasks.length > 0) {
+    const taskList = userContext.dailyActivity.todayTasks.map(t => {
+      const done = t.completed ? '[FATTO]' : '[DA FARE]';
+      return `${done} ${t.description}`;
+    }).join('\n');
+    
+    sections.push(`5. TASK DI OGGI (${userContext.dailyActivity.todayTasks.length} totali):
+${taskList}`);
+  }
+  
+  // 6. MOMENTUM E PROGRESSI
   if (userContext.momentum) {
     const stats = userContext.momentum.stats || userContext.momentum;
-    sections.push(`5. MOMENTUM E PROGRESSI:
+    sections.push(`6. MOMENTUM E PROGRESSI:
 - Streak attuale: ${stats.currentStreak || 0} giorni consecutivi
 - Check-in produttivi: ${stats.productiveCheckins || 0}/${stats.totalCheckins || 0}
 - Tasso produttivita: ${stats.productivityRate || 0}%`);
   }
   
-  // 6. RIEPILOGO DASHBOARD
+  // 7. RIEPILOGO DASHBOARD
   if (userContext.dashboard) {
-    sections.push(`6. RIEPILOGO:
+    sections.push(`7. RIEPILOGO DASHBOARD:
 - Esercizi in sospeso: ${userContext.dashboard.pendingExercises || 0}
 - Esercizi completati: ${userContext.dashboard.completedExercises || 0}
 - Task di oggi: ${userContext.dashboard.todayTasks || 0}
@@ -237,10 +255,124 @@ ${goalList}`);
 }
 
 /**
+ * Build FILE SEARCH mode prompt - Minimal system prompt, AI uses file_search tool
+ */
+function buildFileSearchModePrompt(context: ClientCheckinContext): string {
+  const consultantRef = context.consultantName 
+    ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
+    : `Sei il consulente finanziario personale di ${context.clientName}.`;
+
+  // Get summary stats from userContext if available
+  const stats = context.userContext ? {
+    exercises: context.userContext.exercises?.all?.length || 0,
+    pendingExercises: context.userContext.dashboard?.pendingExercises || 0,
+    completedExercises: context.userContext.dashboard?.completedExercises || 0,
+    consultations: context.userContext.consultations?.recent?.length || 0,
+    upcomingConsultations: context.userContext.consultations?.upcoming?.length || 0,
+    goals: context.userContext.goals?.length || 0,
+    tasks: context.userContext.consultationTasks?.length || 0,
+  } : null;
+
+  return `${consultantRef}
+
+Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente ${context.clientName}.
+
+═══════════════════════════════════════════════════════════════════
+DATI DISPONIBILI VIA FILE SEARCH (${context.totalDocs} documenti indicizzati)
+═══════════════════════════════════════════════════════════════════
+
+Hai accesso COMPLETO ai seguenti dati tramite ricerca semantica:
+- Tutte le consulenze passate (note complete, riepiloghi, trascrizioni)
+- Tutti gli esercizi assegnati (risposte, feedback, punteggi)
+- Progressi email journey
+- Obiettivi e task
+- Documenti della libreria
+
+${stats ? `STATISTICHE RAPIDE:
+- Esercizi: ${stats.exercises} totali (${stats.pendingExercises} in sospeso, ${stats.completedExercises} completati)
+- Consulenze: ${stats.consultations} passate, ${stats.upcomingConsultations} prossime
+- Obiettivi: ${stats.goals}
+- Task da consulenze: ${stats.tasks}
+` : ''}
+
+IMPORTANTE - USA IL TOOL file_search PER CERCARE I DETTAGLI!
+Esempi di query da fare:
+- "consulenze recenti ${context.clientName}" per trovare le note delle consulenze
+- "esercizi ${context.clientName}" per trovare progressi e feedback
+- "obiettivi ${context.clientName}" per trovare gli obiettivi
+- "note consulenza ${context.clientName}" per dettagli specifici
+
+═══════════════════════════════════════════════════════════════════
+
+ISTRUZIONI PER IL MESSAGGIO:
+
+1. USA file_search per cercare informazioni SPECIFICHE sul cliente
+2. Cita dettagli REALI dalle consulenze e dagli esercizi trovati
+3. Genera un messaggio COMPLETO e PERSONALIZZATO (150-300 parole)
+
+Il messaggio deve:
+- Riferirsi a DETTAGLI SPECIFICI trovati con file_search
+- Menzionare esercizi per NOME
+- Citare note delle consulenze passate
+- Essere caldo, personale e motivante
+- NON avere emoji, saluti formali, o firma
+
+IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, spiegazioni o prefissi.`;
+}
+
+/**
+ * Build FALLBACK mode prompt - Full context in system prompt (when File Search not available)
+ */
+function buildFallbackModePrompt(context: ClientCheckinContext, fullContext: string): string {
+  const consultantRef = context.consultantName 
+    ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
+    : `Sei il consulente finanziario personale di ${context.clientName}.`;
+
+  return `${consultantRef}
+
+Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente ${context.clientName}.
+
+═══════════════════════════════════════════════════════════════════
+DATI COMPLETI DEL CLIENTE - USA QUESTI PER PERSONALIZZARE IL MESSAGGIO
+═══════════════════════════════════════════════════════════════════
+
+${fullContext}
+
+═══════════════════════════════════════════════════════════════════
+
+ISTRUZIONI PER IL MESSAGGIO:
+
+Basandoti sui DATI COMPLETI sopra, genera un messaggio PERSONALIZZATO che:
+
+1. RIFERISCI a dettagli SPECIFICI - esercizi per nome, note delle consulenze, obiettivi
+2. MOSTRA che conosci bene il cliente - cita qualcosa di concreto dai dati
+3. CHIEDI come sta andando in modo naturale
+4. SII MOTIVANTE per i progressi fatti
+5. SII DI SUPPORTO per eventuali difficolta
+
+Il messaggio deve essere:
+- COMPLETO E DETTAGLIATO (150-300 parole)
+- CALDO e PERSONALE
+- SPECIFICO - menziona esercizi per NOME, cita note consulenze
+- In italiano naturale e colloquiale
+- SENZA emoji, SENZA saluti formali, SENZA firma
+
+IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, spiegazioni o prefissi.`;
+}
+
+/**
  * Generate AI-personalized message for weekly check-in
  * 
- * NOW uses buildUserContext() for REAL data (like ai-service.ts)
- * plus File Search as supplemental source.
+ * DUAL MODE ARCHITECTURE (aligned with ai-service.ts):
+ * 
+ * 1. FILE SEARCH MODE (Primary - when hasFileSearchStore=true):
+ *    - Minimal system prompt with statistics only
+ *    - AI uses file_search tool to find specific details
+ *    - ~90% token savings
+ * 
+ * 2. FALLBACK MODE (when File Search not available):
+ *    - Full context injection (NO TRUNCATION)
+ *    - All data included in system prompt
  */
 export async function generateCheckinAiMessage(
   context: ClientCheckinContext
@@ -262,91 +394,76 @@ export async function generateCheckinAiMessage(
     // Get correct model based on provider (Gemini 3 for Google AI Studio)
     const { model } = getModelWithThinking(metadata.name);
 
-    // Build File Search tool if client has stores with documents (as supplemental source)
+    // DUAL MODE: Determine which mode to use
+    const useFileSearchMode = context.hasFileSearchStore && context.storeNames.length > 0 && context.totalDocs > 0;
+    
+    let systemPrompt: string;
     let fileSearchTool: any = null;
-    if (context.hasFileSearchStore && context.storeNames.length > 0) {
+    let userMessage: string;
+
+    if (useFileSearchMode) {
+      // ═══════════════════════════════════════════════════════════════════
+      // FILE SEARCH MODE: AI uses file_search tool to find details
+      // ═══════════════════════════════════════════════════════════════════
+      console.log(`[CHECKIN-AI] 🔍 FILE SEARCH MODE: ${context.storeNames.length} stores, ${context.totalDocs} docs`);
+      
+      systemPrompt = buildFileSearchModePrompt(context);
       fileSearchTool = fileSearchService.buildFileSearchTool(context.storeNames);
-      console.log(`[CHECKIN-AI] File Search enabled as supplement with ${context.storeNames.length} stores (${context.totalDocs} docs)`);
-    }
-
-    const consultantRef = context.consultantName 
-      ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
-      : `Sei il consulente finanziario personale di ${context.clientName}.`;
-
-    // Build rich context from userContext (PRIMARY DATA SOURCE)
-    let clientDataContext = '';
-    if (context.userContext) {
-      clientDataContext = buildContextFromUserContext(context.userContext);
-      console.log(`[CHECKIN-AI] Built rich context from userContext (${clientDataContext.length} chars)`);
+      userMessage = `Genera il messaggio di check-in per ${context.clientName}. USA file_search per cercare dettagli specifici sul cliente (consulenze, esercizi, obiettivi) prima di scrivere il messaggio.`;
+      
+      console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars (minimal - AI will search)`);
+      
+    } else if (context.userContext) {
+      // ═══════════════════════════════════════════════════════════════════
+      // FALLBACK MODE: Full context injection (NO TRUNCATION)
+      // ═══════════════════════════════════════════════════════════════════
+      console.log(`[CHECKIN-AI] 📋 FALLBACK MODE: Full context injection (File Search not available)`);
+      
+      const fullContext = buildFullContextForFallback(context.userContext);
+      systemPrompt = buildFallbackModePrompt(context, fullContext);
+      userMessage = `Genera ora il messaggio di check-in personalizzato per ${context.clientName} basandoti sui dati completi forniti sopra.`;
+      
+      console.log(`[CHECKIN-AI]   Full context size: ${fullContext.length} chars (NO TRUNCATION)`);
+      console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars`);
+      
     } else {
-      console.log(`[CHECKIN-AI] ⚠️ No userContext available, relying only on File Search`);
-    }
+      // ═══════════════════════════════════════════════════════════════════
+      // MINIMAL MODE: No data available
+      // ═══════════════════════════════════════════════════════════════════
+      console.log(`[CHECKIN-AI] ⚠️ MINIMAL MODE: No userContext and no File Search`);
+      
+      const consultantRef = context.consultantName 
+        ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
+        : `Sei il consulente finanziario personale di ${context.clientName}.`;
+      
+      systemPrompt = `${consultantRef}
 
-    const systemPrompt = `${consultantRef}
+Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente ${context.clientName}.
 
-Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente.
-
-${clientDataContext ? `
-═══════════════════════════════════════════════════════════════════
-📊 DATI REALI DEL CLIENTE - USA QUESTI PER PERSONALIZZARE IL MESSAGGIO
-═══════════════════════════════════════════════════════════════════
-
-${clientDataContext}
-
-═══════════════════════════════════════════════════════════════════
-` : ''}
-
-ISTRUZIONI PER IL MESSAGGIO DI CHECK-IN:
-
-Basandoti sui DATI REALI sopra, genera un messaggio di check-in PERSONALIZZATO che:
-
-1. RIFERISCI A QUALCOSA DI SPECIFICO - un esercizio che sta facendo, un obiettivo su cui lavora, una consulenza recente
-2. MOSTRA CHE LO CONOSCI BENE - menziona un dettaglio concreto dai dati
-3. CHIEDI COME STA ANDANDO in modo naturale e genuino
-4. SII MOTIVANTE se ha raggiunto traguardi o sta facendo progressi
-5. SII DI SUPPORTO se ha esercizi in ritardo o difficoltà
+Non hai dati specifici disponibili su questo cliente.
+Genera un messaggio di check-in GENERICO ma caloroso e professionale.
 
 Il messaggio deve essere:
-- COMPLETO E DETTAGLIATO
-- CALDO e PERSONALE, come se scrivessi a un cliente che conosci bene
-- SPECIFICO - DEVI menzionare TUTTI i dettagli rilevanti dai dati:
-  * Esercizi completati o in sospeso (titoli specifici!)
-  * Progressi fatti e traguardi raggiunti
-  * Riferimenti a consulenze passate se presenti
-  * Obiettivi su cui sta lavorando
-  * Consigli pratici e incoraggiamento
-- In italiano naturale e colloquiale
-- SENZA emoji, SENZA saluti formali (Ciao, Buongiorno), SENZA firma
+- Caldo e personale
+- In italiano naturale
+- SENZA emoji, SENZA saluti formali, SENZA firma
+- Circa 50-100 parole
 
-ESEMPIO BUONO (dettagliato e personalizzato):
-"Ho dato un'occhiata ai tuoi progressi e vedo che hai ancora tre esercizi in sospeso: l'analisi del budget mensile, la pianificazione degli obiettivi trimestrali e l'esercizio sulle abitudini di risparmio. So che a volte il tempo e' poco, ma completare questi esercizi ti aiutera' davvero a fare chiarezza sulla tua situazione finanziaria.
-
-Dalla nostra ultima consulenza mi e' rimasto impresso quanto tenevi a migliorare la gestione delle spese - questi esercizi sono proprio pensati per quello. Se hai difficolta' con qualcuno di questi o hai bisogno di chiarimenti, scrivimi pure e ne parliamo insieme.
-
-Come sta andando questa settimana? C'e' qualcosa in particolare su cui vorresti concentrarti?"
-
-ESEMPIO CATTIVO (troppo generico o corto):
-- "Ho visto che hai esercizi in sospeso, come va?"
-- "Spero che tu stia bene. Come procede tutto?"
-
-IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, senza spiegazioni, senza prefissi.`;
-
-    // User message - simpler since we already have context in system prompt
-    const userMessage = context.userContext 
-      ? `Genera ora il messaggio di check-in personalizzato per ${context.clientName} basandoti sui dati forniti.`
-      : `Genera un messaggio di check-in settimanale per ${context.clientName}. Cerca nei documenti tutto quello che sai su questo cliente per personalizzare il messaggio.`;
+IMPORTANTE: Rispondi SOLO con il messaggio finale.`;
+      
+      userMessage = `Genera un messaggio di check-in settimanale per ${context.clientName}.`;
+    }
 
     console.log(`[CHECKIN-AI] Generating message for ${context.clientName} using ${metadata.name}`);
-    console.log(`[CHECKIN-AI]   - UserContext: ${!!context.userContext}`);
-    console.log(`[CHECKIN-AI]   - FileSearch: ${!!fileSearchTool}`);
+    console.log(`[CHECKIN-AI]   Mode: ${useFileSearchMode ? 'FILE_SEARCH' : context.userContext ? 'FALLBACK' : 'MINIMAL'}`);
 
     const result = await client.generateContent({
       model,
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
       generationConfig: {
-        temperature: 1, // Slightly lower for more focused output
-        maxOutputTokens: 10000, // Increased for detailed, personalized messages
+        temperature: 0.9,
+        maxOutputTokens: 10000,
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
