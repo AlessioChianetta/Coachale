@@ -1070,6 +1070,31 @@ export default function ConsultantWhatsAppPage() {
     conversationsToday: agent.conversations7d || 0,
   }));
 
+  // Check for duplicate WhatsApp numbers across agents
+  const duplicateNumbersInfo = useMemo(() => {
+    if (!configs || configs.length === 0) return [];
+    
+    const numberToAgents: Record<string, Array<{id: string, name: string}>> = {};
+    
+    configs.forEach((config: WhatsAppConfig) => {
+      const number = config.twilioWhatsappNumber?.trim();
+      if (!number) return;
+      
+      if (!numberToAgents[number]) {
+        numberToAgents[number] = [];
+      }
+      numberToAgents[number].push({
+        id: config.id || '',
+        name: config.agentName || 'Senza nome'
+      });
+    });
+    
+    // Return only numbers that have more than one agent
+    return Object.entries(numberToAgents)
+      .filter(([_, agents]) => agents.length > 1)
+      .map(([number, agents]) => ({ number, agents }));
+  }, [configs]);
+
   // Delete WhatsApp config mutation
   const deleteMutation = useMutation({
     mutationFn: async (configId: string) => {
@@ -1371,6 +1396,38 @@ export default function ConsultantWhatsAppPage() {
             </div>
           </div>
         </div>
+
+        {/* Duplicate WhatsApp Numbers Warning */}
+        {duplicateNumbersInfo.length > 0 && (
+          <Alert variant="destructive" className="bg-amber-50 border-amber-300 text-amber-900">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <AlertDescription className="ml-2">
+              <div className="font-semibold mb-1">Numeri WhatsApp duplicati rilevati</div>
+              <div className="text-sm">
+                I seguenti numeri sono assegnati a più agenti. Ogni agente dovrebbe avere un numero univoco per funzionare correttamente:
+                <ul className="list-disc ml-5 mt-2 space-y-1">
+                  {duplicateNumbersInfo.map(({ number, agents }) => (
+                    <li key={number}>
+                      <span className="font-mono font-medium">{number}</span>
+                      {" → "}
+                      {agents.map((a, i) => (
+                        <span key={a.id}>
+                          <button
+                            onClick={() => navigate(`/consultant/whatsapp/agent/${a.id}`)}
+                            className="text-amber-700 hover:text-amber-900 underline font-medium"
+                          >
+                            {a.name}
+                          </button>
+                          {i < agents.length - 1 && ", "}
+                        </span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Category Tabs */}
         <Tabs defaultValue={initialTab} className="space-y-6">
