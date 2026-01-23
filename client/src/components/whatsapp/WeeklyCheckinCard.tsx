@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,8 @@ import {
   AlertCircle,
   BarChart3,
   Settings,
-  PlayCircle
+  PlayCircle,
+  Timer
 } from "lucide-react";
 
 interface CheckinConfig {
@@ -129,6 +130,25 @@ interface LogsResponse {
     total: number;
     totalPages: number;
   };
+}
+
+interface NextSendResponse {
+  isEnabled: boolean;
+  nextSendAt: string | null;
+  selectedTemplate: {
+    id: string;
+    name: string;
+    bodyText: string;
+  } | null;
+  templateCount?: number;
+  message: string | null;
+  isFromScheduledLog?: boolean;
+  isEstimate?: boolean;
+  clientName?: string | null;
+  schedulerRanToday?: boolean;
+  lastSchedulerRun?: string | null;
+  awaitingScheduler?: boolean;
+  noSendsToday?: boolean;
 }
 
 const DAYS = [
@@ -238,6 +258,51 @@ export function WeeklyCheckinCard() {
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
+
+  // Query for next scheduled send
+  const { data: nextSendData } = useQuery<NextSendResponse>({
+    queryKey: ["/api/weekly-checkin/next-send"],
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Live countdown state
+  const [countdown, setCountdown] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
+
+  // Update countdown every second
+  useEffect(() => {
+    if (!nextSendData?.nextSendAt) {
+      setCountdown(null);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const target = new Date(nextSendData.nextSendAt!).getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setCountdown({ days, hours, minutes, seconds });
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [nextSendData?.nextSendAt]);
 
   const toggleMutation = useMutation({
     mutationFn: async () => {
@@ -407,6 +472,114 @@ export function WeeklyCheckinCard() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-4 mt-0">
+            {/* Prossimo Invio - Countdown Live */}
+            <div className="p-4 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/50">
+                  <Timer className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    Prossimo Invio Automatico
+                    {nextSendData?.isEnabled && countdown && (
+                      <Badge className="bg-green-500 text-white text-xs">ATTIVO</Badge>
+                    )}
+                  </h4>
+                  
+                  {!nextSendData?.isEnabled ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {nextSendData?.message || "Check-in automatico disabilitato"}
+                    </p>
+                  ) : nextSendData?.awaitingScheduler ? (
+                    <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                          In attesa dello scheduler
+                        </span>
+                        <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                          08:00
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        Lo scheduler programmerà gli invii alle 08:00. I check-in verranno creati automaticamente.
+                      </p>
+                    </div>
+                  ) : nextSendData?.message ? (
+                    <p className="text-sm text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {nextSendData.message}
+                    </p>
+                  ) : countdown ? (
+                    <div className="mt-3 space-y-3">
+                      {/* Scheduled vs Estimate indicator */}
+                      {nextSendData.isFromScheduledLog ? (
+                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Invio programmato
+                          {nextSendData.clientName && ` per ${nextSendData.clientName}`}
+                        </p>
+                      ) : nextSendData.noSendsToday ? (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Nessun invio per oggi (prossimo invio stimato)
+                        </p>
+                      ) : nextSendData.isEstimate && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Stima (lo scheduler programmerà gli invii alle 08:00)
+                        </p>
+                      )}
+                      
+                      {/* Countdown Timer */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <div className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px]">
+                            <div className="text-xl font-bold font-mono">{countdown.days}</div>
+                            <div className="text-[10px] uppercase tracking-wide opacity-80">giorni</div>
+                          </div>
+                          <div className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px]">
+                            <div className="text-xl font-bold font-mono">{String(countdown.hours).padStart(2, '0')}</div>
+                            <div className="text-[10px] uppercase tracking-wide opacity-80">ore</div>
+                          </div>
+                          <div className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px]">
+                            <div className="text-xl font-bold font-mono">{String(countdown.minutes).padStart(2, '0')}</div>
+                            <div className="text-[10px] uppercase tracking-wide opacity-80">min</div>
+                          </div>
+                          <div className="bg-purple-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px] animate-pulse">
+                            <div className="text-xl font-bold font-mono">{String(countdown.seconds).padStart(2, '0')}</div>
+                            <div className="text-[10px] uppercase tracking-wide opacity-80">sec</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Template selezionato */}
+                      {nextSendData.selectedTemplate && (
+                        <div className="p-3 rounded-lg bg-white/80 dark:bg-gray-800/50 border border-indigo-100 dark:border-indigo-900">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MessageSquare className="h-4 w-4 text-indigo-500" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Template: {nextSendData.selectedTemplate.name}
+                            </span>
+                            {(nextSendData.templateCount || 0) > 1 && (
+                              <Badge variant="outline" className="text-xs">
+                                1 di {nextSendData.templateCount} in rotazione
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 italic line-clamp-2">
+                            "{nextSendData.selectedTemplate.bodyText}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 mt-1">Caricamento...</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Statistiche */}
             <div className="grid grid-cols-4 gap-3">
               <div className="text-center p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">

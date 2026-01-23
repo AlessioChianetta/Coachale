@@ -5,6 +5,8 @@ import { eq, and, desc, sql, or, isNull, isNotNull, ne } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
 import twilio from "twilio";
 import { normalizePhoneNumber } from "../whatsapp/webhook-handler";
+import { toZonedTime, fromZonedTime, format } from "date-fns-tz";
+import { addDays, setHours, setMinutes, getDay } from "date-fns";
 
 /**
  * Get or create a WhatsApp conversation for check-in messages
@@ -458,6 +460,288 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
     });
   } catch (error: any) {
     console.error("Error fetching eligible clients:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * GET /next-send
+ * Calcola il prossimo invio programmato con countdown e template pre-selezionato
+ */
+router.get("/next-send", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Load config
+    const [config] = await db
+      .select()
+      .from(schema.weeklyCheckinConfig)
+      .where(eq(schema.weeklyCheckinConfig.consultantId, consultantId))
+      .limit(1);
+    
+    if (!config || !config.isEnabled) {
+      return res.json({
+        isEnabled: false,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "Check-in automatico disabilitato"
+      });
+    }
+    
+    // FIRST: Check if there are already scheduled/pending logs (pending sends)
+    // Include "scheduled" and "pending" statuses as they represent future sends
+    const now = new Date();
+    const [nextScheduledLog] = await db
+      .select({
+        scheduledFor: schema.weeklyCheckinLogs.scheduledFor,
+        templateName: schema.weeklyCheckinLogs.templateName,
+        personalizedMessage: schema.weeklyCheckinLogs.personalizedMessage,
+        clientName: schema.users.firstName,
+        status: schema.weeklyCheckinLogs.status,
+      })
+      .from(schema.weeklyCheckinLogs)
+      .leftJoin(schema.users, eq(schema.weeklyCheckinLogs.clientId, schema.users.id))
+      .where(
+        and(
+          eq(schema.weeklyCheckinLogs.consultantId, consultantId),
+          sql`${schema.weeklyCheckinLogs.status} IN ('scheduled', 'pending')`,
+          sql`${schema.weeklyCheckinLogs.scheduledFor} > ${now}`
+        )
+      )
+      .orderBy(schema.weeklyCheckinLogs.scheduledFor)
+      .limit(1);
+    
+    if (nextScheduledLog) {
+      // Return the next already-scheduled send (actual data from scheduler)
+      return res.json({
+        isEnabled: true,
+        nextSendAt: nextScheduledLog.scheduledFor.toISOString(),
+        selectedTemplate: {
+          id: null,
+          name: nextScheduledLog.templateName || "Template programmato",
+          bodyText: nextScheduledLog.personalizedMessage || null,
+        },
+        templateCount: 1,
+        message: null,
+        isFromScheduledLog: true,
+        isEstimate: false,
+        clientName: nextScheduledLog.clientName || null,
+      });
+    }
+    
+    // No pending scheduled logs - calculate ESTIMATED next scheduling run
+    // Note: This is an estimate based on config, actual send depends on scheduler execution
+    
+    // Check if scheduler ran today (helps determine accuracy of estimate)
+    const ROME_TZ = "Europe/Rome";
+    const SCHEDULER_HOUR = 8; // Cron runs at 08:00
+    const nowUtcEarly = new Date();
+    const nowRomeEarly = toZonedTime(nowUtcEarly, ROME_TZ);
+    const lastRunAt = config.lastRunAt;
+    let schedulerRanToday = false;
+    
+    if (lastRunAt) {
+      const lastRunRome = toZonedTime(lastRunAt, ROME_TZ);
+      // Check if lastRunAt is from today (same date in Rome timezone)
+      schedulerRanToday = 
+        lastRunRome.getFullYear() === nowRomeEarly.getFullYear() &&
+        lastRunRome.getMonth() === nowRomeEarly.getMonth() &&
+        lastRunRome.getDate() === nowRomeEarly.getDate();
+    }
+    
+    // Calculate if past scheduler time (used later)
+    const currentHourRome = nowRomeEarly.getHours();
+    const isPastSchedulerTime = currentHourRome >= SCHEDULER_HOUR;
+    
+    // Check if there are eligible clients
+    const eligibleClientsCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.users)
+      .where(
+        and(
+          eq(schema.users.consultantId, consultantId),
+          eq(schema.users.enabledForWeeklyCheckin, true),
+          eq(schema.users.isActive, true)
+        )
+      );
+    
+    const hasEligibleClients = Number(eligibleClientsCount[0]?.count || 0) > 0;
+    
+    if (!hasEligibleClients) {
+      return res.json({
+        isEnabled: true,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "Nessun cliente abilitato per il check-in"
+      });
+    }
+    
+    // Check if agent is configured
+    if (!config.agentConfigId) {
+      return res.json({
+        isEnabled: true,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "Nessun agente WhatsApp configurato"
+      });
+    }
+    
+    // Get templates
+    const templateIds = config.templateIds || [];
+    if (templateIds.length === 0) {
+      return res.json({
+        isEnabled: true,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "Nessun template selezionato"
+      });
+    }
+    
+    // Fetch template details
+    const templates = await db
+      .select({
+        id: schema.whatsappCustomTemplates.id,
+        name: schema.whatsappCustomTemplates.templateName,
+        bodyText: schema.whatsappTemplateVersions.bodyText,
+        friendlyName: schema.whatsappTemplateVersions.friendlyName,
+      })
+      .from(schema.whatsappCustomTemplates)
+      .innerJoin(
+        schema.whatsappTemplateVersions,
+        and(
+          eq(schema.whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
+          eq(schema.whatsappTemplateVersions.isActive, true)
+        )
+      )
+      .where(
+        and(
+          eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+          sql`${schema.whatsappCustomTemplates.id} = ANY(${templateIds})`
+        )
+      );
+    
+    if (templates.length === 0) {
+      return res.json({
+        isEnabled: true,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "Template non trovati"
+      });
+    }
+    
+    // NOW check awaiting scheduler state (after confirming config is valid)
+    // If past 08:00 and scheduler hasn't run today, return awaiting state
+    if (isPastSchedulerTime && !schedulerRanToday) {
+      return res.json({
+        isEnabled: true,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "In attesa dello scheduler (lo scheduler non ha ancora girato oggi)",
+        isFromScheduledLog: false,
+        isEstimate: false,
+        awaitingScheduler: true,
+      });
+    }
+    
+    // Check if scheduler ran today but created no logs (no sends for today)
+    // This happens when all clients are excluded or already contacted
+    // We'll still compute estimate but flag that today had no scheduled sends
+    const noSendsToday = isPastSchedulerTime && schedulerRanToday;
+    
+    // Calculate next send time using date-fns-tz for proper Rome timezone handling
+    // Scheduler cron runs at 08:00 Europe/Rome daily, scheduling messages for that day
+    // Note: ROME_TZ and SCHEDULER_HOUR already declared above
+    const preferredStart = config.preferredTimeStart || "09:00";
+    const preferredEnd = config.preferredTimeEnd || "18:00";
+    // excludedDays is already an array of numbers (0=Sunday, 1=Monday, etc.)
+    const excludedDayNums: number[] = (config.excludedDays || []) as number[];
+    
+    const [startHour, startMin] = preferredStart.split(':').map(Number);
+    const [endHour, endMin] = preferredEnd.split(':').map(Number);
+    
+    // Validate time window
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    if (endMinutes <= startMinutes) {
+      return res.json({
+        isEnabled: true,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "Configurazione orario non valida (fine prima di inizio)"
+      });
+    }
+    
+    let attempts = 0;
+    const maxAttempts = 14;
+    let foundDate: Date | null = null;
+    
+    // Reuse nowRomeEarly from above
+    const nowRomeHour = nowRomeEarly.getHours();
+    
+    // Determine starting day: if past 08:00 Rome, start from tomorrow
+    let checkDay = nowRomeEarly;
+    if (nowRomeHour >= SCHEDULER_HOUR) {
+      // Today's scheduling already happened, start from tomorrow
+      checkDay = addDays(nowRomeEarly, 1);
+    }
+    
+    while (attempts < maxAttempts) {
+      const dayOfWeek = getDay(checkDay); // 0=Sunday, 1=Monday, etc.
+      const isDayExcluded = excludedDayNums.includes(dayOfWeek);
+      
+      if (!isDayExcluded) {
+        // This day is valid - schedule within the window
+        const dateSeed = checkDay.getDate() + checkDay.getMonth() * 31;
+        const windowSize = endMinutes - startMinutes;
+        const randomOffset = (dateSeed * 17) % windowSize;
+        const targetMinutes = startMinutes + randomOffset;
+        const targetHour = Math.floor(targetMinutes / 60);
+        const targetMin = targetMinutes % 60;
+        
+        // Set the time in Rome timezone, then convert to UTC
+        let scheduleRome = setHours(checkDay, targetHour);
+        scheduleRome = setMinutes(scheduleRome, targetMin);
+        foundDate = fromZonedTime(scheduleRome, ROME_TZ);
+        break;
+      }
+      
+      // Move to next day
+      checkDay = addDays(checkDay, 1);
+      attempts++;
+    }
+    
+    if (!foundDate) {
+      return res.json({
+        isEnabled: true,
+        nextSendAt: null,
+        selectedTemplate: null,
+        message: "Impossibile calcolare il prossimo invio (tutti i giorni esclusi?)"
+      });
+    }
+    
+    // Pre-select template using deterministic seed based on date
+    const templateSeed = foundDate.getDate() + foundDate.getMonth() * 31 + foundDate.getFullYear();
+    const selectedIndex = templateSeed % templates.length;
+    const selectedTemplate = templates[selectedIndex];
+    
+    res.json({
+      isEnabled: true,
+      nextSendAt: foundDate.toISOString(),
+      selectedTemplate: {
+        id: selectedTemplate.id,
+        name: selectedTemplate.friendlyName || selectedTemplate.name,
+        bodyText: selectedTemplate.bodyText,
+      },
+      templateCount: templates.length,
+      message: null,
+      isFromScheduledLog: false,
+      isEstimate: true, // Computed from config, not actual scheduled log
+      schedulerRanToday, // Did the scheduler run today?
+      noSendsToday, // Scheduler ran today but no pending logs (all clients excluded/contacted)
+      lastSchedulerRun: lastRunAt?.toISOString() || null,
+    });
+  } catch (error: any) {
+    console.error("Error calculating next send:", error);
     res.status(500).json({ message: error.message });
   }
 });

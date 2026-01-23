@@ -48,3 +48,10 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
 # Recent Changes (January 2026)
 - **Weekly Check-in AI Fix**: Fixed "Failed to extract text from response" error in FILE_SEARCH mode. The checkin-personalization-service now uses `ai.models.generateContent()` directly (like ai-service.ts) instead of GeminiClientAdapter wrapper, with `response.text` property access instead of method call.
 - **Dual-Mode Check-in Architecture**: File Search mode (primary) uses minimal prompts with AI searching via file_search tool; Fallback mode injects full context with NO truncations for 150-300 word personalized messages.
+- **Live Countdown Feature for Weekly Check-ins**: Implemented GET /api/weekly-checkin/next-send endpoint with live countdown (days/hours/minutes/seconds), template preview, and explicit state machine:
+  - `isFromScheduledLog: true` - Actual scheduled log, green indicator
+  - `awaitingScheduler: true` - Past 08:00 but scheduler hasn't run, blue spinner
+  - `noSendsToday: true` - Scheduler ran but no logs for today, gray indicator
+  - `isEstimate: true` - Before 08:00, estimated next scheduling run, amber indicator
+  - Uses date-fns-tz for proper Rome timezone handling with 08:00 scheduler cutoff
+  - Validates config (clients, agent, templates) before scheduler state checks
