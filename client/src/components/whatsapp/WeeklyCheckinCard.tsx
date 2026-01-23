@@ -156,11 +156,13 @@ export function WeeklyCheckinCard() {
     queryKey: ["/api/weekly-checkin/templates"],
   });
 
-  const { data: whatsappAgents = [] } = useQuery<WhatsAppAgent[]>({
+  const { data: whatsappAgentsData } = useQuery<WhatsAppAgent[]>({
     queryKey: ["/api/whatsapp/config"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/whatsapp/config");
-      return (response?.configs || []).map((config: any) => ({
+      const configs = response?.configs || [];
+      if (!Array.isArray(configs)) return [];
+      return configs.map((config: any) => ({
         id: config.id,
         agentName: config.agentName || "Agente WhatsApp",
         phoneNumber: config.twilioWhatsappNumber || "",
@@ -168,6 +170,7 @@ export function WeeklyCheckinCard() {
       }));
     },
   });
+  const whatsappAgents = Array.isArray(whatsappAgentsData) ? whatsappAgentsData : [];
 
   const categorizeTemplate = (template: WhatsAppTemplate): string => {
     const name = (template.friendlyName || "").toLowerCase();
