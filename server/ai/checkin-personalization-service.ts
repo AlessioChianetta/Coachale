@@ -136,10 +136,54 @@ export async function fetchClientContext(
 function buildContextFromUserContext(userContext: UserContext): string {
   const sections: string[] = [];
   
-  // Recent exercises (last 5, with status) - use safe access
+  // 1. CONSULENZE (PRIMA) - Passate e prossime
+  if (userContext.consultations?.recent && userContext.consultations.recent.length > 0) {
+    const recentConsultations = userContext.consultations.recent.slice(0, 5);
+    const consultationList = recentConsultations.map(c => {
+      let line = `- ${new Date(c.scheduledAt).toLocaleDateString('it-IT')}`;
+      if (c.notes) {
+        // Mostra più contenuto delle note (300 chars)
+        const notesPreview = c.notes.substring(0, 300).replace(/\n/g, ' ');
+        line += `:\n  "${notesPreview}${c.notes.length > 300 ? '...' : ''}"`;
+      }
+      if (c.summaryEmail) {
+        const summaryPreview = c.summaryEmail.substring(0, 200).replace(/\n/g, ' ');
+        line += `\n  Riepilogo: ${summaryPreview}${c.summaryEmail.length > 200 ? '...' : ''}`;
+      }
+      return line;
+    }).join('\n\n');
+    
+    sections.push(`1. CONSULENZE PASSATE (${userContext.consultations.recent.length} recenti):
+${consultationList}`);
+  }
+  
+  // Prossime consulenze
+  if (userContext.consultations?.upcoming && userContext.consultations.upcoming.length > 0) {
+    const upcomingList = userContext.consultations.upcoming.slice(0, 3).map(c => {
+      const date = new Date(c.scheduledAt);
+      return `- ${date.toLocaleDateString('it-IT')} ore ${date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} (${c.duration} min)${c.consultantType ? ` - ${c.consultantType}` : ''}`;
+    }).join('\n');
+    
+    sections.push(`PROSSIME CONSULENZE:
+${upcomingList}`);
+  }
+  
+  // 2. TASK DA CONSULENZE (compiti assegnati)
+  if (userContext.consultationTasks && userContext.consultationTasks.length > 0) {
+    const taskList = userContext.consultationTasks.slice(0, 5).map(t => {
+      const done = t.completed ? '[COMPLETATO]' : '[DA FARE]';
+      const priority = t.priority === 'high' ? ' [PRIORITA ALTA]' : '';
+      const due = t.dueDate ? ` | Scadenza: ${new Date(t.dueDate).toLocaleDateString('it-IT')}` : '';
+      return `${done}${priority} ${t.title}${due}${t.description ? `\n  ${t.description}` : ''}`;
+    }).join('\n');
+    
+    sections.push(`2. TASK ASSEGNATI DA CONSULENZE (${userContext.consultationTasks.length} totali):
+${taskList}`);
+  }
+  
+  // 3. ESERCIZI
   if (userContext.exercises?.all && userContext.exercises.all.length > 0) {
-    const recentExercises = userContext.exercises.all.slice(0, 5);
-    const exerciseList = recentExercises.map(e => {
+    const exerciseList = userContext.exercises.all.slice(0, 10).map(e => {
       const status = e.status === 'completed' ? '[COMPLETATO]' : e.status === 'in_progress' ? '[IN CORSO]' : '[DA FARE]';
       let line = `${status} ${e.title} (${e.category})`;
       if (e.dueDate) {
@@ -148,64 +192,44 @@ function buildContextFromUserContext(userContext: UserContext): string {
       if (e.score) {
         line += ` | Punteggio: ${e.score}`;
       }
-      return line;
-    }).join('\n');
-    
-    sections.push(`ESERCIZI RECENTI (${userContext.exercises.all.length} totali):
-${exerciseList}`);
-  }
-  
-  // Recent consultations (last 3, with notes summary) - use safe access
-  if (userContext.consultations?.recent && userContext.consultations.recent.length > 0) {
-    const recentConsultations = userContext.consultations.recent.slice(0, 3);
-    const consultationList = recentConsultations.map(c => {
-      let line = `- ${new Date(c.scheduledAt).toLocaleDateString('it-IT')}`;
-      if (c.notes) {
-        const notesPreview = c.notes.substring(0, 150).replace(/\n/g, ' ');
-        line += `: ${notesPreview}${c.notes.length > 150 ? '...' : ''}`;
+      if (e.consultantFeedback && e.consultantFeedback.length > 0) {
+        const lastFeedback = e.consultantFeedback[e.consultantFeedback.length - 1];
+        line += `\n  Feedback: "${lastFeedback.feedback.substring(0, 100)}${lastFeedback.feedback.length > 100 ? '...' : ''}"`;
       }
       return line;
     }).join('\n');
     
-    sections.push(`ULTIME CONSULENZE (${userContext.consultations.recent.length} recenti):
-${consultationList}`);
+    sections.push(`3. ESERCIZI (${userContext.exercises.all.length} totali):
+${exerciseList}`);
   }
   
-  // Goals - use safe access
+  // 4. OBIETTIVI
   if (userContext.goals && userContext.goals.length > 0) {
     const goalList = userContext.goals.slice(0, 5).map(g => {
-      const progress = g.progress ? ` (${g.progress}%)` : '';
-      return `- ${g.title}${progress}`;
+      const status = g.status === 'completed' ? '[RAGGIUNTO]' : '[IN CORSO]';
+      const target = g.targetDate ? ` | Target: ${new Date(g.targetDate).toLocaleDateString('it-IT')}` : '';
+      return `${status} ${g.title} (${g.currentValue}/${g.targetValue})${target}`;
     }).join('\n');
     
-    sections.push(`OBIETTIVI:
+    sections.push(`4. OBIETTIVI:
 ${goalList}`);
   }
   
-  // Daily tasks for today (use dailyActivity.todayTasks per UserContext schema)
-  if (userContext.dailyActivity?.todayTasks && userContext.dailyActivity.todayTasks.length > 0) {
-    const taskList = userContext.dailyActivity.todayTasks.slice(0, 3).map(t => {
-      const done = t.completed ? '[FATTO]' : '[DA FARE]';
-      return `${done} ${t.description}`;
-    }).join('\n');
-    
-    sections.push(`TASK DI OGGI:
-${taskList}`);
-  }
-  
-  // Momentum stats - safe access
+  // 5. MOMENTUM E PROGRESSI
   if (userContext.momentum) {
-    sections.push(`MOMENTUM:
-- Streak: ${userContext.momentum.currentStreak || 0} giorni
-- Check-in produttivi: ${userContext.momentum.productiveCheckins || 0}/${userContext.momentum.totalCheckins || 0}
-- Tasso produttivita: ${userContext.momentum.productivityRate || 0}%`);
+    const stats = userContext.momentum.stats || userContext.momentum;
+    sections.push(`5. MOMENTUM E PROGRESSI:
+- Streak attuale: ${stats.currentStreak || 0} giorni consecutivi
+- Check-in produttivi: ${stats.productiveCheckins || 0}/${stats.totalCheckins || 0}
+- Tasso produttivita: ${stats.productivityRate || 0}%`);
   }
   
-  // Dashboard summary - safe access
+  // 6. RIEPILOGO DASHBOARD
   if (userContext.dashboard) {
-    sections.push(`DASHBOARD:
+    sections.push(`6. RIEPILOGO:
 - Esercizi in sospeso: ${userContext.dashboard.pendingExercises || 0}
 - Esercizi completati: ${userContext.dashboard.completedExercises || 0}
+- Task di oggi: ${userContext.dashboard.todayTasks || 0}
 - Prossime consulenze: ${userContext.dashboard.upcomingConsultations || 0}`);
   }
   
