@@ -472,25 +472,39 @@ export function WeeklyCheckinCard() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-4 mt-0">
-            {/* Prossimo Invio - Countdown Live */}
-            <div className="p-4 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/50">
-                  <Timer className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    Prossimo Invio Automatico
-                    {nextSendData?.isEnabled && countdown && (
-                      <Badge className="bg-green-500 text-white text-xs">ATTIVO</Badge>
-                    )}
-                  </h4>
-                  
-                  {!nextSendData?.isEnabled ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {nextSendData?.message || "Check-in automatico disabilitato"}
+            {/* SEZIONE COUNTDOWN PROMINENTE */}
+            <div className="p-6 rounded-2xl border-2 border-indigo-300 dark:border-indigo-700 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-pink-950/40 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
+                    <Timer className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Prossimo Invio Automatico
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Countdown al prossimo check-in
                     </p>
-                  ) : nextSendData?.awaitingScheduler ? (
+                  </div>
+                </div>
+                {nextSendData?.isEnabled && countdown && (
+                  <Badge className="bg-green-500 text-white px-3 py-1 text-sm font-semibold animate-pulse">
+                    ATTIVO
+                  </Badge>
+                )}
+              </div>
+                  
+              {!nextSendData?.isEnabled ? (
+                <div className="p-4 rounded-xl bg-gray-100 dark:bg-gray-800/50 text-center">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {nextSendData?.message || "Check-in automatico disabilitato"}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    Attiva il toggle in alto a destra per abilitare gli invii automatici
+                  </p>
+                </div>
+              ) : nextSendData?.awaitingScheduler ? (
                     <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />
@@ -531,24 +545,27 @@ export function WeeklyCheckinCard() {
                         </p>
                       )}
                       
-                      {/* Countdown Timer */}
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          <div className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px]">
-                            <div className="text-xl font-bold font-mono">{countdown.days}</div>
-                            <div className="text-[10px] uppercase tracking-wide opacity-80">giorni</div>
+                      {/* Countdown Timer - GRANDE E VISIBILE */}
+                      <div className="flex justify-center py-4">
+                        <div className="flex gap-3">
+                          <div className="bg-gradient-to-b from-indigo-500 to-indigo-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
+                            <div className="text-3xl font-bold font-mono">{countdown.days}</div>
+                            <div className="text-xs uppercase tracking-wider opacity-80 mt-1">giorni</div>
                           </div>
-                          <div className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px]">
-                            <div className="text-xl font-bold font-mono">{String(countdown.hours).padStart(2, '0')}</div>
-                            <div className="text-[10px] uppercase tracking-wide opacity-80">ore</div>
+                          <div className="flex items-center text-2xl font-bold text-indigo-400">:</div>
+                          <div className="bg-gradient-to-b from-indigo-500 to-indigo-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
+                            <div className="text-3xl font-bold font-mono">{String(countdown.hours).padStart(2, '0')}</div>
+                            <div className="text-xs uppercase tracking-wider opacity-80 mt-1">ore</div>
                           </div>
-                          <div className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px]">
-                            <div className="text-xl font-bold font-mono">{String(countdown.minutes).padStart(2, '0')}</div>
-                            <div className="text-[10px] uppercase tracking-wide opacity-80">min</div>
+                          <div className="flex items-center text-2xl font-bold text-indigo-400">:</div>
+                          <div className="bg-gradient-to-b from-indigo-500 to-indigo-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg">
+                            <div className="text-3xl font-bold font-mono">{String(countdown.minutes).padStart(2, '0')}</div>
+                            <div className="text-xs uppercase tracking-wider opacity-80 mt-1">min</div>
                           </div>
-                          <div className="bg-purple-600 text-white px-3 py-2 rounded-lg text-center min-w-[52px] animate-pulse">
-                            <div className="text-xl font-bold font-mono">{String(countdown.seconds).padStart(2, '0')}</div>
-                            <div className="text-[10px] uppercase tracking-wide opacity-80">sec</div>
+                          <div className="flex items-center text-2xl font-bold text-purple-400">:</div>
+                          <div className="bg-gradient-to-b from-purple-500 to-purple-700 text-white px-4 py-3 rounded-xl text-center min-w-[70px] shadow-lg animate-pulse">
+                            <div className="text-3xl font-bold font-mono">{String(countdown.seconds).padStart(2, '0')}</div>
+                            <div className="text-xs uppercase tracking-wider opacity-80 mt-1">sec</div>
                           </div>
                         </div>
                       </div>
