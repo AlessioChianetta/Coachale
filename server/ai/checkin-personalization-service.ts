@@ -12,7 +12,7 @@
 import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
-import { getGoogleAIStudioClientForFileSearch } from "./provider-factory";
+import { getGoogleAIStudioClientForFileSearch, getModelWithThinking } from "./provider-factory";
 import { fileSearchService } from "./file-search-service";
 
 export interface ClientCheckinContext {
@@ -146,7 +146,9 @@ export async function generateCheckinAiMessage(
     }
 
     const { client, metadata } = providerResult;
-    const model = 'gemini-2.5-flash';
+    
+    // Get correct model based on provider (Gemini 3 for Google AI Studio)
+    const { model } = getModelWithThinking(metadata.name);
 
     // Build File Search tool if client has stores with documents
     let fileSearchTool: any = null;
