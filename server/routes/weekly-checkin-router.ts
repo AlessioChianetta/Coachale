@@ -7,6 +7,7 @@ import twilio from "twilio";
 import { normalizePhoneNumber } from "../whatsapp/webhook-handler";
 import { toZonedTime, fromZonedTime, format } from "date-fns-tz";
 import { addDays, setHours, setMinutes, getDay } from "date-fns";
+import { runDailySchedulingNow } from "../cron/weekly-checkin-scheduler";
 
 /**
  * Get or create a WhatsApp conversation for check-in messages
@@ -1004,6 +1005,54 @@ router.post("/send-test", authenticateToken, requireRole("consultant"), async (r
   } catch (error: any) {
     console.error("Error sending test check-in:", error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /trigger-now - Avvia manualmente lo scheduler dei check-in
+ * Esegue immediatamente la programmazione degli invii per oggi
+ */
+router.post("/trigger-now", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    console.log(`🚀 [WEEKLY-CHECKIN] Manual trigger requested by consultant ${consultantId}`);
+    
+    // Verifica che il consulente abbia una configurazione attiva
+    const [config] = await db
+      .select()
+      .from(schema.weeklyCheckinConfig)
+      .where(eq(schema.weeklyCheckinConfig.consultantId, consultantId))
+      .limit(1);
+    
+    if (!config) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Nessuna configurazione check-in trovata. Configura prima i check-in settimanali." 
+      });
+    }
+    
+    if (!config.isEnabled) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "I check-in automatici sono disabilitati. Attivali prima di avviare manualmente." 
+      });
+    }
+    
+    // Avvia lo scheduler (funziona per tutti i consulenti attivi)
+    await runDailySchedulingNow();
+    
+    console.log(`✅ [WEEKLY-CHECKIN] Manual trigger completed for consultant ${consultantId}`);
+    
+    res.json({ 
+      success: true, 
+      message: "Scheduler avviato! I check-in verranno inviati a breve." 
+    });
+  } catch (error: any) {
+    console.error("Error triggering check-in scheduler:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Errore durante l'avvio dello scheduler" 
+    });
   }
 });
 

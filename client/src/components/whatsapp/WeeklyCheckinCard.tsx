@@ -39,7 +39,8 @@ import {
   Settings,
   PlayCircle,
   Timer,
-  Calendar
+  Calendar,
+  Zap
 } from "lucide-react";
 
 interface CheckinConfig {
@@ -365,6 +366,22 @@ export function WeeklyCheckinCard() {
     },
     onError: (error: any) => {
       toast({ title: "Errore nell'invio", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const triggerNowMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/weekly-checkin/trigger-now"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/pending-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/weekly-checkin/next-send"] });
+      toast({ 
+        title: "Scheduler avviato!",
+        description: "I check-in verranno programmati e inviati a breve."
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
 
@@ -778,8 +795,24 @@ export function WeeklyCheckinCard() {
               </div>
             )}
 
-            {/* Quick Test */}
-            <div className="pt-2">
+            {/* Azioni rapide */}
+            <div className="pt-2 space-y-2">
+              {/* Avvia ora */}
+              <Button 
+                variant="default" 
+                className="w-full gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                onClick={() => triggerNowMutation.mutate()}
+                disabled={triggerNowMutation.isPending || !nextSendData?.isEnabled}
+              >
+                {triggerNowMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Zap className="h-4 w-4" />
+                )}
+                Avvia Check-in Ora
+              </Button>
+              
+              {/* Test */}
               <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="w-full gap-2">
