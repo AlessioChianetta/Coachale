@@ -379,14 +379,14 @@ router.post("/toggle-client", authenticateToken, requireRole("consultant"), asyn
       return res.status(400).json({ message: "clientId and enabled (boolean) are required" });
     }
 
+    // Don't filter by role - consultant clients are also valid
     const [client] = await db
       .select()
       .from(schema.users)
       .where(
         and(
           eq(schema.users.id, clientId),
-          eq(schema.users.consultantId, req.user!.id),
-          eq(schema.users.role, "client")
+          eq(schema.users.consultantId, req.user!.id)
         )
       )
       .limit(1);
