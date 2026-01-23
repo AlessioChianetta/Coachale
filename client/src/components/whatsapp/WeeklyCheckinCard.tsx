@@ -41,7 +41,10 @@ import {
   Timer,
   Calendar,
   Zap,
-  Eye
+  Eye,
+  HelpCircle,
+  ArrowRight,
+  Lightbulb
 } from "lucide-react";
 import {
   Tooltip,
@@ -529,7 +532,7 @@ export function WeeklyCheckinCard() {
 
       <CardContent className="space-y-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-4">
+          <TabsList className="grid w-full grid-cols-6 mb-4">
             <TabsTrigger value="dashboard" className="text-xs gap-1">
               <BarChart3 className="h-3 w-3" />
               Dashboard
@@ -549,6 +552,10 @@ export function WeeklyCheckinCard() {
             <TabsTrigger value="settings" className="text-xs gap-1">
               <Settings className="h-3 w-3" />
               Impostazioni
+            </TabsTrigger>
+            <TabsTrigger value="guide" className="text-xs gap-1">
+              <HelpCircle className="h-3 w-3" />
+              Guida
             </TabsTrigger>
           </TabsList>
 
@@ -1814,6 +1821,182 @@ export function WeeklyCheckinCard() {
             </div>
           </div>
         </div>
+          </TabsContent>
+
+          <TabsContent value="guide" className="space-y-4 mt-0">
+            <div className="space-y-6">
+              {/* Intestazione */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-indigo-500 shadow-md">
+                    <Lightbulb className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Come funziona il Check-in Settimanale
+                  </h3>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Il sistema invia automaticamente messaggi WhatsApp personalizzati ai tuoi clienti 
+                  per mantenere il contatto e seguire i loro progressi.
+                </p>
+              </div>
+
+              {/* Come funziona - Step by step */}
+              <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  Come funziona l'invio automatico
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">1</div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Genera il calendario</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Il sistema pianifica 4 settimane di messaggi con orari casuali nella fascia che hai scelto</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">2</div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Attivazione alle 08:00</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Ogni mattina alle 8, il sistema attiva i messaggi del giorno e li mette "in coda"</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">3</div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Invio all'orario programmato</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">All'orario esatto (es. 10:44), il messaggio viene inviato con personalizzazione AI</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sezioni */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-gray-900 dark:text-white">Le sezioni spiegate</h4>
+                
+                {/* Dashboard */}
+                <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900 bg-white dark:bg-gray-800/50">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                      <BarChart3 className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900 dark:text-white">Dashboard</h5>
+                      <p className="text-xs text-gray-500">Panoramica e controlli rapidi</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Countdown al prossimo invio</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Statistiche: messaggi inviati e risposte</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Pulsante "Avvia ora" per invio immediato</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Test per provare prima di attivare</li>
+                  </ul>
+                </div>
+
+                {/* Clienti */}
+                <div className="p-4 rounded-xl border border-green-100 dark:border-green-900 bg-white dark:bg-gray-800/50">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
+                      <Users className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900 dark:text-white">Clienti</h5>
+                      <p className="text-xs text-gray-500">Chi riceverà i messaggi</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-green-400" /> Seleziona quali clienti includere</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-green-400" /> Vedi l'ultimo contatto di ciascuno</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-green-400" /> Aggiungi/rimuovi con un click</li>
+                  </ul>
+                </div>
+
+                {/* Calendario */}
+                <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-900 bg-white dark:bg-gray-800/50">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                      <CalendarCheck className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900 dark:text-white">Calendario</h5>
+                      <p className="text-xs text-gray-500">Pianificazione 4 settimane</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Vedi tutti gli invii programmati</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Orario esatto di ogni messaggio</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Stati: pianificato, inviato, fallito</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Icona 👁️ per vedere il messaggio inviato</li>
+                  </ul>
+                </div>
+
+                {/* Cronologia */}
+                <div className="p-4 rounded-xl border border-orange-100 dark:border-orange-900 bg-white dark:bg-gray-800/50">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50">
+                      <History className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900 dark:text-white">Cronologia</h5>
+                      <p className="text-xs text-gray-500">Storico completo</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-orange-400" /> Lista di tutti i messaggi inviati</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-orange-400" /> Contenuto del messaggio personalizzato</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-orange-400" /> Data e ora di invio</li>
+                  </ul>
+                </div>
+
+                {/* Impostazioni */}
+                <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                      <Settings className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900 dark:text-white">Impostazioni</h5>
+                      <p className="text-xs text-gray-500">Configura il sistema</p>
+                    </div>
+                  </div>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Scegli quali template usare</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Imposta la fascia oraria (es. 09:00-18:00)</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Escludi giorni (es. weekend)</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Attiva personalizzazione AI</li>
+                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Giorni minimi tra un contatto e l'altro</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Suggerimenti */}
+              <div className="p-4 rounded-xl border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                <h4 className="font-semibold text-green-800 dark:text-green-200 mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Suggerimenti per risultati migliori
+                </h4>
+                <ul className="text-sm text-green-700 dark:text-green-300 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Usa almeno 3-4 template diversi per variare i messaggi</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Imposta 5-7 giorni minimo tra i contatti per non sembrare insistente</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Attiva l'AI per messaggi personalizzati basati sul percorso del cliente</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Invia un test prima di attivare per verificare che tutto funzioni</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>
