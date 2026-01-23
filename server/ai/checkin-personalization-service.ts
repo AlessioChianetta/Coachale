@@ -228,7 +228,7 @@ Rispondi SOLO con la frase, senza virgolette o spiegazioni.`;
       contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
       config: {
         temperature: 1,
-        maxOutputTokens: 500,
+        maxOutputTokens: 5000,
       },
     });
 
