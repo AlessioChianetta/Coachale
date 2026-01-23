@@ -1824,179 +1824,193 @@ export function WeeklyCheckinCard() {
           </TabsContent>
 
           <TabsContent value="guide" className="space-y-4 mt-0">
-            <div className="space-y-6">
-              {/* Intestazione */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-indigo-500 shadow-md">
-                    <Lightbulb className="h-5 w-5 text-white" />
+            <ScrollArea className="h-[600px] pr-4">
+              <div className="space-y-6">
+                {/* Intestazione */}
+                <div className="p-5 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200 dark:border-indigo-800">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-indigo-500 shadow-md">
+                      <Lightbulb className="h-5 w-5 text-white" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Guida al Check-in Settimanale
+                    </h3>
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                    Come funziona il Check-in Settimanale
-                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Questa funzione ti permette di mantenere un contatto costante con i tuoi clienti 
+                    senza dover scrivere manualmente ogni messaggio. Il sistema pensa a tutto: 
+                    sceglie quando inviare, quale template usare e personalizza il contenuto 
+                    in base al percorso di ogni cliente.
+                  </p>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Il sistema invia automaticamente messaggi WhatsApp personalizzati ai tuoi clienti 
-                  per mantenere il contatto e seguire i loro progressi.
-                </p>
+
+                {/* A cosa serve */}
+                <div className="p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5 text-blue-500" />
+                    A cosa serve?
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Il Check-in Settimanale invia automaticamente messaggi WhatsApp ai tuoi clienti 
+                    per ricordare loro di continuare il percorso, chiedere come stanno andando 
+                    e mantenere viva la relazione. Non devi fare nulla: il sistema sceglie 
+                    il momento giusto, il messaggio giusto e lo invia per te.
+                  </p>
+                </div>
+
+                {/* Come funziona - Discorsivo */}
+                <div className="p-5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-amber-500" />
+                    Come funziona?
+                  </h4>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 space-y-4 leading-relaxed">
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">Prima cosa: generi il calendario.</strong> Quando clicchi 
+                      "Genera Calendario" nella sezione Calendario, il sistema pianifica le prossime 4 settimane. 
+                      Per ogni cliente, sceglie un giorno e un orario casuale all'interno della fascia che hai impostato 
+                      (es. tra le 9 e le 18). Questo rende i messaggi più naturali, come se li stessi scrivendo tu.
+                    </p>
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">Ogni mattina alle 08:00</strong> il sistema si sveglia 
+                      e controlla quali messaggi sono programmati per quel giorno. Li "attiva" e li mette in coda, 
+                      pronti per essere inviati all'orario stabilito.
+                    </p>
+                    <p>
+                      <strong className="text-gray-800 dark:text-gray-200">All'orario programmato</strong> (es. alle 10:44), 
+                      il messaggio viene inviato. Se hai attivato la personalizzazione AI, il sistema legge 
+                      le informazioni del cliente (esercizi in sospeso, ultimo contatto, obiettivi) e 
+                      crea un messaggio su misura. Il cliente riceve un messaggio che sembra scritto da te, 
+                      non da un robot.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Le sezioni spiegate */}
+                <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-gray-500" />
+                    Come usare le varie sezioni
+                  </h4>
+                  <div className="space-y-5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    
+                    <div className="pl-4 border-l-4 border-blue-400">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-blue-500" /> Dashboard
+                      </p>
+                      <p>
+                        E' la tua pagina principale. Qui vedi il countdown al prossimo invio, 
+                        quanti messaggi hai inviato, quante risposte hai ricevuto. 
+                        Se vuoi inviare subito senza aspettare, clicca "Avvia Check-in Ora". 
+                        Vuoi provare prima? Usa "Invia Check-in di Test" per vedere come arriva il messaggio.
+                      </p>
+                    </div>
+
+                    <div className="pl-4 border-l-4 border-green-400">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-green-500" /> Clienti
+                      </p>
+                      <p>
+                        Qui scegli a chi inviare i messaggi. Nella parte verde vedi i clienti che riceveranno i check-in. 
+                        Nella parte grigia trovi tutti gli altri. Per aggiungere qualcuno, clicca il pulsante verde (+) 
+                        accanto al suo nome. Per rimuoverlo, clicca la X rossa. Solo i clienti con numero di telefono 
+                        possono essere aggiunti.
+                      </p>
+                    </div>
+
+                    <div className="pl-4 border-l-4 border-purple-400">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
+                        <CalendarCheck className="h-4 w-4 text-purple-500" /> Calendario
+                      </p>
+                      <p>
+                        Qui vedi la programmazione delle prossime 4 settimane. Per ogni giorno puoi vedere 
+                        chi riceverà un messaggio e a che ora. I colori ti aiutano: verde = inviato, 
+                        blu = programmato, rosso = fallito, grigio = giorno escluso. 
+                        Quando un messaggio viene inviato, appare un'icona occhio: cliccala per vedere 
+                        esattamente cosa ha ricevuto il cliente.
+                      </p>
+                    </div>
+
+                    <div className="pl-4 border-l-4 border-orange-400">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
+                        <History className="h-4 w-4 text-orange-500" /> Cronologia
+                      </p>
+                      <p>
+                        Qui trovi lo storico completo di tutti i messaggi inviati. Puoi vedere a chi, quando, 
+                        e cosa hai scritto. Utile per tenere traccia delle comunicazioni e capire 
+                        quali clienti hanno risposto.
+                      </p>
+                    </div>
+
+                    <div className="pl-4 border-l-4 border-gray-400">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
+                        <Settings className="h-4 w-4 text-gray-500" /> Impostazioni
+                      </p>
+                      <p>
+                        Qui configuri tutto il sistema. Scegli quale numero WhatsApp usare (l'agente), 
+                        seleziona i template approvati che vuoi ruotare, imposta la fascia oraria 
+                        in cui inviare (es. 9-18), quali giorni escludere (es. weekend), 
+                        e quanti giorni aspettare tra un contatto e l'altro per non sembrare insistente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Consigli pratici */}
+                <div className="p-5 rounded-xl border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                  <h4 className="font-semibold text-green-800 dark:text-green-200 mb-3 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    Consigli per ottenere risultati
+                  </h4>
+                  <div className="text-sm text-green-700 dark:text-green-300 space-y-3 leading-relaxed">
+                    <p>
+                      <strong>Usa più template:</strong> Seleziona almeno 3-4 template diversi nelle Impostazioni. 
+                      Il sistema li ruota automaticamente, così i tuoi clienti non ricevono sempre lo stesso messaggio.
+                    </p>
+                    <p>
+                      <strong>Non essere troppo frequente:</strong> Imposta almeno 5-7 giorni tra un contatto e l'altro. 
+                      Troppi messaggi possono risultare fastidiosi e ottenere l'effetto opposto.
+                    </p>
+                    <p>
+                      <strong>Attiva l'AI:</strong> La personalizzazione AI rende i messaggi molto più efficaci. 
+                      L'AI sa quanti esercizi ha in sospeso il cliente, quali sono i suoi obiettivi, 
+                      e scrive un messaggio che sembra davvero pensato per lui.
+                    </p>
+                    <p>
+                      <strong>Fai sempre un test prima:</strong> Prima di attivare il sistema, 
+                      usa il pulsante "Invia Test" per vedere come arriva il messaggio. 
+                      Meglio verificare una volta che scoprire un problema dopo 100 invii.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Domande frequenti */}
+                <div className="p-5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-gray-800/50">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <HelpCircle className="h-5 w-5 text-indigo-500" />
+                    Domande frequenti
+                  </h4>
+                  <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    <div>
+                      <p className="font-semibold text-gray-800 dark:text-gray-200">Cosa succede se un cliente mi risponde?</p>
+                      <p className="mt-1">Il messaggio arriva nella tua chat WhatsApp normale. Il sistema segna il check-in come "risposto" nella Cronologia.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800 dark:text-gray-200">Posso modificare un messaggio prima che venga inviato?</p>
+                      <p className="mt-1">No, i messaggi sono automatici. Ma puoi rigenerare il calendario se vuoi cambiare la programmazione.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800 dark:text-gray-200">Cosa significa "In attesa dello scheduler"?</p>
+                      <p className="mt-1">Significa che sono passate le 08:00 ma il sistema non ha ancora attivato i messaggi del giorno. Aspetta qualche minuto.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800 dark:text-gray-200">Come faccio a vedere cosa ha ricevuto un cliente?</p>
+                      <p className="mt-1">Vai nella sezione Calendario, trova il giorno dell'invio e clicca l'icona occhio accanto al messaggio inviato.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              {/* Come funziona - Step by step */}
-              <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-500" />
-                  Come funziona l'invio automatico
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">1</div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Genera il calendario</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Il sistema pianifica 4 settimane di messaggi con orari casuali nella fascia che hai scelto</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">2</div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Attivazione alle 08:00</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Ogni mattina alle 8, il sistema attiva i messaggi del giorno e li mette "in coda"</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">3</div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Invio all'orario programmato</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">All'orario esatto (es. 10:44), il messaggio viene inviato con personalizzazione AI</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sezioni */}
-              <div className="space-y-3">
-                <h4 className="font-semibold text-gray-900 dark:text-white">Le sezioni spiegate</h4>
-                
-                {/* Dashboard */}
-                <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-900 bg-white dark:bg-gray-800/50">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                      <BarChart3 className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-900 dark:text-white">Dashboard</h5>
-                      <p className="text-xs text-gray-500">Panoramica e controlli rapidi</p>
-                    </div>
-                  </div>
-                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Countdown al prossimo invio</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Statistiche: messaggi inviati e risposte</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Pulsante "Avvia ora" per invio immediato</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-blue-400" /> Test per provare prima di attivare</li>
-                  </ul>
-                </div>
-
-                {/* Clienti */}
-                <div className="p-4 rounded-xl border border-green-100 dark:border-green-900 bg-white dark:bg-gray-800/50">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
-                      <Users className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-900 dark:text-white">Clienti</h5>
-                      <p className="text-xs text-gray-500">Chi riceverà i messaggi</p>
-                    </div>
-                  </div>
-                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-green-400" /> Seleziona quali clienti includere</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-green-400" /> Vedi l'ultimo contatto di ciascuno</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-green-400" /> Aggiungi/rimuovi con un click</li>
-                  </ul>
-                </div>
-
-                {/* Calendario */}
-                <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-900 bg-white dark:bg-gray-800/50">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
-                      <CalendarCheck className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-900 dark:text-white">Calendario</h5>
-                      <p className="text-xs text-gray-500">Pianificazione 4 settimane</p>
-                    </div>
-                  </div>
-                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Vedi tutti gli invii programmati</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Orario esatto di ogni messaggio</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Stati: pianificato, inviato, fallito</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-purple-400" /> Icona 👁️ per vedere il messaggio inviato</li>
-                  </ul>
-                </div>
-
-                {/* Cronologia */}
-                <div className="p-4 rounded-xl border border-orange-100 dark:border-orange-900 bg-white dark:bg-gray-800/50">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50">
-                      <History className="h-4 w-4 text-orange-600" />
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-900 dark:text-white">Cronologia</h5>
-                      <p className="text-xs text-gray-500">Storico completo</p>
-                    </div>
-                  </div>
-                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-orange-400" /> Lista di tutti i messaggi inviati</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-orange-400" /> Contenuto del messaggio personalizzato</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-orange-400" /> Data e ora di invio</li>
-                  </ul>
-                </div>
-
-                {/* Impostazioni */}
-                <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
-                      <Settings className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-900 dark:text-white">Impostazioni</h5>
-                      <p className="text-xs text-gray-500">Configura il sistema</p>
-                    </div>
-                  </div>
-                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-11">
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Scegli quali template usare</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Imposta la fascia oraria (es. 09:00-18:00)</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Escludi giorni (es. weekend)</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Attiva personalizzazione AI</li>
-                    <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-gray-400" /> Giorni minimi tra un contatto e l'altro</li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Suggerimenti */}
-              <div className="p-4 rounded-xl border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
-                <h4 className="font-semibold text-green-800 dark:text-green-200 mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Suggerimenti per risultati migliori
-                </h4>
-                <ul className="text-sm text-green-700 dark:text-green-300 space-y-2">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Usa almeno 3-4 template diversi per variare i messaggi</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Imposta 5-7 giorni minimo tra i contatti per non sembrare insistente</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Attiva l'AI per messaggi personalizzati basati sul percorso del cliente</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Invia un test prima di attivare per verificare che tutto funzioni</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </CardContent>
