@@ -347,7 +347,7 @@ async function scheduleCheckinForConsultant(
 
   const recentConversations = await db
     .select({
-      clientId: whatsappConversations.clientId,
+      userId: whatsappConversations.userId,
       lastMessageAt: whatsappConversations.lastMessageAt
     })
     .from(whatsappConversations)
@@ -361,8 +361,8 @@ async function scheduleCheckinForConsultant(
 
   const recentlyContactedClientIds = new Set(
     recentConversations
-      .filter(c => c.clientId)
-      .map(c => c.clientId!)
+      .filter(c => c.userId)
+      .map(c => c.userId!)
   );
 
   const eligibleClients = activeClients.filter(
