@@ -8958,3 +8958,48 @@ export const weeklyCheckinLogs = pgTable("weekly_checkin_logs", {
 
 export type WeeklyCheckinLog = typeof weeklyCheckinLogs.$inferSelect;
 export type InsertWeeklyCheckinLog = typeof weeklyCheckinLogs.$inferInsert;
+
+// Weekly Check-in Schedule - Calendario pre-pianificato per 4 settimane
+// Questa tabella contiene la programmazione futura, non i log di invio
+export const weeklyCheckinSchedule = pgTable("weekly_checkin_schedule", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  configId: varchar("config_id").references(() => weeklyCheckinConfig.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Target client
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  
+  // Scheduling - data e ora specifiche
+  scheduledDate: date("scheduled_date").notNull(), // Data programmata (YYYY-MM-DD)
+  scheduledHour: integer("scheduled_hour").notNull(), // Ora programmata (0-23)
+  scheduledMinute: integer("scheduled_minute").default(0).notNull(), // Minuto programmato (0-59)
+  
+  // Template pre-assegnato (Twilio HX content SID)
+  templateId: varchar("template_id").notNull(),
+  templateName: varchar("template_name"),
+  
+  // Status della programmazione
+  status: text("status").$type<"planned" | "pending" | "sent" | "failed" | "skipped" | "cancelled">().default("planned").notNull(),
+  
+  // Quando viene eseguito, collegamento al log effettivo
+  executedLogId: varchar("executed_log_id").references(() => weeklyCheckinLogs.id, { onDelete: "set null" }),
+  executedAt: timestamp("executed_at"),
+  
+  // Motivo se saltato o cancellato
+  skipReason: text("skip_reason"),
+  
+  // Metadati per rigenerazione calendario
+  weekNumber: integer("week_number").notNull(), // 1-4 (quale settimana dal momento della generazione)
+  dayOfWeek: integer("day_of_week").notNull(), // 0-6 (0=domenica, 1=lunedì, etc.)
+  
+  // Generazione tracking
+  generatedAt: timestamp("generated_at").default(sql`now()`).notNull(),
+  regeneratedAt: timestamp("regenerated_at"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type WeeklyCheckinSchedule = typeof weeklyCheckinSchedule.$inferSelect;
+export type InsertWeeklyCheckinSchedule = typeof weeklyCheckinSchedule.$inferInsert;
