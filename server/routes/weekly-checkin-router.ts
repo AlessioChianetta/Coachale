@@ -572,6 +572,9 @@ router.post("/send-test", authenticateToken, requireRole("consultant"), async (r
           '1': variables.name,
           '2': variables.aiMessage,
         };
+        // Log full message to verify no truncation
+        console.log(`[WEEKLY-CHECKIN] AI Message FULL (${variables.aiMessage.length} chars):`);
+        console.log(`[WEEKLY-CHECKIN] "${variables.aiMessage}"`);
       }
     } catch (aiError) {
       console.error("[WEEKLY-CHECKIN] AI personalization failed:", aiError);
