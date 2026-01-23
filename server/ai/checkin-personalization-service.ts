@@ -357,6 +357,17 @@ Il messaggio deve essere:
 - In italiano naturale e colloquiale
 - SENZA emoji, SENZA saluti formali, SENZA firma
 
+ESEMPIO BUONO (dettagliato e personalizzato):
+"Ho dato un'occhiata ai tuoi progressi e vedo che hai ancora tre esercizi in sospeso: l'analisi del budget mensile, la pianificazione degli obiettivi trimestrali e l'esercizio sulle abitudini di risparmio. So che a volte il tempo e' poco, ma completare questi esercizi ti aiutera' davvero a fare chiarezza sulla tua situazione finanziaria.
+
+Dalla nostra ultima consulenza mi e' rimasto impresso quanto tenevi a migliorare la gestione delle spese - questi esercizi sono proprio pensati per quello. Se hai difficolta' con qualcuno di questi o hai bisogno di chiarimenti, scrivimi pure e ne parliamo insieme.
+
+Come sta andando questa settimana? C'e' qualcosa in particolare su cui vorresti concentrarti?"
+
+ESEMPIO CATTIVO (troppo generico o corto):
+- "Ho visto che hai esercizi in sospeso, come va?"
+- "Spero che tu stia bene. Come procede tutto?"
+
 IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, spiegazioni o prefissi.`;
 }
 
@@ -413,49 +424,31 @@ export async function generateCheckinAiMessage(
       
       console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars (minimal - AI will search)`);
       
-    } else if (context.userContext) {
+    } else {
       // ═══════════════════════════════════════════════════════════════════
       // FALLBACK MODE: Full context injection (NO TRUNCATION)
       // ═══════════════════════════════════════════════════════════════════
       console.log(`[CHECKIN-AI] 📋 FALLBACK MODE: Full context injection (File Search not available)`);
       
-      const fullContext = buildFullContextForFallback(context.userContext);
-      systemPrompt = buildFallbackModePrompt(context, fullContext);
-      userMessage = `Genera ora il messaggio di check-in personalizzato per ${context.clientName} basandoti sui dati completi forniti sopra.`;
-      
-      console.log(`[CHECKIN-AI]   Full context size: ${fullContext.length} chars (NO TRUNCATION)`);
-      console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars`);
-      
-    } else {
-      // ═══════════════════════════════════════════════════════════════════
-      // MINIMAL MODE: No data available
-      // ═══════════════════════════════════════════════════════════════════
-      console.log(`[CHECKIN-AI] ⚠️ MINIMAL MODE: No userContext and no File Search`);
-      
-      const consultantRef = context.consultantName 
-        ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
-        : `Sei il consulente finanziario personale di ${context.clientName}.`;
-      
-      systemPrompt = `${consultantRef}
-
-Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente ${context.clientName}.
-
-Non hai dati specifici disponibili su questo cliente.
-Genera un messaggio di check-in GENERICO ma caloroso e professionale.
-
-Il messaggio deve essere:
-- Caldo e personale
-- In italiano naturale
-- SENZA emoji, SENZA saluti formali, SENZA firma
-- Circa 50-100 parole
-
-IMPORTANTE: Rispondi SOLO con il messaggio finale.`;
-      
-      userMessage = `Genera un messaggio di check-in settimanale per ${context.clientName}.`;
+      if (context.userContext) {
+        const fullContext = buildFullContextForFallback(context.userContext);
+        systemPrompt = buildFallbackModePrompt(context, fullContext);
+        userMessage = `Genera ora il messaggio di check-in personalizzato per ${context.clientName} basandoti sui dati completi forniti sopra.`;
+        
+        console.log(`[CHECKIN-AI]   Full context size: ${fullContext.length} chars (NO TRUNCATION)`);
+        console.log(`[CHECKIN-AI]   System prompt size: ${systemPrompt.length} chars`);
+      } else {
+        // Questo non dovrebbe mai succedere - userContext viene sempre caricato
+        console.error(`[CHECKIN-AI] ❌ ERRORE: userContext non disponibile per ${context.clientName} - questo non dovrebbe mai accadere`);
+        return {
+          success: false,
+          error: 'UserContext non disponibile - impossibile generare messaggio personalizzato',
+        };
+      }
     }
 
     console.log(`[CHECKIN-AI] Generating message for ${context.clientName} using ${metadata.name}`);
-    console.log(`[CHECKIN-AI]   Mode: ${useFileSearchMode ? 'FILE_SEARCH' : context.userContext ? 'FALLBACK' : 'MINIMAL'}`);
+    console.log(`[CHECKIN-AI]   Mode: ${useFileSearchMode ? 'FILE_SEARCH' : 'FALLBACK'}`);
 
     const result = await client.generateContent({
       model,
