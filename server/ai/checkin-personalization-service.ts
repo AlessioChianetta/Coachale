@@ -304,17 +304,22 @@ Esempi di query da fare:
 
 ═══════════════════════════════════════════════════════════════════
 
-ISTRUZIONI PER IL MESSAGGIO:
+ISTRUZIONI PER IL MESSAGGIO WHATSAPP:
 
 1. USA file_search per cercare informazioni SPECIFICHE sul cliente
 2. Cita dettagli REALI dalle consulenze e dagli esercizi trovati
-3. Genera un messaggio COMPLETO e PERSONALIZZATO (150-300 parole)
+
+⚠️ STILE WHATSAPP - IMPORTANTE:
+- MASSIMO 500-700 caratteri (come un messaggio WhatsApp normale)
+- Stile CONVERSAZIONALE e DIRETTO, come se stessi scrivendo su WhatsApp
+- Frasi BREVI e SCORREVOLI
+- NO muri di testo, NO paragrafi lunghi
+- Vai DRITTO al punto con 1-2 riferimenti specifici
 
 Il messaggio deve:
-- Riferirsi a DETTAGLI SPECIFICI trovati con file_search
-- Menzionare esercizi per NOME
-- Citare note delle consulenze passate
-- Essere caldo, personale e motivante
+- Riferirsi a 1-2 dettagli SPECIFICI (non tutti i dati disponibili!)
+- Essere BREVE ma PERSONALIZZATO
+- Tono amichevole da messaggio WhatsApp
 - NON avere emoji, saluti formali, o firma
 
 IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, spiegazioni o prefissi.`;
@@ -340,18 +345,21 @@ ${fullContext}
 
 ═══════════════════════════════════════════════════════════════════
 
-ISTRUZIONI PER IL MESSAGGIO:
+ISTRUZIONI PER IL MESSAGGIO WHATSAPP:
 
-Basandoti sui DATI COMPLETI sopra, genera un messaggio PERSONALIZZATO che:
+Basandoti sui DATI sopra, genera un messaggio BREVE e PERSONALIZZATO.
 
-1. RIFERISCI a dettagli SPECIFICI - esercizi per nome, note delle consulenze, obiettivi
-2. MOSTRA che conosci bene il cliente - cita qualcosa di concreto dai dati
-3. CHIEDI come sta andando in modo naturale
-4. SII MOTIVANTE per i progressi fatti
-5. SII DI SUPPORTO per eventuali difficolta
+⚠️ STILE WHATSAPP - IMPORTANTE:
+- MASSIMO 500-700 caratteri (come un messaggio WhatsApp normale)
+- Stile CONVERSAZIONALE e DIRETTO, come se stessi scrivendo su WhatsApp
+- Frasi BREVI e SCORREVOLI
+- NO muri di testo, NO paragrafi lunghi
+- Vai DRITTO al punto con 1-2 riferimenti specifici
 
-Il messaggio deve essere:
-- COMPLETO E DETTAGLIATO (150-300 parole)
+Il messaggio deve:
+- Citare 1-2 dettagli SPECIFICI (non tutti i dati!)
+- Essere BREVE ma PERSONALIZZATO
+- Tono amichevole da messaggio WhatsApp
 - CALDO e PERSONALE
 - SPECIFICO - menziona esercizi per NOME, cita note consulenze
 - In italiano naturale e colloquiale
