@@ -593,8 +593,6 @@ export function WeeklyCheckinCard() {
                   ) : (
                     <p className="text-sm text-gray-400 mt-1">Caricamento...</p>
                   )}
-                </div>
-              </div>
             </div>
 
             {/* Statistiche */}
