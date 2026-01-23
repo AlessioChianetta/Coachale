@@ -171,6 +171,8 @@ router.post("/config", authenticateToken, requireRole("consultant"), async (req,
       .where(eq(schema.weeklyCheckinConfig.consultantId, req.user!.id))
       .limit(1);
 
+    let resultConfig;
+    
     if (existing) {
       const [updated] = await db
         .update(schema.weeklyCheckinConfig)
@@ -188,7 +190,7 @@ router.post("/config", authenticateToken, requireRole("consultant"), async (req,
         })
         .where(eq(schema.weeklyCheckinConfig.id, existing.id))
         .returning();
-      res.json(updated);
+      resultConfig = updated;
     } else {
       const [created] = await db
         .insert(schema.weeklyCheckinConfig)
@@ -205,8 +207,22 @@ router.post("/config", authenticateToken, requireRole("consultant"), async (req,
           agentConfigId: agentConfigId ?? null,
         })
         .returning();
-      res.status(201).json(created);
+      resultConfig = created;
     }
+    
+    // Auto-regenerate 4-week schedule when config is saved and enabled
+    if (resultConfig?.isEnabled) {
+      try {
+        console.log(`📅 [WEEKLY-CHECKIN] Auto-regenerating schedule after config save for ${req.user!.id}`);
+        const scheduleResult = await generateScheduleForWeeks(req.user!.id, 4);
+        console.log(`✅ [WEEKLY-CHECKIN] Auto-generated ${scheduleResult.scheduledCount} schedule entries`);
+      } catch (scheduleError) {
+        console.error('⚠️ [WEEKLY-CHECKIN] Failed to auto-regenerate schedule:', scheduleError);
+        // Don't fail the config save, just log the warning
+      }
+    }
+    
+    res.status(existing ? 200 : 201).json(resultConfig);
   } catch (error: any) {
     console.error("Error saving weekly checkin config:", error);
     res.status(500).json({ message: error.message });
