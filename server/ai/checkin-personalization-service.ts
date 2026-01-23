@@ -1,40 +1,28 @@
 /**
  * Check-in Personalization Service
  * 
- * Generates AI-personalized phrases for weekly check-in messages.
- * Uses Gemini AI with context from client's exercises, consultations,
- * and financial goals to create meaningful, personalized follow-ups.
+ * Generates AI-personalized messages for weekly check-in using File Search.
+ * Uses Gemini 3 with the client's PRIVATE File Search store to access
+ * ALL their data: consultations, exercises, documents, conversation history.
+ * 
+ * The AI acts as the consultant's personal assistant, generating messages
+ * as if the consultant themselves is reaching out to the client.
  */
 
-import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
-import { 
-  users, 
-  exercises, 
-  exerciseAssignments,
-  consultations
-} from "../../shared/schema";
-import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
-import { getSuperAdminGeminiKeys } from "./provider-factory";
+import { users } from "../../shared/schema";
+import { eq } from "drizzle-orm";
+import { getGoogleAIStudioClientForFileSearch } from "./provider-factory";
+import { fileSearchService } from "./file-search-service";
 
 export interface ClientCheckinContext {
   clientName: string;
   clientId: string;
   consultantId: string;
-  lastExercise?: {
-    title: string;
-    status: string;
-    assignedAt: Date;
-  };
-  daysSinceLastContact?: number;
-  lastConsultation?: {
-    topic: string;
-    date: Date;
-  };
-  exerciseProgress?: {
-    total: number;
-    completed: number;
-  };
+  consultantName?: string;
+  hasFileSearchStore: boolean;
+  storeNames: string[];
+  totalDocs: number;
 }
 
 export interface PersonalizedCheckinResult {
@@ -43,10 +31,11 @@ export interface PersonalizedCheckinResult {
   context?: ClientCheckinContext;
   error?: string;
   model?: string;
+  usedFileSearch?: boolean;
 }
 
 /**
- * Fetch client context for AI personalization
+ * Fetch basic client info and check for File Search stores with documents
  */
 export async function fetchClientContext(
   clientId: string,
@@ -58,6 +47,7 @@ export async function fetchClientContext(
         id: users.id,
         firstName: users.firstName,
         lastName: users.lastName,
+        fileSearchEnabled: users.fileSearchEnabled,
       })
       .from(users)
       .where(eq(users.id, clientId))
@@ -68,88 +58,59 @@ export async function fetchClientContext(
       return null;
     }
 
-    const clientName = client.firstName || 'Cliente';
-
-    // Fetch last assigned exercise with status
-    const [lastAssignment] = await db
+    const [consultant] = await db
       .select({
-        exerciseId: exerciseAssignments.exerciseId,
-        status: exerciseAssignments.status,
-        assignedAt: exerciseAssignments.assignedAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
       })
-      .from(exerciseAssignments)
-      .where(
-        and(
-          eq(exerciseAssignments.clientId, clientId),
-          eq(exerciseAssignments.consultantId, consultantId)
-        )
-      )
-      .orderBy(desc(exerciseAssignments.assignedAt))
+      .from(users)
+      .where(eq(users.id, consultantId))
       .limit(1);
 
-    let lastExercise;
-    if (lastAssignment) {
-      const [exercise] = await db
-        .select({ title: exercises.title })
-        .from(exercises)
-        .where(eq(exercises.id, lastAssignment.exerciseId))
-        .limit(1);
+    const clientName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Cliente';
+    const consultantName = consultant ? `${consultant.firstName || ''} ${consultant.lastName || ''}`.trim() : undefined;
 
-      if (exercise) {
-        lastExercise = {
-          title: exercise.title,
-          status: lastAssignment.status || 'assigned',
-          assignedAt: lastAssignment.assignedAt!,
-        };
-      }
+    // Check if File Search is enabled for this client (default: true)
+    const fileSearchEnabled = client.fileSearchEnabled !== false;
+    
+    if (!fileSearchEnabled) {
+      console.log(`[CHECKIN-AI] File Search disabled for client ${clientId}`);
+      return {
+        clientName,
+        clientId,
+        consultantId,
+        consultantName,
+        hasFileSearchStore: false,
+        storeNames: [],
+        totalDocs: 0,
+      };
     }
 
-    // Fetch exercise progress
-    const exerciseStats = await db
-      .select({
-        total: sql<number>`count(*)`,
-        completed: sql<number>`sum(case when ${exerciseAssignments.status} = 'completed' then 1 else 0 end)`,
-      })
-      .from(exerciseAssignments)
-      .where(
-        and(
-          eq(exerciseAssignments.clientId, clientId),
-          eq(exerciseAssignments.consultantId, consultantId)
-        )
-      );
-
-    const exerciseProgress = exerciseStats[0] ? {
-      total: Number(exerciseStats[0].total) || 0,
-      completed: Number(exerciseStats[0].completed) || 0,
-    } : undefined;
-
-    // Fetch last consultation
-    const [lastConsultation] = await db
-      .select({
-        notes: consultations.notes,
-        scheduledAt: consultations.scheduledAt,
-      })
-      .from(consultations)
-      .where(
-        and(
-          eq(consultations.clientId, clientId),
-          eq(consultations.consultantId, consultantId),
-          isNotNull(consultations.scheduledAt)
-        )
-      )
-      .orderBy(desc(consultations.scheduledAt))
-      .limit(1);
-
+    // Get store breakdown for client - this includes their private store + consultant's stores
+    const { storeNames, breakdown } = await fileSearchService.getStoreBreakdownForGeneration(
+      clientId,
+      'client',
+      consultantId
+    );
+    
+    // Calculate total docs across all stores
+    const totalDocs = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+    
+    console.log(`[CHECKIN-AI] File Search stores for ${clientName}: ${storeNames.length} stores, ${totalDocs} total docs`);
+    if (breakdown.length > 0) {
+      breakdown.forEach(store => {
+        console.log(`  - ${store.storeDisplayName}: ${store.totalDocs} docs`);
+      });
+    }
+    
     return {
       clientName,
       clientId,
       consultantId,
-      lastExercise,
-      exerciseProgress,
-      lastConsultation: lastConsultation ? {
-        topic: lastConsultation.notes || 'consulenza',
-        date: lastConsultation.scheduledAt!,
-      } : undefined,
+      consultantName,
+      hasFileSearchStore: storeNames.length > 0 && totalDocs > 0,
+      storeNames,
+      totalDocs,
     };
   } catch (error) {
     console.error('[CHECKIN-AI] Error fetching client context:', error);
@@ -158,78 +119,90 @@ export async function fetchClientContext(
 }
 
 /**
- * Generate AI-personalized message for weekly check-in
+ * Generate AI-personalized message for weekly check-in using File Search
+ * 
+ * This uses the client's File Search stores to access ALL their data:
+ * - Consultations and notes
+ * - Exercises assigned and completed
+ * - Documents uploaded
+ * - Conversation history (WhatsApp, etc)
+ * - Financial goals and progress
+ * 
+ * The AI generates a message as if the consultant themselves is reaching out.
  */
 export async function generateCheckinAiMessage(
   context: ClientCheckinContext
 ): Promise<PersonalizedCheckinResult> {
   try {
-    // Get API key
-    const geminiKeys = await getSuperAdminGeminiKeys();
-    if (!geminiKeys?.enabled || geminiKeys.keys.length === 0) {
-      console.log('[CHECKIN-AI] No Gemini API keys available');
+    // Get AI provider using proper credential resolution (respects user preferences)
+    const providerResult = await getGoogleAIStudioClientForFileSearch(context.consultantId);
+    
+    if (!providerResult) {
+      console.log('[CHECKIN-AI] No AI provider available for File Search');
       return {
         success: false,
-        error: 'No AI API keys configured',
+        error: 'No AI provider available',
       };
     }
 
-    const apiKey = geminiKeys.keys[0];
-    const genAI = new GoogleGenAI({ apiKey });
+    const { client, metadata } = providerResult;
     const model = 'gemini-2.5-flash';
 
-    // Build context prompt
-    const contextParts: string[] = [];
-
-    if (context.lastExercise) {
-      const statusText = context.lastExercise.status === 'completed' 
-        ? 'ha completato' 
-        : context.lastExercise.status === 'in_progress' 
-          ? 'sta lavorando su'
-          : 'ha ricevuto';
-      contextParts.push(`Ultimo esercizio: ${statusText} "${context.lastExercise.title}"`);
+    // Build File Search tool if client has stores with documents
+    let fileSearchTool: any = null;
+    if (context.hasFileSearchStore && context.storeNames.length > 0) {
+      fileSearchTool = fileSearchService.buildFileSearchTool(context.storeNames);
+      console.log(`[CHECKIN-AI] File Search enabled with ${context.storeNames.length} stores (${context.totalDocs} docs)`);
+    } else {
+      console.log(`[CHECKIN-AI] File Search NOT available (stores: ${context.storeNames.length}, docs: ${context.totalDocs})`);
     }
 
-    if (context.exerciseProgress && context.exerciseProgress.total > 0) {
-      const pct = Math.round((context.exerciseProgress.completed / context.exerciseProgress.total) * 100);
-      contextParts.push(`Progresso esercizi: ${context.exerciseProgress.completed}/${context.exerciseProgress.total} (${pct}%)`);
-    }
+    const consultantRef = context.consultantName 
+      ? `Sei ${context.consultantName}, consulente finanziario di ${context.clientName}.`
+      : `Sei il consulente finanziario personale di ${context.clientName}.`;
 
-    if (context.lastConsultation) {
-      const daysAgo = Math.floor((Date.now() - context.lastConsultation.date.getTime()) / (1000 * 60 * 60 * 24));
-      contextParts.push(`Ultima consulenza: "${context.lastConsultation.topic}" (${daysAgo} giorni fa)`);
-    }
+    const systemPrompt = `${consultantRef}
 
-    const contextText = contextParts.length > 0 
-      ? contextParts.join('\n')
-      : 'Nessun contesto specifico disponibile';
+Stai per inviare un messaggio WhatsApp di check-in settimanale al tuo cliente.
+Hai accesso a TUTTI i dati del cliente: consulenze fatte insieme, esercizi assegnati, documenti, obiettivi finanziari, progressi, conversazioni passate.
 
-    const systemPrompt = `Sei un assistente di un consulente finanziario. Genera una BREVE frase personalizzata (max 15 parole) per un messaggio WhatsApp di check-in settimanale.
+ANALIZZA tutto quello che sai su ${context.clientName} e genera un messaggio di check-in PERSONALIZZATO che:
 
-La frase deve essere:
-- Calda e personale, ma professionale
-- Riferita al contesto del cliente se disponibile
-- Motivazionale senza essere sdolcinata
+1. RIFERISCI A QUALCOSA DI SPECIFICO che avete discusso o su cui sta lavorando
+2. MOSTRA CHE LO CONOSCI BENE - menziona un dettaglio personale o un obiettivo
+3. CHIEDI COME STA ANDANDO in modo naturale e genuino
+4. SII MOTIVANTE se ha raggiunto traguardi o sta facendo progressi
+5. SII DI SUPPORTO se ha difficoltà o è rimasto indietro
+
+Il messaggio deve essere:
+- BREVE (2-3 frasi, max 50 parole)
+- CALDO e PERSONALE, come se scrivessi a un amico che stai seguendo
+- SPECIFICO - evita frasi generiche tipo "come stai?"
 - In italiano naturale e colloquiale
+- SENZA emoji, SENZA saluti formali (Ciao, Buongiorno)
 
-NON includere:
-- Saluti (ciao, buongiorno)
-- Nome del cliente
-- Emoji
-- Domande retoriche generiche
+ESEMPIO BUONO: "Ho visto che hai completato l'esercizio sul budget - ottimo lavoro! Come ti senti con la gestione delle spese questa settimana?"
 
-CONTESTO CLIENTE:
-${contextText}
+ESEMPIO CATTIVO: "Spero che tu stia bene. Come procede tutto?"
 
-Rispondi SOLO con la frase, senza virgolette o spiegazioni.`;
+Rispondi SOLO con il messaggio, senza virgolette o spiegazioni.`;
 
-    const result = await genAI.models.generateContent({
+    // The user message that triggers File Search to retrieve client data
+    const userMessage = `Genera un messaggio di check-in settimanale per ${context.clientName}. 
+Cerca nei documenti tutto quello che sai su questo cliente: le ultime consulenze, gli esercizi assegnati, i progressi, gli obiettivi finanziari, le conversazioni passate.
+Basandoti su questi dati, scrivi un messaggio personalizzato e specifico.`;
+
+    console.log(`[CHECKIN-AI] Generating message for ${context.clientName} using ${metadata.name} (FileSearch: ${!!fileSearchTool})`);
+
+    const result = await client.generateContent({
       model,
-      contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       config: {
-        temperature: 1,
-        maxOutputTokens: 5000,
+        systemInstruction: systemPrompt,
+        temperature: 0.9,
+        maxOutputTokens: 500,
       },
+      ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
 
     const aiMessage = result.text?.trim();
@@ -239,6 +212,19 @@ Rispondi SOLO con la frase, senza virgolette o spiegazioni.`;
         success: false,
         error: 'AI returned empty response',
       };
+    }
+
+    // Log File Search citations if available
+    if (fileSearchTool) {
+      const citations = fileSearchService.parseCitations(result);
+      if (citations.length > 0) {
+        console.log(`[CHECKIN-AI] File Search used ${citations.length} citations:`);
+        citations.forEach((c, i) => {
+          console.log(`  ${i + 1}. ${c.sourceTitle}`);
+        });
+      } else {
+        console.log(`[CHECKIN-AI] File Search enabled but no citations in response`);
+      }
     }
 
     // Clean up response
@@ -254,6 +240,7 @@ Rispondi SOLO con la frase, senza virgolette o spiegazioni.`;
       aiMessage: cleanedMessage,
       context,
       model,
+      usedFileSearch: !!fileSearchTool,
     };
   } catch (error: any) {
     console.error('[CHECKIN-AI] Error generating AI message:', error);
