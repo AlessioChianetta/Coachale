@@ -1020,10 +1020,14 @@ export function WeeklyCheckinCard() {
                 return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
               };
               
+              // Template selezionati per la rotazione
+              const selectedTemplateIds = config?.templateIds || [];
+              const selectedTemplates = templates.filter(t => selectedTemplateIds.includes(t.id));
+              
               // Simula invii futuri considerando che dopo ogni invio il cliente è bloccato per minDays
               // Questo crea una mappa di quale cliente riceve il messaggio in quale giorno
               const simulateSchedule = () => {
-                const schedule: Map<string, { client: any; dateKey: string }> = new Map();
+                const schedule: Map<string, { client: any; template: any; dateKey: string }> = new Map();
                 const clientLastSendDate: Map<string, Date> = new Map();
                 
                 // Inizializza con i blocchi attuali dei clienti
@@ -1058,13 +1062,17 @@ export function WeeklyCheckinCard() {
                     return daysSinceLast >= minDays;
                   });
                   
-                  if (eligibleForDate.length > 0) {
+                  if (eligibleForDate.length > 0 && selectedTemplates.length > 0) {
                     // Seleziona cliente in rotazione deterministica
                     const seed = checkDate.getDate() + checkDate.getMonth() * 31;
                     const selectedClient = eligibleForDate[seed % eligibleForDate.length];
                     
+                    // Seleziona template in rotazione (diverso seed per variare)
+                    const templateSeed = checkDate.getDate() + checkDate.getMonth() * 31 + checkDate.getFullYear();
+                    const selectedTemplate = selectedTemplates[templateSeed % selectedTemplates.length];
+                    
                     // Registra l'invio
-                    schedule.set(dateKey, { client: selectedClient, dateKey });
+                    schedule.set(dateKey, { client: selectedClient, template: selectedTemplate, dateKey });
                     clientLastSendDate.set(selectedClient.id, new Date(checkDate));
                   }
                 }
@@ -1074,11 +1082,10 @@ export function WeeklyCheckinCard() {
               
               const scheduleMap = simulateSchedule();
               
-              // Trova cliente programmato per una data specifica
-              const getClientForDay = (date: Date) => {
+              // Trova programmazione per una data specifica
+              const getScheduleForDay = (date: Date) => {
                 const dateKey = date.toISOString().split('T')[0];
-                const scheduled = scheduleMap.get(dateKey);
-                return scheduled?.client || null;
+                return scheduleMap.get(dateKey) || null;
               };
               
               const formatWeekRange = () => {
@@ -1161,7 +1168,9 @@ export function WeeklyCheckinCard() {
                       const dayPast = isPast(date);
                       const dayToday = isToday(date);
                       const scheduledTime = getScheduledTime(date);
-                      const client = getClientForDay(date);
+                      const schedule = getScheduleForDay(date);
+                      const client = schedule?.client;
+                      const template = schedule?.template;
                       const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
                       
                       return (
@@ -1210,14 +1219,21 @@ export function WeeklyCheckinCard() {
                               </div>
                             </div>
                             
-                            {/* Info cliente */}
+                            {/* Info cliente e template */}
                             {!isExcluded && !dayPast && client && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                                     {client.firstName} {client.lastName}
                                   </p>
                                   <p className="text-xs text-gray-500">{client.phoneNumber}</p>
+                                  {template && (
+                                    <Badge variant="outline" className="mt-1 text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
+                                      <MessageSquare className="h-2.5 w-2.5 mr-1" />
+                                      {template.friendlyName?.slice(0, 25) || "Template"}
+                                      {template.friendlyName?.length > 25 ? "..." : ""}
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center text-green-600 font-semibold">
                                   {client.firstName?.[0]}
