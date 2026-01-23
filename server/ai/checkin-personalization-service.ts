@@ -283,18 +283,26 @@ Basandoti sui DATI REALI sopra, genera un messaggio di check-in PERSONALIZZATO c
 5. SII DI SUPPORTO se ha esercizi in ritardo o difficoltà
 
 Il messaggio deve essere:
-- BREVE (2-3 frasi, max 60 parole)
+- COMPLETO E DETTAGLIATO (5-8 frasi, 150-250 parole)
 - CALDO e PERSONALE, come se scrivessi a un cliente che conosci bene
-- SPECIFICO - DEVI menzionare qualcosa di concreto dai dati (un esercizio, un obiettivo, un progresso)
+- SPECIFICO - DEVI menzionare TUTTI i dettagli rilevanti dai dati:
+  * Esercizi completati o in sospeso (titoli specifici!)
+  * Progressi fatti e traguardi raggiunti
+  * Riferimenti a consulenze passate se presenti
+  * Obiettivi su cui sta lavorando
+  * Consigli pratici e incoraggiamento
 - In italiano naturale e colloquiale
 - SENZA emoji, SENZA saluti formali (Ciao, Buongiorno), SENZA firma
 
-ESEMPI BUONI basati sui dati:
-- "Ho visto che hai completato l'esercizio sul budget - ottimo lavoro! Come ti senti con la gestione delle spese questa settimana?"
-- "Noto che hai l'esercizio sulla pianificazione degli obiettivi in scadenza, come sta andando? Fammi sapere se hai bisogno di supporto."
-- "Dalla nostra ultima consulenza mi è rimasto impresso il tuo obiettivo di risparmiare per la vacanza - come procede?"
+ESEMPIO BUONO (dettagliato e personalizzato):
+"Ho dato un'occhiata ai tuoi progressi e vedo che hai ancora tre esercizi in sospeso: l'analisi del budget mensile, la pianificazione degli obiettivi trimestrali e l'esercizio sulle abitudini di risparmio. So che a volte il tempo e' poco, ma completare questi esercizi ti aiutera' davvero a fare chiarezza sulla tua situazione finanziaria.
 
-ESEMPIO CATTIVO (troppo generico):
+Dalla nostra ultima consulenza mi e' rimasto impresso quanto tenevi a migliorare la gestione delle spese - questi esercizi sono proprio pensati per quello. Se hai difficolta' con qualcuno di questi o hai bisogno di chiarimenti, scrivimi pure e ne parliamo insieme.
+
+Come sta andando questa settimana? C'e' qualcosa in particolare su cui vorresti concentrarti?"
+
+ESEMPIO CATTIVO (troppo generico o corto):
+- "Ho visto che hai esercizi in sospeso, come va?"
 - "Spero che tu stia bene. Come procede tutto?"
 
 IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, senza spiegazioni, senza prefissi.`;
@@ -314,7 +322,7 @@ IMPORTANTE: Rispondi SOLO con il messaggio finale, senza virgolette, senza spieg
       systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
       generationConfig: {
         temperature: 0.8, // Slightly lower for more focused output
-        maxOutputTokens: 300, // Reduced since we want shorter messages
+        maxOutputTokens: 1000, // Increased for detailed, personalized messages
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
