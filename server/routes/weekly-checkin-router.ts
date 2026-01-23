@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import * as schema from "../../shared/schema";
-import { eq, and, desc, sql, or, isNull, isNotNull, ne } from "drizzle-orm";
+import { eq, and, desc, sql, or, isNull, isNotNull, ne, inArray } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
 import twilio from "twilio";
 import { normalizePhoneNumber } from "../whatsapp/webhook-handler";
@@ -587,7 +587,8 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
     }
     
     // Get templates
-    const templateIds = config.templateIds || [];
+    const rawTemplateIds = config.templateIds;
+    const templateIds: string[] = Array.isArray(rawTemplateIds) ? rawTemplateIds : [];
     if (templateIds.length === 0) {
       return res.json({
         isEnabled: true,
@@ -597,7 +598,7 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
       });
     }
     
-    // Fetch template details
+    // Fetch template details using inArray for proper array handling
     const templates = await db
       .select({
         id: schema.whatsappCustomTemplates.id,
@@ -615,7 +616,7 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
       .where(
         and(
           eq(schema.whatsappCustomTemplates.consultantId, consultantId),
-          sql`${schema.whatsappCustomTemplates.id} = ANY(${templateIds})`
+          inArray(schema.whatsappCustomTemplates.id, templateIds)
         )
       );
     
