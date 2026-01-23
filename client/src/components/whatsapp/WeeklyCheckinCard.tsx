@@ -40,8 +40,15 @@ import {
   PlayCircle,
   Timer,
   Calendar,
-  Zap
+  Zap,
+  Eye
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CheckinConfig {
   id: string;
@@ -1308,13 +1315,38 @@ export function WeeklyCheckinCard() {
                                       <p className="text-sm font-medium text-gray-900 dark:text-white">
                                         {entry.clientName}
                                       </p>
-                                      {entry.templateName && (
-                                        <Badge variant="outline" className="mt-1 text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
-                                          <MessageSquare className="h-2.5 w-2.5 mr-1" />
-                                          {entry.templateName.slice(0, 25)}
-                                          {entry.templateName.length > 25 ? "..." : ""}
-                                        </Badge>
-                                      )}
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {entry.templateName && (
+                                          <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
+                                            <MessageSquare className="h-2.5 w-2.5 mr-1" />
+                                            {entry.templateName.slice(0, 25)}
+                                            {entry.templateName.length > 25 ? "..." : ""}
+                                          </Badge>
+                                        )}
+                                        {entry.personalizedMessage && (
+                                          <TooltipProvider>
+                                            <Tooltip delayDuration={0}>
+                                              <TooltipTrigger asChild>
+                                                <button className="p-1 rounded-full bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900 transition-colors">
+                                                  <Eye className="h-3.5 w-3.5 text-green-600" />
+                                                </button>
+                                              </TooltipTrigger>
+                                              <TooltipContent 
+                                                side="left" 
+                                                align="start"
+                                                className="max-w-sm p-3 bg-white dark:bg-gray-800 border shadow-lg"
+                                              >
+                                                <p className="text-xs font-medium text-gray-900 dark:text-white mb-1">
+                                                  Messaggio inviato:
+                                                </p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                                                  {entry.personalizedMessage}
+                                                </p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                      </div>
                                       {entry.skipReason && (
                                         <p className="text-xs text-gray-400 mt-1">{entry.skipReason}</p>
                                       )}

@@ -1094,6 +1094,27 @@ router.get("/schedule", authenticateToken, requireRole("consultant"), async (req
     // Raggruppa per data per facilitare la visualizzazione calendario
     const scheduleByDate: Record<string, any[]> = {};
     
+    // Get all log IDs to fetch personalized messages
+    const logIds = schedule
+      .filter(e => e.executedLogId)
+      .map(e => e.executedLogId!);
+    
+    // Fetch personalized messages from logs
+    const logMessages: Record<string, string | null> = {};
+    if (logIds.length > 0) {
+      const logs = await db
+        .select({
+          id: schema.weeklyCheckinLogs.id,
+          personalizedMessage: schema.weeklyCheckinLogs.personalizedMessage,
+        })
+        .from(schema.weeklyCheckinLogs)
+        .where(inArray(schema.weeklyCheckinLogs.id, logIds));
+      
+      for (const log of logs) {
+        logMessages[log.id] = log.personalizedMessage;
+      }
+    }
+    
     for (const entry of schedule) {
       const dateKey = entry.scheduledDate;
       if (!scheduleByDate[dateKey]) {
@@ -1112,6 +1133,7 @@ router.get("/schedule", authenticateToken, requireRole("consultant"), async (req
         dayOfWeek: entry.dayOfWeek,
         executedAt: entry.executedAt,
         skipReason: entry.skipReason,
+        personalizedMessage: entry.executedLogId ? logMessages[entry.executedLogId] : null,
       });
     }
     

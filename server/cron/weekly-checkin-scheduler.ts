@@ -752,6 +752,14 @@ async function processScheduledCheckins(): Promise<void> {
           })
           .where(eq(weeklyCheckinLogs.id, checkin.id));
 
+        // Also update the schedule entry status to 'sent'
+        await db.update(weeklyCheckinSchedule)
+          .set({
+            status: 'sent',
+            updatedAt: new Date()
+          })
+          .where(eq(weeklyCheckinSchedule.executedLogId, checkin.id));
+
         await db.update(weeklyCheckinConfig)
           .set({
             totalSent: sql`${weeklyCheckinConfig.totalSent} + 1`,
@@ -777,6 +785,17 @@ async function processScheduledCheckins(): Promise<void> {
             updatedAt: new Date()
           })
           .where(eq(weeklyCheckinLogs.id, checkin.id));
+
+        // Also update the schedule entry status if max retries reached
+        if (retryCount >= maxRetries) {
+          await db.update(weeklyCheckinSchedule)
+            .set({
+              status: 'failed',
+              skipReason: error.message || 'Max retries exceeded',
+              updatedAt: new Date()
+            })
+            .where(eq(weeklyCheckinSchedule.executedLogId, checkin.id));
+        }
       }
     }
   } finally {
