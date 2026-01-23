@@ -296,7 +296,8 @@ export async function generateScheduleForWeeks(
   let clientIndex = 0;
   const totalDays = weeks * 7;
   
-  for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
+  // Start from tomorrow (dayOffset = 1) to avoid scheduling for today with past times
+  for (let dayOffset = 1; dayOffset <= totalDays; dayOffset++) {
     const currentDate = new Date(today);
     currentDate.setDate(currentDate.getDate() + dayOffset);
     
