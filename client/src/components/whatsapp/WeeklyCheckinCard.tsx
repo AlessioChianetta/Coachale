@@ -1068,6 +1068,25 @@ export function WeeklyCheckinCard() {
 
           <TabsContent value="calendar" className="space-y-4 mt-0">
             {(() => {
+              const getStatusBadge = (status: ScheduleEntry["status"]) => {
+                switch (status) {
+                  case "planned":
+                    return <Badge className="bg-blue-100 text-blue-700 border-blue-200">Pianificato</Badge>;
+                  case "pending":
+                    return <Badge className="bg-amber-100 text-amber-700 border-amber-200">In attesa</Badge>;
+                  case "sent":
+                    return <Badge className="bg-green-100 text-green-700 border-green-200">Inviato</Badge>;
+                  case "failed":
+                    return <Badge className="bg-red-100 text-red-700 border-red-200">Fallito</Badge>;
+                  case "skipped":
+                    return <Badge className="bg-gray-100 text-gray-600 border-gray-200">Saltato</Badge>;
+                  case "cancelled":
+                    return <Badge className="bg-gray-100 text-gray-500 border-gray-200 line-through">Cancellato</Badge>;
+                  default:
+                    return null;
+                }
+              };
+              
               const today = new Date();
               const startOfWeek = new Date(today);
               startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (calendarWeekOffset * 7));
@@ -1111,25 +1130,6 @@ export function WeeklyCheckinCard() {
                 const d = new Date(date);
                 d.setHours(0, 0, 0, 0);
                 return d < t;
-              };
-              
-              const getStatusBadge = (status: ScheduleEntry["status"]) => {
-                switch (status) {
-                  case "planned":
-                    return <Badge className="bg-blue-100 text-blue-700 border-blue-200">Pianificato</Badge>;
-                  case "pending":
-                    return <Badge className="bg-amber-100 text-amber-700 border-amber-200">In attesa</Badge>;
-                  case "sent":
-                    return <Badge className="bg-green-100 text-green-700 border-green-200">Inviato</Badge>;
-                  case "failed":
-                    return <Badge className="bg-red-100 text-red-700 border-red-200">Fallito</Badge>;
-                  case "skipped":
-                    return <Badge className="bg-gray-100 text-gray-600 border-gray-200">Saltato</Badge>;
-                  case "cancelled":
-                    return <Badge className="bg-gray-100 text-gray-500 border-gray-200 line-through">Cancellato</Badge>;
-                  default:
-                    return null;
-                }
               };
               
               const hasScheduleData = scheduleData && scheduleData.totalEntries > 0;
@@ -1271,10 +1271,10 @@ export function WeeklyCheckinCard() {
                                     <span className="text-[10px] uppercase">{dayNames[dayOfWeek].slice(0, 3)}</span>
                                   </div>
                                   <div>
-                                    <p className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                    <div className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
                                       {dayNames[dayOfWeek]}
                                       {dayToday && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">OGGI</Badge>}
-                                    </p>
+                                    </div>
                                     {isExcluded ? (
                                       <p className="text-xs text-gray-400">Giorno escluso dalla configurazione</p>
                                     ) : dayPast && entry ? (
