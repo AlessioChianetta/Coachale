@@ -22,6 +22,7 @@ import {
 import { eq, and, lte, isNotNull, desc, sql, gte } from 'drizzle-orm';
 import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
 import twilio from 'twilio';
+import { generateCheckinVariables } from '../ai/checkin-personalization-service';
 
 let dailySchedulingJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
@@ -431,12 +432,44 @@ async function processScheduledCheckins(): Promise<void> {
         let messageSid: string;
         
         if (isTemplateMessage && checkin.templateId) {
+          // Generate AI-personalized variables for template
+          let contentVariables: Record<string, string> | undefined;
+          
+          try {
+            const variables = await generateCheckinVariables(checkin.clientId, checkin.consultantId);
+            if (variables) {
+              contentVariables = {
+                '1': variables.name,
+                '2': variables.aiMessage,
+              };
+              console.log(`[WEEKLY-CHECKIN] AI variables for ${checkin.clientId}: ${JSON.stringify(contentVariables)}`);
+              
+              // Update log with AI personalization
+              await db.update(weeklyCheckinLogs)
+                .set({
+                  personalizedMessage: variables.aiMessage,
+                  aiPersonalizationContext: {
+                    clientName: variables.name,
+                    aiMessage: variables.aiMessage,
+                    generatedAt: new Date().toISOString(),
+                  },
+                  updatedAt: new Date(),
+                })
+                .where(eq(weeklyCheckinLogs.id, checkin.id));
+            }
+          } catch (aiError) {
+            console.error(`[WEEKLY-CHECKIN] AI personalization failed for ${checkin.clientId}:`, aiError);
+            // Continue with fallback - template without personalization
+          }
+          
           messageSid = await sendWhatsAppMessage(
             checkin.consultantId,
             checkin.phoneNumber,
+            `Ciao ${contentVariables?.['1'] || 'Cliente'}! ${contentVariables?.['2'] || 'Come stai questa settimana?'}`,
             undefined,
-            checkin.templateId,
             {
+              contentSid: checkin.templateId,
+              contentVariables,
               agentConfigId: agentConfig.id,
               conversationId: checkin.conversationId || undefined
             }
