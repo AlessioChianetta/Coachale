@@ -270,12 +270,20 @@ export async function generateCheckinVariables(
   const result = await generateCheckinAiMessage(context);
 
   if (!result.success || !result.aiMessage) {
+    // Log why we're using fallback
+    console.log(`[CHECKIN-AI] ⚠️ Fallback triggered for ${context.clientName}:`);
+    console.log(`  success: ${result.success}, aiMessage: ${!!result.aiMessage}`);
+    if (result.error) {
+      console.log(`  error: ${result.error}`);
+    }
     // Fallback to generic message
     return {
       name: context.clientName,
       aiMessage: 'spero che questa settimana stia andando bene per te',
     };
   }
+  
+  console.log(`[CHECKIN-AI] ✅ AI generated message for ${context.clientName}: "${result.aiMessage}"`);
 
   return {
     name: context.clientName,
