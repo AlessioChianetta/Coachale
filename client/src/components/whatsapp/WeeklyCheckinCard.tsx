@@ -157,10 +157,15 @@ export function WeeklyCheckinCard() {
   });
 
   const { data: whatsappAgents = [] } = useQuery<WhatsAppAgent[]>({
-    queryKey: ["/api/whatsapp/agents"],
+    queryKey: ["/api/whatsapp/config"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/whatsapp/agents");
-      return response?.agents || [];
+      const response = await apiRequest("GET", "/api/whatsapp/config");
+      return (response?.configs || []).map((config: any) => ({
+        id: config.id,
+        agentName: config.agentName || "Agente WhatsApp",
+        phoneNumber: config.twilioWhatsappNumber || "",
+        isActive: config.isActive,
+      }));
     },
   });
 
