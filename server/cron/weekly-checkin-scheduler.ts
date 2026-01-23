@@ -590,11 +590,31 @@ async function processScheduledCheckins(): Promise<void> {
 
     for (const checkin of pendingCheckins) {
       try {
+        // Get the agent from the weekly checkin config, not just any active agent
+        const [config] = await db
+          .select()
+          .from(weeklyCheckinConfig)
+          .where(eq(weeklyCheckinConfig.consultantId, checkin.consultantId))
+          .limit(1);
+        
+        if (!config?.agentConfigId) {
+          console.error(`⚠️ [WEEKLY-CHECKIN] No agent configured in weekly check-in settings for ${checkin.consultantId}`);
+          await db.update(weeklyCheckinLogs)
+            .set({
+              status: 'failed',
+              errorMessage: 'No agent configured in weekly check-in settings',
+              updatedAt: new Date(),
+            })
+            .where(eq(weeklyCheckinLogs.id, checkin.id));
+          continue;
+        }
+        
         const [agentConfig] = await db
           .select()
           .from(consultantWhatsappConfig)
           .where(
             and(
+              eq(consultantWhatsappConfig.id, config.agentConfigId),
               eq(consultantWhatsappConfig.consultantId, checkin.consultantId),
               eq(consultantWhatsappConfig.isActive, true)
             )
@@ -602,11 +622,11 @@ async function processScheduledCheckins(): Promise<void> {
           .limit(1);
 
         if (!agentConfig) {
-          console.error(`⚠️ [WEEKLY-CHECKIN] No active WhatsApp agent for consultant ${checkin.consultantId}`);
+          console.error(`⚠️ [WEEKLY-CHECKIN] Configured agent ${config.agentConfigId} not found or inactive`);
           await db.update(weeklyCheckinLogs)
             .set({
               status: 'failed',
-              errorMessage: 'No active WhatsApp agent configured',
+              errorMessage: 'Configured WhatsApp agent not found or inactive',
               updatedAt: new Date()
             })
             .where(eq(weeklyCheckinLogs.id, checkin.id));
