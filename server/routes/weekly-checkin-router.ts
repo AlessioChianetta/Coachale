@@ -603,7 +603,6 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
         id: schema.whatsappCustomTemplates.id,
         name: schema.whatsappCustomTemplates.templateName,
         bodyText: schema.whatsappTemplateVersions.bodyText,
-        friendlyName: schema.whatsappTemplateVersions.friendlyName,
       })
       .from(schema.whatsappCustomTemplates)
       .innerJoin(
