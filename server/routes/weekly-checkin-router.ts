@@ -598,10 +598,10 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
       });
     }
     
-    // Fetch template details using inArray for proper array handling
+    // Fetch template details using twilio_content_sid (HX format) since that's what's saved in config
     const templates = await db
       .select({
-        id: schema.whatsappCustomTemplates.id,
+        id: schema.whatsappTemplateVersions.twilioContentSid,
         name: schema.whatsappCustomTemplates.templateName,
         bodyText: schema.whatsappTemplateVersions.bodyText,
       })
@@ -616,7 +616,7 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
       .where(
         and(
           eq(schema.whatsappCustomTemplates.consultantId, consultantId),
-          inArray(schema.whatsappCustomTemplates.id, templateIds)
+          inArray(schema.whatsappTemplateVersions.twilioContentSid, templateIds)
         )
       );
     
@@ -729,7 +729,7 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
       nextSendAt: foundDate.toISOString(),
       selectedTemplate: {
         id: selectedTemplate.id,
-        name: selectedTemplate.friendlyName || selectedTemplate.name,
+        name: selectedTemplate.name,
         bodyText: selectedTemplate.bodyText,
       },
       templateCount: templates.length,
