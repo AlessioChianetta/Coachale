@@ -275,12 +275,7 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
         enabledForWeeklyCheckin: schema.users.enabledForWeeklyCheckin,
       })
       .from(schema.users)
-      .where(
-        and(
-          eq(schema.users.consultantId, req.user!.id),
-          eq(schema.users.role, "client")
-        )
-      )
+      .where(eq(schema.users.consultantId, req.user!.id))
       .orderBy(schema.users.firstName);
     
     console.log(`[WEEKLY-CHECKIN] Total clients found: ${allClients.length}`);
