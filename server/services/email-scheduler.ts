@@ -10,6 +10,7 @@ import { toZonedTime, fromZonedTime } from "date-fns-tz";
 const ITALY_TIMEZONE = "Europe/Rome";
 const DEFAULT_SEND_WINDOW_START = "13:00";
 const DEFAULT_SEND_WINDOW_END = "14:00";
+const SEND_HOUR = 13; // Default hour for scheduling (used by setToItalianTime)
 
 /**
  * Get the current time in Italian timezone.
