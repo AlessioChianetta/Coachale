@@ -156,20 +156,16 @@ export function WeeklyCheckinCard() {
     queryKey: ["/api/weekly-checkin/templates"],
   });
 
-  const { data: whatsappConfigData } = useQuery<{ configured: boolean; configs: any[] }>({
-    queryKey: ["/api/whatsapp/config"],
+  const { data: agentsData } = useQuery({
+    queryKey: ["/api/whatsapp/config/proactive"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/whatsapp/config/proactive");
+      if (!response) return { configs: [] };
+      return response;
+    },
   });
   
-  const whatsappAgents: WhatsAppAgent[] = useMemo(() => {
-    const configs = whatsappConfigData?.configs;
-    if (!configs || !Array.isArray(configs)) return [];
-    return configs.map((config: any) => ({
-      id: config.id,
-      agentName: config.agentName || "Agente WhatsApp",
-      phoneNumber: config.twilioWhatsappNumber || "",
-      isActive: config.isActive,
-    }));
-  }, [whatsappConfigData]);
+  const whatsappAgents = agentsData?.configs || [];
 
   const categorizeTemplate = (template: WhatsAppTemplate): string => {
     const name = (template.friendlyName || "").toLowerCase();
@@ -950,20 +946,17 @@ export function WeeklyCheckinCard() {
               </div>
               <div className="ml-11">
                 <Select
-                  value={config?.agentConfigId || ""}
-                  onValueChange={(value) => updateConfigMutation.mutate({ agentConfigId: value || null })}
+                  value={config?.agentConfigId || "none"}
+                  onValueChange={(value) => updateConfigMutation.mutate({ agentConfigId: value === "none" ? null : value })}
                 >
                   <SelectTrigger className="w-full bg-white dark:bg-gray-800">
                     <SelectValue placeholder="Seleziona un agente WhatsApp..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {whatsappAgents.filter(a => a.isActive).map((agent) => (
+                    <SelectItem value="none">Nessun agente</SelectItem>
+                    {whatsappAgents.map((agent: any) => (
                       <SelectItem key={agent.id} value={agent.id}>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3 w-3" />
-                          <span>{agent.agentName}</span>
-                          <span className="text-gray-400">({agent.phoneNumber})</span>
-                        </div>
+                        {agent.agentName || agent.businessName || "Agente senza nome"}
                       </SelectItem>
                     ))}
                   </SelectContent>
