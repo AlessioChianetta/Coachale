@@ -265,6 +265,8 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
     const minDays = config?.minDaysSinceLastContact || 5;
     console.log(`[WEEKLY-CHECKIN] Config minDays: ${minDays}`);
 
+    // Match consultant-clients.tsx behavior: show clients with isActive !== false
+    // This includes isActive = true AND isActive = null (default active)
     const allClients = await db
       .select({
         id: schema.users.id,
@@ -275,7 +277,15 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
         enabledForWeeklyCheckin: schema.users.enabledForWeeklyCheckin,
       })
       .from(schema.users)
-      .where(eq(schema.users.consultantId, req.user!.id))
+      .where(
+        and(
+          eq(schema.users.consultantId, req.user!.id),
+          or(
+            eq(schema.users.isActive, true),
+            isNull(schema.users.isActive)
+          )
+        )
+      )
       .orderBy(schema.users.firstName);
     
     console.log(`[WEEKLY-CHECKIN] Total clients found: ${allClients.length}`);
