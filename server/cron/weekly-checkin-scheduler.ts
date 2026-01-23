@@ -243,9 +243,10 @@ export async function runDailySchedulingNow(): Promise<void> {
 /**
  * Activate today's pre-planned schedule entries
  * Changes status from 'planned' to 'pending' and creates corresponding log entries
+ * Includes duplicate prevention check to avoid re-processing already activated entries
  */
 async function activateTodaysScheduleEntries(todayStr: string): Promise<number> {
-  // Find all 'planned' entries for today
+  // Find all 'planned' entries for today (only 'planned' status, not already processed)
   const todaysEntries = await db
     .select()
     .from(weeklyCheckinSchedule)
@@ -266,6 +267,12 @@ async function activateTodaysScheduleEntries(todayStr: string): Promise<number> 
   
   for (const entry of todaysEntries) {
     try {
+      // Duplicate prevention: Check if this entry already has an associated log entry
+      if (entry.executedLogId) {
+        console.log(`⏭️ [WEEKLY-CHECKIN] Entry ${entry.id} already has log ${entry.executedLogId}, skipping`);
+        continue;
+      }
+      
       // Create scheduled time from entry data
       const scheduledFor = new Date(`${entry.scheduledDate}T${String(entry.scheduledHour).padStart(2, '0')}:${String(entry.scheduledMinute).padStart(2, '0')}:00`);
       

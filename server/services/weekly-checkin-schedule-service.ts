@@ -128,23 +128,33 @@ async function fetchTwilioTemplates(
 }
 
 /**
- * Generate a random time within the specified range
+ * Generate a deterministic time within the specified range based on date and client ID
+ * Uses a hash function to ensure same inputs always produce same outputs
  */
-function generateRandomTimeInRange(
-  startTime: string,
-  endTime: string
+function deterministicTime(
+  dateKey: string,
+  clientId: string,
+  preferredStart: string,
+  preferredEnd: string
 ): { hour: number; minute: number } {
-  const [startHour, startMin] = startTime.split(':').map(Number);
-  const [endHour, endMin] = endTime.split(':').map(Number);
+  const seed = dateKey + clientId;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash = hash & hash;
+  }
+  hash = Math.abs(hash);
   
-  const startMinutes = startHour * 60 + startMin;
-  const endMinutes = endHour * 60 + endMin;
+  const [startH, startM] = preferredStart.split(':').map(Number);
+  const [endH, endM] = preferredEnd.split(':').map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  const windowSize = Math.max(endMinutes - startMinutes, 1);
   
-  const randomMinutes = startMinutes + Math.floor(Math.random() * (endMinutes - startMinutes));
-  
+  const targetMinutes = startMinutes + (hash % windowSize);
   return {
-    hour: Math.floor(randomMinutes / 60),
-    minute: randomMinutes % 60
+    hour: Math.floor(targetMinutes / 60),
+    minute: targetMinutes % 60,
   };
 }
 
@@ -330,8 +340,9 @@ export async function generateScheduleForWeeks(
     const selectedClient = eligibleForToday[clientIndex % eligibleForToday.length];
     clientIndex++;
     
-    // Generate random time within preferred range
-    const { hour, minute } = generateRandomTimeInRange(preferredTimeStart, preferredTimeEnd);
+    // Generate deterministic time based on date and client ID
+    const dateKey = formatDateToString(currentDate);
+    const { hour, minute } = deterministicTime(dateKey, selectedClient.id, preferredTimeStart, preferredTimeEnd);
     
     // Create schedule entry
     scheduleEntries.push({
