@@ -279,7 +279,10 @@ router.get("/eligible-clients", authenticateToken, requireRole("consultant"), as
         and(
           eq(schema.users.consultantId, req.user!.id),
           eq(schema.users.role, "client"),
-          eq(schema.users.isActive, true)
+          or(
+            eq(schema.users.isActive, true),
+            isNull(schema.users.isActive)
+          )
         )
       )
       .orderBy(schema.users.firstName);
