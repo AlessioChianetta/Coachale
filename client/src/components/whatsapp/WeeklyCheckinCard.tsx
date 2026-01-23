@@ -1020,41 +1020,65 @@ export function WeeklyCheckinCard() {
                 return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
               };
               
-              // Calcola giorni rimanenti per un cliente bloccato
-              const getDaysUntilEligible = (client: any) => {
-                if (!client.blockingReason) return 0;
-                const daysSince = client.daysSinceLastContact ?? 0;
-                return Math.max(0, minDays - daysSince);
-              };
-              
-              // Trova cliente disponibile per una data specifica
-              const getClientForDay = (date: Date) => {
+              // Simula invii futuri considerando che dopo ogni invio il cliente è bloccato per minDays
+              // Questo crea una mappa di quale cliente riceve il messaggio in quale giorno
+              const simulateSchedule = () => {
+                const schedule: Map<string, { client: any; dateKey: string }> = new Map();
+                const clientLastSendDate: Map<string, Date> = new Map();
+                
+                // Inizializza con i blocchi attuali dei clienti
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const targetDate = new Date(date);
-                targetDate.setHours(0, 0, 0, 0);
-                const daysFromToday = Math.floor((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                 
-                // Trova clienti che saranno eleggibili in quella data
-                const eligibleOnDate = allEligibleClients.filter(client => {
-                  const daysUntil = getDaysUntilEligible(client);
-                  return daysUntil <= daysFromToday;
+                allEligibleClients.forEach(client => {
+                  if (client.daysSinceLastContact !== null && client.daysSinceLastContact < minDays) {
+                    // Cliente bloccato - calcola quando è stato contattato l'ultima volta
+                    const lastContact = new Date(today);
+                    lastContact.setDate(lastContact.getDate() - client.daysSinceLastContact);
+                    clientLastSendDate.set(client.id, lastContact);
+                  }
                 });
                 
-                if (eligibleOnDate.length === 0) return null;
+                // Simula 30 giorni in avanti
+                for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+                  const checkDate = new Date(today);
+                  checkDate.setDate(today.getDate() + dayOffset);
+                  const dayOfWeek = checkDate.getDay();
+                  const dateKey = checkDate.toISOString().split('T')[0];
+                  
+                  // Salta giorni esclusi
+                  if (excludedDays.includes(dayOfWeek)) continue;
+                  
+                  // Trova clienti eleggibili per questa data
+                  const eligibleForDate = allEligibleClients.filter(client => {
+                    const lastSend = clientLastSendDate.get(client.id);
+                    if (!lastSend) return true; // Mai contattato = eleggibile
+                    
+                    const daysSinceLast = Math.floor((checkDate.getTime() - lastSend.getTime()) / (1000 * 60 * 60 * 24));
+                    return daysSinceLast >= minDays;
+                  });
+                  
+                  if (eligibleForDate.length > 0) {
+                    // Seleziona cliente in rotazione deterministica
+                    const seed = checkDate.getDate() + checkDate.getMonth() * 31;
+                    const selectedClient = eligibleForDate[seed % eligibleForDate.length];
+                    
+                    // Registra l'invio
+                    schedule.set(dateKey, { client: selectedClient, dateKey });
+                    clientLastSendDate.set(selectedClient.id, new Date(checkDate));
+                  }
+                }
                 
-                // Rotazione deterministica basata sulla data
-                const seed = date.getDate() + date.getMonth() * 31;
-                return eligibleOnDate[seed % eligibleOnDate.length];
+                return schedule;
               };
               
-              // Trova prossima data in cui un cliente bloccato diventerà eleggibile
-              const getUnblockDate = (client: any) => {
-                const daysUntil = getDaysUntilEligible(client);
-                if (daysUntil === 0) return null;
-                const unblockDate = new Date();
-                unblockDate.setDate(unblockDate.getDate() + daysUntil);
-                return unblockDate;
+              const scheduleMap = simulateSchedule();
+              
+              // Trova cliente programmato per una data specifica
+              const getClientForDay = (date: Date) => {
+                const dateKey = date.toISOString().split('T')[0];
+                const scheduled = scheduleMap.get(dateKey);
+                return scheduled?.client || null;
               };
               
               const formatWeekRange = () => {
