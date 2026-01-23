@@ -570,6 +570,41 @@ export function WeeklyCheckinCard() {
                         </div>
                       </div>
                       
+                      {/* Clienti eleggibili */}
+                      {eligibleData?.eligible && eligibleData.eligible.length > 0 && (
+                        <div className="p-3 rounded-lg bg-white/80 dark:bg-gray-800/50 border border-green-100 dark:border-green-900">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Users className="h-4 w-4 text-green-500" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Destinatari: {eligibleData.eligible.length} client{eligibleData.eligible.length === 1 ? 'e' : 'i'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {eligibleData.eligible.slice(0, 5).map((client) => (
+                              <Badge 
+                                key={client.id} 
+                                variant="outline" 
+                                className={`text-xs ${client.blockingReason ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-green-50 text-green-700 border-green-200'}`}
+                              >
+                                {client.firstName} {client.lastName?.[0]}.
+                                {client.blockingReason && <AlertCircle className="h-3 w-3 ml-1" />}
+                              </Badge>
+                            ))}
+                            {eligibleData.eligible.length > 5 && (
+                              <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600">
+                                +{eligibleData.eligible.length - 5} altri
+                              </Badge>
+                            )}
+                          </div>
+                          {eligibleData.eligible.some(c => c.blockingReason) && (
+                            <p className="text-xs text-orange-600 dark:text-orange-400 mt-2 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Alcuni clienti hanno blocchi temporanei (es. contattati di recente)
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       {/* Template selezionato */}
                       {nextSendData.selectedTemplate && (
                         <div className="p-3 rounded-lg bg-white/80 dark:bg-gray-800/50 border border-indigo-100 dark:border-indigo-900">
