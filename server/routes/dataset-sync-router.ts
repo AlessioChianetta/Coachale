@@ -358,7 +358,7 @@ router.post(
         UPDATE dataset_sync_history 
         SET status = 'completed', completed_at = now(), duration_ms = ${durationMs}, 
             rows_imported = ${rowsImported}, rows_skipped = ${rowsSkipped}, rows_total = ${totalRows},
-            columns_detected = ${columns.length}, 
+            columns_detected = ${headers.length}, 
             columns_mapped = ${JSON.stringify(mappedColumns.map(c => c.suggestedName))}::jsonb,
             columns_unmapped = ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb
         WHERE sync_id = ${syncId}
@@ -372,7 +372,7 @@ router.post(
         rowsImported,
         rowsSkipped,
         rowsTotal: totalRows,
-        columnsDetected: columns.length,
+        columnsDetected: headers.length,
         mappingSummary: {
           mapped: mappedColumns.map(c => c.suggestedName),
           unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
