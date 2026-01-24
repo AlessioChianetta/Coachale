@@ -80,6 +80,55 @@ function formatDateToString(date: Date): string {
 }
 
 /**
+ * Get ISO week number for a date
+ * ISO weeks start on Monday and week 1 is the week containing January 4th
+ */
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7; // Make Sunday = 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum); // Set to nearest Thursday
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return weekNo;
+}
+
+/**
+ * Get ISO week year (may differ from calendar year at year boundaries)
+ */
+function getISOWeekYear(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  return d.getUTCFullYear();
+}
+
+/**
+ * Get the Monday of the ISO week containing the given date
+ */
+function getISOWeekMonday(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const dayOfWeek = d.getDay();
+  // ISO weeks start on Monday (1), Sunday is 0
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  d.setDate(d.getDate() - daysFromMonday);
+  return d;
+}
+
+/**
+ * Get all dates in an ISO week (Monday to Sunday)
+ */
+function getISOWeekDates(weekMonday: Date): Date[] {
+  const dates: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekMonday);
+    d.setDate(weekMonday.getDate() + i);
+    dates.push(d);
+  }
+  return dates;
+}
+
+/**
  * Fetch Twilio templates by their IDs
  */
 async function fetchTwilioTemplates(
@@ -160,23 +209,63 @@ function deterministicTime(
 
 /**
  * Main function to generate a 4-week schedule for a consultant
+ * INCREMENTAL MODE: Does NOT delete existing entries - only adds new ones for uncovered dates
+ * Also rotates days of the week for each client across weeks
  */
 export async function generateScheduleForWeeks(
   consultantId: string,
   weeks: number = 4
 ): Promise<ScheduleGenerationResult> {
-  console.log(`[SCHEDULE-SERVICE] Generating ${weeks}-week schedule for consultant ${consultantId}`);
+  console.log(`[SCHEDULE-SERVICE] Generating ${weeks}-week schedule for consultant ${consultantId} (incremental mode)`);
   
-  // 1. Delete existing planned entries
-  await db.delete(weeklyCheckinSchedule)
+  // 1. Load existing planned entries to avoid duplicates
+  const existingEntries = await db
+    .select({
+      clientId: weeklyCheckinSchedule.clientId,
+      scheduledDate: weeklyCheckinSchedule.scheduledDate,
+      dayOfWeek: weeklyCheckinSchedule.dayOfWeek,
+    })
+    .from(weeklyCheckinSchedule)
     .where(
       and(
         eq(weeklyCheckinSchedule.consultantId, consultantId),
-        eq(weeklyCheckinSchedule.status, 'planned')
+        sql`${weeklyCheckinSchedule.status} IN ('planned', 'pending', 'sent')`
       )
     );
   
-  console.log('[SCHEDULE-SERVICE] Deleted existing planned entries');
+  // Build a set of existing (clientId, date) pairs to skip
+  const existingSchedules = new Set(
+    existingEntries.map(e => `${e.clientId}|${e.scheduledDate}`)
+  );
+  
+  // Build a set of weeks that already have a scheduled entry per client
+  // Key format: "clientId|ISOYear-WweekNumber" using ISO week year (not calendar year)
+  const clientWeeksCovered = new Set<string>();
+  for (const entry of existingEntries) {
+    const entryDate = new Date(entry.scheduledDate);
+    const weekNumber = getISOWeekNumber(entryDate);
+    const isoYear = getISOWeekYear(entryDate);
+    const weekKey = `${entry.clientId}|${isoYear}-W${weekNumber}`;
+    clientWeeksCovered.add(weekKey);
+  }
+  
+  // Track last used day of week per client for rotation (find the most recent entry)
+  const clientLastDayOfWeek = new Map<string, number>();
+  const clientLastScheduledDate = new Map<string, string>();
+  
+  for (const entry of existingEntries) {
+    const currentDate = clientLastScheduledDate.get(entry.clientId);
+    // Use >= to ensure we get the day from the most recent date
+    if (currentDate === undefined || entry.scheduledDate >= currentDate) {
+      clientLastScheduledDate.set(entry.clientId, entry.scheduledDate);
+      // Use explicit null check for dayOfWeek since 0 (Sunday) is valid
+      if (entry.dayOfWeek !== null && entry.dayOfWeek !== undefined) {
+        clientLastDayOfWeek.set(entry.clientId, entry.dayOfWeek);
+      }
+    }
+  }
+  
+  console.log(`[SCHEDULE-SERVICE] Found ${existingEntries.length} existing entries, will add only new ones`);
   
   // 2. Load configuration
   const [config] = await db
@@ -284,8 +373,16 @@ export async function generateScheduleForWeeks(
   const endDate = new Date(today);
   endDate.setDate(endDate.getDate() + (weeks * 7));
   
-  // Track last scheduled date for each client
-  const clientLastScheduled: Map<string, Date> = new Map();
+  // Build list of allowed days (0=Sunday, 1=Monday, ..., 6=Saturday)
+  const allowedDays = [0, 1, 2, 3, 4, 5, 6].filter(d => !excludedDays.includes(d));
+  if (allowedDays.length === 0) {
+    console.log('[SCHEDULE-SERVICE] All days are excluded, cannot schedule');
+    return {
+      scheduledCount: 0,
+      clients: [],
+      dateRange: { from: today, to: endDate }
+    };
+  }
   
   // Sort clients for deterministic ordering
   const sortedClients = [...eligibleClients].sort((a, b) => a.id.localeCompare(b.id));
@@ -293,78 +390,154 @@ export async function generateScheduleForWeeks(
   const scheduleEntries: Array<typeof weeklyCheckinSchedule.$inferInsert> = [];
   const scheduledClientIds = new Set<string>();
   
-  let clientIndex = 0;
-  const totalDays = weeks * 7;
+  // For each week, schedule each client on a rotating day
+  // Start from current ISO week (if there are future days) or next week
+  const todayMonday = getISOWeekMonday(today);
   
-  // Start from tomorrow (dayOffset = 1) to avoid scheduling for today with past times
-  for (let dayOffset = 1; dayOffset <= totalDays; dayOffset++) {
-    const currentDate = new Date(today);
-    currentDate.setDate(currentDate.getDate() + dayOffset);
+  // Collect unique ISO weeks to schedule (starting from current/next week)
+  const weeksToSchedule: Array<{ monday: Date; isoWeekKey: string; weekNumber: number; weekYear: number }> = [];
+  
+  for (let weekOffset = 0; weekOffset < weeks; weekOffset++) {
+    // Get the Monday of the target week
+    const targetMonday = new Date(todayMonday);
+    targetMonday.setDate(todayMonday.getDate() + (weekOffset * 7));
     
-    const dayOfWeek = currentDate.getDay();
-    const weekNumber = Math.floor(dayOffset / 7) + 1;
-    
-    // Skip excluded days
-    if (excludedDays.includes(dayOfWeek)) {
-      continue;
+    // If current week and all days have passed, skip to next week
+    const weekSunday = new Date(targetMonday);
+    weekSunday.setDate(targetMonday.getDate() + 6);
+    if (weekSunday <= today) {
+      continue; // Entire week is in the past
     }
     
-    // Calculate deterministic template index
-    const month = currentDate.getMonth();
-    const year = currentDate.getFullYear();
-    const templateIndex = (dayOffset + month * 31 + year) % templates.length;
-    const template = templates[templateIndex];
+    const targetWeekNumber = getISOWeekNumber(targetMonday);
+    const targetWeekYear = getISOWeekYear(targetMonday);
+    const isoWeekKey = `${targetWeekYear}-W${targetWeekNumber}`;
     
-    // Find eligible clients for this day (respecting min days between contacts)
-    const eligibleForToday: ClientWithPhone[] = [];
+    weeksToSchedule.push({
+      monday: targetMonday,
+      isoWeekKey,
+      weekNumber: targetWeekNumber,
+      weekYear: targetWeekYear
+    });
+  }
+  
+  console.log(`[SCHEDULE-SERVICE] Planning ${weeksToSchedule.length} weeks: ${weeksToSchedule.map(w => w.isoWeekKey).join(', ')}`);
+  
+  for (const weekInfo of weeksToSchedule) {
+    const { monday: targetMonday, isoWeekKey, weekNumber: targetWeekNumber, weekYear: targetWeekYear } = weekInfo;
+    
+    // Get all dates in this ISO week
+    const weekDates = getISOWeekDates(targetMonday);
     
     for (const client of sortedClients) {
-      const lastScheduled = clientLastScheduled.get(client.id);
+      // Check if this week is already covered for this client
+      const weekKey = `${client.id}|${isoWeekKey}`;
+      if (clientWeeksCovered.has(weekKey)) {
+        continue; // Skip - already has an entry for this week
+      }
       
-      if (!lastScheduled) {
-        eligibleForToday.push(client);
+      // Get last used day of week for this client, rotate to next allowed day
+      const lastDayOfWeek = clientLastDayOfWeek.get(client.id);
+      let preferredDayOfWeek: number;
+      
+      if (lastDayOfWeek === undefined) {
+        // First time: use deterministic day based on client ID
+        const hash = client.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        preferredDayOfWeek = allowedDays[hash % allowedDays.length];
       } else {
-        const daysSinceLast = Math.floor(
-          (currentDate.getTime() - lastScheduled.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        if (daysSinceLast >= minDaysBetweenContacts) {
-          eligibleForToday.push(client);
+        // Rotate to next allowed day
+        const currentIndex = allowedDays.indexOf(lastDayOfWeek);
+        if (currentIndex === -1) {
+          // Last day is now excluded, pick first allowed
+          preferredDayOfWeek = allowedDays[0];
+        } else {
+          // Rotate to next day in allowed list
+          preferredDayOfWeek = allowedDays[(currentIndex + 1) % allowedDays.length];
         }
       }
+      
+      // Try to find a valid date in this week, starting with preferred day
+      // If preferred day doesn't satisfy minDays, try other allowed days
+      let targetDate: Date | null = null;
+      let actualDayOfWeek: number = preferredDayOfWeek;
+      
+      // Build list of days to try: preferred first, then others in rotation order
+      const daysToTry: number[] = [];
+      const preferredIndex = allowedDays.indexOf(preferredDayOfWeek);
+      for (let i = 0; i < allowedDays.length; i++) {
+        const dayIndex = (preferredIndex + i) % allowedDays.length;
+        daysToTry.push(allowedDays[dayIndex]);
+      }
+      
+      for (const tryDayOfWeek of daysToTry) {
+        // Find the date for this day in the ISO week
+        const checkDate = weekDates.find(d => d.getDay() === tryDayOfWeek);
+        
+        if (!checkDate) continue;
+        
+        // Must be in the future
+        if (checkDate <= today) continue;
+        // Must be within our planning window
+        if (checkDate > endDate) continue;
+        
+        const dateKey = formatDateToString(checkDate);
+        const scheduleKey = `${client.id}|${dateKey}`;
+        
+        // Skip if already scheduled for this date
+        if (existingSchedules.has(scheduleKey)) continue;
+        
+        // Check minimum days since last scheduled
+        const lastScheduled = clientLastScheduledDate.get(client.id);
+        if (lastScheduled) {
+          const lastDate = new Date(lastScheduled);
+          const daysSinceLast = Math.floor(
+            (checkDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (daysSinceLast < minDaysBetweenContacts) continue;
+        }
+        
+        // Found a valid date!
+        targetDate = checkDate;
+        actualDayOfWeek = tryDayOfWeek;
+        break;
+      }
+      
+      if (!targetDate) continue; // No valid day found for this week
+      
+      const dateKey = formatDateToString(targetDate);
+      
+      // Calculate template (rotate through templates)
+      const weekNumber = weekOffset + 1;
+      const templateIndex = (weekOffset + client.id.charCodeAt(0)) % templates.length;
+      const template = templates[templateIndex];
+      
+      // Generate deterministic time
+      const { hour, minute } = deterministicTime(dateKey, client.id, preferredTimeStart, preferredTimeEnd);
+      
+      // Create schedule entry
+      scheduleEntries.push({
+        configId: config.id,
+        consultantId,
+        clientId: client.id,
+        phoneNumber: client.phoneNumber,
+        scheduledDate: dateKey,
+        scheduledHour: hour,
+        scheduledMinute: minute,
+        templateId: template.id,
+        templateName: template.friendlyName,
+        status: 'planned',
+        weekNumber,
+        dayOfWeek: actualDayOfWeek,
+        generatedAt: new Date(),
+      });
+      
+      // Update tracking for next iteration
+      clientLastDayOfWeek.set(client.id, actualDayOfWeek);
+      clientLastScheduledDate.set(client.id, dateKey);
+      existingSchedules.add(`${client.id}|${dateKey}`);
+      clientWeeksCovered.add(weekKey);
+      scheduledClientIds.add(client.id);
     }
-    
-    if (eligibleForToday.length === 0) {
-      continue;
-    }
-    
-    // Deterministic client selection using round-robin based on day offset
-    const selectedClient = eligibleForToday[clientIndex % eligibleForToday.length];
-    clientIndex++;
-    
-    // Generate deterministic time based on date and client ID
-    const dateKey = formatDateToString(currentDate);
-    const { hour, minute } = deterministicTime(dateKey, selectedClient.id, preferredTimeStart, preferredTimeEnd);
-    
-    // Create schedule entry
-    scheduleEntries.push({
-      configId: config.id,
-      consultantId,
-      clientId: selectedClient.id,
-      phoneNumber: selectedClient.phoneNumber,
-      scheduledDate: formatDateToString(currentDate),
-      scheduledHour: hour,
-      scheduledMinute: minute,
-      templateId: template.id,
-      templateName: template.friendlyName,
-      status: 'planned',
-      weekNumber,
-      dayOfWeek,
-      generatedAt: new Date(),
-    });
-    
-    // Update tracking
-    clientLastScheduled.set(selectedClient.id, currentDate);
-    scheduledClientIds.add(selectedClient.id);
   }
   
   // 5. Insert all schedule entries
