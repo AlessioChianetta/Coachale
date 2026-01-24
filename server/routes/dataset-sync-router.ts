@@ -269,8 +269,9 @@ router.post(
       };
       const discoveryResult = await discoverColumns(sample, originalname, sourceData.consultant_id);
 
-      const mappedColumns = discoveryResult.columns.filter(c => c.suggestedLogicalColumn);
-      const unmappedColumns = discoveryResult.columns.filter(c => !c.suggestedLogicalColumn);
+      // Una colonna è considerata "mappata" se ha un patternMatched o confidence >= 0.8
+      const mappedColumns = discoveryResult.columns.filter(c => c.patternMatched || c.confidence >= 0.8);
+      const unmappedColumns = discoveryResult.columns.filter(c => !c.patternMatched && c.confidence < 0.8);
 
       let targetDatasetId = sourceData.target_dataset_id;
       let tableName: string;
@@ -334,7 +335,7 @@ router.post(
         SET status = 'completed', completed_at = now(), duration_ms = ${durationMs}, 
             rows_imported = ${rowsImported}, rows_skipped = ${rowsSkipped}, rows_total = ${totalRows},
             columns_detected = ${columns.length}, 
-            columns_mapped = ${JSON.stringify(mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName))}::jsonb,
+            columns_mapped = ${JSON.stringify(mappedColumns.map(c => c.suggestedName))}::jsonb,
             columns_unmapped = ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb
         WHERE sync_id = ${syncId}
       `);
@@ -349,7 +350,7 @@ router.post(
         rowsTotal: totalRows,
         columnsDetected: columns.length,
         mappingSummary: {
-          mapped: mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName),
+          mapped: mappedColumns.map(c => c.suggestedName),
           unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
         },
         durationMs,
@@ -876,8 +877,9 @@ router.post(
       const consultantId = req.user!.id;
       const discoveryResult = await discoverColumns(sample, originalname, consultantId);
 
-      const mappedColumns = discoveryResult.columns.filter(c => c.suggestedLogicalColumn);
-      const unmappedColumns = discoveryResult.columns.filter(c => !c.suggestedLogicalColumn);
+      // Una colonna è considerata "mappata" se ha un patternMatched o confidence >= 0.8
+      const mappedColumns = discoveryResult.columns.filter(c => c.patternMatched || c.confidence >= 0.8);
+      const unmappedColumns = discoveryResult.columns.filter(c => !c.patternMatched && c.confidence < 0.8);
 
       // Controlla se vogliamo simulare il flusso completo del webhook
       const { sourceId } = req.body;
@@ -973,7 +975,7 @@ router.post(
         await db.execute(sql`
           INSERT INTO dataset_sync_history (sync_id, source_id, status, started_at, completed_at, rows_imported, rows_skipped, rows_total, columns_detected, columns_mapped, columns_unmapped, file_name, file_size)
           VALUES (${syncId}, ${sourceId}, 'completed', now(), now(), ${rowsImported}, ${rowsSkipped}, ${sheet.rowCount}, ${headers.length}, 
-                  ${JSON.stringify(mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName))}::jsonb,
+                  ${JSON.stringify(mappedColumns.map(c => c.suggestedName))}::jsonb,
                   ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb,
                   ${originalname}, ${size})
         `);
@@ -990,7 +992,7 @@ router.post(
           rowsTotal: sheet.rowCount,
           columnsDetected: headers.length,
           mappingSummary: {
-            mapped: mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName),
+            mapped: mappedColumns.map(c => c.suggestedName),
             unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
           },
           message: "Test COMPLETO eseguito. Dati importati come se fosse una chiamata webhook reale.",
@@ -1011,14 +1013,14 @@ router.post(
           columns: discoveryResult.columns.map(col => ({
             physicalColumn: col.physicalColumn || col.originalName,
             detectedType: col.detectedType || col.dataType,
-            suggestedLogicalColumn: col.suggestedLogicalColumn || col.suggestedName,
+            suggestedLogicalColumn: col.suggestedName,
             confidence: col.confidence,
             sampleValues: col.sampleValues?.slice(0, 5),
           })),
           mappingSummary: {
             mapped: mappedColumns.map(c => ({
               physical: c.physicalColumn || c.originalName,
-              logical: c.suggestedLogicalColumn || c.suggestedName,
+              logical: c.suggestedName,
               confidence: c.confidence,
             })),
             unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
