@@ -339,9 +339,9 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
     /^pezzi/i,
   ],
   total_net: [
-    /^total_?net/i,
-    /^totale_?netto/i,
-    /^net_?total/i,
+    /^total_?net$/i,
+    /^totale_?netto$/i,
+    /^net_?total$/i,
     /^importo_?totale/i,
     /^importo$/i,
   ],
