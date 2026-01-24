@@ -240,7 +240,7 @@ router.post(
 
       const processedFile = await processExcelFile(newPath, originalname);
 
-      if (processedFile.sheets.length === 0 || processedFile.sheets[0].totalRows === 0) {
+      if (processedFile.sheets.length === 0 || processedFile.sheets[0].rowCount === 0) {
         const durationMs = Date.now() - startTime;
         await db.execute(sql`
           UPDATE dataset_sync_history 
@@ -255,15 +255,15 @@ router.post(
       }
 
       const sheet = processedFile.sheets[0];
-      const columns = sheet.headers;
-      const totalRows = sheet.totalRows;
+      const headers = sheet.columns.map(c => c.name);
+      const totalRows = sheet.rowCount;
 
       // Trasforma i dati nel formato DistributedSample richiesto da discoverColumns
       const sample = {
-        columns: sheet.headers,
-        rows: sheet.sampleData,
-        totalRowCount: sheet.totalRows,
-        sampledFromStart: sheet.sampleData.length,
+        columns: headers,
+        rows: sheet.sampleRows,
+        totalRowCount: sheet.rowCount,
+        sampledFromStart: sheet.sampleRows.length,
         sampledFromMiddle: 0,
         sampledFromEnd: 0
       };
@@ -305,15 +305,15 @@ router.post(
 
       const { rowsImported, rowsSkipped } = await importDataToTable(
         tableName,
-        sheet.headers,
-        sheet.sampleData
+        headers,
+        sheet.sampleRows
       );
 
       if (!targetDatasetId) {
         const datasetClientId = sourceData.client_id || sourceData.consultant_id;
         const insertedDatasetResult = await db.execute<any>(sql`
           INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
-          VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${columns.length}, now())
+          VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())
           RETURNING id
         `);
         const insertedDataset = insertedDatasetResult.rows || [];
@@ -851,7 +851,7 @@ router.post(
 
       await fs.promises.unlink(tempPath);
 
-      if (processedFile.sheets.length === 0 || processedFile.sheets[0].totalRows === 0) {
+      if (processedFile.sheets.length === 0 || processedFile.sheets[0].rowCount === 0) {
         return res.status(400).json({
           success: false,
           error: "EMPTY_FILE",
@@ -860,13 +860,14 @@ router.post(
       }
 
       const sheet = processedFile.sheets[0];
+      const headers = sheet.columns.map(c => c.name);
       
       // Trasforma i dati nel formato DistributedSample (stesso formato del webhook reale)
       const sample = {
-        columns: sheet.headers,
-        rows: sheet.sampleData,
-        totalRowCount: sheet.totalRows,
-        sampledFromStart: sheet.sampleData.length,
+        columns: headers,
+        rows: sheet.sampleRows,
+        totalRowCount: sheet.rowCount,
+        sampledFromStart: sheet.sampleRows.length,
         sampledFromMiddle: 0,
         sampledFromEnd: 0
       };
@@ -944,8 +945,8 @@ router.post(
         // Importa dati
         const { rowsImported, rowsSkipped } = await importDataToTable(
           tableName,
-          sheet.headers,
-          sheet.sampleData
+          headers,
+          sheet.sampleRows
         );
 
         // Crea dataset se non esisteva
@@ -953,7 +954,7 @@ router.post(
           const datasetClientId = sourceData.client_id || sourceData.consultant_id;
           const insertedDatasetResult = await db.execute<any>(sql`
             INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
-            VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${sheet.headers.length}, now())
+            VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())
             RETURNING id
           `);
           const insertedDataset = insertedDatasetResult.rows || [];
@@ -971,7 +972,7 @@ router.post(
         const syncId = `test_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         await db.execute(sql`
           INSERT INTO dataset_sync_history (sync_id, source_id, status, started_at, completed_at, rows_imported, rows_skipped, rows_total, columns_detected, columns_mapped, columns_unmapped, file_name, file_size)
-          VALUES (${syncId}, ${sourceId}, 'completed', now(), now(), ${rowsImported}, ${rowsSkipped}, ${sheet.totalRows}, ${sheet.headers.length}, 
+          VALUES (${syncId}, ${sourceId}, 'completed', now(), now(), ${rowsImported}, ${rowsSkipped}, ${sheet.rowCount}, ${headers.length}, 
                   ${JSON.stringify(mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName))}::jsonb,
                   ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb,
                   ${originalname}, ${size})
@@ -986,8 +987,8 @@ router.post(
           datasetId: targetDatasetId,
           rowsImported,
           rowsSkipped,
-          rowsTotal: sheet.totalRows,
-          columnsDetected: sheet.headers.length,
+          rowsTotal: sheet.rowCount,
+          columnsDetected: headers.length,
           mappingSummary: {
             mapped: mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName),
             unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
@@ -1005,8 +1006,8 @@ router.post(
           fileName: originalname,
           fileSize: size,
           sheetName: sheet.name,
-          totalRows: sheet.totalRows,
-          columnsDetected: sheet.headers.length,
+          totalRows: sheet.rowCount,
+          columnsDetected: headers.length,
           columns: discoveryResult.columns.map(col => ({
             physicalColumn: col.physicalColumn || col.originalName,
             detectedType: col.detectedType || col.dataType,
@@ -1022,7 +1023,7 @@ router.post(
             })),
             unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
           },
-          previewRows: sheet.sampleData.slice(0, 10),
+          previewRows: sheet.sampleRows.slice(0, 10),
         },
         message: "Test rapido completato. Il file NON è stato importato.",
       });
