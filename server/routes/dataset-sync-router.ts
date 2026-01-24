@@ -228,6 +228,36 @@ router.post(
         });
       }
 
+      // Parse options from request body (multipart form fields)
+      const optionsReplaceMode = req.body?.replace_mode as 'full' | 'append' | 'upsert' | undefined;
+      const optionsKeyColumns = req.body?.upsert_key_columns as string | undefined;
+
+      // If options are provided, update source configuration for future syncs
+      if (optionsReplaceMode && ['full', 'append', 'upsert'].includes(optionsReplaceMode)) {
+        let keyColumnsArray: string[] | null = null;
+        if (optionsReplaceMode === 'upsert' && optionsKeyColumns) {
+          keyColumnsArray = optionsKeyColumns
+            .split(',')
+            .map((c: string) => c.trim())
+            .filter((c: string) => c.length > 0);
+        }
+
+        // Update source with new settings
+        await db.execute(sql`
+          UPDATE dataset_sync_sources 
+          SET replace_mode = ${optionsReplaceMode},
+              upsert_key_columns = ${keyColumnsArray},
+              updated_at = NOW()
+          WHERE id = ${sourceId}
+        `);
+
+        // Update local sourceData for current sync
+        sourceData.replace_mode = optionsReplaceMode;
+        sourceData.upsert_key_columns = keyColumnsArray;
+
+        console.log(`[DATASET-SYNC] Options applied: replace_mode=${optionsReplaceMode}, key_columns=${keyColumnsArray?.join(', ') || 'none'}`);
+      }
+
       await db.execute(sql`
         INSERT INTO dataset_sync_history (source_id, sync_id, status, triggered_by, file_name, file_size_bytes, idempotency_key, request_ip)
         VALUES (${sourceId}, ${syncId}, 'processing', 'webhook', ${originalname}, ${size}, ${idempotencyKey || null}, ${req.ip || null})
@@ -554,56 +584,42 @@ router.patch(
           .filter((c: string) => c.length > 0);
       }
 
-      // Build update query dynamically
-      const updates: string[] = [];
-      const values: any[] = [];
-      let paramIndex = 1;
+      // Build update object
+      const updateFields: Record<string, any> = {
+        updated_at: new Date()
+      };
 
-      if (name !== undefined) {
-        updates.push(`name = $${paramIndex++}`);
-        values.push(name);
-      }
-      if (description !== undefined) {
-        updates.push(`description = $${paramIndex++}`);
-        values.push(description);
-      }
+      if (name !== undefined) updateFields.name = name;
+      if (description !== undefined) updateFields.description = description;
       if (replaceMode !== undefined) {
-        updates.push(`replace_mode = $${paramIndex++}`);
-        values.push(replaceMode);
+        updateFields.replace_mode = replaceMode;
+        if (replaceMode === 'upsert') {
+          updateFields.upsert_key_columns = keyColumnsArray;
+        } else {
+          updateFields.upsert_key_columns = null;
+        }
       }
-      if (replaceMode === 'upsert') {
-        updates.push(`upsert_key_columns = $${paramIndex++}`);
-        values.push(keyColumnsArray);
-      } else if (replaceMode !== undefined) {
-        // Clear upsert columns if mode changed away from upsert
-        updates.push(`upsert_key_columns = NULL`);
-      }
-      if (rateLimitPerHour !== undefined) {
-        updates.push(`rate_limit_per_hour = $${paramIndex++}`);
-        values.push(rateLimitPerHour);
-      }
-      if (isActive !== undefined) {
-        updates.push(`is_active = $${paramIndex++}`);
-        values.push(isActive);
-      }
+      if (rateLimitPerHour !== undefined) updateFields.rate_limit_per_hour = rateLimitPerHour;
+      if (isActive !== undefined) updateFields.is_active = isActive;
 
-      updates.push(`updated_at = NOW()`);
-
-      if (updates.length === 1) {
+      if (Object.keys(updateFields).length === 1) {
         return res.status(400).json({ success: false, error: "Nessun campo da aggiornare" });
       }
 
-      values.push(sourceId);
-      values.push(consultantId);
-
-      const updateQuery = `
+      // Use parameterized query with explicit values
+      const result = await db.execute<any>(sql`
         UPDATE dataset_sync_sources 
-        SET ${updates.join(', ')}
-        WHERE id = $${paramIndex++} AND consultant_id = $${paramIndex}
+        SET 
+          name = COALESCE(${updateFields.name}, name),
+          description = COALESCE(${updateFields.description}, description),
+          replace_mode = COALESCE(${updateFields.replace_mode}, replace_mode),
+          upsert_key_columns = ${updateFields.upsert_key_columns !== undefined ? updateFields.upsert_key_columns : sql`upsert_key_columns`},
+          rate_limit_per_hour = COALESCE(${updateFields.rate_limit_per_hour}, rate_limit_per_hour),
+          is_active = COALESCE(${updateFields.is_active}, is_active),
+          updated_at = NOW()
+        WHERE id = ${sourceId} AND consultant_id = ${consultantId}
         RETURNING id, name, description, replace_mode, upsert_key_columns, rate_limit_per_hour, is_active
-      `;
-
-      const result = await db.execute<any>(sql.raw(updateQuery, ...values));
+      `);
       const updated = result.rows?.[0];
 
       res.json({ success: true, data: updated });
