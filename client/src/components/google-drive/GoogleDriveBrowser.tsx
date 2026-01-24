@@ -68,7 +68,7 @@ interface BreadcrumbItem {
   name: string;
 }
 
-type DriveSection = 'home' | 'my-drive' | 'computer' | 'shared-with-me' | 'recent' | 'starred' | 'spam' | 'trash' | 'storage';
+type DriveSection = 'home' | 'my-drive' | 'computer' | 'shared-with-me' | 'recent' | 'starred' | 'spam' | 'trash' | 'storage' | 'synced';
 
 const DRIVE_SECTIONS: { id: DriveSection; label: string; icon: React.ReactNode; expandable?: boolean }[] = [
   { id: 'home', label: 'Home page', icon: <Home className="w-5 h-5" /> },
@@ -191,6 +191,8 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
           case 'trash':
             endpoint = `${apiPrefix}/google-drive/trash`;
             break;
+          case 'synced':
+            return { success: true, data: [] };
           default:
             endpoint = `${apiPrefix}/google-drive/files?parentId=${currentFolderId}`;
         }
@@ -204,6 +206,20 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
       return response.json();
     },
     enabled: statusData?.connected === true,
+  });
+
+  // Query for synced documents from Knowledge Base
+  const { data: syncedDocsData, isLoading: syncedDocsLoading } = useQuery({
+    queryKey: [`${apiPrefix}/knowledge/documents/drive-synced`],
+    queryFn: async () => {
+      const response = await fetch(`${apiPrefix}/knowledge/documents?source=google_drive`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error("Errore nel caricamento dei documenti sincronizzati");
+      return response.json();
+    },
+    enabled: statusData?.connected === true && currentSection === 'synced',
   });
 
   const connectMutation = useMutation({
@@ -510,6 +526,27 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
                   )}
                 </button>
               ))}
+              
+              {/* Synced section */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="px-4 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wide">Già sincronizzati</p>
+                <button
+                  onClick={() => handleSectionChange('synced' as DriveSection)}
+                  className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-full text-left transition-colors ${
+                    currentSection === 'synced'
+                      ? "bg-[#c2e7ff] text-[#001d35]"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <span className={currentSection === 'synced' ? "text-[#001d35]" : "text-gray-600"}>
+                    <CheckCircle2 className="w-5 h-5" />
+                  </span>
+                  <span className="text-sm font-medium flex-1">Nella Knowledge Base</span>
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                    {importedFileIds.size}
+                  </Badge>
+                </button>
+              </div>
             </div>
           </ScrollArea>
           
@@ -620,7 +657,63 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
               </div>
             )}
 
-            {isLoadingContent ? (
+            {/* Synced Documents Section */}
+            {currentSection === 'synced' ? (
+              syncedDocsLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#1a73e8]" />
+                  <span className="ml-3 text-gray-500">Caricamento documenti sincronizzati...</span>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-800">Documenti sincronizzati con Knowledge Base</h2>
+                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                      {syncedDocsData?.data?.length || 0} documenti
+                    </Badge>
+                  </div>
+                  
+                  {(!syncedDocsData?.data || syncedDocsData.data.length === 0) ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                      <CheckCircle2 className="w-16 h-16 text-gray-300 mb-4" />
+                      <p className="text-lg">Nessun documento sincronizzato</p>
+                      <p className="text-sm text-gray-400 mt-1">Importa file da Google Drive per vederli qui</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg border border-gray-200">
+                      <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        <div className="col-span-5">Nome</div>
+                        <div className="col-span-3">Ultima sincronizzazione</div>
+                        <div className="col-span-2">Sincronizzazioni</div>
+                        <div className="col-span-2">Stato</div>
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        {syncedDocsData.data.map((doc: any) => (
+                          <div key={doc.id} className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50">
+                            <div className="col-span-5 flex items-center gap-3 min-w-0">
+                              <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                              {getFileIcon(doc.mimeType || 'application/pdf', "md")}
+                              <span className="text-sm text-gray-800 truncate">{doc.title}</span>
+                            </div>
+                            <div className="col-span-3 text-sm text-gray-500">
+                              {doc.lastDriveSyncAt ? formatDate(doc.lastDriveSyncAt) : formatDate(doc.createdAt)}
+                            </div>
+                            <div className="col-span-2 text-sm text-gray-600">
+                              {doc.syncCount || 1}x
+                            </div>
+                            <div className="col-span-2">
+                              <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                                Sincronizzato
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            ) : isLoadingContent ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-[#1a73e8]" />
                 <span className="ml-3 text-gray-500">Caricamento...</span>
