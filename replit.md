@@ -67,6 +67,10 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
 - **Knowledge Base Enhancement - January 2026**: Three major capabilities added:
   - **Universal PDF Support with Gemini Files API**: Smart fallback logic (tries pdf-parse first, uses Gemini for scanned PDFs), automatic 48h expiration handling with lazy re-upload on access, local file preserved for re-upload
   - **Real-Time Google Drive Synchronization**: Webhook endpoint for instant updates, drive_sync_channels table for channel management, 12-hour cron job for channel renewal before 24h expiration, automatic document re-sync when changes detected on Drive
+  - **Cost-Optimized Debounce System**: 30-minute debounce for Drive syncs - webhook sets `pendingSyncAt`, cron job (every 5 min) processes pending syncs to avoid excessive API costs during frequent edits
+  - **Comprehensive Sync History Tracking**: `document_sync_history` table logs all syncs with: type (initial/webhook/manual/scheduled), status, characters extracted, estimated tokens, duration, and error messages
   - **Scalable Frontend Layout**: TanStack Virtual for virtualization (handles thousands of docs), useInfiniteQuery for cursor-based pagination, folder sidebar with CRUD operations, grid/list view toggle, bulk selection with checkboxes, debounced server-side search, sync status indicators for Drive documents
-  - New DB tables: `knowledge_document_folders`, `drive_sync_channels`
-  - New fields on consultant_knowledge_documents: `geminiFileUri`, `geminiFileExpiresAt`, `folderId`
+  - **Separated Document Views**: Frontend now shows "Documenti Google Drive" (with sync info) and "Documenti Caricati" as collapsible sections with count badges
+  - **Sync History Dialog**: Per-document sync history viewer showing all sync attempts with metrics (tokens, duration, errors)
+  - New DB tables: `knowledge_document_folders`, `drive_sync_channels`, `document_sync_history`
+  - New fields on consultant_knowledge_documents: `geminiFileUri`, `geminiFileExpiresAt`, `folderId`, `syncCount`, `lastDriveSyncAt`, `pendingSyncAt`
