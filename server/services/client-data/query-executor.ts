@@ -321,7 +321,8 @@ export async function executeMetricSQL(
   datasetId: string,
   sqlExpression: string,
   metricName: string,
-  options: QueryOptions = {}
+  options: QueryOptions = {},
+  enhancements?: { whereClause?: string; orderByClause?: string }
 ): Promise<QueryResult> {
   const startTime = Date.now();
   const datasetInfo = await getDatasetInfo(datasetId);
@@ -330,7 +331,13 @@ export async function executeMetricSQL(
     return { success: false, error: "Dataset not found or not ready" };
   }
 
-  const sql = `SELECT ${sqlExpression} AS result FROM "${datasetInfo.tableName}"`;
+  // Build query with optional WHERE and ORDER BY clauses
+  let sql = `SELECT ${sqlExpression} AS result FROM "${datasetInfo.tableName}"`;
+  if (enhancements?.whereClause) {
+    sql += ` WHERE ${enhancements.whereClause}`;
+  }
+  // Note: ORDER BY doesn't make sense for single aggregate result, skip it for metrics
+  
   const queryHash = computeQueryHash(sql, []);
 
   if (options.useCache !== false) {

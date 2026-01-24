@@ -1565,7 +1565,8 @@ export async function executeToolCall(
         console.log(`[EXECUTE-METRIC] Resolved SQL: ${resolveResult.sql}`);
         
         // Step 2.5: Apply query engine rules (document_type filter, ORDER BY, etc.)
-        let enhancedSql = resolveResult.sql;
+        // Pass enhancements separately to executeMetricSQL instead of modifying the SQL expression
+        let queryEnhancements: { whereClause?: string; orderByClause?: string } | undefined;
         if (userQuestion) {
           try {
             const datasetIdNum = parseInt(toolCall.args.datasetId, 10);
@@ -1576,21 +1577,25 @@ export async function executeToolCall(
               toolCall.args.filters
             );
             if (enhancement.appliedRules.length > 0) {
-              enhancedSql = enhanceSqlWithRules(resolveResult.sql, enhancement);
+              queryEnhancements = {
+                whereClause: enhancement.additionalWhereClause,
+                orderByClause: enhancement.orderByClause
+              };
               console.log(`[EXECUTE-METRIC] Query rules applied: ${enhancement.appliedRules.join(", ")}`);
-              console.log(`[EXECUTE-METRIC] Enhanced SQL: ${enhancedSql}`);
+              console.log(`[EXECUTE-METRIC] Enhancements: WHERE=${enhancement.additionalWhereClause || 'none'}, ORDER BY=${enhancement.orderByClause || 'none'}`);
             }
           } catch (ruleError) {
             console.warn(`[EXECUTE-METRIC] Query rule enhancement failed (using original SQL):`, ruleError);
           }
         }
         
-        // Step 3: Execute the resolved (and optionally enhanced) SQL
+        // Step 3: Execute the resolved SQL with optional WHERE/ORDER BY enhancements
         result = await executeMetricSQL(
           toolCall.args.datasetId, 
-          enhancedSql, 
+          resolveResult.sql, 
           toolCall.args.metricName,
-          { userId, timeoutMs: 3000 }
+          { userId, timeoutMs: 3000 },
+          queryEnhancements
         );
         console.log(`[EXECUTE-METRIC] Result: success=${result.success}, error=${result.error || 'none'}`);
         break;
