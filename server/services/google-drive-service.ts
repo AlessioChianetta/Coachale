@@ -336,7 +336,7 @@ export async function downloadDriveFile(
   const mimeType = fileMetadata.data.mimeType || 'application/octet-stream';
   const fileSize = parseInt(fileMetadata.data.size || '0', 10);
   
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
   if (fileSize > MAX_FILE_SIZE) {
     throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
   }
@@ -656,7 +656,7 @@ export async function downloadClientDriveFile(
   const mimeType = fileMetadata.data.mimeType || 'application/octet-stream';
   const fileSize = parseInt(fileMetadata.data.size || '0', 10);
   
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
   if (fileSize > MAX_FILE_SIZE) {
     throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
   }
