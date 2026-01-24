@@ -364,7 +364,7 @@ Generato il: ${new Date().toLocaleDateString("it-IT")}
                   <div className="flex items-center gap-2">
                     <Cog className="h-4 w-4 text-blue-600" />
                     <span className="font-medium text-blue-700 dark:text-blue-400">Regole Sistema</span>
-                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">31 predefinite</Badge>
+                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">{SYSTEM_RULES.length} predefinite</Badge>
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Sinonimi italiani riconosciuti automaticamente: <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">qta</span>→quantity, <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">reparto</span>→category</p>
                 </div>
