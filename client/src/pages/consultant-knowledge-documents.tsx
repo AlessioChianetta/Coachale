@@ -76,6 +76,8 @@ import {
   Move,
   FolderOpen,
   Plus,
+  History,
+  HardDrive,
 } from "lucide-react";
 import {
   Collapsible,
@@ -144,6 +146,22 @@ interface KnowledgeDocument {
   syncTotalChunks: number | null;
   syncMessage: string | null;
   googleDriveFileId?: string | null;
+  syncCount?: number | null;
+  lastDriveSyncAt?: string | null;
+  pendingSyncAt?: string | null;
+}
+
+interface SyncHistoryEntry {
+  id: string;
+  syncType: "webhook" | "manual" | "scheduled" | "initial";
+  status: "success" | "failed" | "skipped";
+  charactersExtracted: number | null;
+  estimatedTokens: number | null;
+  errorMessage: string | null;
+  durationMs: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
 }
 
 interface KnowledgeFolder {
@@ -253,6 +271,26 @@ function formatDate(dateString: string): string {
   });
 }
 
+function formatDuration(ms: number | null): string {
+  if (ms === null || ms === undefined) return "-";
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}min`;
+}
+
+const SYNC_TYPE_LABELS: Record<string, string> = {
+  initial: "Iniziale",
+  manual: "Manuale",
+  scheduled: "Programmato",
+  webhook: "Webhook",
+};
+
+const SYNC_STATUS_CONFIG: Record<string, { color: string; label: string }> = {
+  success: { color: "text-green-600", label: "Completato" },
+  failed: { color: "text-red-600", label: "Fallito" },
+  skipped: { color: "text-gray-500", label: "Saltato" },
+};
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
@@ -296,6 +334,10 @@ export default function ConsultantKnowledgeDocuments() {
   const [movingToFolderId, setMovingToFolderId] = useState<string | null>(null);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showUploadSection, setShowUploadSection] = useState(false);
+  const [showSyncHistoryDialog, setShowSyncHistoryDialog] = useState(false);
+  const [syncHistoryDocumentId, setSyncHistoryDocumentId] = useState<string | null>(null);
+  const [isDriveSectionOpen, setIsDriveSectionOpen] = useState(true);
+  const [isUploadedSectionOpen, setIsUploadedSectionOpen] = useState(true);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -365,6 +407,36 @@ export default function ConsultantKnowledgeDocuments() {
   });
 
   const folders: KnowledgeFolder[] = foldersResponse?.data || [];
+
+  const { data: syncHistoryResponse, isLoading: isLoadingSyncHistory } = useQuery({
+    queryKey: ["/api/consultant/knowledge/documents", syncHistoryDocumentId, "sync-history"],
+    queryFn: async () => {
+      if (!syncHistoryDocumentId) return null;
+      const response = await fetch(`/api/consultant/knowledge/documents/${syncHistoryDocumentId}/sync-history`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch sync history");
+      return response.json();
+    },
+    enabled: !!syncHistoryDocumentId && showSyncHistoryDialog,
+  });
+
+  const syncHistory: SyncHistoryEntry[] = syncHistoryResponse?.data || [];
+
+  const googleDriveDocuments = useMemo(() => 
+    documents.filter(doc => !!doc.googleDriveFileId), 
+    [documents]
+  );
+
+  const uploadedDocuments = useMemo(() => 
+    documents.filter(doc => !doc.googleDriveFileId), 
+    [documents]
+  );
+
+  const handleOpenSyncHistory = (docId: string) => {
+    setSyncHistoryDocumentId(docId);
+    setShowSyncHistoryDialog(true);
+  };
 
   const virtualizer = useVirtualizer({
     count: documents.length,
@@ -1239,6 +1311,41 @@ export default function ConsultantKnowledgeDocuments() {
             )}
           </div>
 
+          {isGoogleDriveDoc && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {doc.syncCount !== null && doc.syncCount !== undefined && doc.syncCount > 0 && (
+                <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                  <RefreshCw className="w-3 h-3" />
+                  {doc.syncCount} sincronizzazioni
+                </span>
+              )}
+              {doc.lastDriveSyncAt && (
+                <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                  <Clock className="w-3 h-3" />
+                  Ultimo sync: {formatDate(doc.lastDriveSyncAt)}
+                </span>
+              )}
+              {doc.pendingSyncAt && (
+                <span className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full">
+                  <Clock className="w-3 h-3" />
+                  Sync programmato: {formatDate(doc.pendingSyncAt)}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenSyncHistory(doc.id);
+                }}
+              >
+                <History className="w-3 h-3 mr-1" />
+                Cronologia Sync
+              </Button>
+            </div>
+          )}
+
           {progress && progress.phase !== "complete" && (
             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-2 mb-2">
@@ -1564,49 +1671,87 @@ export default function ConsultantKnowledgeDocuments() {
                       ref={parentRef}
                       className="h-[calc(100vh-450px)] min-h-[400px] overflow-auto"
                     >
-                      <div
-                        style={{
-                          height: `${virtualizer.getTotalSize()}px`,
-                          width: "100%",
-                          position: "relative",
-                        }}
-                      >
-                        {viewMode === "grid" ? (
-                          <div
-                            className="grid gap-3"
-                            style={{
-                              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                            }}
-                          >
-                            {documents.map((doc) => (
-                              <div key={doc.id}>
-                                {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                      {googleDriveDocuments.length > 0 && (
+                        <Collapsible open={isDriveSectionOpen} onOpenChange={setIsDriveSectionOpen} className="mb-4">
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                              <div className="flex items-center gap-2">
+                                <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                <span className="font-medium text-blue-800 dark:text-blue-200">Documenti Google Drive</span>
+                                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200">
+                                  {googleDriveDocuments.length}
+                                </Badge>
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          virtualizer.getVirtualItems().map((virtualItem) => {
-                            const doc = documents[virtualItem.index];
-                            return (
-                              <div
-                                key={doc.id}
-                                style={{
-                                  position: "absolute",
-                                  top: 0,
-                                  left: 0,
-                                  width: "100%",
-                                  height: `${virtualItem.size}px`,
-                                  transform: `translateY(${virtualItem.start}px)`,
-                                }}
-                              >
-                                <div className="pr-2 pb-3">
-                                  {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                              <ChevronDown className={`w-5 h-5 text-blue-600 transition-transform duration-200 ${isDriveSectionOpen ? "rotate-180" : ""}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="mt-3 space-y-3">
+                              {viewMode === "grid" ? (
+                                <div
+                                  className="grid gap-3"
+                                  style={{
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                                  }}
+                                >
+                                  {googleDriveDocuments.map((doc) => (
+                                    <div key={doc.id}>
+                                      {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                    </div>
+                                  ))}
                                 </div>
+                              ) : (
+                                googleDriveDocuments.map((doc) => (
+                                  <div key={doc.id}>
+                                    {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+
+                      {uploadedDocuments.length > 0 && (
+                        <Collapsible open={isUploadedSectionOpen} onOpenChange={setIsUploadedSectionOpen} className="mb-4">
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
+                              <div className="flex items-center gap-2">
+                                <HardDrive className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                <span className="font-medium text-amber-800 dark:text-amber-200">Documenti Caricati</span>
+                                <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200">
+                                  {uploadedDocuments.length}
+                                </Badge>
                               </div>
-                            );
-                          })
-                        )}
-                      </div>
+                              <ChevronDown className={`w-5 h-5 text-amber-600 transition-transform duration-200 ${isUploadedSectionOpen ? "rotate-180" : ""}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="mt-3 space-y-3">
+                              {viewMode === "grid" ? (
+                                <div
+                                  className="grid gap-3"
+                                  style={{
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                                  }}
+                                >
+                                  {uploadedDocuments.map((doc) => (
+                                    <div key={doc.id}>
+                                      {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                uploadedDocuments.map((doc) => (
+                                  <div key={doc.id}>
+                                    {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
 
                       {isFetchingNextPage && (
                         <div className="flex items-center justify-center py-4">
@@ -2213,6 +2358,92 @@ export default function ConsultantKnowledgeDocuments() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showSyncHistoryDialog} onOpenChange={setShowSyncHistoryDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-blue-500" />
+              Cronologia Sincronizzazione
+            </DialogTitle>
+            <DialogDescription>
+              Storico delle sincronizzazioni da Google Drive per questo documento
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[400px] pr-4">
+            {isLoadingSyncHistory ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+              </div>
+            ) : syncHistory.length === 0 ? (
+              <div className="text-center py-8">
+                <History className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                <p className="text-gray-500 dark:text-gray-400">Nessuna cronologia di sincronizzazione</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {syncHistory.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className={`p-3 rounded-lg border ${
+                      entry.status === "failed"
+                        ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                        : entry.status === "skipped"
+                        ? "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                        : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {SYNC_TYPE_LABELS[entry.syncType] || entry.syncType}
+                        </Badge>
+                        <span className={`text-xs font-medium ${SYNC_STATUS_CONFIG[entry.status]?.color || "text-gray-500"}`}>
+                          {SYNC_STATUS_CONFIG[entry.status]?.label || entry.status}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatDate(entry.createdAt)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+                      {entry.charactersExtracted !== null && (
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          {entry.charactersExtracted.toLocaleString()} caratteri
+                        </span>
+                      )}
+                      {entry.estimatedTokens !== null && (
+                        <span className="flex items-center gap-1">
+                          <Database className="w-3 h-3" />
+                          ~{entry.estimatedTokens.toLocaleString()} tokens
+                        </span>
+                      )}
+                      {entry.durationMs !== null && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDuration(entry.durationMs)}
+                        </span>
+                      )}
+                    </div>
+                    {entry.status === "failed" && entry.errorMessage && (
+                      <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="w-3 h-3 inline mr-1" />
+                        {entry.errorMessage}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSyncHistoryDialog(false)}>
+              Chiudi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConsultantAIAssistant />
     </div>

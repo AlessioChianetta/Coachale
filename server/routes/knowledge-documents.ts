@@ -9,6 +9,7 @@ import {
   vertexAiSettings,
   fileSearchStores,
   knowledgeDocumentFolders,
+  documentSyncHistory,
 } from "../../shared/schema";
 import { eq, and, desc, lt, gt, or, ilike, sql, count, isNull, inArray, asc } from "drizzle-orm";
 import { z } from "zod";
@@ -168,6 +169,10 @@ router.get(
           syncCurrentChunk: consultantKnowledgeDocuments.syncCurrentChunk,
           syncTotalChunks: consultantKnowledgeDocuments.syncTotalChunks,
           syncMessage: consultantKnowledgeDocuments.syncMessage,
+          googleDriveFileId: consultantKnowledgeDocuments.googleDriveFileId,
+          syncCount: consultantKnowledgeDocuments.syncCount,
+          lastDriveSyncAt: consultantKnowledgeDocuments.lastDriveSyncAt,
+          pendingSyncAt: consultantKnowledgeDocuments.pendingSyncAt,
         })
         .from(consultantKnowledgeDocuments)
         .where(and(...conditions))
@@ -243,6 +248,65 @@ router.get(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to fetch knowledge document",
+      });
+    }
+  }
+);
+
+router.get(
+  "/consultant/knowledge/documents/:id/sync-history",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+
+      const [document] = await db
+        .select({ id: consultantKnowledgeDocuments.id })
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.id, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!document) {
+        return res.status(404).json({
+          success: false,
+          error: "Document not found",
+        });
+      }
+
+      const history = await db
+        .select({
+          id: documentSyncHistory.id,
+          syncType: documentSyncHistory.syncType,
+          status: documentSyncHistory.status,
+          charactersExtracted: documentSyncHistory.charactersExtracted,
+          estimatedTokens: documentSyncHistory.estimatedTokens,
+          errorMessage: documentSyncHistory.errorMessage,
+          durationMs: documentSyncHistory.durationMs,
+          startedAt: documentSyncHistory.startedAt,
+          completedAt: documentSyncHistory.completedAt,
+          createdAt: documentSyncHistory.createdAt,
+        })
+        .from(documentSyncHistory)
+        .where(eq(documentSyncHistory.documentId, id))
+        .orderBy(desc(documentSyncHistory.createdAt))
+        .limit(50);
+
+      res.json({
+        success: true,
+        data: history,
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error fetching sync history:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch sync history",
       });
     }
   }
