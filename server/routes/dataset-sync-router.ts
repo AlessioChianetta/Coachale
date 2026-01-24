@@ -301,9 +301,10 @@ router.post(
       );
 
       if (!targetDatasetId) {
+        const datasetClientId = sourceData.client_id || sourceData.consultant_id;
         const insertedDatasetResult = await db.execute<any>(sql`
           INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
-          VALUES (${sourceData.consultant_id}, ${sourceData.consultant_id}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${columns.length}, now())
+          VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${columns.length}, now())
           RETURNING id
         `);
         const insertedDataset = insertedDatasetResult.rows || [];
@@ -378,13 +379,15 @@ router.get(
 
       const sourcesResult = await db.execute<any>(sql`
         SELECT 
-          id, name, description, api_key, is_active, replace_mode, target_dataset_id,
-          rate_limit_per_hour, created_at, updated_at,
-          (SELECT COUNT(*) FROM dataset_sync_history WHERE source_id = dataset_sync_sources.id) as sync_count,
-          (SELECT MAX(started_at) FROM dataset_sync_history WHERE source_id = dataset_sync_sources.id) as last_sync_at
-        FROM dataset_sync_sources 
-        WHERE consultant_id = ${consultantId}
-        ORDER BY created_at DESC
+          s.id, s.name, s.description, s.api_key, s.secret_key, s.is_active, s.replace_mode, s.target_dataset_id,
+          s.rate_limit_per_hour, s.client_id, s.created_at, s.updated_at,
+          c.first_name as client_first_name, c.last_name as client_last_name, c.email as client_email,
+          (SELECT COUNT(*) FROM dataset_sync_history WHERE source_id = s.id) as sync_count,
+          (SELECT MAX(started_at) FROM dataset_sync_history WHERE source_id = s.id) as last_sync_at
+        FROM dataset_sync_sources s
+        LEFT JOIN clients c ON s.client_id = c.id
+        WHERE s.consultant_id = ${consultantId}
+        ORDER BY s.created_at DESC
       `);
       const sources = sourcesResult.rows || [];
 
@@ -403,7 +406,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const consultantId = req.user!.id;
-      const { name, description, replaceMode = 'full', rateLimitPerHour = 100 } = req.body;
+      const { name, description, replaceMode = 'full', rateLimitPerHour = 100, clientId } = req.body;
 
       if (!name) {
         return res.status(400).json({ success: false, error: "Nome sorgente obbligatorio" });
@@ -413,9 +416,9 @@ router.post(
       const secretKey = generateSecretKey();
 
       const insertedResult = await db.execute<any>(sql`
-        INSERT INTO dataset_sync_sources (consultant_id, name, description, api_key, secret_key, replace_mode, rate_limit_per_hour)
-        VALUES (${consultantId}, ${name}, ${description || null}, ${apiKey}, ${secretKey}, ${replaceMode}, ${rateLimitPerHour})
-        RETURNING id, name, api_key, secret_key, is_active, replace_mode, created_at
+        INSERT INTO dataset_sync_sources (consultant_id, name, description, api_key, secret_key, replace_mode, rate_limit_per_hour, client_id)
+        VALUES (${consultantId}, ${name}, ${description || null}, ${apiKey}, ${secretKey}, ${replaceMode}, ${rateLimitPerHour}, ${clientId || null})
+        RETURNING id, name, api_key, secret_key, is_active, replace_mode, client_id, created_at
       `);
       const inserted = insertedResult.rows || [];
 

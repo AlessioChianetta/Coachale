@@ -12,6 +12,10 @@ export interface SyncSource {
   replace_mode: 'full' | 'append';
   target_dataset_id?: number;
   rate_limit_per_hour: number;
+  client_id?: string;
+  client_first_name?: string;
+  client_last_name?: string;
+  client_email?: string;
   created_at: string;
   updated_at: string;
   sync_count?: number;
@@ -23,6 +27,7 @@ export interface CreateSyncSourceData {
   description?: string;
   replaceMode?: 'full' | 'append';
   rateLimitPerHour?: number;
+  clientId?: string;
 }
 
 export interface UpdateSyncSourceData {

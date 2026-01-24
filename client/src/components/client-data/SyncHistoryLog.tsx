@@ -31,7 +31,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Search, Eye, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Search, Eye, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, Clock, ExternalLink, Database } from "lucide-react";
+import { useLocation } from "wouter";
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -95,6 +96,7 @@ interface SyncHistoryLogProps {
 }
 
 export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
+  const [, setLocation] = useLocation();
   const [filters, setFilters] = useState<SyncHistoryFilters>({
     sourceId,
     page: 1,
@@ -119,9 +121,9 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
   const currentPage = historyData?.page || 1;
 
   const sourceMap = useMemo(() => {
-    const map: Record<number, string> = {};
+    const map: Record<number, { name: string; targetDatasetId?: number }> = {};
     sources.forEach((s) => {
-      map[s.id] = s.name;
+      map[s.id] = { name: s.name, targetDatasetId: s.target_dataset_id };
     });
     return map;
   }, [sources]);
@@ -258,7 +260,7 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                       <TableCell className="font-medium">
                         {formatRelativeTime(record.started_at)}
                       </TableCell>
-                      <TableCell>{sourceMap[record.source_id] || `ID: ${record.source_id}`}</TableCell>
+                      <TableCell>{sourceMap[record.source_id]?.name || `ID: ${record.source_id}`}</TableCell>
                       <TableCell>
                         <StatusBadge status={record.status} />
                       </TableCell>
@@ -349,7 +351,7 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Sorgente</label>
                     <p className="font-medium">
-                      {sourceMap[selectedRecord.source_id] || `ID: ${selectedRecord.source_id}`}
+                      {sourceMap[selectedRecord.source_id]?.name || `ID: ${selectedRecord.source_id}`}
                     </p>
                   </div>
                   <div>
@@ -442,6 +444,26 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                         </Badge>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {selectedRecord.status === "completed" && sourceMap[selectedRecord.source_id]?.targetDatasetId && (
+                  <div className="pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        const datasetId = sourceMap[selectedRecord.source_id]?.targetDatasetId;
+                        if (datasetId) {
+                          setSelectedRecord(null);
+                          setLocation(`/consultant/client-data-analysis?datasetId=${datasetId}`);
+                        }
+                      }}
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Apri Dataset e Configura Mapping
+                      <ExternalLink className="h-4 w-4 ml-2" />
+                    </Button>
                   </div>
                 )}
 

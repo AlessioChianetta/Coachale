@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import {
@@ -9,6 +10,7 @@ import {
   useToggleSyncSource,
   SyncSource,
 } from "@/hooks/useDatasetSync";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,13 +63,22 @@ import {
   CheckCircle,
   Loader2,
   Link2,
+  Users,
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 interface CreatedSourceData {
   id: number;
   name: string;
   api_key: string;
   secret_key: string;
+}
+
+interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 export function SyncSourcesManager() {
@@ -78,8 +89,14 @@ export function SyncSourcesManager() {
   const regenerateMutation = useRegenerateApiKey();
   const toggleMutation = useToggleSyncSource();
 
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    queryFn: () => apiRequest("/api/clients"),
+  });
+
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newSourceName, setNewSourceName] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [createdSource, setCreatedSource] = useState<CreatedSourceData | null>(null);
   const [showCreatedDialog, setShowCreatedDialog] = useState(false);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set());
@@ -132,7 +149,10 @@ export function SyncSourcesManager() {
     }
 
     try {
-      const result = await createMutation.mutateAsync({ name: newSourceName.trim() });
+      const result = await createMutation.mutateAsync({ 
+        name: newSourceName.trim(),
+        clientId: selectedClientId && selectedClientId !== "__none__" ? selectedClientId : undefined,
+      });
       const data = result as any;
       if (data?.data) {
         setCreatedSource({
@@ -143,6 +163,7 @@ export function SyncSourcesManager() {
         });
         setShowAddDialog(false);
         setNewSourceName("");
+        setSelectedClientId("");
         setShowCreatedDialog(true);
       }
     } catch (error: any) {
@@ -264,13 +285,13 @@ export function SyncSourcesManager() {
           </Button>
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Cliente</TableHead>
                 <TableHead>API Key</TableHead>
-                <TableHead>Secret Key</TableHead>
                 <TableHead>Stato</TableHead>
                 <TableHead>Ultimo Sync</TableHead>
                 <TableHead>Sync Totali</TableHead>
@@ -281,6 +302,18 @@ export function SyncSourcesManager() {
               {sources.map((source) => (
                 <TableRow key={source.id}>
                   <TableCell className="font-medium">{source.name}</TableCell>
+                  <TableCell>
+                    {source.client_id && source.client_first_name ? (
+                      <div className="flex items-center gap-2">
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm">
+                          {source.client_first_name} {source.client_last_name}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Solo per me</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
@@ -293,27 +326,6 @@ export function SyncSourcesManager() {
                         onClick={() => copyToClipboard(source.api_key, "API Key")}
                       >
                         <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
-                        {visibleSecrets.has(source.id)
-                          ? source.secret_key || "N/D"
-                          : "••••••••"}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => toggleSecretVisibility(source.id)}
-                      >
-                        {visibleSecrets.has(source.id) ? (
-                          <EyeOff className="h-3 w-3" />
-                        ) : (
-                          <Eye className="h-3 w-3" />
-                        )}
                       </Button>
                     </div>
                   </TableCell>
@@ -386,7 +398,13 @@ export function SyncSourcesManager() {
         </div>
       )}
 
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        setShowAddDialog(open);
+        if (!open) {
+          setNewSourceName("");
+          setSelectedClientId("");
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuova Sorgente di Sincronizzazione</DialogTitle>
@@ -403,6 +421,28 @@ export function SyncSourcesManager() {
                 onChange={(e) => setNewSourceName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateSource()}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client-select" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Associa a un cliente (opzionale)
+              </Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger id="client-select">
+                  <SelectValue placeholder="Seleziona un cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nessun cliente (solo per me)</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.firstName} {client.lastName} ({client.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                Se associ la sorgente a un cliente, i dati importati saranno visibili anche a lui.
+              </p>
             </div>
           </div>
           <DialogFooter>
