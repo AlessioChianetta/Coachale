@@ -590,7 +590,7 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col bg-[#f8fafd]">
+        <div className="flex-1 flex flex-col bg-[#f8fafd] min-w-0 overflow-hidden">
           {/* Header with welcome text */}
           <div className="px-8 py-6 text-center border-b border-gray-100 bg-white">
             <h1 className="text-2xl text-gray-700 font-normal">Ti diamo il benvenuto in Drive</h1>
@@ -639,7 +639,7 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-auto px-8 py-4">
+          <div className="flex-1 overflow-auto px-8 py-4 min-w-0">
             {/* Breadcrumbs when navigating */}
             {breadcrumbs.length > 1 && (
               <div className="flex items-center gap-1 text-sm mb-4 overflow-x-auto">
