@@ -1930,14 +1930,20 @@ async function evaluateConversation(
     const newState = decision.stateTransition || 
       (candidate.currentState === 'stalled' ? 'ghost' : 'closed_lost');
     
+    const stopReason = decision.silenceReason || decision.completionReason || 
+      decision.reasoning || 'Lead ha rifiutato esplicitamente';
+    
     await updateConversationState(candidate.conversationId, {
       currentState: newState,
       previousState: candidate.currentState,
       lastAiEvaluationAt: new Date(),
       aiRecommendation: decision.reasoning,
-    });
+      permanentlyExcluded: true,
+      dormantReason: stopReason,
+      nextEvaluationAt: null,
+    } as any);
 
-    console.log(`🛑 [FOLLOWUP-SCHEDULER] Stopped follow-ups for ${candidate.conversationId}, new state: ${newState}`);
+    console.log(`🛑 [FOLLOWUP-SCHEDULER] PERMANENTLY STOPPED follow-ups for ${candidate.conversationId}, new state: ${newState}, reason: ${stopReason}`);
     return 'stopped';
   }
 
