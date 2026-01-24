@@ -53,8 +53,8 @@ export function DatasetUploader({ onUploadComplete, onCancel }: DatasetUploaderP
   const [selectedClientId, setSelectedClientId] = useState<string>("");
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", { activeOnly: true }],
-    queryFn: () => apiRequest("/api/clients?activeOnly=true"),
+    queryKey: ["/api/clients"],
+    queryFn: () => apiRequest("/api/clients"),
   });
 
   const uploadMutation = useMutation({

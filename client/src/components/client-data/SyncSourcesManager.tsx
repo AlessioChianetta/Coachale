@@ -97,8 +97,8 @@ export function SyncSourcesManager() {
   const toggleMutation = useToggleSyncSource();
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients", { activeOnly: true }],
-    queryFn: () => apiRequest("/api/clients?activeOnly=true"),
+    queryKey: ["/api/clients"],
+    queryFn: () => apiRequest("/api/clients"),
   });
 
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -155,19 +155,10 @@ export function SyncSourcesManager() {
       return;
     }
 
-    if (!selectedClientId) {
-      toast({
-        title: "Errore",
-        description: "Seleziona un cliente",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       const result = await createMutation.mutateAsync({ 
         name: newSourceName.trim(),
-        clientId: selectedClientId,
+        clientId: selectedClientId && selectedClientId !== "__none__" ? selectedClientId : undefined,
       });
       const data = result as any;
       if (data?.data) {
@@ -441,13 +432,14 @@ export function SyncSourcesManager() {
             <div className="space-y-2">
               <Label htmlFor="client-select" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Associa a un cliente <span className="text-red-500">*</span>
+                Associa a un cliente (opzionale)
               </Label>
               <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                 <SelectTrigger id="client-select">
                   <SelectValue placeholder="Seleziona un cliente..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">Nessun cliente (solo per me)</SelectItem>
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.firstName} {client.lastName} ({client.email})
@@ -456,7 +448,7 @@ export function SyncSourcesManager() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-500">
-                I dati importati saranno associati a questo cliente.
+                Se associ la sorgente a un cliente, i dati importati saranno visibili anche a lui.
               </p>
             </div>
           </div>
@@ -466,7 +458,7 @@ export function SyncSourcesManager() {
             </Button>
             <Button
               onClick={handleCreateSource}
-              disabled={createMutation.isPending || !newSourceName.trim() || !selectedClientId}
+              disabled={createMutation.isPending || !newSourceName.trim()}
             >
               {createMutation.isPending && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

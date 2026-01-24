@@ -750,46 +750,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClientsByConsultant(consultantId: string, activeOnly: boolean = false): Promise<User[]> {
-    // Return all users who have a client role profile for this consultant
-    // Uses user_role_profiles table for accurate consultant-client relationships
-    try {
-      console.log(`[getClientsByConsultant] consultantId=${consultantId}, activeOnly=${activeOnly}`);
-      
-      const result = await db
-        .select()
-        .from(schema.users)
-        .innerJoin(
-          schema.userRoleProfiles, 
-          eq(schema.userRoleProfiles.userId, schema.users.id)
-        )
-        .where(
-          activeOnly 
-            ? and(
-                eq(schema.userRoleProfiles.consultantId, consultantId),
-                eq(schema.userRoleProfiles.role, 'client'),
-                eq(schema.userRoleProfiles.isActive, true),
-                eq(schema.users.isActive, true)
-              )
-            : and(
-                eq(schema.userRoleProfiles.consultantId, consultantId),
-                eq(schema.userRoleProfiles.role, 'client')
-              )
-        );
-      
-      console.log(`[getClientsByConsultant] Found ${result.length} rows from join`);
-      if (result.length > 0) {
-        console.log(`[getClientsByConsultant] Sample row keys:`, Object.keys(result[0]));
-      }
-      
-      // Extract just the users from the joined result
-      const clients = result.map(r => r.users);
-      console.log(`[getClientsByConsultant] Returning ${clients.length} clients`);
-      
-      return clients;
-    } catch (error) {
-      console.error('[getClientsByConsultant] Error:', error);
-      throw error;
+    // Return all users assigned to this consultant (both clients and consultants who are also clients)
+    // A user is considered a "client" of a consultant if they have consultantId set to that consultant
+    const conditions = [
+      eq(schema.users.consultantId, consultantId)
+    ];
+    
+    if (activeOnly) {
+      conditions.push(eq(schema.users.isActive, true));
     }
+    
+    return db.select().from(schema.users).where(and(...conditions));
   }
 
   // Exercise operations
