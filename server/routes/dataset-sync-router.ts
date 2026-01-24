@@ -324,7 +324,7 @@ router.post(
 
       if (!targetDatasetId) {
         const insertedDatasetResult = await db.execute<any>(sql`
-          INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
+          INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, created_at)
           VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())
           RETURNING id
         `);
@@ -975,7 +975,7 @@ router.post(
         // Crea dataset se non esisteva
         if (!targetDatasetId) {
           const insertedDatasetResult = await db.execute<any>(sql`
-            INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
+            INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, created_at)
             VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())
             RETURNING id
           `);
