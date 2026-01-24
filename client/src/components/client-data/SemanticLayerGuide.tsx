@@ -32,6 +32,9 @@ import {
   Settings2,
   Cog,
   Target,
+  Download,
+  Copy,
+  Check,
 } from "lucide-react";
 
 interface LogicalRole {
@@ -107,11 +110,108 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
 
 const GENERIC_ROLES = Object.keys(ROLE_DESCRIPTIONS);
 
+const SYSTEM_RULES = [
+  { pattern: "prezzo_finale", matchType: "Inizia con", role: "revenue_amount", desc: "Pattern comune gestionali POS" },
+  { pattern: "prezzofinale", matchType: "Inizia con", role: "revenue_amount", desc: "Pattern senza underscore" },
+  { pattern: "importo_riga", matchType: "Contiene", role: "revenue_amount", desc: "Totale riga fattura" },
+  { pattern: "totale_riga", matchType: "Contiene", role: "revenue_amount", desc: "Totale riga documento" },
+  { pattern: "importo2", matchType: "Esatto", role: "revenue_amount", desc: "Export comuni ristoranti" },
+  { pattern: "idddt", matchType: "Inizia con", role: "document_id", desc: "DDT italiani" },
+  { pattern: "id_ordine", matchType: "Contiene", role: "document_id", desc: "Ordini POS" },
+  { pattern: "scontrino", matchType: "Contiene", role: "document_id", desc: "Scontrini fiscali" },
+  { pattern: "numero_ordine", matchType: "Contiene", role: "document_id", desc: "Numero ordine" },
+  { pattern: "quantita", matchType: "Contiene", role: "quantity", desc: "Quantità venduta" },
+  { pattern: "qta", matchType: "Esatto", role: "quantity", desc: "Abbreviazione comune" },
+  { pattern: "qty", matchType: "Esatto", role: "quantity", desc: "Abbreviazione inglese" },
+  { pattern: "descrizione", matchType: "Esatto", role: "product_name", desc: "Nome prodotto" },
+  { pattern: "articolo", matchType: "Contiene", role: "product_name", desc: "Nome articolo" },
+  { pattern: "reparto", matchType: "Esatto", role: "category", desc: "Categoria/reparto" },
+  { pattern: "categoria", matchType: "Contiene", role: "category", desc: "Categoria prodotto" },
+  { pattern: "data", matchType: "Inizia con", role: "order_date", desc: "Data transazione" },
+  { pattern: "dataordine", matchType: "Contiene", role: "order_date", desc: "Data ordine" },
+  { pattern: "costo", matchType: "Inizia con", role: "cost", desc: "Costo unitario" },
+  { pattern: "food_cost", matchType: "Contiene", role: "cost", desc: "Food cost" },
+  { pattern: "prezzo_acquisto", matchType: "Contiene", role: "cost", desc: "Prezzo di acquisto" },
+  { pattern: "prezzo_unitario", matchType: "Contiene", role: "price", desc: "Prezzo di listino" },
+  { pattern: "listino", matchType: "Contiene", role: "price", desc: "Prezzo di listino" },
+  { pattern: "pagamento", matchType: "Contiene", role: "payment_method", desc: "Metodo pagamento" },
+  { pattern: "payment", matchType: "Contiene", role: "payment_method", desc: "Payment method" },
+  { pattern: "cliente", matchType: "Contiene", role: "customer_name", desc: "Nome cliente" },
+  { pattern: "id_cliente", matchType: "Contiene", role: "customer_id", desc: "ID cliente" },
+  { pattern: "fornitore", matchType: "Contiene", role: "supplier_name", desc: "Nome fornitore" },
+  { pattern: "id_fornitore", matchType: "Contiene", role: "supplier_id", desc: "ID fornitore" },
+  { pattern: "iva", matchType: "Contiene", role: "tax_rate", desc: "Aliquota IVA" },
+  { pattern: "aliquota", matchType: "Contiene", role: "tax_rate", desc: "Aliquota fiscale" },
+];
+
 export function SemanticLayerGuide({ datasetId }: SemanticLayerGuideProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [rolesOpen, setRolesOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [qualityOpen, setQualityOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const generatePartnerSchema = () => {
+    const schema = {
+      title: "Schema Colonne per Integrazione Dati",
+      description: "Usa questi nomi colonna per garantire il mapping automatico al 100%",
+      generatedAt: new Date().toISOString(),
+      logicalRoles: GENERIC_ROLES.map(role => ({
+        name: role,
+        type: ["quantity", "price", "cost", "revenue_amount", "discount_amount", "discount_percent"].includes(role) ? "NUMERIC" : 
+              ["transaction_date"].includes(role) ? "DATE" : "TEXT",
+        description: ROLE_DESCRIPTIONS[role],
+        examples: SYSTEM_RULES.filter(r => r.role === role).map(r => r.pattern).slice(0, 3),
+      })),
+      acceptedAliases: SYSTEM_RULES.map(rule => ({
+        yourColumnName: rule.pattern,
+        mapsTo: rule.role,
+        matchType: rule.matchType,
+      })),
+    };
+    return schema;
+  };
+
+  const handleExportJSON = () => {
+    const schema = generatePartnerSchema();
+    const blob = new Blob([JSON.stringify(schema, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "schema-colonne-partner.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopySchema = async () => {
+    const schema = generatePartnerSchema();
+    const text = `# Schema Colonne per Integrazione Dati
+
+## Ruoli Logici Standard (${GENERIC_ROLES.length})
+
+| Colonna | Tipo | Descrizione |
+|---------|------|-------------|
+${GENERIC_ROLES.map(role => {
+  const type = ["quantity", "price", "cost", "revenue_amount", "discount_amount", "discount_percent"].includes(role) ? "NUMERIC" : 
+               ["transaction_date"].includes(role) ? "DATE" : "TEXT";
+  return `| \`${role}\` | ${type} | ${ROLE_DESCRIPTIONS[role]} |`;
+}).join("\n")}
+
+## Sinonimi Riconosciuti Automaticamente (${SYSTEM_RULES.length})
+
+Se usi questi nomi, il sistema li riconosce automaticamente:
+
+| Il tuo nome colonna | Viene mappato a | Tipo match |
+|---------------------|-----------------|------------|
+${SYSTEM_RULES.map(rule => `| \`${rule.pattern}\` | ${rule.role} | ${rule.matchType} |`).join("\n")}
+
+---
+Generato il: ${new Date().toLocaleDateString("it-IT")}
+`;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const { data, isLoading, error } = useQuery<AvailableMetricsResponse>({
     queryKey: ["available-metrics", datasetId],
@@ -133,17 +233,59 @@ export function SemanticLayerGuide({ datasetId }: SemanticLayerGuideProps) {
             <Layers className="h-5 w-5 text-cyan-600" />
             Guida Semantic Layer
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
+          <div className="flex items-center gap-2">
+            {isExpanded && (
+              <>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopySchema}
+                        className="text-xs"
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                        <span className="ml-1">{copied ? "Copiato!" : "Copia"}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Copia schema in formato Markdown</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportJSON}
+                        className="text-xs"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span className="ml-1">Esporta JSON</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Scarica schema per il partner</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
             )}
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       {isExpanded && (
