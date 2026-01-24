@@ -926,10 +926,12 @@ router.post(
               await db.execute(sql.raw(`TRUNCATE TABLE ${tableName}`));
             }
           } else {
-            tableName = generateTableName(sourceData.consultant_id);
+            const datasetName = sourceData.name || originalname || 'dataset';
+            tableName = generateTableName(sourceData.consultant_id, datasetName);
           }
         } else {
-          tableName = generateTableName(sourceData.consultant_id);
+          const datasetName = sourceData.name || originalname || 'dataset';
+          tableName = generateTableName(sourceData.consultant_id, datasetName);
         }
 
         // Crea definizioni colonne
