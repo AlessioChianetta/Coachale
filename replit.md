@@ -94,3 +94,8 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
   - **Backend Endpoints**: 12 REST endpoints for sources CRUD, schedules, history, stats, schema, test-webhook
   - New DB tables: `dataset_sync_sources`, `dataset_sync_schedules`, `dataset_sync_history`
   - Documentation: `docs/DATASET_SYNC_API_GUIDE.md` with complete API specs and column mapping guide for partners
+  - **Client Assignment for Sync Sources (January 2026)**: External sync sources can now be associated with specific clients:
+    - Added `client_id` column to `dataset_sync_sources` table (optional, defaults to consultant if not specified)
+    - SyncSourcesManager shows client dropdown during source creation
+    - Webhook imports automatically assign datasets to the specified client
+    - SyncHistoryLog includes "Open Dataset & Configure Mapping" button for completed syncs
