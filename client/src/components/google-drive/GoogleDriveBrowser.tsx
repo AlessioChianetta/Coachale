@@ -385,8 +385,22 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
 
   const isConnected = statusData?.connected === true;
   const connectedEmail = statusData?.email;
-  const folders: DriveFolder[] = foldersData?.data || [];
-  const files: DriveFile[] = filesData?.data || [];
+  
+  // In shared-with-me section (not inside a shared folder), 
+  // folders come as part of filesData with mimeType folder
+  const rawFolders: DriveFolder[] = foldersData?.data || [];
+  const rawFiles: DriveFile[] = filesData?.data || [];
+  
+  // Separate shared folders from files when in shared-with-me at root level
+  const isSharedRootLevel = currentSection === 'shared-with-me' && !isInSharedFolder;
+  const sharedFolders = isSharedRootLevel 
+    ? rawFiles.filter(f => f.mimeType === 'application/vnd.google-apps.folder')
+    : [];
+  const folders: DriveFolder[] = isSharedRootLevel ? sharedFolders : rawFolders;
+  const files: DriveFile[] = isSharedRootLevel 
+    ? rawFiles.filter(f => f.mimeType !== 'application/vnd.google-apps.folder')
+    : rawFiles;
+  
   const isLoadingContent = foldersLoading || filesLoading;
 
   if (statusLoading) {
