@@ -275,6 +275,7 @@ router.post(
 
       let targetDatasetId = sourceData.target_dataset_id;
       let tableName: string;
+      let needsTableCreation = false;
 
       // Client ID per il dataset
       const datasetClientId = sourceData.client_id || sourceData.consultant_id;
@@ -291,12 +292,16 @@ router.post(
             await db.execute(sql.raw(`TRUNCATE TABLE ${tableName}`));
           }
         } else {
+          // Dataset ID esiste ma non trovato nel DB - crea nuova tabella
           const datasetName = sourceData.name || originalname || 'dataset';
           tableName = generateTableName(sourceData.consultant_id, datasetName);
+          needsTableCreation = true;
+          targetDatasetId = null; // Reset per creare nuovo dataset
         }
       } else {
         const datasetName = sourceData.name || originalname || 'dataset';
         tableName = generateTableName(sourceData.consultant_id, datasetName);
+        needsTableCreation = true;
       }
 
       // Crea definizioni colonne - usa la struttura corretta per createDynamicTable
@@ -309,7 +314,8 @@ router.post(
         sampleValues: col.sampleValues || [],
       }));
 
-      if (!targetDatasetId) {
+      // Crea tabella se necessario
+      if (needsTableCreation) {
         await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
       }
 
