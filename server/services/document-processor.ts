@@ -19,7 +19,7 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import officeparser from 'officeparser';
 import { VertexAI } from '@google-cloud/vertexai';
-import { GEMINI_3_MODEL } from '../ai/provider-factory';
+import { GEMINI_3_MODEL, getSuperAdminGeminiKeys } from '../ai/provider-factory';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -128,12 +128,21 @@ export interface GeminiFileUploadResult {
 }
 
 /**
- * Get Gemini API key from environment
+ * Get Gemini API key - prioritizes SuperAdmin keys from database, falls back to environment
  */
-function getGeminiApiKey(): string {
+async function getGeminiApiKey(): Promise<string> {
+  // Priority 1: SuperAdmin Gemini keys from database
+  const superAdminKeys = await getSuperAdminGeminiKeys();
+  if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+    const randomIndex = Math.floor(Math.random() * superAdminKeys.keys.length);
+    console.log(`✅ [GEMINI FILES API] Using SuperAdmin Gemini key (${randomIndex + 1}/${superAdminKeys.keys.length})`);
+    return superAdminKeys.keys[randomIndex];
+  }
+  
+  // Priority 2: Environment variable fallback
   const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('No Gemini API key configured. Set AI_INTEGRATIONS_GEMINI_API_KEY or GEMINI_API_KEY environment variable.');
+    throw new Error('No Gemini API key configured. Configure SuperAdmin Gemini keys or set GEMINI_API_KEY environment variable.');
   }
   return apiKey;
 }
@@ -146,7 +155,7 @@ export async function uploadPDFToGeminiFilesAPI(filePath: string, displayName: s
   console.log(`📤 [GEMINI FILES API] Uploading PDF: ${displayName}`);
   
   try {
-    const apiKey = getGeminiApiKey();
+    const apiKey = await getGeminiApiKey();
     const fileManager = new GoogleAIFileManager(apiKey);
     
     const uploadResult = await fileManager.uploadFile(filePath, {
@@ -177,7 +186,7 @@ export async function extractTextFromPDFWithGemini(fileUri: string): Promise<str
   console.log(`🔍 [GEMINI FILES API] Extracting text from: ${fileUri}`);
   
   try {
-    const apiKey = getGeminiApiKey();
+    const apiKey = await getGeminiApiKey();
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
