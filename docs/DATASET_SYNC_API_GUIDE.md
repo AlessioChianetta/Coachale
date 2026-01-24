@@ -46,7 +46,34 @@ X-Dataset-Timestamp: <unix_timestamp>
 |-------|------|--------------|-------------|
 | `file` | File | ✅ | File CSV, XLSX o XLS |
 | `source_name` | String | ❌ | Nome sorgente (default: API key name) |
-| `replace_mode` | String | ❌ | `full` (sostituisci tutto) o `append` (aggiungi) |
+| `replace_mode` | String | ❌ | Modalità aggiornamento dati (vedi sotto) |
+| `upsert_key_columns` | String | ❌ | Colonne chiave per upsert, separate da virgola |
+
+**Modalità Aggiornamento (`replace_mode`):**
+| Valore | Descrizione |
+|--------|-------------|
+| `full` | **Sostituisci tutto** - Cancella tutti i dati esistenti e inserisce i nuovi (default) |
+| `append` | **Aggiungi in coda** - Inserisce i nuovi dati senza cancellare quelli esistenti |
+| `upsert` | **Aggiorna o inserisci** - Aggiorna record esistenti, inserisce i nuovi |
+
+**Configurazione Upsert:**
+Quando `replace_mode=upsert`, è necessario specificare le colonne chiave che identificano univocamente ogni record:
+```
+replace_mode=upsert
+upsert_key_columns=order_id,line_id
+```
+
+**Esempio cURL con Upsert:**
+```bash
+curl -X POST "https://api.example.com/api/dataset-sync/webhook/dsync_xxx" \
+  -H "X-Dataset-Signature: sha256=..." \
+  -H "X-Dataset-Timestamp: 1737745200" \
+  -F "file=@ordini.xlsx" \
+  -F "replace_mode=upsert" \
+  -F "upsert_key_columns=order_id,line_id"
+```
+
+> ⚡ **Nota**: Le opzioni `replace_mode` e `upsert_key_columns` vengono salvate nella sorgente. Una volta configurate, tutti i sync successivi useranno le stesse impostazioni automaticamente.
 
 **Response 200 OK:**
 ```json

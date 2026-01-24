@@ -12,7 +12,8 @@ Creare un sistema di integrazione per partner esterni che consenta la ricezione 
 - **RF-1.1**: Endpoint `POST /api/dataset-sync/webhook/:apiKey` per ricezione file
 - **RF-1.2**: Supporto formati CSV, XLSX, XLS
 - **RF-1.3**: Mappatura automatica colonne basata su 19 ruoli semantici
-- **RF-1.4**: Modalità replace (full) o append per import dati
+- **RF-1.4**: Modalità replace (full), append o upsert per import dati
+- **RF-1.6**: Configurazione automatica via webhook (replace_mode, upsert_key_columns)
 - **RF-1.5**: Idempotency support per evitare duplicazioni
 
 ### RF-2: Autenticazione e Sicurezza
