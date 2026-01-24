@@ -9,6 +9,7 @@ import {
   useRegenerateApiKey,
   useToggleSyncSource,
   useUpdateSyncSource,
+  useSyncSourceColumns,
   SyncSource,
 } from "@/hooks/useDatasetSync";
 import { apiRequest } from "@/lib/queryClient";
@@ -115,9 +116,10 @@ export function SyncSourcesManager() {
   const [regenerateConfirmId, setRegenerateConfirmId] = useState<number | null>(null);
   const [editingSource, setEditingSource] = useState<SyncSource | null>(null);
   const [editReplaceMode, setEditReplaceMode] = useState<'full' | 'append' | 'upsert'>('full');
-  const [editUpsertKeyColumns, setEditUpsertKeyColumns] = useState("");
+  const [editSelectedColumns, setEditSelectedColumns] = useState<Set<string>>(new Set());
 
   const updateMutation = useUpdateSyncSource();
+  const { data: columnsData, isLoading: columnsLoading } = useSyncSourceColumns(editingSource?.id || null);
   const sources = sourcesData?.data || [];
 
   const maskApiKey = (apiKey: string) => {
@@ -377,7 +379,7 @@ export function SyncSourcesManager() {
                           onClick={() => {
                             setEditingSource(source);
                             setEditReplaceMode(source.replace_mode || 'full');
-                            setEditUpsertKeyColumns(source.upsert_key_columns?.join(', ') || '');
+                            setEditSelectedColumns(new Set(source.upsert_key_columns || []));
                           }}
                         >
                           <Settings className="h-4 w-4 mr-2" />
@@ -675,7 +677,7 @@ export function SyncSourcesManager() {
         if (!open) {
           setEditingSource(null);
           setEditReplaceMode('full');
-          setEditUpsertKeyColumns("");
+          setEditSelectedColumns(new Set());
         }
       }}>
         <DialogContent>
@@ -712,15 +714,41 @@ export function SyncSourcesManager() {
             </div>
             {editReplaceMode === 'upsert' && (
               <div className="space-y-2">
-                <Label htmlFor="edit-upsert-keys">Colonne Chiave per Upsert</Label>
-                <Input
-                  id="edit-upsert-keys"
-                  placeholder="order_id, order_date"
-                  value={editUpsertKeyColumns}
-                  onChange={(e) => setEditUpsertKeyColumns(e.target.value)}
-                />
+                <Label>Colonne Chiave per Upsert</Label>
+                {columnsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Caricamento colonne...
+                  </div>
+                ) : columnsData?.columns?.length > 0 ? (
+                  <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                    {columnsData.columns.map((col: string) => (
+                      <label key={col} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                        <input
+                          type="checkbox"
+                          checked={editSelectedColumns.has(col)}
+                          onChange={(e) => {
+                            const newSet = new Set(editSelectedColumns);
+                            if (e.target.checked) {
+                              newSet.add(col);
+                            } else {
+                              newSet.delete(col);
+                            }
+                            setEditSelectedColumns(newSet);
+                          }}
+                          className="rounded border-slate-300"
+                        />
+                        <span className="text-sm font-mono">{col}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-600">
+                    Nessun sync effettuato. Le colonne saranno disponibili dopo il primo invio di dati.
+                  </p>
+                )}
                 <p className="text-xs text-slate-500">
-                  Inserisci i nomi delle colonne chiave separati da virgola. Questi campi verranno usati per identificare i record esistenti.
+                  Seleziona le colonne che identificano univocamente ogni record.
                 </p>
               </div>
             )}
@@ -736,7 +764,7 @@ export function SyncSourcesManager() {
                   id: editingSource.id,
                   data: {
                     replaceMode: editReplaceMode,
-                    upsertKeyColumns: editReplaceMode === 'upsert' ? editUpsertKeyColumns : undefined,
+                    upsertKeyColumns: editReplaceMode === 'upsert' ? Array.from(editSelectedColumns).join(', ') : undefined,
                   }
                 }, {
                   onSuccess: () => {

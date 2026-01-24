@@ -614,6 +614,51 @@ router.patch(
   }
 );
 
+// Get available columns for a sync source (from the last sync)
+router.get(
+  "/sources/:id/columns",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const sourceId = parseInt(req.params.id);
+
+      // Get the source and its target dataset
+      const sourceResult = await db.execute<any>(sql`
+        SELECT s.id, s.target_dataset_id, d.table_name
+        FROM dataset_sync_sources s
+        LEFT JOIN client_data_datasets d ON d.id = s.target_dataset_id
+        WHERE s.id = ${sourceId} AND s.consultant_id = ${consultantId}
+      `);
+
+      if (!sourceResult.rows?.length) {
+        return res.status(404).json({ success: false, error: "Sorgente non trovata" });
+      }
+
+      const tableName = sourceResult.rows[0].table_name;
+      if (!tableName) {
+        return res.json({ success: true, columns: [], message: "Nessun sync effettuato" });
+      }
+
+      // Get columns from the dynamic table (exclude system columns)
+      const columnsResult = await db.execute<any>(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = ${tableName}
+          AND column_name NOT IN ('id', 'consultant_id', 'client_id', 'created_at', 'updated_at', 'sync_source_id', 'sync_batch_id')
+        ORDER BY ordinal_position
+      `);
+
+      const columns = columnsResult.rows?.map((r: any) => r.column_name) || [];
+      res.json({ success: true, columns });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error getting columns:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 router.get(
   "/history/:sourceId",
   authenticateToken,

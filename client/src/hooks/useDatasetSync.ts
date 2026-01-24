@@ -238,6 +238,21 @@ export function useUpdateSyncSource() {
   });
 }
 
+export function useSyncSourceColumns(sourceId: number | null) {
+  return useQuery({
+    queryKey: ["dataset-sync-source-columns", sourceId],
+    queryFn: async () => {
+      if (!sourceId) return { columns: [] };
+      const response = await fetch(`/api/dataset-sync/sources/${sourceId}/columns`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch columns");
+      return response.json();
+    },
+    enabled: sourceId !== null,
+  });
+}
+
 export function useToggleSyncSource() {
   const queryClient = useQueryClient();
   return useMutation({
