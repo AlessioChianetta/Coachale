@@ -777,7 +777,7 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
                     </div>
 
                     {/* Table Header */}
-                    <div className="bg-white rounded-t-lg border border-gray-200">
+                    <div className="bg-white rounded-t-lg border border-gray-200 overflow-hidden">
                       <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
                         <div className="col-span-5 flex items-center gap-3">
                           <div className="w-6"></div>
