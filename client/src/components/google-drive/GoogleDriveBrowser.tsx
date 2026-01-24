@@ -727,18 +727,24 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
                       <ChevronDown className="w-4 h-4" />
                       <span>Cartelle suggerite</span>
                     </button>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {folders.slice(0, 4).map((folder) => (
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {folders.slice(0, 5).map((folder) => (
                         <div
                           key={folder.id}
                           onClick={() => handleFolderClick(folder)}
-                          className="p-3 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all group"
+                          className="flex-shrink-0 w-56 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all group"
                         >
-                          <div className="flex items-center gap-2">
-                            <Folder className="w-5 h-5 text-gray-500 shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-gray-800 truncate text-sm">{folder.name}</p>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <Folder className="w-6 h-6 text-gray-500" />
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-800 truncate text-sm">{folder.name}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">in Il mio Drive</p>
+                              </div>
                             </div>
+                            <button className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 rounded transition-opacity">
+                              <MoreVertical className="w-4 h-4 text-gray-400" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -771,12 +777,15 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
                     </div>
 
                     {/* Table Header */}
-                    <div className="bg-white rounded-t-lg border border-gray-200 overflow-hidden">
-                      <div className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        <div className="w-6 shrink-0"></div>
-                        <div className="flex-1 min-w-0">Nome</div>
-                        <div className="hidden md:block w-40 shrink-0">Ultima modifica</div>
-                        <div className="hidden lg:block w-24 shrink-0">Proprietario</div>
+                    <div className="bg-white rounded-t-lg border border-gray-200">
+                      <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        <div className="col-span-5 flex items-center gap-3">
+                          <div className="w-6"></div>
+                          <span>Nome</span>
+                        </div>
+                        <div className="col-span-3">Motivo del suggerimento</div>
+                        <div className="col-span-2">Proprietario</div>
+                        <div className="col-span-2">Posizione</div>
                       </div>
 
                       {/* File Rows */}
@@ -792,28 +801,28 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
                           return (
                             <div
                               key={item.id}
-                              className={`flex items-center gap-4 px-4 py-3 transition-colors cursor-pointer ${
+                              className={`grid grid-cols-12 gap-4 px-4 py-3 items-center transition-colors cursor-pointer ${
                                 isSelected ? 'bg-[#e8f0fe]' : isHovered ? 'bg-gray-50' : ''
                               } ${isImported ? 'opacity-60' : ''}`}
                               onMouseEnter={() => setHoveredRow(item.id)}
                               onMouseLeave={() => setHoveredRow(null)}
                               onClick={() => isFolder ? handleFolderClick(item as DriveFolder) : null}
                             >
-                              <div className="w-6 shrink-0 flex items-center justify-center">
-                                {(isHovered || isSelected) && !isImported ? (
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) => {
-                                      handleFileSelect(item.id, checked as boolean);
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-5 h-5 rounded border-2 border-gray-400 data-[state=checked]:bg-[#1a73e8] data-[state=checked]:border-[#1a73e8]"
-                                  />
-                                ) : isImported ? (
-                                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                                ) : null}
-                              </div>
-                              <div className="flex-1 flex items-center gap-2 min-w-0">
+                              <div className="col-span-5 flex items-center gap-3 min-w-0">
+                                <div className="w-6 flex items-center justify-center">
+                                  {(isHovered || isSelected) && !isImported ? (
+                                    <Checkbox
+                                      checked={isSelected}
+                                      onCheckedChange={(checked) => {
+                                        handleFileSelect(item.id, checked as boolean);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="w-5 h-5 rounded border-2 border-gray-400 data-[state=checked]:bg-[#1a73e8] data-[state=checked]:border-[#1a73e8]"
+                                    />
+                                  ) : isImported ? (
+                                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                  ) : null}
+                                </div>
                                 {getFileIcon(item.mimeType, "md")}
                                 <span className={`text-sm truncate ${isImported ? 'text-gray-500' : 'text-gray-800'}`}>
                                   {item.name}
@@ -824,14 +833,18 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
                                   </Badge>
                                 )}
                               </div>
-                              <div className="hidden md:block w-40 shrink-0 text-sm text-gray-500 truncate">
-                                {file.modifiedTime ? formatDate(file.modifiedTime) : '-'}
+                              <div className="col-span-3 text-sm text-gray-500 truncate">
+                                {file.modifiedTime ? `Aperto da te • ${formatDate(file.modifiedTime)}` : 'Lo hai aperto spesso'}
                               </div>
-                              <div className="hidden lg:flex w-24 shrink-0 items-center gap-2">
-                                <div className={`w-6 h-6 rounded-full ${getOwnerColor(ownerEmail)} flex items-center justify-center text-white text-xs font-medium`}>
+                              <div className="col-span-2 flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-full ${getOwnerColor(ownerEmail)} flex items-center justify-center text-white text-xs font-medium`}>
                                   {getOwnerInitial(ownerEmail)}
                                 </div>
-                                <span className="text-sm text-gray-600">me</span>
+                                <span className="text-sm text-gray-600 truncate">me</span>
+                              </div>
+                              <div className="col-span-2 flex items-center gap-2 text-sm text-gray-500">
+                                <Folder className="w-4 h-4 text-gray-400" />
+                                <span className="truncate">Il mio Drive</span>
                               </div>
                             </div>
                           );
