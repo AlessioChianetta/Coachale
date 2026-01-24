@@ -1873,9 +1873,11 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             // Step 2: Fetch fresh slots from calendar API
             console.log(`   🌐 [PUBLIC-SLOTS] No saved slots found - fetching from calendar API...`);
             
+            // Use agent's maxDaysAhead configuration (default 30 days)
+            const maxDaysAhead = agentConfig?.availabilityMaxDaysAhead || 30;
             const startDate = new Date();
             const endDate = new Date();
-            endDate.setDate(endDate.getDate() + 7);
+            endDate.setDate(endDate.getDate() + maxDaysAhead);
             
             try {
               const slotsResponse = await fetch(

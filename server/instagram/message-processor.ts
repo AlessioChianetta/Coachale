@@ -1414,10 +1414,11 @@ ${triggerContext}
         // Get available slots from calendar API (same endpoint as WhatsApp)
         let availableSlots: any[] = [];
         try {
-          // Calculate date range (next 7 days)
+          // Calculate date range using agent's maxDaysAhead configuration (default 30 days)
+          const maxDaysAhead = linkedAgent?.availabilityMaxDaysAhead || 30;
           const startDate = new Date();
           const endDate = new Date();
-          endDate.setDate(endDate.getDate() + 7);
+          endDate.setDate(endDate.getDate() + maxDaysAhead);
           
           const slotsResponse = await fetch(
             `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
