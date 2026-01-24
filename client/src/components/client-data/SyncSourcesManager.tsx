@@ -155,10 +155,19 @@ export function SyncSourcesManager() {
       return;
     }
 
+    if (!selectedClientId) {
+      toast({
+        title: "Errore",
+        description: "Seleziona un cliente",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const result = await createMutation.mutateAsync({ 
         name: newSourceName.trim(),
-        clientId: selectedClientId && selectedClientId !== "__none__" ? selectedClientId : undefined,
+        clientId: selectedClientId,
       });
       const data = result as any;
       if (data?.data) {
@@ -432,14 +441,13 @@ export function SyncSourcesManager() {
             <div className="space-y-2">
               <Label htmlFor="client-select" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Associa a un cliente (opzionale)
+                Associa a un cliente <span className="text-red-500">*</span>
               </Label>
               <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                 <SelectTrigger id="client-select">
                   <SelectValue placeholder="Seleziona un cliente..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Nessun cliente (solo per me)</SelectItem>
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.firstName} {client.lastName} ({client.email})
@@ -448,7 +456,7 @@ export function SyncSourcesManager() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-500">
-                Se associ la sorgente a un cliente, i dati importati saranno visibili anche a lui.
+                I dati importati saranno associati a questo cliente.
               </p>
             </div>
           </div>
@@ -458,7 +466,7 @@ export function SyncSourcesManager() {
             </Button>
             <Button
               onClick={handleCreateSource}
-              disabled={createMutation.isPending || !newSourceName.trim()}
+              disabled={createMutation.isPending || !newSourceName.trim() || !selectedClientId}
             >
               {createMutation.isPending && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
