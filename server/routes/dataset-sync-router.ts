@@ -557,4 +557,318 @@ router.patch(
   }
 );
 
+router.get(
+  "/stats",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const [activeSourcesResult] = await db.execute<any>(sql`
+        SELECT COUNT(*) as count FROM dataset_sync_sources 
+        WHERE consultant_id = ${consultantId} AND is_active = true
+      `);
+
+      const [syncsLast24hResult] = await db.execute<any>(sql`
+        SELECT COUNT(*) as count FROM dataset_sync_history h
+        JOIN dataset_sync_sources s ON h.source_id = s.id
+        WHERE s.consultant_id = ${consultantId} 
+        AND h.started_at >= NOW() - INTERVAL '24 hours'
+      `);
+
+      const [errorsLast24hResult] = await db.execute<any>(sql`
+        SELECT COUNT(*) as count FROM dataset_sync_history h
+        JOIN dataset_sync_sources s ON h.source_id = s.id
+        WHERE s.consultant_id = ${consultantId} 
+        AND h.started_at >= NOW() - INTERVAL '24 hours'
+        AND h.status = 'failed'
+      `);
+
+      const [successfulLast24hResult] = await db.execute<any>(sql`
+        SELECT COUNT(*) as count FROM dataset_sync_history h
+        JOIN dataset_sync_sources s ON h.source_id = s.id
+        WHERE s.consultant_id = ${consultantId} 
+        AND h.started_at >= NOW() - INTERVAL '24 hours'
+        AND h.status = 'completed'
+      `);
+
+      const syncsLast24h = parseInt(syncsLast24hResult[0]?.count || '0');
+      const successfulLast24h = parseInt(successfulLast24hResult[0]?.count || '0');
+      const successRate = syncsLast24h > 0 ? Math.round((successfulLast24h / syncsLast24h) * 100) : 100;
+
+      res.json({
+        success: true,
+        data: {
+          successRate,
+          activeSources: parseInt(activeSourcesResult[0]?.count || '0'),
+          syncsLast24h,
+          errorsLast24h: parseInt(errorsLast24hResult[0]?.count || '0'),
+        },
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error fetching stats:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/sources/:id/regenerate-key",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const sourceId = parseInt(req.params.id);
+
+      const [source] = await db.execute<any>(sql`
+        SELECT id FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
+      `);
+
+      if (!source || source.length === 0) {
+        return res.status(404).json({ success: false, error: "Sorgente non trovata" });
+      }
+
+      const newApiKey = generateApiKey(consultantId);
+      const newSecretKey = generateSecretKey();
+
+      await db.execute(sql`
+        UPDATE dataset_sync_sources 
+        SET api_key = ${newApiKey}, secret_key = ${newSecretKey}, updated_at = now()
+        WHERE id = ${sourceId} AND consultant_id = ${consultantId}
+      `);
+
+      res.json({
+        success: true,
+        data: {
+          apiKey: newApiKey,
+          secretKey: newSecretKey,
+        },
+        message: "Chiavi rigenerate. Conserva la secret_key in modo sicuro - non sarà più visibile.",
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error regenerating keys:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.get(
+  "/history",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const { sourceId, status, dateFrom, dateTo, page = '1', limit = '50' } = req.query;
+
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+      const offset = (pageNum - 1) * limitNum;
+
+      let conditions = [sql`s.consultant_id = ${consultantId}`];
+      
+      if (sourceId) {
+        conditions.push(sql`h.source_id = ${parseInt(sourceId as string)}`);
+      }
+      if (status) {
+        conditions.push(sql`h.status = ${status as string}`);
+      }
+      if (dateFrom) {
+        conditions.push(sql`h.started_at >= ${dateFrom as string}::timestamp`);
+      }
+      if (dateTo) {
+        conditions.push(sql`h.started_at <= ${dateTo as string}::timestamp`);
+      }
+
+      const whereClause = sql.join(conditions, sql` AND `);
+
+      const [countResult] = await db.execute<any>(sql`
+        SELECT COUNT(*) as total FROM dataset_sync_history h
+        JOIN dataset_sync_sources s ON h.source_id = s.id
+        WHERE ${whereClause}
+      `);
+
+      const history = await db.execute<any>(sql`
+        SELECT h.*, s.name as source_name FROM dataset_sync_history h
+        JOIN dataset_sync_sources s ON h.source_id = s.id
+        WHERE ${whereClause}
+        ORDER BY h.started_at DESC
+        LIMIT ${limitNum} OFFSET ${offset}
+      `);
+
+      const total = parseInt(countResult[0]?.total || '0');
+
+      res.json({
+        success: true,
+        data: history,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error fetching history:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.get(
+  "/sources/:id/schedule",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const sourceId = parseInt(req.params.id);
+
+      const [source] = await db.execute<any>(sql`
+        SELECT id FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
+      `);
+
+      if (!source || source.length === 0) {
+        return res.status(404).json({ success: false, error: "Sorgente non trovata" });
+      }
+
+      const [schedule] = await db.execute<any>(sql`
+        SELECT * FROM dataset_sync_schedules WHERE source_id = ${sourceId}
+      `);
+
+      res.json({
+        success: true,
+        data: schedule && schedule.length > 0 ? schedule[0] : null,
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error fetching schedule:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.delete(
+  "/schedules/:id",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const scheduleId = parseInt(req.params.id);
+
+      const [schedule] = await db.execute<any>(sql`
+        SELECT sch.id, s.consultant_id FROM dataset_sync_schedules sch
+        JOIN dataset_sync_sources s ON sch.source_id = s.id
+        WHERE sch.id = ${scheduleId}
+      `);
+
+      if (!schedule || schedule.length === 0) {
+        return res.status(404).json({ success: false, error: "Schedulazione non trovata" });
+      }
+
+      if (schedule[0].consultant_id !== consultantId) {
+        return res.status(403).json({ success: false, error: "Non autorizzato" });
+      }
+
+      await db.execute(sql`
+        DELETE FROM dataset_sync_schedules WHERE id = ${scheduleId}
+      `);
+
+      res.json({ success: true, message: "Schedulazione eliminata" });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error deleting schedule:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/test-webhook",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  upload.single("file"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      await ensureUploadDir();
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: "MISSING_FILE",
+          message: "Nessun file caricato",
+        });
+      }
+
+      const { originalname, path: tempPath, size } = req.file;
+      const ext = path.extname(originalname).toLowerCase();
+
+      if (![".xlsx", ".xls", ".csv"].includes(ext)) {
+        await fs.promises.unlink(tempPath);
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_FILE_TYPE",
+          message: "Tipo file non supportato. Accettati: .xlsx, .xls, .csv",
+        });
+      }
+
+      console.log(`[DATASET-SYNC] Test webhook - Processing file: ${originalname} (${size} bytes)`);
+
+      const processedFile = await processExcelFile(tempPath, originalname);
+
+      await fs.promises.unlink(tempPath);
+
+      if (processedFile.sheets.length === 0 || processedFile.sheets[0].totalRows === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "EMPTY_FILE",
+          message: "File vuoto o senza righe valide",
+        });
+      }
+
+      const sheet = processedFile.sheets[0];
+      const discoveryResult = await discoverColumns(sheet.headers, sheet.sampleData, "it");
+
+      const mappedColumns = discoveryResult.columns.filter(c => c.suggestedLogicalColumn);
+      const unmappedColumns = discoveryResult.columns.filter(c => !c.suggestedLogicalColumn);
+
+      res.json({
+        success: true,
+        data: {
+          fileName: originalname,
+          fileSize: size,
+          sheetName: sheet.name,
+          totalRows: sheet.totalRows,
+          columnsDetected: sheet.headers.length,
+          columns: discoveryResult.columns.map(col => ({
+            physicalColumn: col.physicalColumn,
+            detectedType: col.detectedType,
+            suggestedLogicalColumn: col.suggestedLogicalColumn,
+            confidence: col.confidence,
+            sampleValues: col.sampleValues?.slice(0, 5),
+          })),
+          mappingSummary: {
+            mapped: mappedColumns.map(c => ({
+              physical: c.physicalColumn,
+              logical: c.suggestedLogicalColumn,
+              confidence: c.confidence,
+            })),
+            unmapped: unmappedColumns.map(c => c.physicalColumn),
+          },
+          previewRows: sheet.sampleData.slice(0, 10),
+        },
+        message: "Test completato. Il file non è stato importato.",
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Test webhook error:", error);
+      res.status(500).json({
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: error.message,
+      });
+    }
+  }
+);
+
 export default router;

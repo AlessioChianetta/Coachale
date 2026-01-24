@@ -18,6 +18,7 @@ import { ReconciliationReport } from "@/components/client-data/ReconciliationRep
 import { SemanticMappingConfirmation } from "@/components/client-data/SemanticMappingConfirmation";
 import { CustomMappingRules } from "@/components/client-data/CustomMappingRules";
 import { SemanticLayerGuide } from "@/components/client-data/SemanticLayerGuide";
+import { ExternalSyncDashboard } from "@/components/client-data/ExternalSyncDashboard";
 
 import {
   Database,
@@ -216,6 +217,7 @@ export default function ClientDataAnalysis() {
                 onNewDataset={() => setViewMode("upload")}
                 selectedDatasetId={selectedDataset?.id}
               />
+              <ExternalSyncDashboard />
               <SemanticLayerGuide datasetId={selectedDataset?.id ? parseInt(selectedDataset.id) : undefined} />
               <CustomMappingRules />
             </div>

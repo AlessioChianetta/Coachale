@@ -81,5 +81,15 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
   - **Schema Endpoint**: `GET /api/dataset-sync/schema` exports all 19 logical roles with auto-detect patterns for external partners (1800 restaurant installations)
   - **Scheduling Options**: daily@HH:MM, weekly@DOW@HH:MM, monthly@DD@HH:MM, every_X_days@HH:MM, webhook_only
   - **7 Query Engine Rules**: Revenue priority, document_type filter (auto-inject WHERE document_type='sale'), sales_channel default, time_slot resolver (calculate from order_date hour), category semantic, ORDER BY semantic mapping, NULLIF safe divisions
+  - **Management Dashboard**: 7 React components in `client/src/components/client-data/`:
+    - `ExternalSyncDashboard.tsx`: Main container with 6 tabs (Overview, Sorgenti, Schedule, Cronologia, Test, Schema)
+    - `SyncOverviewCards.tsx`: Success rate metrics, sync counts, error tracking, recent activity
+    - `SyncSourcesManager.tsx`: CRUD for sources with API key generation, copy/regenerate/pause/delete actions
+    - `SyncScheduleConfig.tsx`: Scheduling form (daily/weekly/monthly/custom), timezone selector
+    - `SyncHistoryLog.tsx`: Paginated history with filters, JSON payload viewer
+    - `WebhookTestTool.tsx`: File upload testing, HMAC signature generator, cURL examples
+    - `SchemaReferencePanel.tsx`: API documentation with logical roles reference
+  - **React Query Hooks**: `useDatasetSync.ts` with 13+ hooks for all API operations
+  - **Backend Endpoints**: 12 REST endpoints for sources CRUD, schedules, history, stats, schema, test-webhook
   - New DB tables: `dataset_sync_sources`, `dataset_sync_schedules`, `dataset_sync_history`
   - Documentation: `docs/DATASET_SYNC_API_GUIDE.md` with complete API specs and column mapping guide for partners
