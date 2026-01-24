@@ -1118,4 +1118,470 @@ router.post(
   }
 );
 
+// === SOURCE ANALYTICS API ===
+// Detailed analytics per source: health status, frequency, trends, push/pull mode
+
+router.get(
+  "/sources/:id/analytics",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const sourceId = parseInt(req.params.id);
+
+      // Verify source ownership
+      const sourceResult = await db.execute<any>(sql`
+        SELECT s.*, c.first_name as client_first_name, c.last_name as client_last_name
+        FROM dataset_sync_sources s
+        LEFT JOIN clients c ON s.client_id = c.id
+        WHERE s.id = ${sourceId} AND s.consultant_id = ${consultantId}
+      `);
+      const source = (sourceResult.rows || [])[0];
+
+      if (!source) {
+        return res.status(404).json({ success: false, error: "Sorgente non trovata" });
+      }
+
+      // Get schedule to determine push/pull mode
+      const scheduleResult = await db.execute<any>(sql`
+        SELECT * FROM dataset_sync_schedules WHERE source_id = ${sourceId}
+      `);
+      const schedule = (scheduleResult.rows || [])[0];
+      const syncMode = schedule?.schedule_type === 'webhook_only' ? 'push' : (schedule ? 'pull' : 'push');
+
+      // Last sync info (freshness)
+      const lastSyncResult = await db.execute<any>(sql`
+        SELECT * FROM dataset_sync_history 
+        WHERE source_id = ${sourceId} 
+        ORDER BY started_at DESC 
+        LIMIT 1
+      `);
+      const lastSync = (lastSyncResult.rows || [])[0];
+
+      // Stats last 7 days
+      const stats7dResult = await db.execute<any>(sql`
+        SELECT 
+          COUNT(*) as total_syncs,
+          COUNT(*) FILTER (WHERE status = 'completed') as successful_syncs,
+          COUNT(*) FILTER (WHERE status = 'failed') as failed_syncs,
+          COALESCE(SUM(rows_imported), 0) as total_rows,
+          COALESCE(AVG(duration_ms), 0) as avg_duration_ms,
+          COALESCE(MIN(started_at), NULL) as first_sync,
+          COALESCE(MAX(started_at), NULL) as last_sync
+        FROM dataset_sync_history 
+        WHERE source_id = ${sourceId} 
+        AND started_at >= NOW() - INTERVAL '7 days'
+      `);
+      const stats7d = (stats7dResult.rows || [])[0];
+
+      // Stats last 30 days
+      const stats30dResult = await db.execute<any>(sql`
+        SELECT 
+          COUNT(*) as total_syncs,
+          COUNT(*) FILTER (WHERE status = 'completed') as successful_syncs,
+          COUNT(*) FILTER (WHERE status = 'failed') as failed_syncs,
+          COALESCE(SUM(rows_imported), 0) as total_rows
+        FROM dataset_sync_history 
+        WHERE source_id = ${sourceId} 
+        AND started_at >= NOW() - INTERVAL '30 days'
+      `);
+      const stats30d = (stats30dResult.rows || [])[0];
+
+      // Daily trend last 14 days
+      const dailyTrendResult = await db.execute<any>(sql`
+        SELECT 
+          DATE(started_at) as date,
+          COUNT(*) as sync_count,
+          COUNT(*) FILTER (WHERE status = 'completed') as success_count,
+          COUNT(*) FILTER (WHERE status = 'failed') as fail_count,
+          COALESCE(SUM(rows_imported), 0) as rows_imported,
+          COALESCE(AVG(duration_ms), 0) as avg_duration_ms
+        FROM dataset_sync_history 
+        WHERE source_id = ${sourceId} 
+        AND started_at >= NOW() - INTERVAL '14 days'
+        GROUP BY DATE(started_at)
+        ORDER BY date ASC
+      `);
+      const dailyTrend = dailyTrendResult.rows || [];
+
+      // Calculate average sync frequency (hours between syncs)
+      const syncFrequencyResult = await db.execute<any>(sql`
+        WITH sync_gaps AS (
+          SELECT 
+            started_at,
+            LAG(started_at) OVER (ORDER BY started_at) as prev_sync
+          FROM dataset_sync_history 
+          WHERE source_id = ${sourceId}
+          AND started_at >= NOW() - INTERVAL '30 days'
+        )
+        SELECT 
+          AVG(EXTRACT(EPOCH FROM (started_at - prev_sync)) / 3600) as avg_hours_between_syncs
+        FROM sync_gaps 
+        WHERE prev_sync IS NOT NULL
+      `);
+      const avgHoursBetweenSyncs = parseFloat((syncFrequencyResult.rows || [])[0]?.avg_hours_between_syncs) || null;
+
+      // Calculate health status
+      const totalSyncs7d = parseInt(stats7d.total_syncs || '0');
+      const successfulSyncs7d = parseInt(stats7d.successful_syncs || '0');
+      const failedSyncs7d = parseInt(stats7d.failed_syncs || '0');
+      const successRate7d = totalSyncs7d > 0 ? (successfulSyncs7d / totalSyncs7d) * 100 : 100;
+
+      // Freshness: hours since last successful sync
+      let freshness = null;
+      let freshnessStatus: 'fresh' | 'stale' | 'critical' | 'unknown' = 'unknown';
+      if (lastSync && lastSync.status === 'completed') {
+        freshness = (Date.now() - new Date(lastSync.completed_at || lastSync.started_at).getTime()) / (1000 * 60 * 60);
+        if (freshness < 24) freshnessStatus = 'fresh';
+        else if (freshness < 72) freshnessStatus = 'stale';
+        else freshnessStatus = 'critical';
+      } else if (lastSync && lastSync.status === 'failed') {
+        freshnessStatus = 'critical';
+      }
+
+      // Overall health: green, yellow, red
+      let healthStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
+      if (successRate7d < 50 || freshnessStatus === 'critical') {
+        healthStatus = 'critical';
+      } else if (successRate7d < 90 || freshnessStatus === 'stale') {
+        healthStatus = 'warning';
+      }
+
+      // Recent errors
+      const recentErrorsResult = await db.execute<any>(sql`
+        SELECT error_code, error_message, started_at
+        FROM dataset_sync_history 
+        WHERE source_id = ${sourceId} AND status = 'failed'
+        ORDER BY started_at DESC
+        LIMIT 5
+      `);
+      const recentErrors = recentErrorsResult.rows || [];
+
+      res.json({
+        success: true,
+        data: {
+          source: {
+            id: source.id,
+            name: source.name,
+            isActive: source.is_active,
+            clientName: source.client_first_name ? `${source.client_first_name} ${source.client_last_name}` : null,
+            syncMode, // 'push' or 'pull'
+            createdAt: source.created_at,
+          },
+          health: {
+            status: healthStatus,
+            successRate7d: Math.round(successRate7d * 100) / 100,
+            freshnessHours: freshness ? Math.round(freshness * 10) / 10 : null,
+            freshnessStatus,
+          },
+          frequency: {
+            avgHoursBetweenSyncs: avgHoursBetweenSyncs ? Math.round(avgHoursBetweenSyncs * 10) / 10 : null,
+            syncsLast7d: totalSyncs7d,
+            syncsLast30d: parseInt(stats30d.total_syncs || '0'),
+          },
+          metrics: {
+            last7d: {
+              totalSyncs: totalSyncs7d,
+              successfulSyncs: successfulSyncs7d,
+              failedSyncs: failedSyncs7d,
+              totalRows: parseInt(stats7d.total_rows || '0'),
+              avgDurationMs: Math.round(parseFloat(stats7d.avg_duration_ms || '0')),
+            },
+            last30d: {
+              totalSyncs: parseInt(stats30d.total_syncs || '0'),
+              successfulSyncs: parseInt(stats30d.successful_syncs || '0'),
+              failedSyncs: parseInt(stats30d.failed_syncs || '0'),
+              totalRows: parseInt(stats30d.total_rows || '0'),
+            },
+          },
+          lastSync: lastSync ? {
+            syncId: lastSync.sync_id,
+            status: lastSync.status,
+            startedAt: lastSync.started_at,
+            completedAt: lastSync.completed_at,
+            rowsImported: lastSync.rows_imported,
+            durationMs: lastSync.duration_ms,
+          } : null,
+          dailyTrend: dailyTrend.map((d: any) => ({
+            date: d.date,
+            syncCount: parseInt(d.sync_count || '0'),
+            successCount: parseInt(d.success_count || '0'),
+            failCount: parseInt(d.fail_count || '0'),
+            rowsImported: parseInt(d.rows_imported || '0'),
+            avgDurationMs: Math.round(parseFloat(d.avg_duration_ms || '0')),
+          })),
+          recentErrors,
+        },
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error fetching source analytics:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// === ALL SOURCES ANALYTICS ===
+// Overview of all sources with health status for dashboard
+
+router.get(
+  "/analytics/overview",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+
+      // Get all sources with their latest sync info
+      const sourcesResult = await db.execute<any>(sql`
+        SELECT 
+          s.id,
+          s.name,
+          s.is_active,
+          s.client_id,
+          c.first_name as client_first_name,
+          c.last_name as client_last_name,
+          s.created_at,
+          sch.schedule_type,
+          (
+            SELECT started_at FROM dataset_sync_history 
+            WHERE source_id = s.id 
+            ORDER BY started_at DESC LIMIT 1
+          ) as last_sync_at,
+          (
+            SELECT status FROM dataset_sync_history 
+            WHERE source_id = s.id 
+            ORDER BY started_at DESC LIMIT 1
+          ) as last_sync_status,
+          (
+            SELECT COUNT(*) FROM dataset_sync_history 
+            WHERE source_id = s.id 
+            AND started_at >= NOW() - INTERVAL '7 days'
+          ) as syncs_7d,
+          (
+            SELECT COUNT(*) FILTER (WHERE status = 'completed') FROM dataset_sync_history 
+            WHERE source_id = s.id 
+            AND started_at >= NOW() - INTERVAL '7 days'
+          ) as success_7d,
+          (
+            SELECT COUNT(*) FILTER (WHERE status = 'failed') FROM dataset_sync_history 
+            WHERE source_id = s.id 
+            AND started_at >= NOW() - INTERVAL '7 days'
+          ) as failed_7d,
+          (
+            SELECT COALESCE(SUM(rows_imported), 0) FROM dataset_sync_history 
+            WHERE source_id = s.id 
+            AND started_at >= NOW() - INTERVAL '7 days'
+          ) as rows_7d
+        FROM dataset_sync_sources s
+        LEFT JOIN clients c ON s.client_id = c.id
+        LEFT JOIN dataset_sync_schedules sch ON sch.source_id = s.id
+        WHERE s.consultant_id = ${consultantId}
+        ORDER BY s.name ASC
+      `);
+      const sources = sourcesResult.rows || [];
+
+      // Process each source to add health status
+      const sourcesWithHealth = sources.map((s: any) => {
+        const syncs7d = parseInt(s.syncs_7d || '0');
+        const success7d = parseInt(s.success_7d || '0');
+        const failed7d = parseInt(s.failed_7d || '0');
+        const successRate = syncs7d > 0 ? (success7d / syncs7d) * 100 : 100;
+
+        // Calculate freshness
+        let freshnessHours = null;
+        let freshnessStatus: 'fresh' | 'stale' | 'critical' | 'unknown' = 'unknown';
+        if (s.last_sync_at) {
+          freshnessHours = (Date.now() - new Date(s.last_sync_at).getTime()) / (1000 * 60 * 60);
+          if (s.last_sync_status === 'failed') {
+            freshnessStatus = 'critical';
+          } else if (freshnessHours < 24) {
+            freshnessStatus = 'fresh';
+          } else if (freshnessHours < 72) {
+            freshnessStatus = 'stale';
+          } else {
+            freshnessStatus = 'critical';
+          }
+        }
+
+        // Health status
+        let healthStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
+        if (!s.is_active) {
+          healthStatus = 'warning';
+        } else if (successRate < 50 || freshnessStatus === 'critical') {
+          healthStatus = 'critical';
+        } else if (successRate < 90 || freshnessStatus === 'stale') {
+          healthStatus = 'warning';
+        }
+
+        const syncMode = s.schedule_type === 'webhook_only' ? 'push' : (s.schedule_type ? 'pull' : 'push');
+
+        return {
+          id: s.id,
+          name: s.name,
+          isActive: s.is_active,
+          clientId: s.client_id,
+          clientName: s.client_first_name ? `${s.client_first_name} ${s.client_last_name}` : null,
+          syncMode,
+          healthStatus,
+          successRate: Math.round(successRate),
+          freshnessHours: freshnessHours ? Math.round(freshnessHours * 10) / 10 : null,
+          freshnessStatus,
+          lastSyncAt: s.last_sync_at,
+          lastSyncStatus: s.last_sync_status,
+          metrics7d: {
+            syncs: syncs7d,
+            success: success7d,
+            failed: failed7d,
+            rows: parseInt(s.rows_7d || '0'),
+          },
+        };
+      });
+
+      // Group by client
+      const byClient: Record<string, any[]> = {};
+      const noClient: any[] = [];
+      for (const source of sourcesWithHealth) {
+        if (source.clientId) {
+          const clientKey = source.clientId;
+          if (!byClient[clientKey]) {
+            byClient[clientKey] = [];
+          }
+          byClient[clientKey].push(source);
+        } else {
+          noClient.push(source);
+        }
+      }
+
+      // Calculate overall stats
+      const totalSources = sourcesWithHealth.length;
+      const activeSources = sourcesWithHealth.filter((s: any) => s.isActive).length;
+      const healthyCounts = {
+        healthy: sourcesWithHealth.filter((s: any) => s.healthStatus === 'healthy').length,
+        warning: sourcesWithHealth.filter((s: any) => s.healthStatus === 'warning').length,
+        critical: sourcesWithHealth.filter((s: any) => s.healthStatus === 'critical').length,
+      };
+      const pushCount = sourcesWithHealth.filter((s: any) => s.syncMode === 'push').length;
+      const pullCount = sourcesWithHealth.filter((s: any) => s.syncMode === 'pull').length;
+
+      res.json({
+        success: true,
+        data: {
+          summary: {
+            totalSources,
+            activeSources,
+            healthStatus: healthyCounts,
+            syncModes: { push: pushCount, pull: pullCount },
+          },
+          sources: sourcesWithHealth,
+          byClient,
+          noClient,
+        },
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error fetching analytics overview:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// === CLIENT ANALYTICS ===
+// Aggregated sync analytics per client
+
+router.get(
+  "/analytics/clients",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const clientsResult = await db.execute<any>(sql`
+        SELECT 
+          c.id,
+          c.first_name,
+          c.last_name,
+          c.email,
+          COUNT(DISTINCT s.id) as source_count,
+          COUNT(DISTINCT s.id) FILTER (WHERE s.is_active) as active_source_count,
+          (
+            SELECT COUNT(*) FROM dataset_sync_history h
+            JOIN dataset_sync_sources src ON h.source_id = src.id
+            WHERE src.client_id = c.id
+            AND h.started_at >= NOW() - INTERVAL '7 days'
+          ) as syncs_7d,
+          (
+            SELECT COUNT(*) FILTER (WHERE status = 'completed') FROM dataset_sync_history h
+            JOIN dataset_sync_sources src ON h.source_id = src.id
+            WHERE src.client_id = c.id
+            AND h.started_at >= NOW() - INTERVAL '7 days'
+          ) as success_7d,
+          (
+            SELECT COALESCE(SUM(rows_imported), 0) FROM dataset_sync_history h
+            JOIN dataset_sync_sources src ON h.source_id = src.id
+            WHERE src.client_id = c.id
+            AND h.started_at >= NOW() - INTERVAL '7 days'
+          ) as rows_7d,
+          (
+            SELECT MAX(h.started_at) FROM dataset_sync_history h
+            JOIN dataset_sync_sources src ON h.source_id = src.id
+            WHERE src.client_id = c.id
+          ) as last_sync_at
+        FROM clients c
+        JOIN dataset_sync_sources s ON s.client_id = c.id
+        WHERE s.consultant_id = ${consultantId}
+        GROUP BY c.id, c.first_name, c.last_name, c.email
+        ORDER BY c.first_name ASC
+      `);
+      const clients = clientsResult.rows || [];
+
+      const clientsWithStats = clients.map((c: any) => {
+        const syncs7d = parseInt(c.syncs_7d || '0');
+        const success7d = parseInt(c.success_7d || '0');
+        const successRate = syncs7d > 0 ? (success7d / syncs7d) * 100 : 100;
+
+        let freshnessStatus: 'fresh' | 'stale' | 'critical' | 'unknown' = 'unknown';
+        let freshnessHours = null;
+        if (c.last_sync_at) {
+          freshnessHours = (Date.now() - new Date(c.last_sync_at).getTime()) / (1000 * 60 * 60);
+          if (freshnessHours < 24) freshnessStatus = 'fresh';
+          else if (freshnessHours < 72) freshnessStatus = 'stale';
+          else freshnessStatus = 'critical';
+        }
+
+        let healthStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
+        if (successRate < 50 || freshnessStatus === 'critical') {
+          healthStatus = 'critical';
+        } else if (successRate < 90 || freshnessStatus === 'stale') {
+          healthStatus = 'warning';
+        }
+
+        return {
+          id: c.id,
+          name: `${c.first_name} ${c.last_name}`,
+          email: c.email,
+          sourceCount: parseInt(c.source_count || '0'),
+          activeSourceCount: parseInt(c.active_source_count || '0'),
+          syncs7d: syncs7d,
+          success7d: success7d,
+          successRate: Math.round(successRate),
+          rows7d: parseInt(c.rows_7d || '0'),
+          lastSyncAt: c.last_sync_at,
+          freshnessHours: freshnessHours ? Math.round(freshnessHours * 10) / 10 : null,
+          freshnessStatus,
+          healthStatus,
+        };
+      });
+
+      res.json({
+        success: true,
+        data: clientsWithStats,
+      });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error fetching client analytics:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 export default router;

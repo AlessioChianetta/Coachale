@@ -439,3 +439,162 @@ export function useTriggerManualSync() {
     },
   });
 }
+
+// === SOURCE ANALYTICS HOOKS ===
+
+export interface SourceAnalytics {
+  source: {
+    id: number;
+    name: string;
+    isActive: boolean;
+    clientName: string | null;
+    syncMode: 'push' | 'pull';
+    createdAt: string;
+  };
+  health: {
+    status: 'healthy' | 'warning' | 'critical';
+    successRate7d: number;
+    freshnessHours: number | null;
+    freshnessStatus: 'fresh' | 'stale' | 'critical' | 'unknown';
+  };
+  frequency: {
+    avgHoursBetweenSyncs: number | null;
+    syncsLast7d: number;
+    syncsLast30d: number;
+  };
+  metrics: {
+    last7d: {
+      totalSyncs: number;
+      successfulSyncs: number;
+      failedSyncs: number;
+      totalRows: number;
+      avgDurationMs: number;
+    };
+    last30d: {
+      totalSyncs: number;
+      successfulSyncs: number;
+      failedSyncs: number;
+      totalRows: number;
+    };
+  };
+  lastSync: {
+    syncId: string;
+    status: string;
+    startedAt: string;
+    completedAt: string | null;
+    rowsImported: number;
+    durationMs: number | null;
+  } | null;
+  dailyTrend: Array<{
+    date: string;
+    syncCount: number;
+    successCount: number;
+    failCount: number;
+    rowsImported: number;
+    avgDurationMs: number;
+  }>;
+  recentErrors: Array<{
+    error_code: string | null;
+    error_message: string | null;
+    started_at: string;
+  }>;
+}
+
+export interface SourceOverviewItem {
+  id: number;
+  name: string;
+  isActive: boolean;
+  clientId: string | null;
+  clientName: string | null;
+  syncMode: 'push' | 'pull';
+  healthStatus: 'healthy' | 'warning' | 'critical';
+  successRate: number;
+  freshnessHours: number | null;
+  freshnessStatus: 'fresh' | 'stale' | 'critical' | 'unknown';
+  lastSyncAt: string | null;
+  lastSyncStatus: string | null;
+  metrics7d: {
+    syncs: number;
+    success: number;
+    failed: number;
+    rows: number;
+  };
+}
+
+export interface AnalyticsOverview {
+  summary: {
+    totalSources: number;
+    activeSources: number;
+    healthStatus: {
+      healthy: number;
+      warning: number;
+      critical: number;
+    };
+    syncModes: {
+      push: number;
+      pull: number;
+    };
+  };
+  sources: SourceOverviewItem[];
+  byClient: Record<string, SourceOverviewItem[]>;
+  noClient: SourceOverviewItem[];
+}
+
+export interface ClientAnalytics {
+  id: string;
+  name: string;
+  email: string;
+  sourceCount: number;
+  activeSourceCount: number;
+  syncs7d: number;
+  success7d: number;
+  successRate: number;
+  rows7d: number;
+  lastSyncAt: string | null;
+  freshnessHours: number | null;
+  freshnessStatus: 'fresh' | 'stale' | 'critical' | 'unknown';
+  healthStatus: 'healthy' | 'warning' | 'critical';
+}
+
+export function useSourceAnalytics(sourceId: number | null) {
+  return useQuery<{ success: boolean; data: SourceAnalytics }>({
+    queryKey: ["dataset-sync-source-analytics", sourceId],
+    queryFn: async () => {
+      const res = await fetch(`/api/dataset-sync/sources/${sourceId}/analytics`, {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch source analytics");
+      return res.json();
+    },
+    enabled: sourceId !== null,
+  });
+}
+
+export function useAnalyticsOverview() {
+  return useQuery<{ success: boolean; data: AnalyticsOverview }>({
+    queryKey: ["dataset-sync-analytics-overview"],
+    queryFn: async () => {
+      const res = await fetch("/api/dataset-sync/analytics/overview", {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch analytics overview");
+      return res.json();
+    },
+  });
+}
+
+export function useClientAnalytics() {
+  return useQuery<{ success: boolean; data: ClientAnalytics[] }>({
+    queryKey: ["dataset-sync-client-analytics"],
+    queryFn: async () => {
+      const res = await fetch("/api/dataset-sync/analytics/clients", {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch client analytics");
+      return res.json();
+    },
+  });
+}
