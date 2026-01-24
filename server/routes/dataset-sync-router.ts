@@ -232,30 +232,44 @@ router.post(
       const optionsReplaceMode = req.body?.replace_mode as 'full' | 'append' | 'upsert' | undefined;
       const optionsKeyColumns = req.body?.upsert_key_columns as string | undefined;
 
-      // If options are provided, update source configuration for future syncs
+      // If options are provided, validate and update source configuration
       if (optionsReplaceMode && ['full', 'append', 'upsert'].includes(optionsReplaceMode)) {
-        let keyColumnsArray: string[] | null = null;
-        if (optionsReplaceMode === 'upsert' && optionsKeyColumns) {
-          keyColumnsArray = optionsKeyColumns
-            .split(',')
-            .map((c: string) => c.trim())
-            .filter((c: string) => c.length > 0);
+        let keyColumnsArray: string[] = [];
+        
+        if (optionsReplaceMode === 'upsert') {
+          // Parse key columns
+          if (optionsKeyColumns) {
+            keyColumnsArray = optionsKeyColumns
+              .split(',')
+              .map((c: string) => c.trim().toLowerCase())
+              .filter((c: string) => c.length > 0);
+          }
+          
+          // Validate: upsert requires at least one key column
+          if (keyColumnsArray.length === 0) {
+            return res.status(400).json({
+              success: false,
+              error: "MISSING_UPSERT_KEYS",
+              message: "Modalità upsert richiede almeno una colonna chiave in upsert_key_columns",
+              example: "upsert_key_columns=order_id,line_id"
+            });
+          }
         }
 
         // Update source with new settings
         await db.execute(sql`
           UPDATE dataset_sync_sources 
           SET replace_mode = ${optionsReplaceMode},
-              upsert_key_columns = ${keyColumnsArray},
+              upsert_key_columns = ${keyColumnsArray.length > 0 ? keyColumnsArray : null},
               updated_at = NOW()
           WHERE id = ${sourceId}
         `);
 
         // Update local sourceData for current sync
         sourceData.replace_mode = optionsReplaceMode;
-        sourceData.upsert_key_columns = keyColumnsArray;
+        sourceData.upsert_key_columns = keyColumnsArray.length > 0 ? keyColumnsArray : null;
 
-        console.log(`[DATASET-SYNC] Options applied: replace_mode=${optionsReplaceMode}, key_columns=${keyColumnsArray?.join(', ') || 'none'}`);
+        console.log(`[DATASET-SYNC] Options applied: replace_mode=${optionsReplaceMode}, key_columns=${keyColumnsArray.join(', ') || 'none'}`);
       }
 
       await db.execute(sql`
