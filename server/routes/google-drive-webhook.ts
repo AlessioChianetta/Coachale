@@ -1,15 +1,16 @@
 import { Router, Request, Response } from 'express';
-import { findChannelByResourceId, syncDocumentFromDrive } from '../services/google-drive-sync-service';
+import { findChannelByResourceId, scheduleDebouncedSync } from '../services/google-drive-sync-service';
 
 const router = Router();
+
+// Debounce duration in minutes (wait before syncing after file change)
+const SYNC_DEBOUNCE_MINUTES = 30;
 
 router.post('/google-drive/webhook', async (req: Request, res: Response) => {
   const resourceState = req.headers['x-goog-resource-state'] as string | undefined;
   const channelId = req.headers['x-goog-channel-id'] as string | undefined;
   const resourceId = req.headers['x-goog-resource-id'] as string | undefined;
   const messageNumber = req.headers['x-goog-message-number'] as string | undefined;
-  const channelExpiration = req.headers['x-goog-channel-expiration'] as string | undefined;
-  const resourceUri = req.headers['x-goog-resource-uri'] as string | undefined;
   const changedFields = req.headers['x-goog-changed'] as string | undefined;
   
   console.log(`📥 [DRIVE WEBHOOK] Received notification`);
@@ -42,19 +43,10 @@ router.post('/google-drive/webhook', async (req: Request, res: Response) => {
     }
     
     if (resourceState === 'update' || resourceState === 'change') {
-      console.log(`🔄 [DRIVE WEBHOOK] File changed, triggering sync for document ${channel.documentId}`);
-      
-      syncDocumentFromDrive(channel.documentId)
-        .then((success) => {
-          if (success) {
-            console.log(`✅ [DRIVE WEBHOOK] Sync completed for document ${channel.documentId}`);
-          } else {
-            console.error(`❌ [DRIVE WEBHOOK] Sync failed for document ${channel.documentId}`);
-          }
-        })
-        .catch((error) => {
-          console.error(`❌ [DRIVE WEBHOOK] Sync error:`, error.message);
-        });
+      // Schedule debounced sync instead of immediate sync
+      const scheduledTime = new Date(Date.now() + SYNC_DEBOUNCE_MINUTES * 60 * 1000);
+      await scheduleDebouncedSync(channel.documentId, scheduledTime);
+      console.log(`⏰ [DRIVE WEBHOOK] Sync scheduled for ${scheduledTime.toISOString()} (${SYNC_DEBOUNCE_MINUTES} min debounce)`);
     } else if (resourceState === 'trash' || resourceState === 'delete') {
       console.log(`🗑️ [DRIVE WEBHOOK] File trashed/deleted: ${channel.documentId}`);
     } else {

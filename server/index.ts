@@ -24,6 +24,7 @@ import { startNurturingScheduler } from "./cron/nurturing-scheduler";
 import { initDynamicContextScheduler } from "./cron/dynamic-context-scheduler";
 import { startWeeklyCheckinScheduler } from "./cron/weekly-checkin-scheduler";
 import { startChannelRenewalScheduler } from "./cron/drive-channel-renewal";
+import { startDrivePendingSyncScheduler } from "./cron/drive-pending-sync";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -502,6 +503,11 @@ app.use((req, res, next) => {
     log("🔄 Google Drive channel renewal scheduler enabled - starting scheduler (every 12 hours)...");
     startChannelRenewalScheduler();
     log("✅ Google Drive channel renewal scheduler started");
+    
+    // Also start the pending sync processor (debounced syncs)
+    log("🔄 Google Drive pending sync processor enabled - starting scheduler (every 5 minutes)...");
+    startDrivePendingSyncScheduler();
+    log("✅ Google Drive pending sync processor started");
   } else {
     log("🔄 Google Drive channel renewal scheduler is disabled (set DRIVE_RENEWAL_ENABLED=true to enable)");
   }

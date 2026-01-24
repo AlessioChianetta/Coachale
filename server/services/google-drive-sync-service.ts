@@ -6,9 +6,10 @@ import {
   consultantKnowledgeDocuments, 
   consultantAvailabilitySettings,
   vertexAiSettings,
-  systemSettings 
+  systemSettings,
+  documentSyncHistory
 } from '../../shared/schema';
-import { eq, and, lt, or } from 'drizzle-orm';
+import { eq, and, lt, lte, isNotNull } from 'drizzle-orm';
 import { extractTextFromFile, type VertexAICredentials } from './document-processor';
 import { downloadDriveFile, refreshDriveTokenIfNeeded } from './google-drive-service';
 import fs from 'fs/promises';
@@ -253,8 +254,63 @@ export async function renewDriveChannel(syncChannelId: string): Promise<boolean>
   }
 }
 
-export async function syncDocumentFromDrive(documentId: string): Promise<boolean> {
-  console.log(`🔄 [DRIVE SYNC] Starting sync for document ${documentId}`);
+/**
+ * Schedule a debounced sync for a document
+ * If a sync is already scheduled, it updates the scheduled time (resets debounce timer)
+ */
+export async function scheduleDebouncedSync(documentId: string, scheduledTime: Date): Promise<void> {
+  await db
+    .update(consultantKnowledgeDocuments)
+    .set({ 
+      pendingSyncAt: scheduledTime,
+      updatedAt: new Date()
+    })
+    .where(eq(consultantKnowledgeDocuments.id, documentId));
+  
+  console.log(`⏰ [DRIVE SYNC] Debounced sync scheduled for document ${documentId} at ${scheduledTime.toISOString()}`);
+}
+
+/**
+ * Process all documents with pending syncs that are due
+ */
+export async function processPendingSyncs(): Promise<number> {
+  const now = new Date();
+  
+  // Find documents with pendingSyncAt <= now
+  const pendingDocs = await db
+    .select()
+    .from(consultantKnowledgeDocuments)
+    .where(
+      and(
+        isNotNull(consultantKnowledgeDocuments.pendingSyncAt),
+        lte(consultantKnowledgeDocuments.pendingSyncAt, now)
+      )
+    );
+  
+  if (pendingDocs.length === 0) {
+    return 0;
+  }
+  
+  console.log(`🔄 [DRIVE SYNC] Processing ${pendingDocs.length} pending sync(s)...`);
+  
+  let successCount = 0;
+  for (const doc of pendingDocs) {
+    const success = await syncDocumentFromDrive(doc.id, 'webhook');
+    if (success) successCount++;
+  }
+  
+  return successCount;
+}
+
+export async function syncDocumentFromDrive(
+  documentId: string, 
+  syncType: 'webhook' | 'manual' | 'scheduled' | 'initial' = 'manual'
+): Promise<boolean> {
+  console.log(`🔄 [DRIVE SYNC] Starting sync for document ${documentId} (type: ${syncType})`);
+  const startTime = Date.now();
+  
+  // Create sync history entry
+  const historyId = crypto.randomUUID();
   
   try {
     const [document] = await db
@@ -273,10 +329,22 @@ export async function syncDocumentFromDrive(documentId: string): Promise<boolean
       return false;
     }
     
+    // Insert history entry
+    await db.insert(documentSyncHistory).values({
+      id: historyId,
+      documentId,
+      consultantId: document.consultantId,
+      syncType,
+      status: 'success',
+      previousVersion: document.version || 1,
+      startedAt: new Date()
+    });
+    
     await db
       .update(consultantKnowledgeDocuments)
       .set({ 
         status: 'processing',
+        pendingSyncAt: null, // Clear pending sync
         updatedAt: new Date()
       })
       .where(eq(consultantKnowledgeDocuments.id, documentId));
@@ -322,8 +390,11 @@ export async function syncDocumentFromDrive(documentId: string): Promise<boolean
     }
     
     const extractedContent = await extractTextFromFile(newFilePath, mimeType, vertexCredentials);
+    const charactersExtracted = extractedContent?.length || 0;
+    const estimatedTokens = Math.round(charactersExtracted / 4);
     
     const fileStats = await fs.stat(newFilePath);
+    const newVersion = (document.version || 1) + 1;
     
     await db
       .update(consultantKnowledgeDocuments)
@@ -333,6 +404,10 @@ export async function syncDocumentFromDrive(documentId: string): Promise<boolean
         fileSize: fileStats.size,
         extractedContent,
         status: 'indexed',
+        version: newVersion,
+        syncCount: (document.syncCount || 0) + 1,
+        lastDriveSyncAt: new Date(),
+        pendingSyncAt: null,
         updatedAt: new Date()
       })
       .where(eq(consultantKnowledgeDocuments.id, documentId));
@@ -345,15 +420,43 @@ export async function syncDocumentFromDrive(documentId: string): Promise<boolean
       })
       .where(eq(driveSyncChannels.documentId, documentId));
     
-    console.log(`✅ [DRIVE SYNC] Document synced successfully: "${document.title}"`);
+    // Update history entry with success
+    const durationMs = Date.now() - startTime;
+    await db
+      .update(documentSyncHistory)
+      .set({
+        status: 'success',
+        newVersion,
+        charactersExtracted,
+        estimatedTokens,
+        completedAt: new Date(),
+        durationMs
+      })
+      .where(eq(documentSyncHistory.id, historyId));
+    
+    console.log(`✅ [DRIVE SYNC] Document synced successfully: "${document.title}" (${charactersExtracted} chars, ~${estimatedTokens} tokens)`);
     return true;
   } catch (error: any) {
     console.error(`❌ [DRIVE SYNC] Sync failed:`, error.message);
     
+    // Update history entry with failure
+    const durationMs = Date.now() - startTime;
+    await db
+      .update(documentSyncHistory)
+      .set({
+        status: 'failed',
+        errorMessage: error.message,
+        completedAt: new Date(),
+        durationMs
+      })
+      .where(eq(documentSyncHistory.id, historyId))
+      .catch(() => {}); // Ignore if history entry doesn't exist
+    
     await db
       .update(consultantKnowledgeDocuments)
       .set({ 
-        status: 'failed',
+        status: 'error',
+        pendingSyncAt: null,
         updatedAt: new Date()
       })
       .where(eq(consultantKnowledgeDocuments.id, documentId));
