@@ -10,6 +10,44 @@ import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import type { ExecutedToolResult } from "./tool-definitions";
 import { fullValidation, type ValidationResult as AntiHallucinationResult } from "./result-validator";
 
+// Retry configuration for AI calls
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 1000;
+
+/**
+ * Helper function to execute AI call with exponential backoff retry
+ * Retries on 503 (overloaded) and 429 (rate limit) errors
+ */
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  operationName: string
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      const errorCode = error?.code || error?.status || error?.message?.match(/\b(503|429)\b/)?.[0];
+      const isRetryable = errorCode === 503 || errorCode === 429 || 
+        error?.message?.includes("overloaded") || 
+        error?.message?.includes("rate limit") ||
+        error?.message?.includes("UNAVAILABLE");
+      
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[${operationName}] Retry ${attempt}/${MAX_RETRIES} after ${delayMs}ms (error: ${error?.message || 'unknown'})`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      } else if (!isRetryable) {
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 export interface ExplanationResult {
   summary: string;
   details: string[];
@@ -503,16 +541,19 @@ Rispondi in modo amichevole e utile. Se l'utente saluta, salutalo. Se chiede cos
 Sii breve e conversazionale.`;
     }
 
-    const response = await client.generateContent({
-      model: modelName,
-      contents: [
-        { role: "user", parts: [{ text: prompt }] }
-      ],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 4096,
-      }
-    });
+    const response = await executeWithRetry(
+      () => client.generateContent({
+        model: modelName,
+        contents: [
+          { role: "user", parts: [{ text: prompt }] }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 4096,
+        }
+      }),
+      "RESULT-EXPLAINER"
+    );
 
     const aiExplanation = response.response.text();
 
