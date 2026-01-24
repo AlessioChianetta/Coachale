@@ -575,10 +575,13 @@ export function autoDetectLogicalColumn(physicalColumnName: string): { logicalCo
     for (let i = 0; i < patterns.length; i++) {
       const pattern = patterns[i];
       if (pattern.test(nameLower)) {
-        const isFirstPattern = i === 0;
+        // Give 0.95 confidence to exact match patterns (those ending with $)
+        // This ensures canonical names like order_id, document_id get high confidence
+        const patternStr = pattern.source;
+        const isExactMatch = patternStr.endsWith("$/i") || patternStr.endsWith("$");
         return {
           logicalColumn: logical,
-          confidence: isFirstPattern ? 0.95 : 0.80,
+          confidence: isExactMatch ? 0.95 : 0.80,
         };
       }
     }
