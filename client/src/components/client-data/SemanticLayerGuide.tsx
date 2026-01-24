@@ -28,6 +28,10 @@ import {
   XCircle,
   HelpCircle,
   Layers,
+  ArrowDown,
+  Settings2,
+  Cog,
+  Target,
 } from "lucide-react";
 
 interface LogicalRole {
@@ -143,12 +147,57 @@ export function SemanticLayerGuide({ datasetId }: SemanticLayerGuideProps) {
         </div>
       </CardHeader>
       {isExpanded && (
-        <CardContent className="pt-0">
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 mb-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Il Semantic Layer mappa le colonne del tuo dataset a ruoli logici
-              standard, permettendo analisi automatiche e metriche avanzate.
-            </p>
+        <CardContent className="pt-0 space-y-4">
+          <div className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-cyan-100 dark:border-cyan-800">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="h-5 w-5 text-cyan-600" />
+              <h4 className="font-semibold text-slate-800 dark:text-slate-200">Come Funziona il Mapping (3 livelli di priorità)</h4>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 bg-white dark:bg-slate-800 rounded-lg p-3 border-l-4 border-emerald-500">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-bold text-sm">1</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="h-4 w-4 text-emerald-600" />
+                    <span className="font-medium text-emerald-700 dark:text-emerald-400">Tue Regole Personalizzate</span>
+                    <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">Priorità alta</Badge>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Sinonimi che crei tu per casi specifici del tuo partner</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-center">
+                <ArrowDown className="h-4 w-4 text-slate-300" />
+              </div>
+              
+              <div className="flex items-start gap-3 bg-white dark:bg-slate-800 rounded-lg p-3 border-l-4 border-blue-500">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-sm">2</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Cog className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-blue-700 dark:text-blue-400">Regole Sistema</span>
+                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">31 predefinite</Badge>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Sinonimi italiani riconosciuti automaticamente: <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">qta</span>→quantity, <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">reparto</span>→category</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-center">
+                <ArrowDown className="h-4 w-4 text-slate-300" />
+              </div>
+              
+              <div className="flex items-start gap-3 bg-white dark:bg-slate-800 rounded-lg p-3 border-l-4 border-cyan-500">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-100 dark:bg-cyan-900 flex items-center justify-center text-cyan-700 dark:text-cyan-300 font-bold text-sm">3</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Tags className="h-4 w-4 text-cyan-600" />
+                    <span className="font-medium text-cyan-700 dark:text-cyan-400">Ruoli Logici Standard</span>
+                    <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">20 ruoli</Badge>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">I "ruoli" che l'AI usa per le analisi: <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">revenue_amount</span>, <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">quantity</span>, <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">category</span></p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
