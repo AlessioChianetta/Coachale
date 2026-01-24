@@ -147,9 +147,10 @@ router.post(
         });
       }
 
-      const [source] = await db.execute<any>(
+      const sourceResult = await db.execute<any>(
         sql`SELECT * FROM dataset_sync_sources WHERE api_key = ${apiKey} AND is_active = true`
       );
+      const source = sourceResult.rows || [];
 
       if (!source || source.length === 0) {
         return res.status(401).json({
@@ -186,9 +187,10 @@ router.post(
       }
 
       if (idempotencyKey) {
-        const [existing] = await db.execute<any>(
+        const existingResult = await db.execute<any>(
           sql`SELECT id FROM dataset_sync_history WHERE idempotency_key = ${idempotencyKey}`
         );
+        const existing = existingResult.rows || [];
         if (existing && existing.length > 0) {
           return res.status(200).json({
             success: true,
@@ -265,9 +267,10 @@ router.post(
       let tableName: string;
 
       if (targetDatasetId) {
-        const [existingDataset] = await db.execute<any>(
+        const existingDatasetResult = await db.execute<any>(
           sql`SELECT table_name FROM client_data_datasets WHERE id = ${targetDatasetId}`
         );
+        const existingDataset = existingDatasetResult.rows || [];
         if (existingDataset && existingDataset.length > 0) {
           tableName = existingDataset[0].table_name;
           
@@ -298,11 +301,12 @@ router.post(
       );
 
       if (!targetDatasetId) {
-        const [insertedDataset] = await db.execute<any>(sql`
+        const insertedDatasetResult = await db.execute<any>(sql`
           INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
           VALUES (${sourceData.consultant_id}, ${sourceData.consultant_id}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${columns.length}, now())
           RETURNING id
         `);
+        const insertedDataset = insertedDatasetResult.rows || [];
         targetDatasetId = insertedDataset[0].id;
 
         await db.execute(sql`
@@ -372,7 +376,7 @@ router.get(
     try {
       const consultantId = req.user!.id;
 
-      const sources = await db.execute<any>(sql`
+      const sourcesResult = await db.execute<any>(sql`
         SELECT 
           id, name, description, api_key, is_active, replace_mode, target_dataset_id,
           rate_limit_per_hour, created_at, updated_at,
@@ -382,6 +386,7 @@ router.get(
         WHERE consultant_id = ${consultantId}
         ORDER BY created_at DESC
       `);
+      const sources = sourcesResult.rows || [];
 
       res.json({ success: true, data: sources });
     } catch (error: any) {
@@ -407,11 +412,12 @@ router.post(
       const apiKey = generateApiKey(consultantId);
       const secretKey = generateSecretKey();
 
-      const [inserted] = await db.execute<any>(sql`
+      const insertedResult = await db.execute<any>(sql`
         INSERT INTO dataset_sync_sources (consultant_id, name, description, api_key, secret_key, replace_mode, rate_limit_per_hour)
         VALUES (${consultantId}, ${name}, ${description || null}, ${apiKey}, ${secretKey}, ${replaceMode}, ${rateLimitPerHour})
         RETURNING id, name, api_key, secret_key, is_active, replace_mode, created_at
       `);
+      const inserted = insertedResult.rows || [];
 
       res.json({ 
         success: true, 
@@ -457,20 +463,22 @@ router.get(
       const sourceId = parseInt(req.params.sourceId);
       const limit = parseInt(req.query.limit as string) || 50;
 
-      const [source] = await db.execute<any>(sql`
+      const sourceResult = await db.execute<any>(sql`
         SELECT id FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
       `);
+      const source = sourceResult.rows || [];
 
       if (!source || source.length === 0) {
         return res.status(404).json({ success: false, error: "Sorgente non trovata" });
       }
 
-      const history = await db.execute<any>(sql`
+      const historyResult = await db.execute<any>(sql`
         SELECT * FROM dataset_sync_history 
         WHERE source_id = ${sourceId}
         ORDER BY started_at DESC
         LIMIT ${limit}
       `);
+      const history = historyResult.rows || [];
 
       res.json({ success: true, data: history });
     } catch (error: any) {
@@ -490,9 +498,10 @@ router.post(
       const sourceId = parseInt(req.params.id);
       const { scheduleType, scheduleConfig, timezone = 'Europe/Rome', retryOnFailure = true, maxRetries = 3 } = req.body;
 
-      const [source] = await db.execute<any>(sql`
+      const sourceResult = await db.execute<any>(sql`
         SELECT id FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
       `);
+      const source = sourceResult.rows || [];
 
       if (!source || source.length === 0) {
         return res.status(404).json({ success: false, error: "Sorgente non trovata" });
@@ -506,9 +515,10 @@ router.post(
         });
       }
 
-      const [existing] = await db.execute<any>(sql`
+      const existingResult = await db.execute<any>(sql`
         SELECT id FROM dataset_sync_schedules WHERE source_id = ${sourceId}
       `);
+      const existing = existingResult.rows || [];
 
       if (existing && existing.length > 0) {
         await db.execute(sql`
@@ -565,33 +575,37 @@ router.get(
     try {
       const consultantId = req.user!.id;
 
-      const [activeSourcesResult] = await db.execute<any>(sql`
+      const activeSourcesRes = await db.execute<any>(sql`
         SELECT COUNT(*) as count FROM dataset_sync_sources 
         WHERE consultant_id = ${consultantId} AND is_active = true
       `);
+      const activeSourcesResult = activeSourcesRes.rows || [];
 
-      const [syncsLast24hResult] = await db.execute<any>(sql`
+      const syncsLast24hRes = await db.execute<any>(sql`
         SELECT COUNT(*) as count FROM dataset_sync_history h
         JOIN dataset_sync_sources s ON h.source_id = s.id
         WHERE s.consultant_id = ${consultantId} 
         AND h.started_at >= NOW() - INTERVAL '24 hours'
       `);
+      const syncsLast24hResult = syncsLast24hRes.rows || [];
 
-      const [errorsLast24hResult] = await db.execute<any>(sql`
+      const errorsLast24hRes = await db.execute<any>(sql`
         SELECT COUNT(*) as count FROM dataset_sync_history h
         JOIN dataset_sync_sources s ON h.source_id = s.id
         WHERE s.consultant_id = ${consultantId} 
         AND h.started_at >= NOW() - INTERVAL '24 hours'
         AND h.status = 'failed'
       `);
+      const errorsLast24hResult = errorsLast24hRes.rows || [];
 
-      const [successfulLast24hResult] = await db.execute<any>(sql`
+      const successfulLast24hRes = await db.execute<any>(sql`
         SELECT COUNT(*) as count FROM dataset_sync_history h
         JOIN dataset_sync_sources s ON h.source_id = s.id
         WHERE s.consultant_id = ${consultantId} 
         AND h.started_at >= NOW() - INTERVAL '24 hours'
         AND h.status = 'completed'
       `);
+      const successfulLast24hResult = successfulLast24hRes.rows || [];
 
       const syncsLast24h = parseInt(syncsLast24hResult[0]?.count || '0');
       const successfulLast24h = parseInt(successfulLast24hResult[0]?.count || '0');
@@ -622,9 +636,10 @@ router.post(
       const consultantId = req.user!.id;
       const sourceId = parseInt(req.params.id);
 
-      const [source] = await db.execute<any>(sql`
+      const sourceResult = await db.execute<any>(sql`
         SELECT id FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
       `);
+      const source = sourceResult.rows || [];
 
       if (!source || source.length === 0) {
         return res.status(404).json({ success: false, error: "Sorgente non trovata" });
@@ -684,19 +699,21 @@ router.get(
 
       const whereClause = sql.join(conditions, sql` AND `);
 
-      const [countResult] = await db.execute<any>(sql`
+      const countRes = await db.execute<any>(sql`
         SELECT COUNT(*) as total FROM dataset_sync_history h
         JOIN dataset_sync_sources s ON h.source_id = s.id
         WHERE ${whereClause}
       `);
+      const countResult = countRes.rows || [];
 
-      const history = await db.execute<any>(sql`
+      const historyRes = await db.execute<any>(sql`
         SELECT h.*, s.name as source_name FROM dataset_sync_history h
         JOIN dataset_sync_sources s ON h.source_id = s.id
         WHERE ${whereClause}
         ORDER BY h.started_at DESC
         LIMIT ${limitNum} OFFSET ${offset}
       `);
+      const history = historyRes.rows || [];
 
       const total = parseInt(countResult[0]?.total || '0');
 
@@ -726,17 +743,19 @@ router.get(
       const consultantId = req.user!.id;
       const sourceId = parseInt(req.params.id);
 
-      const [source] = await db.execute<any>(sql`
+      const sourceResult = await db.execute<any>(sql`
         SELECT id FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
       `);
+      const source = sourceResult.rows || [];
 
       if (!source || source.length === 0) {
         return res.status(404).json({ success: false, error: "Sorgente non trovata" });
       }
 
-      const [schedule] = await db.execute<any>(sql`
+      const scheduleResult = await db.execute<any>(sql`
         SELECT * FROM dataset_sync_schedules WHERE source_id = ${sourceId}
       `);
+      const schedule = scheduleResult.rows || [];
 
       res.json({
         success: true,
@@ -758,11 +777,12 @@ router.delete(
       const consultantId = req.user!.id;
       const scheduleId = parseInt(req.params.id);
 
-      const [schedule] = await db.execute<any>(sql`
+      const scheduleResult = await db.execute<any>(sql`
         SELECT sch.id, s.consultant_id FROM dataset_sync_schedules sch
         JOIN dataset_sync_sources s ON sch.source_id = s.id
         WHERE sch.id = ${scheduleId}
       `);
+      const schedule = scheduleResult.rows || [];
 
       if (!schedule || schedule.length === 0) {
         return res.status(404).json({ success: false, error: "Schedulazione non trovata" });
