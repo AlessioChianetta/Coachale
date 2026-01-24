@@ -219,7 +219,8 @@ export async function extractTextFromPDFWithFallback(
 ): Promise<{ text: string; geminiFileUri?: string; geminiFileExpiresAt?: Date; usedGemini: boolean }> {
   console.log(`📄 [PDF] Extracting text with smart fallback from: ${filePath}`);
   
-  const MIN_CONTENT_LENGTH = 100;
+  const MIN_CONTENT_LENGTH = 500;
+  const MIN_WORD_COUNT = 50;
   
   try {
     const dataBuffer = await fs.readFile(filePath);
@@ -229,14 +230,21 @@ export async function extractTextFromPDFWithFallback(
     const extractedText = result.text.trim();
     const pageCount = result.numpages;
     
-    console.log(`📊 [PDF] pdf-parse extracted ${extractedText.length} characters from ${pageCount} pages`);
+    const cleanedText = extractedText
+      .replace(/--\s*\d+\s*of\s*\d+\s*--/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     
-    if (extractedText && extractedText.length >= MIN_CONTENT_LENGTH) {
-      console.log(`✅ [PDF] Using pdf-parse result (sufficient content)`);
+    const wordCount = cleanedText.split(/\s+/).filter(w => w.length > 2).length;
+    
+    console.log(`📊 [PDF] pdf-parse extracted ${extractedText.length} chars, ${wordCount} meaningful words from ${pageCount} pages`);
+    
+    if (cleanedText.length >= MIN_CONTENT_LENGTH && wordCount >= MIN_WORD_COUNT) {
+      console.log(`✅ [PDF] Using pdf-parse result (sufficient content: ${cleanedText.length} chars, ${wordCount} words)`);
       return { text: extractedText, usedGemini: false };
     }
     
-    console.log(`⚠️ [PDF] Content too short (${extractedText.length} < ${MIN_CONTENT_LENGTH}), trying Gemini Files API...`);
+    console.log(`⚠️ [PDF] Content insufficient (${cleanedText.length} chars < ${MIN_CONTENT_LENGTH} OR ${wordCount} words < ${MIN_WORD_COUNT}), trying Gemini Files API...`);
   } catch (pdfParseError: any) {
     console.warn(`⚠️ [PDF] pdf-parse failed: ${pdfParseError.message}, trying Gemini Files API...`);
   }
