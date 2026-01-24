@@ -934,16 +934,22 @@ router.post(
           tableName = generateTableName(sourceData.consultant_id, datasetName);
         }
 
-        // Crea definizioni colonne
+        // Crea definizioni colonne - usa la struttura corretta per createDynamicTable
         const columnDefinitions = discoveryResult.columns.map(col => ({
-          name: col.physicalColumn || col.originalName,
-          type: col.detectedType || col.dataType || 'TEXT',
-          nullable: true,
+          originalName: col.originalName || col.physicalColumn || 'column',
+          suggestedName: col.physicalColumn || col.originalName || 'column',
+          displayName: col.displayName || col.originalName || 'Column',
+          dataType: (col.detectedType || col.dataType || 'TEXT') as "TEXT" | "NUMERIC" | "INTEGER" | "DATE" | "BOOLEAN",
+          confidence: col.confidence || 0.5,
+          sampleValues: col.sampleValues || [],
         }));
+
+        // Client ID per il dataset
+        const datasetClientId = sourceData.client_id || sourceData.consultant_id;
 
         // Crea tabella se non esiste
         if (!targetDatasetId) {
-          await createDynamicTable(tableName, columnDefinitions);
+          await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
         }
 
         // Importa dati
@@ -955,7 +961,6 @@ router.post(
 
         // Crea dataset se non esisteva
         if (!targetDatasetId) {
-          const datasetClientId = sourceData.client_id || sourceData.consultant_id;
           const insertedDatasetResult = await db.execute<any>(sql`
             INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
             VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())

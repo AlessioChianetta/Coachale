@@ -1,0 +1,38 @@
+6:40:54 PM [express] POST /api/activity/session/heartbeat 200 in 339ms :: {"success":true,"lastActiv…
+[TABLE-GENERATOR] Error creating table cdd_0c73bbe5_test_70448b6c: TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+    at sanitizeColumnName (/home/runner/workspace/server/services/client-data/table-generator.ts:39:6)
+    at createDynamicTable (/home/runner/workspace/server/services/client-data/table-generator.ts:114:29)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/dataset-sync-router.ts:946:11)
+[TABLE-GENERATOR] Error importing data to price,cost,quantity,revenue_amount,total_net,discount_percent,tax_rate,order_id,line_id,document_type,product_name,product_id,category,is_sellable,customer_id,staff,order_date,time_slot,sales_channel,payment_method: Error: File not found: cdd_0c73bbe5_test_70448b6c
+    at XLSX.readFile (/home/runner/workspace/node_modules/exceljs/lib/xlsx/xlsx.js:51:13)
+    at async parseExcelFile (/home/runner/workspace/server/services/client-data/table-generator.ts:165:3)
+    at async importDataToTable (/home/runner/workspace/server/services/client-data/table-generator.ts:384:9)
+    at async <anonymous> (/home/runner/workspace/server/routes/dataset-sync-router.ts:950:47)
+[DATASET-SYNC] Test webhook error: error: syntax error at or near ","
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/dataset-sync-router.ts:959:41) {
+  length: 91,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '197',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+6:40:59 PM [express] POST /api/dataset-sync/test-webhook 500 in 9607ms :: {"success":false,"error":"…
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-24T18:41:00.035Z
+
+[SHEETS POLLING] Sta
