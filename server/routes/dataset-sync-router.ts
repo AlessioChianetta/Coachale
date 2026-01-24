@@ -1374,7 +1374,7 @@ router.get(
             AND started_at >= NOW() - INTERVAL '7 days'
           ) as rows_7d
         FROM dataset_sync_sources s
-        LEFT JOIN clients c ON s.client_id = c.id
+        LEFT JOIN users c ON s.client_id = c.id
         LEFT JOIN dataset_sync_schedules sch ON sch.source_id = s.id
         WHERE s.consultant_id = ${consultantId}
         ORDER BY s.name ASC
@@ -1527,7 +1527,7 @@ router.get(
             JOIN dataset_sync_sources src ON h.source_id = src.id
             WHERE src.client_id = c.id
           ) as last_sync_at
-        FROM clients c
+        FROM users c
         JOIN dataset_sync_sources s ON s.client_id = c.id
         WHERE s.consultant_id = ${consultantId}
         GROUP BY c.id, c.first_name, c.last_name, c.email
