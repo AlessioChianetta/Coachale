@@ -37,7 +37,7 @@ setInterval(() => {
 const router = Router();
 
 const KNOWLEDGE_UPLOAD_DIR = "uploads/knowledge";
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 const ALLOWED_MIME_TYPES: Record<string, "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "ppt" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio"> = {
   "application/pdf": "pdf",
