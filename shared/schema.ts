@@ -5682,6 +5682,11 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   syncTotalChunks: integer("sync_total_chunks"), // Total chunks to upload
   syncMessage: text("sync_message"), // Current sync status message
 
+  // Google Drive sync tracking
+  syncCount: integer("sync_count").default(0), // Number of times synced from Google Drive
+  lastDriveSyncAt: timestamp("last_drive_sync_at", { withTimezone: true }), // Last successful Drive sync
+  pendingSyncAt: timestamp("pending_sync_at", { withTimezone: true }), // Scheduled sync time (debounce)
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -5726,6 +5731,37 @@ export const driveSyncChannels = pgTable("drive_sync_channels", {
   consultantIdx: index("drive_sync_consultant_idx").on(table.consultantId),
   documentIdx: index("drive_sync_document_idx").on(table.documentId),
   expirationIdx: index("drive_sync_expiration_idx").on(table.expiration),
+}));
+
+// Document Sync History - Tracks all Google Drive synchronization events
+export const documentSyncHistory = pgTable("document_sync_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Sync details
+  syncType: varchar("sync_type", { length: 20 }).$type<"webhook" | "manual" | "scheduled" | "initial">().notNull(),
+  status: varchar("status", { length: 20 }).$type<"success" | "failed" | "skipped">().default("success").notNull(),
+  
+  // Content tracking
+  previousVersion: integer("previous_version"), // Document version before sync
+  newVersion: integer("new_version"), // Document version after sync
+  charactersExtracted: integer("characters_extracted"), // Text characters extracted
+  estimatedTokens: integer("estimated_tokens"), // Estimated tokens (~chars/4)
+  
+  // Error tracking
+  errorMessage: text("error_message"),
+  
+  // Timing
+  startedAt: timestamp("started_at", { withTimezone: true }).default(sql`now()`),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  durationMs: integer("duration_ms"), // Sync duration in milliseconds
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  documentIdx: index("sync_history_document_idx").on(table.documentId),
+  consultantIdx: index("sync_history_consultant_idx").on(table.consultantId),
+  createdAtIdx: index("sync_history_created_at_idx").on(table.createdAt),
 }));
 
 // API esterne per Knowledge Base - configurazioni per interrogare servizi esterni
