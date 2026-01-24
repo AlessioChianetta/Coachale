@@ -463,8 +463,8 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ minHeight: '600px' }}>
       <div className="flex h-full">
-        {/* Sidebar */}
-        <div className="w-64 border-r border-gray-200 bg-white flex flex-col">
+        {/* Sidebar - sticky to stay visible while scrolling */}
+        <div className="w-64 border-r border-gray-200 bg-white flex flex-col sticky top-0 h-screen self-start">
           {/* Drive Header */}
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-2 mb-4">
