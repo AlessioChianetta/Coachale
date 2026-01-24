@@ -133,7 +133,9 @@ export async function detectAndSaveSemanticMappings(
 
     const logicalRole = detection.logicalColumn as SemanticLogicalRole;
     const isCritical = CRITICAL_ROLES.includes(logicalRole);
-    const canAutoApprove = detection.confidence >= AUTO_APPROVE_THRESHOLD && !isCritical;
+    // Auto-approve if confidence >= 0.90 for non-critical, or >= 0.95 for critical (exact match)
+    const canAutoApprove = detection.confidence >= AUTO_APPROVE_THRESHOLD && 
+      (!isCritical || detection.confidence >= 0.95);
 
     mappingsToInsert.push({
       datasetId,
