@@ -217,43 +217,13 @@ export async function extractTextFromPDFWithFallback(
   filePath: string,
   displayName: string
 ): Promise<{ text: string; geminiFileUri?: string; geminiFileExpiresAt?: Date; usedGemini: boolean }> {
-  console.log(`📄 [PDF] Extracting text with smart fallback from: ${filePath}`);
-  
-  const MIN_CONTENT_LENGTH = 500;
-  const MIN_WORD_COUNT = 50;
-  
-  try {
-    const dataBuffer = await fs.readFile(filePath);
-    const parser = new PDFParse({ data: dataBuffer });
-    const result = await parser.getText();
-    
-    const extractedText = result.text.trim();
-    const pageCount = result.numpages;
-    
-    const cleanedText = extractedText
-      .replace(/--\s*\d+\s*of\s*\d+\s*--/gi, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    const wordCount = cleanedText.split(/\s+/).filter(w => w.length > 2).length;
-    
-    console.log(`📊 [PDF] pdf-parse extracted ${extractedText.length} chars, ${wordCount} meaningful words from ${pageCount} pages`);
-    
-    if (cleanedText.length >= MIN_CONTENT_LENGTH && wordCount >= MIN_WORD_COUNT) {
-      console.log(`✅ [PDF] Using pdf-parse result (sufficient content: ${cleanedText.length} chars, ${wordCount} words)`);
-      return { text: extractedText, usedGemini: false };
-    }
-    
-    console.log(`⚠️ [PDF] Content insufficient (${cleanedText.length} chars < ${MIN_CONTENT_LENGTH} OR ${wordCount} words < ${MIN_WORD_COUNT}), trying Gemini Files API...`);
-  } catch (pdfParseError: any) {
-    console.warn(`⚠️ [PDF] pdf-parse failed: ${pdfParseError.message}, trying Gemini Files API...`);
-  }
+  console.log(`📄 [PDF] Extracting text using Gemini Files API (always-on mode): ${filePath}`);
   
   try {
     const uploadResult = await uploadPDFToGeminiFilesAPI(filePath, displayName);
     const extractedText = await extractTextFromPDFWithGemini(uploadResult.fileUri);
     
-    console.log(`✅ [PDF] Successfully extracted text using Gemini Files API`);
+    console.log(`✅ [PDF] Successfully extracted text using Gemini Files API (${extractedText.length} chars)`);
     
     return {
       text: extractedText,
@@ -262,8 +232,24 @@ export async function extractTextFromPDFWithFallback(
       usedGemini: true,
     };
   } catch (geminiError: any) {
-    console.error(`❌ [PDF] Gemini Files API also failed:`, geminiError.message);
-    throw new Error(`Failed to extract text from PDF: Both pdf-parse and Gemini Files API failed. ${geminiError.message}`);
+    console.error(`❌ [PDF] Gemini Files API failed:`, geminiError.message);
+    
+    console.log(`⚠️ [PDF] Trying pdf-parse as fallback...`);
+    try {
+      const dataBuffer = await fs.readFile(filePath);
+      const parser = new PDFParse({ data: dataBuffer });
+      const result = await parser.getText();
+      const extractedText = result.text.trim();
+      
+      if (extractedText && extractedText.length > 100) {
+        console.log(`✅ [PDF] Fallback pdf-parse succeeded (${extractedText.length} chars)`);
+        return { text: extractedText, usedGemini: false };
+      }
+    } catch (pdfParseError: any) {
+      console.warn(`⚠️ [PDF] Fallback pdf-parse also failed: ${pdfParseError.message}`);
+    }
+    
+    throw new Error(`Failed to extract text from PDF: ${geminiError.message}`);
   }
 }
 
