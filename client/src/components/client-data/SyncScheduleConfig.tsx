@@ -344,9 +344,9 @@ export function SyncScheduleConfig() {
             </SelectTrigger>
             <SelectContent>
               {sources.length === 0 ? (
-                <SelectItem value="" disabled>
+                <div className="px-2 py-4 text-sm text-muted-foreground text-center">
                   Nessuna sorgente disponibile
-                </SelectItem>
+                </div>
               ) : (
                 sources.map((source) => (
                   <SelectItem key={source.id} value={source.id.toString()}>

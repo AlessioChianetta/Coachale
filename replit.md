@@ -85,7 +85,7 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
     - `ExternalSyncDashboard.tsx`: Main container with 6 tabs (Overview, Sorgenti, Schedule, Cronologia, Test, Schema)
     - `SyncOverviewCards.tsx`: Success rate metrics, sync counts, error tracking, recent activity
     - `SyncSourcesManager.tsx`: CRUD for sources with API key generation, copy/regenerate/pause/delete actions
-    - `SyncScheduleConfig.tsx`: Scheduling form (daily/weekly/monthly/custom), timezone selector
+    - `SyncScheduleConfig.tsx`: Scheduling form (daily/weekly/monthly/custom), timezone selector, empty state handling
     - `SyncHistoryLog.tsx`: Paginated history with filters, JSON payload viewer
     - `WebhookTestTool.tsx`: File upload testing, HMAC signature generator, cURL examples
     - `SchemaReferencePanel.tsx`: API documentation with logical roles reference
