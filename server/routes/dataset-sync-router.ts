@@ -55,11 +55,16 @@ function verifyHmacSignature(payload: Buffer, signature: string, secretKey: stri
   }
 }
 
-function verifyTimestamp(timestampStr: string, maxAgeSeconds: number = 300): boolean {
+function verifyTimestamp(timestampStr: string, maxAgeSeconds: number = 3600): boolean {
+  // Default: 1 hour tolerance for partner systems with clock drift
   const timestamp = parseInt(timestampStr, 10);
   if (isNaN(timestamp)) return false;
   const now = Math.floor(Date.now() / 1000);
-  return Math.abs(now - timestamp) <= maxAgeSeconds;
+  const diff = Math.abs(now - timestamp);
+  if (diff > maxAgeSeconds) {
+    console.warn(`[DATASET-SYNC] Timestamp rejected: client=${timestamp}, server=${now}, diff=${diff}s, max=${maxAgeSeconds}s`);
+  }
+  return diff <= maxAgeSeconds;
 }
 
 router.get("/schema", async (req: Request, res: Response) => {
