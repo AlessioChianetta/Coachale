@@ -1132,9 +1132,9 @@ router.get(
 
       // Verify source ownership
       const sourceResult = await db.execute<any>(sql`
-        SELECT s.*, c.first_name as client_first_name, c.last_name as client_last_name
+        SELECT s.*, u.first_name as client_first_name, u.last_name as client_last_name
         FROM dataset_sync_sources s
-        LEFT JOIN clients c ON s.client_id = c.id
+        LEFT JOIN users u ON s.client_id = u.id
         WHERE s.id = ${sourceId} AND s.consultant_id = ${consultantId}
       `);
       const source = (sourceResult.rows || [])[0];
