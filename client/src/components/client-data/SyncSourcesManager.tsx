@@ -815,106 +815,231 @@ export function SyncSourcesManager() {
             </DialogDescription>
           </DialogHeader>
           {guideSource && (
-            <div className="space-y-6 py-4">
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Endpoint Webhook</h4>
-                <code className="text-sm bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded break-all">
-                  POST {window.location.origin}/api/dataset-sync/webhook/{guideSource.api_key}
-                </code>
+            <div className="space-y-6 py-4 text-sm">
+              {/* Sezione 1: Cosa facciamo noi */}
+              <div className="border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-3">Cosa facciamo noi</h4>
+                <ul className="space-y-2 text-emerald-700 dark:text-emerald-300">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Riceviamo i dati</strong> - Endpoint webhook sicuro pronto a ricevere file</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Mappiamo automaticamente le colonne</strong> - Riconosciamo automaticamente campi come prezzo, quantita, data ordine</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Gestiamo gli aggiornamenti</strong> - Full replace, append o upsert in base alla configurazione</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Monitoriamo lo stato</strong> - Dashboard con errori, metriche e cronologia sync</span>
+                  </li>
+                </ul>
               </div>
 
+              {/* Sezione 2: Cosa ci aspettiamo dal partner */}
+              <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">Cosa ci aspettiamo dal partner</h4>
+                <ul className="space-y-2 text-blue-700 dark:text-blue-300">
+                  <li className="flex items-start gap-2">
+                    <span className="font-bold text-blue-500">1.</span>
+                    <span><strong>Esportare i dati in CSV o Excel</strong> - Formato tabellare con intestazioni nella prima riga</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-bold text-blue-500">2.</span>
+                    <span><strong>Inviare il file via HTTP POST</strong> - All'endpoint webhook fornito sotto</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-bold text-blue-500">3.</span>
+                    <span><strong>Firmare la richiesta con HMAC</strong> - Per garantire autenticita e sicurezza</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-bold text-blue-500">4.</span>
+                    <span><strong>Specificare le colonne chiave</strong> - Solo al primo invio, per identificare record unici</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Sezione 3: Credenziali */}
               <div className="space-y-3">
-                <h4 className="font-medium">Headers Richiesti</h4>
-                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm font-mono space-y-1">
-                  <p>Content-Type: multipart/form-data</p>
-                  <p>X-Dataset-Timestamp: {`<unix_timestamp>`}</p>
-                  <p>X-Dataset-Signature: sha256={`<HMAC-SHA256>`}</p>
+                <h4 className="font-semibold border-b pb-2">Credenziali di Accesso</h4>
+                <div className="grid gap-3">
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Endpoint Webhook</p>
+                    <code className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded block break-all">
+                      POST {window.location.origin}/api/dataset-sync/webhook/{guideSource.api_key}
+                    </code>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">API Key</p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs font-mono truncate flex-1">{guideSource.api_key}</code>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(guideSource.api_key, "API Key")}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Secret Key</p>
+                      <p className="text-xs text-amber-600">Fornita al momento della creazione</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Sezione 4: Headers */}
               <div className="space-y-3">
-                <h4 className="font-medium">Parametri Form</h4>
+                <h4 className="font-semibold border-b pb-2">Headers HTTP Richiesti</h4>
                 <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-800">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 dark:bg-slate-800">
                       <tr>
-                        <th className="text-left p-2">Campo</th>
-                        <th className="text-left p-2">Obbligatorio</th>
-                        <th className="text-left p-2">Descrizione</th>
+                        <th className="text-left p-2 font-medium">Header</th>
+                        <th className="text-left p-2 font-medium">Valore</th>
+                        <th className="text-left p-2 font-medium">Descrizione</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="border-t">
-                        <td className="p-2 font-mono">file</td>
-                        <td className="p-2">✅</td>
-                        <td className="p-2">File CSV, XLSX o XLS</td>
+                        <td className="p-2 font-mono">Content-Type</td>
+                        <td className="p-2 font-mono text-emerald-600">multipart/form-data</td>
+                        <td className="p-2">Per upload file</td>
                       </tr>
                       <tr className="border-t">
-                        <td className="p-2 font-mono">replace_mode</td>
-                        <td className="p-2">❌</td>
-                        <td className="p-2">full | append | upsert</td>
+                        <td className="p-2 font-mono">X-Dataset-Timestamp</td>
+                        <td className="p-2 font-mono text-emerald-600">Unix timestamp</td>
+                        <td className="p-2">Secondi da epoch (es: 1737745200)</td>
                       </tr>
                       <tr className="border-t">
-                        <td className="p-2 font-mono">upsert_key_columns</td>
-                        <td className="p-2">❌*</td>
-                        <td className="p-2">Colonne chiave (es: order_id,line_id)</td>
+                        <td className="p-2 font-mono">X-Dataset-Signature</td>
+                        <td className="p-2 font-mono text-emerald-600">sha256=...</td>
+                        <td className="p-2">HMAC-SHA256 del file con Secret Key</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="p-2 font-mono">X-Idempotency-Key</td>
+                        <td className="p-2 font-mono text-blue-600">opzionale</td>
+                        <td className="p-2">ID univoco per evitare duplicazioni</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-                <p className="text-xs text-slate-500">* Obbligatorio se replace_mode=upsert</p>
               </div>
 
+              {/* Sezione 5: Campi Form */}
               <div className="space-y-3">
-                <h4 className="font-medium">Esempio cURL - Prima Sincronizzazione</h4>
-                <div className="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm font-mono overflow-x-auto">
-                  <pre className="whitespace-pre-wrap">{`# Generare timestamp e firma
-TIMESTAMP=$(date +%s)
-SIGNATURE=$(echo -n "@ordini.xlsx" | openssl dgst -sha256 -hmac "SECRET_KEY" | cut -d' ' -f2)
+                <h4 className="font-semibold border-b pb-2">Campi del Form (multipart/form-data)</h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 dark:bg-slate-800">
+                      <tr>
+                        <th className="text-left p-2 font-medium">Campo</th>
+                        <th className="text-left p-2 font-medium">Tipo</th>
+                        <th className="text-left p-2 font-medium">Obbl.</th>
+                        <th className="text-left p-2 font-medium">Descrizione</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="p-2 font-mono font-bold">file</td>
+                        <td className="p-2">File</td>
+                        <td className="p-2 text-emerald-600 font-bold">Si</td>
+                        <td className="p-2">File dati in formato CSV, XLSX o XLS</td>
+                      </tr>
+                      <tr className="border-t bg-purple-50/50 dark:bg-purple-900/10">
+                        <td className="p-2 font-mono">replace_mode</td>
+                        <td className="p-2">String</td>
+                        <td className="p-2 text-slate-400">No</td>
+                        <td className="p-2">
+                          <span className="font-mono bg-slate-200 dark:bg-slate-700 px-1 rounded">full</span> | 
+                          <span className="font-mono bg-blue-200 dark:bg-blue-700 px-1 rounded ml-1">append</span> | 
+                          <span className="font-mono bg-purple-200 dark:bg-purple-700 px-1 rounded ml-1">upsert</span>
+                        </td>
+                      </tr>
+                      <tr className="border-t bg-purple-50/50 dark:bg-purple-900/10">
+                        <td className="p-2 font-mono">upsert_key_columns</td>
+                        <td className="p-2">String</td>
+                        <td className="p-2 text-amber-600">*</td>
+                        <td className="p-2">Colonne chiave separate da virgola (es: <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">order_id,line_id</code>)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-slate-500">* Obbligatorio se replace_mode=upsert. Definisce quali colonne identificano univocamente ogni riga.</p>
+              </div>
 
-curl -X POST "${window.location.origin}/api/dataset-sync/webhook/${guideSource.api_key}" \\
+              {/* Sezione 6: Modalità Aggiornamento */}
+              <div className="space-y-3">
+                <h4 className="font-semibold border-b pb-2">Modalita di Aggiornamento Dati</h4>
+                <div className="grid gap-2">
+                  <div className="border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-xs font-bold">full</span>
+                      <span className="font-medium">Sostituisci tutto (default)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Cancella tutti i dati esistenti e inserisce quelli nuovi. Ideale per export giornalieri completi.</p>
+                  </div>
+                  <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-3 bg-blue-50/30 dark:bg-blue-900/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-mono bg-blue-200 dark:bg-blue-700 px-2 py-0.5 rounded text-xs font-bold">append</span>
+                      <span className="font-medium">Aggiungi in coda</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Inserisce nuovi record senza toccare quelli esistenti. Utile per log incrementali.</p>
+                  </div>
+                  <div className="border border-purple-200 dark:border-purple-800 rounded-lg p-3 bg-purple-50/30 dark:bg-purple-900/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-mono bg-purple-200 dark:bg-purple-700 px-2 py-0.5 rounded text-xs font-bold">upsert</span>
+                      <span className="font-medium">Aggiorna o inserisci</span>
+                      <span className="text-xs text-purple-600 font-medium">CONSIGLIATO</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Aggiorna record esistenti (stessa chiave) e inserisce quelli nuovi. Ideale per sync incrementali efficienti.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sezione 7: Esempio cURL */}
+              <div className="space-y-3">
+                <h4 className="font-semibold border-b pb-2">Esempio Implementazione (cURL)</h4>
+                <div className="bg-slate-900 text-slate-100 rounded-lg p-4 text-xs font-mono overflow-x-auto">
+                  <pre className="whitespace-pre-wrap">{`#!/bin/bash
+# Configurazione
+API_KEY="${guideSource.api_key}"
+SECRET_KEY="<la_tua_secret_key>"
+FILE_PATH="ordini.xlsx"
+ENDPOINT="${window.location.origin}/api/dataset-sync/webhook/$API_KEY"
+
+# Genera timestamp e firma HMAC
+TIMESTAMP=$(date +%s)
+SIGNATURE=$(cat "$FILE_PATH" | openssl dgst -sha256 -hmac "$SECRET_KEY" | cut -d' ' -f2)
+
+# Invio dati (prima volta con configurazione upsert)
+curl -X POST "$ENDPOINT" \\
   -H "X-Dataset-Timestamp: $TIMESTAMP" \\
   -H "X-Dataset-Signature: sha256=$SIGNATURE" \\
-  -F "file=@ordini.xlsx" \\
+  -F "file=@$FILE_PATH" \\
   -F "replace_mode=upsert" \\
-  -F "upsert_key_columns=order_id,line_id"`}</pre>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(guideSource.api_key, "API Key")}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copia API Key
-                  </Button>
+  -F "upsert_key_columns=order_id,line_id"
+
+# Invii successivi (configurazione gia salvata)
+curl -X POST "$ENDPOINT" \\
+  -H "X-Dataset-Timestamp: $TIMESTAMP" \\
+  -H "X-Dataset-Signature: sha256=$SIGNATURE" \\
+  -F "file=@$FILE_PATH"`}</pre>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="font-medium">Modalità di Aggiornamento</h4>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <span className="font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-xs">full</span>
-                    <span>Sostituisce tutti i dati ad ogni sync (default)</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <span className="font-mono bg-blue-200 dark:bg-blue-700 px-2 py-0.5 rounded text-xs">append</span>
-                    <span>Aggiunge nuovi record senza cancellare i precedenti</span>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <span className="font-mono bg-purple-200 dark:bg-purple-700 px-2 py-0.5 rounded text-xs">upsert</span>
-                    <span>Aggiorna record esistenti (basandosi su colonne chiave) e inserisce i nuovi</span>
-                  </div>
-                </div>
-              </div>
-
+              {/* Nota finale */}
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Nota Importante</h4>
-                <p className="text-sm text-amber-700 dark:text-amber-300">
+                <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Nota Importante
+                </h4>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
                   Le opzioni <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">replace_mode</code> e{' '}
                   <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">upsert_key_columns</code> vengono 
-                  salvate automaticamente. Una volta configurate nel primo invio, non è necessario ripeterle.
+                  salvate nel sistema al primo invio. Negli invii successivi non e necessario ripeterle.
                 </p>
               </div>
             </div>
