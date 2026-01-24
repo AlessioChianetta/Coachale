@@ -589,7 +589,7 @@ export async function getTablePreview(
 export async function insertParsedRowsToTable(
   tableName: string,
   headers: string[],
-  rows: any[][],
+  rows: Record<string, any>[],
   consultantId: string,
   clientId?: string
 ): Promise<{ rowsImported: number; rowsSkipped: number }> {
@@ -625,9 +625,11 @@ export async function insertParsedRowsToTable(
         placeholders.push(`$${paramIndex++}`);
         allParams.push(clientId || null);
         
+        // Access values by header name (object keys), not by index
         for (let j = 0; j < headers.length; j++) {
           placeholders.push(`$${paramIndex++}`);
-          allParams.push(row[j] ?? null);
+          const headerKey = headers[j];
+          allParams.push(row[headerKey] ?? null);
         }
         
         valueRows.push(`(${placeholders.join(", ")})`);
