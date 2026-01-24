@@ -74,6 +74,7 @@ import {
   Link2,
   Users,
   Settings,
+  FileText,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -117,6 +118,7 @@ export function SyncSourcesManager() {
   const [editingSource, setEditingSource] = useState<SyncSource | null>(null);
   const [editReplaceMode, setEditReplaceMode] = useState<'full' | 'append' | 'upsert'>('full');
   const [editSelectedColumns, setEditSelectedColumns] = useState<Set<string>>(new Set());
+  const [guideSource, setGuideSource] = useState<SyncSource | null>(null);
 
   const updateMutation = useUpdateSyncSource();
   const { data: columnsData, isLoading: columnsLoading } = useSyncSourceColumns(editingSource?.id || null);
@@ -384,6 +386,12 @@ export function SyncSourcesManager() {
                         >
                           <Settings className="h-4 w-4 mr-2" />
                           Modifica Impostazioni
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setGuideSource(source)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Guida per Partner
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => copyToClipboard(source.api_key, "API Key")}
@@ -789,6 +797,131 @@ export function SyncSourcesManager() {
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               Salva Modifiche
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Partner Guide Dialog */}
+      <Dialog open={guideSource !== null} onOpenChange={(open) => !open && setGuideSource(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Guida Integrazione per Partner
+            </DialogTitle>
+            <DialogDescription>
+              Istruzioni per configurare "{guideSource?.name}" nel sistema gestionale
+            </DialogDescription>
+          </DialogHeader>
+          {guideSource && (
+            <div className="space-y-6 py-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Endpoint Webhook</h4>
+                <code className="text-sm bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded break-all">
+                  POST {window.location.origin}/api/dataset-sync/webhook/{guideSource.api_key}
+                </code>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium">Headers Richiesti</h4>
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm font-mono space-y-1">
+                  <p>Content-Type: multipart/form-data</p>
+                  <p>X-Dataset-Timestamp: {`<unix_timestamp>`}</p>
+                  <p>X-Dataset-Signature: sha256={`<HMAC-SHA256>`}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium">Parametri Form</h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800">
+                      <tr>
+                        <th className="text-left p-2">Campo</th>
+                        <th className="text-left p-2">Obbligatorio</th>
+                        <th className="text-left p-2">Descrizione</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="p-2 font-mono">file</td>
+                        <td className="p-2">✅</td>
+                        <td className="p-2">File CSV, XLSX o XLS</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="p-2 font-mono">replace_mode</td>
+                        <td className="p-2">❌</td>
+                        <td className="p-2">full | append | upsert</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="p-2 font-mono">upsert_key_columns</td>
+                        <td className="p-2">❌*</td>
+                        <td className="p-2">Colonne chiave (es: order_id,line_id)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-slate-500">* Obbligatorio se replace_mode=upsert</p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium">Esempio cURL - Prima Sincronizzazione</h4>
+                <div className="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm font-mono overflow-x-auto">
+                  <pre className="whitespace-pre-wrap">{`# Generare timestamp e firma
+TIMESTAMP=$(date +%s)
+SIGNATURE=$(echo -n "@ordini.xlsx" | openssl dgst -sha256 -hmac "SECRET_KEY" | cut -d' ' -f2)
+
+curl -X POST "${window.location.origin}/api/dataset-sync/webhook/${guideSource.api_key}" \\
+  -H "X-Dataset-Timestamp: $TIMESTAMP" \\
+  -H "X-Dataset-Signature: sha256=$SIGNATURE" \\
+  -F "file=@ordini.xlsx" \\
+  -F "replace_mode=upsert" \\
+  -F "upsert_key_columns=order_id,line_id"`}</pre>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(guideSource.api_key, "API Key")}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copia API Key
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium">Modalità di Aggiornamento</h4>
+                <div className="grid gap-2 text-sm">
+                  <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <span className="font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-xs">full</span>
+                    <span>Sostituisce tutti i dati ad ogni sync (default)</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <span className="font-mono bg-blue-200 dark:bg-blue-700 px-2 py-0.5 rounded text-xs">append</span>
+                    <span>Aggiunge nuovi record senza cancellare i precedenti</span>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <span className="font-mono bg-purple-200 dark:bg-purple-700 px-2 py-0.5 rounded text-xs">upsert</span>
+                    <span>Aggiorna record esistenti (basandosi su colonne chiave) e inserisce i nuovi</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2">Nota Importante</h4>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Le opzioni <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">replace_mode</code> e{' '}
+                  <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">upsert_key_columns</code> vengono 
+                  salvate automaticamente. Una volta configurate nel primo invio, non è necessario ripeterle.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setGuideSource(null)}>
+              Chiudi
             </Button>
           </DialogFooter>
         </DialogContent>
