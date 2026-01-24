@@ -335,8 +335,21 @@ router.post(
           UPDATE dataset_sync_sources SET target_dataset_id = ${targetDatasetId} WHERE id = ${sourceId}
         `);
 
-        await saveColumnMapping(targetDatasetId, discoveryResult.columns);
-        await detectAndSaveSemanticMappings(targetDatasetId, tableName, discoveryResult.columns);
+        // Salva mapping per ogni colonna ad alta confidenza
+        for (const col of discoveryResult.columns) {
+          if (col.confidence >= 0.8) {
+            await saveColumnMapping(
+              sourceData.consultant_id,
+              col.originalName,
+              col.suggestedName || col.physicalColumn || col.originalName,
+              col.dataType || col.detectedType || 'TEXT'
+            );
+          }
+        }
+        
+        // Semantic mappings con array di nomi colonna
+        const physicalColumns = discoveryResult.columns.map(c => c.suggestedName || c.physicalColumn || c.originalName);
+        await detectAndSaveSemanticMappings(targetDatasetId, physicalColumns);
       }
 
       const durationMs = Date.now() - startTime;
@@ -986,8 +999,21 @@ router.post(
             UPDATE dataset_sync_sources SET target_dataset_id = ${targetDatasetId} WHERE id = ${sourceId}
           `);
 
-          await saveColumnMapping(targetDatasetId, discoveryResult.columns);
-          await detectAndSaveSemanticMappings(targetDatasetId, tableName, discoveryResult.columns);
+          // Salva mapping per ogni colonna ad alta confidenza
+          for (const col of discoveryResult.columns) {
+            if (col.confidence >= 0.8) {
+              await saveColumnMapping(
+                sourceData.consultant_id,
+                col.originalName,
+                col.suggestedName || col.physicalColumn || col.originalName,
+                col.dataType || col.detectedType || 'TEXT'
+              );
+            }
+          }
+          
+          // Semantic mappings con array di nomi colonna
+          const physicalColumns = discoveryResult.columns.map(c => c.suggestedName || c.physicalColumn || c.originalName);
+          await detectAndSaveSemanticMappings(targetDatasetId, physicalColumns);
         }
 
         // Log nella history come test
