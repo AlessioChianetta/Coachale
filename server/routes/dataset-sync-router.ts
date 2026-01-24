@@ -5,7 +5,7 @@ import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../
 import { upload } from "../middleware/upload";
 import { processExcelFile } from "../services/client-data/upload-processor";
 import { discoverColumns, saveColumnMapping } from "../services/client-data/column-discovery";
-import { generateTableName, createDynamicTable, importDataToTable } from "../services/client-data/table-generator";
+import { generateTableName, createDynamicTable, insertParsedRowsToTable } from "../services/client-data/table-generator";
 import { detectAndSaveSemanticMappings } from "../services/client-data/semantic-mapping-service";
 import { LOGICAL_COLUMNS, COLUMN_AUTO_DETECT_PATTERNS } from "../ai/data-analysis/logical-columns";
 import { nanoid } from "nanoid";
@@ -276,6 +276,9 @@ router.post(
       let targetDatasetId = sourceData.target_dataset_id;
       let tableName: string;
 
+      // Client ID per il dataset
+      const datasetClientId = sourceData.client_id || sourceData.consultant_id;
+
       if (targetDatasetId) {
         const existingDatasetResult = await db.execute<any>(
           sql`SELECT table_name FROM client_data_datasets WHERE id = ${targetDatasetId}`
@@ -288,30 +291,38 @@ router.post(
             await db.execute(sql.raw(`TRUNCATE TABLE ${tableName}`));
           }
         } else {
-          tableName = generateTableName(sourceData.consultant_id);
+          const datasetName = sourceData.name || originalname || 'dataset';
+          tableName = generateTableName(sourceData.consultant_id, datasetName);
         }
       } else {
-        tableName = generateTableName(sourceData.consultant_id);
+        const datasetName = sourceData.name || originalname || 'dataset';
+        tableName = generateTableName(sourceData.consultant_id, datasetName);
       }
 
+      // Crea definizioni colonne - usa la struttura corretta per createDynamicTable
       const columnDefinitions = discoveryResult.columns.map(col => ({
-        name: col.physicalColumn || col.originalName,
-        type: col.detectedType || col.dataType || 'TEXT',
-        nullable: true,
+        originalName: col.originalName || col.physicalColumn || 'column',
+        suggestedName: col.physicalColumn || col.originalName || 'column',
+        displayName: col.displayName || col.originalName || 'Column',
+        dataType: (col.detectedType || col.dataType || 'TEXT') as "TEXT" | "NUMERIC" | "INTEGER" | "DATE" | "BOOLEAN",
+        confidence: col.confidence || 0.5,
+        sampleValues: col.sampleValues || [],
       }));
 
       if (!targetDatasetId) {
-        await createDynamicTable(tableName, columnDefinitions);
+        await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
       }
 
-      const { rowsImported, rowsSkipped } = await importDataToTable(
+      // Importa dati già parsati direttamente nella tabella
+      const { rowsImported, rowsSkipped } = await insertParsedRowsToTable(
         tableName,
         headers,
-        sheet.sampleRows
+        sheet.sampleRows,
+        sourceData.consultant_id,
+        datasetClientId
       );
 
       if (!targetDatasetId) {
-        const datasetClientId = sourceData.client_id || sourceData.consultant_id;
         const insertedDatasetResult = await db.execute<any>(sql`
           INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
           VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())
@@ -952,11 +963,13 @@ router.post(
           await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
         }
 
-        // Importa dati
-        const { rowsImported, rowsSkipped } = await importDataToTable(
+        // Importa dati già parsati direttamente nella tabella
+        const { rowsImported, rowsSkipped } = await insertParsedRowsToTable(
           tableName,
           headers,
-          sheet.sampleRows
+          sheet.sampleRows,
+          sourceData.consultant_id,
+          datasetClientId
         );
 
         // Crea dataset se non esisteva

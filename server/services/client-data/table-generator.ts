@@ -581,3 +581,74 @@ export async function getTablePreview(
     client.release();
   }
 }
+
+/**
+ * Inserisce righe direttamente in una tabella da dati già in memoria
+ * Usato per test webhook dove i dati sono già parsati
+ */
+export async function insertParsedRowsToTable(
+  tableName: string,
+  headers: string[],
+  rows: any[][],
+  consultantId: string,
+  clientId?: string
+): Promise<{ rowsImported: number; rowsSkipped: number }> {
+  const client = await pool.connect();
+  
+  try {
+    await client.query("BEGIN");
+    
+    const sanitizedHeaders = headers.map(h => sanitizeColumnName(h || 'column'));
+    const insertColumns = ["riga_originale", "consultant_id", "client_id", ...sanitizedHeaders];
+    const columnsList = insertColumns.map(c => `"${c}"`).join(", ");
+    
+    let rowsImported = 0;
+    let rowsSkipped = 0;
+    
+    for (let batchStart = 0; batchStart < rows.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, rows.length);
+      const batchRows = rows.slice(batchStart, batchEnd);
+      
+      const valueRows: string[] = [];
+      let paramIndex = 1;
+      const allParams: any[] = [];
+      
+      for (let i = 0; i < batchRows.length; i++) {
+        const row = batchRows[i];
+        const rowNumber = batchStart + i + 1;
+        
+        const placeholders: string[] = [];
+        placeholders.push(`$${paramIndex++}`);
+        allParams.push(rowNumber);
+        placeholders.push(`$${paramIndex++}`);
+        allParams.push(consultantId);
+        placeholders.push(`$${paramIndex++}`);
+        allParams.push(clientId || null);
+        
+        for (let j = 0; j < headers.length; j++) {
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(row[j] ?? null);
+        }
+        
+        valueRows.push(`(${placeholders.join(", ")})`);
+      }
+      
+      if (valueRows.length > 0) {
+        const insertSQL = `INSERT INTO "${tableName}" (${columnsList}) VALUES ${valueRows.join(", ")}`;
+        await client.query(insertSQL, allParams);
+        rowsImported += valueRows.length;
+      }
+    }
+    
+    await client.query("COMMIT");
+    console.log(`[TABLE-GENERATOR] Inserted ${rowsImported} rows directly to ${tableName}`);
+    
+    return { rowsImported, rowsSkipped };
+  } catch (error: any) {
+    await client.query("ROLLBACK");
+    console.error(`[TABLE-GENERATOR] Error inserting parsed rows to ${tableName}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
