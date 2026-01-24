@@ -1265,12 +1265,13 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
           timings.appointmentFetchStart = performance.now();
 
           try {
-            // Calculate date range (next 7 days)
+            // Calculate date range using agent's maxDaysAhead configuration (default 30 days)
+            const maxDaysAhead = consultantConfig?.availabilityMaxDaysAhead || 30;
             const startDate = new Date();
             const endDate = new Date();
-            endDate.setDate(endDate.getDate() + 7);
+            endDate.setDate(endDate.getDate() + maxDaysAhead);
 
-            console.log(`📆 Search range: ${startDate.toLocaleDateString('it-IT')} → ${endDate.toLocaleDateString('it-IT')} (7 days)`);
+            console.log(`📆 Search range: ${startDate.toLocaleDateString('it-IT')} → ${endDate.toLocaleDateString('it-IT')} (${maxDaysAhead} days from agent config)`);
             console.log(`🌐 Calling API: /api/calendar/available-slots`);
 
             // Call available slots endpoint (with agent calendar support)
