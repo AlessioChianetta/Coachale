@@ -220,6 +220,10 @@ function SourceDetailDialog({
             <div className="flex items-center gap-4 flex-wrap">
               <HealthBadge status={analytics.health.status} />
               <SyncModeBadge mode={analytics.source.syncMode} />
+              <ReplaceModeBadge 
+                mode={analytics.source.replaceMode || 'full'} 
+                upsertKeyColumns={analytics.source.upsertKeyColumns} 
+              />
               {analytics.source.clientName && (
                 <Badge variant="outline">
                   <Users className="h-3 w-3 mr-1" />

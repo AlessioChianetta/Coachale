@@ -1460,6 +1460,8 @@ router.get(
             isActive: source.is_active,
             clientName: source.client_first_name ? `${source.client_first_name} ${source.client_last_name}` : null,
             syncMode, // 'push' or 'pull'
+            replaceMode: source.replace_mode || 'full',
+            upsertKeyColumns: source.upsert_key_columns || [],
             createdAt: source.created_at,
           },
           health: {
