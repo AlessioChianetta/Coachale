@@ -3105,9 +3105,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const activeOnly = req.query.activeOnly === 'true';
+      console.log(`[/api/clients] Called with activeOnly=${activeOnly}, consultantId=${req.user!.id}`);
       const clients = await storage.getClientsByConsultant(req.user!.id, activeOnly);
+      console.log(`[/api/clients] Returning ${clients.length} clients`);
       res.json(clients);
     } catch (error: any) {
+      console.error(`[/api/clients] Error:`, error);
       res.status(500).json({ message: error.message });
     }
   });

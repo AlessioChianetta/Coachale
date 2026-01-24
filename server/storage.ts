@@ -753,6 +753,8 @@ export class DatabaseStorage implements IStorage {
     // Return all users who have a client role profile for this consultant
     // Uses user_role_profiles table for accurate consultant-client relationships
     try {
+      console.log(`[getClientsByConsultant] consultantId=${consultantId}, activeOnly=${activeOnly}`);
+      
       const result = await db
         .select()
         .from(schema.users)
@@ -774,8 +776,16 @@ export class DatabaseStorage implements IStorage {
               )
         );
       
+      console.log(`[getClientsByConsultant] Found ${result.length} rows from join`);
+      if (result.length > 0) {
+        console.log(`[getClientsByConsultant] Sample row keys:`, Object.keys(result[0]));
+      }
+      
       // Extract just the users from the joined result
-      return result.map(r => r.users);
+      const clients = result.map(r => r.users);
+      console.log(`[getClientsByConsultant] Returning ${clients.length} clients`);
+      
+      return clients;
     } catch (error) {
       console.error('[getClientsByConsultant] Error:', error);
       throw error;
