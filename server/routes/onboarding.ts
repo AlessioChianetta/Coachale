@@ -28,6 +28,7 @@ import {
   emailAccounts,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
+import { ensureGeminiFileValid } from '../services/gemini-file-manager';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient, getAgentCalendarClient } from '../google-calendar-service';
 import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
@@ -1800,6 +1801,15 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
           eq(consultantKnowledgeDocuments.consultantId, consultantId),
           inArray(consultantKnowledgeDocuments.id, knowledgeDocIds)
         ));
+      
+      // Ensure Gemini files are valid for PDFs (async, doesn't block)
+      for (const doc of docs) {
+        if (doc.geminiFileUri && doc.fileType === 'pdf') {
+          ensureGeminiFileValid(doc.id).catch((error: any) => {
+            console.warn(`⚠️ [GEMINI] Failed to ensure Gemini file validity in onboarding: ${error.message}`);
+          });
+        }
+      }
       
       for (const doc of docs) {
         if (doc.extractedContent) {

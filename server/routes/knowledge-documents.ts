@@ -8,12 +8,15 @@ import {
   updateConsultantKnowledgeDocumentSchema,
   vertexAiSettings,
   fileSearchStores,
+  knowledgeDocumentFolders,
 } from "../../shared/schema";
-import { eq, and, desc } from "drizzle-orm";
-import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
+import { eq, and, desc, lt, gt, or, ilike, sql, count, isNull, inArray, asc } from "drizzle-orm";
+import { z } from "zod";
+import { extractTextFromFile, extractTextFromPDFWithFallback, type VertexAICredentials } from "../services/document-processor";
 import { parseServiceAccountJson } from "../ai/provider-factory";
 import { fileSearchSyncService, syncProgressEmitter, type DocumentProgressEvent } from "../services/file-search-sync-service";
 import { FileSearchService } from "../ai/file-search-service";
+import { ensureGeminiFileValid } from "../services/gemini-file-manager";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -78,6 +81,63 @@ router.get(
   async (req: AuthRequest, res) => {
     try {
       const consultantId = req.user!.id;
+      const { cursor, limit: limitParam, folderId, search, category, status } = req.query;
+      
+      const limit = Math.min(Math.max(parseInt(limitParam as string) || 50, 1), 100);
+      
+      const conditions: any[] = [eq(consultantKnowledgeDocuments.consultantId, consultantId)];
+      
+      if (folderId !== undefined) {
+        if (folderId === '' || folderId === 'null' || folderId === 'root') {
+          conditions.push(isNull(consultantKnowledgeDocuments.folderId));
+        } else {
+          conditions.push(eq(consultantKnowledgeDocuments.folderId, folderId as string));
+        }
+      }
+      
+      if (search && typeof search === 'string' && search.trim()) {
+        const searchTerm = `%${search.trim().toLowerCase()}%`;
+        conditions.push(
+          or(
+            ilike(consultantKnowledgeDocuments.title, searchTerm),
+            ilike(consultantKnowledgeDocuments.description, searchTerm),
+            ilike(consultantKnowledgeDocuments.fileName, searchTerm)
+          )
+        );
+      }
+      
+      if (category && typeof category === 'string' && category.trim()) {
+        conditions.push(eq(consultantKnowledgeDocuments.category, category.trim()));
+      }
+      
+      if (status && typeof status === 'string' && status.trim()) {
+        conditions.push(eq(consultantKnowledgeDocuments.status, status.trim() as any));
+      }
+      
+      if (cursor && typeof cursor === 'string') {
+        try {
+          const [cursorDate, cursorId] = cursor.split('_');
+          const cursorTimestamp = new Date(cursorDate);
+          conditions.push(
+            or(
+              lt(consultantKnowledgeDocuments.createdAt, cursorTimestamp),
+              and(
+                eq(consultantKnowledgeDocuments.createdAt, cursorTimestamp),
+                lt(consultantKnowledgeDocuments.id, cursorId)
+              )
+            )
+          );
+        } catch (e) {
+          console.warn("[KNOWLEDGE DOCUMENTS] Invalid cursor format:", cursor);
+        }
+      }
+
+      const [totalCountResult] = await db
+        .select({ count: count() })
+        .from(consultantKnowledgeDocuments)
+        .where(and(...conditions.slice(0, cursor ? conditions.length - 1 : conditions.length)));
+      
+      const totalCount = totalCountResult?.count || 0;
 
       const documents = await db
         .select({
@@ -90,6 +150,7 @@ router.get(
           fileType: consultantKnowledgeDocuments.fileType,
           fileSize: consultantKnowledgeDocuments.fileSize,
           filePath: consultantKnowledgeDocuments.filePath,
+          folderId: consultantKnowledgeDocuments.folderId,
           contentSummary: consultantKnowledgeDocuments.contentSummary,
           summaryEnabled: consultantKnowledgeDocuments.summaryEnabled,
           keywords: consultantKnowledgeDocuments.keywords,
@@ -109,13 +170,25 @@ router.get(
           syncMessage: consultantKnowledgeDocuments.syncMessage,
         })
         .from(consultantKnowledgeDocuments)
-        .where(eq(consultantKnowledgeDocuments.consultantId, consultantId))
-        .orderBy(desc(consultantKnowledgeDocuments.createdAt));
+        .where(and(...conditions))
+        .orderBy(desc(consultantKnowledgeDocuments.createdAt), desc(consultantKnowledgeDocuments.id))
+        .limit(limit + 1);
+
+      const hasMore = documents.length > limit;
+      const data = hasMore ? documents.slice(0, limit) : documents;
+      
+      let nextCursor: string | null = null;
+      if (hasMore && data.length > 0) {
+        const lastDoc = data[data.length - 1];
+        nextCursor = `${lastDoc.createdAt!.toISOString()}_${lastDoc.id}`;
+      }
 
       res.json({
         success: true,
-        data: documents,
-        count: documents.length,
+        data,
+        nextCursor,
+        hasMore,
+        totalCount,
       });
     } catch (error: any) {
       console.error("❌ [KNOWLEDGE DOCUMENTS] Error listing documents:", error);
@@ -151,6 +224,13 @@ router.get(
         return res.status(404).json({
           success: false,
           error: "Document not found",
+        });
+      }
+
+      // Check and re-upload Gemini file if expired (async, doesn't block response)
+      if (document.geminiFileUri && document.fileType === 'pdf') {
+        ensureGeminiFileValid(id).catch((error: any) => {
+          console.warn(`⚠️ [GEMINI] Failed to ensure Gemini file validity in background: ${error.message}`);
         });
       }
 
@@ -273,17 +353,43 @@ router.post(
             console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] Could not load Vertex AI credentials, will use fallback:`, credError.message);
           }
           
-          const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype, vertexCredentials);
+          let extractedContent: string;
+          let geminiFileUri: string | undefined;
+          let geminiFileExpiresAt: Date | undefined;
+          
+          if (fileType === 'pdf') {
+            console.log(`📄 [KNOWLEDGE DOCUMENTS] Using PDF fallback extraction with Gemini Files API support`);
+            const pdfResult = await extractTextFromPDFWithFallback(finalFilePath!, title.trim());
+            extractedContent = pdfResult.text;
+            geminiFileUri = pdfResult.geminiFileUri;
+            geminiFileExpiresAt = pdfResult.geminiFileExpiresAt;
+            
+            if (pdfResult.usedGemini) {
+              console.log(`🤖 [KNOWLEDGE DOCUMENTS] PDF extracted using Gemini Files API`);
+            } else {
+              console.log(`📋 [KNOWLEDGE DOCUMENTS] PDF extracted using pdf-parse`);
+            }
+          } else {
+            extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype, vertexCredentials);
+          }
           
           syncProgressEmitter.emitDocumentProgress(documentId, "extracting_complete", 40, "Testo estratto con successo");
 
+          const updateData: Record<string, any> = {
+            extractedContent,
+            status: "indexed",
+            updatedAt: new Date(),
+          };
+          
+          if (geminiFileUri) {
+            updateData.geminiFileUri = geminiFileUri;
+            updateData.geminiFileExpiresAt = geminiFileExpiresAt;
+            console.log(`💾 [KNOWLEDGE DOCUMENTS] Saving Gemini file URI: ${geminiFileUri}`);
+          }
+
           await db
             .update(consultantKnowledgeDocuments)
-            .set({
-              extractedContent,
-              status: "indexed",
-              updatedAt: new Date(),
-            })
+            .set(updateData)
             .where(eq(consultantKnowledgeDocuments.id, documentId));
 
           console.log(`✅ [KNOWLEDGE DOCUMENTS] Document indexed: "${title}"`);
@@ -1002,5 +1108,574 @@ function getMimeTypeFromFileType(fileType: string): string {
   };
   return mimeTypes[fileType] || "application/octet-stream";
 }
+
+// ================== FOLDER CRUD ENDPOINTS ==================
+
+const createFolderSchema = z.object({
+  name: z.string().min(1).max(255),
+  parentId: z.string().nullable().optional(),
+  icon: z.string().optional().default("folder"),
+  color: z.string().optional().default("#6366f1"),
+});
+
+const updateFolderSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  parentId: z.string().nullable().optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+router.get(
+  "/consultant/knowledge/folders",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const folders = await db
+        .select({
+          id: knowledgeDocumentFolders.id,
+          consultantId: knowledgeDocumentFolders.consultantId,
+          name: knowledgeDocumentFolders.name,
+          parentId: knowledgeDocumentFolders.parentId,
+          icon: knowledgeDocumentFolders.icon,
+          color: knowledgeDocumentFolders.color,
+          sortOrder: knowledgeDocumentFolders.sortOrder,
+          createdAt: knowledgeDocumentFolders.createdAt,
+          updatedAt: knowledgeDocumentFolders.updatedAt,
+        })
+        .from(knowledgeDocumentFolders)
+        .where(eq(knowledgeDocumentFolders.consultantId, consultantId))
+        .orderBy(asc(knowledgeDocumentFolders.sortOrder), asc(knowledgeDocumentFolders.name));
+
+      const documentCounts = await db
+        .select({
+          folderId: consultantKnowledgeDocuments.folderId,
+          count: count(),
+        })
+        .from(consultantKnowledgeDocuments)
+        .where(eq(consultantKnowledgeDocuments.consultantId, consultantId))
+        .groupBy(consultantKnowledgeDocuments.folderId);
+
+      const countMap = new Map<string | null, number>();
+      documentCounts.forEach(dc => {
+        countMap.set(dc.folderId, dc.count);
+      });
+
+      const foldersWithCounts = folders.map(folder => ({
+        ...folder,
+        documentCount: countMap.get(folder.id) || 0,
+      }));
+
+      const rootDocumentCount = countMap.get(null) || 0;
+
+      res.json({
+        success: true,
+        data: foldersWithCounts,
+        rootDocumentCount,
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE FOLDERS] Error listing folders:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list folders",
+      });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/folders",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const validationResult = createFolderSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const { name, parentId, icon, color } = validationResult.data;
+
+      if (parentId) {
+        const [parentFolder] = await db
+          .select({ id: knowledgeDocumentFolders.id })
+          .from(knowledgeDocumentFolders)
+          .where(
+            and(
+              eq(knowledgeDocumentFolders.id, parentId),
+              eq(knowledgeDocumentFolders.consultantId, consultantId)
+            )
+          )
+          .limit(1);
+
+        if (!parentFolder) {
+          return res.status(400).json({
+            success: false,
+            error: "Parent folder not found",
+          });
+        }
+      }
+
+      const [maxSortOrder] = await db
+        .select({ maxSort: sql<number>`COALESCE(MAX(${knowledgeDocumentFolders.sortOrder}), 0)` })
+        .from(knowledgeDocumentFolders)
+        .where(
+          and(
+            eq(knowledgeDocumentFolders.consultantId, consultantId),
+            parentId ? eq(knowledgeDocumentFolders.parentId, parentId) : isNull(knowledgeDocumentFolders.parentId)
+          )
+        );
+
+      const [newFolder] = await db
+        .insert(knowledgeDocumentFolders)
+        .values({
+          id: crypto.randomUUID(),
+          consultantId,
+          name: name.trim(),
+          parentId: parentId || null,
+          icon: icon || "folder",
+          color: color || "#6366f1",
+          sortOrder: (maxSortOrder?.maxSort || 0) + 1,
+        })
+        .returning();
+
+      console.log(`📁 [KNOWLEDGE FOLDERS] Created folder: "${name}"`);
+
+      res.status(201).json({
+        success: true,
+        data: { ...newFolder, documentCount: 0 },
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE FOLDERS] Error creating folder:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to create folder",
+      });
+    }
+  }
+);
+
+router.put(
+  "/consultant/knowledge/folders/:id",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+
+      const [existingFolder] = await db
+        .select()
+        .from(knowledgeDocumentFolders)
+        .where(
+          and(
+            eq(knowledgeDocumentFolders.id, id),
+            eq(knowledgeDocumentFolders.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!existingFolder) {
+        return res.status(404).json({
+          success: false,
+          error: "Folder not found",
+        });
+      }
+
+      const validationResult = updateFolderSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const updateData = validationResult.data;
+
+      if (updateData.parentId !== undefined) {
+        if (updateData.parentId === id) {
+          return res.status(400).json({
+            success: false,
+            error: "A folder cannot be its own parent",
+          });
+        }
+
+        if (updateData.parentId) {
+          const [parentFolder] = await db
+            .select({ id: knowledgeDocumentFolders.id })
+            .from(knowledgeDocumentFolders)
+            .where(
+              and(
+                eq(knowledgeDocumentFolders.id, updateData.parentId),
+                eq(knowledgeDocumentFolders.consultantId, consultantId)
+              )
+            )
+            .limit(1);
+
+          if (!parentFolder) {
+            return res.status(400).json({
+              success: false,
+              error: "Parent folder not found",
+            });
+          }
+        }
+      }
+
+      const [updatedFolder] = await db
+        .update(knowledgeDocumentFolders)
+        .set({
+          ...updateData,
+          updatedAt: new Date(),
+        })
+        .where(eq(knowledgeDocumentFolders.id, id))
+        .returning();
+
+      console.log(`✏️ [KNOWLEDGE FOLDERS] Updated folder: "${updatedFolder.name}"`);
+
+      res.json({
+        success: true,
+        data: updatedFolder,
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE FOLDERS] Error updating folder:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update folder",
+      });
+    }
+  }
+);
+
+router.delete(
+  "/consultant/knowledge/folders/:id",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+
+      const [folder] = await db
+        .select()
+        .from(knowledgeDocumentFolders)
+        .where(
+          and(
+            eq(knowledgeDocumentFolders.id, id),
+            eq(knowledgeDocumentFolders.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!folder) {
+        return res.status(404).json({
+          success: false,
+          error: "Folder not found",
+        });
+      }
+
+      await db
+        .update(consultantKnowledgeDocuments)
+        .set({ folderId: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.folderId, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        );
+
+      await db
+        .update(knowledgeDocumentFolders)
+        .set({ parentId: folder.parentId, updatedAt: new Date() })
+        .where(
+          and(
+            eq(knowledgeDocumentFolders.parentId, id),
+            eq(knowledgeDocumentFolders.consultantId, consultantId)
+          )
+        );
+
+      await db
+        .delete(knowledgeDocumentFolders)
+        .where(eq(knowledgeDocumentFolders.id, id));
+
+      console.log(`🗑️ [KNOWLEDGE FOLDERS] Deleted folder: "${folder.name}"`);
+
+      res.json({
+        success: true,
+        message: "Folder deleted successfully",
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE FOLDERS] Error deleting folder:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to delete folder",
+      });
+    }
+  }
+);
+
+// ================== DOCUMENT MOVE ENDPOINTS ==================
+
+const moveDocumentSchema = z.object({
+  folderId: z.string().nullable(),
+});
+
+const bulkMoveSchema = z.object({
+  documentIds: z.array(z.string()).min(1),
+  folderId: z.string().nullable(),
+});
+
+const bulkDeleteSchema = z.object({
+  documentIds: z.array(z.string()).min(1),
+});
+
+router.put(
+  "/consultant/knowledge/documents/:id/move",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+
+      const validationResult = moveDocumentSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const { folderId } = validationResult.data;
+
+      const [document] = await db
+        .select({ id: consultantKnowledgeDocuments.id, title: consultantKnowledgeDocuments.title })
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.id, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!document) {
+        return res.status(404).json({
+          success: false,
+          error: "Document not found",
+        });
+      }
+
+      if (folderId) {
+        const [targetFolder] = await db
+          .select({ id: knowledgeDocumentFolders.id })
+          .from(knowledgeDocumentFolders)
+          .where(
+            and(
+              eq(knowledgeDocumentFolders.id, folderId),
+              eq(knowledgeDocumentFolders.consultantId, consultantId)
+            )
+          )
+          .limit(1);
+
+        if (!targetFolder) {
+          return res.status(400).json({
+            success: false,
+            error: "Target folder not found",
+          });
+        }
+      }
+
+      const [updatedDocument] = await db
+        .update(consultantKnowledgeDocuments)
+        .set({ folderId, updatedAt: new Date() })
+        .where(eq(consultantKnowledgeDocuments.id, id))
+        .returning();
+
+      console.log(`📦 [KNOWLEDGE DOCUMENTS] Moved document "${document.title}" to folder: ${folderId || 'root'}`);
+
+      res.json({
+        success: true,
+        data: updatedDocument,
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error moving document:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to move document",
+      });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/documents/bulk-move",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const validationResult = bulkMoveSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const { documentIds, folderId } = validationResult.data;
+
+      if (folderId) {
+        const [targetFolder] = await db
+          .select({ id: knowledgeDocumentFolders.id })
+          .from(knowledgeDocumentFolders)
+          .where(
+            and(
+              eq(knowledgeDocumentFolders.id, folderId),
+              eq(knowledgeDocumentFolders.consultantId, consultantId)
+            )
+          )
+          .limit(1);
+
+        if (!targetFolder) {
+          return res.status(400).json({
+            success: false,
+            error: "Target folder not found",
+          });
+        }
+      }
+
+      const result = await db
+        .update(consultantKnowledgeDocuments)
+        .set({ folderId, updatedAt: new Date() })
+        .where(
+          and(
+            inArray(consultantKnowledgeDocuments.id, documentIds),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .returning({ id: consultantKnowledgeDocuments.id });
+
+      console.log(`📦 [KNOWLEDGE DOCUMENTS] Bulk moved ${result.length} documents to folder: ${folderId || 'root'}`);
+
+      res.json({
+        success: true,
+        movedCount: result.length,
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error bulk moving documents:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to bulk move documents",
+      });
+    }
+  }
+);
+
+router.delete(
+  "/consultant/knowledge/documents/bulk-delete",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const validationResult = bulkDeleteSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const { documentIds } = validationResult.data;
+
+      const documentsToDelete = await db
+        .select({ id: consultantKnowledgeDocuments.id, filePath: consultantKnowledgeDocuments.filePath, title: consultantKnowledgeDocuments.title })
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            inArray(consultantKnowledgeDocuments.id, documentIds),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        );
+
+      if (documentsToDelete.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "No documents found to delete",
+        });
+      }
+
+      try {
+        const [consultantStore] = await db
+          .select({ id: fileSearchStores.id })
+          .from(fileSearchStores)
+          .where(and(
+            eq(fileSearchStores.ownerId, consultantId),
+            eq(fileSearchStores.ownerType, 'consultant')
+          ))
+          .limit(1);
+
+        if (consultantStore) {
+          for (const doc of documentsToDelete) {
+            try {
+              await fileSearchService.deleteDocumentBySource('knowledge_base', doc.id, consultantStore.id, consultantId);
+            } catch (e) {
+              console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] Could not delete document ${doc.id} from FileSearch`);
+            }
+          }
+        }
+      } catch (fileSearchError: any) {
+        console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] FileSearch cleanup failed:`, fileSearchError.message);
+      }
+
+      for (const doc of documentsToDelete) {
+        if (doc.filePath) {
+          try {
+            await fs.unlink(doc.filePath);
+          } catch (fileError: any) {
+            console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] Could not delete file: ${doc.filePath}`);
+          }
+        }
+      }
+
+      await db
+        .delete(consultantKnowledgeDocuments)
+        .where(
+          and(
+            inArray(consultantKnowledgeDocuments.id, documentIds),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        );
+
+      console.log(`🗑️ [KNOWLEDGE DOCUMENTS] Bulk deleted ${documentsToDelete.length} documents`);
+
+      res.json({
+        success: true,
+        deletedCount: documentsToDelete.length,
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error bulk deleting documents:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to bulk delete documents",
+      });
+    }
+  }
+);
 
 export default router;

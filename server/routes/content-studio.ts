@@ -15,6 +15,7 @@ import {
 import { eq, and, desc, gte, lte, isNull, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
+import { ensureGeminiFileValid } from "../services/gemini-file-manager";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
@@ -1534,10 +1535,7 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
     // 2. Documenti dalla Knowledge Base permanente
     if (validatedData.kbDocumentIds && validatedData.kbDocumentIds.length > 0) {
       const kbDocs = await db
-        .select({ 
-          title: schema.consultantKnowledgeDocuments.title,
-          extractedContent: schema.consultantKnowledgeDocuments.extractedContent 
-        })
+        .select()
         .from(schema.consultantKnowledgeDocuments)
         .where(
           and(
@@ -1545,6 +1543,15 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
             inArray(schema.consultantKnowledgeDocuments.id, validatedData.kbDocumentIds)
           )
         );
+      
+      // Ensure Gemini files are valid for PDFs (async, doesn't block)
+      for (const doc of kbDocs) {
+        if (doc.geminiFileUri && doc.fileType === 'pdf') {
+          ensureGeminiFileValid(doc.id).catch((error: any) => {
+            console.warn(`⚠️ [GEMINI] Failed to ensure Gemini file validity in content studio: ${error.message}`);
+          });
+        }
+      }
       
       const kbDocsContent = kbDocs
         .filter(d => d.extractedContent)

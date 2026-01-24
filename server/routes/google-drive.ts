@@ -26,6 +26,7 @@ import {
   listStarredFiles,
   listTrashedFiles
 } from "../services/google-drive-service";
+import { registerDriveWatch } from "../services/google-drive-sync-service";
 
 const router = Router();
 
@@ -511,6 +512,18 @@ router.post(
             .returning();
           
           console.log(`📄 [GOOGLE DRIVE] Created document: "${documentTitle}" (status: processing)`);
+          
+          registerDriveWatch(consultantId, documentId, currentFileId)
+            .then((result) => {
+              if (result) {
+                console.log(`🔔 [GOOGLE DRIVE] Watch registered for "${documentTitle}"`);
+              } else {
+                console.log(`ℹ️ [GOOGLE DRIVE] Watch not registered for "${documentTitle}" (may not be supported for this file type)`);
+              }
+            })
+            .catch((watchError) => {
+              console.warn(`⚠️ [GOOGLE DRIVE] Failed to register watch for "${documentTitle}":`, watchError.message);
+            });
           
           const storedFilePath = finalFilePath;
           const storedMimeType = mimeType;

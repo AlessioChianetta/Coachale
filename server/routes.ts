@@ -101,6 +101,7 @@ import knowledgeApisRouter from "./routes/knowledge-apis";
 import clientKnowledgeDocumentsRouter from "./routes/client/client-knowledge-documents";
 import clientKnowledgeApisRouter from "./routes/client/client-knowledge-apis";
 import googleDriveRouter from "./routes/google-drive";
+import googleDriveWebhookRouter from "./routes/google-drive-webhook";
 import clientGoogleDriveRouter from "./routes/client/client-google-drive";
 import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
@@ -12460,6 +12461,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Google Drive Integration routes
   app.use("/api", googleDriveRouter);
+  app.use("/api", googleDriveWebhookRouter);
   app.use("/api", clientGoogleDriveRouter);
 
   // Super Admin routes

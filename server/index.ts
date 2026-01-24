@@ -23,6 +23,7 @@ import { initMemorySummaryScheduler } from "./cron/memory-summary-scheduler";
 import { startNurturingScheduler } from "./cron/nurturing-scheduler";
 import { initDynamicContextScheduler } from "./cron/dynamic-context-scheduler";
 import { startWeeklyCheckinScheduler } from "./cron/weekly-checkin-scheduler";
+import { startChannelRenewalScheduler } from "./cron/drive-channel-renewal";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -492,5 +493,16 @@ app.use((req, res, next) => {
     }
   } else {
     log("💰 Finance data pre-fetch scheduler is disabled (set FINANCE_PREFETCH_ENABLED=true to enable)");
+  }
+
+  // Setup Google Drive Channel Renewal Scheduler (every 12 hours)
+  const driveRenewalEnabled = schedulersMasterEnabled && process.env.DRIVE_RENEWAL_ENABLED !== "false";
+  
+  if (driveRenewalEnabled) {
+    log("🔄 Google Drive channel renewal scheduler enabled - starting scheduler (every 12 hours)...");
+    startChannelRenewalScheduler();
+    log("✅ Google Drive channel renewal scheduler started");
+  } else {
+    log("🔄 Google Drive channel renewal scheduler is disabled (set DRIVE_RENEWAL_ENABLED=true to enable)");
   }
 })();

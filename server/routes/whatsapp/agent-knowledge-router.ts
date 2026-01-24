@@ -15,6 +15,7 @@ import {
 } from "../../../shared/schema";
 import { eq, and, asc, notInArray, desc, isNotNull, inArray, sql } from "drizzle-orm";
 import { extractTextFromFile, getKnowledgeItemType } from "../../services/document-processor";
+import { ensureGeminiFileValid } from "../../services/gemini-file-manager";
 import { FileSearchService } from "../../ai/file-search-service";
 import fs from "fs/promises";
 import path from "path";
@@ -446,6 +447,15 @@ router.post(
           success: false,
           error: "No matching documents found in your Knowledge Base",
         });
+      }
+
+      // Ensure Gemini files are valid for PDFs (async, doesn't block)
+      for (const doc of kbDocuments) {
+        if (doc.geminiFileUri && doc.fileType === 'pdf') {
+          ensureGeminiFileValid(doc.id).catch((error: any) => {
+            console.warn(`⚠️ [GEMINI] Failed to ensure Gemini file validity during import: ${error.message}`);
+          });
+        }
       }
 
       // Get existing knowledge items for this agent to check for duplicates and get max order

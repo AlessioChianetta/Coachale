@@ -1,11 +1,13 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -66,6 +68,14 @@ import {
   Rows3,
   Columns3,
   RefreshCw,
+  Folder,
+  FolderPlus,
+  Home,
+  List,
+  LayoutGrid,
+  Move,
+  FolderOpen,
+  Plus,
 } from "lucide-react";
 import {
   Collapsible,
@@ -81,10 +91,12 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { openAIAndAskAboutDocument } from "@/hooks/use-document-focus";
+import { cn } from "@/lib/utils";
 
 type DocumentCategory = "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other";
 type DocumentStatus = "uploading" | "processing" | "indexed" | "error";
-type FileType = "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio";
+type FileTypeEnum = "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio";
+type ViewMode = "list" | "grid";
 
 interface StructuredSheet {
   name: string;
@@ -108,9 +120,10 @@ interface KnowledgeDocument {
   description: string | null;
   category: DocumentCategory;
   fileName: string;
-  fileType: FileType;
+  fileType: FileTypeEnum;
   fileSize: number;
   filePath: string;
+  folderId: string | null;
   extractedContent: string | null;
   contentSummary: string | null;
   summaryEnabled: boolean;
@@ -130,6 +143,20 @@ interface KnowledgeDocument {
   syncCurrentChunk: number | null;
   syncTotalChunks: number | null;
   syncMessage: string | null;
+  googleDriveFileId?: string | null;
+}
+
+interface KnowledgeFolder {
+  id: string;
+  consultantId: string;
+  name: string;
+  parentId: string | null;
+  icon: string;
+  color: string;
+  sortOrder: number;
+  documentCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface KnowledgeStats {
@@ -191,7 +218,7 @@ const STATUS_CONFIG: Record<DocumentStatus, { icon: React.ComponentType<any>; la
   error: { icon: AlertCircle, label: "Errore", color: "text-red-500" },
 };
 
-const FILE_TYPE_ICONS: Record<FileType, { color: string; label: string }> = {
+const FILE_TYPE_ICONS: Record<FileTypeEnum, { color: string; label: string }> = {
   pdf: { color: "text-red-500", label: "PDF" },
   docx: { color: "text-blue-500", label: "DOCX" },
   txt: { color: "text-gray-500", label: "TXT" },
@@ -226,12 +253,27 @@ function formatDate(dateString: string): string {
   });
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function ConsultantKnowledgeDocuments() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 300);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingDocument, setEditingDocument] = useState<KnowledgeDocument | null>(null);
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
@@ -247,6 +289,15 @@ export default function ConsultantKnowledgeDocuments() {
   const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState(false);
   const [documentProgressMap, setDocumentProgressMap] = useState<Record<string, DocumentProgress>>({});
   const [retryingDocId, setRetryingDocId] = useState<string | null>(null);
+  const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<KnowledgeFolder | null>(null);
+  const [folderForm, setFolderForm] = useState({ name: "", color: "#6366f1" });
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [movingToFolderId, setMovingToFolderId] = useState<string | null>(null);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showUploadSection, setShowUploadSection] = useState(false);
+
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -265,30 +316,80 @@ export default function ConsultantKnowledgeDocuments() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: documentsResponse, isLoading } = useQuery({
-    queryKey: ["/api/consultant/knowledge/documents"],
-    queryFn: async () => {
-      const response = await fetch("/api/consultant/knowledge/documents", {
+  const {
+    data: documentsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: [
+      "/api/consultant/knowledge/documents",
+      { folderId: selectedFolderId, search: debouncedSearch, category: categoryFilter, status: statusFilter }
+    ],
+    queryFn: async ({ pageParam = null }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.append("cursor", pageParam);
+      if (selectedFolderId) params.append("folderId", selectedFolderId);
+      else params.append("folderId", "root");
+      if (debouncedSearch) params.append("search", debouncedSearch);
+      if (categoryFilter !== "all") params.append("category", categoryFilter);
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      params.append("limit", "50");
+
+      const response = await fetch(`/api/consultant/knowledge/documents?${params}`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch documents");
       return response.json();
     },
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
+    initialPageParam: null as string | null,
   });
 
-  const documents: KnowledgeDocument[] = documentsResponse?.data || [];
+  const documents: KnowledgeDocument[] = useMemo(() => {
+    return documentsData?.pages.flatMap(p => p.data) ?? [];
+  }, [documentsData]);
 
-  // Track which documents we've subscribed to (to avoid duplicate subscriptions)
+  const totalCount = documentsData?.pages[0]?.totalCount ?? 0;
+
+  const { data: foldersResponse } = useQuery({
+    queryKey: ["/api/consultant/knowledge/folders"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/knowledge/folders", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch folders");
+      return response.json();
+    },
+  });
+
+  const folders: KnowledgeFolder[] = foldersResponse?.data || [];
+
+  const virtualizer = useVirtualizer({
+    count: documents.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => viewMode === "list" ? 100 : 200,
+    overscan: 5,
+  });
+
+  useEffect(() => {
+    const items = virtualizer.getVirtualItems();
+    const lastItem = items[items.length - 1];
+
+    if (lastItem && lastItem.index >= documents.length - 5 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [virtualizer.getVirtualItems(), hasNextPage, isFetchingNextPage, documents.length, fetchNextPage]);
+
   const subscribedDocsRef = useRef<Set<string>>(new Set());
 
-  // Load persisted sync progress from database when documents are fetched
   useEffect(() => {
     if (documents.length > 0) {
       const initialProgress: Record<string, DocumentProgress> = {};
       const docsNeedingSubscription: string[] = [];
       
       for (const doc of documents) {
-        // Check if document has active sync progress in database
         if (doc.syncProgress !== null && doc.syncProgress !== undefined && doc.syncProgress > 0 && !doc.fileSearchSyncedAt) {
           initialProgress[doc.id] = {
             phase: 'chunking',
@@ -298,19 +399,16 @@ export default function ConsultantKnowledgeDocuments() {
             totalChunks: doc.syncTotalChunks || undefined,
             currentChunk: doc.syncCurrentChunk || undefined,
           };
-          // Track docs that need SSE subscription
           if (!subscribedDocsRef.current.has(doc.id)) {
             docsNeedingSubscription.push(doc.id);
           }
         }
       }
       
-      // Only update if there's progress to restore
       if (Object.keys(initialProgress).length > 0) {
         setDocumentProgressMap(prev => ({ ...prev, ...initialProgress }));
       }
       
-      // Re-subscribe to SSE for documents with active sync (after a short delay to let subscribeToDocumentProgress be defined)
       if (docsNeedingSubscription.length > 0) {
         setTimeout(() => {
           docsNeedingSubscription.forEach(docId => {
@@ -322,9 +420,8 @@ export default function ConsultantKnowledgeDocuments() {
         }, 100);
       }
     }
-  }, [documentsResponse]);
+  }, [documentsData]);
   
-  // Ref to hold the subscribeToDocumentProgress function for use in useEffect
   const subscribeToDocumentProgressRef = useRef<((docId: string) => void) | null>(null);
 
   const uploadMutation = useMutation({
@@ -342,6 +439,7 @@ export default function ConsultantKnowledgeDocuments() {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
       setUploadingFiles([]);
       setUploadForm({ title: "", description: "", category: "other", priority: 5 });
       toast({
@@ -409,6 +507,7 @@ export default function ConsultantKnowledgeDocuments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
       setDeletingDocumentId(null);
       toast({
         title: "Documento eliminato",
@@ -424,7 +523,178 @@ export default function ConsultantKnowledgeDocuments() {
     },
   });
 
-  // Query per statistiche knowledge base
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (documentIds: string[]) => {
+      const response = await fetch("/api/consultant/knowledge/documents/bulk-delete", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documentIds }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete documents");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
+      setSelectedIds(new Set());
+      setShowBulkDeleteDialog(false);
+      toast({
+        title: "Documenti eliminati",
+        description: "I documenti selezionati sono stati eliminati",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore eliminazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkMoveMutation = useMutation({
+    mutationFn: async ({ documentIds, folderId }: { documentIds: string[]; folderId: string | null }) => {
+      const response = await fetch("/api/consultant/knowledge/documents/bulk-move", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documentIds, folderId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to move documents");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
+      setSelectedIds(new Set());
+      setShowMoveDialog(false);
+      toast({
+        title: "Documenti spostati",
+        description: "I documenti selezionati sono stati spostati",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore spostamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createFolderMutation = useMutation({
+    mutationFn: async (data: { name: string; color: string }) => {
+      const response = await fetch("/api/consultant/knowledge/folders", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create folder");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
+      setShowFolderDialog(false);
+      setFolderForm({ name: "", color: "#6366f1" });
+      toast({
+        title: "Cartella creata",
+        description: "La cartella è stata creata con successo",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateFolderMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name: string; color: string } }) => {
+      const response = await fetch(`/api/consultant/knowledge/folders/${id}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update folder");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
+      setShowFolderDialog(false);
+      setEditingFolder(null);
+      setFolderForm({ name: "", color: "#6366f1" });
+      toast({
+        title: "Cartella aggiornata",
+        description: "La cartella è stata aggiornata",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/consultant/knowledge/folders/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete folder");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      if (selectedFolderId === editingFolder?.id) {
+        setSelectedFolderId(null);
+      }
+      setEditingFolder(null);
+      toast({
+        title: "Cartella eliminata",
+        description: "La cartella è stata eliminata",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: statsResponse } = useQuery({
     queryKey: ["/api/consultant/knowledge/stats"],
     queryFn: async () => {
@@ -437,7 +707,6 @@ export default function ConsultantKnowledgeDocuments() {
   });
   const stats: KnowledgeStats | null = statsResponse?.data || null;
 
-  // Mutation per toggle riassunto
   const toggleSummaryMutation = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
       const response = await fetch(`/api/consultant/knowledge/documents/${id}/toggle-summary`, {
@@ -475,7 +744,6 @@ export default function ConsultantKnowledgeDocuments() {
     },
   });
 
-  // Mutation per aggiornare tags
   const updateTagsMutation = useMutation({
     mutationFn: async ({ id, tags }: { id: string; tags: string[] }) => {
       const response = await fetch(`/api/consultant/knowledge/documents/${id}/tags`, {
@@ -513,7 +781,6 @@ export default function ConsultantKnowledgeDocuments() {
 
   const subscribeToDocumentProgress = useCallback(async (documentId: string) => {
     try {
-      // Mark as subscribed
       subscribedDocsRef.current.add(documentId);
       
       const tokenResponse = await fetch(`/api/consultant/knowledge/documents/${documentId}/progress-token`, {
@@ -589,7 +856,6 @@ export default function ConsultantKnowledgeDocuments() {
     }
   }, [queryClient]);
   
-  // Update ref when function changes
   useEffect(() => {
     subscribeToDocumentProgressRef.current = subscribeToDocumentProgress;
   }, [subscribeToDocumentProgress]);
@@ -626,7 +892,6 @@ export default function ConsultantKnowledgeDocuments() {
     retryMutation.mutate(documentId);
   };
 
-  // Funzione per aprire l'anteprima documento
   const handlePreview = async (doc: KnowledgeDocument) => {
     setTablePreviewPage(0);
     setTablePreviewSheet(0);
@@ -645,7 +910,6 @@ export default function ConsultantKnowledgeDocuments() {
     }
   };
 
-  // Funzione per aggiungere un tag
   const handleAddTag = () => {
     if (!previewDocument || !tagInput.trim()) return;
     const newTags = [...(previewDocument.tags || []), tagInput.trim().toLowerCase()];
@@ -653,7 +917,6 @@ export default function ConsultantKnowledgeDocuments() {
     setTagInput("");
   };
 
-  // Funzione per rimuovere un tag
   const handleRemoveTag = (tagToRemove: string) => {
     if (!previewDocument) return;
     const newTags = (previewDocument.tags || []).filter(t => t !== tagToRemove);
@@ -679,6 +942,7 @@ export default function ConsultantKnowledgeDocuments() {
         ...prev,
         title: validFiles[0].name.replace(/\.[^/.]+$/, ""),
       }));
+      setShowUploadSection(true);
     }
   }, [toast]);
 
@@ -711,7 +975,7 @@ export default function ConsultantKnowledgeDocuments() {
   const handleUpload = async () => {
     if (uploadingFiles.length === 0) return;
     
-      const filesToUpload = [...uploadingFiles];
+    const filesToUpload = [...uploadingFiles];
     setUploadingFiles([]);
     setUploadForm({ title: "", description: "", category: "other", priority: 5 });
     
@@ -736,6 +1000,9 @@ export default function ConsultantKnowledgeDocuments() {
       formData.append("description", uploadForm.description);
       formData.append("category", uploadForm.category);
       formData.append("priority", uploadForm.priority.toString());
+      if (selectedFolderId) {
+        formData.append("folderId", selectedFolderId);
+      }
 
       uploadMutation.mutate(formData);
     }
@@ -760,15 +1027,273 @@ export default function ConsultantKnowledgeDocuments() {
     });
   };
 
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch =
-      doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.fileName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || doc.category === categoryFilter;
-    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(documents.map(d => d.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleOpenFolderDialog = (folder?: KnowledgeFolder) => {
+    if (folder) {
+      setEditingFolder(folder);
+      setFolderForm({ name: folder.name, color: folder.color });
+    } else {
+      setEditingFolder(null);
+      setFolderForm({ name: "", color: "#6366f1" });
+    }
+    setShowFolderDialog(true);
+  };
+
+  const handleSaveFolder = () => {
+    if (editingFolder) {
+      updateFolderMutation.mutate({ id: editingFolder.id, data: folderForm });
+    } else {
+      createFolderMutation.mutate(folderForm);
+    }
+  };
+
+  const handleBulkMove = () => {
+    if (selectedIds.size === 0) return;
+    setMovingToFolderId(null);
+    setShowMoveDialog(true);
+  };
+
+  const handleConfirmMove = () => {
+    bulkMoveMutation.mutate({
+      documentIds: Array.from(selectedIds),
+      folderId: movingToFolderId,
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    setShowBulkDeleteDialog(true);
+  };
+
+  const handleConfirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(Array.from(selectedIds));
+  };
+
+  const renderDocumentCard = (doc: KnowledgeDocument, isSelected: boolean) => {
+    const StatusIcon = STATUS_CONFIG[doc.status].icon;
+    const fileTypeConfig = FILE_TYPE_ICONS[doc.fileType];
+    const progress = documentProgressMap[doc.id];
+    const isGoogleDriveDoc = !!doc.googleDriveFileId;
+
+    if (viewMode === "grid") {
+      return (
+        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow h-full">
+          <div className="flex items-start gap-2 mb-2">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => toggleSelection(doc.id)}
+              className="mt-1"
+            />
+            <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700 ${fileTypeConfig.color}`}>
+              <FileType className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                {doc.title}
+              </h4>
+              <span className="text-xs text-gray-400">{fileTypeConfig.label}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1 mb-2">
+            <Badge className={cn(CATEGORY_COLORS[doc.category], "text-xs py-0")}>
+              {CATEGORY_LABELS[doc.category]}
+            </Badge>
+            <span className={`flex items-center gap-0.5 text-xs ${STATUS_CONFIG[doc.status].color}`}>
+              <StatusIcon className={`w-3 h-3 ${doc.status === "uploading" || doc.status === "processing" ? "animate-spin" : ""}`} />
+            </span>
+            {isGoogleDriveDoc && (
+              <span className="flex items-center gap-0.5 text-xs text-blue-600">
+                <Cloud className="w-3 h-3" />
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="icon" onClick={() => handlePreview(doc)} className="h-7 w-7">
+              <Eye className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => handleEdit(doc)} className="h-7 w-7">
+              <Edit3 className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setDeletingDocumentId(doc.id)} className="h-7 w-7 text-red-500">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-start gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => toggleSelection(doc.id)}
+          className="mt-1"
+        />
+        <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700 ${fileTypeConfig.color}`}>
+          <FileType className="w-5 h-5" />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                {doc.title}
+              </h4>
+              {doc.description && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                  {doc.description}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handlePreview(doc)}
+                className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                title="Anteprima"
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleEdit(doc)}
+                className="h-8 w-8"
+                title="Modifica"
+              >
+                <Edit3 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setDeletingDocumentId(doc.id)}
+                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                title="Elimina"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <Badge className={CATEGORY_COLORS[doc.category]}>
+              {CATEGORY_LABELS[doc.category]}
+            </Badge>
+            <span className={`flex items-center gap-1 text-xs ${STATUS_CONFIG[doc.status].color}`}>
+              <StatusIcon className={`w-3.5 h-3.5 ${doc.status === "uploading" || doc.status === "processing" ? "animate-spin" : ""}`} />
+              {STATUS_CONFIG[doc.status].label}
+            </span>
+            <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <Star className="w-3.5 h-3.5" />
+              {doc.priority}/10
+            </span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              {fileTypeConfig.label} • {formatFileSize(doc.fileSize)}
+            </span>
+            <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <Calendar className="w-3.5 h-3.5" />
+              {formatDate(doc.createdAt)}
+            </span>
+            {doc.usageCount > 0 && (
+              <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
+                <BarChart3 className="w-3 h-3" />
+                Usato {doc.usageCount}x
+              </span>
+            )}
+            {doc.summaryEnabled && (
+              <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full">
+                <Sparkles className="w-3 h-3" />
+                Riassunto
+              </span>
+            )}
+            {doc.fileSearchSyncedAt && (
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                <Database className="w-3 h-3" />
+                File Search
+              </span>
+            )}
+            {isGoogleDriveDoc && (
+              <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
+                <Cloud className="w-3 h-3" />
+                Google Drive
+              </span>
+            )}
+          </div>
+
+          {progress && progress.phase !== "complete" && (
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  {progress.message}
+                </span>
+              </div>
+              <Progress value={progress.progress} className="h-2" />
+              {progress.needsChunking && progress.totalChunks && (
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                  Documento grande - suddivisione in {progress.totalChunks} parti
+                  {progress.currentChunk ? ` (${progress.currentChunk}/${progress.totalChunks})` : ''}
+                </p>
+              )}
+              {progress.phase === "complete" && (
+                <div className="flex items-center gap-2 mt-2 text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-sm">Completato!</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {doc.status === "error" && doc.errorMessage && (
+            <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+              <p className="text-xs text-red-500">{doc.errorMessage}</p>
+              {progress?.phase === "error" && progress?.error && (
+                <p className="text-xs text-red-500 mt-1">{progress.error}</p>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 text-red-600 border-red-300 hover:bg-red-100"
+                onClick={() => handleRetry(doc.id)}
+                disabled={retryingDocId === doc.id}
+              >
+                {retryingDocId === doc.id ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    Riprovando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Riprova
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -797,13 +1322,11 @@ export default function ConsultantKnowledgeDocuments() {
                 </div>
                 <div className="hidden lg:flex items-center space-x-4">
                   <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                    <div className="text-3xl font-bold">{documents.length}</div>
+                    <div className="text-3xl font-bold">{stats?.documents.total ?? 0}</div>
                     <div className="text-sm text-amber-100">Documenti</div>
                   </div>
                   <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                    <div className="text-3xl font-bold">
-                      {documents.filter((d) => d.status === "indexed").length}
-                    </div>
+                    <div className="text-3xl font-bold">{stats?.documents.indexed ?? 0}</div>
                     <div className="text-sm text-amber-100">Indicizzati</div>
                   </div>
                 </div>
@@ -842,6 +1365,7 @@ export default function ConsultantKnowledgeDocuments() {
                     onImportSuccess={(count) => {
                       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
                       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/stats"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
                     }}
                   />
                 </CardContent>
@@ -849,8 +1373,256 @@ export default function ConsultantKnowledgeDocuments() {
             </Collapsible>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <Card className="lg:col-span-1 border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-amber-400 transition-colors">
+          <div className="flex gap-4">
+            {!isMobile && (
+              <div className="w-64 shrink-0">
+                <Card>
+                  <CardHeader className="py-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Folder className="w-4 h-4" />
+                        Cartelle
+                      </CardTitle>
+                      <Button size="sm" variant="ghost" onClick={() => handleOpenFolderDialog()}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    <div
+                      className={cn(
+                        "px-3 py-2 rounded cursor-pointer flex items-center justify-between mb-1",
+                        !selectedFolderId ? "bg-amber-100 dark:bg-amber-900/30" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                      )}
+                      onClick={() => setSelectedFolderId(null)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Home className="w-4 h-4" />
+                        Tutti i documenti
+                      </span>
+                      <Badge variant="secondary">{stats?.documents.total ?? 0}</Badge>
+                    </div>
+
+                    {folders.map(folder => (
+                      <div
+                        key={folder.id}
+                        className={cn(
+                          "px-3 py-2 rounded cursor-pointer flex items-center justify-between group mb-1",
+                          selectedFolderId === folder.id ? "bg-amber-100 dark:bg-amber-900/30" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                        )}
+                        onClick={() => setSelectedFolderId(folder.id)}
+                      >
+                        <span className="flex items-center gap-2 flex-1 min-w-0">
+                          <FolderOpen className="w-4 h-4 shrink-0" style={{ color: folder.color }} />
+                          <span className="truncate">{folder.name}</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="secondary" className="shrink-0">{folder.documentCount}</Badge>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenFolderDialog(folder);
+                            }}
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card className="mt-4">
+                  <div
+                    {...getRootProps()}
+                    className={`p-4 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
+                      isDragActive
+                        ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-amber-300"
+                    }`}
+                  >
+                    <input {...getInputProps()} />
+                    <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragActive ? "text-amber-500" : "text-gray-400"}`} />
+                    {isDragActive ? (
+                      <p className="text-amber-600 font-medium text-sm">Rilascia qui...</p>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 dark:text-gray-400 font-medium text-sm">Carica file</p>
+                        <p className="text-xs text-gray-400 mt-1">PDF, DOCX, CSV, ecc.</p>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            <div className="flex-1 min-w-0">
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-amber-500" />
+                        Documenti ({totalCount})
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={viewMode === "list" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setViewMode("list")}
+                          className={viewMode === "list" ? "bg-amber-500 hover:bg-amber-600" : ""}
+                        >
+                          <List className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant={viewMode === "grid" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setViewMode("grid")}
+                          className={viewMode === "grid" ? "bg-amber-500 hover:bg-amber-600" : ""}
+                        >
+                          <LayoutGrid className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <div className="relative flex-1 min-w-[200px]">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          placeholder="Cerca documenti..."
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger className="w-32 sm:w-36">
+                          <Filter className="w-4 h-4 mr-2" />
+                          <SelectValue placeholder="Categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutte</SelectItem>
+                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-32 sm:w-36">
+                          <SelectValue placeholder="Stato" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti</SelectItem>
+                          <SelectItem value="indexed">Indicizzato</SelectItem>
+                          <SelectItem value="processing">In elaborazione</SelectItem>
+                          <SelectItem value="error">Errore</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedIds.size > 0 && (
+                      <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                        <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                          {selectedIds.size} selezionati
+                        </span>
+                        <Button variant="outline" size="sm" onClick={selectAll}>
+                          Seleziona tutti
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={clearSelection}>
+                          Deseleziona
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleBulkMove}>
+                          <Move className="w-4 h-4 mr-1" />
+                          Sposta
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Elimina
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                    </div>
+                  ) : documents.length === 0 ? (
+                    <div className="text-center py-12">
+                      <FileText className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                      <p className="text-gray-500 dark:text-gray-400">Nessun documento trovato</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                        Carica il tuo primo documento usando l'area di upload
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      ref={parentRef}
+                      className="h-[calc(100vh-450px)] min-h-[400px] overflow-auto"
+                    >
+                      <div
+                        style={{
+                          height: `${virtualizer.getTotalSize()}px`,
+                          width: "100%",
+                          position: "relative",
+                        }}
+                      >
+                        {viewMode === "grid" ? (
+                          <div
+                            className="grid gap-3"
+                            style={{
+                              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                            }}
+                          >
+                            {documents.map((doc) => (
+                              <div key={doc.id}>
+                                {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          virtualizer.getVirtualItems().map((virtualItem) => {
+                            const doc = documents[virtualItem.index];
+                            return (
+                              <div
+                                key={doc.id}
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  width: "100%",
+                                  height: `${virtualItem.size}px`,
+                                  transform: `translateY(${virtualItem.start}px)`,
+                                }}
+                              >
+                                <div className="pr-2 pb-3">
+                                  {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {isFetchingNextPage && (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                          <span className="ml-2 text-sm text-gray-500">Caricamento...</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {isMobile && (
+            <Card className="mt-4">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Upload className="w-5 h-5 text-amber-500" />
@@ -867,397 +1639,103 @@ export default function ConsultantKnowledgeDocuments() {
                   }`}
                 >
                   <input {...getInputProps()} />
-                  <Upload
-                    className={`w-10 h-10 mx-auto mb-3 ${
-                      isDragActive ? "text-amber-500" : "text-gray-400"
-                    }`}
-                  />
+                  <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragActive ? "text-amber-500" : "text-gray-400"}`} />
                   {isDragActive ? (
                     <p className="text-amber-600 font-medium">Rilascia il file qui...</p>
                   ) : (
                     <>
-                      <p className="text-gray-600 dark:text-gray-400 font-medium">
-                        Trascina un file qui
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                        oppure clicca per selezionare
-                      </p>
+                      <p className="text-gray-600 dark:text-gray-400 font-medium">Trascina un file qui</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">oppure clicca per selezionare</p>
                       <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT, MD, CSV, XLSX, PPTX, Audio (max 10MB)</p>
                     </>
                   )}
                 </div>
-
-                {uploadingFiles.length > 0 && (
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                      <FileText className="w-5 h-5 text-amber-500" />
-                      <span className="text-sm font-medium truncate flex-1">
-                        {uploadingFiles[0].name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {formatFileSize(uploadingFiles[0].size)}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="upload-title">Titolo *</Label>
-                        <Input
-                          id="upload-title"
-                          value={uploadForm.title}
-                          onChange={(e) =>
-                            setUploadForm((prev) => ({ ...prev, title: e.target.value }))
-                          }
-                          placeholder="Titolo del documento"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="upload-description">Descrizione</Label>
-                        <Textarea
-                          id="upload-description"
-                          value={uploadForm.description}
-                          onChange={(e) =>
-                            setUploadForm((prev) => ({ ...prev, description: e.target.value }))
-                          }
-                          placeholder="Descrizione opzionale"
-                          rows={2}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="upload-category">Categoria</Label>
-                        <Select
-                          value={uploadForm.category}
-                          onValueChange={(value: DocumentCategory) =>
-                            setUploadForm((prev) => ({ ...prev, category: value }))
-                          }
-                        >
-                          <SelectTrigger id="upload-category">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                              <SelectItem key={key} value={key}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Priorità: {uploadForm.priority}</Label>
-                        <Slider
-                          value={[uploadForm.priority]}
-                          onValueChange={([value]) =>
-                            setUploadForm((prev) => ({ ...prev, priority: value }))
-                          }
-                          min={1}
-                          max={10}
-                          step={1}
-                          className="mt-2"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>Bassa</span>
-                          <span>Alta</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setUploadingFiles([]);
-                          setUploadForm({
-                            title: "",
-                            description: "",
-                            category: "other",
-                            priority: 5,
-                          });
-                        }}
-                        className="flex-1"
-                      >
-                        Annulla
-                      </Button>
-                      <Button
-                        onClick={handleUpload}
-                        disabled={uploadMutation.isPending}
-                        className="flex-1 bg-amber-500 hover:bg-amber-600"
-                      >
-                        {uploadMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Caricamento...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Carica
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-amber-500" />
-                    Documenti ({filteredDocuments.length})
-                  </CardTitle>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        placeholder="Cerca..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 w-40 sm:w-48"
-                      />
-                    </div>
-                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                      <SelectTrigger className="w-32 sm:w-36">
-                        <Filter className="w-4 h-4 mr-2" />
-                        <SelectValue placeholder="Categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutte</SelectItem>
-                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                          <SelectItem key={key} value={key}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-32 sm:w-36">
-                        <SelectValue placeholder="Stato" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutti</SelectItem>
-                        <SelectItem value="indexed">Indicizzato</SelectItem>
-                        <SelectItem value="processing">In elaborazione</SelectItem>
-                        <SelectItem value="error">Errore</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-                  </div>
-                ) : filteredDocuments.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-                    <p className="text-gray-500 dark:text-gray-400">Nessun documento trovato</p>
-                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                      Carica il tuo primo documento usando l'area di upload
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {filteredDocuments.map((doc) => {
-                      const StatusIcon = STATUS_CONFIG[doc.status].icon;
-                      const fileTypeConfig = FILE_TYPE_ICONS[doc.fileType];
-
-                      return (
-                        <div
-                          key={doc.id}
-                          className="flex items-start gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow"
-                        >
-                          <div
-                            className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700 ${fileTypeConfig.color}`}
-                          >
-                            <FileType className="w-5 h-5" />
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                                  {doc.title}
-                                </h4>
-                                {doc.description && (
-                                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
-                                    {doc.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handlePreview(doc)}
-                                  className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                  title="Anteprima"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEdit(doc)}
-                                  className="h-8 w-8"
-                                  title="Modifica"
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setDeletingDocumentId(doc.id)}
-                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                  title="Elimina"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                              <Badge className={CATEGORY_COLORS[doc.category]}>
-                                {CATEGORY_LABELS[doc.category]}
-                              </Badge>
-                              <span
-                                className={`flex items-center gap-1 text-xs ${STATUS_CONFIG[doc.status].color}`}
-                              >
-                                <StatusIcon
-                                  className={`w-3.5 h-3.5 ${doc.status === "uploading" || doc.status === "processing" ? "animate-spin" : ""}`}
-                                />
-                                {STATUS_CONFIG[doc.status].label}
-                              </span>
-                              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                <Star className="w-3.5 h-3.5" />
-                                {doc.priority}/10
-                              </span>
-                              <span className="text-xs text-gray-400 dark:text-gray-500">
-                                {fileTypeConfig.label} • {formatFileSize(doc.fileSize)}
-                              </span>
-                              <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-                                <Calendar className="w-3.5 h-3.5" />
-                                {formatDate(doc.createdAt)}
-                              </span>
-                              {doc.usageCount > 0 && (
-                                <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
-                                  <BarChart3 className="w-3 h-3" />
-                                  Usato {doc.usageCount}x
-                                </span>
-                              )}
-                              {doc.summaryEnabled && (
-                                <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full">
-                                  <Sparkles className="w-3 h-3" />
-                                  Riassunto
-                                </span>
-                              )}
-                              {doc.fileSearchSyncedAt && (
-                                <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
-                                  <Database className="w-3 h-3" />
-                                  File Search
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Warning: Document indexed but NOT synced to File Search */}
-                            {doc.status === 'indexed' && !doc.fileSearchSyncedAt && !documentProgressMap[doc.id] && (
-                              <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border-2 border-orange-300 dark:border-orange-700">
-                                <div className="flex items-center gap-2">
-                                  <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
-                                  <div>
-                                    <p className="text-sm font-semibold text-orange-700 dark:text-orange-300">
-                                      Documento non sincronizzato con File Search
-                                    </p>
-                                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                                      Vai su <strong>File Search</strong> e clicca "Sincronizza tutti" per abilitare la ricerca AI semantica su questo documento.
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {doc.tags && doc.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {doc.tags.slice(0, 4).map((tag: string, idx: number) => (
-                                  <span key={idx} className="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">
-                                    <Tag className="w-2.5 h-2.5" />
-                                    {tag}
-                                  </span>
-                                ))}
-                                {doc.tags.length > 4 && (
-                                  <span className="text-xs text-gray-400">+{doc.tags.length - 4}</span>
-                                )}
-                              </div>
-                            )}
-
-                            {documentProgressMap[doc.id] && (
-                              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                                    {documentProgressMap[doc.id].message}
-                                  </span>
-                                </div>
-                                <Progress 
-                                  value={documentProgressMap[doc.id].progress} 
-                                  className="h-2"
-                                />
-                                {documentProgressMap[doc.id].needsChunking && documentProgressMap[doc.id].totalChunks && (
-                                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                                    Documento grande - suddivisione in {documentProgressMap[doc.id].totalChunks} parti
-                                    {documentProgressMap[doc.id].currentChunk ? ` (${documentProgressMap[doc.id].currentChunk}/${documentProgressMap[doc.id].totalChunks})` : ''}
-                                  </p>
-                                )}
-                                {documentProgressMap[doc.id].phase === "complete" && (
-                                  <div className="flex items-center gap-2 mt-2 text-green-600 dark:text-green-400">
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    <span className="text-sm">Completato!</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {doc.status === "error" && doc.errorMessage && (
-                              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
-                                <p className="text-xs text-red-500">{doc.errorMessage}</p>
-                                {documentProgressMap[doc.id]?.phase === "error" && documentProgressMap[doc.id]?.error && (
-                                  <p className="text-xs text-red-500 mt-1">{documentProgressMap[doc.id].error}</p>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="mt-2 text-red-600 border-red-300 hover:bg-red-100"
-                                  onClick={() => handleRetry(doc.id)}
-                                  disabled={retryingDocId === doc.id}
-                                >
-                                  {retryingDocId === doc.id ? (
-                                    <>
-                                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                      Riprovando...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <RefreshCw className="w-3 h-3 mr-1" />
-                                      Riprova
-                                    </>
-                                  )}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          )}
         </div>
       </div>
+
+      {uploadingFiles.length > 0 && (
+        <Dialog open={uploadingFiles.length > 0} onOpenChange={() => setUploadingFiles([])}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Carica Documento</DialogTitle>
+              <DialogDescription>Configura i dettagli del documento da caricare</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                <FileText className="w-5 h-5 text-amber-500" />
+                <span className="text-sm font-medium truncate flex-1">{uploadingFiles[0]?.name}</span>
+                <span className="text-xs text-gray-500">{uploadingFiles[0] && formatFileSize(uploadingFiles[0].size)}</span>
+              </div>
+
+              <div>
+                <Label htmlFor="upload-title">Titolo *</Label>
+                <Input
+                  id="upload-title"
+                  value={uploadForm.title}
+                  onChange={(e) => setUploadForm((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Titolo del documento"
+                />
+              </div>
+              <div>
+                <Label htmlFor="upload-description">Descrizione</Label>
+                <Textarea
+                  id="upload-description"
+                  value={uploadForm.description}
+                  onChange={(e) => setUploadForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descrizione opzionale"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <Label htmlFor="upload-category">Categoria</Label>
+                <Select
+                  value={uploadForm.category}
+                  onValueChange={(value: DocumentCategory) => setUploadForm((prev) => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger id="upload-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Priorità: {uploadForm.priority}</Label>
+                <Slider
+                  value={[uploadForm.priority]}
+                  onValueChange={([value]) => setUploadForm((prev) => ({ ...prev, priority: value }))}
+                  min={1}
+                  max={10}
+                  step={1}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setUploadingFiles([])}>Annulla</Button>
+              <Button onClick={handleUpload} disabled={uploadMutation.isPending} className="bg-amber-500 hover:bg-amber-600">
+                {uploadMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Caricamento...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Carica
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
@@ -1281,9 +1759,7 @@ export default function ConsultantKnowledgeDocuments() {
               <Textarea
                 id="edit-description"
                 value={editForm.description}
-                onChange={(e) =>
-                  setEditForm((prev) => ({ ...prev, description: e.target.value }))
-                }
+                onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
                 rows={3}
               />
             </div>
@@ -1291,18 +1767,14 @@ export default function ConsultantKnowledgeDocuments() {
               <Label htmlFor="edit-category">Categoria</Label>
               <Select
                 value={editForm.category}
-                onValueChange={(value: DocumentCategory) =>
-                  setEditForm((prev) => ({ ...prev, category: value }))
-                }
+                onValueChange={(value: DocumentCategory) => setEditForm((prev) => ({ ...prev, category: value }))}
               >
                 <SelectTrigger id="edit-category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1311,29 +1783,17 @@ export default function ConsultantKnowledgeDocuments() {
               <Label>Priorità: {editForm.priority}</Label>
               <Slider
                 value={[editForm.priority]}
-                onValueChange={([value]) =>
-                  setEditForm((prev) => ({ ...prev, priority: value }))
-                }
+                onValueChange={([value]) => setEditForm((prev) => ({ ...prev, priority: value }))}
                 min={1}
                 max={10}
                 step={1}
                 className="mt-2"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Bassa</span>
-                <span>Alta</span>
-              </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Annulla
-            </Button>
-            <Button
-              onClick={handleSaveEdit}
-              disabled={updateMutation.isPending}
-              className="bg-amber-500 hover:bg-amber-600"
-            >
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Annulla</Button>
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} className="bg-amber-500 hover:bg-amber-600">
               {updateMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1347,10 +1807,7 @@ export default function ConsultantKnowledgeDocuments() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={!!deletingDocumentId}
-        onOpenChange={() => setDeletingDocumentId(null)}
-      >
+      <AlertDialog open={!!deletingDocumentId} onOpenChange={() => setDeletingDocumentId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
@@ -1378,7 +1835,147 @@ export default function ConsultantKnowledgeDocuments() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog Anteprima Documento */}
+      <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingFolder ? "Modifica Cartella" : "Nuova Cartella"}</DialogTitle>
+            <DialogDescription>
+              {editingFolder ? "Modifica il nome e il colore della cartella" : "Crea una nuova cartella per organizzare i documenti"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="folder-name">Nome cartella</Label>
+              <Input
+                id="folder-name"
+                value={folderForm.name}
+                onChange={(e) => setFolderForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="Nome della cartella"
+              />
+            </div>
+            <div>
+              <Label htmlFor="folder-color">Colore</Label>
+              <div className="flex gap-2 mt-2">
+                {["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"].map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={cn(
+                      "w-8 h-8 rounded-full border-2 transition-all",
+                      folderForm.color === color ? "border-gray-900 dark:border-white scale-110" : "border-transparent"
+                    )}
+                    style={{ backgroundColor: color }}
+                    onClick={() => setFolderForm((prev) => ({ ...prev, color }))}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex justify-between">
+            {editingFolder && (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (editingFolder) {
+                    deleteFolderMutation.mutate(editingFolder.id);
+                  }
+                }}
+                disabled={deleteFolderMutation.isPending}
+              >
+                {deleteFolderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Elimina"}
+              </Button>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowFolderDialog(false)}>Annulla</Button>
+              <Button
+                onClick={handleSaveFolder}
+                disabled={!folderForm.name.trim() || createFolderMutation.isPending || updateFolderMutation.isPending}
+                className="bg-amber-500 hover:bg-amber-600"
+              >
+                {(createFolderMutation.isPending || updateFolderMutation.isPending) ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  editingFolder ? "Salva" : "Crea"
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sposta Documenti</DialogTitle>
+            <DialogDescription>
+              Seleziona la cartella di destinazione per i {selectedIds.size} documenti selezionati
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            <div
+              className={cn(
+                "px-3 py-2 rounded cursor-pointer flex items-center gap-2 border",
+                movingToFolderId === null ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20" : "border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+              )}
+              onClick={() => setMovingToFolderId(null)}
+            >
+              <Home className="w-4 h-4" />
+              <span>Root (nessuna cartella)</span>
+            </div>
+            {folders.map(folder => (
+              <div
+                key={folder.id}
+                className={cn(
+                  "px-3 py-2 rounded cursor-pointer flex items-center gap-2 border",
+                  movingToFolderId === folder.id ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20" : "border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+                onClick={() => setMovingToFolderId(folder.id)}
+              >
+                <FolderOpen className="w-4 h-4" style={{ color: folder.color }} />
+                <span>{folder.name}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>Annulla</Button>
+            <Button onClick={handleConfirmMove} disabled={bulkMoveMutation.isPending} className="bg-amber-500 hover:bg-amber-600">
+              {bulkMoveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Move className="w-4 h-4 mr-2" />
+                  Sposta
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione multipla</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare {selectedIds.size} documenti? Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmBulkDelete} className="bg-red-500 hover:bg-red-600">
+              {bulkDeleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Eliminazione...
+                </>
+              ) : (
+                `Elimina ${selectedIds.size} documenti`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
@@ -1393,38 +1990,36 @@ export default function ConsultantKnowledgeDocuments() {
           
           {previewDocument && (
             <div className="flex-1 overflow-hidden flex flex-col gap-4">
-              {/* Informazioni e Switch Riassunto */}
               <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge className={CATEGORY_COLORS[previewDocument.category]}>
                     {CATEGORY_LABELS[previewDocument.category]}
                   </Badge>
-                  <span className="text-sm text-gray-500">
-                    Priorità: {previewDocument.priority}/10
-                  </span>
+                  <span className="text-sm text-gray-500">Priorità: {previewDocument.priority}/10</span>
                   {previewDocument.usageCount > 0 && (
                     <span className="flex items-center gap-1 text-sm text-amber-600 dark:text-amber-400">
                       <BarChart3 className="w-4 h-4" />
                       Usato {previewDocument.usageCount} volte dall'AI
                     </span>
                   )}
+                  {previewDocument.googleDriveFileId && (
+                    <span className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
+                      <Cloud className="w-4 h-4" />
+                      Google Drive
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="summary-switch" className="text-sm">
-                    Riassunto AI
-                  </Label>
+                  <Label htmlFor="summary-switch" className="text-sm">Riassunto AI</Label>
                   <Switch
                     id="summary-switch"
                     checked={previewDocument.summaryEnabled}
-                    onCheckedChange={(checked) => 
-                      toggleSummaryMutation.mutate({ id: previewDocument.id, enabled: checked })
-                    }
+                    onCheckedChange={(checked) => toggleSummaryMutation.mutate({ id: previewDocument.id, enabled: checked })}
                     disabled={toggleSummaryMutation.isPending}
                   />
                 </div>
               </div>
 
-              {/* Tags */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1 text-sm">
                   <Tag className="w-4 h-4" />
@@ -1432,9 +2027,9 @@ export default function ConsultantKnowledgeDocuments() {
                 </Label>
                 <div className="flex flex-wrap gap-2">
                   {(previewDocument.tags || []).map((tag: string, idx: number) => (
-                    <Badge 
-                      key={idx} 
-                      variant="secondary" 
+                    <Badge
+                      key={idx}
+                      variant="secondary"
                       className="flex items-center gap-1 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20"
                       onClick={() => handleRemoveTag(tag)}
                     >
@@ -1450,33 +2045,23 @@ export default function ConsultantKnowledgeDocuments() {
                       onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                       className="h-7 w-32 text-sm"
                     />
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={handleAddTag}
-                      className="h-7"
-                      disabled={!tagInput.trim()}
-                    >
+                    <Button size="sm" variant="outline" onClick={handleAddTag} className="h-7" disabled={!tagInput.trim()}>
                       +
                     </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Riassunto (se abilitato) */}
               {previewDocument.summaryEnabled && previewDocument.contentSummary && (
                 <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                   <h4 className="flex items-center gap-2 text-sm font-medium text-purple-700 dark:text-purple-300 mb-2">
                     <Sparkles className="w-4 h-4" />
                     Riassunto AI
                   </h4>
-                  <p className="text-sm text-purple-600 dark:text-purple-400">
-                    {previewDocument.contentSummary}
-                  </p>
+                  <p className="text-sm text-purple-600 dark:text-purple-400">{previewDocument.contentSummary}</p>
                 </div>
               )}
 
-              {/* Contenuto Estratto o Tabella */}
               <div className="flex-1 min-h-0">
                 {previewDocument.structuredData ? (
                   <div className="space-y-3">
@@ -1498,8 +2083,8 @@ export default function ConsultantKnowledgeDocuments() {
                     </div>
                     
                     {previewDocument.structuredData.sheets.length > 1 && (
-                      <Tabs 
-                        value={tablePreviewSheet.toString()} 
+                      <Tabs
+                        value={tablePreviewSheet.toString()}
                         onValueChange={(v) => { setTablePreviewSheet(parseInt(v)); setTablePreviewPage(0); }}
                       >
                         <TabsList className="h-8">
@@ -1552,27 +2137,13 @@ export default function ConsultantKnowledgeDocuments() {
                           
                           {totalPages > 1 && (
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-500">
-                                Righe {startIdx + 1}-{endIdx} di {sheet.rows.length.toLocaleString()}
-                              </span>
+                              <span className="text-gray-500">Righe {startIdx + 1}-{endIdx} di {sheet.rows.length.toLocaleString()}</span>
                               <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setTablePreviewPage(p => Math.max(0, p - 1))}
-                                  disabled={tablePreviewPage === 0}
-                                >
+                                <Button size="sm" variant="outline" onClick={() => setTablePreviewPage(p => Math.max(0, p - 1))} disabled={tablePreviewPage === 0}>
                                   <ChevronLeft className="w-4 h-4" />
                                 </Button>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  Pagina {tablePreviewPage + 1} di {totalPages}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setTablePreviewPage(p => Math.min(totalPages - 1, p + 1))}
-                                  disabled={tablePreviewPage >= totalPages - 1}
-                                >
+                                <span className="text-gray-600 dark:text-gray-400">Pagina {tablePreviewPage + 1} di {totalPages}</span>
+                                <Button size="sm" variant="outline" onClick={() => setTablePreviewPage(p => Math.min(totalPages - 1, p + 1))} disabled={tablePreviewPage >= totalPages - 1}>
                                   <ChevronRight className="w-4 h-4" />
                                 </Button>
                               </div>
@@ -1597,13 +2168,8 @@ export default function ConsultantKnowledgeDocuments() {
           )}
 
           <DialogFooter className="flex-shrink-0 mt-4">
-            <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
-              Chiudi
-            </Button>
-            <Button
-              onClick={() => setShowAskConfirmDialog(true)}
-              className="bg-amber-500 hover:bg-amber-600"
-            >
+            <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>Chiudi</Button>
+            <Button onClick={() => setShowAskConfirmDialog(true)} className="bg-amber-500 hover:bg-amber-600">
               <MessageCircle className="w-4 h-4 mr-2" />
               Chiedimi qualcosa
             </Button>

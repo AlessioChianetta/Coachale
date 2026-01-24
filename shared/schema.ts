@@ -5666,6 +5666,13 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   // Import source tracking
   googleDriveFileId: text("google_drive_file_id"), // Google Drive file ID if imported from Drive
 
+  // Gemini Files API for universal PDF support
+  geminiFileUri: text("gemini_file_uri"), // URI from Gemini Files API upload
+  geminiFileExpiresAt: timestamp("gemini_file_expires_at", { withTimezone: true }), // Expiration (48h after upload)
+
+  // Folder organization
+  folderId: varchar("folder_id"), // Reference to knowledge_document_folders
+
   // File Search sync status
   fileSearchSyncedAt: timestamp("file_search_synced_at"), // When document was synced to File Search
   
@@ -5683,6 +5690,42 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   categoryIdx: index("knowledge_doc_category_idx").on(table.category),
   statusIdx: index("knowledge_doc_status_idx").on(table.status),
   googleDriveIdx: index("knowledge_doc_google_drive_idx").on(table.googleDriveFileId),
+  folderIdx: index("knowledge_doc_folder_idx").on(table.folderId),
+}));
+
+// Knowledge Document Folders - Hierarchical folder organization
+export const knowledgeDocumentFolders = pgTable("knowledge_document_folders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  parentId: varchar("parent_id"), // Self-reference for hierarchy
+  icon: text("icon").default("folder"),
+  color: text("color").default("#6366f1"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("knowledge_folders_consultant_idx").on(table.consultantId),
+  parentIdx: index("knowledge_folders_parent_idx").on(table.parentId),
+}));
+
+// Google Drive Sync Channels - Webhook tracking for real-time sync
+export const driveSyncChannels = pgTable("drive_sync_channels", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  documentId: varchar("document_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "cascade" }).notNull(),
+  googleDriveFileId: text("google_drive_file_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  resourceId: text("resource_id").notNull(),
+  expiration: timestamp("expiration", { withTimezone: true }).notNull(),
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+  syncStatus: varchar("sync_status", { length: 20 }).default("active").$type<"active" | "expired" | "error">(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("drive_sync_consultant_idx").on(table.consultantId),
+  documentIdx: index("drive_sync_document_idx").on(table.documentId),
+  expirationIdx: index("drive_sync_expiration_idx").on(table.expiration),
 }));
 
 // API esterne per Knowledge Base - configurazioni per interrogare servizi esterni

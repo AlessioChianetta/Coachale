@@ -20,6 +20,8 @@ import Papa from 'papaparse';
 import officeparser from 'officeparser';
 import { VertexAI } from '@google-cloud/vertexai';
 import { GEMINI_3_MODEL } from '../ai/provider-factory';
+import { GoogleAIFileManager } from '@google/generative-ai/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
  * Structured data for tabular files (CSV/Excel)
@@ -120,8 +122,145 @@ export interface VertexAICredentials {
   };
 }
 
+export interface GeminiFileUploadResult {
+  fileUri: string;
+  expiresAt: Date;
+}
+
 /**
- * Extract text from PDF file
+ * Get Gemini API key from environment
+ */
+function getGeminiApiKey(): string {
+  const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('No Gemini API key configured. Set AI_INTEGRATIONS_GEMINI_API_KEY or GEMINI_API_KEY environment variable.');
+  }
+  return apiKey;
+}
+
+/**
+ * Upload PDF to Gemini Files API
+ * Files expire after 48 hours
+ */
+export async function uploadPDFToGeminiFilesAPI(filePath: string, displayName: string): Promise<GeminiFileUploadResult> {
+  console.log(`📤 [GEMINI FILES API] Uploading PDF: ${displayName}`);
+  
+  try {
+    const apiKey = getGeminiApiKey();
+    const fileManager = new GoogleAIFileManager(apiKey);
+    
+    const uploadResult = await fileManager.uploadFile(filePath, {
+      mimeType: 'application/pdf',
+      displayName: displayName,
+    });
+    
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    
+    console.log(`✅ [GEMINI FILES API] Uploaded successfully. URI: ${uploadResult.file.uri}`);
+    console.log(`📅 [GEMINI FILES API] File expires at: ${expiresAt.toISOString()}`);
+    
+    return {
+      fileUri: uploadResult.file.uri,
+      expiresAt,
+    };
+  } catch (error: any) {
+    console.error(`❌ [GEMINI FILES API] Upload failed:`, error.message);
+    throw new Error(`Failed to upload PDF to Gemini Files API: ${error.message}`);
+  }
+}
+
+/**
+ * Extract text from PDF using Gemini Files API
+ * Uses the fileUri from uploadPDFToGeminiFilesAPI
+ */
+export async function extractTextFromPDFWithGemini(fileUri: string): Promise<string> {
+  console.log(`🔍 [GEMINI FILES API] Extracting text from: ${fileUri}`);
+  
+  try {
+    const apiKey = getGeminiApiKey();
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    
+    const result = await model.generateContent([
+      {
+        fileData: {
+          mimeType: 'application/pdf',
+          fileUri: fileUri,
+        },
+      },
+      {
+        text: 'Extract all text content from this PDF document. Return only the extracted text without any additional commentary, formatting instructions, or markdown. Preserve the original structure and line breaks where appropriate.',
+      },
+    ]);
+    
+    const extractedText = result.response.text().trim();
+    
+    console.log(`✅ [GEMINI FILES API] Extracted ${extractedText.length} characters`);
+    
+    if (!extractedText || extractedText.length === 0) {
+      throw new Error('Gemini could not extract text from this PDF');
+    }
+    
+    return extractedText;
+  } catch (error: any) {
+    console.error(`❌ [GEMINI FILES API] Text extraction failed:`, error.message);
+    throw new Error(`Failed to extract text from PDF with Gemini: ${error.message}`);
+  }
+}
+
+/**
+ * Extract text from PDF with smart fallback
+ * First tries pdf-parse (fast for native PDFs), then falls back to Gemini Files API
+ * for scanned/image PDFs or when pdf-parse extracts too little text
+ */
+export async function extractTextFromPDFWithFallback(
+  filePath: string,
+  displayName: string
+): Promise<{ text: string; geminiFileUri?: string; geminiFileExpiresAt?: Date; usedGemini: boolean }> {
+  console.log(`📄 [PDF] Extracting text with smart fallback from: ${filePath}`);
+  
+  const MIN_CONTENT_LENGTH = 100;
+  
+  try {
+    const dataBuffer = await fs.readFile(filePath);
+    const parser = new PDFParse({ data: dataBuffer });
+    const result = await parser.getText();
+    
+    const extractedText = result.text.trim();
+    const pageCount = result.numpages;
+    
+    console.log(`📊 [PDF] pdf-parse extracted ${extractedText.length} characters from ${pageCount} pages`);
+    
+    if (extractedText && extractedText.length >= MIN_CONTENT_LENGTH) {
+      console.log(`✅ [PDF] Using pdf-parse result (sufficient content)`);
+      return { text: extractedText, usedGemini: false };
+    }
+    
+    console.log(`⚠️ [PDF] Content too short (${extractedText.length} < ${MIN_CONTENT_LENGTH}), trying Gemini Files API...`);
+  } catch (pdfParseError: any) {
+    console.warn(`⚠️ [PDF] pdf-parse failed: ${pdfParseError.message}, trying Gemini Files API...`);
+  }
+  
+  try {
+    const uploadResult = await uploadPDFToGeminiFilesAPI(filePath, displayName);
+    const extractedText = await extractTextFromPDFWithGemini(uploadResult.fileUri);
+    
+    console.log(`✅ [PDF] Successfully extracted text using Gemini Files API`);
+    
+    return {
+      text: extractedText,
+      geminiFileUri: uploadResult.fileUri,
+      geminiFileExpiresAt: uploadResult.expiresAt,
+      usedGemini: true,
+    };
+  } catch (geminiError: any) {
+    console.error(`❌ [PDF] Gemini Files API also failed:`, geminiError.message);
+    throw new Error(`Failed to extract text from PDF: Both pdf-parse and Gemini Files API failed. ${geminiError.message}`);
+  }
+}
+
+/**
+ * Extract text from PDF file (legacy function for backward compatibility)
  */
 export async function extractTextFromPDF(filePath: string): Promise<string> {
   console.log(`📄 [PDF] Extracting text from: ${filePath}`);
