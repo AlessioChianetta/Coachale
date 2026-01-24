@@ -1,0 +1,94 @@
+# Schema Colonne per Integrazione Dati
+
+## Ruoli Logici Standard (20 colonne)
+
+| Colonna | Tipo | Descrizione | Esempio |
+|---------|------|-------------|---------|
+| `document_id` | TEXT | ID documento/scontrino/ordine | ORD-2024-001 |
+| `order_date` | DATE | Data e ora della transazione | 2024-01-15 12:30:00 |
+| `product_id` | TEXT | Codice univoco prodotto/SKU | PROD-001 |
+| `product_name` | TEXT | Nome del prodotto o articolo | Pizza Margherita |
+| `category` | TEXT | Categoria merceologica | Pizze |
+| `quantity` | NUMERIC | Quantità venduta | 2 |
+| `price` | NUMERIC | Prezzo unitario di vendita (pre-sconto) | 8.50 |
+| `cost` | NUMERIC | Costo unitario di acquisto/produzione | 2.80 |
+| `revenue_amount` | NUMERIC | Totale riga già scontato (pronto per SUM) | 15.30 |
+| `discount_amount` | NUMERIC | Importo sconto applicato in euro | 1.70 |
+| `discount_percent` | NUMERIC | Percentuale di sconto applicata | 10 |
+| `customer_id` | TEXT | Identificatore univoco cliente | CLI-001 |
+| `customer_name` | TEXT | Nome o ragione sociale cliente | Mario Rossi |
+| `payment_method` | TEXT | Metodo di pagamento utilizzato | carta |
+| `tax_rate` | NUMERIC | Aliquota IVA in percentuale | 22 |
+| `document_type` | TEXT | Tipo transazione: sale | refund | void | staff_meal | sale |
+| `time_slot` | TEXT | Fascia oraria: breakfast | lunch | dinner | late | lunch |
+| `sales_channel` | TEXT | Canale vendita: dine_in | takeaway | delivery | dine_in |
+| `is_sellable` | INTEGER | 1 = prodotto vendibile, 0 = modificatore/nota | 1 |
+| `line_id` | TEXT | ID univoco della riga dettaglio | LINE-001 |
+
+## Sinonimi Riconosciuti Automaticamente (58 pattern)
+
+Se usi questi nomi, il sistema li riconosce automaticamente:
+
+| Il tuo nome colonna | Viene mappato a | Tipo match |
+|---------------------|-----------------|------------|
+| `idddt` | document_id | Inizia con |
+| `id_ordine` | document_id | Contiene |
+| `scontrino` | document_id | Contiene |
+| `numero_ordine` | document_id | Contiene |
+| `order_id` | document_id | Esatto |
+| `data` | order_date | Inizia con |
+| `dataordine` | order_date | Contiene |
+| `order_date` | order_date | Esatto |
+| `timestamp` | order_date | Contiene |
+| `id_prodotto` | product_id | Contiene |
+| `sku` | product_id | Esatto |
+| `codice_articolo` | product_id | Contiene |
+| `descrizione` | product_name | Esatto |
+| `articolo` | product_name | Contiene |
+| `prodotto` | product_name | Contiene |
+| `reparto` | category | Esatto |
+| `categoria` | category | Contiene |
+| `gruppo` | category | Contiene |
+| `quantita` | quantity | Contiene |
+| `qta` | quantity | Esatto |
+| `qty` | quantity | Esatto |
+| `prezzo_unitario` | price | Contiene |
+| `listino` | price | Contiene |
+| `unit_price` | price | Contiene |
+| `costo` | cost | Inizia con |
+| `food_cost` | cost | Contiene |
+| `prezzo_acquisto` | cost | Contiene |
+| `prezzo_finale` | revenue_amount | Inizia con |
+| `prezzofinale` | revenue_amount | Inizia con |
+| `importo_riga` | revenue_amount | Contiene |
+| `totale_riga` | revenue_amount | Contiene |
+| `importo2` | revenue_amount | Esatto |
+| `sconto` | discount_amount | Inizia con |
+| `discount` | discount_amount | Contiene |
+| `sconto_perc` | discount_percent | Contiene |
+| `cliente` | customer_name | Contiene |
+| `id_cliente` | customer_id | Contiene |
+| `customer` | customer_name | Contiene |
+| `pagamento` | payment_method | Contiene |
+| `payment` | payment_method | Contiene |
+| `iva` | tax_rate | Contiene |
+| `aliquota` | tax_rate | Contiene |
+| `tipo_doc` | document_type | Contiene |
+| `tipodoc` | document_type | Contiene |
+| `transaction_type` | document_type | Contiene |
+| `tipo_transazione` | document_type | Contiene |
+| `fascia_oraria` | time_slot | Contiene |
+| `turno` | time_slot | Esatto |
+| `shift` | time_slot | Esatto |
+| `canale` | sales_channel | Contiene |
+| `channel` | sales_channel | Contiene |
+| `modalita_servizio` | sales_channel | Contiene |
+| `vendibile` | is_sellable | Contiene |
+| `is_sellable` | is_sellable | Esatto |
+| `is_product` | is_sellable | Contiene |
+| `id_riga` | line_id | Contiene |
+| `line_id` | line_id | Esatto |
+| `idriga` | line_id | Contiene |
+
+---
+Generato il: 24/01/2026
