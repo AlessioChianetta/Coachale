@@ -381,11 +381,11 @@ router.get(
         SELECT 
           s.id, s.name, s.description, s.api_key, s.secret_key, s.is_active, s.replace_mode, s.target_dataset_id,
           s.rate_limit_per_hour, s.client_id, s.created_at, s.updated_at,
-          c.first_name as client_first_name, c.last_name as client_last_name, c.email as client_email,
+          u.first_name as client_first_name, u.last_name as client_last_name, u.email as client_email,
           (SELECT COUNT(*) FROM dataset_sync_history WHERE source_id = s.id) as sync_count,
           (SELECT MAX(started_at) FROM dataset_sync_history WHERE source_id = s.id) as last_sync_at
         FROM dataset_sync_sources s
-        LEFT JOIN clients c ON s.client_id = c.id
+        LEFT JOIN users u ON s.client_id = u.id
         WHERE s.consultant_id = ${consultantId}
         ORDER BY s.created_at DESC
       `);
