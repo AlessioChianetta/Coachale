@@ -24,6 +24,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Upload,
   Copy,
@@ -42,6 +43,7 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
+  Info,
 } from "lucide-react";
 
 const DOMAIN = typeof window !== "undefined" ? window.location.host : "";
@@ -434,6 +436,41 @@ echo $response;
               </SelectContent>
             </Select>
           </div>
+
+          {selectedSource && (
+            <Alert className={`${
+              selectedSource.replace_mode === 'upsert' 
+                ? 'border-purple-300 bg-purple-50 dark:bg-purple-950/20' 
+                : selectedSource.replace_mode === 'append' 
+                  ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20' 
+                  : 'border-blue-300 bg-blue-50 dark:bg-blue-950/20'
+            }`}>
+              <Info className={`h-4 w-4 ${
+                selectedSource.replace_mode === 'upsert' 
+                  ? 'text-purple-600' 
+                  : selectedSource.replace_mode === 'append' 
+                    ? 'text-emerald-600' 
+                    : 'text-blue-600'
+              }`} />
+              <AlertTitle>
+                Modalità: {selectedSource.replace_mode === 'full' ? 'Full Replace' : selectedSource.replace_mode === 'append' ? 'Append' : 'Upsert'}
+              </AlertTitle>
+              <AlertDescription>
+                {selectedSource.replace_mode === 'full' && "Ogni sync sostituirà completamente i dati esistenti."}
+                {selectedSource.replace_mode === 'append' && "I nuovi dati verranno aggiunti a quelli esistenti."}
+                {selectedSource.replace_mode === 'upsert' && (
+                  <>
+                    I record esistenti verranno aggiornati, i nuovi inseriti.
+                    {selectedSource.upsert_key_columns && selectedSource.upsert_key_columns.length > 0 && (
+                      <span className="block mt-1 font-medium">
+                        Chiavi: {selectedSource.upsert_key_columns.join(', ')}
+                      </span>
+                    )}
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {selectedSource && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border">

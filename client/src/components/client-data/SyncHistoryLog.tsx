@@ -245,6 +245,8 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                     <TableHead>Sorgente</TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="text-right">Righe Importate</TableHead>
+                    <TableHead className="text-right">Inserite</TableHead>
+                    <TableHead className="text-right">Aggiornate</TableHead>
                     <TableHead className="text-right">Colonne Mappate</TableHead>
                     <TableHead className="text-right">Durata</TableHead>
                     <TableHead className="text-center">Azioni</TableHead>
@@ -266,6 +268,12 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                       </TableCell>
                       <TableCell className="text-right">
                         {record.status === "failed" ? "-" : record.rows_imported ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {record.status === "failed" ? "-" : (record.rows_inserted != null && record.rows_inserted > 0 ? record.rows_inserted : "-")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {record.status === "failed" ? "-" : (record.rows_updated != null && record.rows_updated > 0 ? record.rows_updated : "-")}
                       </TableCell>
                       <TableCell className="text-right">
                         {record.columns_mapped?.length ?? record.columns_detected ?? "-"}

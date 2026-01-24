@@ -585,14 +585,19 @@ export async function getTablePreview(
 /**
  * Inserisce righe direttamente in una tabella da dati già in memoria
  * Usato per test webhook dove i dati sono già parsati
+ * Supporta modalità upsert con ON CONFLICT
  */
 export async function insertParsedRowsToTable(
   tableName: string,
   headers: string[],
   rows: Record<string, any>[],
   consultantId: string,
-  clientId?: string
-): Promise<{ rowsImported: number; rowsSkipped: number }> {
+  clientId?: string,
+  upsertOptions?: {
+    mode: 'insert' | 'upsert';
+    keyColumns: string[];
+  }
+): Promise<{ rowsImported: number; rowsSkipped: number; rowsInserted: number; rowsUpdated: number }> {
   const client = await pool.connect();
   
   try {
@@ -604,48 +609,121 @@ export async function insertParsedRowsToTable(
     
     let rowsImported = 0;
     let rowsSkipped = 0;
+    let rowsInserted = 0;
+    let rowsUpdated = 0;
     
-    for (let batchStart = 0; batchStart < rows.length; batchStart += BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + BATCH_SIZE, rows.length);
-      const batchRows = rows.slice(batchStart, batchEnd);
+    const isUpsertMode = upsertOptions?.mode === 'upsert' && upsertOptions.keyColumns?.length > 0;
+    
+    if (isUpsertMode) {
+      const sanitizedKeyColumns = upsertOptions.keyColumns.map(k => sanitizeColumnName(k));
+      const conflictColumns = [...sanitizedKeyColumns, "consultant_id"];
+      const indexName = `uq_${tableName}_${sanitizedKeyColumns.join('_')}_consultant`.substring(0, 63);
       
-      const valueRows: string[] = [];
-      let paramIndex = 1;
-      const allParams: any[] = [];
+      const createIndexSQL = `
+        CREATE UNIQUE INDEX IF NOT EXISTS "${indexName}" 
+        ON "${tableName}" (${conflictColumns.map(c => `"${c}"`).join(", ")})
+      `;
+      await client.query(createIndexSQL);
+      console.log(`[TABLE-GENERATOR] Created/verified unique index: ${indexName}`);
       
-      for (let i = 0; i < batchRows.length; i++) {
-        const row = batchRows[i];
-        const rowNumber = batchStart + i + 1;
+      const updateColumns = sanitizedHeaders.filter(h => !sanitizedKeyColumns.includes(h));
+      const updateSet = updateColumns.length > 0
+        ? updateColumns.map(c => `"${c}" = EXCLUDED."${c}"`).join(", ")
+        : `"riga_originale" = EXCLUDED."riga_originale"`;
+      
+      for (let batchStart = 0; batchStart < rows.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, rows.length);
+        const batchRows = rows.slice(batchStart, batchEnd);
         
-        const placeholders: string[] = [];
-        placeholders.push(`$${paramIndex++}`);
-        allParams.push(rowNumber);
-        placeholders.push(`$${paramIndex++}`);
-        allParams.push(consultantId);
-        placeholders.push(`$${paramIndex++}`);
-        allParams.push(clientId || null);
+        const valueRows: string[] = [];
+        let paramIndex = 1;
+        const allParams: any[] = [];
         
-        // Access values by header name (object keys), not by index
-        for (let j = 0; j < headers.length; j++) {
+        for (let i = 0; i < batchRows.length; i++) {
+          const row = batchRows[i];
+          const rowNumber = batchStart + i + 1;
+          
+          const placeholders: string[] = [];
           placeholders.push(`$${paramIndex++}`);
-          const headerKey = headers[j];
-          allParams.push(row[headerKey] ?? null);
+          allParams.push(rowNumber);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(consultantId);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(clientId || null);
+          
+          for (let j = 0; j < headers.length; j++) {
+            placeholders.push(`$${paramIndex++}`);
+            const headerKey = headers[j];
+            allParams.push(row[headerKey] ?? null);
+          }
+          
+          valueRows.push(`(${placeholders.join(", ")})`);
         }
         
-        valueRows.push(`(${placeholders.join(", ")})`);
+        if (valueRows.length > 0) {
+          const conflictClause = conflictColumns.map(c => `"${c}"`).join(", ");
+          const upsertSQL = `
+            INSERT INTO "${tableName}" (${columnsList}) 
+            VALUES ${valueRows.join(", ")}
+            ON CONFLICT (${conflictClause}) DO UPDATE SET ${updateSet}
+            RETURNING xmax
+          `;
+          
+          const result = await client.query(upsertSQL, allParams);
+          
+          for (const row of result.rows) {
+            if (row.xmax === '0' || row.xmax === 0) {
+              rowsInserted++;
+            } else {
+              rowsUpdated++;
+            }
+          }
+          rowsImported += result.rowCount || 0;
+        }
       }
-      
-      if (valueRows.length > 0) {
-        const insertSQL = `INSERT INTO "${tableName}" (${columnsList}) VALUES ${valueRows.join(", ")}`;
-        await client.query(insertSQL, allParams);
-        rowsImported += valueRows.length;
+    } else {
+      for (let batchStart = 0; batchStart < rows.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, rows.length);
+        const batchRows = rows.slice(batchStart, batchEnd);
+        
+        const valueRows: string[] = [];
+        let paramIndex = 1;
+        const allParams: any[] = [];
+        
+        for (let i = 0; i < batchRows.length; i++) {
+          const row = batchRows[i];
+          const rowNumber = batchStart + i + 1;
+          
+          const placeholders: string[] = [];
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(rowNumber);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(consultantId);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(clientId || null);
+          
+          for (let j = 0; j < headers.length; j++) {
+            placeholders.push(`$${paramIndex++}`);
+            const headerKey = headers[j];
+            allParams.push(row[headerKey] ?? null);
+          }
+          
+          valueRows.push(`(${placeholders.join(", ")})`);
+        }
+        
+        if (valueRows.length > 0) {
+          const insertSQL = `INSERT INTO "${tableName}" (${columnsList}) VALUES ${valueRows.join(", ")}`;
+          await client.query(insertSQL, allParams);
+          rowsImported += valueRows.length;
+          rowsInserted += valueRows.length;
+        }
       }
     }
     
     await client.query("COMMIT");
-    console.log(`[TABLE-GENERATOR] Inserted ${rowsImported} rows directly to ${tableName}`);
+    console.log(`[TABLE-GENERATOR] ${isUpsertMode ? 'Upserted' : 'Inserted'} ${rowsImported} rows to ${tableName} (inserted: ${rowsInserted}, updated: ${rowsUpdated})`);
     
-    return { rowsImported, rowsSkipped };
+    return { rowsImported, rowsSkipped, rowsInserted, rowsUpdated };
   } catch (error: any) {
     await client.query("ROLLBACK");
     console.error(`[TABLE-GENERATOR] Error inserting parsed rows to ${tableName}:`, error);

@@ -9,7 +9,8 @@ export interface SyncSource {
   api_key: string;
   secret_key?: string;
   is_active: boolean;
-  replace_mode: 'full' | 'append';
+  replace_mode: 'full' | 'append' | 'upsert';
+  upsert_key_columns?: string[];
   target_dataset_id?: number;
   rate_limit_per_hour: number;
   client_id?: string;
@@ -25,7 +26,8 @@ export interface SyncSource {
 export interface CreateSyncSourceData {
   name: string;
   description?: string;
-  replaceMode?: 'full' | 'append';
+  replaceMode?: 'full' | 'append' | 'upsert';
+  upsertKeyColumns?: string;
   rateLimitPerHour?: number;
   clientId?: string;
 }
@@ -33,7 +35,8 @@ export interface CreateSyncSourceData {
 export interface UpdateSyncSourceData {
   name?: string;
   description?: string;
-  replaceMode?: 'full' | 'append';
+  replaceMode?: 'full' | 'append' | 'upsert';
+  upsertKeyColumns?: string;
   rateLimitPerHour?: number;
   isActive?: boolean;
 }
@@ -83,6 +86,8 @@ export interface SyncHistoryRecord {
   file_name?: string;
   file_size_bytes?: number;
   rows_imported?: number;
+  rows_inserted?: number;
+  rows_updated?: number;
   rows_skipped?: number;
   rows_total?: number;
   columns_detected?: number;
@@ -507,6 +512,8 @@ export interface SourceOverviewItem {
   clientId: string | null;
   clientName: string | null;
   syncMode: 'push' | 'pull';
+  replaceMode?: 'full' | 'append' | 'upsert';
+  upsertKeyColumns?: string;
   healthStatus: 'healthy' | 'warning' | 'critical';
   successRate: number;
   freshnessHours: number | null;

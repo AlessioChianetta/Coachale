@@ -104,6 +104,8 @@ export function SyncSourcesManager() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newSourceName, setNewSourceName] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [replaceMode, setReplaceMode] = useState<'full' | 'append' | 'upsert'>('full');
+  const [upsertKeyColumns, setUpsertKeyColumns] = useState("");
   const [createdSource, setCreatedSource] = useState<CreatedSourceData | null>(null);
   const [showCreatedDialog, setShowCreatedDialog] = useState(false);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set());
@@ -159,6 +161,8 @@ export function SyncSourcesManager() {
       const result = await createMutation.mutateAsync({ 
         name: newSourceName.trim(),
         clientId: selectedClientId && selectedClientId !== "__none__" ? selectedClientId : undefined,
+        replaceMode,
+        upsertKeyColumns: replaceMode === 'upsert' ? upsertKeyColumns.trim() : undefined,
       });
       const data = result as any;
       if (data?.data) {
@@ -171,6 +175,8 @@ export function SyncSourcesManager() {
         setShowAddDialog(false);
         setNewSourceName("");
         setSelectedClientId("");
+        setReplaceMode('full');
+        setUpsertKeyColumns("");
         setShowCreatedDialog(true);
       }
     } catch (error: any) {
@@ -410,6 +416,8 @@ export function SyncSourcesManager() {
         if (!open) {
           setNewSourceName("");
           setSelectedClientId("");
+          setReplaceMode('full');
+          setUpsertKeyColumns("");
         }
       }}>
         <DialogContent>
@@ -451,6 +459,41 @@ export function SyncSourcesManager() {
                 Se associ la sorgente a un cliente, i dati importati saranno visibili anche a lui.
               </p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="replace-mode" className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Modalità Aggiornamento
+              </Label>
+              <Select value={replaceMode} onValueChange={(v) => setReplaceMode(v as 'full' | 'append' | 'upsert')}>
+                <SelectTrigger id="replace-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Sostituisci tutto (Full Replace)</SelectItem>
+                  <SelectItem value="append">Aggiungi in coda (Append)</SelectItem>
+                  <SelectItem value="upsert">Aggiorna esistenti (Upsert)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                {replaceMode === 'full' && "Ogni sync sostituirà completamente i dati esistenti."}
+                {replaceMode === 'append' && "I nuovi dati verranno aggiunti a quelli esistenti."}
+                {replaceMode === 'upsert' && "I record esistenti verranno aggiornati, i nuovi inseriti."}
+              </p>
+            </div>
+            {replaceMode === 'upsert' && (
+              <div className="space-y-2">
+                <Label htmlFor="upsert-keys">Colonne Chiave per Upsert</Label>
+                <Input
+                  id="upsert-keys"
+                  placeholder="order_id, order_date"
+                  value={upsertKeyColumns}
+                  onChange={(e) => setUpsertKeyColumns(e.target.value)}
+                />
+                <p className="text-xs text-slate-500">
+                  Inserisci i nomi delle colonne chiave separati da virgola. Questi campi verranno usati per identificare i record esistenti.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>

@@ -319,13 +319,23 @@ router.post(
         await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
       }
 
+      // Prepara opzioni upsert se modalità upsert
+      let upsertOptions: { mode: 'insert' | 'upsert'; keyColumns: string[] } | undefined = undefined;
+      if (sourceData.replace_mode === 'upsert' && sourceData.upsert_key_columns?.length > 0) {
+        upsertOptions = {
+          mode: 'upsert' as const,
+          keyColumns: sourceData.upsert_key_columns
+        };
+      }
+
       // Importa dati già parsati direttamente nella tabella
-      const { rowsImported, rowsSkipped } = await insertParsedRowsToTable(
+      const { rowsImported, rowsSkipped, rowsInserted, rowsUpdated } = await insertParsedRowsToTable(
         tableName,
         headers,
         sheet.sampleRows,
         sourceData.consultant_id,
-        datasetClientId
+        datasetClientId,
+        upsertOptions
       );
 
       if (!targetDatasetId) {
@@ -374,6 +384,7 @@ router.post(
         UPDATE dataset_sync_history 
         SET status = 'completed', completed_at = now(), duration_ms = ${durationMs}, 
             rows_imported = ${rowsImported}, rows_skipped = ${rowsSkipped}, rows_total = ${totalRows},
+            rows_inserted = ${rowsInserted}, rows_updated = ${rowsUpdated},
             columns_detected = ${headers.length}, 
             columns_mapped = ${JSON.stringify(mappedColumns.map(c => c.suggestedName))}::jsonb,
             columns_unmapped = ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb
@@ -429,7 +440,7 @@ router.get(
 
       const sourcesResult = await db.execute<any>(sql`
         SELECT 
-          s.id, s.name, s.description, s.api_key, s.secret_key, s.is_active, s.replace_mode, s.target_dataset_id,
+          s.id, s.name, s.description, s.api_key, s.secret_key, s.is_active, s.replace_mode, s.upsert_key_columns, s.target_dataset_id,
           s.rate_limit_per_hour, s.client_id, s.created_at, s.updated_at,
           u.first_name as client_first_name, u.last_name as client_last_name, u.email as client_email,
           (SELECT COUNT(*) FROM dataset_sync_history WHERE source_id = s.id) as sync_count,
@@ -456,7 +467,7 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const consultantId = req.user!.id;
-      const { name, description, replaceMode = 'full', rateLimitPerHour = 100, clientId } = req.body;
+      const { name, description, replaceMode = 'full', rateLimitPerHour = 100, clientId, upsertKeyColumns } = req.body;
 
       if (!name) {
         return res.status(400).json({ success: false, error: "Nome sorgente obbligatorio" });
@@ -465,10 +476,19 @@ router.post(
       const apiKey = generateApiKey(consultantId);
       const secretKey = generateSecretKey();
 
+      // Parse upsertKeyColumns from comma-separated string to array
+      let keyColumnsArray: string[] | null = null;
+      if (replaceMode === 'upsert' && upsertKeyColumns) {
+        keyColumnsArray = upsertKeyColumns
+          .split(',')
+          .map((c: string) => c.trim())
+          .filter((c: string) => c.length > 0);
+      }
+
       const insertedResult = await db.execute<any>(sql`
-        INSERT INTO dataset_sync_sources (consultant_id, name, description, api_key, secret_key, replace_mode, rate_limit_per_hour, client_id)
-        VALUES (${consultantId}, ${name}, ${description || null}, ${apiKey}, ${secretKey}, ${replaceMode}, ${rateLimitPerHour}, ${clientId || null})
-        RETURNING id, name, api_key, secret_key, is_active, replace_mode, client_id, created_at
+        INSERT INTO dataset_sync_sources (consultant_id, name, description, api_key, secret_key, replace_mode, rate_limit_per_hour, client_id, upsert_key_columns)
+        VALUES (${consultantId}, ${name}, ${description || null}, ${apiKey}, ${secretKey}, ${replaceMode}, ${rateLimitPerHour}, ${clientId || null}, ${keyColumnsArray})
+        RETURNING id, name, api_key, secret_key, is_active, replace_mode, upsert_key_columns, client_id, created_at
       `);
       const inserted = insertedResult.rows || [];
 
@@ -998,13 +1018,23 @@ router.post(
           await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
         }
 
+        // Prepara opzioni upsert se modalità upsert
+        let upsertOptions: { mode: 'insert' | 'upsert'; keyColumns: string[] } | undefined = undefined;
+        if (sourceData.replace_mode === 'upsert' && sourceData.upsert_key_columns?.length > 0) {
+          upsertOptions = {
+            mode: 'upsert' as const,
+            keyColumns: sourceData.upsert_key_columns
+          };
+        }
+
         // Importa dati già parsati direttamente nella tabella
-        const { rowsImported, rowsSkipped } = await insertParsedRowsToTable(
+        const { rowsImported, rowsSkipped, rowsInserted, rowsUpdated } = await insertParsedRowsToTable(
           tableName,
           headers,
           sheet.sampleRows,
           sourceData.consultant_id,
-          datasetClientId
+          datasetClientId,
+          upsertOptions
         );
 
         // Crea dataset se non esisteva
@@ -1051,8 +1081,8 @@ router.post(
         // Log nella history come test
         const syncId = `test_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         await db.execute(sql`
-          INSERT INTO dataset_sync_history (sync_id, source_id, status, started_at, completed_at, rows_imported, rows_skipped, rows_total, columns_detected, columns_mapped, columns_unmapped, file_name, file_size_bytes)
-          VALUES (${syncId}, ${sourceId}, 'completed', now(), now(), ${rowsImported}, ${rowsSkipped}, ${sheet.rowCount}, ${headers.length}, 
+          INSERT INTO dataset_sync_history (sync_id, source_id, status, started_at, completed_at, rows_imported, rows_skipped, rows_inserted, rows_updated, rows_total, columns_detected, columns_mapped, columns_unmapped, file_name, file_size_bytes)
+          VALUES (${syncId}, ${sourceId}, 'completed', now(), now(), ${rowsImported}, ${rowsSkipped}, ${rowsInserted}, ${rowsUpdated}, ${sheet.rowCount}, ${headers.length}, 
                   ${JSON.stringify(mappedColumns.map(c => c.suggestedName))}::jsonb,
                   ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb,
                   ${originalname}, ${size})

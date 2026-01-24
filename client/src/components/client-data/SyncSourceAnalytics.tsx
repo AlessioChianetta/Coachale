@@ -45,6 +45,7 @@ import {
   Eye,
   RefreshCw,
 } from "lucide-react";
+import { useDatasetSyncSources } from "@/hooks/useDatasetSync";
 
 function HealthBadge({ status }: { status: 'healthy' | 'warning' | 'critical' }) {
   if (status === 'healthy') {
@@ -85,6 +86,38 @@ function SyncModeBadge({ mode }: { mode: 'push' | 'pull' }) {
       <ArrowUpFromLine className="h-3 w-3 mr-1" />
       Pull
     </Badge>
+  );
+}
+
+function ReplaceModeBadge({ mode, upsertKeyColumns }: { mode: 'full' | 'append' | 'upsert'; upsertKeyColumns?: string[] }) {
+  if (mode === 'full') {
+    return (
+      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+        <RefreshCw className="h-3 w-3 mr-1" />
+        Full Replace
+      </Badge>
+    );
+  }
+  if (mode === 'append') {
+    return (
+      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+        <ArrowDownToLine className="h-3 w-3 mr-1" />
+        Append
+      </Badge>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+        <RefreshCw className="h-3 w-3 mr-1" />
+        Upsert
+      </Badge>
+      {upsertKeyColumns && upsertKeyColumns.length > 0 && (
+        <span className="text-xs text-muted-foreground">
+          Chiavi: {upsertKeyColumns.join(', ')}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -357,6 +390,7 @@ function SourcesTable({
           <TableRow>
             <TableHead>Sorgente</TableHead>
             <TableHead>Modalità</TableHead>
+            <TableHead>Aggiornamento</TableHead>
             <TableHead>Stato</TableHead>
             <TableHead>Freshness</TableHead>
             <TableHead>Successo (7d)</TableHead>
@@ -387,6 +421,12 @@ function SourcesTable({
               </TableCell>
               <TableCell>
                 <SyncModeBadge mode={source.syncMode} />
+              </TableCell>
+              <TableCell>
+                <ReplaceModeBadge 
+                  mode={source.replaceMode || 'full'} 
+                  upsertKeyColumns={source.upsertKeyColumns} 
+                />
               </TableCell>
               <TableCell>
                 <HealthBadge status={source.healthStatus} />
