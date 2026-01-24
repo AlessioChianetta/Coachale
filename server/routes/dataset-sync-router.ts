@@ -324,8 +324,8 @@ router.post(
 
       if (!targetDatasetId) {
         const insertedDatasetResult = await db.execute<any>(sql`
-          INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, created_at)
-          VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())
+          INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, auto_confirmed, confidence_score, created_at)
+          VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, ${discoveryResult.autoConfirmed}, ${discoveryResult.overallConfidence}, now())
           RETURNING id
         `);
         const insertedDataset = insertedDatasetResult.rows || [];
@@ -994,8 +994,8 @@ router.post(
         // Crea dataset se non esisteva
         if (!targetDatasetId) {
           const insertedDatasetResult = await db.execute<any>(sql`
-            INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, created_at)
-            VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, now())
+            INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, auto_confirmed, confidence_score, created_at)
+            VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, ${discoveryResult.autoConfirmed}, ${discoveryResult.overallConfidence}, now())
             RETURNING id
           `);
           const insertedDataset = insertedDatasetResult.rows || [];
