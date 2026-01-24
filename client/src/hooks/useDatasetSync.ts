@@ -355,11 +355,14 @@ export function useDatasetSyncSchema() {
 
 export function useTestWebhook() {
   const queryClient = useQueryClient();
-  return useMutation<TestWebhookResult, Error, { sourceId: number; file: File }>({
-    mutationFn: async ({ sourceId, file }) => {
+  return useMutation<TestWebhookResult, Error, { sourceId: number; file: File; simulateFullWebhook?: boolean }>({
+    mutationFn: async ({ sourceId, file, simulateFullWebhook }) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("sourceId", sourceId.toString());
+      if (simulateFullWebhook) {
+        formData.append("simulateFullWebhook", "true");
+      }
 
       const token = localStorage.getItem("token");
       const res = await fetch("/api/dataset-sync/test-webhook", {

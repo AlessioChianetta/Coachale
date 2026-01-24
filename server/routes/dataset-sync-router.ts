@@ -258,7 +258,16 @@ router.post(
       const columns = sheet.headers;
       const totalRows = sheet.totalRows;
 
-      const discoveryResult = await discoverColumns(sheet.headers, sheet.sampleData, "it");
+      // Trasforma i dati nel formato DistributedSample richiesto da discoverColumns
+      const sample = {
+        columns: sheet.headers,
+        rows: sheet.sampleData,
+        totalRowCount: sheet.totalRows,
+        sampledFromStart: sheet.sampleData.length,
+        sampledFromMiddle: 0,
+        sampledFromEnd: 0
+      };
+      const discoveryResult = await discoverColumns(sample, originalname, sourceData.consultant_id);
 
       const mappedColumns = discoveryResult.columns.filter(c => c.suggestedLogicalColumn);
       const unmappedColumns = discoveryResult.columns.filter(c => !c.suggestedLogicalColumn);
@@ -285,8 +294,8 @@ router.post(
       }
 
       const columnDefinitions = discoveryResult.columns.map(col => ({
-        name: col.physicalColumn,
-        type: col.detectedType || 'TEXT',
+        name: col.physicalColumn || col.originalName,
+        type: col.detectedType || col.dataType || 'TEXT',
         nullable: true,
       }));
 
@@ -325,8 +334,8 @@ router.post(
         SET status = 'completed', completed_at = now(), duration_ms = ${durationMs}, 
             rows_imported = ${rowsImported}, rows_skipped = ${rowsSkipped}, rows_total = ${totalRows},
             columns_detected = ${columns.length}, 
-            columns_mapped = ${JSON.stringify(mappedColumns.map(c => c.suggestedLogicalColumn))}::jsonb,
-            columns_unmapped = ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn))}::jsonb
+            columns_mapped = ${JSON.stringify(mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName))}::jsonb,
+            columns_unmapped = ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb
         WHERE sync_id = ${syncId}
       `);
 
@@ -340,8 +349,8 @@ router.post(
         rowsTotal: totalRows,
         columnsDetected: columns.length,
         mappingSummary: {
-          mapped: mappedColumns.map(c => c.suggestedLogicalColumn),
-          unmapped: unmappedColumns.map(c => c.physicalColumn),
+          mapped: mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName),
+          unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
         },
         durationMs,
       });
@@ -851,13 +860,147 @@ router.post(
       }
 
       const sheet = processedFile.sheets[0];
-      const discoveryResult = await discoverColumns(sheet.headers, sheet.sampleData, "it");
+      
+      // Trasforma i dati nel formato DistributedSample (stesso formato del webhook reale)
+      const sample = {
+        columns: sheet.headers,
+        rows: sheet.sampleData,
+        totalRowCount: sheet.totalRows,
+        sampledFromStart: sheet.sampleData.length,
+        sampledFromMiddle: 0,
+        sampledFromEnd: 0
+      };
+
+      // Ottieni consultantId per riutilizzare mapping salvati
+      const consultantId = req.user!.id;
+      const discoveryResult = await discoverColumns(sample, originalname, consultantId);
 
       const mappedColumns = discoveryResult.columns.filter(c => c.suggestedLogicalColumn);
       const unmappedColumns = discoveryResult.columns.filter(c => !c.suggestedLogicalColumn);
 
+      // Controlla se vogliamo simulare il flusso completo del webhook
+      const { sourceId } = req.body;
+      const simulateFullWebhook = req.body.simulateFullWebhook === "true" || req.body.simulateFullWebhook === true;
+
+      if (simulateFullWebhook && sourceId) {
+        // ========== MODALITÀ SIMULAZIONE COMPLETA ==========
+        // Esegue esattamente lo stesso flusso del webhook reale
+        
+        const sourceResult = await db.execute<any>(sql`
+          SELECT * FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
+        `);
+        const sourceData = (sourceResult.rows || [])[0];
+
+        if (!sourceData) {
+          return res.status(404).json({
+            success: false,
+            error: "SOURCE_NOT_FOUND",
+            message: "Sorgente non trovata o non autorizzata",
+          });
+        }
+
+        if (!sourceData.is_active) {
+          return res.status(400).json({
+            success: false,
+            error: "SOURCE_INACTIVE",
+            message: "Sorgente non attiva",
+          });
+        }
+
+        // Determina tableName e targetDatasetId
+        let targetDatasetId = sourceData.target_dataset_id;
+        let tableName: string;
+
+        if (targetDatasetId) {
+          const existingDatasetResult = await db.execute<any>(
+            sql`SELECT table_name FROM client_data_datasets WHERE id = ${targetDatasetId}`
+          );
+          const existingDataset = existingDatasetResult.rows || [];
+          if (existingDataset && existingDataset.length > 0) {
+            tableName = existingDataset[0].table_name;
+            
+            if (sourceData.replace_mode === 'full') {
+              await db.execute(sql.raw(`TRUNCATE TABLE ${tableName}`));
+            }
+          } else {
+            tableName = generateTableName(sourceData.consultant_id);
+          }
+        } else {
+          tableName = generateTableName(sourceData.consultant_id);
+        }
+
+        // Crea definizioni colonne
+        const columnDefinitions = discoveryResult.columns.map(col => ({
+          name: col.physicalColumn || col.originalName,
+          type: col.detectedType || col.dataType || 'TEXT',
+          nullable: true,
+        }));
+
+        // Crea tabella se non esiste
+        if (!targetDatasetId) {
+          await createDynamicTable(tableName, columnDefinitions);
+        }
+
+        // Importa dati
+        const { rowsImported, rowsSkipped } = await importDataToTable(
+          tableName,
+          sheet.headers,
+          sheet.sampleData
+        );
+
+        // Crea dataset se non esisteva
+        if (!targetDatasetId) {
+          const datasetClientId = sourceData.client_id || sourceData.consultant_id;
+          const insertedDatasetResult = await db.execute<any>(sql`
+            INSERT INTO client_data_datasets (consultant_id, client_id, name, file_name, table_name, status, row_count, column_count, created_at)
+            VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${sheet.headers.length}, now())
+            RETURNING id
+          `);
+          const insertedDataset = insertedDatasetResult.rows || [];
+          targetDatasetId = insertedDataset[0].id;
+
+          await db.execute(sql`
+            UPDATE dataset_sync_sources SET target_dataset_id = ${targetDatasetId} WHERE id = ${sourceId}
+          `);
+
+          await saveColumnMapping(targetDatasetId, discoveryResult.columns);
+          await detectAndSaveSemanticMappings(targetDatasetId, tableName, discoveryResult.columns);
+        }
+
+        // Log nella history come test
+        const syncId = `test_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        await db.execute(sql`
+          INSERT INTO dataset_sync_history (sync_id, source_id, status, started_at, completed_at, rows_imported, rows_skipped, rows_total, columns_detected, columns_mapped, columns_unmapped, file_name, file_size)
+          VALUES (${syncId}, ${sourceId}, 'completed', now(), now(), ${rowsImported}, ${rowsSkipped}, ${sheet.totalRows}, ${sheet.headers.length}, 
+                  ${JSON.stringify(mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName))}::jsonb,
+                  ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb,
+                  ${originalname}, ${size})
+        `);
+
+        console.log(`[DATASET-SYNC] Test FULL simulation completed: ${rowsImported} rows imported to dataset ${targetDatasetId}`);
+
+        return res.json({
+          success: true,
+          mode: "full_simulation",
+          syncId,
+          datasetId: targetDatasetId,
+          rowsImported,
+          rowsSkipped,
+          rowsTotal: sheet.totalRows,
+          columnsDetected: sheet.headers.length,
+          mappingSummary: {
+            mapped: mappedColumns.map(c => c.suggestedLogicalColumn || c.suggestedName),
+            unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
+          },
+          message: "Test COMPLETO eseguito. Dati importati come se fosse una chiamata webhook reale.",
+        });
+      }
+
+      // ========== MODALITÀ TEST RAPIDO (default) ==========
+      // Solo verifica formato e mapping, senza importare
       res.json({
         success: true,
+        mode: "quick_test",
         data: {
           fileName: originalname,
           fileSize: size,
@@ -865,23 +1008,23 @@ router.post(
           totalRows: sheet.totalRows,
           columnsDetected: sheet.headers.length,
           columns: discoveryResult.columns.map(col => ({
-            physicalColumn: col.physicalColumn,
-            detectedType: col.detectedType,
-            suggestedLogicalColumn: col.suggestedLogicalColumn,
+            physicalColumn: col.physicalColumn || col.originalName,
+            detectedType: col.detectedType || col.dataType,
+            suggestedLogicalColumn: col.suggestedLogicalColumn || col.suggestedName,
             confidence: col.confidence,
             sampleValues: col.sampleValues?.slice(0, 5),
           })),
           mappingSummary: {
             mapped: mappedColumns.map(c => ({
-              physical: c.physicalColumn,
-              logical: c.suggestedLogicalColumn,
+              physical: c.physicalColumn || c.originalName,
+              logical: c.suggestedLogicalColumn || c.suggestedName,
               confidence: c.confidence,
             })),
-            unmapped: unmappedColumns.map(c => c.physicalColumn),
+            unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
           },
           previewRows: sheet.sampleData.slice(0, 10),
         },
-        message: "Test completato. Il file non è stato importato.",
+        message: "Test rapido completato. Il file NON è stato importato.",
       });
     } catch (error: any) {
       console.error("[DATASET-SYNC] Test webhook error:", error);

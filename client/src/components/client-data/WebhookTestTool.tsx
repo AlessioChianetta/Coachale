@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -95,6 +96,7 @@ export function WebhookTestTool() {
   const [timestamp, setTimestamp] = useState<number | null>(null);
   const [isGeneratingSignature, setIsGeneratingSignature] = useState(false);
   const [testResult, setTestResult] = useState<TestWebhookResult | null>(null);
+  const [simulateFullWebhook, setSimulateFullWebhook] = useState(false);
 
   const sources = sourcesData?.data || [];
   const selectedSource = sources.find((s) => s.id === selectedSourceId);
@@ -220,12 +222,15 @@ export function WebhookTestTool() {
       const result = await testWebhookMutation.mutateAsync({
         sourceId: selectedSourceId,
         file: selectedFile,
+        simulateFullWebhook,
       });
       setTestResult(result);
       if (result.success) {
         toast({
-          title: "Test completato",
-          description: `${result.rowsImported} righe importate con successo`,
+          title: simulateFullWebhook ? "Simulazione completa!" : "Test rapido completato",
+          description: simulateFullWebhook 
+            ? `${result.rowsImported || 0} righe importate come webhook reale`
+            : "Verifica formato e mapping completata",
         });
       }
     } catch (error: any) {
@@ -641,10 +646,40 @@ echo $response;
           )}
 
           <div className="flex flex-col gap-4">
+            {/* Toggle modalità test */}
+            <Card className={`border ${simulateFullWebhook ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/20' : 'border-slate-200 dark:border-slate-700'}`}>
+              <CardContent className="py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="full-simulation" className="text-sm font-medium cursor-pointer">
+                        Simulazione completa (come API reale)
+                      </Label>
+                      {simulateFullWebhook && (
+                        <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 text-xs">
+                          Importerà i dati
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {simulateFullWebhook 
+                        ? "Esegue il flusso completo: crea dataset, importa dati, salva mapping (identico alla chiamata webhook reale)"
+                        : "Solo verifica formato e mapping colonne, senza importare (test rapido)"}
+                    </p>
+                  </div>
+                  <Switch
+                    id="full-simulation"
+                    checked={simulateFullWebhook}
+                    onCheckedChange={setSimulateFullWebhook}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <Button
               onClick={handleTest}
               disabled={!selectedSourceId || !selectedFile || testWebhookMutation.isPending}
-              className="w-full"
+              className={`w-full ${simulateFullWebhook ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
               size="lg"
             >
               {testWebhookMutation.isPending ? (
@@ -652,7 +687,7 @@ echo $response;
               ) : (
                 <Send className="h-4 w-4 mr-2" />
               )}
-              Invia Test
+              {simulateFullWebhook ? "Esegui Simulazione Completa" : "Invia Test Rapido"}
             </Button>
 
             {testResult && (
