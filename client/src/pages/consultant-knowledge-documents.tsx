@@ -925,11 +925,11 @@ export default function ConsultantKnowledgeDocuments() {
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const validFiles = acceptedFiles.filter((file) => {
-      const maxSize = 10 * 1024 * 1024;
+      const maxSize = 50 * 1024 * 1024;
       if (file.size > maxSize) {
         toast({
           title: "File troppo grande",
-          description: `${file.name} supera il limite di 10MB`,
+          description: `${file.name} supera il limite di 50MB`,
           variant: "destructive",
         });
         return false;
@@ -1646,7 +1646,7 @@ export default function ConsultantKnowledgeDocuments() {
                     <>
                       <p className="text-gray-600 dark:text-gray-400 font-medium">Trascina un file qui</p>
                       <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">oppure clicca per selezionare</p>
-                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT, MD, CSV, XLSX, PPTX, Audio (max 10MB)</p>
+                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT, MD, CSV, XLSX, PPTX, Audio (max 50MB)</p>
                     </>
                   )}
                 </div>
