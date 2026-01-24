@@ -526,6 +526,94 @@ router.delete(
   }
 );
 
+// Update source settings (including replace_mode and upsert_key_columns)
+router.patch(
+  "/sources/:id",
+  authenticateToken,
+  requireAnyRole(["consultant", "super_admin"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const consultantId = req.user!.id;
+      const sourceId = parseInt(req.params.id);
+      const { name, description, replaceMode, upsertKeyColumns, rateLimitPerHour, isActive } = req.body;
+
+      // Verify ownership
+      const existingResult = await db.execute<any>(sql`
+        SELECT id FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
+      `);
+      if (!existingResult.rows || existingResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Sorgente non trovata" });
+      }
+
+      // Parse upsertKeyColumns from comma-separated string to array
+      let keyColumnsArray: string[] | null = null;
+      if (replaceMode === 'upsert' && upsertKeyColumns) {
+        keyColumnsArray = upsertKeyColumns
+          .split(',')
+          .map((c: string) => c.trim())
+          .filter((c: string) => c.length > 0);
+      }
+
+      // Build update query dynamically
+      const updates: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      if (name !== undefined) {
+        updates.push(`name = $${paramIndex++}`);
+        values.push(name);
+      }
+      if (description !== undefined) {
+        updates.push(`description = $${paramIndex++}`);
+        values.push(description);
+      }
+      if (replaceMode !== undefined) {
+        updates.push(`replace_mode = $${paramIndex++}`);
+        values.push(replaceMode);
+      }
+      if (replaceMode === 'upsert') {
+        updates.push(`upsert_key_columns = $${paramIndex++}`);
+        values.push(keyColumnsArray);
+      } else if (replaceMode !== undefined) {
+        // Clear upsert columns if mode changed away from upsert
+        updates.push(`upsert_key_columns = NULL`);
+      }
+      if (rateLimitPerHour !== undefined) {
+        updates.push(`rate_limit_per_hour = $${paramIndex++}`);
+        values.push(rateLimitPerHour);
+      }
+      if (isActive !== undefined) {
+        updates.push(`is_active = $${paramIndex++}`);
+        values.push(isActive);
+      }
+
+      updates.push(`updated_at = NOW()`);
+
+      if (updates.length === 1) {
+        return res.status(400).json({ success: false, error: "Nessun campo da aggiornare" });
+      }
+
+      values.push(sourceId);
+      values.push(consultantId);
+
+      const updateQuery = `
+        UPDATE dataset_sync_sources 
+        SET ${updates.join(', ')}
+        WHERE id = $${paramIndex++} AND consultant_id = $${paramIndex}
+        RETURNING id, name, description, replace_mode, upsert_key_columns, rate_limit_per_hour, is_active
+      `;
+
+      const result = await db.execute<any>(sql.raw(updateQuery, ...values));
+      const updated = result.rows?.[0];
+
+      res.json({ success: true, data: updated });
+    } catch (error: any) {
+      console.error("[DATASET-SYNC] Error updating source:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 router.get(
   "/history/:sourceId",
   authenticateToken,

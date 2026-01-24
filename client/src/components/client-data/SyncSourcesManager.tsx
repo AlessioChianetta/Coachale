@@ -8,6 +8,7 @@ import {
   useDeleteSyncSource,
   useRegenerateApiKey,
   useToggleSyncSource,
+  useUpdateSyncSource,
   SyncSource,
 } from "@/hooks/useDatasetSync";
 import { apiRequest } from "@/lib/queryClient";
@@ -71,6 +72,7 @@ import {
   Loader2,
   Link2,
   Users,
+  Settings,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -111,7 +113,11 @@ export function SyncSourcesManager() {
   const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [regenerateConfirmId, setRegenerateConfirmId] = useState<number | null>(null);
+  const [editingSource, setEditingSource] = useState<SyncSource | null>(null);
+  const [editReplaceMode, setEditReplaceMode] = useState<'full' | 'append' | 'upsert'>('full');
+  const [editUpsertKeyColumns, setEditUpsertKeyColumns] = useState("");
 
+  const updateMutation = useUpdateSyncSource();
   const sources = sourcesData?.data || [];
 
   const maskApiKey = (apiKey: string) => {
@@ -367,6 +373,16 @@ export function SyncSourcesManager() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingSource(source);
+                            setEditReplaceMode(source.replace_mode || 'full');
+                            setEditUpsertKeyColumns(source.upsert_key_columns?.join(', ') || '');
+                          }}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Modifica Impostazioni
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => copyToClipboard(source.api_key, "API Key")}
                         >
@@ -653,6 +669,102 @@ export function SyncSourcesManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Source Dialog */}
+      <Dialog open={editingSource !== null} onOpenChange={(open) => {
+        if (!open) {
+          setEditingSource(null);
+          setEditReplaceMode('full');
+          setEditUpsertKeyColumns("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Modifica Impostazioni Sorgente
+            </DialogTitle>
+            <DialogDescription>
+              Modifica la modalità di aggiornamento per "{editingSource?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-replace-mode" className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Modalità Aggiornamento
+              </Label>
+              <Select value={editReplaceMode} onValueChange={(v) => setEditReplaceMode(v as 'full' | 'append' | 'upsert')}>
+                <SelectTrigger id="edit-replace-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Sostituisci tutto (Full Replace)</SelectItem>
+                  <SelectItem value="append">Aggiungi in coda (Append)</SelectItem>
+                  <SelectItem value="upsert">Aggiorna esistenti (Upsert)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                {editReplaceMode === 'full' && "Ogni sync sostituirà completamente i dati esistenti."}
+                {editReplaceMode === 'append' && "I nuovi dati verranno aggiunti a quelli esistenti."}
+                {editReplaceMode === 'upsert' && "I record esistenti verranno aggiornati, i nuovi inseriti."}
+              </p>
+            </div>
+            {editReplaceMode === 'upsert' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-upsert-keys">Colonne Chiave per Upsert</Label>
+                <Input
+                  id="edit-upsert-keys"
+                  placeholder="order_id, order_date"
+                  value={editUpsertKeyColumns}
+                  onChange={(e) => setEditUpsertKeyColumns(e.target.value)}
+                />
+                <p className="text-xs text-slate-500">
+                  Inserisci i nomi delle colonne chiave separati da virgola. Questi campi verranno usati per identificare i record esistenti.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingSource(null)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                if (!editingSource) return;
+                updateMutation.mutate({
+                  id: editingSource.id,
+                  data: {
+                    replaceMode: editReplaceMode,
+                    upsertKeyColumns: editReplaceMode === 'upsert' ? editUpsertKeyColumns : undefined,
+                  }
+                }, {
+                  onSuccess: () => {
+                    toast({
+                      title: "Salvato",
+                      description: "Impostazioni aggiornate con successo",
+                    });
+                    setEditingSource(null);
+                  },
+                  onError: (error: any) => {
+                    toast({
+                      title: "Errore",
+                      description: error.message || "Impossibile salvare le modifiche",
+                      variant: "destructive",
+                    });
+                  }
+                });
+              }}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Salva Modifiche
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
