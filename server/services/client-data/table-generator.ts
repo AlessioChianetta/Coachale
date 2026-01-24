@@ -732,3 +732,196 @@ export async function insertParsedRowsToTable(
     client.release();
   }
 }
+
+/**
+ * Import all data from a file with support for different replace modes (full, append, upsert)
+ * This reads the entire file and processes it in batches for large datasets
+ */
+export async function importDataFromFileWithOptions(
+  filePath: string,
+  tableName: string,
+  columns: ColumnDefinition[],
+  consultantId: string,
+  clientId?: string,
+  sheetName?: string,
+  options?: {
+    replaceMode: 'full' | 'append' | 'upsert';
+    upsertKeyColumns?: string[];
+  }
+): Promise<{ 
+  success: boolean; 
+  rowCount: number; 
+  rowsInserted: number;
+  rowsUpdated: number;
+  error?: string 
+}> {
+  const client = await pool.connect();
+  const replaceMode = options?.replaceMode || 'full';
+  
+  try {
+    const ext = path.extname(filePath).toLowerCase();
+    const parsed = ext === ".csv"
+      ? await parseCsvFile(filePath)
+      : await parseExcelFile(filePath, sheetName);
+
+    const totalRows = parsed.rows.length;
+    console.log(`[TABLE-GENERATOR] Importing ${totalRows} rows with mode=${replaceMode}`);
+
+    await client.query("BEGIN");
+
+    // For full replace mode, truncate the table first
+    if (replaceMode === 'full') {
+      await client.query(`TRUNCATE TABLE "${tableName}"`);
+      console.log(`[TABLE-GENERATOR] Truncated table ${tableName} for full replace`);
+    }
+
+    const sanitizedColumns = columns.map(c => sanitizeColumnName(c.suggestedName || c.originalName));
+    const insertColumns = ["riga_originale", "consultant_id", "client_id", ...sanitizedColumns];
+    const columnsList = insertColumns.map(c => `"${c}"`).join(", ");
+
+    let rowsInserted = 0;
+    let rowsUpdated = 0;
+    let insertedCount = 0;
+
+    const isUpsertMode = replaceMode === 'upsert' && options?.upsertKeyColumns?.length;
+
+    if (isUpsertMode) {
+      // Create unique index for upsert
+      const sanitizedKeyColumns = options.upsertKeyColumns!.map(k => sanitizeColumnName(k));
+      const conflictColumns = [...sanitizedKeyColumns, "consultant_id"];
+      const indexName = `uq_${tableName}_${sanitizedKeyColumns.join('_')}_consultant`.substring(0, 63);
+      
+      const createIndexSQL = `
+        CREATE UNIQUE INDEX IF NOT EXISTS "${indexName}" 
+        ON "${tableName}" (${conflictColumns.map(c => `"${c}"`).join(", ")})
+      `;
+      await client.query(createIndexSQL);
+      console.log(`[TABLE-GENERATOR] Created/verified unique index: ${indexName}`);
+      
+      const updateColumns = sanitizedColumns.filter(h => !sanitizedKeyColumns.includes(h));
+      const updateSet = updateColumns.length > 0
+        ? updateColumns.map(c => `"${c}" = EXCLUDED."${c}"`).join(", ")
+        : `"riga_originale" = EXCLUDED."riga_originale"`;
+
+      for (let batchStart = 0; batchStart < totalRows; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, totalRows);
+        const batchRows = parsed.rows.slice(batchStart, batchEnd);
+
+        if (batchRows.length === 0) continue;
+
+        const valueRows: string[] = [];
+        let paramIndex = 1;
+        const allParams: any[] = [];
+
+        for (let i = 0; i < batchRows.length; i++) {
+          const row = batchRows[i];
+          const rowNum = batchStart + i + 1;
+
+          const placeholders: string[] = [];
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(rowNum);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(consultantId);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(clientId || null);
+
+          for (const col of columns) {
+            placeholders.push(`$${paramIndex++}`);
+            const rawValue = row[col.originalName];
+            const convertedValue = convertValueForInsert(rawValue, col.dataType);
+            allParams.push(convertedValue);
+          }
+
+          valueRows.push(`(${placeholders.join(", ")})`);
+        }
+
+        if (valueRows.length > 0) {
+          const conflictClause = conflictColumns.map(c => `"${c}"`).join(", ");
+          const upsertSQL = `
+            INSERT INTO "${tableName}" (${columnsList}) 
+            VALUES ${valueRows.join(", ")}
+            ON CONFLICT (${conflictClause}) DO UPDATE SET ${updateSet}
+            RETURNING xmax
+          `;
+
+          const result = await client.query(upsertSQL, allParams);
+
+          for (const r of result.rows) {
+            if (r.xmax === '0' || r.xmax === 0) {
+              rowsInserted++;
+            } else {
+              rowsUpdated++;
+            }
+          }
+          insertedCount += result.rowCount || 0;
+        }
+
+        // Log progress for large files
+        if (batchEnd % 10000 === 0 || batchEnd === totalRows) {
+          console.log(`[TABLE-GENERATOR] Progress: ${batchEnd}/${totalRows} rows processed`);
+        }
+      }
+    } else {
+      // Standard insert mode (full or append)
+      for (let batchStart = 0; batchStart < totalRows; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, totalRows);
+        const batchRows = parsed.rows.slice(batchStart, batchEnd);
+
+        if (batchRows.length === 0) continue;
+
+        const valueRows: string[] = [];
+        let paramIndex = 1;
+        const allParams: any[] = [];
+
+        for (let i = 0; i < batchRows.length; i++) {
+          const row = batchRows[i];
+          const rowNum = batchStart + i + 1;
+
+          const placeholders: string[] = [];
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(rowNum);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(consultantId);
+          placeholders.push(`$${paramIndex++}`);
+          allParams.push(clientId || null);
+
+          for (const col of columns) {
+            placeholders.push(`$${paramIndex++}`);
+            const rawValue = row[col.originalName];
+            const convertedValue = convertValueForInsert(rawValue, col.dataType);
+            allParams.push(convertedValue);
+          }
+
+          valueRows.push(`(${placeholders.join(", ")})`);
+        }
+
+        if (valueRows.length > 0) {
+          const insertSQL = `
+            INSERT INTO "${tableName}" (${columnsList}) 
+            VALUES ${valueRows.join(", ")}
+          `;
+
+          const result = await client.query(insertSQL, allParams);
+          insertedCount += result.rowCount || 0;
+          rowsInserted += result.rowCount || 0;
+        }
+
+        // Log progress for large files
+        if (batchEnd % 10000 === 0 || batchEnd === totalRows) {
+          console.log(`[TABLE-GENERATOR] Progress: ${batchEnd}/${totalRows} rows processed`);
+        }
+      }
+    }
+
+    await client.query("COMMIT");
+
+    console.log(`[TABLE-GENERATOR] Inserted ${insertedCount} rows to ${tableName} (inserted: ${rowsInserted}, updated: ${rowsUpdated})`);
+    return { success: true, rowCount: insertedCount, rowsInserted, rowsUpdated };
+  } catch (error: any) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error(`[TABLE-GENERATOR] Error importing data to ${tableName}:`, error);
+    return { success: false, rowCount: 0, rowsInserted: 0, rowsUpdated: 0, error: error.message };
+  } finally {
+    client.release();
+  }
+}

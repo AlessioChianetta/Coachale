@@ -5,7 +5,7 @@ import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../
 import { upload } from "../middleware/upload";
 import { processExcelFile } from "../services/client-data/upload-processor";
 import { discoverColumns, saveColumnMapping } from "../services/client-data/column-discovery";
-import { generateTableName, createDynamicTable, insertParsedRowsToTable, sanitizeColumnName } from "../services/client-data/table-generator";
+import { generateTableName, createDynamicTable, insertParsedRowsToTable, sanitizeColumnName, importDataFromFileWithOptions } from "../services/client-data/table-generator";
 import { detectAndSaveSemanticMappings } from "../services/client-data/semantic-mapping-service";
 import { LOGICAL_COLUMNS, COLUMN_AUTO_DETECT_PATTERNS } from "../ai/data-analysis/logical-columns";
 import { nanoid } from "nanoid";
@@ -378,24 +378,38 @@ router.post(
         await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
       }
 
-      // Prepara opzioni upsert se modalità upsert
-      let upsertOptions: { mode: 'insert' | 'upsert'; keyColumns: string[] } | undefined = undefined;
-      if (sourceData.replace_mode === 'upsert' && sourceData.upsert_key_columns?.length > 0) {
-        upsertOptions = {
-          mode: 'upsert' as const,
-          keyColumns: sourceData.upsert_key_columns
-        };
-      }
-
-      // Importa dati già parsati direttamente nella tabella
-      const { rowsImported, rowsSkipped, rowsInserted, rowsUpdated } = await insertParsedRowsToTable(
+      // Importa TUTTI i dati dal file (non solo i sample rows)
+      // Usa la nuova funzione che legge il file completo e supporta tutte le modalità
+      const importResult = await importDataFromFileWithOptions(
+        newPath,
         tableName,
-        headers,
-        sheet.sampleRows,
+        columnDefinitions,
         sourceData.consultant_id,
         datasetClientId,
-        upsertOptions
+        undefined, // sheetName - usa primo foglio
+        {
+          replaceMode: sourceData.replace_mode || 'full',
+          upsertKeyColumns: sourceData.upsert_key_columns || []
+        }
       );
+
+      if (!importResult.success) {
+        const durationMs = Date.now() - startTime;
+        await db.execute(sql`
+          UPDATE dataset_sync_history 
+          SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, 
+              error_code = 'IMPORT_ERROR', error_message = ${importResult.error || 'Errore durante importazione dati'}
+          WHERE sync_id = ${syncId}
+        `);
+        return res.status(500).json({
+          success: false,
+          error: "IMPORT_ERROR",
+          message: importResult.error || "Errore durante importazione dati",
+        });
+      }
+
+      const { rowCount: rowsImported, rowsInserted, rowsUpdated } = importResult;
+      const rowsSkipped = 0;
 
       if (!targetDatasetId) {
         // Build column_mapping object (same structure as client-data-router)
