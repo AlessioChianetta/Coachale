@@ -160,16 +160,39 @@ export interface SyncStats {
 
 export interface TestWebhookResult {
   success: boolean;
+  mode?: "quick_test" | "full_simulation";
   syncId?: string;
+  datasetId?: number;
   rowsImported?: number;
   rowsSkipped?: number;
+  rowsTotal?: number;
   columnsDetected?: number;
   mappingSummary?: {
-    mapped: string[];
+    mapped: string[] | { physical: string; logical: string; confidence?: number }[];
     unmapped: string[];
   };
   error?: string;
   message?: string;
+  // Quick test mode returns data inside 'data' object
+  data?: {
+    fileName?: string;
+    fileSize?: number;
+    sheetName?: string;
+    totalRows?: number;
+    columnsDetected?: number;
+    columns?: Array<{
+      physicalColumn: string;
+      detectedType: string;
+      suggestedLogicalColumn?: string;
+      confidence?: number;
+      sampleValues?: any[];
+    }>;
+    mappingSummary?: {
+      mapped: { physical: string; logical: string; confidence?: number }[];
+      unmapped: string[];
+    };
+    previewRows?: Record<string, any>[];
+  };
 }
 
 export function useDatasetSyncSources() {

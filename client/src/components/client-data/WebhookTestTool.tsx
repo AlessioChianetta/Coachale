@@ -703,66 +703,131 @@ echo $response;
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                         <CheckCircle className="h-5 w-5" />
-                        <span className="font-medium">Test completato con successo!</span>
+                        <span className="font-medium">
+                          {testResult.mode === "full_simulation" 
+                            ? "Simulazione completa eseguita!" 
+                            : "Test rapido completato!"}
+                        </span>
+                        {testResult.mode && (
+                          <Badge variant="outline" className={testResult.mode === "full_simulation" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}>
+                            {testResult.mode === "full_simulation" ? "Dati importati" : "Solo verifica"}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <div className="text-muted-foreground">Sync ID</div>
-                          <div className="font-mono text-xs">{testResult.syncId || "N/D"}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Righe Importate</div>
-                          <div className="font-semibold">{testResult.rowsImported || 0}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Righe Saltate</div>
-                          <div className="font-semibold">{testResult.rowsSkipped || 0}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Colonne Rilevate</div>
-                          <div className="font-semibold">{testResult.columnsDetected || 0}</div>
-                        </div>
-                      </div>
-                      {testResult.mappingSummary && (
-                        <div className="space-y-2 pt-2 border-t">
-                          {testResult.mappingSummary.mapped.length > 0 && (
-                            <div>
-                              <div className="text-sm text-muted-foreground mb-1">
-                                Colonne Mappate:
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                {testResult.mappingSummary.mapped.map((col) => (
-                                  <Badge
-                                    key={col}
-                                    variant="outline"
-                                    className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200"
-                                  >
-                                    {col}
-                                  </Badge>
-                                ))}
-                              </div>
+                      
+                      {/* Normalizza i dati: usa data.* per quick_test, altrimenti usa campi diretti */}
+                      {(() => {
+                        const isQuickTest = testResult.mode === "quick_test";
+                        const totalRows = isQuickTest ? testResult.data?.totalRows : testResult.rowsTotal;
+                        const columnsDetected = isQuickTest ? testResult.data?.columnsDetected : testResult.columnsDetected;
+                        const mappingSummary = isQuickTest ? testResult.data?.mappingSummary : testResult.mappingSummary;
+                        const columns = isQuickTest ? testResult.data?.columns : null;
+                        
+                        // Estrai nomi colonne mappate
+                        const mappedNames = mappingSummary?.mapped?.map((m: any) => 
+                          typeof m === 'string' ? m : m.logical
+                        ) || [];
+                        const unmappedNames = mappingSummary?.unmapped || [];
+                        
+                        return (
+                          <>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              {testResult.mode === "full_simulation" ? (
+                                <>
+                                  <div>
+                                    <div className="text-muted-foreground">Sync ID</div>
+                                    <div className="font-mono text-xs">{testResult.syncId || "N/D"}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Righe Importate</div>
+                                    <div className="font-semibold">{testResult.rowsImported || 0}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Righe Saltate</div>
+                                    <div className="font-semibold">{testResult.rowsSkipped || 0}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Colonne Rilevate</div>
+                                    <div className="font-semibold">{columnsDetected || 0}</div>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div>
+                                    <div className="text-muted-foreground">File</div>
+                                    <div className="font-mono text-xs truncate">{testResult.data?.fileName || "N/D"}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Righe Totali</div>
+                                    <div className="font-semibold">{totalRows || 0}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Colonne Rilevate</div>
+                                    <div className="font-semibold">{columnsDetected || 0}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Mappate</div>
+                                    <div className="font-semibold text-emerald-600">{mappedNames.length}</div>
+                                  </div>
+                                </>
+                              )}
                             </div>
-                          )}
-                          {testResult.mappingSummary.unmapped.length > 0 && (
-                            <div>
-                              <div className="text-sm text-muted-foreground mb-1">
-                                Colonne Non Mappate:
+                            
+                            {/* Dettaglio colonne per quick test */}
+                            {isQuickTest && columns && columns.length > 0 && (
+                              <div className="space-y-2 pt-2 border-t">
+                                <div className="text-sm text-muted-foreground mb-1">Dettaglio Colonne:</div>
+                                <div className="grid gap-1 max-h-48 overflow-y-auto">
+                                  {columns.map((col, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 text-xs">
+                                      <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">{col.physicalColumn}</span>
+                                      <span className="text-muted-foreground">→</span>
+                                      {col.suggestedLogicalColumn ? (
+                                        <Badge variant="outline" className="bg-emerald-100 text-emerald-700 text-xs">
+                                          {col.suggestedLogicalColumn}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground italic">non mappata</span>
+                                      )}
+                                      <span className="text-muted-foreground ml-auto">({col.detectedType})</span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="flex flex-wrap gap-1">
-                                {testResult.mappingSummary.unmapped.map((col) => (
-                                  <Badge
-                                    key={col}
-                                    variant="outline"
-                                    className="text-xs bg-amber-100 text-amber-700 border-amber-200"
-                                  >
-                                    {col}
-                                  </Badge>
-                                ))}
+                            )}
+                            
+                            {/* Riepilogo mapping per full simulation */}
+                            {testResult.mode === "full_simulation" && (mappedNames.length > 0 || unmappedNames.length > 0) && (
+                              <div className="space-y-2 pt-2 border-t">
+                                {mappedNames.length > 0 && (
+                                  <div>
+                                    <div className="text-sm text-muted-foreground mb-1">Colonne Mappate:</div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {mappedNames.map((col: string) => (
+                                        <Badge key={col} variant="outline" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
+                                          {col}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {unmappedNames.length > 0 && (
+                                  <div>
+                                    <div className="text-sm text-muted-foreground mb-1">Colonne Non Mappate:</div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {unmappedNames.map((col: string) => (
+                                        <Badge key={col} variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
+                                          {col}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="space-y-3">
