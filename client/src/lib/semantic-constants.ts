@@ -4,7 +4,7 @@
  * 
  * Fonte di verità per:
  * - ROLE_DESCRIPTIONS: 20 colonne logiche core per ristoranti
- * - SYSTEM_RULES: 62 pattern di riconoscimento automatico
+ * - SYSTEM_RULES: 58 pattern di riconoscimento automatico
  */
 
 export interface RoleDescription {
@@ -74,7 +74,7 @@ export const MATCH_TYPE_OPTIONS = [
 ];
 
 /**
- * 62 Pattern di Riconoscimento Automatico
+ * 58 Pattern di Riconoscimento Automatico
  * Usati per mappare automaticamente i nomi colonna dei partner
  */
 export const SYSTEM_RULES: SystemRule[] = [

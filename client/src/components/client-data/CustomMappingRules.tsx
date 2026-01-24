@@ -10,15 +10,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { Settings2, Plus, Trash2, Edit, ArrowRight, Sparkles, RefreshCw } from "lucide-react";
 import { 
-  ROLE_DESCRIPTIONS, 
   SYSTEM_RULES, 
   MATCH_TYPE_OPTIONS,
+  LOGICAL_ROLE_OPTIONS,
 } from "@/lib/semantic-constants";
-
-const LOGICAL_ROLE_OPTIONS = Object.entries(ROLE_DESCRIPTIONS).map(([value, info]) => ({
-  value,
-  label: info.description.split(":")[0].slice(0, 25),
-}));
 
 interface CustomMappingRule {
   id: number;
