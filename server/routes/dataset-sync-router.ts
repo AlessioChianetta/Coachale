@@ -5,7 +5,7 @@ import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../
 import { upload } from "../middleware/upload";
 import { processExcelFile } from "../services/client-data/upload-processor";
 import { discoverColumns, saveColumnMapping } from "../services/client-data/column-discovery";
-import { generateTableName, createDynamicTable, insertParsedRowsToTable } from "../services/client-data/table-generator";
+import { generateTableName, createDynamicTable, insertParsedRowsToTable, sanitizeColumnName } from "../services/client-data/table-generator";
 import { detectAndSaveSemanticMappings } from "../services/client-data/semantic-mapping-service";
 import { LOGICAL_COLUMNS, COLUMN_AUTO_DETECT_PATTERNS } from "../ai/data-analysis/logical-columns";
 import { nanoid } from "nanoid";
@@ -323,9 +323,19 @@ router.post(
       );
 
       if (!targetDatasetId) {
+        // Build column_mapping object (same structure as client-data-router)
+        const columnMapping: Record<string, { displayName: string; dataType: string; description?: string }> = {};
+        for (const col of columnDefinitions) {
+          const dbColumnName = sanitizeColumnName(col.suggestedName || col.originalName);
+          columnMapping[dbColumnName] = {
+            displayName: col.displayName || col.originalName,
+            dataType: col.dataType || 'TEXT',
+          };
+        }
+
         const insertedDatasetResult = await db.execute<any>(sql`
-          INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, auto_confirmed, confidence_score, created_at)
-          VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, ${discoveryResult.autoConfirmed}, ${discoveryResult.overallConfidence}, now())
+          INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, column_mapping, auto_confirmed, confidence_score, created_at)
+          VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, ${JSON.stringify(columnMapping)}::jsonb, ${discoveryResult.autoConfirmed}, ${discoveryResult.overallConfidence}, now())
           RETURNING id
         `);
         const insertedDataset = insertedDatasetResult.rows || [];
@@ -993,9 +1003,19 @@ router.post(
 
         // Crea dataset se non esisteva
         if (!targetDatasetId) {
+          // Build column_mapping object (same structure as client-data-router)
+          const columnMapping: Record<string, { displayName: string; dataType: string; description?: string }> = {};
+          for (const col of columnDefinitions) {
+            const dbColumnName = sanitizeColumnName(col.suggestedName || col.originalName);
+            columnMapping[dbColumnName] = {
+              displayName: col.displayName || col.originalName,
+              dataType: col.dataType || 'TEXT',
+            };
+          }
+
           const insertedDatasetResult = await db.execute<any>(sql`
-            INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, auto_confirmed, confidence_score, created_at)
-            VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, ${discoveryResult.autoConfirmed}, ${discoveryResult.overallConfidence}, now())
+            INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, column_mapping, auto_confirmed, confidence_score, created_at)
+            VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Test Sync: ${sourceData.name}`}, ${originalname}, ${tableName}, 'ready', ${rowsImported}, ${headers.length}, ${JSON.stringify(columnMapping)}::jsonb, ${discoveryResult.autoConfirmed}, ${discoveryResult.overallConfidence}, now())
             RETURNING id
           `);
           const insertedDataset = insertedDatasetResult.rows || [];
