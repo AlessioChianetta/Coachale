@@ -99,3 +99,11 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
     - SyncSourcesManager shows client dropdown during source creation
     - Webhook imports automatically assign datasets to the specified client
     - SyncHistoryLog includes "Open Dataset & Configure Mapping" button for completed syncs
+- **Centralized Semantic Constants (January 2026)**: Created shared constants file to prevent drift between UI components:
+  - New file: `client/src/lib/semantic-constants.ts` as single source of truth
+  - 20 ROLE_DESCRIPTIONS with type, description, example for each logical column
+  - 58 SYSTEM_RULES with pattern, matchType, matchTypeLabel, role, description
+  - LOGICAL_ROLE_OPTIONS and MATCH_TYPE_OPTIONS exported for dropdowns
+  - getPatternsForRole() helper function for filtering patterns by role
+  - Two-tier export system: "Standard" (20 columns only) and "Complete" (20 columns + 58 alias patterns)
+  - SemanticLayerGuide.tsx and CustomMappingRules.tsx now import from shared constants
