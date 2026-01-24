@@ -6,7 +6,8 @@ import {
   aiAssistantPreferences,
   users,
   aiConversations,
-  clientLevelSubscriptions
+  clientLevelSubscriptions,
+  userRoleProfiles
 } from "../../shared/schema";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth";
@@ -352,6 +353,7 @@ router.get("/consultant/clients", authenticateToken, requireRole("consultant"), 
   try {
     const consultantId = req.user!.id;
 
+    // Use user_role_profiles for accurate multi-profile support
     const clients = await db.select({
       id: users.id,
       firstName: users.firstName,
@@ -359,9 +361,12 @@ router.get("/consultant/clients", authenticateToken, requireRole("consultant"), 
       email: users.email,
     })
     .from(users)
+    .innerJoin(userRoleProfiles, eq(userRoleProfiles.userId, users.id))
     .where(and(
-      eq(users.consultantId, consultantId),
-      eq(users.role, "client")
+      eq(userRoleProfiles.consultantId, consultantId),
+      eq(userRoleProfiles.role, "client"),
+      eq(userRoleProfiles.isActive, true),
+      eq(users.isActive, true)
     ));
 
     const formattedClients = clients.map(c => ({

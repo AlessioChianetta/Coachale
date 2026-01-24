@@ -97,8 +97,8 @@ export function SyncSourcesManager() {
   const toggleMutation = useToggleSyncSource();
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients"],
-    queryFn: () => apiRequest("/api/clients"),
+    queryKey: ["/api/clients", { activeOnly: true }],
+    queryFn: () => apiRequest("/api/clients?activeOnly=true"),
   });
 
   const [showAddDialog, setShowAddDialog] = useState(false);

@@ -750,17 +750,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClientsByConsultant(consultantId: string, activeOnly: boolean = false): Promise<User[]> {
-    // Return all users assigned to this consultant (both clients and consultants who are also clients)
-    // A user is considered a "client" of a consultant if they have consultantId set to that consultant
-    const conditions = [
-      eq(schema.users.consultantId, consultantId)
-    ];
-    
-    if (activeOnly) {
-      conditions.push(eq(schema.users.isActive, true));
+    // Return all users who have a client role profile for this consultant
+    // Uses user_role_profiles table for accurate consultant-client relationships
+    try {
+      const result = await db
+        .select()
+        .from(schema.users)
+        .innerJoin(
+          schema.userRoleProfiles, 
+          eq(schema.userRoleProfiles.userId, schema.users.id)
+        )
+        .where(
+          activeOnly 
+            ? and(
+                eq(schema.userRoleProfiles.consultantId, consultantId),
+                eq(schema.userRoleProfiles.role, 'client'),
+                eq(schema.userRoleProfiles.isActive, true),
+                eq(schema.users.isActive, true)
+              )
+            : and(
+                eq(schema.userRoleProfiles.consultantId, consultantId),
+                eq(schema.userRoleProfiles.role, 'client')
+              )
+        );
+      
+      // Extract just the users from the joined result
+      return result.map(r => r.users);
+    } catch (error) {
+      console.error('[getClientsByConsultant] Error:', error);
+      throw error;
     }
-    
-    return db.select().from(schema.users).where(and(...conditions));
   }
 
   // Exercise operations
