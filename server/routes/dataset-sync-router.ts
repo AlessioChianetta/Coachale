@@ -1019,7 +1019,7 @@ router.post(
         // Log nella history come test
         const syncId = `test_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         await db.execute(sql`
-          INSERT INTO dataset_sync_history (sync_id, source_id, status, started_at, completed_at, rows_imported, rows_skipped, rows_total, columns_detected, columns_mapped, columns_unmapped, file_name, file_size)
+          INSERT INTO dataset_sync_history (sync_id, source_id, status, started_at, completed_at, rows_imported, rows_skipped, rows_total, columns_detected, columns_mapped, columns_unmapped, file_name, file_size_bytes)
           VALUES (${syncId}, ${sourceId}, 'completed', now(), now(), ${rowsImported}, ${rowsSkipped}, ${sheet.rowCount}, ${headers.length}, 
                   ${JSON.stringify(mappedColumns.map(c => c.suggestedName))}::jsonb,
                   ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb,
