@@ -8,6 +8,7 @@ import { SyncScheduleConfig } from "./SyncScheduleConfig";
 import { SyncHistoryLog } from "./SyncHistoryLog";
 import { WebhookTestTool } from "./WebhookTestTool";
 import { SchemaReferencePanel } from "./SchemaReferencePanel";
+import { SyncSetupGuide } from "./SyncSetupGuide";
 
 export function ExternalSyncDashboard() {
   const [activeTab, setActiveTab] = useState("panoramica");
@@ -32,14 +33,19 @@ export function ExternalSyncDashboard() {
 
       <CardContent className="pt-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-4">
+          <TabsList className="grid w-full grid-cols-7 mb-4">
+            <TabsTrigger value="guida">Guida</TabsTrigger>
             <TabsTrigger value="panoramica">Panoramica</TabsTrigger>
             <TabsTrigger value="sorgenti">Sorgenti</TabsTrigger>
             <TabsTrigger value="pianificazione">Pianificazione</TabsTrigger>
             <TabsTrigger value="cronologia">Cronologia</TabsTrigger>
-            <TabsTrigger value="webhook">Test Webhook</TabsTrigger>
-            <TabsTrigger value="schema">Schema API</TabsTrigger>
+            <TabsTrigger value="webhook">Test</TabsTrigger>
+            <TabsTrigger value="schema">Schema</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="guida">
+            <SyncSetupGuide />
+          </TabsContent>
 
           <TabsContent value="panoramica">
             <SyncOverviewCards onViewHistory={handleViewHistory} />

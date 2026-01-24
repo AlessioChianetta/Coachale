@@ -81,8 +81,9 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
   - **Schema Endpoint**: `GET /api/dataset-sync/schema` exports all 19 logical roles with auto-detect patterns for external partners (1800 restaurant installations)
   - **Scheduling Options**: daily@HH:MM, weekly@DOW@HH:MM, monthly@DD@HH:MM, every_X_days@HH:MM, webhook_only
   - **7 Query Engine Rules**: Revenue priority, document_type filter (auto-inject WHERE document_type='sale'), sales_channel default, time_slot resolver (calculate from order_date hour), category semantic, ORDER BY semantic mapping, NULLIF safe divisions
-  - **Management Dashboard**: 7 React components in `client/src/components/client-data/`:
-    - `ExternalSyncDashboard.tsx`: Main container with 6 tabs (Overview, Sorgenti, Schedule, Cronologia, Test, Schema)
+  - **Management Dashboard**: 8 React components in `client/src/components/client-data/`:
+    - `ExternalSyncDashboard.tsx`: Main container with 7 tabs (Guida, Overview, Sorgenti, Schedule, Cronologia, Test, Schema)
+    - `SyncSetupGuide.tsx`: Step-by-step setup guide with progress tracking and FAQ
     - `SyncOverviewCards.tsx`: Success rate metrics, sync counts, error tracking, recent activity
     - `SyncSourcesManager.tsx`: CRUD for sources with API key generation, copy/regenerate/pause/delete actions
     - `SyncScheduleConfig.tsx`: Scheduling form (daily/weekly/monthly/custom), timezone selector, empty state handling

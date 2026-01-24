@@ -99,7 +99,8 @@ server/cron/dataset-sync-scheduler.ts   # Scheduler (opzionale)
 ### Frontend
 ```
 client/src/components/client-data/
-├── ExternalSyncDashboard.tsx    # Container principale con 6 tab
+├── ExternalSyncDashboard.tsx    # Container principale con 7 tab
+├── SyncSetupGuide.tsx           # Guida passo-passo configurazione
 ├── SyncOverviewCards.tsx        # Metriche e attività recente
 ├── SyncSourcesManager.tsx       # CRUD sorgenti con API key
 ├── SyncScheduleConfig.tsx       # Form scheduling
