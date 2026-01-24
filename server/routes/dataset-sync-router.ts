@@ -164,16 +164,17 @@ router.post(
       sourceId = sourceData.id;
 
       if (signature && sourceData.secret_key) {
-        // Per multipart/form-data, firmiamo il contenuto del file
-        const fileBuffer = req.file?.buffer;
-        if (!fileBuffer) {
-          console.warn(`[DATASET-SYNC] No file buffer for HMAC verification, source ${sourceId}`);
+        // Per multipart/form-data con diskStorage, leggiamo il file da disco
+        const filePath = req.file?.path;
+        if (!filePath) {
+          console.warn(`[DATASET-SYNC] No file path for HMAC verification, source ${sourceId}`);
           return res.status(400).json({
             success: false,
             error: "MISSING_FILE",
             message: "File mancante per verifica firma",
           });
         }
+        const fileBuffer = fs.readFileSync(filePath);
         if (!verifyHmacSignature(fileBuffer, signature, sourceData.secret_key)) {
           console.warn(`[DATASET-SYNC] Invalid HMAC signature for source ${sourceId}`);
           return res.status(401).json({
