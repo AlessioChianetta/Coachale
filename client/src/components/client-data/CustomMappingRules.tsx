@@ -9,91 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Settings2, Plus, Trash2, Edit, ArrowRight, Sparkles, RefreshCw } from "lucide-react";
+import { 
+  ROLE_DESCRIPTIONS, 
+  SYSTEM_RULES, 
+  MATCH_TYPE_OPTIONS,
+} from "@/lib/semantic-constants";
 
-const LOGICAL_ROLE_OPTIONS = [
-  { value: "document_id", label: "ID Documento" },
-  { value: "line_id", label: "ID Riga" },
-  { value: "revenue_amount", label: "Importo Fatturato" },
-  { value: "price", label: "Prezzo Unitario" },
-  { value: "cost", label: "Costo" },
-  { value: "quantity", label: "Quantità" },
-  { value: "product_id", label: "ID Prodotto" },
-  { value: "product_name", label: "Nome Prodotto" },
-  { value: "category", label: "Categoria" },
-  { value: "customer_id", label: "ID Cliente" },
-  { value: "customer_name", label: "Nome Cliente" },
-  { value: "supplier_id", label: "ID Fornitore" },
-  { value: "supplier_name", label: "Nome Fornitore" },
-  { value: "order_date", label: "Data" },
-  { value: "payment_method", label: "Metodo Pagamento" },
-  { value: "status", label: "Stato" },
-  { value: "warehouse", label: "Magazzino" },
-  { value: "tax_rate", label: "Aliquota IVA" },
-  { value: "is_sellable", label: "È Vendibile" },
-];
-
-const MATCH_TYPE_OPTIONS = [
-  { value: "contains", label: "Contiene" },
-  { value: "exact", label: "Esatto" },
-  { value: "startswith", label: "Inizia con" },
-  { value: "endswith", label: "Finisce con" },
-];
-
-// Regole di sistema predefinite (legenda base)
-const SYSTEM_RULES = [
-  // Importo Fatturato (revenue_amount) - CRITICO per analytics
-  { pattern: "prezzo_finale", matchType: "startswith", role: "revenue_amount", description: "Pattern comune gestionali POS" },
-  { pattern: "prezzofinale", matchType: "startswith", role: "revenue_amount", description: "Pattern senza underscore" },
-  { pattern: "importo_riga", matchType: "contains", role: "revenue_amount", description: "Totale riga fattura" },
-  { pattern: "totale_riga", matchType: "contains", role: "revenue_amount", description: "Totale riga documento" },
-  { pattern: "importo2", matchType: "exact", role: "revenue_amount", description: "Export comuni ristoranti" },
-  
-  // ID Documento
-  { pattern: "idddt", matchType: "startswith", role: "document_id", description: "DDT italiani" },
-  { pattern: "id_ordine", matchType: "contains", role: "document_id", description: "Ordini POS" },
-  { pattern: "scontrino", matchType: "contains", role: "document_id", description: "Scontrini fiscali" },
-  { pattern: "numero_ordine", matchType: "contains", role: "document_id", description: "Numero ordine" },
-  
-  // Quantità
-  { pattern: "quantita", matchType: "contains", role: "quantity", description: "Quantità venduta" },
-  { pattern: "qta", matchType: "exact", role: "quantity", description: "Abbreviazione comune" },
-  { pattern: "qty", matchType: "exact", role: "quantity", description: "Abbreviazione inglese" },
-  
-  // Prodotto
-  { pattern: "descrizione", matchType: "exact", role: "product_name", description: "Nome prodotto" },
-  { pattern: "articolo", matchType: "contains", role: "product_name", description: "Nome articolo" },
-  { pattern: "reparto", matchType: "exact", role: "category", description: "Categoria/reparto" },
-  { pattern: "categoria", matchType: "contains", role: "category", description: "Categoria prodotto" },
-  
-  // Data
-  { pattern: "data", matchType: "startswith", role: "order_date", description: "Data transazione" },
-  { pattern: "dataordine", matchType: "contains", role: "order_date", description: "Data ordine" },
-  
-  // Costo
-  { pattern: "costo", matchType: "startswith", role: "cost", description: "Costo unitario" },
-  { pattern: "food_cost", matchType: "contains", role: "cost", description: "Food cost" },
-  { pattern: "prezzo_acquisto", matchType: "contains", role: "cost", description: "Prezzo di acquisto" },
-  
-  // Prezzo unitario
-  { pattern: "prezzo_unitario", matchType: "contains", role: "price", description: "Prezzo di listino" },
-  { pattern: "listino", matchType: "contains", role: "price", description: "Prezzo di listino" },
-  
-  // Pagamento
-  { pattern: "pagamento", matchType: "contains", role: "payment_method", description: "Metodo pagamento" },
-  { pattern: "payment", matchType: "contains", role: "payment_method", description: "Payment method" },
-  
-  // Cliente
-  { pattern: "cliente", matchType: "contains", role: "customer_name", description: "Nome cliente" },
-  { pattern: "id_cliente", matchType: "contains", role: "customer_id", description: "ID cliente" },
-  
-  // Fornitore
-  { pattern: "fornitore", matchType: "contains", role: "supplier_name", description: "Nome fornitore" },
-  { pattern: "id_fornitore", matchType: "contains", role: "supplier_id", description: "ID fornitore" },
-  
-  // IVA
-  { pattern: "iva", matchType: "contains", role: "tax_rate", description: "Aliquota IVA" },
-  { pattern: "aliquota", matchType: "contains", role: "tax_rate", description: "Aliquota fiscale" },
-];
+const LOGICAL_ROLE_OPTIONS = Object.entries(ROLE_DESCRIPTIONS).map(([value, info]) => ({
+  value,
+  label: info.description.split(":")[0].slice(0, 25),
+}));
 
 interface CustomMappingRule {
   id: number;
