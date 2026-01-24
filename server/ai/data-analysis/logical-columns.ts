@@ -220,6 +220,34 @@ export const LOGICAL_COLUMNS: Record<string, LogicalColumnDefinition> = {
     description: "Whether this line represents a real sellable product (1) or a modifier/note (0). Used for automatic filtering in analytics.",
     requiredForMetrics: [],
   },
+  // === NEW ROLES FOR RESTAURANT/POS ANALYTICS ===
+  document_type: {
+    name: "document_type",
+    displayName: "Document Type",
+    displayNameIt: "Tipo Documento",
+    dataType: "TEXT",
+    description: "Transaction classification: sale (normal sale), refund (return), void (cancelled), staff_meal (staff consumption). Default: sale if not present.",
+    requiredForMetrics: ["revenue", "gross_margin"],
+    aliases: ["transaction_type", "tipo_transazione"],
+  },
+  time_slot: {
+    name: "time_slot",
+    displayName: "Time Slot",
+    displayNameIt: "Fascia Oraria",
+    dataType: "TEXT",
+    description: "Service time classification: breakfast (06:00-11:00), lunch (11:00-15:00), dinner (18:00-23:00), late (23:00-04:00). Can be calculated from order_date if not present.",
+    requiredForMetrics: [],
+    aliases: ["fascia_oraria", "turno", "shift"],
+  },
+  sales_channel: {
+    name: "sales_channel",
+    displayName: "Sales Channel",
+    displayNameIt: "Canale Vendita",
+    dataType: "TEXT",
+    description: "Service modality: dine_in (in-restaurant), takeaway (pickup), delivery (home delivery). Default: dine_in if not present.",
+    requiredForMetrics: [],
+    aliases: ["canale", "channel", "modalita_servizio"],
+  },
 };
 
 export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
@@ -453,6 +481,42 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
     /^sellable/i,
     /^is_?product/i,
     /^is_?item/i,
+  ],
+  // === NEW ROLES FOR RESTAURANT/POS ANALYTICS ===
+  document_type: [
+    /^tipo_?doc/i,
+    /^tipodoc/i,
+    /^document_?type/i,
+    /^doc_?type/i,
+    /^transaction_?type/i,
+    /^tipo_?transazione/i,
+    /^tipotransazione/i,
+    /^tipo_?movimento/i,
+    /^movement_?type/i,
+  ],
+  time_slot: [
+    /^fascia_?oraria/i,
+    /^fasciaoraria/i,
+    /^time_?slot/i,
+    /^timeslot/i,
+    /^turno/i,
+    /^shift/i,
+    /^servizio/i,
+    /^service_?period/i,
+    /^meal_?period/i,
+  ],
+  sales_channel: [
+    /^canale/i,
+    /^channel/i,
+    /^sales_?channel/i,
+    /^modalita_?servizio/i,
+    /^service_?mode/i,
+    /^order_?type/i,
+    /^tipo_?ordine/i,
+    /^delivery_?type/i,
+    /^dine_?in/i,
+    /^takeaway/i,
+    /^asporto/i,
   ],
 };
 

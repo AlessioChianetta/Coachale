@@ -8643,11 +8643,12 @@ export type SemanticLogicalRole =
   | "price" | "cost" | "quantity" | "order_date" | "order_id"
   | "customer_id" | "product_name" | "category" | "discount_percent"
   | "total_net" | "tax_rate" | "payment_method" | "staff"
-  | "is_sellable" | "line_id";
+  | "is_sellable" | "line_id"
+  | "revenue_amount" | "document_type" | "time_slot" | "sales_channel";
 
 export type SemanticMappingStatus = "pending" | "confirmed" | "rejected";
 
-export const CRITICAL_ROLES: SemanticLogicalRole[] = ["price", "cost", "quantity", "order_date"];
+export const CRITICAL_ROLES: SemanticLogicalRole[] = ["price", "cost", "quantity", "order_date", "revenue_amount"];
 
 export const datasetColumnSemantics = pgTable("dataset_column_semantics", {
   id: serial("id").primaryKey(),
