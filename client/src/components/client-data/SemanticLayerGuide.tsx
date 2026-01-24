@@ -76,25 +76,27 @@ interface SemanticLayerGuideProps {
   datasetId?: number;
 }
 
-const ROLE_DESCRIPTIONS: Record<string, string> = {
-  product_id: "Identificatore univoco del prodotto",
-  product_name: "Nome del prodotto o articolo",
-  category: "Categoria merceologica",
-  subcategory: "Sottocategoria del prodotto",
-  quantity: "Quantità venduta",
-  price: "Prezzo di vendita unitario",
-  cost: "Costo di acquisto unitario",
-  revenue_amount: "Importo totale fatturato",
-  discount_amount: "Sconto applicato",
-  discount_percent: "Percentuale di sconto",
-  document_id: "Numero documento/scontrino",
-  transaction_date: "Data della transazione",
-  customer_id: "Identificatore cliente",
-  customer_name: "Nome del cliente",
-  location: "Punto vendita o location",
-  operator_id: "Codice operatore/cassiere",
-  operator_name: "Nome operatore",
-  payment_method: "Metodo di pagamento",
+const ROLE_DESCRIPTIONS: Record<string, { description: string; type: string; example?: string }> = {
+  document_id: { description: "ID documento/scontrino/ordine", type: "TEXT", example: "ORD-2024-001" },
+  order_date: { description: "Data e ora della transazione", type: "DATE", example: "2024-01-15 12:30:00" },
+  product_id: { description: "Codice univoco prodotto/SKU", type: "TEXT", example: "PROD-001" },
+  product_name: { description: "Nome del prodotto o articolo", type: "TEXT", example: "Pizza Margherita" },
+  category: { description: "Categoria merceologica", type: "TEXT", example: "Pizze" },
+  quantity: { description: "Quantità venduta", type: "NUMERIC", example: "2" },
+  price: { description: "Prezzo unitario di vendita (pre-sconto)", type: "NUMERIC", example: "8.50" },
+  cost: { description: "Costo unitario di acquisto/produzione", type: "NUMERIC", example: "2.80" },
+  revenue_amount: { description: "Totale riga già scontato (pronto per SUM)", type: "NUMERIC", example: "15.30" },
+  discount_amount: { description: "Importo sconto applicato in euro", type: "NUMERIC", example: "1.70" },
+  discount_percent: { description: "Percentuale di sconto applicata", type: "NUMERIC", example: "10" },
+  customer_id: { description: "Identificatore univoco cliente", type: "TEXT", example: "CLI-001" },
+  customer_name: { description: "Nome o ragione sociale cliente", type: "TEXT", example: "Mario Rossi" },
+  payment_method: { description: "Metodo di pagamento utilizzato", type: "TEXT", example: "carta" },
+  tax_rate: { description: "Aliquota IVA in percentuale", type: "NUMERIC", example: "22" },
+  document_type: { description: "Tipo transazione: sale | refund | void | staff_meal", type: "TEXT", example: "sale" },
+  time_slot: { description: "Fascia oraria: breakfast | lunch | dinner | late", type: "TEXT", example: "lunch" },
+  sales_channel: { description: "Canale vendita: dine_in | takeaway | delivery", type: "TEXT", example: "dine_in" },
+  is_sellable: { description: "1 = prodotto vendibile, 0 = modificatore/nota", type: "INTEGER", example: "1" },
+  line_id: { description: "ID univoco della riga dettaglio", type: "TEXT", example: "LINE-001" },
 };
 
 const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
@@ -111,37 +113,82 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
 const GENERIC_ROLES = Object.keys(ROLE_DESCRIPTIONS);
 
 const SYSTEM_RULES = [
+  // document_id
+  { pattern: "idddt", matchType: "Inizia con", role: "document_id", desc: "DDT italiani" },
+  { pattern: "id_ordine", matchType: "Contiene", role: "document_id", desc: "Ordini POS" },
+  { pattern: "scontrino", matchType: "Contiene", role: "document_id", desc: "Scontrini fiscali" },
+  { pattern: "numero_ordine", matchType: "Contiene", role: "document_id", desc: "Numero ordine" },
+  { pattern: "order_id", matchType: "Esatto", role: "document_id", desc: "ID ordine inglese" },
+  // order_date
+  { pattern: "data", matchType: "Inizia con", role: "order_date", desc: "Data transazione" },
+  { pattern: "dataordine", matchType: "Contiene", role: "order_date", desc: "Data ordine" },
+  { pattern: "order_date", matchType: "Esatto", role: "order_date", desc: "Data ordine inglese" },
+  { pattern: "timestamp", matchType: "Contiene", role: "order_date", desc: "Timestamp" },
+  // product_id
+  { pattern: "id_prodotto", matchType: "Contiene", role: "product_id", desc: "ID prodotto" },
+  { pattern: "sku", matchType: "Esatto", role: "product_id", desc: "Codice SKU" },
+  { pattern: "codice_articolo", matchType: "Contiene", role: "product_id", desc: "Codice articolo" },
+  // product_name
+  { pattern: "descrizione", matchType: "Esatto", role: "product_name", desc: "Nome prodotto" },
+  { pattern: "articolo", matchType: "Contiene", role: "product_name", desc: "Nome articolo" },
+  { pattern: "prodotto", matchType: "Contiene", role: "product_name", desc: "Nome prodotto" },
+  // category
+  { pattern: "reparto", matchType: "Esatto", role: "category", desc: "Categoria/reparto" },
+  { pattern: "categoria", matchType: "Contiene", role: "category", desc: "Categoria prodotto" },
+  { pattern: "gruppo", matchType: "Contiene", role: "category", desc: "Gruppo prodotto" },
+  // quantity
+  { pattern: "quantita", matchType: "Contiene", role: "quantity", desc: "Quantità venduta" },
+  { pattern: "qta", matchType: "Esatto", role: "quantity", desc: "Abbreviazione comune" },
+  { pattern: "qty", matchType: "Esatto", role: "quantity", desc: "Abbreviazione inglese" },
+  // price
+  { pattern: "prezzo_unitario", matchType: "Contiene", role: "price", desc: "Prezzo di listino" },
+  { pattern: "listino", matchType: "Contiene", role: "price", desc: "Prezzo di listino" },
+  { pattern: "unit_price", matchType: "Contiene", role: "price", desc: "Prezzo unitario inglese" },
+  // cost
+  { pattern: "costo", matchType: "Inizia con", role: "cost", desc: "Costo unitario" },
+  { pattern: "food_cost", matchType: "Contiene", role: "cost", desc: "Food cost" },
+  { pattern: "prezzo_acquisto", matchType: "Contiene", role: "cost", desc: "Prezzo di acquisto" },
+  // revenue_amount
   { pattern: "prezzo_finale", matchType: "Inizia con", role: "revenue_amount", desc: "Pattern comune gestionali POS" },
   { pattern: "prezzofinale", matchType: "Inizia con", role: "revenue_amount", desc: "Pattern senza underscore" },
   { pattern: "importo_riga", matchType: "Contiene", role: "revenue_amount", desc: "Totale riga fattura" },
   { pattern: "totale_riga", matchType: "Contiene", role: "revenue_amount", desc: "Totale riga documento" },
   { pattern: "importo2", matchType: "Esatto", role: "revenue_amount", desc: "Export comuni ristoranti" },
-  { pattern: "idddt", matchType: "Inizia con", role: "document_id", desc: "DDT italiani" },
-  { pattern: "id_ordine", matchType: "Contiene", role: "document_id", desc: "Ordini POS" },
-  { pattern: "scontrino", matchType: "Contiene", role: "document_id", desc: "Scontrini fiscali" },
-  { pattern: "numero_ordine", matchType: "Contiene", role: "document_id", desc: "Numero ordine" },
-  { pattern: "quantita", matchType: "Contiene", role: "quantity", desc: "Quantità venduta" },
-  { pattern: "qta", matchType: "Esatto", role: "quantity", desc: "Abbreviazione comune" },
-  { pattern: "qty", matchType: "Esatto", role: "quantity", desc: "Abbreviazione inglese" },
-  { pattern: "descrizione", matchType: "Esatto", role: "product_name", desc: "Nome prodotto" },
-  { pattern: "articolo", matchType: "Contiene", role: "product_name", desc: "Nome articolo" },
-  { pattern: "reparto", matchType: "Esatto", role: "category", desc: "Categoria/reparto" },
-  { pattern: "categoria", matchType: "Contiene", role: "category", desc: "Categoria prodotto" },
-  { pattern: "data", matchType: "Inizia con", role: "order_date", desc: "Data transazione" },
-  { pattern: "dataordine", matchType: "Contiene", role: "order_date", desc: "Data ordine" },
-  { pattern: "costo", matchType: "Inizia con", role: "cost", desc: "Costo unitario" },
-  { pattern: "food_cost", matchType: "Contiene", role: "cost", desc: "Food cost" },
-  { pattern: "prezzo_acquisto", matchType: "Contiene", role: "cost", desc: "Prezzo di acquisto" },
-  { pattern: "prezzo_unitario", matchType: "Contiene", role: "price", desc: "Prezzo di listino" },
-  { pattern: "listino", matchType: "Contiene", role: "price", desc: "Prezzo di listino" },
-  { pattern: "pagamento", matchType: "Contiene", role: "payment_method", desc: "Metodo pagamento" },
-  { pattern: "payment", matchType: "Contiene", role: "payment_method", desc: "Payment method" },
+  // discount_amount / discount_percent
+  { pattern: "sconto", matchType: "Inizia con", role: "discount_amount", desc: "Sconto applicato" },
+  { pattern: "discount", matchType: "Contiene", role: "discount_amount", desc: "Sconto inglese" },
+  { pattern: "sconto_perc", matchType: "Contiene", role: "discount_percent", desc: "Percentuale sconto" },
+  // customer
   { pattern: "cliente", matchType: "Contiene", role: "customer_name", desc: "Nome cliente" },
   { pattern: "id_cliente", matchType: "Contiene", role: "customer_id", desc: "ID cliente" },
-  { pattern: "fornitore", matchType: "Contiene", role: "supplier_name", desc: "Nome fornitore" },
-  { pattern: "id_fornitore", matchType: "Contiene", role: "supplier_id", desc: "ID fornitore" },
+  { pattern: "customer", matchType: "Contiene", role: "customer_name", desc: "Customer inglese" },
+  // payment_method
+  { pattern: "pagamento", matchType: "Contiene", role: "payment_method", desc: "Metodo pagamento" },
+  { pattern: "payment", matchType: "Contiene", role: "payment_method", desc: "Payment method" },
+  // tax_rate
   { pattern: "iva", matchType: "Contiene", role: "tax_rate", desc: "Aliquota IVA" },
   { pattern: "aliquota", matchType: "Contiene", role: "tax_rate", desc: "Aliquota fiscale" },
+  // document_type (NUOVO)
+  { pattern: "tipo_doc", matchType: "Contiene", role: "document_type", desc: "Tipo documento" },
+  { pattern: "tipodoc", matchType: "Contiene", role: "document_type", desc: "Tipo documento" },
+  { pattern: "transaction_type", matchType: "Contiene", role: "document_type", desc: "Tipo transazione" },
+  { pattern: "tipo_transazione", matchType: "Contiene", role: "document_type", desc: "Tipo transazione IT" },
+  // time_slot (NUOVO)
+  { pattern: "fascia_oraria", matchType: "Contiene", role: "time_slot", desc: "Fascia oraria" },
+  { pattern: "turno", matchType: "Esatto", role: "time_slot", desc: "Turno di servizio" },
+  { pattern: "shift", matchType: "Esatto", role: "time_slot", desc: "Shift inglese" },
+  // sales_channel (NUOVO)
+  { pattern: "canale", matchType: "Contiene", role: "sales_channel", desc: "Canale vendita" },
+  { pattern: "channel", matchType: "Contiene", role: "sales_channel", desc: "Channel inglese" },
+  { pattern: "modalita_servizio", matchType: "Contiene", role: "sales_channel", desc: "Modalità servizio" },
+  // is_sellable (NUOVO)
+  { pattern: "vendibile", matchType: "Contiene", role: "is_sellable", desc: "Flag prodotto vendibile" },
+  { pattern: "is_sellable", matchType: "Esatto", role: "is_sellable", desc: "Sellable flag" },
+  { pattern: "is_product", matchType: "Contiene", role: "is_sellable", desc: "Is product flag" },
+  // line_id (NUOVO)
+  { pattern: "id_riga", matchType: "Contiene", role: "line_id", desc: "ID riga dettaglio" },
+  { pattern: "line_id", matchType: "Esatto", role: "line_id", desc: "Line ID inglese" },
+  { pattern: "idriga", matchType: "Contiene", role: "line_id", desc: "ID riga compatto" },
 ];
 
 export function SemanticLayerGuide({ datasetId }: SemanticLayerGuideProps) {
@@ -158,10 +205,10 @@ export function SemanticLayerGuide({ datasetId }: SemanticLayerGuideProps) {
       generatedAt: new Date().toISOString(),
       logicalRoles: GENERIC_ROLES.map(role => ({
         name: role,
-        type: ["quantity", "price", "cost", "revenue_amount", "discount_amount", "discount_percent"].includes(role) ? "NUMERIC" : 
-              ["transaction_date"].includes(role) ? "DATE" : "TEXT",
-        description: ROLE_DESCRIPTIONS[role],
-        examples: SYSTEM_RULES.filter(r => r.role === role).map(r => r.pattern).slice(0, 3),
+        type: ROLE_DESCRIPTIONS[role]?.type || "TEXT",
+        description: ROLE_DESCRIPTIONS[role]?.description || "",
+        example: ROLE_DESCRIPTIONS[role]?.example || "",
+        acceptedPatterns: SYSTEM_RULES.filter(r => r.role === role).map(r => r.pattern).slice(0, 5),
       })),
       acceptedAliases: SYSTEM_RULES.map(rule => ({
         yourColumnName: rule.pattern,
@@ -189,12 +236,11 @@ export function SemanticLayerGuide({ datasetId }: SemanticLayerGuideProps) {
 
 ## Ruoli Logici Standard (${GENERIC_ROLES.length})
 
-| Colonna | Tipo | Descrizione |
-|---------|------|-------------|
+| Colonna | Tipo | Descrizione | Esempio |
+|---------|------|-------------|---------|
 ${GENERIC_ROLES.map(role => {
-  const type = ["quantity", "price", "cost", "revenue_amount", "discount_amount", "discount_percent"].includes(role) ? "NUMERIC" : 
-               ["transaction_date"].includes(role) ? "DATE" : "TEXT";
-  return `| \`${role}\` | ${type} | ${ROLE_DESCRIPTIONS[role]} |`;
+  const info = ROLE_DESCRIPTIONS[role];
+  return `| \`${role}\` | ${info?.type || "TEXT"} | ${info?.description || ""} | ${info?.example || ""} |`;
 }).join("\n")}
 
 ## Sinonimi Riconosciuti Automaticamente (${SYSTEM_RULES.length})
@@ -359,7 +405,8 @@ Generato il: ${new Date().toLocaleDateString("it-IT")}
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{ROLE_DESCRIPTIONS[role]}</p>
+                        <p>{ROLE_DESCRIPTIONS[role]?.description}</p>
+                        <p className="text-xs text-slate-400 mt-1">Tipo: {ROLE_DESCRIPTIONS[role]?.type}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -548,7 +595,7 @@ Generato il: ${new Date().toLocaleDateString("it-IT")}
                           <TooltipContent side="right">
                             <p className="font-medium mb-1">{role.role}</p>
                             <p className="text-xs text-slate-400">
-                              {ROLE_DESCRIPTIONS[role.role] || "Ruolo logico"}
+                              {ROLE_DESCRIPTIONS[role.role]?.description || "Ruolo logico"}
                             </p>
                             {role.mapped && role.physicalColumn && (
                               <p className="text-xs mt-1 text-emerald-400">
