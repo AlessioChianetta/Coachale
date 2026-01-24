@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { useDatasetSyncSources, useDatasetSyncStats } from "@/hooks/useDatasetSync";
+import { useDatasetSyncSources, useSyncStats } from "@/hooks/useDatasetSync";
 import { useToast } from "@/hooks/use-toast";
 
 interface StepProps {
@@ -60,7 +60,7 @@ function SetupStep({ number, title, description, isCompleted, children }: StepPr
 export function SyncSetupGuide() {
   const { toast } = useToast();
   const { data: sourcesData } = useDatasetSyncSources();
-  const { data: statsData } = useDatasetSyncStats();
+  const { data: statsData } = useSyncStats();
   
   const sources = sourcesData?.data || [];
   const stats = statsData?.data;
