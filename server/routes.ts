@@ -127,6 +127,7 @@ import emailHubRouter, { initializeEmailHubIdle } from "./routes/email-hub-route
 import contentStudioRouter from "./routes/content-studio";
 import stripeAutomationsRouter, { handleStripeWebhook } from "./routes/stripe-automations-router";
 import clientDataRouter from "./routes/client-data-router";
+import datasetSyncRouter from "./routes/dataset-sync-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -12707,6 +12708,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Client Data Analysis routes
   app.use("/api/client-data", clientDataRouter);
+
+  // Dataset Sync API routes (external partner webhooks)
+  app.use("/api/dataset-sync", datasetSyncRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
