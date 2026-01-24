@@ -20,6 +20,7 @@ import { forceMetricFromTerms } from "./term-mapper";
 import { validateMetricForDataset } from "./pre-validator";
 import { checkAnalyticsEnabled } from "../../services/client-data/semantic-mapping-service";
 import { logRevenueColumnUsage, checkMonetaryColumnWarnings } from "./semantic-resolver";
+import { applyQueryEnhancements, enhanceSqlWithRules, detectOrderByFromQuestion } from "./query-engine-rules";
 
 /**
  * TASK 2: Semantic Contract Detection
@@ -1499,7 +1500,8 @@ Per favore correggi gli errori e genera nuove chiamate ai tool valide. Usa SOLO 
 
 export async function executeToolCall(
   toolCall: ToolCall,
-  userId?: string
+  userId?: string,
+  userQuestion?: string
 ): Promise<ExecutedToolResult> {
   const startTime = Date.now();
 
@@ -1562,10 +1564,31 @@ export async function executeToolCall(
         }
         console.log(`[EXECUTE-METRIC] Resolved SQL: ${resolveResult.sql}`);
         
-        // Step 3: Execute the resolved SQL
+        // Step 2.5: Apply query engine rules (document_type filter, ORDER BY, etc.)
+        let enhancedSql = resolveResult.sql;
+        if (userQuestion) {
+          try {
+            const datasetIdNum = parseInt(toolCall.args.datasetId, 10);
+            const enhancement = await applyQueryEnhancements(
+              datasetIdNum,
+              toolCall.args.metricName,
+              userQuestion,
+              toolCall.args.filters
+            );
+            if (enhancement.appliedRules.length > 0) {
+              enhancedSql = enhanceSqlWithRules(resolveResult.sql, enhancement);
+              console.log(`[EXECUTE-METRIC] Query rules applied: ${enhancement.appliedRules.join(", ")}`);
+              console.log(`[EXECUTE-METRIC] Enhanced SQL: ${enhancedSql}`);
+            }
+          } catch (ruleError) {
+            console.warn(`[EXECUTE-METRIC] Query rule enhancement failed (using original SQL):`, ruleError);
+          }
+        }
+        
+        // Step 3: Execute the resolved (and optionally enhanced) SQL
         result = await executeMetricSQL(
           toolCall.args.datasetId, 
-          resolveResult.sql, 
+          enhancedSql, 
           toolCall.args.metricName,
           { userId, timeoutMs: 3000 }
         );
@@ -1946,14 +1969,15 @@ export async function executeToolCall(
 
 export async function executePlan(
   plan: QueryPlan,
-  userId?: string
+  userId?: string,
+  userQuestion?: string
 ): Promise<QueryExecutionResult> {
   const startTime = Date.now();
   const results: ExecutedToolResult[] = [];
   let allSuccess = true;
 
   for (const step of plan.steps) {
-    const result = await executeToolCall(step, userId);
+    const result = await executeToolCall(step, userId, userQuestion);
     results.push(result);
 
     if (!result.success) {
@@ -2025,7 +2049,7 @@ export async function executePlanWithValidation(
       }
     }
 
-    const result = await executeToolCall(step, userId);
+    const result = await executeToolCall(step, userId, userQuestion);
     results.push(result);
 
     if (!result.success) {

@@ -35,11 +35,24 @@ function generateSecretKey(): string {
 }
 
 function verifyHmacSignature(payload: Buffer, signature: string, secretKey: string): boolean {
-  const expectedSignature = crypto
+  const expectedSignature = `sha256=${crypto
     .createHmac('sha256', secretKey)
     .update(payload)
-    .digest('hex');
-  return `sha256=${expectedSignature}` === signature;
+    .digest('hex')}`;
+  
+  // Use constant-time comparison to prevent timing attacks
+  if (signature.length !== expectedSignature.length) {
+    return false;
+  }
+  
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'utf8'),
+      Buffer.from(expectedSignature, 'utf8')
+    );
+  } catch {
+    return false;
+  }
 }
 
 function verifyTimestamp(timestampStr: string, maxAgeSeconds: number = 300): boolean {
