@@ -1,0 +1,304 @@
+{
+  "title": "Schema Colonne per Integrazione Dati",
+  "description": "Usa questi nomi colonna per garantire il mapping automatico al 100%",
+  "generatedAt": "2026-01-24T18:13:39.822Z",
+  "logicalRoles": [
+    {
+      "name": "product_id",
+      "type": "TEXT",
+      "description": "Identificatore univoco del prodotto",
+      "examples": []
+    },
+    {
+      "name": "product_name",
+      "type": "TEXT",
+      "description": "Nome del prodotto o articolo",
+      "examples": [
+        "descrizione",
+        "articolo"
+      ]
+    },
+    {
+      "name": "category",
+      "type": "TEXT",
+      "description": "Categoria merceologica",
+      "examples": [
+        "reparto",
+        "categoria"
+      ]
+    },
+    {
+      "name": "subcategory",
+      "type": "TEXT",
+      "description": "Sottocategoria del prodotto",
+      "examples": []
+    },
+    {
+      "name": "quantity",
+      "type": "NUMERIC",
+      "description": "Quantità venduta",
+      "examples": [
+        "quantita",
+        "qta",
+        "qty"
+      ]
+    },
+    {
+      "name": "price",
+      "type": "NUMERIC",
+      "description": "Prezzo di vendita unitario",
+      "examples": [
+        "prezzo_unitario",
+        "listino"
+      ]
+    },
+    {
+      "name": "cost",
+      "type": "NUMERIC",
+      "description": "Costo di acquisto unitario",
+      "examples": [
+        "costo",
+        "food_cost",
+        "prezzo_acquisto"
+      ]
+    },
+    {
+      "name": "revenue_amount",
+      "type": "NUMERIC",
+      "description": "Importo totale fatturato",
+      "examples": [
+        "prezzo_finale",
+        "prezzofinale",
+        "importo_riga"
+      ]
+    },
+    {
+      "name": "discount_amount",
+      "type": "NUMERIC",
+      "description": "Sconto applicato",
+      "examples": []
+    },
+    {
+      "name": "discount_percent",
+      "type": "NUMERIC",
+      "description": "Percentuale di sconto",
+      "examples": []
+    },
+    {
+      "name": "document_id",
+      "type": "TEXT",
+      "description": "Numero documento/scontrino",
+      "examples": [
+        "idddt",
+        "id_ordine",
+        "scontrino"
+      ]
+    },
+    {
+      "name": "transaction_date",
+      "type": "DATE",
+      "description": "Data della transazione",
+      "examples": []
+    },
+    {
+      "name": "customer_id",
+      "type": "TEXT",
+      "description": "Identificatore cliente",
+      "examples": [
+        "id_cliente"
+      ]
+    },
+    {
+      "name": "customer_name",
+      "type": "TEXT",
+      "description": "Nome del cliente",
+      "examples": [
+        "cliente"
+      ]
+    },
+    {
+      "name": "location",
+      "type": "TEXT",
+      "description": "Punto vendita o location",
+      "examples": []
+    },
+    {
+      "name": "operator_id",
+      "type": "TEXT",
+      "description": "Codice operatore/cassiere",
+      "examples": []
+    },
+    {
+      "name": "operator_name",
+      "type": "TEXT",
+      "description": "Nome operatore",
+      "examples": []
+    },
+    {
+      "name": "payment_method",
+      "type": "TEXT",
+      "description": "Metodo di pagamento",
+      "examples": [
+        "pagamento",
+        "payment"
+      ]
+    }
+  ],
+  "acceptedAliases": [
+    {
+      "yourColumnName": "prezzo_finale",
+      "mapsTo": "revenue_amount",
+      "matchType": "Inizia con"
+    },
+    {
+      "yourColumnName": "prezzofinale",
+      "mapsTo": "revenue_amount",
+      "matchType": "Inizia con"
+    },
+    {
+      "yourColumnName": "importo_riga",
+      "mapsTo": "revenue_amount",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "totale_riga",
+      "mapsTo": "revenue_amount",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "importo2",
+      "mapsTo": "revenue_amount",
+      "matchType": "Esatto"
+    },
+    {
+      "yourColumnName": "idddt",
+      "mapsTo": "document_id",
+      "matchType": "Inizia con"
+    },
+    {
+      "yourColumnName": "id_ordine",
+      "mapsTo": "document_id",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "scontrino",
+      "mapsTo": "document_id",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "numero_ordine",
+      "mapsTo": "document_id",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "quantita",
+      "mapsTo": "quantity",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "qta",
+      "mapsTo": "quantity",
+      "matchType": "Esatto"
+    },
+    {
+      "yourColumnName": "qty",
+      "mapsTo": "quantity",
+      "matchType": "Esatto"
+    },
+    {
+      "yourColumnName": "descrizione",
+      "mapsTo": "product_name",
+      "matchType": "Esatto"
+    },
+    {
+      "yourColumnName": "articolo",
+      "mapsTo": "product_name",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "reparto",
+      "mapsTo": "category",
+      "matchType": "Esatto"
+    },
+    {
+      "yourColumnName": "categoria",
+      "mapsTo": "category",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "data",
+      "mapsTo": "order_date",
+      "matchType": "Inizia con"
+    },
+    {
+      "yourColumnName": "dataordine",
+      "mapsTo": "order_date",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "costo",
+      "mapsTo": "cost",
+      "matchType": "Inizia con"
+    },
+    {
+      "yourColumnName": "food_cost",
+      "mapsTo": "cost",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "prezzo_acquisto",
+      "mapsTo": "cost",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "prezzo_unitario",
+      "mapsTo": "price",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "listino",
+      "mapsTo": "price",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "pagamento",
+      "mapsTo": "payment_method",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "payment",
+      "mapsTo": "payment_method",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "cliente",
+      "mapsTo": "customer_name",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "id_cliente",
+      "mapsTo": "customer_id",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "fornitore",
+      "mapsTo": "supplier_name",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "id_fornitore",
+      "mapsTo": "supplier_id",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "iva",
+      "mapsTo": "tax_rate",
+      "matchType": "Contiene"
+    },
+    {
+      "yourColumnName": "aliquota",
+      "mapsTo": "tax_rate",
+      "matchType": "Contiene"
+    }
+  ]
+}
