@@ -126,6 +126,14 @@ router.post(
       const timestamp = req.headers['x-dataset-timestamp'] as string;
       const idempotencyKey = req.headers['x-idempotency-key'] as string;
 
+      if (!apiKey || !apiKey.startsWith('dsync_')) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_API_KEY_FORMAT",
+          message: "Formato API key non valido",
+        });
+      }
+
       const [source] = await db.execute<any>(
         sql`SELECT * FROM dataset_sync_sources WHERE api_key = ${apiKey} AND is_active = true`
       );
@@ -141,6 +149,29 @@ router.post(
       sourceData = source[0];
       sourceId = sourceData.id;
 
+      if (signature && sourceData.secret_key) {
+        const rawBody = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+        if (!verifyHmacSignature(rawBody, signature, sourceData.secret_key)) {
+          console.warn(`[DATASET-SYNC] Invalid HMAC signature for source ${sourceId}`);
+          return res.status(401).json({
+            success: false,
+            error: "INVALID_SIGNATURE",
+            message: "Firma HMAC non valida",
+          });
+        }
+        console.log(`[DATASET-SYNC] HMAC signature verified for source ${sourceId}`);
+      }
+
+      if (timestamp) {
+        if (!verifyTimestamp(timestamp)) {
+          return res.status(401).json({
+            success: false,
+            error: "EXPIRED_TIMESTAMP",
+            message: "Timestamp della richiesta scaduto (max 5 minuti)",
+          });
+        }
+      }
+
       if (idempotencyKey) {
         const [existing] = await db.execute<any>(
           sql`SELECT id FROM dataset_sync_history WHERE idempotency_key = ${idempotencyKey}`
@@ -152,14 +183,6 @@ router.post(
             message: "Richiesta già processata (idempotenza)",
           });
         }
-      }
-
-      if (timestamp && !verifyTimestamp(timestamp)) {
-        return res.status(401).json({
-          success: false,
-          error: "EXPIRED_TIMESTAMP",
-          message: "Timestamp della richiesta scaduto (max 5 minuti)",
-        });
       }
 
       if (!req.file) {

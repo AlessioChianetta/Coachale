@@ -74,3 +74,12 @@ The Consultant Setup Wizard guides consultants through 4 phases and 23 steps to 
   - **Sync History Dialog**: Per-document sync history viewer showing all sync attempts with metrics (tokens, duration, errors)
   - New DB tables: `knowledge_document_folders`, `drive_sync_channels`, `document_sync_history`
   - New fields on consultant_knowledge_documents: `geminiFileUri`, `geminiFileExpiresAt`, `folderId`, `syncCount`, `lastDriveSyncAt`, `pendingSyncAt`
+- **Dataset Sync API - January 2026**: External partner integration for receiving CSV/XLSX datasets via webhook:
+  - **19 Semantic Logical Roles**: Extended from 15 to 19 roles with: `revenue_amount` (prioritized over price×quantity), `document_type` (sale/refund/void/staff_meal), `time_slot` (breakfast/lunch/dinner/late), `sales_channel` (dine_in/takeaway/delivery)
+  - **HMAC-SHA256 Security**: API key format `dsync_<consultant_id>_<random>`, signature validation, 5-minute timestamp window, idempotency support
+  - **Webhook Endpoint**: `POST /api/dataset-sync/webhook/:apiKey` for receiving files with automatic column mapping and semantic detection
+  - **Schema Endpoint**: `GET /api/dataset-sync/schema` exports all 19 logical roles with auto-detect patterns for external partners (1800 restaurant installations)
+  - **Scheduling Options**: daily@HH:MM, weekly@DOW@HH:MM, monthly@DD@HH:MM, every_X_days@HH:MM, webhook_only
+  - **7 Query Engine Rules**: Revenue priority, document_type filter (auto-inject WHERE document_type='sale'), sales_channel default, time_slot resolver (calculate from order_date hour), category semantic, ORDER BY semantic mapping, NULLIF safe divisions
+  - New DB tables: `dataset_sync_sources`, `dataset_sync_schedules`, `dataset_sync_history`
+  - Documentation: `docs/DATASET_SYNC_API_GUIDE.md` with complete API specs and column mapping guide for partners

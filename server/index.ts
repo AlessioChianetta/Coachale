@@ -25,6 +25,7 @@ import { initDynamicContextScheduler } from "./cron/dynamic-context-scheduler";
 import { startWeeklyCheckinScheduler } from "./cron/weekly-checkin-scheduler";
 import { startChannelRenewalScheduler } from "./cron/drive-channel-renewal";
 import { startDrivePendingSyncScheduler } from "./cron/drive-pending-sync";
+import { initDatasetSyncScheduler } from "./cron/dataset-sync-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -510,5 +511,14 @@ app.use((req, res, next) => {
     log("✅ Google Drive pending sync processor started");
   } else {
     log("🔄 Google Drive channel renewal scheduler is disabled (set DRIVE_RENEWAL_ENABLED=true to enable)");
+  }
+
+  // Dataset Sync Scheduler - for scheduled external partner syncs
+  if (process.env.DATASET_SYNC_SCHEDULER_ENABLED === "true") {
+    log("📊 Dataset sync scheduler enabled - starting scheduler...");
+    initDatasetSyncScheduler();
+    log("✅ Dataset sync scheduler started");
+  } else {
+    log("📊 Dataset sync scheduler is disabled (set DATASET_SYNC_SCHEDULER_ENABLED=true to enable)");
   }
 })();
