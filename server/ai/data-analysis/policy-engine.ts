@@ -16,7 +16,7 @@
 
 import type { ToolCall } from "./tool-definitions";
 
-export type IntentType = "analytics" | "strategy" | "data_preview" | "conversational";
+export type IntentType = "analytics" | "strategy" | "data_preview" | "conversational" | "follow_through";
 
 export interface PolicyRule {
   intent: IntentType;
@@ -66,6 +66,13 @@ export const POLICY_RULES: Record<IntentType, PolicyRule> = {
     blockedTools: ALL_TOOLS,
     blockNumericGeneration: false,
     requireToolCall: false,
+  },
+  follow_through: {
+    intent: "follow_through",
+    allowedTools: ["execute_metric", "query_metric", "aggregate_group", "compare_periods", "filter_data", "get_schema"],
+    blockedTools: [],
+    blockNumericGeneration: true,
+    requireToolCall: true,
   },
 };
 

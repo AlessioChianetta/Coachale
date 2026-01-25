@@ -10,7 +10,7 @@
 
 import { getAIProvider } from "../provider-factory";
 
-export type IntentType = "analytics" | "strategy" | "data_preview" | "conversational";
+export type IntentType = "analytics" | "strategy" | "data_preview" | "conversational" | "follow_through";
 
 export interface IntentRouterOutput {
   intent: IntentType;
@@ -97,9 +97,17 @@ DATA_PREVIEW (requires_metrics: false)
 - Tool: filter_data, get_schema
 
 CONVERSATIONAL (requires_metrics: false)
-- Saluti, ringraziamenti, conferme brevi
-- Esempi: "Grazie", "Ok", "Ciao"
+- Saluti, ringraziamenti SENZA una proposta precedente dell'assistente
+- Esempi: "Grazie", "Ciao", "Buongiorno"
 - Tool: NESSUNO
+- ⚠️ NON usare se l'assistente ha appena fatto una PROPOSTA/DOMANDA!
+
+FOLLOW_THROUGH (requires_metrics: true) - PRIORITÀ ALTA!
+- L'utente CONFERMA una proposta/domanda fatta dall'assistente nel messaggio precedente
+- Parole chiave di conferma: "ok", "sì", "va bene", "certo", "procedi", "perfetto", "d'accordo", "facciamolo"
+- REGOLA CRITICA: Se l'assistente ha chiesto "Vuoi che analizzi X?" o "Ti piacerebbe che...?" e l'utente risponde con una conferma → SEMPRE FOLLOW_THROUGH
+- Tool: stessi di analytics (execute_metric, aggregate_group, compare_periods, filter_data)
+- Esempio: Assistente chiede "Vuoi che incrociamo i dati con i volumi?" → Utente: "ok" → FOLLOW_THROUGH
 
 ========================
 ESEMPI DI RAGIONAMENTO
@@ -128,6 +136,18 @@ Contesto: Qualsiasi
 Utente: "Chi applica più sconti?"
 Ragionamento: "Chi [fa] più [X]?" richiede aggregazione + ranking → SEMPRE ANALYTICS.
 → ANALYTICS (requires_metrics: true)
+
+ESEMPIO 5 - FOLLOW_THROUGH (CONFERMA PROPOSTA):
+Contesto: Assistant chiese "Ti piacerebbe che incrociassi questi dati con i volumi di vendita per identificare i piatti che erodono il margine?"
+Utente: "ok" / "sì" / "va bene" / "certo"
+Ragionamento: L'assistente ha proposto un'analisi specifica, l'utente ha confermato. Devo eseguire quella analisi.
+→ FOLLOW_THROUGH (requires_metrics: true)
+
+ESEMPIO 6 - CONVERSATIONAL (SENZA PROPOSTA):
+Contesto: Assistant mostrò risultati senza fare domande/proposte
+Utente: "ok"
+Ragionamento: L'assistente NON ha fatto proposte, "ok" è solo conferma di ricezione.
+→ CONVERSATIONAL
 
 ========================
 OUTPUT FORMAT
@@ -158,7 +178,7 @@ function parseRouterResponse(responseText: string): IntentRouterOutput | null {
     
     const parsed = JSON.parse(jsonMatch[0]);
     
-    const validIntents: IntentType[] = ["analytics", "strategy", "data_preview", "conversational"];
+    const validIntents: IntentType[] = ["analytics", "strategy", "data_preview", "conversational", "follow_through"];
     if (!validIntents.includes(parsed.intent)) {
       console.log(`[INTENT-ROUTER] Invalid intent type: ${parsed.intent}`);
       return null;

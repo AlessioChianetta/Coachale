@@ -2384,15 +2384,111 @@ function isFollowUpQuery(question: string): boolean {
   return FOLLOWUP_PATTERNS.some(pattern => pattern.test(questionTrimmed));
 }
 
+/**
+ * Extract the proposed analysis from an assistant message and convert it to an explicit question
+ * This is used for FOLLOW_THROUGH intent when user confirms a proposal with "ok", "sì", etc.
+ */
+async function extractProposalAsQuestion(
+  assistantMessage: string,
+  userConfirmation: string,
+  consultantId?: string
+): Promise<string | null> {
+  console.log(`[FOLLOW_THROUGH] Extracting proposal from assistant message (${assistantMessage.length} chars)`);
+  
+  try {
+    const providerResult = await getAIProvider(consultantId || "system", consultantId);
+    const client = providerResult.client;
+    
+    const extractionPrompt = `Analizza questo messaggio dell'assistente e ESTRAI la proposta/domanda che ha fatto all'utente.
+L'utente ha confermato con: "${userConfirmation}"
+
+MESSAGGIO ASSISTENTE:
+"""
+${assistantMessage.substring(0, 2000)}
+"""
+
+ISTRUZIONI:
+1. Trova la PROPOSTA o DOMANDA che l'assistente ha fatto (es: "Vuoi che analizzi X?", "Ti piacerebbe che...?")
+2. Converti quella proposta in una DOMANDA ESPLICITA da eseguire sui dati
+3. La domanda deve essere chiara e specifica, pronta per essere eseguita
+
+ESEMPI:
+- Proposta: "Vuoi che incrociamo i dati con i volumi di vendita per identificare i piatti che erodono il margine?"
+  → Domanda: "Mostrami i 5 piatti della categoria Food con il food cost più alto e le rispettive quantità vendute"
+
+- Proposta: "Vuoi che analizziamo insieme qualche categoria in particolare?"
+  → Domanda: "Analizza il food cost per ogni categoria"
+
+RISPONDI SOLO con la domanda esplicita da eseguire, senza spiegazioni. Se non trovi una proposta chiara, rispondi con "NESSUNA_PROPOSTA".`;
+
+    const result = await executeWithRetry(
+      () => client.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 256 }
+      }),
+      "FOLLOW_THROUGH-EXTRACT"
+    );
+    
+    const extractedQuestion = result.response.text().trim();
+    
+    if (extractedQuestion === "NESSUNA_PROPOSTA" || extractedQuestion.length < 10) {
+      console.log(`[FOLLOW_THROUGH] No clear proposal found in assistant message`);
+      return null;
+    }
+    
+    console.log(`[FOLLOW_THROUGH] Extracted question: "${extractedQuestion}"`);
+    return extractedQuestion;
+    
+  } catch (error) {
+    console.error(`[FOLLOW_THROUGH] Error extracting proposal:`, error);
+    return null;
+  }
+}
+
+/**
+ * Execute the extracted follow-through query by recursively calling askDataset
+ * This ensures all validation, filter injection, and analytics checks are performed
+ * 
+ * @param extractedQuestion - The explicit question extracted from the assistant's proposal
+ * @param datasets - Dataset information for context
+ * @param consultantId - Consultant ID for AI provider
+ * @param clientId - Client ID for analytics checks
+ * @param conversationHistory - Original conversation history for context
+ * @returns QueryExecutionResult from the full analytics pipeline
+ */
+async function executeFollowThroughQuery(
+  extractedQuestion: string,
+  datasets: DatasetInfo[],
+  consultantId: string | undefined,
+  clientId: string | undefined,
+  conversationHistory: ConversationMessage[] | undefined
+): Promise<QueryExecutionResult> {
+  console.log(`[FOLLOW_THROUGH] Executing extracted question via full pipeline: "${extractedQuestion.substring(0, 80)}..."`);
+  
+  // Call askDataset recursively with the extracted question
+  // Pass _forceAnalytics=true to skip follow_through detection and prevent infinite recursion
+  
+  return askDataset(
+    extractedQuestion,
+    datasets,
+    consultantId,
+    clientId,
+    conversationHistory, // Keep conversation history for context
+    true // _forceAnalytics: skip follow_through detection on this recursive call
+  );
+}
+
 export async function askDataset(
   userQuestion: string,
   datasets: DatasetInfo[],
   consultantId?: string,
   userId?: string,
-  conversationHistory?: ConversationMessage[]
+  conversationHistory?: ConversationMessage[],
+  _forceAnalytics: boolean = false // Internal flag: when true, skip follow_through detection to prevent recursion
 ): Promise<QueryExecutionResult> {
   console.log(`[QUERY-PLANNER] Processing question: "${userQuestion}" for ${datasets.length} datasets`);
-  console.log(`[QUERY-PLANNER] Conversation history: ${conversationHistory?.length || 0} messages`);
+  console.log(`[QUERY-PLANNER] Conversation history: ${conversationHistory?.length || 0} messages, forceAnalytics=${_forceAnalytics}`);
   const startTime = Date.now();
   
   // ====== CONTEXT MEMORY: Extract category filter from conversation history ======
@@ -2443,6 +2539,76 @@ export async function askDataset(
       results: [{
         toolName: "conversational_response",
         args: { intent: "conversational" },
+        result: { message: friendlyReply, isFixedResponse: true },
+        success: true
+      }],
+      success: true,
+      totalExecutionTimeMs: Date.now() - startTime
+    };
+  }
+
+  // FOLLOW_THROUGH: User confirmed a proposal from the assistant - extract and execute the proposal
+  // Skip if _forceAnalytics is true (we're in a recursive call from follow_through execution)
+  if (routerOutput.intent === "follow_through" && !_forceAnalytics && conversationHistory && conversationHistory.length > 0) {
+    console.log(`[QUERY-PLANNER] FOLLOW_THROUGH detected - extracting proposal from previous assistant message`);
+    
+    // Find the last assistant message that contains a proposal pattern (questions ending with ?)
+    const proposalPatterns = [/vuoi\s+che/i, /ti\s+piacerebbe/i, /vorresti/i, /possiamo/i, /analizziamo/i, /\?$/];
+    const lastAssistantWithProposal = [...conversationHistory]
+      .reverse()
+      .find(m => m.role === "assistant" && proposalPatterns.some(p => p.test(m.content)));
+    
+    // Fallback to last assistant message if no proposal pattern found
+    const lastAssistantMessage = lastAssistantWithProposal || 
+      [...conversationHistory].reverse().find(m => m.role === "assistant");
+    
+    if (lastAssistantMessage) {
+      // Extract the proposal from the assistant's message
+      const extractedQuestion = await extractProposalAsQuestion(lastAssistantMessage.content, userQuestion, consultantId);
+      
+      // Guard: Reject if extracted question is too short or lacks analytic content
+      const MIN_QUESTION_LENGTH = 15;
+      const normalizedQuestion = extractedQuestion?.toLowerCase() || "";
+      const hasAnalyticContent = extractedQuestion && 
+        (normalizedQuestion.includes("mostr") || normalizedQuestion.includes("analizz") || 
+         normalizedQuestion.includes("calcol") || normalizedQuestion.includes("piatt") ||
+         normalizedQuestion.includes("fatturato") || normalizedQuestion.includes("margin") ||
+         normalizedQuestion.includes("food cost") || normalizedQuestion.includes("categoria") ||
+         normalizedQuestion.includes("prodott") || normalizedQuestion.includes("top") ||
+         normalizedQuestion.includes("vendut") || normalizedQuestion.includes("ricavo") ||
+         normalizedQuestion.includes("confronta") || normalizedQuestion.includes("compar") ||
+         /\d/.test(normalizedQuestion)); // Contains any digit (for "top 5", dates, etc)
+      
+      if (extractedQuestion && extractedQuestion.length >= MIN_QUESTION_LENGTH && hasAnalyticContent) {
+        console.log(`[QUERY-PLANNER] FOLLOW_THROUGH - extracted question: "${extractedQuestion.substring(0, 100)}..."`);
+        
+        // Execute the extracted question as if the user had asked it directly
+        // This uses the full askDataset pipeline ensuring all validation and checks are performed
+        const extractedResult = await executeFollowThroughQuery(
+          extractedQuestion, 
+          datasets, 
+          consultantId, 
+          clientId, 
+          conversationHistory
+        );
+        
+        return extractedResult;
+      } else {
+        console.log(`[QUERY-PLANNER] FOLLOW_THROUGH - extracted question too short or lacks analytic content: "${extractedQuestion?.substring(0, 50) || 'null'}"`);
+      }
+    }
+    
+    // Fallback: if we can't extract a proposal, treat as conversational
+    const friendlyReply = "Perfetto! Di cosa vorresti che ci occupassimo adesso? Posso analizzare fatturato, food cost, margini o confrontare periodi.";
+    return {
+      plan: {
+        steps: [],
+        reasoning: "Intent: follow_through - no valid proposal found, fallback to conversational",
+        estimatedComplexity: "simple"
+      },
+      results: [{
+        toolName: "conversational_response",
+        args: { intent: "follow_through_fallback" },
         result: { message: friendlyReply, isFixedResponse: true },
         success: true
       }],
