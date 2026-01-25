@@ -98,6 +98,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Navbar from "@/components/navbar";
+import { PublerPublishDialog } from "@/components/publer/PublerPublishDialog";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -632,6 +633,8 @@ export default function ContentStudioPosts() {
 
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
+  const [publerDialogOpen, setPublerDialogOpen] = useState(false);
+  const [publerPost, setPublerPost] = useState<Post | null>(null);
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [folderSidebarOpen, setFolderSidebarOpen] = useState(false);
@@ -2795,6 +2798,10 @@ export default function ContentStudioPosts() {
                                 <FileText className="h-4 w-4 mr-2" />
                                 Modifica
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { setPublerPost(post); setPublerDialogOpen(true); }}>
+                                <Send className="h-4 w-4 mr-2 text-pink-500" />
+                                Pubblica su Publer
+                              </DropdownMenuItem>
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>
                                   <MoveRight className="h-4 w-4 mr-2" />
@@ -3612,6 +3619,16 @@ export default function ContentStudioPosts() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <PublerPublishDialog
+        open={publerDialogOpen}
+        onOpenChange={setPublerDialogOpen}
+        post={publerPost ? {
+          id: publerPost.id,
+          title: publerPost.title,
+          content: publerPost.hook || publerPost.body || "",
+        } : null}
+      />
       </div>
     </div>
   );

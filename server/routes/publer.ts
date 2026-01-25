@@ -61,6 +61,10 @@ router.post('/test', authenticateToken, requireRole('consultant'), async (req: A
 router.get('/accounts', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
+    const status = await publerService.getConfigStatus(consultantId);
+    if (!status.configured || !status.isActive) {
+      return res.status(400).json({ success: false, error: 'Publer non configurato o disattivato' });
+    }
     const accounts = await publerService.getCachedAccounts(consultantId);
     res.json({ success: true, accounts });
   } catch (error: any) {
@@ -83,6 +87,10 @@ router.post('/accounts/sync', authenticateToken, requireRole('consultant'), asyn
 router.post('/publish', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
+    const status = await publerService.getConfigStatus(consultantId);
+    if (!status.configured || !status.isActive) {
+      return res.status(400).json({ success: false, error: 'Publer non configurato o disattivato' });
+    }
     const data = publishSchema.parse(req.body);
     
     const result = await publerService.schedulePost(consultantId, {
