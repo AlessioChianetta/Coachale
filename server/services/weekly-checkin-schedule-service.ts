@@ -455,38 +455,21 @@ export async function generateScheduleForWeeks(
         continue; // Skip - already has an entry for this week
       }
       
-      // Get last used day of week for this client, rotate to next allowed day
-      const lastDayOfWeek = clientLastDayOfWeek.get(client.id);
-      let preferredDayOfWeek: number;
+      // Choose a RANDOM day each week, but respecting minDaysBetweenContacts (default 5 days)
+      // Shuffle allowed days randomly for this client/week combination
+      const shuffledDays = [...allowedDays].sort(() => {
+        // Use deterministic seed based on client ID + week to ensure consistent results on regeneration
+        const seed = `${client.id}|${isoWeekKey}`;
+        const hash = seed.split('').reduce((acc, char, i) => acc + char.charCodeAt(0) * (i + 1), 0);
+        return (hash % 100) / 100 - 0.5;
+      });
       
-      if (lastDayOfWeek === undefined) {
-        // First time: use deterministic day based on client ID
-        const hash = client.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        preferredDayOfWeek = allowedDays[hash % allowedDays.length];
-      } else {
-        // Rotate to next allowed day
-        const currentIndex = allowedDays.indexOf(lastDayOfWeek);
-        if (currentIndex === -1) {
-          // Last day is now excluded, pick first allowed
-          preferredDayOfWeek = allowedDays[0];
-        } else {
-          // Rotate to next day in allowed list
-          preferredDayOfWeek = allowedDays[(currentIndex + 1) % allowedDays.length];
-        }
-      }
-      
-      // Try to find a valid date in this week, starting with preferred day
-      // If preferred day doesn't satisfy minDays, try other allowed days
+      // Try to find a valid date in this week, trying days in shuffled order
       let targetDate: Date | null = null;
-      let actualDayOfWeek: number = preferredDayOfWeek;
+      let actualDayOfWeek: number = shuffledDays[0];
       
-      // Build list of days to try: preferred first, then others in rotation order
-      const daysToTry: number[] = [];
-      const preferredIndex = allowedDays.indexOf(preferredDayOfWeek);
-      for (let i = 0; i < allowedDays.length; i++) {
-        const dayIndex = (preferredIndex + i) % allowedDays.length;
-        daysToTry.push(allowedDays[dayIndex]);
-      }
+      // Try each shuffled day until we find one that satisfies minDays constraint
+      const daysToTry = shuffledDays;
       
       for (const tryDayOfWeek of daysToTry) {
         // Find the date for this day in the ISO week
