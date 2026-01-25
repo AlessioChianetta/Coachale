@@ -22,6 +22,47 @@ import { checkAnalyticsEnabled } from "../../services/client-data/semantic-mappi
 import { logRevenueColumnUsage, checkMonetaryColumnWarnings } from "./semantic-resolver";
 import { applyQueryEnhancements, enhanceSqlWithRules, detectOrderByFromQuestion } from "./query-engine-rules";
 
+// Retry configuration for AI calls
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 1000;
+
+/**
+ * Helper function to execute AI call with exponential backoff retry
+ * Retries on 503 (overloaded) and 429 (rate limit) errors
+ */
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  operationName: string
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      const errorMessage = error?.message || JSON.stringify(error);
+      const isRetryable = 
+        errorMessage.includes("503") || 
+        errorMessage.includes("429") ||
+        errorMessage.includes("overloaded") || 
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("UNAVAILABLE") ||
+        errorMessage.includes("RESOURCE_EXHAUSTED");
+      
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[${operationName}] Retry ${attempt}/${MAX_RETRIES} after ${delayMs}ms (error: ${errorMessage.substring(0, 100)})`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      } else if (!isRetryable) {
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 /**
  * TASK 2: Semantic Contract Detection
  * Detects if user requests "ALL items" vs "top N"
@@ -966,6 +1007,12 @@ METRICHE PREDEFINITE (execute_metric / aggregate_group):
 - "margine lordo €", "margine in euro", "profitto €" → execute_metric(gross_margin) - MAI usare revenue!
 - "margine lordo %", "margine percentuale" → execute_metric(gross_margin_percent)
 
+REGOLA CRITICA - CONTEGGIO RIGHE:
+- "quante righe", "quanti record", "numero di righe" con condizione → execute_metric(order_count) con filters
+- "quante righe con X negativo/positivo/maggiore/minore" → MAI usare filter_data!
+- Esempio: "quante righe revenue negative?" → execute_metric(order_count, filters: [{column: revenue_amount, operator: <, value: 0}])
+- filter_data mostra le righe, NON le conta. Per CONTARE usa sempre execute_metric o aggregate_group.
+
 ATTENZIONE CRITICA - CONFUSIONE REVENUE/MARGINE:
 - revenue = FATTURATO (quanto incassi)
 - gross_margin = MARGINE LORDO € (fatturato MENO costi)
@@ -1338,28 +1385,31 @@ Quali tool devo usare per rispondere? Se servono più step, elencali in ordine.`
   console.log(`[QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)`);
 
   try {
-    const response = await client.generateContent({
-      model: modelName,
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: SYSTEM_PROMPT_IT }]
-      },
-      contents: [
-        { role: "user", parts: [{ text: userPrompt }] }
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-      },
-      tools: [{
-        functionDeclarations: availableToolsForAI
-      }],
-      toolConfig: {
-        functionCallingConfig: {
-          mode: "ANY"
+    const response = await executeWithRetry(
+      () => client.generateContent({
+        model: modelName,
+        systemInstruction: {
+          role: "system",
+          parts: [{ text: SYSTEM_PROMPT_IT }]
+        },
+        contents: [
+          { role: "user", parts: [{ text: userPrompt }] }
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+        },
+        tools: [{
+          functionDeclarations: availableToolsForAI
+        }],
+        toolConfig: {
+          functionCallingConfig: {
+            mode: "ANY"
+          }
         }
-      }
-    });
+      }),
+      "QUERY-PLANNER"
+    );
 
     const responseText = response.response.text();
     const steps: ToolCall[] = [];
@@ -1456,19 +1506,22 @@ Per favore correggi gli errori e genera nuove chiamate ai tool valide. Usa SOLO 
   console.log(`[QUERY-PLANNER] Retry attempt ${attempt} with feedback`);
 
   try {
-    const response = await client.generateContent({
-      model: modelName,
-      contents: [
-        { role: "user", parts: [{ text: retryPrompt }] }
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-      },
-      tools: [{
-        functionDeclarations: dataAnalysisTools
-      }]
-    });
+    const response = await executeWithRetry(
+      () => client.generateContent({
+        model: modelName,
+        contents: [
+          { role: "user", parts: [{ text: retryPrompt }] }
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+        },
+        tools: [{
+          functionDeclarations: dataAnalysisTools
+        }]
+      }),
+      "QUERY-PLANNER-RETRY"
+    );
 
     const steps: ToolCall[] = [];
     const candidates = (response.response as any).candidates;
@@ -2790,20 +2843,23 @@ VIETATO (MAI FARE):
     : "";
 
   try {
-    const response = await client.generateContent({
-      model: modelName,
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: STRATEGY_PROMPT }]
-      },
-      contents: [
-        { role: "user", parts: [{ text: userQuestion + datasetContext }] }
-      ],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 1024,
-      }
-    });
+    const response = await executeWithRetry(
+      () => client.generateContent({
+        model: modelName,
+        systemInstruction: {
+          role: "system",
+          parts: [{ text: STRATEGY_PROMPT }]
+        },
+        contents: [
+          { role: "user", parts: [{ text: userQuestion + datasetContext }] }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+        }
+      }),
+      "QUERY-PLANNER-STRATEGY"
+    );
 
     let aiResponse = response.response.text() || "";
     

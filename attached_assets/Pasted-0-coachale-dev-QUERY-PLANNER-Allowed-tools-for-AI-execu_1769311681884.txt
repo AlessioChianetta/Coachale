@@ -1,0 +1,68 @@
+0|coachale-dev  | [QUERY-PLANNER] Allowed tools for AI: [execute_metric, query_metric, compare_periods, filter_data, aggregate_group, get_schema]
+0|coachale-dev  | [QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+0|coachale-dev  | there are non-text parts functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+0|coachale-dev  | [QUERY-PLANNER] POLICY VIOLATIONS: Tool "query_metric" non nella lista consentita per intent "analytics"
+0|coachale-dev  | [QUERY-PLANNER] Plan: 1 steps, complexity: simple
+0|coachale-dev  | [POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+0|coachale-dev  | [POLICY-ENGINE] BLOCKED: query_metric (not in allowedTools)
+0|coachale-dev  | [POLICY-ENGINE] Result: allowed=0, blocked=1, violations=1
+0|coachale-dev  | [POLICY-ENGINE] Tool analysis: hasComputeTool=false, hasOnlyMetadata=false
+0|coachale-dev  | [QUERY-PLANNER] All tools blocked - retrying with explicit constraints
+0|coachale-dev  | 🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+0|coachale-dev  | 📋 Client preferred AI provider: vertex_admin
+0|coachale-dev  | 🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+0|coachale-dev  | ✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+0|coachale-dev  |    🔑 Key: 1/1
+0|coachale-dev  | [QUERY-PLANNER] Conversation context for planner: 6 messages
+0|coachale-dev  | [QUERY-PLANNER] Allowed tools for AI: [execute_metric, compare_periods, filter_data, aggregate_group, get_schema]
+0|coachale-dev  | [QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+0|coachale-dev  | there are non-text parts functionCall,functionCall,functionCall in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+0|coachale-dev  | [POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 3
+0|coachale-dev  | [POLICY-ENGINE] ALLOWED: execute_metric
+0|coachale-dev  | [POLICY-ENGINE] ALLOWED: execute_metric
+0|coachale-dev  | [POLICY-ENGINE] ALLOWED: execute_metric
+0|coachale-dev  | [POLICY-ENGINE] Result: allowed=3, blocked=0, violations=0
+0|coachale-dev  | [POLICY-ENGINE] Tool analysis: hasComputeTool=true, hasOnlyMetadata=false
+0|coachale-dev  | [QUERY-PLANNER] Retry successful - got 3 valid tools
+0|coachale-dev  | [POLICY-ENGINE] VALIDATION OK: compute tool present
+0|coachale-dev  | [EXECUTE-METRIC] Called with metricName: "order_count", datasetId: 19
+0|coachale-dev  | [EXECUTE-METRIC] Resolved SQL: COUNT(DISTINCT "order_id")
+0|coachale-dev  | [EXECUTE-METRIC] Query rule enhancement failed (using original SQL): TypeError: existingFilters?.some is not a function
+0|coachale-dev  |     at applyQueryEnhancements (/var/www/Coachale/server/ai/data-analysis/query-engine-rules.ts:117:50)
+0|coachale-dev  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|coachale-dev  |     at async executeToolCall (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:1573:33)
+0|coachale-dev  |     at async executePlanWithValidation (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:2057:20)
+0|coachale-dev  |     at async askDataset (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:2614:18)
+0|coachale-dev  |     at async <anonymous> (/var/www/Coachale/server/routes/client-data-router.ts:1932:31)
+0|coachale-dev  | [CACHE-MANAGER] Transitioned to 'ready' for hash aa6d94ee6541... TTL: 3600s
+0|coachale-dev  | [EXECUTE-METRIC] Result: success=true, error=none
+0|coachale-dev  | [EXECUTE-METRIC] Called with metricName: "quantity_total", datasetId: 19
+0|coachale-dev  | [EXECUTE-METRIC] Resolved SQL: SUM(CAST("quantity" AS NUMERIC))
+0|coachale-dev  | [EXECUTE-METRIC] Query rule enhancement failed (using original SQL): TypeError: existingFilters?.some is not a function
+0|coachale-dev  |     at applyQueryEnhancements (/var/www/Coachale/server/ai/data-analysis/query-engine-rules.ts:117:50)
+0|coachale-dev  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|coachale-dev  |     at async executeToolCall (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:1573:33)
+0|coachale-dev  |     at async executePlanWithValidation (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:2057:20)
+0|coachale-dev  |     at async askDataset (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:2614:18)
+0|coachale-dev  |     at async <anonymous> (/var/www/Coachale/server/routes/client-data-router.ts:1932:31)
+0|coachale-dev  | [CACHE-MANAGER] Transitioned to 'ready' for hash 022b0b204b7e... TTL: 3600s
+0|coachale-dev  | [EXECUTE-METRIC] Result: success=true, error=none
+0|coachale-dev  | [EXECUTE-METRIC] Called with metricName: "revenue", datasetId: 19
+0|coachale-dev  | [REVENUE-TRACKING] Dataset 19 - Using revenue_amount: "revenue_amount" for revenue
+0|coachale-dev  | [EXECUTE-METRIC] Resolved SQL: SUM(CAST("revenue_amount" AS NUMERIC))
+0|coachale-dev  | [EXECUTE-METRIC] Query rule enhancement failed (using original SQL): TypeError: existingFilters?.some is not a function
+0|coachale-dev  |     at applyQueryEnhancements (/var/www/Coachale/server/ai/data-analysis/query-engine-rules.ts:117:50)
+0|coachale-dev  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|coachale-dev  |     at async executeToolCall (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:1573:33)
+0|coachale-dev  |     at async executePlanWithValidation (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:2057:20)
+0|coachale-dev  |     at async askDataset (/var/www/Coachale/server/ai/data-analysis/query-planner.ts:2614:18)
+0|coachale-dev  |     at async <anonymous> (/var/www/Coachale/server/routes/client-data-router.ts:1932:31)
+0|coachale-dev  | [CACHE-MANAGER] Transitioned to 'ready' for hash 7a40d20f26e0... TTL: 3600s
+0|coachale-dev  | [EXECUTE-METRIC] Result: success=true, error=none
+0|coachale-dev  | [QUERY-PLANNER] Execution complete in 946ms, success: true
+0|coachale-dev  | 🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+0|coachale-dev  | 📋 Client preferred AI provider: vertex_admin
+0|coachale-dev  | 🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+0|coachale-dev  | ✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+0|coachale-dev  |    🔑 Key: 1/1
+0|coachale-dev  | [TOOL-GATING] Tools used: execute_metric, execute_metric, execute_metric, hasComputeTool: true, hasNumericClaims: true, isOnlyMetadata: false, hasOnlyMetadataTools: false

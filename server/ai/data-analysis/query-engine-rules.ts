@@ -113,8 +113,11 @@ export async function applyQueryEnhancements(
   let orderByClause: string | undefined;
   const selectAdjustments: string[] = [];
 
+  // Ensure existingFilters is always an array (could be undefined, null, or object)
+  const filtersArray = Array.isArray(existingFilters) ? existingFilters : [];
+
   const hasDocumentTypeColumn = !!mappings["document_type"];
-  const hasDocumentTypeFilter = existingFilters?.some(f => 
+  const hasDocumentTypeFilter = filtersArray.some(f => 
     f.column === "document_type" || f.column === mappings["document_type"]
   );
 
@@ -127,7 +130,7 @@ export async function applyQueryEnhancements(
 
   const hasTimeSlotColumn = !!mappings["time_slot"];
   const orderDateColumn = mappings["order_date"];
-  const timeSlotFilter = existingFilters?.find(f => 
+  const timeSlotFilter = filtersArray.find(f => 
     f.column === "time_slot" || f.column === mappings["time_slot"]
   );
 
@@ -160,7 +163,7 @@ export async function applyQueryEnhancements(
   }
 
   const hasSalesChannelColumn = !!mappings["sales_channel"];
-  const salesChannelFilter = existingFilters?.find(f => 
+  const salesChannelFilter = filtersArray.find(f => 
     f.column === "sales_channel" || f.column === mappings["sales_channel"]
   );
 

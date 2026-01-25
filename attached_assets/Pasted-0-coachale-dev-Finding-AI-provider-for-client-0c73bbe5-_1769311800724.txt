@@ -1,0 +1,24 @@
+0|coachale-dev  | 🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+0|coachale-dev  | 📋 Client preferred AI provider: vertex_admin
+0|coachale-dev  | 🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+0|coachale-dev  | ✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+0|coachale-dev  |    🔑 Key: 1/1
+0|coachale-dev  | [QUERY-PLANNER] Conversation context for planner: 8 messages
+0|coachale-dev  | [QUERY-PLANNER] Allowed tools for AI: [execute_metric, query_metric, compare_periods, filter_data, aggregate_group, get_schema]
+0|coachale-dev  | [QUERY-PLANNER] Using Router Agent classification (legacy classifier disabled)
+0|coachale-dev  | [QUERY-PLANNER] Error planning query: Failed to extract text from response
+0|coachale-dev  | [QUERY-PLANNER] Plan: 1 steps, complexity: simple
+0|coachale-dev  | [POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+0|coachale-dev  | [POLICY-ENGINE] ALLOWED: filter_data
+0|coachale-dev  | [POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+0|coachale-dev  | [POLICY-ENGINE] Tool analysis: hasComputeTool=false, hasOnlyMetadata=false
+0|coachale-dev  | [POLICY-ENGINE] VALIDATION FAILED: requires_metrics=true but no compute tools (only metadata/data preview)
+0|coachale-dev  | [QUERY-PLANNER] BLOCKING metadata-only call - forcing compute tool requirement
+0|coachale-dev  | [QUERY-PLANNER] ANALYTICS VALIDATION FAILED: La domanda richiede metriche calcolate, ma sono stati usati solo tool di anteprima dati. Usa execute_metric o aggregate_group per i calcoli.
+0|coachale-dev  | 🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+0|coachale-dev  | 📋 Client preferred AI provider: vertex_admin
+0|coachale-dev  | 🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+0|coachale-dev  | ✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+0|coachale-dev  |    🔑 Key: 1/1
+0|coachale-dev  | [RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: 
+0|coachale-dev  | [CLIENT-DATA] Assistant message saved: 325b1a92-7139-4c43-8e79-8ce7f63f9005
