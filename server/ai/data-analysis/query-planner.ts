@@ -2518,7 +2518,19 @@ export async function askDataset(
 
   // ====== LAYER 1: INTENT ROUTER (AI - gemini-2.5-flash-lite) ======
   // Fast, cheap classification of user intent WITH conversation context
-  const routerOutput = await routeIntent(userQuestion, consultantId, conversationHistory);
+  // BYPASS: When _forceAnalytics=true (recursive call from follow_through), skip AI classification
+  let routerOutput: IntentRouterOutput;
+  if (_forceAnalytics) {
+    console.log(`[QUERY-PLANNER] _forceAnalytics=true - BYPASSING intent router, forcing intent=analytics`);
+    routerOutput = {
+      intent: "analytics",
+      requires_metrics: true,
+      suggested_tools: ["aggregate_group", "execute_metric"],
+      confidence: 1.0
+    };
+  } else {
+    routerOutput = await routeIntent(userQuestion, consultantId, conversationHistory);
+  }
   console.log(`[QUERY-PLANNER] Router result: intent=${routerOutput.intent}, requires_metrics=${routerOutput.requires_metrics}, confidence=${routerOutput.confidence.toFixed(2)}`);
 
   // ====== LAYER 2: POLICY ENGINE (TypeScript - no AI) ======

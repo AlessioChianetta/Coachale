@@ -662,8 +662,21 @@ NON ignorare il contesto. Se hai chiesto "Vuoi che analizziamo X?" e l'utente di
       
       const lines = aiExplanation.split("\n").filter(l => l.trim());
       const summary = sanitizeUserContent(lines[0] || basicExplanation.summary);
-      const details = sanitizeArray(lines.slice(1).filter(l => !l.startsWith("Insight")).concat(basicExplanation.details));
-      const insights = sanitizeArray(lines.filter(l => l.toLowerCase().includes("insight") || l.includes("📊") || l.includes("💡")).concat(basicExplanation.insights));
+      
+      // FIX: Avoid duplicating lines that contain insight markers (💡, 📊, etc.)
+      // These lines go ONLY to insights, not to details
+      const insightMarkers = ["insight", "📊", "💡", "suggerimento"];
+      const isInsightLine = (line: string) => insightMarkers.some(m => line.toLowerCase().includes(m));
+      
+      const details = sanitizeArray(
+        lines.slice(1)
+          .filter(l => !l.startsWith("Insight") && !isInsightLine(l)) // Exclude insight lines from details
+          .concat(basicExplanation.details)
+      );
+      const insights = sanitizeArray(
+        lines.filter(l => isInsightLine(l))
+          .concat(basicExplanation.insights)
+      );
 
       return {
         summary,
