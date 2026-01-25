@@ -41,6 +41,7 @@ import {
 import { useCampaigns } from "@/hooks/useCampaigns";
 import CalendarView from "@/components/calendar/CalendarView";
 import CalendarSettingsContent from "@/components/calendar/CalendarSettingsContent";
+import { PublerConfigCard } from "@/components/publer/PublerConfigCard";
 
 interface SMTPSettings {
   host: string;
@@ -2378,6 +2379,11 @@ export default function ConsultantApiKeysUnified() {
                   <CreditCard className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Stripe Connect</span>
                   <span className="sm:hidden">Stripe</span>
+                </TabsTrigger>
+                <TabsTrigger value="publer" className="data-[state=active]:bg-pink-100 data-[state=active]:text-pink-700 text-xs sm:text-sm">
+                  <Send className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Publer</span>
+                  <span className="sm:hidden">Publer</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -8298,6 +8304,11 @@ export default function ConsultantApiKeysUnified() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Publer Tab Content */}
+              <TabsContent value="publer" className="space-y-6">
+                <PublerConfigCard />
               </TabsContent>
             </Tabs>
           </div>

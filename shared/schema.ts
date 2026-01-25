@@ -8385,6 +8385,14 @@ export const contentPosts = pgTable("content_posts", {
   errore: text("errore"),
   soluzione: text("soluzione"),
   riprovaSociale: text("riprova_sociale"),
+  
+  // Publer integration fields
+  publerPostId: varchar("publer_post_id"),
+  publerStatus: varchar("publer_status").$type<"draft" | "scheduled" | "published" | "failed">(),
+  publerScheduledAt: timestamp("publer_scheduled_at"),
+  publerPublishedAt: timestamp("publer_published_at"),
+  publerError: text("publer_error"),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -9121,3 +9129,37 @@ export const weeklyCheckinSchedule = pgTable("weekly_checkin_schedule", {
 
 export type WeeklyCheckinSchedule = typeof weeklyCheckinSchedule.$inferSelect;
 export type InsertWeeklyCheckinSchedule = typeof weeklyCheckinSchedule.$inferInsert;
+
+// ============================================================
+// PUBLER INTEGRATION
+// ============================================================
+
+// Publer Configuration per consultant
+export const publerConfigs = pgTable("publer_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  apiKeyEncrypted: text("api_key_encrypted"),
+  workspaceId: varchar("workspace_id"),
+  isActive: boolean("is_active").default(false),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type PublerConfig = typeof publerConfigs.$inferSelect;
+export type InsertPublerConfig = typeof publerConfigs.$inferInsert;
+
+// Publer Social Accounts (cached from Publer API)
+export const publerAccounts = pgTable("publer_accounts", {
+  id: varchar("id").primaryKey(),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: varchar("platform").notNull(), // instagram, facebook, linkedin, twitter, etc.
+  accountName: varchar("account_name"),
+  accountUsername: varchar("account_username"),
+  profileImageUrl: text("profile_image_url"),
+  isActive: boolean("is_active").default(true),
+  syncedAt: timestamp("synced_at").default(sql`now()`),
+});
+
+export type PublerAccount = typeof publerAccounts.$inferSelect;
+export type InsertPublerAccount = typeof publerAccounts.$inferInsert;

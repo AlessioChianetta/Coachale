@@ -125,6 +125,7 @@ import bronzeAuthRouter, { authenticateBronzeToken, type BronzeAuthRequest } fro
 import referralRouter from "./routes/referral-router";
 import emailHubRouter, { initializeEmailHubIdle } from "./routes/email-hub-router";
 import contentStudioRouter from "./routes/content-studio";
+import publerRouter from "./routes/publer";
 import stripeAutomationsRouter, { handleStripeWebhook } from "./routes/stripe-automations-router";
 import clientDataRouter from "./routes/client-data-router";
 import datasetSyncRouter from "./routes/dataset-sync-router";
@@ -12705,6 +12706,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Content Marketing Studio routes
   app.use("/api/content", contentStudioRouter);
+
+  // Publer Integration routes
+  app.use("/api/publer", publerRouter);
 
   // Client Data Analysis routes
   app.use("/api/client-data", clientDataRouter);
