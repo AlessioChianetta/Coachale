@@ -1,0 +1,59 @@
+Qual è il food cost % per ogni categoria?
+
+AI Assistant
+
+🔧 aggregate_group (groupBy, datase...
+Ciao! È un piacere analizzare questi numeri con te. Ho dato un'occhiata approfondita ai dati del tuo food cost per categoria e, da consulente, ti dico che abbiamo davanti una fotografia molto chiara della situazione attuale, con alcune opportunità d'oro e un paio di segnali d'allarme che non possiamo ignorare.
+Ecco il dettaglio del tuo Food Cost % per categoria:
+Food (Cucina): 48,52%
+Pizza: 37,34%
+Dessert: 27,27%
+Drink: 21,92%
+L'analisi del tuo Consulente
+Analizzando questi numeri, emerge immediatamente un punto critico: la categoria Food ha un'incidenza del 48,52%. In un'ottica di gestione sana, questo valore è decisamente fuori soglia. Considera che in un ristorante di successo puntiamo solitamente a un food cost tra il 28% e il 32%. Un costo vicino al 50% significa che, una volta pagato il personale e le spese fisse, il margine di profitto su questi piatti rischia di essere nullo o addirittura negativo.
+Anche la Pizza (37,34%) è leggermente sopra la media del settore, dove solitamente ci si aspetta un costo più basso (intorno al 20-25%) grazie al basso costo delle materie prime di base come farina e acqua. Questo mi suggerisce che forse stai usando topping molto costosi o che c'è uno spreco che non abbiamo ancora identificato.
+Al contrario, i Drink (21,92%) e i Dessert (27,27%) sono i tuoi veri campioni di redditività. Stanno facendo un ottimo lavoro nel sostenere il bilancio complessivo.
+Cosa dobbiamo fare ora?
+1
+Revisione del Menu Engineering per la Cucina: Dobbiamo capire se il problema del 48,52% derivi da prezzi di vendita troppo bassi o da un costo d'acquisto delle materie prime troppo alto. È fondamentale analizzare le ricette (food cost scheda tecnica) dei piatti più venduti.
+2
+Ottimizzazione Pizza: Dobbiamo verificare le grammature dei condimenti. Anche pochi grammi in eccesso di mozzarella o salumi su ogni pizza, moltiplicati per centinaia di vendite, alzano la percentuale in modo drastico.
+3
+Spinta sui Dessert: Dato l'ottimo margine (27,27%), dovremmo formare il personale di sala per suggerire attivamente il dolce a fine pasto. Ogni dessert venduto "diluisce" l'alto costo del food generale.
+Ti piacerebbe che incrociassi questi dati con i volumi di vendita (quantità vendute) per identificare quali sono i piatti specifici che stanno erodendo il tuo margine? Questo ci permetterebbe di capire se il problema è diffuso o isolato a pochi piatti "critici".
+Numero di gruppi: 4
+1
+category: Dessert, food_cost_percent: 27.27272727272727272700
+2
+category: Drink, food_cost_percent: 21.91557731240321742400
+3
+category: Food, food_cost_percent: 48.51530023133312907200
+4
+category: Pizza, food_cost_percent: 37.34391919892444291700
+ok
+
+AI Assistant
+Bene, vedo che hai preso nota dei numeri. Ora, però, da consulente che ha a cuore la salute finanziaria del tuo locale, non posso lasciarti solo con queste percentuali senza scavare un po' più a fondo. Quei numeri ci stanno urlando qualcosa, specialmente quel 48,52% sulla cucina.
+1
+Analizziamo insieme cosa significa questo per il tuo business
+Cosa ci dicono davvero questi numeri?
+1
+Il "Red Flag" della Cucina (48,52%): Questo dato è preoccupante. In un ristorante sano, il food cost della cucina dovrebbe oscillare tra il 28% e il 32%. Superare il 48% significa che, per ogni piatto che esce, quasi la metà dell'incasso serve solo a coprire le materie prime. Se aggiungiamo il costo del personale e le spese fisse, è molto probabile che la cucina, in questo momento, stia lavorando in perdita o con margini minimi.
+2
+L'ancora di salvataggio (Drink e Dessert): I drink al 21,92% e i dessert al 27,27% sono i tuoi veri generatori di cassa. Stanno letteralmente "tenendo in piedi la baracca", compensando l'inefficienza della cucina.
+3
+L'anomalia della Pizza (37,34%): Anche qui siamo alti. La pizza è solitamente il prodotto con il margine più alto (target 20-25%). Un 37% suggerisce che o i prezzi sono troppo bassi rispetto al mercato, o c'è uno spreco eccessivo di ingredienti costosi (come mozzarelle premium o salumi) che non viene valorizzato nel prezzo finale.
+La mia interpretazione strategica
+2
+Dietro quel 48,52% della cucina si nasconde quasi sempre uno di questi tre problemi
+Spreco o porzioni fuori controllo: Si sta usando "troppa roba" nel piatto rispetto a quanto preventivato.
+Acquisti inefficienti: I prezzi dei fornitori sono saliti e non abbiamo aggiornato il listino.
+●
+Menu Engineering assente: Stai vendendo tantissimo i piatti che ti costano di più e pochissimo quelli che ti rendono di più.
+Cosa ti suggerisco di fare subito
+Dobbiamo assolutamente abbassare quel food cost della cucina di almeno 10-12 punti percentuali per tornare in zona di sicurezza. Ti consiglio di:
+1
+Identificare i "Plowhorses" (Cavalli da tiro): Quei piatti che vendi tantissimo ma che hanno un margine basso. Dobbiamo o alzare il prezzo o ridurre leggermente il costo degli ingredienti senza calare la qualità.
+2
+Rivedere le schede tecniche: Verificare se il peso reale degli ingredienti nel piatto corrisponde a quello teorico.
+Per andare al cuore del problema, vuoi che analizzi quali sono i 5 piatti specifici della cucina che stanno incidendo di più sul costo totale, così da capire dove intervenire chirurgicamente?
