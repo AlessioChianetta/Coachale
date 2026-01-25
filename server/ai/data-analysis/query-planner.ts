@@ -2588,7 +2588,7 @@ export async function askDataset(
           extractedQuestion, 
           datasets, 
           consultantId, 
-          clientId, 
+          userId, 
           conversationHistory
         );
         
