@@ -27,10 +27,26 @@ const REVENUE_METRICS = [
 ];
 
 const TIME_SLOT_HOURS: Record<string, { start: number; end: number }> = {
+  // English keys
   breakfast: { start: 6, end: 11 },
   lunch: { start: 11, end: 15 },
   dinner: { start: 18, end: 23 },
   late: { start: 23, end: 4 },
+  // Italian aliases - mapped to same hours
+  colazione: { start: 6, end: 11 },
+  pranzo: { start: 11, end: 15 },
+  cena: { start: 18, end: 23 },
+  sera: { start: 18, end: 23 },
+  notte: { start: 23, end: 4 },
+};
+
+// Italian to English time slot mapping for filter normalization
+const TIME_SLOT_ITALIAN_TO_ENGLISH: Record<string, string> = {
+  colazione: "breakfast",
+  pranzo: "lunch",
+  cena: "dinner",
+  sera: "dinner",
+  notte: "late",
 };
 
 const ORDER_BY_KEYWORDS: Record<string, { column: string; direction: "ASC" | "DESC" }> = {
@@ -134,14 +150,28 @@ export async function applyQueryEnhancements(
     f.column === "time_slot" || f.column === mappings["time_slot"]
   );
 
+  // RULE 4a: Normalize Italian time_slot values to English when column EXISTS
+  if (timeSlotFilter && hasTimeSlotColumn) {
+    const timeSlotValue = timeSlotFilter.value.toLowerCase();
+    const normalizedValue = TIME_SLOT_ITALIAN_TO_ENGLISH[timeSlotValue];
+    if (normalizedValue && normalizedValue !== timeSlotValue) {
+      // Add filter with normalized English value
+      const physicalColumn = mappings["time_slot"];
+      additionalConditions.push(`"${physicalColumn}" = '${normalizedValue}'`);
+      appliedRules.push("RULE_4A_TIME_SLOT_ITALIAN_TO_ENGLISH");
+      console.log(`[QUERY-RULES] Rule 4a: Normalized time_slot '${timeSlotValue}' → '${normalizedValue}'`);
+    }
+  }
+
+  // RULE 4b: Calculate time_slot from order_date hour when column DOESN'T EXIST
   if (timeSlotFilter && !hasTimeSlotColumn && orderDateColumn) {
     const timeSlotValue = timeSlotFilter.value.toLowerCase();
     if (TIME_SLOT_HOURS[timeSlotValue]) {
       const condition = buildTimeSlotCondition(orderDateColumn, timeSlotValue);
       if (condition) {
         additionalConditions.push(condition);
-        appliedRules.push("RULE_4_TIME_SLOT_FROM_ORDER_DATE");
-        console.log(`[QUERY-RULES] Rule 4: Calculating time_slot=${timeSlotValue} from order_date hour`);
+        appliedRules.push("RULE_4B_TIME_SLOT_FROM_ORDER_DATE");
+        console.log(`[QUERY-RULES] Rule 4b: Calculating time_slot=${timeSlotValue} from order_date hour`);
       }
     }
   }

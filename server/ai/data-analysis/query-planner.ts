@@ -19,7 +19,8 @@ import { METRIC_ENUM as TOOL_METRIC_ENUM } from "./tool-definitions";
 import { forceMetricFromTerms } from "./term-mapper";
 import { validateMetricForDataset } from "./pre-validator";
 import { checkAnalyticsEnabled } from "../../services/client-data/semantic-mapping-service";
-import { logRevenueColumnUsage, checkMonetaryColumnWarnings } from "./semantic-resolver";
+import { logRevenueColumnUsage, checkMonetaryColumnWarnings, getAvailableMetricsForDataset, getColumnMappingsForDataset } from "./semantic-resolver";
+import { METRIC_TEMPLATES } from "./metric-templates";
 import { applyQueryEnhancements, enhanceSqlWithRules, detectOrderByFromQuestion } from "./query-engine-rules";
 
 // Retry configuration for AI calls
@@ -1006,6 +1007,14 @@ METRICHE PREDEFINITE (execute_metric / aggregate_group):
 - "prezzo medio" → execute_metric o aggregate_group(avg_unit_price)
 - "margine lordo €", "margine in euro", "profitto €" → execute_metric(gross_margin) - MAI usare revenue!
 - "margine lordo %", "margine percentuale" → execute_metric(gross_margin_percent)
+- "margine medio per scontrino", "margine per ordine" → execute_metric(gross_margin_per_document)
+
+REGOLA CRITICA - FILTRI FASCIA ORARIA (time_slot):
+- "a pranzo", "pranzo" → filtra con time_slot = 'lunch' (oppure estrai ora 11:00-15:00 da order_date)
+- "a cena", "cena" → filtra con time_slot = 'dinner' (oppure estrai ora 18:00-23:00 da order_date)
+- "colazione" → filtra con time_slot = 'breakfast' (oppure estrai ora 06:00-11:00 da order_date)
+- Se il dataset HA la colonna time_slot, USALA direttamente come filtro!
+- Esempio: "revenue a cena" → execute_metric(revenue, filters: {time_slot: {operator: '=', value: 'dinner'}})
 
 REGOLA CRITICA - CONTEGGIO RIGHE:
 - "quante righe", "quanti record", "numero di righe" con condizione → execute_metric(order_count) con filters
@@ -1322,15 +1331,63 @@ export async function planQuery(
   const client = providerResult.client;
   const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
 
-  const datasetsContext = datasets.map(d => {
+  // Build enriched dataset context with semantic mappings and available metrics
+  const datasetsContextParts = await Promise.all(datasets.map(async (d) => {
     const cols = d.columns.map(c => `${c.name} (${c.dataType}): ${c.description || c.displayName}`).join("\n    ");
     const metrics = d.metrics?.map(m => `${m.name}: ${m.dslFormula}`).join("\n    ") || "Nessuna metrica pre-definita";
+    
+    // Get available metrics dynamically from semantic layer
+    let availableMetricsInfo = "";
+    let semanticMappingInfo = "";
+    
+    try {
+      const datasetId = parseInt(d.id);
+      if (!isNaN(datasetId)) {
+        // Get available metrics
+        const { available, unavailable } = await getAvailableMetricsForDataset(datasetId, METRIC_TEMPLATES);
+        if (available.length > 0) {
+          availableMetricsInfo = `\n  METRICHE CALCOLABILI (usa execute_metric):
+    ${available.map(m => {
+      const template = METRIC_TEMPLATES[m];
+      return `${m}: ${template?.displayName || m}`;
+    }).join("\n    ")}`;
+        }
+        if (unavailable.length > 0) {
+          availableMetricsInfo += `\n  METRICHE NON DISPONIBILI (mancano colonne):
+    ${unavailable.slice(0, 5).map(u => `${u.name}: manca ${u.missingColumns.join(", ")}`).join("\n    ")}`;
+        }
+        
+        // Get semantic column mapping
+        const mappings = await getColumnMappingsForDataset(datasetId);
+        if (Object.keys(mappings).length > 0) {
+          const mappingEntries = Object.entries(mappings)
+            .filter(([logical, physical]) => physical) // Only show mapped columns
+            .map(([logical, physical]) => `${logical} → "${physical}"`)
+            .slice(0, 15); // Limit to avoid token overload
+          semanticMappingInfo = `\n  MAPPING SEMANTICO (colonna logica → fisica):
+    ${mappingEntries.join("\n    ")}`;
+          
+          // Add time_slot filter info if available
+          if (mappings["time_slot"]) {
+            semanticMappingInfo += `\n  FILTRI FASCIA ORARIA (time_slot):
+    "a pranzo" / "pranzo" → filtra time_slot = 'lunch' o estrai ora 11:00-15:00
+    "a cena" / "cena" → filtra time_slot = 'dinner' o estrai ora 18:00-23:00
+    "colazione" → filtra time_slot = 'breakfast' o estrai ora 06:00-11:00`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`[QUERY-PLANNER] Failed to enrich dataset context: ${e}`);
+    }
+    
     return `Dataset "${d.name}" (ID: ${d.id}, ${d.rowCount} righe):
   Colonne:
     ${cols}
-  Metriche:
-    ${metrics}`;
-  }).join("\n\n");
+  Metriche DSL:
+    ${metrics}${availableMetricsInfo}${semanticMappingInfo}`;
+  }));
+  
+  const datasetsContext = datasetsContextParts.join("\n\n");
 
   const conversationContext = conversationHistory && conversationHistory.length > 0
     ? `\n\n=== CONTESTO CONVERSAZIONE PRECEDENTE ===\n${conversationHistory.map(m => {

@@ -409,14 +409,15 @@ export const METRIC_TEMPLATES: Record<string, MetricTemplate> = {
   },
   gross_margin_per_document: {
     name: "gross_margin_per_document",
-    displayName: "Margine per Documento",
-    description: "Margine lordo medio per documento/scontrino",
+    displayName: "Margine per Scontrino",
+    description: "Margine lordo medio per documento/scontrino/ordine",
     sqlTemplate: 'SUM((CAST({price} AS NUMERIC) - CAST({cost} AS NUMERIC)) * CAST({quantity} AS NUMERIC)) / NULLIF(COUNT(DISTINCT {document_id}), 0)',
     requiredLogicalColumns: ["price", "cost", "quantity", "document_id"],
     unit: "currency",
     validationRules: {},
-    isPrimary: false,
+    isPrimary: true, // Make primary for better visibility
     version: 1,
+    aliases: ["margine_medio_scontrino", "margin_per_order", "margine_per_ordine"],
   },
 
   // ============================================
