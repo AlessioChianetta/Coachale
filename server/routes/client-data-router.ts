@@ -1957,7 +1957,8 @@ router.post(
         executionResult.results,
         content,
         consultantId,
-        userPreferences
+        userPreferences,
+        conversationHistory
       );
 
       const queryResult = executionResult.results.map((r) => ({

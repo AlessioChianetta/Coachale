@@ -10,6 +10,32 @@ import { getAIProvider, getModelWithThinking } from "../provider-factory";
 import type { ExecutedToolResult } from "./tool-definitions";
 import { fullValidation, type ValidationResult as AntiHallucinationResult } from "./result-validator";
 
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+  toolCalls?: Array<{ toolName: string }>;
+  toolResults?: Array<{ tool: string; data: any }>;
+}
+
+function formatConversationForExplainer(history: ConversationMessage[]): string {
+  if (!history || history.length === 0) {
+    return "";
+  }
+  
+  const formattedMessages = history.slice(-6).map((msg, idx) => {
+    const role = msg.role === "user" ? "UTENTE" : "ASSISTENTE";
+    return `${role}: ${msg.content.substring(0, 500)}${msg.content.length > 500 ? '...' : ''}`;
+  });
+  
+  return `
+========================
+CONTESTO CONVERSAZIONE PRECEDENTE
+========================
+${formattedMessages.join("\n\n")}
+========================
+`;
+}
+
 // Retry configuration for AI calls
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
@@ -413,9 +439,15 @@ export async function explainResults(
   results: ExecutedToolResult[],
   userQuestion: string,
   consultantId?: string,
-  preferences?: UserPreferences
+  preferences?: UserPreferences,
+  conversationHistory?: ConversationMessage[]
 ): Promise<ExplanationResult> {
   const basicExplanation = generateBasicExplanation(results, userQuestion);
+  const conversationContext = formatConversationForExplainer(conversationHistory || []);
+  
+  if (conversationContext) {
+    console.log(`[RESULT-EXPLAINER] Including ${conversationHistory?.length || 0} messages of conversation context`);
+  }
 
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);
@@ -522,6 +554,7 @@ Comunica chiaramente all'utente che stai mostrando "i primi 10" o "Top 10" e non
 
 ${styleInstructions ? `\n--- STILE DI RISPOSTA ---\n${styleInstructions}` : ""}
 ${fallbackContext}
+${conversationContext}
 ---
 
 Domanda dell'utente: "${userQuestion}"
@@ -532,20 +565,22 @@ ${JSON.stringify(resultsContext, null, 2)}
 Rispondi alla domanda dell'utente basandoti su questi dati. Sii conversazionale, come un collega che spiega i numeri.`;
     } else {
       // Conversational mode - no data query, just chat
-      prompt = `Sei un assistente AI esperto di analisi dati. L'utente sta usando una chat per analizzare dataset ma ha inviato un messaggio conversazionale invece di una query sui dati.
+      prompt = `Sei un assistente AI esperto di analisi dati. L'utente sta usando una chat per analizzare dataset.
 
 ${styleInstructions ? `\n--- STILE DI RISPOSTA ---\n${styleInstructions}` : ""}
+${conversationContext}
+---
 
 Messaggio dell'utente: "${userQuestion}"
 
-Rispondi in modo amichevole e utile. Se l'utente saluta, salutalo. Se chiede cosa puoi fare, spiega che puoi:
-- Calcolare totali, medie, somme sui dati
-- Raggruppare dati per categoria/mese/prodotto
-- Confrontare periodi diversi
-- Trovare pattern e tendenze
-- Rispondere a domande sui dati in linguaggio naturale
+ISTRUZIONI IMPORTANTI:
+1. LEGGI ATTENTAMENTE il contesto della conversazione precedente
+2. Se l'utente sta rispondendo a una TUA domanda precedente (es: "va bene", "sì", "ok"), RISPONDI IN MODO CONTESTUALE alla tua domanda
+3. Se l'utente conferma qualcosa che hai proposto, procedi con quello che hai proposto
+4. Se l'utente saluta, salutalo
+5. Sii breve, naturale e conversazionale - come un collega
 
-Sii breve e conversazionale.`;
+NON ignorare il contesto. Se hai chiesto "Vuoi che analizziamo X?" e l'utente dice "va bene", rispondi proponendo di procedere con X.`;
     }
 
     const response = await executeWithRetry(
@@ -664,9 +699,10 @@ export async function generateNaturalLanguageResponse(
   results: ExecutedToolResult[],
   userQuestion: string,
   consultantId?: string,
-  preferences?: UserPreferences
+  preferences?: UserPreferences,
+  conversationHistory?: ConversationMessage[]
 ): Promise<string> {
-  const explanation = await explainResults(results, userQuestion, consultantId, preferences);
+  const explanation = await explainResults(results, userQuestion, consultantId, preferences, conversationHistory);
 
   let response = explanation.summary;
 

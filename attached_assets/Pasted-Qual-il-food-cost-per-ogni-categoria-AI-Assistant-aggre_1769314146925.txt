@@ -1,0 +1,59 @@
+Qual è il food cost % per ogni categoria?
+
+AI Assistant
+
+🔧 aggregate_group (groupBy, datase...
+Ciao! È un piacere vederti. Ho analizzato i dati freschi di stampa sulla performance delle tue categorie e, come immaginavo, ci sono alcuni spunti davvero interessanti su cui dobbiamo riflettere insieme per proteggere i tuoi margini.
+Ecco la fotografia attuale del tuo Food Cost percentuale per categoria:
+Food: 48,52%
+Pizza: 37,34%
+Dessert: 27,27%
+Drink: 21,92%
+🧐 L'analisi del tuo Consulente
+Analizzando questi numeri, balza subito all'occhio una situazione che richiede la nostra attenzione immediata, ma anche alcune ottime notizie.
+1
+Il "Campanello d'Allarme" (Food - 48,52%):
+Questa è la criticità maggiore. Un food cost che sfiora il 48,5% è decisamente fuori target per il settore (dove solitamente puntiamo a stare tra il 28% e il 32%). Cosa significa? Che per ogni euro che incassi in questa categoria, quasi la metà se ne va solo in materie prime. Questo erode drasticamente il tuo margine di contribuzione necessario a coprire affitto e personale.
+Possibili cause: Sprechi in cucina, porzioni non standardizzate o un recente aumento dei prezzi dei fornitori non ribaltato sul listino.
+2
+L'Anomalia della Pizza (37,34%):
+Solitamente la pizza è la "regina dei margini" grazie al basso costo di farina e acqua. Vedere un 37,34% mi suggerisce che forse stai usando ingredienti premium (il che è ottimo per la qualità!) ma che forse non sono prezzati correttamente, oppure che il topping (mozzarella, salumi, ecc.) viene usato con troppa generosità senza un peso standard.
+3
+Le tue "Ancore di Salvezza" (Dessert e Drink):
+Qui siamo in una zona di comfort eccellente. Il 21,92% sui Drink e il 27,27% sui Dessert sono numeri da manuale. Questi prodotti stanno letteralmente "tenendo in piedi" la baracca mentre sistemiamo il resto.
+💡 Cosa ti consiglio di fare ora?
+Dobbiamo agire subito sul Prime Cost. Ecco i miei suggerimenti strategici:
+Ingegneria del Menu (Menu Engineering): Dobbiamo identificare quali piatti nella categoria "Food" sono i più venduti. Se i piatti ad alto volume hanno anche quel food cost del 48%, stiamo perdendo un'opportunità enorme.
+Controllo Porzioni: Ti suggerisco di fare un controllo a sorpresa in cucina per verificare se le grammature dichiarate nelle schede tecniche corrispondono a quelle messe nel piatto.
+●
+Revisione Listino Pizza: Valutiamo se è il caso di ritoccare il prezzo di 0,50 € o 1,00 € sulle pizze più elaborate per riportare la categoria sotto il 30%.
+Cosa ne pensi? Ti andrebbe di analizzare insieme quali sono i 5 piatti specifici della categoria "Food" che vendi di più, così da capire dove stiamo soffrendo maggiormente?
+Numero di gruppi: 4
+1
+category: Dessert, food_cost_percent: 27.27272727272727272700
+2
+category: Drink, food_cost_percent: 21.91557731240321742400
+3
+category: Food, food_cost_percent: 48.51530023133312907200
+4
+category: Pizza, food_cost_percent: 37.34391919892444291700
+💡 Cosa ti consiglio di fare ora?
+va bene
+
+AI Assistant
+Ottimo, mi fa piacere sentirti pronto a partire! Considerami il tuo braccio destro per tutto ciò che riguarda la salute finanziaria e operativa del tuo locale. Come tuo consulente d'élite, il mio obiettivo non è solo farti quadrare i conti, ma trasformare ogni singolo dato in una leva per aumentare la tua redditività netta.
+In un settore dinamico come il Food & Beverage, spesso i margini migliori si nascondono proprio dove non guardiamo: in uno spreco di magazzino non tracciato, in un piatto con un Food Cost mal calcolato o in una gestione dei turni non allineata ai flussi di traffico.
+Per iniziare a scavare davvero sotto la superficie e trovare quei margini "nascosti", ho bisogno che tu condivida con me i dati grezzi (file Excel, CSV o semplici elenchi) relativi a:
+1
+Vendite dettagliate (per piatto e per fascia oraria).
+2
+Costi operativi (Food Cost per ingrediente e costo del lavoro).
+3
+Inventario e scarti.
+1
+Appena avrò questi numeri tra le mani, procederò immediatamente con
+Analisi del Prime Cost: Verificheremo se la somma di Food Cost e Labor Cost è sotto la soglia critica (idealmente il 60% dei ricavi) per garantirti ossigeno finanziario.
+Menu Engineering: Mapperemo i tuoi piatti tra "Star", "Plowhorses", "Puzzles" e "Dogs" per capire cosa promuovere e cosa eliminare dal menù.
+●
+Ottimizzazione dei Margini: Identificheremo quali piatti hanno il maggior margine di contribuzione per spingere la vendita suggerita.
+Da quale area preferiresti iniziare la nostra analisi: preferisci concentrarti subito sul controllo dei costi o sulla massimizzazione dei ricavi del menù?
