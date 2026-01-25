@@ -561,12 +561,13 @@ export async function generateScheduleForWeeks(
 
 /**
  * Get schedule entries for a consultant within a date range
+ * Now includes client name via JOIN with users table
  */
 export async function getScheduleForConsultant(
   consultantId: string,
   startDate?: Date,
   endDate?: Date
-): Promise<Array<typeof weeklyCheckinSchedule.$inferSelect>> {
+): Promise<Array<typeof weeklyCheckinSchedule.$inferSelect & { clientName?: string }>> {
   const conditions = [eq(weeklyCheckinSchedule.consultantId, consultantId)];
   
   if (startDate) {
@@ -578,8 +579,31 @@ export async function getScheduleForConsultant(
   }
   
   const entries = await db
-    .select()
+    .select({
+      id: weeklyCheckinSchedule.id,
+      configId: weeklyCheckinSchedule.configId,
+      consultantId: weeklyCheckinSchedule.consultantId,
+      clientId: weeklyCheckinSchedule.clientId,
+      phoneNumber: weeklyCheckinSchedule.phoneNumber,
+      scheduledDate: weeklyCheckinSchedule.scheduledDate,
+      scheduledHour: weeklyCheckinSchedule.scheduledHour,
+      scheduledMinute: weeklyCheckinSchedule.scheduledMinute,
+      templateId: weeklyCheckinSchedule.templateId,
+      templateName: weeklyCheckinSchedule.templateName,
+      status: weeklyCheckinSchedule.status,
+      executedLogId: weeklyCheckinSchedule.executedLogId,
+      executedAt: weeklyCheckinSchedule.executedAt,
+      skipReason: weeklyCheckinSchedule.skipReason,
+      weekNumber: weeklyCheckinSchedule.weekNumber,
+      dayOfWeek: weeklyCheckinSchedule.dayOfWeek,
+      generatedAt: weeklyCheckinSchedule.generatedAt,
+      regeneratedAt: weeklyCheckinSchedule.regeneratedAt,
+      createdAt: weeklyCheckinSchedule.createdAt,
+      updatedAt: weeklyCheckinSchedule.updatedAt,
+      clientName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`.as('clientName'),
+    })
     .from(weeklyCheckinSchedule)
+    .leftJoin(users, eq(weeklyCheckinSchedule.clientId, users.id))
     .where(and(...conditions))
     .orderBy(weeklyCheckinSchedule.scheduledDate, weeklyCheckinSchedule.scheduledHour);
   
