@@ -423,7 +423,8 @@ export async function generateScheduleForWeeks(
   
   console.log(`[SCHEDULE-SERVICE] Planning ${weeksToSchedule.length} weeks: ${weeksToSchedule.map(w => w.isoWeekKey).join(', ')}`);
   
-  for (const weekInfo of weeksToSchedule) {
+  for (let weekIdx = 0; weekIdx < weeksToSchedule.length; weekIdx++) {
+    const weekInfo = weeksToSchedule[weekIdx];
     const { monday: targetMonday, isoWeekKey, weekNumber: targetWeekNumber, weekYear: targetWeekYear } = weekInfo;
     
     // Get all dates in this ISO week
@@ -507,8 +508,8 @@ export async function generateScheduleForWeeks(
       const dateKey = formatDateToString(targetDate);
       
       // Calculate template (rotate through templates)
-      const weekNumber = weekOffset + 1;
-      const templateIndex = (weekOffset + client.id.charCodeAt(0)) % templates.length;
+      const weekNumber = weekIdx + 1;
+      const templateIndex = (weekIdx + client.id.charCodeAt(0)) % templates.length;
       const template = templates[templateIndex];
       
       // Generate deterministic time
