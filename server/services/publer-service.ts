@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { publerConfigs, publerAccounts } from '@shared/schema';
+import { publerConfigs, publerAccounts, contentPosts } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { storage } from '../storage';
 
@@ -223,9 +223,29 @@ export class PublerService {
     return { jobId: result.job_id, success: true };
   }
 
-  async saveConfig(consultantId: string, apiKey: string, workspaceId: string, isActive: boolean = true) {
-    const encryptedKey = storage.encryptData(apiKey);
+  async updatePostStatus(
+    postId: string, 
+    status: 'scheduled' | 'published' | 'failed', 
+    publerPostId?: string,
+    scheduledAt?: Date,
+    error?: string
+  ) {
+    const updateData: any = {
+      publerStatus: status,
+      updatedAt: new Date(),
+    };
+    
+    if (publerPostId) updateData.publerPostId = publerPostId;
+    if (scheduledAt) updateData.publerScheduledAt = scheduledAt;
+    if (status === 'published') updateData.publerPublishedAt = new Date();
+    if (error) updateData.publerError = error;
 
+    await db.update(contentPosts)
+      .set(updateData)
+      .where(eq(contentPosts.id, postId));
+  }
+
+  async saveConfig(consultantId: string, apiKey: string, workspaceId: string, isActive: boolean = true) {
     const [existing] = await db
       .select()
       .from(publerConfigs)
@@ -233,18 +253,23 @@ export class PublerService {
       .limit(1);
 
     if (existing) {
+      const updateData: any = { isActive, updatedAt: new Date() };
+      if (apiKey !== 'KEEP_EXISTING') {
+        updateData.apiKeyEncrypted = storage.encryptData(apiKey);
+      }
+      if (workspaceId !== 'KEEP_EXISTING') {
+        updateData.workspaceId = workspaceId;
+      }
       await db.update(publerConfigs)
-        .set({
-          apiKeyEncrypted: encryptedKey,
-          workspaceId,
-          isActive,
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(publerConfigs.consultantId, consultantId));
     } else {
+      if (apiKey === 'KEEP_EXISTING' || workspaceId === 'KEEP_EXISTING') {
+        throw new Error('API Key e Workspace ID sono richiesti per la prima configurazione');
+      }
       await db.insert(publerConfigs).values({
         consultantId,
-        apiKeyEncrypted: encryptedKey,
+        apiKeyEncrypted: storage.encryptData(apiKey),
         workspaceId,
         isActive,
       });

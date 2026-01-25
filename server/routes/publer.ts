@@ -76,6 +76,10 @@ router.get('/accounts', authenticateToken, requireRole('consultant'), async (req
 router.post('/accounts/sync', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
+    const status = await publerService.getConfigStatus(consultantId);
+    if (!status.configured || !status.isActive) {
+      return res.status(400).json({ success: false, error: 'Publer non configurato o disattivato' });
+    }
     const result = await publerService.syncAccounts(consultantId);
     res.json({ success: true, ...result, message: `Sincronizzati ${result.synced} account` });
   } catch (error: any) {
@@ -92,13 +96,19 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
       return res.status(400).json({ success: false, error: 'Publer non configurato o disattivato' });
     }
     const data = publishSchema.parse(req.body);
+    const scheduledDate = data.scheduledAt ? new Date(data.scheduledAt) : undefined;
     
     const result = await publerService.schedulePost(consultantId, {
       accountIds: data.accountIds,
       text: data.text,
-      scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
+      scheduledAt: scheduledDate,
       mediaIds: data.mediaIds,
     });
+    
+    if (data.postId) {
+      const publerStatus = scheduledDate ? 'scheduled' : 'published';
+      await publerService.updatePostStatus(data.postId, publerStatus, result.jobId, scheduledDate);
+    }
     
     res.json({ success: true, ...result, message: 'Post inviato a Publer' });
   } catch (error: any) {
@@ -106,6 +116,9 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
       return res.status(400).json({ success: false, error: error.errors[0].message });
     }
     console.error('[PUBLER] Error publishing:', error);
+    if (req.body?.postId) {
+      await publerService.updatePostStatus(req.body.postId, 'failed', undefined, undefined, error.message);
+    }
     res.status(500).json({ success: false, error: error.message });
   }
 });
