@@ -41,6 +41,9 @@ Key enhancements include:
 - Dataset Sync API for external partners, supporting 19 semantic logical roles, HMAC-SHA256 security, webhook endpoints, and scheduling options. External sync sources can now be associated with specific clients.
 - Centralized semantic constants for consistency across UI components.
 - Data Sync Observability Dashboard providing comprehensive monitoring for all external data sources with health status indicators, push/pull mode visualization, metrics tracking, and daily trend sparklines.
+- Enhanced AI Context for Data Analysis: Query planner now dynamically loads available metrics and semantic column mappings, enabling AI to understand dataset-specific columns like "cost" → food_cost.
+- Italian-to-English Time Slot Normalization: RULE_4A/4B in query-engine-rules normalizes Italian time slot values (cena→dinner, pranzo→lunch, colazione→breakfast) for both existing time_slot columns and hour-based extraction from order_date.
+- Gross Margin Per Document Metric: New primary metric with Italian aliases (margine_medio_scontrino, margin_per_order) for calculating average margin per receipt.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
