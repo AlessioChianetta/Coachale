@@ -832,6 +832,38 @@ export interface DefaultOnboardingPreferences {
 export type ConsultantLicenses = typeof consultantLicenses.$inferSelect;
 export type InsertConsultantLicenses = typeof consultantLicenses.$inferInsert;
 
+// Partner Webhook Configs - Configuration for sending purchase notifications to external partners
+export const partnerWebhookConfigs = pgTable("partner_webhook_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  webhookUrl: text("webhook_url"),
+  secretKey: text("secret_key").notNull(),
+  isEnabled: boolean("is_enabled").default(false).notNull(),
+  notifyOnGold: boolean("notify_on_gold").default(true).notNull(),
+  notifyOnSilver: boolean("notify_on_silver").default(false).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type PartnerWebhookConfig = typeof partnerWebhookConfigs.$inferSelect;
+export type InsertPartnerWebhookConfig = typeof partnerWebhookConfigs.$inferInsert;
+
+// Partner Webhook Logs - Log of webhook notifications sent to partners
+export const partnerWebhookLogs = pgTable("partner_webhook_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  eventType: text("event_type").notNull(), // "gold_purchase", "silver_purchase", "test"
+  payload: jsonb("payload"),
+  responseStatus: integer("response_status"),
+  responseBody: text("response_body"),
+  success: boolean("success").default(false).notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type PartnerWebhookLog = typeof partnerWebhookLogs.$inferSelect;
+export type InsertPartnerWebhookLog = typeof partnerWebhookLogs.$inferInsert;
+
 // Employee License Purchases - Track consultant purchases of employee license bundles
 export const employeeLicensePurchases = pgTable("employee_license_purchases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
