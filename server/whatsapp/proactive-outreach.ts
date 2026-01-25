@@ -1043,21 +1043,61 @@ export async function processProactiveOutreach(): Promise<void> {
       } catch (error: any) {
         console.error(`❌ Failed to process lead ${lead.id}:`, error.message);
         errorCount++;
+        
+        // Track failed attempt for anti-loop protection
+        const currentAttempts = (lead.failedAttempts || 0) + 1;
+        const MAX_FAILED_ATTEMPTS = 3;
+        
+        if (currentAttempts >= MAX_FAILED_ATTEMPTS) {
+          console.log(`🚫 [ANTI-LOOP] Lead ${lead.id} reached ${currentAttempts} failed attempts - marking as 'failed'`);
+          await db.update(proactiveLeads).set({ 
+            status: 'failed',
+            failedAttempts: currentAttempts,
+            lastError: error.message,
+            updatedAt: new Date()
+          }).where(eq(proactiveLeads.id, lead.id));
+        } else {
+          // Increment failed attempts but keep as pending for retry
+          await db.update(proactiveLeads).set({ 
+            status: 'pending',
+            failedAttempts: currentAttempts,
+            lastError: error.message,
+            updatedAt: new Date()
+          }).where(eq(proactiveLeads.id, lead.id));
+          console.log(`⚠️ [RETRY] Lead ${lead.id} failed attempt ${currentAttempts}/${MAX_FAILED_ATTEMPTS} - will retry`);
+        }
       } finally {
         // Always remove from local processing set
         processingLeadIds.delete(lead.id);
         
-        // SAFETY: Verify status was updated - if still 'processing', revert to 'pending'
+        // SAFETY: Verify status was updated - if still 'processing', handle with anti-loop logic
         // This handles any early returns in processLead that don't update status
-        const [finalStatus] = await db
-          .select({ status: proactiveLeads.status })
+        const [finalState] = await db
+          .select({ status: proactiveLeads.status, failedAttempts: proactiveLeads.failedAttempts })
           .from(proactiveLeads)
           .where(eq(proactiveLeads.id, lead.id))
           .limit(1);
         
-        if (finalStatus?.status === 'processing') {
-          console.log(`⚠️ [LOCK RELEASE] Lead ${lead.id} still in 'processing' state - reverting to 'pending'`);
-          await db.update(proactiveLeads).set({ status: 'pending' }).where(eq(proactiveLeads.id, lead.id));
+        if (finalState?.status === 'processing') {
+          const currentAttempts = (finalState.failedAttempts || 0) + 1;
+          const MAX_FAILED_ATTEMPTS = 3;
+          
+          if (currentAttempts >= MAX_FAILED_ATTEMPTS) {
+            console.log(`🚫 [ANTI-LOOP] Lead ${lead.id} still processing after ${currentAttempts} attempts - marking as 'failed'`);
+            await db.update(proactiveLeads).set({ 
+              status: 'failed',
+              failedAttempts: currentAttempts,
+              lastError: 'Processing timeout - max retries reached',
+              updatedAt: new Date()
+            }).where(eq(proactiveLeads.id, lead.id));
+          } else {
+            console.log(`⚠️ [LOCK RELEASE] Lead ${lead.id} still in 'processing' state - reverting to 'pending' (attempt ${currentAttempts}/${MAX_FAILED_ATTEMPTS})`);
+            await db.update(proactiveLeads).set({ 
+              status: 'pending',
+              failedAttempts: currentAttempts,
+              updatedAt: new Date()
+            }).where(eq(proactiveLeads.id, lead.id));
+          }
         }
       }
     }

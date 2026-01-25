@@ -3559,6 +3559,10 @@ export const proactiveLeads = pgTable("proactive_leads", {
   nurturingLastEmailAt: timestamp("nurturing_last_email_at"),
   nurturingOptOutAt: timestamp("nurturing_opt_out_at"),
 
+  // Anti-loop protection: track failed attempts to prevent infinite retries
+  failedAttempts: integer("failed_attempts").default(0),
+  lastError: text("last_error"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
