@@ -2404,7 +2404,7 @@ L'utente ha confermato con: "${userConfirmation}"
 
 MESSAGGIO ASSISTENTE:
 """
-${assistantMessage.substring(0, 2000)}
+${assistantMessage.substring(0, 4000)}
 """
 
 ISTRUZIONI:
