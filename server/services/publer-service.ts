@@ -69,7 +69,7 @@ export class PublerService {
     };
   }
 
-  async testConnection(consultantId: string): Promise<{ success: boolean; message: string; accountCount?: number }> {
+  async testConnection(consultantId: string): Promise<{ success: boolean; message: string; accountCount?: number; workspaces?: any[] }> {
     const credentials = await this.getDecryptedApiKey(consultantId);
     
     if (!credentials) {
@@ -77,35 +77,87 @@ export class PublerService {
     }
 
     try {
-      const response = await fetch(`${PUBLER_BASE_URL}/accounts`, {
+      // Step 1: Test API key with /me endpoint (no workspace required)
+      const meResponse = await fetch(`${PUBLER_BASE_URL}/me`, {
         method: 'GET',
-        headers: this.getHeaders(credentials.apiKey, credentials.workspaceId),
+        headers: {
+          'Authorization': `Bearer-API ${credentials.apiKey}`,
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        let errorMsg = error.message || error.error || '';
-        if (response.status === 401) {
-          errorMsg = 'API Key non valida. Verifica che sia corretta.';
-        } else if (response.status === 403) {
-          errorMsg = 'Accesso negato. Verifica Workspace ID e che il piano sia Business.';
-        } else if (response.status === 404) {
-          errorMsg = 'Workspace non trovato. Verifica il Workspace ID.';
-        } else {
-          errorMsg = errorMsg || `Errore ${response.status}`;
+      console.log('[PUBLER] /me response status:', meResponse.status);
+
+      if (!meResponse.ok) {
+        const error = await meResponse.json().catch(() => ({}));
+        console.error('[PUBLER] /me failed:', meResponse.status, error);
+        if (meResponse.status === 401) {
+          return { success: false, message: 'API Key non valida. Verifica che sia corretta.' };
         }
-        console.error('[PUBLER] Test connection failed:', response.status, error);
-        return { success: false, message: errorMsg };
+        return { success: false, message: error.message || `Errore API Key: ${meResponse.status}` };
       }
 
-      const accounts = await response.json();
-      return { 
-        success: true, 
-        message: 'Connessione riuscita!',
-        accountCount: Array.isArray(accounts) ? accounts.length : 0
-      };
+      const meData = await meResponse.json();
+      console.log('[PUBLER] /me success, user:', meData.email || meData.name || 'OK');
+
+      // Step 2: Get available workspaces
+      const wsResponse = await fetch(`${PUBLER_BASE_URL}/workspaces`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer-API ${credentials.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!wsResponse.ok) {
+        console.error('[PUBLER] /workspaces failed:', wsResponse.status);
+        return { success: false, message: 'Impossibile recuperare i workspace.' };
+      }
+
+      const workspaces = await wsResponse.json();
+      console.log('[PUBLER] Found workspaces:', workspaces.length);
+
+      // Step 3: If workspace ID provided, test accounts endpoint
+      if (credentials.workspaceId) {
+        const validWs = workspaces.find((ws: any) => ws.id === credentials.workspaceId);
+        if (!validWs) {
+          const wsNames = workspaces.map((ws: any) => `${ws.name} (${ws.id})`).join(', ');
+          return { 
+            success: false, 
+            message: `Workspace ID non trovato. I tuoi workspace: ${wsNames || 'nessuno'}`,
+            workspaces
+          };
+        }
+
+        const accountsResponse = await fetch(`${PUBLER_BASE_URL}/accounts`, {
+          method: 'GET',
+          headers: this.getHeaders(credentials.apiKey, credentials.workspaceId),
+        });
+
+        if (accountsResponse.ok) {
+          const accounts = await accountsResponse.json();
+          return { 
+            success: true, 
+            message: `Connessione riuscita! Workspace: ${validWs.name}`,
+            accountCount: Array.isArray(accounts) ? accounts.length : 0
+          };
+        }
+      }
+
+      // No workspace ID or couldn't get accounts - return available workspaces
+      if (workspaces.length > 0) {
+        const wsNames = workspaces.map((ws: any) => `${ws.name} (${ws.id})`).join(', ');
+        return { 
+          success: false, 
+          message: `API Key valida! Inserisci il Workspace ID. I tuoi workspace: ${wsNames}`,
+          workspaces
+        };
+      }
+
+      return { success: true, message: 'API Key valida! Nessun workspace trovato.' };
     } catch (error: any) {
-      return { success: false, message: `Errore: ${error.message}` };
+      console.error('[PUBLER] Test connection error:', error);
+      return { success: false, message: `Errore di connessione: ${error.message}` };
     }
   }
 
