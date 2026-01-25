@@ -77,8 +77,8 @@ export class PublerService {
     }
 
     try {
-      // Step 1: Test API key with /me endpoint (no workspace required)
-      const meResponse = await fetch(`${PUBLER_BASE_URL}/me`, {
+      // Step 1: Test API key with /users/me endpoint (no workspace required)
+      const meResponse = await fetch(`${PUBLER_BASE_URL}/users/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer-API ${credentials.apiKey}`,
