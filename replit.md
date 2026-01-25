@@ -44,6 +44,8 @@ Key enhancements include:
 - Enhanced AI Context for Data Analysis: Query planner now dynamically loads available metrics and semantic column mappings, enabling AI to understand dataset-specific columns like "cost" → food_cost.
 - Italian-to-English Time Slot Normalization: RULE_4A/4B in query-engine-rules normalizes Italian time slot values (cena→dinner, pranzo→lunch, colazione→breakfast) for both existing time_slot columns and hour-based extraction from order_date.
 - Gross Margin Per Document Metric: New primary metric with Italian aliases (margine_medio_scontrino, margin_per_order) for calculating average margin per receipt.
+- Intent Follow-Through System: When users confirm AI proposals with "ok", "sì", "va bene", the system automatically extracts the proposed analysis from the assistant's last message and executes it through the full analytics pipeline. Features recursion prevention (_forceAnalytics flag), proposal pattern detection, and analytic content guards.
+- Conversation Context Flow: Result-explainer, query-planner, and intent-router all receive conversation history (last 6 messages, 500 chars each) for contextual understanding of user confirmations and follow-up queries.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
