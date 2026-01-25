@@ -110,7 +110,10 @@ import {
   Target,
   Heart,
   Brain,
-  Zap
+  Zap,
+  Webhook,
+  Send,
+  RotateCcw
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -249,6 +252,243 @@ const accentColors = {
     iconBg: "bg-amber-50 dark:bg-amber-900/20",
   },
 };
+
+function PartnerWebhookCard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [notifyOnGold, setNotifyOnGold] = useState(true);
+  const [notifyOnSilver, setNotifyOnSilver] = useState(false);
+  const [secretKey, setSecretKey] = useState("");
+  const [isConfigured, setIsConfigured] = useState(false);
+  
+  const configQuery = useQuery({
+    queryKey: ["/api/partner-webhook/config"],
+    queryFn: async () => {
+      const res = await fetch("/api/partner-webhook/config", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch config");
+      return res.json();
+    },
+  });
+  
+  const logsQuery = useQuery({
+    queryKey: ["/api/partner-webhook/logs"],
+    queryFn: async () => {
+      const res = await fetch("/api/partner-webhook/logs?limit=5", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      return res.json();
+    },
+  });
+  
+  useEffect(() => {
+    if (configQuery.data) {
+      setWebhookUrl(configQuery.data.webhookUrl || "");
+      setIsEnabled(configQuery.data.isEnabled || false);
+      setNotifyOnGold(configQuery.data.notifyOnGold ?? true);
+      setNotifyOnSilver(configQuery.data.notifyOnSilver ?? false);
+      setSecretKey(configQuery.data.secretKey || "");
+      setIsConfigured(configQuery.data.configured || false);
+    }
+  }, [configQuery.data]);
+  
+  const saveMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/partner-webhook/config", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save config");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Configurazione salvata", description: "Le impostazioni webhook sono state salvate." });
+      if (data.config?.secretKey) setSecretKey(data.config.secretKey);
+      setIsConfigured(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/partner-webhook/config"] });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile salvare la configurazione", variant: "destructive" });
+    },
+  });
+  
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/partner-webhook/test", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({ title: "Test riuscito", description: "Il webhook di test è stato inviato con successo." });
+      } else {
+        toast({ title: "Test fallito", description: data.error || "Errore durante l'invio del test", variant: "destructive" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/partner-webhook/logs"] });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile inviare il test webhook", variant: "destructive" });
+    },
+  });
+  
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copiato!", description: `${label} copiato negli appunti` });
+  };
+  
+  return (
+    <Card className="border-2 border-orange-200 dark:border-orange-800">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Webhook className="h-5 w-5 text-orange-600" />
+          Notifiche Partner
+        </CardTitle>
+        <CardDescription>
+          Notifica automaticamente i tuoi partner quando un cliente acquista una licenza Gold o Silver
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <Alert className="bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800">
+          <Info className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800 dark:text-orange-200 text-sm">
+            Quando un cliente acquista tramite Stripe, il sistema invierà un webhook al tuo partner con i dettagli dell'acquisto (email, nome, telefono, tier, data).
+          </AlertDescription>
+        </Alert>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="font-medium">Abilita Notifiche Webhook</Label>
+              <p className="text-xs text-muted-foreground">Attiva l'invio automatico di notifiche al partner</p>
+            </div>
+            <Switch
+              checked={isEnabled}
+              onCheckedChange={(checked) => setIsEnabled(checked)}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="webhookUrl">URL Webhook Partner</Label>
+            <Input
+              id="webhookUrl"
+              placeholder="https://partner.example.com/webhook/acquisti"
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">L'URL dove verranno inviate le notifiche POST</p>
+          </div>
+          
+          <div className="space-y-3">
+            <Label className="font-medium">Notifica per:</Label>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="notifyGold"
+                  checked={notifyOnGold}
+                  onCheckedChange={(checked) => setNotifyOnGold(checked as boolean)}
+                />
+                <Label htmlFor="notifyGold" className="flex items-center gap-1 text-sm cursor-pointer">
+                  <Crown className="h-4 w-4 text-yellow-500" />
+                  Acquisti Gold
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="notifySilver"
+                  checked={notifyOnSilver}
+                  onCheckedChange={(checked) => setNotifyOnSilver(checked as boolean)}
+                />
+                <Label htmlFor="notifySilver" className="flex items-center gap-1 text-sm cursor-pointer">
+                  <Shield className="h-4 w-4 text-slate-500" />
+                  Acquisti Silver
+                </Label>
+              </div>
+            </div>
+          </div>
+          
+          {secretKey && (
+            <div className="space-y-2">
+              <Label>Secret Key (per firma HMAC-SHA256)</Label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded text-sm font-mono truncate">
+                  {secretKey}
+                </code>
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(secretKey, "Secret Key")}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => saveMutation.mutate({ regenerateSecret: true, webhookUrl, isEnabled, notifyOnGold, notifyOnSilver })}
+                  disabled={saveMutation.isPending}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Il partner usa questa chiave per verificare l'autenticità delle richieste</p>
+            </div>
+          )}
+          
+          <div className="flex gap-2 pt-2">
+            <Button
+              onClick={() => saveMutation.mutate({ webhookUrl, isEnabled, notifyOnGold, notifyOnSilver })}
+              disabled={saveMutation.isPending}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Salva Configurazione
+            </Button>
+            {isConfigured && webhookUrl && (
+              <Button
+                variant="outline"
+                onClick={() => testMutation.mutate()}
+                disabled={testMutation.isPending || !isEnabled}
+              >
+                {testMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                Testa Webhook
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        {logsQuery.data?.logs?.length > 0 && (
+          <div className="pt-4 border-t">
+            <Label className="font-medium mb-2 block">Ultime Notifiche</Label>
+            <div className="space-y-2">
+              {logsQuery.data.logs.map((log: any) => (
+                <div key={log.id} className="flex items-center justify-between text-sm p-2 bg-slate-50 dark:bg-slate-800/50 rounded">
+                  <div className="flex items-center gap-2">
+                    {log.success ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    )}
+                    <span className="font-medium">
+                      {log.eventType === "gold_purchase" ? "Acquisto Gold" : 
+                       log.eventType === "silver_purchase" ? "Acquisto Silver" : "Test"}
+                    </span>
+                    {log.responseStatus && (
+                      <Badge variant="outline" className={log.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}>
+                        {log.responseStatus}
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {log.createdAt ? format(new Date(log.createdAt), "d MMM HH:mm", { locale: it }) : "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function TeamMemberCard({ name, role, avatar, quote, accentColor, features, details, ctaLabel, ctaHref }: TeamMemberCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -3201,6 +3441,9 @@ export default function ConsultantWhatsAppPage() {
                 </Tabs>
               </CardContent>
             </Card>
+
+            {/* Partner Webhook Notifications Card */}
+            <PartnerWebhookCard />
 
             {/* Password Reset Dialog */}
             <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
