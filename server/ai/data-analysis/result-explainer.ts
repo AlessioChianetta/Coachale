@@ -38,7 +38,13 @@ async function executeWithRetry<T>(
       
       if (isRetryable && attempt < MAX_RETRIES) {
         const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-        console.log(`[${operationName}] Retry ${attempt}/${MAX_RETRIES} after ${delayMs}ms (error: ${error?.message || 'unknown'})`);
+        console.warn(`⚠️ [${operationName}] Retry ${attempt}/${MAX_RETRIES} after ${delayMs}ms`);
+        console.warn(`   Error type: ${error?.constructor?.name || 'Unknown'}`);
+        console.warn(`   Error message: ${error?.message || 'no message'}`);
+        console.warn(`   Error code: ${errorCode || 'none'}`);
+        if (error?.message?.includes("Failed to extract text")) {
+          console.warn(`   📭 AI returned empty/invalid response - likely server overload`);
+        }
         await new Promise(resolve => setTimeout(resolve, delayMs));
       } else if (!isRetryable) {
         throw error;
