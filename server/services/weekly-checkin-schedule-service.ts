@@ -308,7 +308,8 @@ export async function generateScheduleForWeeks(
     throw new Error(`WhatsApp agent not active or missing Twilio credentials`);
   }
   
-  // Get all clients enabled for weekly check-in
+  // Get all users enabled for weekly check-in (includes clients AND consultants who are clients of another consultant)
+  // The key is consultant_id pointing to this consultant, not the role
   const clients = await db
     .select({
       id: users.id,
@@ -320,7 +321,6 @@ export async function generateScheduleForWeeks(
     .where(
       and(
         eq(users.consultantId, consultantId),
-        eq(users.role, 'client'),
         eq(users.isActive, true),
         eq(users.enabledForWeeklyCheckin, true),
         sql`${users.phoneNumber} IS NOT NULL`
