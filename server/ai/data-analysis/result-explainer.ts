@@ -33,7 +33,8 @@ async function executeWithRetry<T>(
       const isRetryable = errorCode === 503 || errorCode === 429 || 
         error?.message?.includes("overloaded") || 
         error?.message?.includes("rate limit") ||
-        error?.message?.includes("UNAVAILABLE");
+        error?.message?.includes("UNAVAILABLE") ||
+        error?.message?.includes("Failed to extract text from response");
       
       if (isRetryable && attempt < MAX_RETRIES) {
         const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);

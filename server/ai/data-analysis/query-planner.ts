@@ -49,7 +49,8 @@ async function executeWithRetry<T>(
         errorMessage.includes("overloaded") || 
         errorMessage.includes("rate limit") ||
         errorMessage.includes("UNAVAILABLE") ||
-        errorMessage.includes("RESOURCE_EXHAUSTED");
+        errorMessage.includes("RESOURCE_EXHAUSTED") ||
+        errorMessage.includes("Failed to extract text from response");
       
       if (isRetryable && attempt < MAX_RETRIES) {
         const delayMs = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
