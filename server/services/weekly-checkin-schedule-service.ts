@@ -395,18 +395,33 @@ export async function generateScheduleForWeeks(
   const todayMonday = getISOWeekMonday(today);
   
   // Collect unique ISO weeks to schedule (starting from current/next week)
+  // IMPORTANT: Always collect exactly `weeks` valid weeks, skipping past weeks
   const weeksToSchedule: Array<{ monday: Date; isoWeekKey: string; weekNumber: number; weekYear: number }> = [];
   
-  for (let weekOffset = 0; weekOffset < weeks; weekOffset++) {
+  let weekOffset = 0;
+  while (weeksToSchedule.length < weeks) {
     // Get the Monday of the target week
     const targetMonday = new Date(todayMonday);
     targetMonday.setDate(todayMonday.getDate() + (weekOffset * 7));
+    weekOffset++;
     
     // If current week and all days have passed, skip to next week
     const weekSunday = new Date(targetMonday);
     weekSunday.setDate(targetMonday.getDate() + 6);
     if (weekSunday <= today) {
-      continue; // Entire week is in the past
+      continue; // Entire week is in the past, try next
+    }
+    
+    // Check if this week has at least 2 allowed days remaining (to avoid partial weeks)
+    const remainingAllowedDays = allowedDays.filter(dayOfWeek => {
+      const dayDate = new Date(targetMonday);
+      dayDate.setDate(targetMonday.getDate() + (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      return dayDate > today && dayDate <= weekSunday;
+    });
+    
+    // Skip weeks with less than 2 allowed days remaining (too partial)
+    if (weeksToSchedule.length === 0 && remainingAllowedDays.length < 2) {
+      continue; // First week is too partial, skip to next
     }
     
     const targetWeekNumber = getISOWeekNumber(targetMonday);
@@ -419,6 +434,9 @@ export async function generateScheduleForWeeks(
       weekNumber: targetWeekNumber,
       weekYear: targetWeekYear
     });
+    
+    // Safety limit to prevent infinite loop
+    if (weekOffset > 52) break;
   }
   
   console.log(`[SCHEDULE-SERVICE] Planning ${weeksToSchedule.length} weeks: ${weeksToSchedule.map(w => w.isoWeekKey).join(', ')}`);
