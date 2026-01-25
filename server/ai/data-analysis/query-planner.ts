@@ -249,6 +249,99 @@ const CATEGORY_TERMS: Record<string, {
 };
 
 /**
+ * SPECIFIC PRODUCT DETECTION
+ * Maps specific product names to ILIKE patterns for filtering
+ * Example: "margherita" → '%margherit%', "diavola" → '%diavol%'
+ */
+const SPECIFIC_PRODUCTS: Record<string, { pattern: string; category?: string }> = {
+  'margherita': { pattern: '%margherit%', category: 'Pizza' },
+  'margherite': { pattern: '%margherit%', category: 'Pizza' },
+  'diavola': { pattern: '%diavol%', category: 'Pizza' },
+  'diavole': { pattern: '%diavol%', category: 'Pizza' },
+  'capricciosa': { pattern: '%capriccio%', category: 'Pizza' },
+  'quattro stagioni': { pattern: '%4 stagion%', category: 'Pizza' },
+  'marinara': { pattern: '%marinara%', category: 'Pizza' },
+  'napoletana': { pattern: '%napole%', category: 'Pizza' },
+  'romana': { pattern: '%roman%', category: 'Pizza' },
+  'tiramisu': { pattern: '%tiramis%', category: 'Dolci' },
+  'tiramisù': { pattern: '%tiramis%', category: 'Dolci' },
+  'carbonara': { pattern: '%carbonar%', category: 'Primi' },
+  'amatriciana': { pattern: '%amatrician%', category: 'Primi' },
+  'cacio e pepe': { pattern: '%cacio%pepe%', category: 'Primi' },
+};
+
+interface ProductDetection {
+  hasProduct: boolean;
+  productTerm: string | null;
+  productPattern: string | null;
+  impliedCategory: string | null;
+}
+
+export function detectSpecificProduct(userQuestion: string): ProductDetection {
+  const questionLower = userQuestion.toLowerCase();
+  
+  for (const [term, config] of Object.entries(SPECIFIC_PRODUCTS)) {
+    const termRegex = new RegExp(`\\b${term.replace(/\s+/g, '\\s+')}\\b`, 'i');
+    if (termRegex.test(questionLower)) {
+      console.log(`[PRODUCT-DETECT] Found specific product "${term}" → pattern="${config.pattern}"`);
+      return {
+        hasProduct: true,
+        productTerm: term,
+        productPattern: config.pattern,
+        impliedCategory: config.category || null
+      };
+    }
+  }
+  
+  return { hasProduct: false, productTerm: null, productPattern: null, impliedCategory: null };
+}
+
+/**
+ * TIME SLOT DETECTION
+ * Detects time slot keywords in questions: "a pranzo", "a cena", "colazione"
+ * Returns normalized English value for filtering
+ */
+const TIME_SLOT_KEYWORDS: Record<string, string> = {
+  'a pranzo': 'lunch',
+  'pranzo': 'lunch',
+  'a cena': 'dinner',
+  'cena': 'dinner',
+  'a colazione': 'breakfast',
+  'colazione': 'breakfast',
+  'di sera': 'dinner',
+  'sera': 'dinner',
+  'di notte': 'night',
+  'notte': 'night',
+};
+
+interface TimeSlotDetection {
+  hasTimeSlot: boolean;
+  timeSlotTerm: string | null;
+  timeSlotValue: string | null;  // Normalized English value
+}
+
+export function detectTimeSlot(userQuestion: string): TimeSlotDetection {
+  const questionLower = userQuestion.toLowerCase();
+  
+  // Check longer phrases first to avoid partial matches
+  const sortedKeywords = Object.entries(TIME_SLOT_KEYWORDS)
+    .sort((a, b) => b[0].length - a[0].length);
+  
+  for (const [term, value] of sortedKeywords) {
+    if (questionLower.includes(term)) {
+      console.log(`[TIMESLOT-DETECT] Found time slot "${term}" → value="${value}"`);
+      return {
+        hasTimeSlot: true,
+        timeSlotTerm: term,
+        timeSlotValue: value
+      };
+    }
+  }
+  
+  return { hasTimeSlot: false, timeSlotTerm: null, timeSlotValue: null };
+}
+
+/**
  * CATEGORY TERM DETECTION (ALWAYS, not just ranking)
  * Detects when user mentions a category term like "pizze", "bevande", "dolci"
  * This should trigger semantic category filtering regardless of query type
@@ -1942,6 +2035,59 @@ export async function executeToolCall(
               }
             }
             
+            // ====== RESOLVE SPECIFIC PRODUCT FILTER ======
+            // If _specificProductFilter is set, apply ILIKE on product_name column
+            if (toolCall.args._specificProductFilter) {
+              const { pattern } = toolCall.args._specificProductFilter;
+              const productTerm = toolCall.args._detectedProductTerm;
+              
+              const productNamePhysical = Object.entries(mappings)
+                .find(([_, logical]) => logical === 'product_name')?.[0];
+              
+              if (productNamePhysical && datasetColumns.includes(productNamePhysical)) {
+                if (!toolCall.args.filters) toolCall.args.filters = {};
+                
+                // Apply ILIKE filter on product_name
+                toolCall.args.filters[productNamePhysical] = { 
+                  operator: 'ILIKE', 
+                  value: pattern 
+                };
+                console.log(`[PRODUCT-FILTER] RESOLVED: product_name → "${productNamePhysical}" ILIKE '${pattern}'`);
+              } else {
+                console.warn(`[PRODUCT-FILTER] No product_name column mapped for "${productTerm}"`);
+              }
+            }
+            
+            // ====== RESOLVE TIME SLOT FILTER ======
+            // If _timeSlotFilter is set, apply = filter on time_slot column
+            if (toolCall.args._timeSlotFilter) {
+              const { value } = toolCall.args._timeSlotFilter;
+              const timeSlotTerm = toolCall.args._detectedTimeSlotTerm;
+              
+              const timeSlotPhysical = Object.entries(mappings)
+                .find(([_, logical]) => logical === 'time_slot')?.[0];
+              
+              if (timeSlotPhysical && datasetColumns.includes(timeSlotPhysical)) {
+                if (!toolCall.args.filters) toolCall.args.filters = {};
+                
+                // Apply = filter on time_slot (will be converted to ILIKE for strings)
+                toolCall.args.filters[timeSlotPhysical] = { 
+                  operator: '=', 
+                  value: value 
+                };
+                console.log(`[TIMESLOT-FILTER] RESOLVED: time_slot → "${timeSlotPhysical}" = '${value}'`);
+              } else {
+                // FALLBACK: Calculate from order_date hour (handled by query-engine-rules)
+                console.log(`[TIMESLOT-FILTER] No time_slot column mapped for "${timeSlotTerm}", will use order_date fallback`);
+                // Add filter that query-engine-rules will transform
+                if (!toolCall.args.filters) toolCall.args.filters = {};
+                toolCall.args.filters['time_slot'] = { 
+                  operator: '=', 
+                  value: value 
+                };
+              }
+            }
+            
             // PRIORITY 1: Check if dataset has explicit is_sellable column
             const isSellablePhysical = Object.entries(mappings)
               .find(([_, logical]) => logical === 'is_sellable')?.[0];
@@ -2374,6 +2520,21 @@ export async function askDataset(
     console.log(`[QUERY-PLANNER] CATEGORY TERM DETECTED: term="${categoryDetection.categoryTerm}", value="${categoryDetection.categoryValue}"`);
   }
   
+  // ====== SPECIFIC PRODUCT DETECTION ======
+  // Detect specific products like "margherita", "diavola", "carbonara"
+  // This triggers product_name ILIKE filtering
+  const productDetection = detectSpecificProduct(userQuestion);
+  if (productDetection.hasProduct) {
+    console.log(`[QUERY-PLANNER] SPECIFIC PRODUCT DETECTED: term="${productDetection.productTerm}", pattern="${productDetection.productPattern}"`);
+  }
+  
+  // ====== TIME SLOT DETECTION ======
+  // Detect time slot keywords like "a pranzo", "a cena", "colazione"
+  const timeSlotDetection = detectTimeSlot(userQuestion);
+  if (timeSlotDetection.hasTimeSlot) {
+    console.log(`[QUERY-PLANNER] TIME SLOT DETECTED: term="${timeSlotDetection.timeSlotTerm}", value="${timeSlotDetection.timeSlotValue}"`);
+  }
+  
   // ====== SEMANTIC ORDER BY METRIC DETECTION ======
   // Detect semantic keywords to determine correct ORDER BY metric
   // Example: "più profittevoli" → ORDER BY gross_margin DESC (not quantity!)
@@ -2543,7 +2704,8 @@ export async function askDataset(
     
     // TASK 2: Check semantic contract - if user requests ALL but AI set a limit, BLOCK
     for (const step of plan.steps) {
-      if (step.name === "aggregate_group" || step.name === "filter_data") {
+      // Process filter injection for ALL compute tools (including execute_metric)
+      if (step.name === "aggregate_group" || step.name === "filter_data" || step.name === "execute_metric") {
         const limit = step.args.limit;
         
         if (semanticContract.requestsAll && limit && limit < MAX_GROUP_BY_LIMIT) {
@@ -2614,6 +2776,37 @@ export async function askDataset(
             step.args._inheritedCategoryContext = contextCategory.categoryTerm;
             console.log(`[CONTEXT-MEMORY] DETERMINISTIC FILTER INJECTION: Injected ${categoryDef.productIlike.length} ILIKE patterns for "${contextCategory.categoryTerm}" into ${step.name}`);
           }
+        }
+        
+        // ====== SPECIFIC PRODUCT FILTER INJECTION ======
+        // When user mentions a specific product (margherita, diavola, carbonara), apply ILIKE filter
+        if (productDetection.hasProduct && productDetection.productPattern && !step.args._specificProductFilter) {
+          step.args._specificProductFilter = {
+            logicalRole: 'product_name',
+            pattern: productDetection.productPattern
+          };
+          step.args._detectedProductTerm = productDetection.productTerm;
+          console.log(`[PRODUCT-FILTER] INJECTION: product_name ILIKE '${productDetection.productPattern}' for term "${productDetection.productTerm}"`);
+          
+          // Also set implied category if not already set
+          if (productDetection.impliedCategory && !step.args._semanticCategoryFilter) {
+            step.args._semanticCategoryFilter = {
+              logicalRole: 'category',
+              value: productDetection.impliedCategory
+            };
+            console.log(`[PRODUCT-FILTER] IMPLIED CATEGORY: '${productDetection.impliedCategory}'`);
+          }
+        }
+        
+        // ====== TIME SLOT FILTER INJECTION ======
+        // When user mentions a time slot (a pranzo, a cena, colazione), apply time_slot filter
+        if (timeSlotDetection.hasTimeSlot && timeSlotDetection.timeSlotValue && !step.args._timeSlotFilter) {
+          step.args._timeSlotFilter = {
+            logicalRole: 'time_slot',
+            value: timeSlotDetection.timeSlotValue
+          };
+          step.args._detectedTimeSlotTerm = timeSlotDetection.timeSlotTerm;
+          console.log(`[TIMESLOT-FILTER] INJECTION: time_slot = '${timeSlotDetection.timeSlotValue}' for term "${timeSlotDetection.timeSlotTerm}"`);
         }
         
         // ====== SEMANTIC CATEGORY FILTER INJECTION (ALWAYS, not just ranking) ======
