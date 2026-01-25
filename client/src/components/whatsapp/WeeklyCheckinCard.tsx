@@ -1248,12 +1248,8 @@ export function WeeklyCheckinCard() {
                           const dayPast = isPast(date);
                           const dayToday = isToday(date);
                           const scheduleEntries = getScheduleEntriesForDay(date);
-                          const entry = scheduleEntries[0];
+                          const hasEntries = scheduleEntries.length > 0;
                           const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-                          
-                          const scheduledTime = entry 
-                            ? `${String(entry.scheduledHour).padStart(2, '0')}:${String(entry.scheduledMinute).padStart(2, '0')}`
-                            : null;
                           
                           return (
                             <div
@@ -1265,117 +1261,134 @@ export function WeeklyCheckinCard() {
                                   ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/30 dark:border-gray-700 opacity-60'
                                   : dayPast
                                   ? 'border-gray-200 bg-gray-50/50 dark:bg-gray-800/20 dark:border-gray-700 opacity-50'
-                                  : entry
+                                  : hasEntries
                                   ? 'border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800'
                                   : 'border-gray-200 bg-white dark:bg-gray-800/30 dark:border-gray-700'
                               }`}
                             >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center ${
-                                    dayToday
-                                      ? 'bg-indigo-500 text-white'
-                                      : isExcluded
-                                      ? 'bg-gray-200 text-gray-500 dark:bg-gray-700'
-                                      : entry
-                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
-                                      : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                                  }`}>
-                                    <span className="text-lg font-bold">{date.getDate()}</span>
-                                    <span className="text-[10px] uppercase">{dayNames[dayOfWeek].slice(0, 3)}</span>
-                                  </div>
-                                  <div>
-                                    <div className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                                      {dayNames[dayOfWeek]}
-                                      {dayToday && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">OGGI</Badge>}
-                                    </div>
-                                    {isExcluded ? (
-                                      <p className="text-xs text-gray-400">Giorno escluso dalla configurazione</p>
-                                    ) : dayPast && entry ? (
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-xs text-gray-500">
-                                          {scheduledTime && `Ore ${scheduledTime}`}
-                                        </p>
-                                        {getStatusBadge(entry.status)}
-                                      </div>
-                                    ) : dayPast ? (
-                                      <p className="text-xs text-gray-400">Passato</p>
-                                    ) : entry ? (
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-xs text-green-600 dark:text-green-400">
-                                          Invio alle <span className="font-semibold">{scheduledTime}</span>
-                                        </p>
-                                        {getStatusBadge(entry.status)}
-                                      </div>
-                                    ) : (
-                                      <p className="text-xs text-gray-400">
-                                        Nessun invio programmato
-                                      </p>
-                                    )}
-                                  </div>
+                              <div className="flex items-start gap-3">
+                                {/* Data del giorno */}
+                                <div className={`w-14 h-14 rounded-lg flex flex-col items-center justify-center flex-shrink-0 ${
+                                  dayToday
+                                    ? 'bg-indigo-500 text-white'
+                                    : isExcluded
+                                    ? 'bg-gray-200 text-gray-500 dark:bg-gray-700'
+                                    : hasEntries
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                }`}>
+                                  <span className="text-xl font-bold">{date.getDate()}</span>
+                                  <span className="text-[10px] uppercase">{dayNames[dayOfWeek].slice(0, 3)}</span>
                                 </div>
                                 
-                                {/* Info cliente e template */}
-                                {entry && (
-                                  <div className="flex items-center gap-3">
-                                    <div className="text-right">
-                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                        {entry.clientName}
-                                      </p>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        {entry.templateName && (
-                                          <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">
-                                            <MessageSquare className="h-2.5 w-2.5 mr-1" />
-                                            {entry.templateName.slice(0, 25)}
-                                            {entry.templateName.length > 25 ? "..." : ""}
-                                          </Badge>
-                                        )}
-                                        {entry.personalizedMessage && (
-                                          <TooltipProvider>
-                                            <Tooltip delayDuration={0}>
-                                              <TooltipTrigger asChild>
-                                                <button className="p-1 rounded-full bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900 transition-colors">
-                                                  <Eye className="h-3.5 w-3.5 text-green-600" />
-                                                </button>
-                                              </TooltipTrigger>
-                                              <TooltipContent 
-                                                side="left" 
-                                                align="start"
-                                                className="max-w-sm p-3 bg-white dark:bg-gray-800 border shadow-lg"
-                                              >
-                                                <p className="text-xs font-medium text-gray-900 dark:text-white mb-1">
-                                                  Messaggio inviato:
-                                                </p>
-                                                <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                                                  {entry.personalizedMessage}
-                                                </p>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        )}
-                                      </div>
-                                      {entry.skipReason && (
-                                        <p className="text-xs text-gray-400 mt-1">{entry.skipReason}</p>
-                                      )}
-                                    </div>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                                      entry.status === 'sent' 
-                                        ? 'bg-green-100 dark:bg-green-900/50 text-green-600'
-                                        : entry.status === 'failed'
-                                        ? 'bg-red-100 dark:bg-red-900/50 text-red-600'
-                                        : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600'
-                                    }`}>
-                                      {entry.clientName?.[0]?.toUpperCase() || '?'}
-                                    </div>
+                                {/* Contenuto del giorno */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`font-medium ${dayToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                      {dayNames[dayOfWeek]}
+                                    </span>
+                                    {dayToday && <Badge className="bg-indigo-500 text-white text-[10px]">OGGI</Badge>}
+                                    {hasEntries && (
+                                      <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]">
+                                        {scheduleEntries.length} check-in
+                                      </Badge>
+                                    )}
                                   </div>
-                                )}
-                                
-                                {isExcluded && (
-                                  <Badge variant="outline" className="text-gray-400">
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Escluso
-                                  </Badge>
-                                )}
+                                  
+                                  {isExcluded ? (
+                                    <p className="text-xs text-gray-400">Giorno escluso dalla configurazione</p>
+                                  ) : dayPast && !hasEntries ? (
+                                    <p className="text-xs text-gray-400">Nessun invio</p>
+                                  ) : !hasEntries ? (
+                                    <p className="text-xs text-gray-400">Nessun invio programmato</p>
+                                  ) : (
+                                    /* Lista clienti programmati per questo giorno */
+                                    <div className="space-y-2 mt-2">
+                                      {scheduleEntries.map((entry, entryIdx) => {
+                                        const scheduledTime = `${String(entry.scheduledHour).padStart(2, '0')}:${String(entry.scheduledMinute).padStart(2, '0')}`;
+                                        return (
+                                          <div 
+                                            key={entryIdx}
+                                            className={`flex items-center gap-3 p-2 rounded-lg ${
+                                              entry.status === 'sent' 
+                                                ? 'bg-green-100/50 dark:bg-green-900/20'
+                                                : entry.status === 'failed'
+                                                ? 'bg-red-100/50 dark:bg-red-900/20'
+                                                : 'bg-white dark:bg-gray-800/50'
+                                            } border border-gray-100 dark:border-gray-700`}
+                                          >
+                                            {/* Avatar cliente */}
+                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${
+                                              entry.status === 'sent' 
+                                                ? 'bg-green-200 dark:bg-green-800 text-green-700 dark:text-green-300'
+                                                : entry.status === 'failed'
+                                                ? 'bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300'
+                                                : 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300'
+                                            }`}>
+                                              {entry.clientName?.[0]?.toUpperCase() || '?'}
+                                            </div>
+                                            
+                                            {/* Info cliente */}
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                                                  {entry.clientName || 'Cliente sconosciuto'}
+                                                </span>
+                                                {getStatusBadge(entry.status)}
+                                              </div>
+                                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                  <Clock className="h-3 w-3 inline mr-1" />
+                                                  {scheduledTime}
+                                                </span>
+                                                {entry.templateName && (
+                                                  <span className="text-xs text-indigo-600 dark:text-indigo-400 truncate max-w-[150px]">
+                                                    <MessageSquare className="h-3 w-3 inline mr-1" />
+                                                    {entry.templateName}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            
+                                            {/* Azioni */}
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                              {entry.personalizedMessage && (
+                                                <TooltipProvider>
+                                                  <Tooltip delayDuration={0}>
+                                                    <TooltipTrigger asChild>
+                                                      <button className="p-1.5 rounded-full bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900 transition-colors">
+                                                        <Eye className="h-3.5 w-3.5 text-green-600" />
+                                                      </button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent 
+                                                      side="left" 
+                                                      align="start"
+                                                      className="max-w-sm p-3 bg-white dark:bg-gray-800 border shadow-lg"
+                                                    >
+                                                      <p className="text-xs font-medium text-gray-900 dark:text-white mb-1">
+                                                        Messaggio:
+                                                      </p>
+                                                      <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                                                        {entry.personalizedMessage}
+                                                      </p>
+                                                    </TooltipContent>
+                                                  </Tooltip>
+                                                </TooltipProvider>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  
+                                  {isExcluded && (
+                                    <Badge variant="outline" className="text-gray-400 mt-1">
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Escluso
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );
