@@ -84,10 +84,18 @@ export class PublerService {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        return { 
-          success: false, 
-          message: error.message || `Errore connessione Publer: ${response.status}` 
-        };
+        let errorMsg = error.message || error.error || '';
+        if (response.status === 401) {
+          errorMsg = 'API Key non valida. Verifica che sia corretta.';
+        } else if (response.status === 403) {
+          errorMsg = 'Accesso negato. Verifica Workspace ID e che il piano sia Business.';
+        } else if (response.status === 404) {
+          errorMsg = 'Workspace non trovato. Verifica il Workspace ID.';
+        } else {
+          errorMsg = errorMsg || `Errore ${response.status}`;
+        }
+        console.error('[PUBLER] Test connection failed:', response.status, error);
+        return { success: false, message: errorMsg };
       }
 
       const accounts = await response.json();
