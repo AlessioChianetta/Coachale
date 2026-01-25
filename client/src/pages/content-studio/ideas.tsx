@@ -673,6 +673,35 @@ export default function ContentStudioIdeas() {
     },
   });
 
+  // Mutation to sync developed ideas with their posts
+  const syncDevelopedMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/content/ideas/sync-developed", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to sync");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Sincronizzazione completata",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/content/ideas"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleStatusChange = (ideaId: string, newStatus: IdeaStatus) => {
     updateIdeaStatusMutation.mutate({ ideaId, status: newStatus });
   };
@@ -1408,6 +1437,23 @@ export default function ContentStudioIdeas() {
                     </button>
                   );
                 })}
+                
+                {/* Sync button for ideas that have posts but aren't marked as developed */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => syncDevelopedMutation.mutate()}
+                  disabled={syncDevelopedMutation.isPending}
+                  className="ml-2 h-9 text-xs"
+                  title="Sincronizza stato idee con post esistenti"
+                >
+                  {syncDevelopedMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Sincronizza stato
+                </Button>
               </div>
 
               <div className="flex flex-wrap gap-2 mb-6">

@@ -12,7 +12,7 @@ import {
   insertContentTemplateSchema,
   insertContentFolderSchema
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, isNull, asc, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, lte, isNull, isNotNull, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { ensureGeminiFileValid } from "../services/gemini-file-manager";
@@ -369,6 +369,69 @@ router.delete("/ideas/:id", authenticateToken, requireRole("consultant"), async 
   }
 });
 
+// POST /api/content/ideas/sync-developed - Sync ideas with existing posts
+router.post("/ideas/sync-developed", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Find all posts that have ideaId set, ordered by creation date (latest first)
+    const postsWithIdeas = await db.select({
+      postId: schema.contentPosts.id,
+      ideaId: schema.contentPosts.ideaId,
+      createdAt: schema.contentPosts.createdAt,
+    })
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.consultantId, consultantId),
+        isNotNull(schema.contentPosts.ideaId)
+      ))
+      .orderBy(desc(schema.contentPosts.createdAt));
+    
+    // De-duplicate: keep only the latest post for each idea
+    const ideaToPostMap = new Map<string, string>();
+    for (const post of postsWithIdeas) {
+      if (post.ideaId && !ideaToPostMap.has(post.ideaId)) {
+        ideaToPostMap.set(post.ideaId, post.postId);
+      }
+    }
+    
+    let updatedCount = 0;
+    
+    // Update each idea with its latest post
+    for (const [ideaId, postId] of ideaToPostMap.entries()) {
+      const [updated] = await db.update(schema.contentIdeas)
+        .set({
+          status: "developed",
+          developedPostId: postId,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(schema.contentIdeas.id, ideaId),
+          eq(schema.contentIdeas.consultantId, consultantId)
+        ))
+        .returning();
+      
+      if (updated) {
+        updatedCount++;
+      }
+    }
+    
+    console.log(`✅ [CONTENT-STUDIO] Synced ${updatedCount} ideas as developed (from ${postsWithIdeas.length} posts)`);
+    
+    res.json({
+      success: true,
+      message: `${updatedCount} idee sincronizzate come sviluppate`,
+      updatedCount
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error syncing developed ideas:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to sync developed ideas"
+    });
+  }
+});
+
 // ============================================================
 // CONTENT IDEA TEMPLATES
 // ============================================================
@@ -586,6 +649,25 @@ router.post("/posts", authenticateToken, requireRole("consultant"), async (req: 
     const [post] = await db.insert(schema.contentPosts)
       .values(validatedData)
       .returning();
+    
+    // If post was created from an idea, mark the idea as developed
+    // Security: ensure idea belongs to same consultant (multi-tenant safety)
+    if (post.ideaId) {
+      const [updatedIdea] = await db.update(schema.contentIdeas)
+        .set({
+          status: "developed",
+          developedPostId: post.id,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(schema.contentIdeas.id, post.ideaId),
+          eq(schema.contentIdeas.consultantId, consultantId)
+        ))
+        .returning();
+      if (updatedIdea) {
+        console.log(`✅ [CONTENT-STUDIO] Marked idea ${post.ideaId} as developed with post ${post.id}`);
+      }
+    }
     
     res.status(201).json({
       success: true,
