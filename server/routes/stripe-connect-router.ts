@@ -1,7 +1,7 @@
 import express, { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { db } from "../db";
-import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages, whatsappAgentConsultantConversations, consultantDirectLinks } from "@shared/schema";
+import { consultantLicenses, superadminStripeConfig, users, clientLevelSubscriptions, employeeLicensePurchases, managerUsers, managerLinkAssignments, whatsappAgentShares, bronzeUsers, consultantWhatsappConfig, managerConversations, managerMessages, whatsappAgentConsultantConversations, consultantDirectLinks, partnerWebhookConfigs, partnerWebhookLogs } from "@shared/schema";
 import { eq, sql, isNotNull, desc, and } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 import { decrypt } from "../encryption";
@@ -1232,6 +1232,35 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
         
         console.log(`[Stripe Webhook] Subscription created for ${clientEmail} (Level ${level}, ${billingPeriod || 'monthly'}) - Consultant: ${consultantId}`);
         
+        // Send webhook notification to partner if configured
+        if (level === "3") {
+          sendPartnerWebhook(consultantId, "gold_purchase", {
+            id: subscription.id,
+            clientEmail,
+            clientName: clientName || undefined,
+            phone: metaPhone || undefined,
+            tier: "gold",
+            status: "active",
+            startDate: subscription.startDate,
+            stripeSubscriptionId: session.subscription || undefined,
+          }).catch(err => {
+            console.error("[Stripe Webhook] Failed to send partner webhook for Gold purchase:", err);
+          });
+        } else if (level === "2") {
+          sendPartnerWebhook(consultantId, "silver_purchase", {
+            id: subscription.id,
+            clientEmail,
+            clientName: clientName || undefined,
+            phone: metaPhone || undefined,
+            tier: "silver",
+            status: "active",
+            startDate: subscription.startDate,
+            stripeSubscriptionId: session.subscription || undefined,
+          }).catch(err => {
+            console.error("[Stripe Webhook] Failed to send partner webhook for Silver purchase:", err);
+          });
+        }
+        
         // Deactivate Bronze user after successful upgrade to prevent dual access
         try {
           const deactivateResult = await db.update(bronzeUsers)
@@ -2172,6 +2201,283 @@ router.post("/consultant/bulk-apply-preferences", authenticateToken, requireRole
   } catch (error: any) {
     console.error("[Bulk Apply Preferences] Error:", error);
     res.status(500).json({ error: "Failed to apply preferences", details: error?.message });
+  }
+});
+
+// ============================================
+// PARTNER WEBHOOK NOTIFICATION SYSTEM
+// ============================================
+
+function generateSecretKey(length: number = 32): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let key = '';
+  for (let i = 0; i < length; i++) {
+    key += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return key;
+}
+
+function signWebhookPayload(payload: string, secretKey: string): string {
+  return crypto.createHmac('sha256', secretKey).update(payload).digest('hex');
+}
+
+export async function sendPartnerWebhook(
+  consultantId: string,
+  eventType: "gold_purchase" | "silver_purchase" | "test",
+  subscriptionData: {
+    id: string;
+    clientEmail: string;
+    clientName?: string;
+    phone?: string;
+    tier: "silver" | "gold";
+    status: string;
+    startDate: Date | null;
+    stripeSubscriptionId?: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const [config] = await db.select()
+      .from(partnerWebhookConfigs)
+      .where(eq(partnerWebhookConfigs.consultantId, consultantId));
+    
+    if (!config || !config.isEnabled || !config.webhookUrl) {
+      console.log(`[Partner Webhook] Skipping - not configured or disabled for consultant ${consultantId}`);
+      return { success: false, error: "Webhook not configured or disabled" };
+    }
+    
+    if (eventType === "gold_purchase" && !config.notifyOnGold) {
+      console.log(`[Partner Webhook] Skipping gold notification - disabled for consultant ${consultantId}`);
+      return { success: false, error: "Gold notifications disabled" };
+    }
+    
+    if (eventType === "silver_purchase" && !config.notifyOnSilver) {
+      console.log(`[Partner Webhook] Skipping silver notification - disabled for consultant ${consultantId}`);
+      return { success: false, error: "Silver notifications disabled" };
+    }
+    
+    const timestamp = new Date().toISOString();
+    const payload = {
+      event: eventType,
+      timestamp,
+      consultant_id: consultantId,
+      subscription: {
+        id: subscriptionData.id,
+        client_email: subscriptionData.clientEmail,
+        client_name: subscriptionData.clientName || null,
+        phone: subscriptionData.phone || null,
+        tier: subscriptionData.tier,
+        status: subscriptionData.status,
+        start_date: subscriptionData.startDate?.toISOString() || null,
+        stripe_subscription_id: subscriptionData.stripeSubscriptionId || null
+      }
+    };
+    
+    const payloadString = JSON.stringify(payload);
+    const signature = signWebhookPayload(payloadString, config.secretKey);
+    
+    console.log(`[Partner Webhook] Sending ${eventType} to ${config.webhookUrl} for consultant ${consultantId}`);
+    
+    let responseStatus: number | undefined;
+    let responseBody: string | undefined;
+    let success = false;
+    let errorMessage: string | undefined;
+    
+    try {
+      const response = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Partner-Signature': `sha256=${signature}`,
+          'X-Partner-Timestamp': timestamp,
+        },
+        body: payloadString,
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+      
+      responseStatus = response.status;
+      responseBody = await response.text().catch(() => "");
+      success = response.ok;
+      
+      if (!success) {
+        errorMessage = `HTTP ${responseStatus}: ${responseBody?.substring(0, 200) || "Unknown error"}`;
+      }
+      
+      console.log(`[Partner Webhook] Response: ${responseStatus} - success: ${success}`);
+    } catch (fetchError: any) {
+      errorMessage = fetchError?.message || "Network error";
+      console.error(`[Partner Webhook] Fetch error:`, errorMessage);
+    }
+    
+    await db.insert(partnerWebhookLogs).values({
+      consultantId,
+      eventType,
+      payload,
+      responseStatus,
+      responseBody: responseBody?.substring(0, 5000),
+      success,
+      errorMessage,
+    });
+    
+    return { success, error: errorMessage };
+  } catch (error: any) {
+    console.error(`[Partner Webhook] Error:`, error?.message);
+    return { success: false, error: error?.message };
+  }
+}
+
+router.get("/partner-webhook/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const [config] = await db.select()
+      .from(partnerWebhookConfigs)
+      .where(eq(partnerWebhookConfigs.consultantId, consultantId));
+    
+    if (!config) {
+      return res.json({
+        configured: false,
+        isEnabled: false,
+        webhookUrl: null,
+        secretKey: null,
+        notifyOnGold: true,
+        notifyOnSilver: false,
+      });
+    }
+    
+    res.json({
+      configured: true,
+      isEnabled: config.isEnabled,
+      webhookUrl: config.webhookUrl,
+      secretKey: config.secretKey,
+      notifyOnGold: config.notifyOnGold,
+      notifyOnSilver: config.notifyOnSilver,
+    });
+  } catch (error: any) {
+    console.error("[Partner Webhook Config GET] Error:", error);
+    res.status(500).json({ error: "Failed to get config" });
+  }
+});
+
+router.post("/partner-webhook/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, regenerateSecret } = req.body;
+    
+    const [existingConfig] = await db.select()
+      .from(partnerWebhookConfigs)
+      .where(eq(partnerWebhookConfigs.consultantId, consultantId));
+    
+    if (existingConfig) {
+      const updateData: any = {
+        webhookUrl: webhookUrl ?? existingConfig.webhookUrl,
+        isEnabled: isEnabled ?? existingConfig.isEnabled,
+        notifyOnGold: notifyOnGold ?? existingConfig.notifyOnGold,
+        notifyOnSilver: notifyOnSilver ?? existingConfig.notifyOnSilver,
+        updatedAt: new Date(),
+      };
+      
+      if (regenerateSecret) {
+        updateData.secretKey = generateSecretKey();
+      }
+      
+      const [updated] = await db.update(partnerWebhookConfigs)
+        .set(updateData)
+        .where(eq(partnerWebhookConfigs.consultantId, consultantId))
+        .returning();
+      
+      res.json({
+        success: true,
+        config: {
+          isEnabled: updated.isEnabled,
+          webhookUrl: updated.webhookUrl,
+          secretKey: updated.secretKey,
+          notifyOnGold: updated.notifyOnGold,
+          notifyOnSilver: updated.notifyOnSilver,
+        }
+      });
+    } else {
+      const [created] = await db.insert(partnerWebhookConfigs).values({
+        consultantId,
+        webhookUrl: webhookUrl || null,
+        secretKey: generateSecretKey(),
+        isEnabled: isEnabled ?? false,
+        notifyOnGold: notifyOnGold ?? true,
+        notifyOnSilver: notifyOnSilver ?? false,
+      }).returning();
+      
+      res.json({
+        success: true,
+        config: {
+          isEnabled: created.isEnabled,
+          webhookUrl: created.webhookUrl,
+          secretKey: created.secretKey,
+          notifyOnGold: created.notifyOnGold,
+          notifyOnSilver: created.notifyOnSilver,
+        }
+      });
+    }
+  } catch (error: any) {
+    console.error("[Partner Webhook Config POST] Error:", error);
+    res.status(500).json({ error: "Failed to save config" });
+  }
+});
+
+router.post("/partner-webhook/test", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const [config] = await db.select()
+      .from(partnerWebhookConfigs)
+      .where(eq(partnerWebhookConfigs.consultantId, consultantId));
+    
+    if (!config || !config.webhookUrl) {
+      return res.status(400).json({ error: "Webhook URL not configured" });
+    }
+    
+    const result = await sendPartnerWebhook(consultantId, "test", {
+      id: "test_" + Date.now(),
+      clientEmail: "test@example.com",
+      clientName: "Test Cliente",
+      phone: "+39123456789",
+      tier: "gold",
+      status: "active",
+      startDate: new Date(),
+      stripeSubscriptionId: "sub_test_" + Date.now(),
+    });
+    
+    if (result.success) {
+      res.json({ success: true, message: "Test webhook inviato con successo" });
+    } else {
+      res.json({ success: false, error: result.error });
+    }
+  } catch (error: any) {
+    console.error("[Partner Webhook Test] Error:", error);
+    res.status(500).json({ error: "Failed to send test webhook" });
+  }
+});
+
+router.get("/partner-webhook/logs", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+    
+    const logs = await db.select({
+      id: partnerWebhookLogs.id,
+      eventType: partnerWebhookLogs.eventType,
+      success: partnerWebhookLogs.success,
+      responseStatus: partnerWebhookLogs.responseStatus,
+      errorMessage: partnerWebhookLogs.errorMessage,
+      createdAt: partnerWebhookLogs.createdAt,
+    })
+      .from(partnerWebhookLogs)
+      .where(eq(partnerWebhookLogs.consultantId, consultantId))
+      .orderBy(desc(partnerWebhookLogs.createdAt))
+      .limit(limit);
+    
+    res.json({ logs });
+  } catch (error: any) {
+    console.error("[Partner Webhook Logs] Error:", error);
+    res.status(500).json({ error: "Failed to get logs" });
   }
 });
 
