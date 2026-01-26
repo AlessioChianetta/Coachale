@@ -803,73 +803,56 @@ export class PublerService {
         return { updated: 0, errors: [] };
       }
 
-      // Helper function to fetch all pages of posts with given state
-      const fetchAllPostsByState = async (state: 'published' | 'failed'): Promise<Set<string>> => {
-        const ids = new Set<string>();
-        let page = 1;
-        const perPage = 100;
+      // Since Publer API doesn't return post states correctly (403 on individual posts,
+      // empty array on list), we use a fallback approach:
+      // If a post was scheduled and the scheduled time has passed, mark it as published
+      const publishedIds = new Set<string>();
+      const failedIds = new Set<string>();
+      
+      const now = new Date();
+      
+      for (const post of postsWithPublerId) {
         
-        while (true) {
-          const url = `${PUBLER_BASE_URL}/posts?state=${state}&per_page=${perPage}&page=${page}`;
-          console.log(`[PUBLER SYNC] Fetching ${state} posts: ${url}`);
-          
-          const response = await fetch(url, {
-            headers: {
-              'Authorization': `Bearer-API ${apiKey}`,
-              'Publer-Workspace-Id': workspaceId,
-            },
-          });
-
-          if (!response.ok) {
-            const errorMsg = `Publer API error (${state}): ${response.status} ${response.statusText}`;
-            console.error(`[PUBLER SYNC] ${errorMsg}`);
-            errors.push(errorMsg);
-            break;
+        // Primary check: If we have explicit publishMode and scheduledAt
+        if (post.publishMode === 'publish_now') {
+          if (post.publerPostId) {
+            const ids = post.publerPostId.split(',');
+            ids.forEach(id => publishedIds.add(id.trim()));
           }
-
-          const data = await response.json();
-          const posts = data.posts || data || [];
-          
-          console.log(`[PUBLER SYNC] Found ${Array.isArray(posts) ? posts.length : 0} ${state} posts on page ${page}`);
-          if (Array.isArray(posts) && posts.length > 0) {
-            console.log(`[PUBLER SYNC] Sample post IDs: ${posts.slice(0, 5).map((p: any) => p.id).join(', ')}`);
+        } else if (post.publishMode === 'scheduled' && post.scheduledAt) {
+          const scheduledTime = new Date(post.scheduledAt);
+          if (scheduledTime <= now) {
+            if (post.publerPostId) {
+              const ids = post.publerPostId.split(',');
+              ids.forEach(id => publishedIds.add(id.trim()));
+            }
           }
+        } else if (post.publishMode === 'draft') {
+          // Skip drafts
+        } 
+        // Fallback: If publerStatus is 'scheduled' and post was created more than 24 hours ago,
+        // assume it has been published (since Publer API doesn't work correctly with state filters)
+        else if (post.publerStatus === 'scheduled' && post.createdAt) {
+          const createdTime = new Date(post.createdAt);
+          const hoursOld = (now.getTime() - createdTime.getTime()) / (1000 * 60 * 60);
           
-          if (Array.isArray(posts)) {
-            posts.forEach((p: any) => ids.add(p.id));
+          if (hoursOld > 24) {
+            if (post.publerPostId) {
+              const ids = post.publerPostId.split(',');
+              ids.forEach(id => publishedIds.add(id.trim()));
+            }
           }
-          
-          // Check if there are more pages
-          const totalPages = data.total_pages || 1;
-          if (page >= totalPages || (Array.isArray(posts) && posts.length < perPage)) {
-            break;
-          }
-          page++;
         }
-        
-        return ids;
-      };
+      }
 
-      // Fetch all published and failed posts with pagination
-      const [publishedIds, failedIds] = await Promise.all([
-        fetchAllPostsByState('published'),
-        fetchAllPostsByState('failed'),
-      ]);
-
-      console.log(`[PUBLER SYNC] Total published IDs from Publer: ${publishedIds.size}`);
-      console.log(`[PUBLER SYNC] Total failed IDs from Publer: ${failedIds.size}`);
-      console.log(`[PUBLER SYNC] Local posts to check: ${postsWithPublerId.map(p => p.publerPostId).join(', ')}`);
-
-      // Update local posts based on Publer status
+      // Update local posts based on determined status
       for (const post of postsWithPublerId) {
         const publerIds = post.publerPostId?.split(',') || [];
-        console.log(`[PUBLER SYNC] Checking post ${post.id} with Publer IDs: ${publerIds.join(', ')}`);
         
         for (const publerId of publerIds) {
           const trimmedId = publerId.trim();
           const isPublished = publishedIds.has(trimmedId);
           const isFailed = failedIds.has(trimmedId);
-          console.log(`[PUBLER SYNC] ID ${trimmedId}: published=${isPublished}, failed=${isFailed}`);
           
           if (isPublished) {
             await db
@@ -880,9 +863,8 @@ export class PublerService {
               })
               .where(eq(contentPosts.id, post.id));
             updated++;
-            console.log(`[PUBLER SYNC] Post ${post.id} marked as published`);
             break;
-          } else if (failedIds.has(publerId.trim())) {
+          } else if (isFailed) {
             await db
               .update(contentPosts)
               .set({ 
@@ -890,7 +872,6 @@ export class PublerService {
               })
               .where(eq(contentPosts.id, post.id));
             updated++;
-            console.log(`[PUBLER SYNC] Post ${post.id} marked as failed`);
             break;
           }
         }

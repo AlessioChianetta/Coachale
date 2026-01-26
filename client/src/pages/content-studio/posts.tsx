@@ -1646,6 +1646,7 @@ export default function ContentStudioPosts() {
   };
 
   const handleCreatePost = () => {
+    const isEditing = !!editingPost;
     const structuredContent: Record<string, any> = {
       copyType: selectedCopyType,
       mediaType: selectedMediaType,
