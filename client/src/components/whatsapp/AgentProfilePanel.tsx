@@ -308,6 +308,10 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [iceBreakers, setIceBreakers] = useState<Array<{ text: string; payload: string }>>([]);
   const [newIceBreaker, setNewIceBreaker] = useState("");
 
+  // Twitter/X integration state
+  const [isConnectingTwitter, setIsConnectingTwitter] = useState(false);
+  const [twitterError, setTwitterError] = useState<{ code: string; message: string } | null>(null);
+
   // Fetch Instagram configs
   const { data: instagramConfigs, isLoading: isLoadingInstagramConfigs } = useQuery<{
     configs: Array<{
@@ -568,6 +572,114 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
       });
     }
   });
+
+  // Fetch Twitter configs
+  const { data: twitterConfigs, isLoading: isLoadingTwitterConfigs } = useQuery<{
+    configs: Array<{
+      id: string;
+      username: string | null;
+      isActive: boolean;
+      autoResponseEnabled: boolean;
+      isDryRun: boolean;
+    }>;
+  }>({
+    queryKey: ["/api/twitter/configs"],
+    queryFn: async () => {
+      const res = await fetch("/api/twitter/configs", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch Twitter configs");
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
+  // Mutation for updating Twitter settings
+  const updateTwitterSettings = useMutation({
+    mutationFn: async (data: { configId: string; settings: Record<string, any> }) => {
+      const res = await fetch(`/api/twitter/config/${data.configId}/settings`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data.settings)
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update settings');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/twitter/configs"] });
+      toast({
+        title: "Impostazioni Salvate",
+        description: "Le impostazioni Twitter/X sono state aggiornate"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile salvare le impostazioni"
+      });
+    }
+  });
+
+  const handleTwitterSettingChange = (configId: string, key: string, value: any) => {
+    updateTwitterSettings.mutate({
+      configId,
+      settings: { [key]: value }
+    });
+  };
+
+  const handleConnectTwitter = async () => {
+    setIsConnectingTwitter(true);
+    setTwitterError(null);
+    try {
+      const response = await fetch("/api/twitter/oauth/url", {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (response.ok && data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error(data.error || "Impossibile iniziare il collegamento");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Errore durante la connessione a Twitter/X"
+      });
+      setIsConnectingTwitter(false);
+    }
+  };
+
+  const handleDisconnectTwitter = async (configId: string) => {
+    if (!confirm("Sei sicuro di voler disconnettere Twitter/X? Dovrai rifare il login OAuth.")) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/twitter/config/${configId}/disconnect`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast({
+          title: "Twitter/X Disconnesso",
+          description: "Account scollegato con successo. Puoi ricollegarlo quando vuoi."
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/twitter/configs"] });
+      } else {
+        throw new Error(data.error || "Impossibile disconnettere");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Errore durante la disconnessione"
+      });
+    }
+  };
 
   // Query for webhook status - scoped to specific config
   const { data: webhookStatus, refetch: refetchWebhookStatus, isLoading: isLoadingWebhookStatus } = useQuery<{ 
@@ -1904,6 +2016,124 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+              </div>
+
+              {/* Twitter/X DM */}
+              <div className="p-3 bg-gradient-to-br from-blue-50 to-slate-50 rounded-lg border border-blue-100">
+                <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <X className="h-4 w-4 text-blue-500" />
+                  Twitter/X DM
+                </h3>
+                {isLoadingTwitterConfigs ? (
+                  <div className="flex items-center justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  </div>
+                ) : twitterConfigs?.configs && twitterConfigs.configs.length > 0 ? (
+                  <div className="space-y-2">
+                    {twitterConfigs.configs.map((config) => (
+                      <div key={config.id} className="space-y-2">
+                        <div className="flex items-center gap-2 p-2 rounded bg-blue-100/50 border border-blue-200">
+                          <X className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-blue-700">Collegato</p>
+                            <p className="text-xs text-blue-600 truncate">
+                              {config.username ? `@${config.username}` : "Account X"}
+                            </p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDisconnectTwitter(config.id)} 
+                            className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-300"
+                          >
+                            <Unlink className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        {/* Automation Settings */}
+                        <div className="mt-3 pt-3 border-t border-blue-200/50 space-y-3">
+                          <div className="flex items-center gap-2 text-xs font-medium text-blue-700">
+                            <Zap className="h-3.5 w-3.5" />
+                            AUTOMAZIONI
+                          </div>
+                          
+                          {/* Auto Response DM */}
+                          <div className="flex items-center justify-between p-2 bg-white/60 rounded border border-blue-100">
+                            <div className="flex items-center gap-2">
+                              <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                              <span className="text-xs text-slate-700">Risposta Auto DM</span>
+                            </div>
+                            <Switch
+                              checked={config.autoResponseEnabled ?? false}
+                              onCheckedChange={(checked) => handleTwitterSettingChange(config.id, 'autoResponseEnabled', checked)}
+                              disabled={updateTwitterSettings.isPending}
+                              className="scale-75"
+                            />
+                          </div>
+                          
+                          {/* Dry Run */}
+                          <div className="flex items-center justify-between p-2 bg-amber-50/60 rounded border border-amber-200">
+                            <div className="flex items-center gap-2">
+                              <FlaskConical className="h-3.5 w-3.5 text-amber-600" />
+                              <span className="text-xs text-slate-700">Dry Run (test)</span>
+                            </div>
+                            <Switch
+                              checked={config.isDryRun ?? true}
+                              onCheckedChange={(checked) => handleTwitterSettingChange(config.id, 'isDryRun', checked)}
+                              disabled={updateTwitterSettings.isPending}
+                              className="scale-75"
+                            />
+                          </div>
+                          
+                          {config.isDryRun && (
+                            <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                              ⚠️ Modalità test attiva: le risposte vengono solo loggate, non inviate
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {twitterError && (
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-red-700 mb-1">Connessione Fallita</p>
+                            <p className="text-xs text-red-600">{twitterError.message}</p>
+                          </div>
+                          <button
+                            onClick={() => setTwitterError(null)}
+                            className="p-1 hover:bg-red-100 rounded transition-colors"
+                          >
+                            <X className="h-3 w-3 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 p-2 rounded bg-slate-50 border border-slate-200">
+                      <X className="h-4 w-4 text-slate-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-slate-600">Nessun account collegato</p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={handleConnectTwitter}
+                      disabled={isConnectingTwitter}
+                      className="w-full h-8 text-xs bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                    >
+                      {isConnectingTwitter ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <X className="h-3 w-3 mr-1" />
+                      )}
+                      Collega X Account
+                    </Button>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
