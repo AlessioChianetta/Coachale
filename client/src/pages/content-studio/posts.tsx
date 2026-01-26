@@ -660,6 +660,7 @@ export default function ContentStudioPosts() {
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
   const [publerDialogOpen, setPublerDialogOpen] = useState(false);
   const [publerPost, setPublerPost] = useState<Post | null>(null);
+  const [openPublerAfterSave, setOpenPublerAfterSave] = useState(false);
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedPublerFilter, setSelectedPublerFilter] = useState<string>("all");
@@ -981,8 +982,9 @@ export default function ContentStudioPosts() {
       }
       return response.json();
     },
-    onSuccess: async (createdPost) => {
+    onSuccess: async (result) => {
       const isEditing = !!editingPost;
+      const createdPost = result?.data || result;
       
       if (!isEditing && sourceIdeaId && createdPost?.id) {
         try {
@@ -1008,6 +1010,13 @@ export default function ContentStudioPosts() {
         description: isEditing ? "Il post è stato aggiornato con successo" : "Il post è stato creato con successo",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+      
+      // Check if we need to open Publer dialog after save
+      if (openPublerAfterSave && createdPost) {
+        setPublerPost(createdPost);
+        setPublerDialogOpen(true);
+        setOpenPublerAfterSave(false);
+      }
       setIsDialogOpen(false);
       setEditingPost(null);
       setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
@@ -3177,15 +3186,18 @@ export default function ContentStudioPosts() {
                       <Button
                         className="flex-1"
                         onClick={() => {
-                          setFormData({ ...formData, status: "scheduled" });
+                          setFormData({ ...formData, status: "draft" });
+                          setOpenPublerAfterSave(true);
                           handleCreatePost();
                         }}
                         disabled={createPostMutation.isPending}
                       >
                         {createPostMutation.isPending ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : null}
-                        Programma
+                        ) : (
+                          <Send className="h-4 w-4 mr-2" />
+                        )}
+                        Pubblica con Publer
                       </Button>
                     </div>
                   </div>
