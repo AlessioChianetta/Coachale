@@ -22,6 +22,7 @@ const publishSchema = z.object({
   state: z.enum(['draft', 'publish_now', 'scheduled']).default('publish_now'),
   scheduledAt: z.string().datetime().optional(),
   mediaIds: z.array(z.string()).optional(),
+  mediaType: z.enum(['image', 'video']).optional(),
 });
 
 router.get('/config', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
@@ -125,6 +126,7 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
       state: data.state,
       scheduledAt: scheduledDate,
       mediaIds: data.mediaIds,
+      mediaType: data.mediaType,
     });
     
     // Se ci sono errori dal job polling, il post non è stato creato

@@ -29,6 +29,7 @@ interface SchedulePostRequest {
   state?: PublishState;
   scheduledAt?: Date;
   mediaIds?: string[];
+  mediaType?: 'image' | 'video';
   platforms?: Record<string, { type: string; text: string }>;
   accountPlatforms?: { id: string; platform: string }[];
 }
@@ -36,6 +37,32 @@ interface SchedulePostRequest {
 interface SchedulePostResult {
   jobId: string;
   success: boolean;
+  postIds?: string[];
+  errors?: string[];
+}
+
+function getContentType(
+  platform: string, 
+  hasMedia: boolean, 
+  mediaType?: 'image' | 'video', 
+  mediaCount?: number
+): string {
+  if (platform === 'instagram') {
+    if (mediaType === 'video') return 'video';
+    if (mediaCount && mediaCount > 1) return 'carousel';
+    return 'photo';
+  }
+  
+  if (['pinterest', 'youtube', 'tiktok'].includes(platform) && !hasMedia) {
+    throw new Error(`${platform} requires media`);
+  }
+  
+  if (!hasMedia) return 'status';
+  if (mediaType === 'video') return 'video';
+  if (mediaCount && mediaCount > 1 && ['facebook', 'pinterest', 'tiktok'].includes(platform)) {
+    return 'carousel';
+  }
+  return 'photo';
 }
 
 export class PublerService {
@@ -312,7 +339,7 @@ export class PublerService {
     if (!accountPlatforms || accountPlatforms.length === 0) {
       // Fallback: recupera le platform dagli account salvati
       const savedAccounts = await db
-        .select({ id: publerAccounts.accountId, platform: publerAccounts.platform })
+        .select({ id: publerAccounts.id, platform: publerAccounts.platform })
         .from(publerAccounts)
         .where(eq(publerAccounts.consultantId, consultantId));
       
@@ -324,51 +351,64 @@ export class PublerService {
         .filter((a): a is { id: string; platform: string } => a !== null);
     }
 
+    console.log('[PUBLER] Account platforms resolved:', JSON.stringify(accountPlatforms, null, 2));
+
+    // Guard: se non riusciamo a risolvere alcuna piattaforma, errore
+    if (accountPlatforms.length === 0) {
+      throw new Error('Impossibile determinare le piattaforme degli account selezionati. Sincronizza gli account dalla pagina Chiavi API.');
+    }
+
     // Verifica se Instagram è selezionato e non ci sono media
     const hasInstagram = accountPlatforms.some(a => a.platform === 'instagram');
     const hasMedia = request.mediaIds && request.mediaIds.length > 0;
+    const mediaCount = request.mediaIds?.length || 0;
+    const mediaType = request.mediaType || 'image';
     
     if (hasInstagram && !hasMedia) {
       throw new Error('Instagram richiede almeno un\'immagine o video. Per pubblicare solo testo, deseleziona Instagram.');
     }
 
-    // REGOLA D'ORO PUBLER API:
-    // 1. networks DEVE essere compilato (mai vuoto)
-    // 2. text DEVE essere dentro networks.default.text
-    // 3. scheduled_at DEVE essere a livello POST, NON dentro accounts
-    // 4. Instagram usa type: 'post', altre piattaforme usano 'status'
-    // Questo vale per TUTTI gli stati: draft, scheduled, publish_now
-    
-    // Determina il tipo di post (Instagram usa 'post', altri 'status')
-    const postType = hasInstagram ? 'post' : 'status';
-    
-    // Se request.platforms è fornito, assicurati che Instagram usi type 'post'
-    let networks = request.platforms;
-    if (networks && hasInstagram) {
-      // Override del tipo per Instagram
-      if (networks.instagram) {
-        networks.instagram.type = 'post';
-      }
-      if (networks.default) {
-        networks.default.type = 'post';
+    // Build media array (to be included inside each network)
+    const mediaArray = request.mediaIds?.map(id => ({ 
+      id, 
+      type: mediaType,
+      alt_text: 'Social media post' 
+    })) || [];
+
+    // Get unique platforms from selected accounts
+    const uniquePlatforms = [...new Set(accountPlatforms.map(a => a.platform))];
+    console.log('[PUBLER] Unique platforms:', uniquePlatforms);
+
+    // Build networks object - one entry per platform (NOT 'default')
+    const networks: Record<string, any> = {};
+    for (const platform of uniquePlatforms) {
+      try {
+        const contentType = getContentType(platform, hasMedia, mediaType, mediaCount);
+        networks[platform] = {
+          type: contentType,
+          text: request.text,
+          ...(hasMedia ? { media: mediaArray } : {})
+        };
+        console.log(`[PUBLER] Network for ${platform}: type=${contentType}, hasMedia=${hasMedia}`);
+      } catch (err: any) {
+        console.error(`[PUBLER] Error creating network for ${platform}:`, err.message);
+        throw err;
       }
     }
-    
+
+    // Build accounts array with scheduled_at INSIDE each account entry
+    const accountsArray = request.accountIds.map(id => ({
+      id,
+      ...(publerState === 'scheduled' && request.scheduledAt 
+        ? { scheduled_at: request.scheduledAt.toISOString() } 
+        : {})
+    }));
+
+    // Build post entry - NO scheduled_at at post level, NO media at post level
     const postEntry: any = {
-      accounts: request.accountIds.map(id => ({ id })),
-      networks: networks || {
-        default: {
-          type: postType,
-          text: request.text
-        }
-      },
-      media: request.mediaIds?.map(id => ({ id, type: 'image' })) || [],
+      networks,
+      accounts: accountsArray,
     };
-    
-    // scheduled_at a livello POST (non dentro accounts!)
-    if (publerState === 'scheduled' && request.scheduledAt) {
-      postEntry.scheduled_at = request.scheduledAt.toISOString();
-    }
     
     const postPayload: any = {
       bulk: {
@@ -377,10 +417,20 @@ export class PublerService {
       },
     };
 
+    console.log('[PUBLER] ==================== REQUEST PAYLOAD ====================');
     console.log('[PUBLER] Request payload:', JSON.stringify(postPayload, null, 2));
+    console.log('[PUBLER] =========================================================');
 
-    // Usa sempre /posts/schedule per tutti gli stati
-    const response = await fetch(`${PUBLER_BASE_URL}/posts/schedule`, {
+    // Use correct endpoint based on state:
+    // - For scheduled/draft: POST /posts/schedule
+    // - For publish_now: POST /posts/schedule/publish
+    const endpoint = publerState === 'publish_now' 
+      ? `${PUBLER_BASE_URL}/posts/schedule/publish`
+      : `${PUBLER_BASE_URL}/posts/schedule`;
+    
+    console.log('[PUBLER] Using endpoint:', endpoint);
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: this.getHeaders(credentials.apiKey, credentials.workspaceId),
       body: JSON.stringify(postPayload),
