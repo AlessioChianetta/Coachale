@@ -79,11 +79,11 @@ function normalizeProvider(publerPlatform: string): string {
 }
 
 // Get the correct network key for Publer API
-// IMPORTANT: Publer backend expects specific keys like 'ig_business', NOT 'instagram'
+// According to official Publer docs, the key in networks should be the provider name
 function getNetworkKey(normalizedProvider: string): string {
   const networkKeyMap: Record<string, string> = {
-    'instagram': 'ig_business',  // Publer backend uses ig_business, NOT instagram
-    'facebook': 'fb_page',       // Use fb_page for Facebook pages
+    'instagram': 'instagram',    // Official docs use 'instagram' as network key
+    'facebook': 'facebook',      // Official docs use 'facebook'
     'linkedin': 'linkedin',
     'twitter': 'twitter',
     'tiktok': 'tiktok',
@@ -447,10 +447,10 @@ export class PublerService {
       }
     }
 
-    // Build media array - goes at POST level, not inside networks
+    // Build media array for networks - use 'photo' for images per Publer docs
     const mediaArray = request.mediaIds?.map(id => ({ 
       id, 
-      type: mediaType
+      type: mediaType === 'video' ? 'video' : 'photo'  // Publer uses 'photo' not 'image'
     })) || [];
 
     // Get unique platforms from selected accounts
@@ -459,19 +459,28 @@ export class PublerService {
     console.log('[PUBLER] Unique platforms:', uniquePlatforms);
     console.log('[PUBLER] Normalized platforms:', normalizedPlatforms);
 
-    // Build networks object - one entry per platform using Publer's internal keys
-    // IMPORTANT: Use ig_business (not instagram), fb_page (not facebook), etc.
+    // Build networks object according to official Publer API docs:
+    // - Key is provider name ('instagram', 'facebook', etc.)
+    // - Media goes INSIDE networks.{provider}.media (not at post level)
     const networks: Record<string, any> = {};
     for (const platform of normalizedPlatforms) {
       try {
         const contentType = getContentType(platform, hasMedia, mediaType, mediaCount);
-        const networkKey = getNetworkKey(platform); // Convert to Publer's internal key
-        networks[networkKey] = {
+        const networkKey = getNetworkKey(platform);
+        
+        // Build network entry with media INSIDE per official docs
+        const networkEntry: any = {
           type: contentType,
           text: request.text
-          // NOTE: media goes at POST level, NOT inside networks
         };
-        console.log(`[PUBLER] Network for ${platform} -> key=${networkKey}: type=${contentType}`);
+        
+        // Add media inside the network entry (official Publer docs structure)
+        if (hasMedia && mediaArray.length > 0) {
+          networkEntry.media = mediaArray;
+        }
+        
+        networks[networkKey] = networkEntry;
+        console.log(`[PUBLER] Network for ${platform} -> key=${networkKey}: type=${contentType}, media_count=${mediaArray.length}`);
       } catch (err: any) {
         console.error(`[PUBLER] Error creating network for ${platform}:`, err.message);
         throw err;
@@ -479,26 +488,18 @@ export class PublerService {
     }
     console.log(`[PUBLER] Networks object:`, JSON.stringify(networks));
 
-    // Build accounts array - just IDs, no scheduled_at here
-    const accountsArray = request.accountIds.map(id => ({ id }));
-
-    // WORKAROUND: Publer API doesn't have a stable endpoint for "publish_now" on Instagram
-    // Solution: Simulate publish_now by scheduling for NOW + 1 minute
-    // - For publish_now: use state: "scheduled" with scheduled_at = NOW + 60 seconds
-    // - For draft: use state: 1 (numeric)
-    // - For scheduled: use state: "scheduled" with user-provided date
-    
+    // Determine scheduled_at value based on publish state
+    // Per official Publer docs: scheduled_at goes INSIDE each account object
     let scheduledAtValue: string | undefined;
     let apiState: string | number;
+    let usePublishEndpoint = false;
     
     if (publerState === 'publish_now') {
-      // Simulate immediate publish by scheduling 10 minutes from now
-      // IMPORTANT: Using 600 seconds to avoid Publer's internal race condition
-      // that causes "undefined method count for nil" when scheduled_at is too close to NOW
-      const publishTime = new Date(Date.now() + 600 * 1000); // NOW + 10 minutes
-      scheduledAtValue = publishTime.toISOString();
+      // Per Publer docs: for immediate publish, use /posts/schedule/publish endpoint
+      // WITHOUT scheduled_at in accounts
       apiState = 'scheduled';
-      console.log('[PUBLER] Simulating publish_now with scheduled_at:', scheduledAtValue, '(+10 min)');
+      usePublishEndpoint = true;
+      console.log('[PUBLER] Publish now mode - using /posts/schedule/publish endpoint');
     } else if (publerState === 'draft') {
       apiState = 1; // Draft uses numeric 1
     } else {
@@ -509,36 +510,28 @@ export class PublerService {
       }
     }
 
-    // Build post entry according to Publer API spec:
-    // - scheduled_at at POST level (not inside accounts)
-    // - media at POST level (not inside networks)
-    // - media_ids as flat array (REQUIRED for Instagram to avoid nil.count bug)
-    // - networks with Publer's internal keys (ig_business, fb_page, etc.)
-    // - COMPOSER METADATA: source, format, provider (REQUIRED for Instagram via API)
-    const mediaIdsArray = request.mediaIds || [];
-    
-    // Determine if Instagram is one of the platforms (needs composer metadata)
-    const hasInstagram = normalizedPlatforms.includes('instagram');
-    
+    // Build accounts array per official Publer docs:
+    // - scheduled_at goes INSIDE each account object (not at post level)
+    const accountsArray = request.accountIds.map(id => {
+      const accountEntry: any = { id };
+      if (scheduledAtValue) {
+        accountEntry.scheduled_at = scheduledAtValue;
+      }
+      return accountEntry;
+    });
+    console.log('[PUBLER] Accounts array:', JSON.stringify(accountsArray));
+
+    // Build post entry according to OFFICIAL Publer API docs:
+    // - networks contains media inside each provider (networks.instagram.media)
+    // - scheduled_at goes inside each account object
+    // - NO source/provider/format/media_ids at post level (not documented)
     const postEntry: any = {
-      accounts: accountsArray,
       networks,
-      // Composer metadata - REQUIRED for Instagram API publishing
-      // Without these, Publer returns "composer is in invalid state"
-      source: 'api',
-      ...(hasInstagram ? { 
-        provider: 'instagram',
-        format: 'feed'  // 'feed' for photos, 'reel' for vertical videos
-      } : {}),
-      ...(hasMedia ? { 
-        media: mediaArray,
-        media_ids: mediaIdsArray  // IMPORTANT: Publer needs both media[] and media_ids[]
-      } : {}),
-      ...(scheduledAtValue ? { scheduled_at: scheduledAtValue } : {})
+      accounts: accountsArray
     };
     
-    console.log('[PUBLER] Media IDs array:', mediaIdsArray);
-    console.log('[PUBLER] Has Instagram:', hasInstagram);
+    console.log('[PUBLER] Has media:', hasMedia);
+    console.log('[PUBLER] Use publish endpoint:', usePublishEndpoint);
     
     const postPayload: any = {
       bulk: {
@@ -551,13 +544,14 @@ export class PublerService {
     console.log('[PUBLER] Request payload:', JSON.stringify(postPayload, null, 2));
     console.log('[PUBLER] =========================================================');
 
-    // IMPORTANT: Always use /posts/schedule for ALL states (including publish_now)
-    // The /posts/schedule/publish endpoint has a bug with Instagram that causes
-    // "undefined method 'count' for nil" error in Publer's backend
-    // Using /posts/schedule with state: "publish_now" works correctly for immediate publishing
-    const endpoint = `${PUBLER_BASE_URL}/posts/schedule`;
+    // Per official Publer docs:
+    // - /posts/schedule for scheduled posts (with scheduled_at in accounts)
+    // - /posts/schedule/publish for immediate publishing (without scheduled_at)
+    const endpoint = usePublishEndpoint 
+      ? `${PUBLER_BASE_URL}/posts/schedule/publish`
+      : `${PUBLER_BASE_URL}/posts/schedule`;
     
-    console.log('[PUBLER] Using endpoint:', endpoint, '(api_state:', apiState, ')');
+    console.log('[PUBLER] Using endpoint:', endpoint, '(api_state:', apiState, ', usePublishEndpoint:', usePublishEndpoint, ')');
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -697,15 +691,14 @@ export class PublerService {
     const message = err.message || 'Errore sconosciuto';
     
     // Messaggi user-friendly per errori comuni
-    if (provider === 'instagram') {
-      if (message.includes('compositore') || message.includes('composer')) {
-        return `Instagram (${accountName}): Questo account richiede un'immagine o video. Instagram non supporta post solo testo.`;
-      }
+    // "compositore in stato non valido" = account needs reconnection on Publer
+    if (message.includes('compositore') || message.includes('composer') || message.includes('stato non valido')) {
+      return `${provider} (${accountName}): Account in stato non valido. Vai su Publer.com, scollega e ricollega questo account, poi riprova.`;
     }
     
     // Messaggi generici per riconnessione
     if (message.includes('riselezionarlo') || message.includes('aggiorna') || message.includes('refresh')) {
-      return `${provider} (${accountName}): Account scollegato. Riconnetti l'account in Publer.`;
+      return `${provider} (${accountName}): Account scollegato. Riconnetti l'account su Publer.com.`;
     }
     
     return `${provider} (${accountName}): ${message}`;
