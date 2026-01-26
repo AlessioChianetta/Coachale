@@ -1,0 +1,174 @@
+❌ ERRORE 1 — Stai ancora usando type: photo
+
+Dal log:
+
+Determined content type: photo (based on instagram)
+Using networks.default with type=photo
+
+
+👉 Publer API per Instagram NON accetta photo come type principale.
+
+Quello è un alias UI.
+L’API vuole:
+
+type: "post"
+
+
+NON:
+
+photo ❌
+
+image ❌
+
+status ❌
+
+❌ ERRORE 2 — media è nel posto SBAGLIATO
+
+Tu stai inviando:
+
+"networks": {
+  "default": {
+    "type": "photo",
+    "text": "...",
+    "media": [ ... ]   ❌ QUI NON DEVE ESSERCI
+  }
+}
+
+
+👉 Publer vuole media a livello POST, non dentro networks.
+
+Struttura corretta:
+
+{
+  post: {
+    media: [...],
+    networks: {...}
+  }
+}
+
+❌ ERRORE 3 — scheduled_at ancora dentro accounts
+
+Dal payload:
+
+"accounts": [
+  {
+    "id": "...",
+    "scheduled_at": "2026-01-26T04:09:00.000Z" ❌
+  }
+]
+
+
+👉 Anche questo è sbagliato.
+
+Deve stare:
+
+"scheduled_at": "..."
+
+
+fuori da accounts.
+
+✅ PAYLOAD INSTAGRAM BUSINESS CORRETTO (COPIA-INCOLLA)
+
+Questo è lo schema che funziona realmente con Publer API:
+
+{
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "scheduled_at": "2026-01-26T04:09:00.000Z",
+
+        "accounts": [
+          { "id": "697685b559c689c71d4abc38" }
+        ],
+
+        "media": [
+          {
+            "id": "6976db0a3e81ac1f9cfb9e55",
+            "type": "image"
+          }
+        ],
+
+        "networks": {
+          "instagram": {
+            "type": "post",
+            "text": "Caption..."
+          }
+        }
+      }
+    ]
+  }
+}
+
+⚠️ Nota importante sul network key
+
+Ora stai usando:
+
+"default"
+
+
+Per Instagram è più stabile usare direttamente:
+
+"instagram" oppure "ig_business"
+
+
+Io ti consiglio:
+
+👉 se l’account platform è ig_business
+usa esattamente quella chiave:
+
+"networks": {
+   "ig_business": { ... }
+}
+
+
+Non default.
+
+LOGICA CHE DEVE AVERE IL TUO ADAPTER
+
+Digli di implementare ESATTAMENTE questo:
+
+1️⃣ Content type
+if (platform === "instagram" || platform === "ig_business") {
+  type = "post";
+}
+
+2️⃣ Media placement
+post.media = uploadedMedia;
+delete networks.media;
+
+3️⃣ Scheduling placement
+post.scheduled_at = date;
+delete accounts[].scheduled_at;
+
+4️⃣ Network key
+networks[platform] = { type, text }
+
+
+NON default per Instagram.
+
+Perché continui a vedere "composer invalid"
+
+Perché Publer API fa:
+
+valida struttura
+
+se anche UNA cosa è fuori posto → abortisce
+
+UI corregge queste cose.
+API NO.
+
+Segnale che hai finalmente risolto
+
+Quando è giusto vedrai:
+
+success=true
+posts=1
+payload.failures = undefined
+
+
+E il post apparirà:
+
+👉 Calendar Publer
+👉 Scheduled
+👉 Modificabile
