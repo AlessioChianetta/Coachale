@@ -13,6 +13,7 @@ import {
 } from "../../../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { encrypt, decrypt } from "../../encryption";
+import { authenticateToken, type AuthRequest } from "../../middleware/auth";
 
 const router = Router();
 
@@ -23,14 +24,12 @@ const oauthTokenSecrets: Map<string, { secret: string; consultantId: string }> =
  * GET /api/twitter/oauth/url
  * Generate OAuth 1.0a authorization URL
  */
-router.get("/url", async (req: Request, res: Response) => {
+router.get("/url", authenticateToken, async (req: AuthRequest, res: Response) => {
+  console.log(`🐦 [TWITTER OAUTH] GET /url called`);
+  console.log(`🐦 [TWITTER OAUTH] User:`, req.user ? `id=${req.user.id}, role=${req.user.role}` : "NULL");
+  
   try {
-    const user = (req as any).user;
-    if (!user) {
-      return res.status(401).json({ error: "Non autorizzato" });
-    }
-
-    const consultantId = user.role === "consultant" ? user.id : user.consultantId;
+    const consultantId = req.user!.role === "consultant" ? req.user!.id : req.user!.consultantId;
 
     // Get superadmin config for API keys
     const [superAdminConfig] = await db
@@ -267,14 +266,9 @@ router.get("/callback", async (req: Request, res: Response) => {
  * POST /api/twitter/oauth/disconnect
  * Disconnect Twitter account
  */
-router.post("/disconnect", async (req: Request, res: Response) => {
+router.post("/disconnect", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const user = (req as any).user;
-    if (!user) {
-      return res.status(401).json({ error: "Non autorizzato" });
-    }
-
-    const consultantId = user.role === "consultant" ? user.id : user.consultantId;
+    const consultantId = req.user!.role === "consultant" ? req.user!.id : req.user!.consultantId;
     const { configId } = req.body;
 
     if (!configId) {
@@ -314,14 +308,9 @@ router.post("/disconnect", async (req: Request, res: Response) => {
  * POST /api/twitter/webhook/register
  * Register webhook for the current user
  */
-router.post("/webhook/register", async (req: Request, res: Response) => {
+router.post("/webhook/register", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const user = (req as any).user;
-    if (!user) {
-      return res.status(401).json({ error: "Non autorizzato" });
-    }
-
-    const consultantId = user.role === "consultant" ? user.id : user.consultantId;
+    const consultantId = req.user!.role === "consultant" ? req.user!.id : req.user!.consultantId;
     const { configId } = req.body;
 
     if (!configId) {
