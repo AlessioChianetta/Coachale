@@ -237,4 +237,34 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
   }
 });
 
+router.get('/media-proxy', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, error: 'URL richiesto' });
+    }
+    
+    if (!url.startsWith('https://cdn.publer.com/')) {
+      return res.status(400).json({ success: false, error: 'URL non valido' });
+    }
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      return res.status(response.status).json({ success: false, error: 'Impossibile recuperare media' });
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/png';
+    const buffer = await response.arrayBuffer();
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(Buffer.from(buffer));
+  } catch (error: any) {
+    console.error('[PUBLER] Media proxy error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
