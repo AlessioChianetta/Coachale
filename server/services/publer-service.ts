@@ -258,6 +258,10 @@ export class PublerService {
 
     console.log('[PUBLER] Scheduling post with state:', publerState, 'for accounts:', request.accountIds.length);
 
+    // Per le bozze, il testo deve essere dentro networks.default
+    // Per publish_now e scheduled, il testo può stare a livello post
+    const isDraft = publerState === 'draft';
+    
     const postPayload: any = {
       bulk: {
         state: publerState,
@@ -270,20 +274,31 @@ export class PublerService {
               }
               return accountEntry;
             }),
-            networks: request.platforms || {},
+            networks: request.platforms || (isDraft ? {
+              default: {
+                type: 'status',
+                text: request.text
+              }
+            } : {}),
             media: request.mediaIds?.map(id => ({ id, type: 'image' })) || [],
           },
         ],
       },
     };
 
-    if (!request.platforms) {
+    // Per non-draft, aggiungi text a livello post
+    if (!isDraft && !request.platforms) {
       postPayload.bulk.posts[0].text = request.text;
     }
 
     console.log('[PUBLER] Request payload:', JSON.stringify(postPayload, null, 2));
 
-    const response = await fetch(`${PUBLER_BASE_URL}/posts/schedule/publish`, {
+    // Usa /posts/schedule per draft, /posts/schedule/publish per gli altri
+    const endpoint = isDraft 
+      ? `${PUBLER_BASE_URL}/posts/schedule`
+      : `${PUBLER_BASE_URL}/posts/schedule/publish`;
+    
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: this.getHeaders(credentials.apiKey, credentials.workspaceId),
       body: JSON.stringify(postPayload),
