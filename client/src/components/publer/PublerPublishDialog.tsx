@@ -8,6 +8,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -235,6 +244,8 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
   const [publishState, setPublishState] = useState<PublishState>("publish_now");
   const [scheduledAt, setScheduledAt] = useState("");
   const [usePlaceholderImage, setUsePlaceholderImage] = useState(false);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { data: configData } = useQuery<{ configured: boolean; isActive: boolean }>({
     queryKey: ["/api/publer/config"],
@@ -303,7 +314,9 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       resetForm();
     },
     onError: (error: Error) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      // Mostra errore come dialog di conferma (non toast che scompare)
+      setErrorMessage(error.message);
+      setErrorDialogOpen(true);
     },
   });
 
@@ -728,6 +741,26 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Dialog di errore - richiede conferma utente */}
+      <AlertDialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Errore Pubblicazione
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left">
+              {errorMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setErrorDialogOpen(false)}>
+              Ho capito
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

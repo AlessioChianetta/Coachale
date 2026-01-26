@@ -1,0 +1,120 @@
+Perfetto. Questo errore è finalmente chiaro e “pulito”:
+
+Post type is not valid
+
+Ora non è più un problema di struttura, media, scheduling o platform.
+È solo il TYPE sbagliato per Instagram secondo le API Publer.
+
+E qui c’è la cosa importante che ti ha fregato:
+
+⚠️ Publer API NON usa type: post per Instagram
+
+Io ti ho spinto verso post perché è quello che la UI usa internamente, ma la API pubblica accetta tipi specifici.
+
+Per Instagram Publer vuole:
+
+✅ photo → 1 immagine
+✅ carousel → più immagini
+✅ video → video
+
+NON:
+
+❌ post
+❌ status
+
+Guardiamo il tuo payload attuale
+
+Hai:
+
+"instagram": {
+  "type": "post",
+  "text": "..."
+}
+
+
+Risultato:
+
+👉 Publer risponde: Post type is not valid
+
+✅ Payload corretto per Instagram CON IMMAGINE
+
+Dato che stai caricando una sola immagine placeholder, devi usare:
+
+type: "photo"
+
+VERSIONE CORRETTA (questa è quella giusta)
+{
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "scheduled_at": "2026-01-26T05:20:00.000Z",
+
+        "accounts": [
+          { "id": "697685b559c689c71d4abc38" }
+        ],
+
+        "media": [
+          {
+            "id": "6976df378a90fb781fa37021",
+            "type": "image"
+          }
+        ],
+
+        "networks": {
+          "instagram": {
+            "type": "photo",
+            "text": "Caption..."
+          }
+        }
+      }
+    ]
+  }
+}
+
+Mapping corretto da implementare nel tuo backend
+
+Devi fare così:
+
+if (platform === "instagram") {
+  if (media.length === 1) type = "photo";
+  if (media.length > 1) type = "carousel";
+}
+
+
+Facebook / LinkedIn:
+
+type = "status"
+
+Riassunto dei tipi Publer REALI
+Instagram
+Caso	type
+1 immagine	photo
+
+immagini | carousel
+video | video
+
+Facebook / LinkedIn
+Caso	type
+solo testo	status
+testo + media	photo / video
+Perché prima vedevi "composer invalid"
+
+Perché:
+
+prima mancava media
+
+poi type errato
+
+poi placement errato
+Ora siamo arrivati all’ultimo livello di validazione API.
+
+Questo è normale quando integri Publer “low level”.
+
+Segnale che hai FINITO la guerra
+
+Quando funziona vedrai:
+
+success=true
+posts=1
+payload.failures = undefined
