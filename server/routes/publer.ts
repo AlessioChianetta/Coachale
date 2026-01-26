@@ -14,6 +14,7 @@ const configSchema = z.object({
 const publishSchema = z.object({
   postId: z.string().optional(),
   accountIds: z.array(z.string()).min(1, 'Seleziona almeno un account'),
+  accountPlatforms: z.array(z.string()).optional(),
   text: z.string().min(1, 'Testo del post richiesto'),
   state: z.enum(['draft', 'publish_now', 'scheduled']).default('publish_now'),
   scheduledAt: z.string().datetime().optional(),
@@ -101,6 +102,7 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
     
     const result = await publerService.schedulePost(consultantId, {
       accountIds: data.accountIds,
+      accountPlatforms: data.accountPlatforms,
       text: data.text,
       state: data.state,
       scheduledAt: scheduledDate,

@@ -258,47 +258,39 @@ export class PublerService {
 
     console.log('[PUBLER] Scheduling post with state:', publerState, 'for accounts:', request.accountIds.length);
 
-    // Per le bozze, il testo deve essere dentro networks.default
-    // Per publish_now e scheduled, il testo può stare a livello post
-    const isDraft = publerState === 'draft';
+    // REGOLA D'ORO PUBLER API:
+    // 1. networks DEVE essere compilato (mai vuoto)
+    // 2. text DEVE essere dentro networks.default.text
+    // 3. scheduled_at DEVE essere a livello POST, NON dentro accounts
+    // Questo vale per TUTTI gli stati: draft, scheduled, publish_now
+    
+    const postEntry: any = {
+      accounts: request.accountIds.map(id => ({ id })),
+      networks: request.platforms || {
+        default: {
+          type: 'status',
+          text: request.text
+        }
+      },
+      media: request.mediaIds?.map(id => ({ id, type: 'image' })) || [],
+    };
+    
+    // scheduled_at a livello POST (non dentro accounts!)
+    if (publerState === 'scheduled' && request.scheduledAt) {
+      postEntry.scheduled_at = request.scheduledAt.toISOString();
+    }
     
     const postPayload: any = {
       bulk: {
         state: publerState,
-        posts: [
-          {
-            accounts: request.accountIds.map(id => {
-              const accountEntry: any = { id };
-              if (publerState === 'scheduled' && request.scheduledAt) {
-                accountEntry.scheduled_at = request.scheduledAt.toISOString();
-              }
-              return accountEntry;
-            }),
-            networks: request.platforms || (isDraft ? {
-              default: {
-                type: 'status',
-                text: request.text
-              }
-            } : {}),
-            media: request.mediaIds?.map(id => ({ id, type: 'image' })) || [],
-          },
-        ],
+        posts: [postEntry],
       },
     };
 
-    // Per non-draft, aggiungi text a livello post
-    if (!isDraft && !request.platforms) {
-      postPayload.bulk.posts[0].text = request.text;
-    }
-
     console.log('[PUBLER] Request payload:', JSON.stringify(postPayload, null, 2));
 
-    // Usa /posts/schedule per draft, /posts/schedule/publish per gli altri
-    const endpoint = isDraft 
-      ? `${PUBLER_BASE_URL}/posts/schedule`
-      : `${PUBLER_BASE_URL}/posts/schedule/publish`;
-    
-    const response = await fetch(endpoint, {
+    // Usa sempre /posts/schedule per tutti gli stati
+    const response = await fetch(`${PUBLER_BASE_URL}/posts/schedule`, {
       method: 'POST',
       headers: this.getHeaders(credentials.apiKey, credentials.workspaceId),
       body: JSON.stringify(postPayload),
