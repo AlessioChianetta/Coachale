@@ -16,7 +16,9 @@ import {
   FolderTree,
   Briefcase,
   Folder,
+  BookOpen,
 } from "lucide-react";
+import { Link } from "wouter";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -282,6 +284,13 @@ export default function ContentStudioDashboard() {
                   Gestisci i tuoi contenuti e campagne marketing
                 </p>
               </div>
+              <Link href="/consultant/guide-social-flows">
+                <Button variant="outline" className="gap-2 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-colors">
+                  <BookOpen className="h-4 w-4" />
+                  <span className="hidden sm:inline">Guida Flussi Social</span>
+                  <span className="sm:hidden">Guida</span>
+                </Button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
