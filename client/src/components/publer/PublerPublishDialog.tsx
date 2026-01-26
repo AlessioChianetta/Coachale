@@ -695,13 +695,14 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                   </Button>
                 </div>
                 {publishState === "scheduled" && (
-                  <div className="space-y-2">
-                    <Label className="text-sm">Data e ora di pubblicazione</Label>
+                  <div className="space-y-2 mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-md border">
+                    <Label className="text-sm font-medium">Data e ora di pubblicazione</Label>
                     <Input
                       type="datetime-local"
                       value={scheduledAt}
                       onChange={(e) => setScheduledAt(e.target.value)}
                       min={new Date().toISOString().slice(0, 16)}
+                      className="w-full h-10"
                     />
                   </div>
                 )}
