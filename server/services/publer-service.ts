@@ -462,6 +462,31 @@ export class PublerService {
     // Build accounts array - just IDs, no scheduled_at here
     const accountsArray = request.accountIds.map(id => ({ id }));
 
+    // WORKAROUND: Publer API doesn't have a stable endpoint for "publish_now" on Instagram
+    // Solution: Simulate publish_now by scheduling for NOW + 1 minute
+    // - For publish_now: use state: "scheduled" with scheduled_at = NOW + 60 seconds
+    // - For draft: use state: 1 (numeric)
+    // - For scheduled: use state: "scheduled" with user-provided date
+    
+    let scheduledAtValue: string | undefined;
+    let apiState: string | number;
+    
+    if (publerState === 'publish_now') {
+      // Simulate immediate publish by scheduling 1 minute from now
+      const publishTime = new Date(Date.now() + 60 * 1000); // NOW + 60 seconds
+      scheduledAtValue = publishTime.toISOString();
+      apiState = 'scheduled';
+      console.log('[PUBLER] Simulating publish_now with scheduled_at:', scheduledAtValue);
+    } else if (publerState === 'draft') {
+      apiState = 1; // Draft uses numeric 1
+    } else {
+      // Scheduled - use user-provided date
+      apiState = 'scheduled';
+      if (request.scheduledAt) {
+        scheduledAtValue = request.scheduledAt.toISOString();
+      }
+    }
+
     // Build post entry according to Publer API spec:
     // - scheduled_at at POST level (not inside accounts)
     // - media at POST level (not inside networks)
@@ -470,14 +495,12 @@ export class PublerService {
       accounts: accountsArray,
       networks,
       ...(hasMedia ? { media: mediaArray } : {}),
-      ...(publerState === 'scheduled' && request.scheduledAt 
-        ? { scheduled_at: request.scheduledAt.toISOString() } 
-        : {})
+      ...(scheduledAtValue ? { scheduled_at: scheduledAtValue } : {})
     };
     
     const postPayload: any = {
       bulk: {
-        state: publerState,
+        state: apiState,
         posts: [postEntry],
       },
     };
