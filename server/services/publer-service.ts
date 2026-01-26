@@ -486,14 +486,13 @@ export class PublerService {
     console.log('[PUBLER] Request payload:', JSON.stringify(postPayload, null, 2));
     console.log('[PUBLER] =========================================================');
 
-    // Use correct endpoint based on state:
-    // - For scheduled/draft: POST /posts/schedule
-    // - For publish_now: POST /posts/schedule/publish
-    const endpoint = publerState === 'publish_now' 
-      ? `${PUBLER_BASE_URL}/posts/schedule/publish`
-      : `${PUBLER_BASE_URL}/posts/schedule`;
+    // IMPORTANT: Always use /posts/schedule for ALL states (including publish_now)
+    // The /posts/schedule/publish endpoint has a bug with Instagram that causes
+    // "undefined method 'count' for nil" error in Publer's backend
+    // Using /posts/schedule with state: "publish_now" works correctly for immediate publishing
+    const endpoint = `${PUBLER_BASE_URL}/posts/schedule`;
     
-    console.log('[PUBLER] Using endpoint:', endpoint);
+    console.log('[PUBLER] Using endpoint:', endpoint, '(state:', publerState, ')');
 
     const response = await fetch(endpoint, {
       method: 'POST',
