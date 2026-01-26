@@ -48,6 +48,18 @@ interface PublerAccount {
   isActive: boolean;
 }
 
+// Helper per verificare se una piattaforma Publer è Instagram
+// Publer usa identificatori come 'ig_business', 'ig_personal' invece di 'instagram'
+function isInstagramPlatform(platform: string): boolean {
+  return ['instagram', 'ig_business', 'ig_personal'].includes(platform);
+}
+
+// Helper per piattaforme che richiedono media (non supportano solo testo)
+function platformRequiresMedia(platform: string): boolean {
+  const mediaRequired = ['instagram', 'ig_business', 'ig_personal', 'pinterest', 'youtube', 'tiktok', 'tiktok_business'];
+  return mediaRequired.includes(platform);
+}
+
 interface StructuredContent {
   copyType?: string;
   mediaType?: string;
@@ -269,9 +281,9 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       .filter(a => selectedAccounts.includes(a.id))
       .map(a => ({ id: a.id, platform: a.platform }));
     
-    // Verifica se Instagram è selezionato e serve immagine placeholder
+    // Verifica se una piattaforma che richiede media è selezionata e serve immagine placeholder
     const needsPlaceholder = usePlaceholderImage && 
-      accountPlatforms.some(a => a.platform === 'instagram');
+      accountPlatforms.some(a => isInstagramPlatform(a.platform));
     
     let mediaIds: string[] | undefined;
     
@@ -314,10 +326,11 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
   );
   
   // Verifica se è selezionato Instagram (richiede sempre un'immagine)
+  // Publer usa 'ig_business', 'ig_personal' invece di 'instagram'
   const hasInstagramSelected = useMemo(() => {
     return accounts
       .filter(a => selectedAccounts.includes(a.id))
-      .some(a => a.platform === 'instagram');
+      .some(a => isInstagramPlatform(a.platform));
   }, [accounts, selectedAccounts]);
   
   // Per ora non supportiamo upload media, quindi avvisiamo per Instagram
@@ -563,7 +576,13 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
           </Button>
           <Button
             onClick={handlePublish}
-            disabled={!isConfigured || selectedAccounts.length === 0 || publishMutation.isPending || !composedText.trim()}
+            disabled={
+              !isConfigured || 
+              selectedAccounts.length === 0 || 
+              publishMutation.isPending || 
+              !composedText.trim() ||
+              (hasInstagramSelected && !usePlaceholderImage)
+            }
           >
             {publishMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
