@@ -41,25 +41,70 @@ interface SchedulePostResult {
   errors?: string[];
 }
 
+// Mappa identificatori Publer → provider generico per logica content type
+function normalizeProvider(publerPlatform: string): string {
+  const providerMap: Record<string, string> = {
+    // Instagram variants
+    'ig_business': 'instagram',
+    'ig_personal': 'instagram',
+    'instagram': 'instagram',
+    // Facebook variants
+    'fb_page': 'facebook',
+    'fb_group': 'facebook',
+    'facebook': 'facebook',
+    // LinkedIn variants
+    'linkedin': 'linkedin',
+    'linkedin_page': 'linkedin',
+    // Twitter/X
+    'twitter': 'twitter',
+    'x': 'twitter',
+    // TikTok
+    'tiktok': 'tiktok',
+    'tiktok_business': 'tiktok',
+    // Pinterest
+    'pinterest': 'pinterest',
+    // YouTube
+    'youtube': 'youtube',
+    // Telegram
+    'telegram': 'telegram',
+    // Threads
+    'threads': 'threads',
+    // Bluesky
+    'bluesky': 'bluesky',
+    // Google Business
+    'google_business': 'google_business',
+    'gmb': 'google_business',
+  };
+  return providerMap[publerPlatform] || publerPlatform;
+}
+
 function getContentType(
   platform: string, 
   hasMedia: boolean, 
   mediaType?: 'image' | 'video', 
   mediaCount?: number
 ): string {
-  if (platform === 'instagram') {
+  // Normalizza l'identificatore Publer al provider generico
+  const provider = normalizeProvider(platform);
+  
+  // Instagram NEVER supports 'status' - always requires media
+  if (provider === 'instagram') {
+    if (!hasMedia) {
+      throw new Error('Instagram richiede almeno un\'immagine o video. Impossibile pubblicare solo testo.');
+    }
     if (mediaType === 'video') return 'video';
     if (mediaCount && mediaCount > 1) return 'carousel';
     return 'photo';
   }
   
-  if (['pinterest', 'youtube', 'tiktok'].includes(platform) && !hasMedia) {
-    throw new Error(`${platform} requires media`);
+  // Pinterest, YouTube, TikTok don't support text-only
+  if (['pinterest', 'youtube', 'tiktok'].includes(provider) && !hasMedia) {
+    throw new Error(`${provider} richiede media. Impossibile pubblicare solo testo.`);
   }
   
   if (!hasMedia) return 'status';
   if (mediaType === 'video') return 'video';
-  if (mediaCount && mediaCount > 1 && ['facebook', 'pinterest', 'tiktok'].includes(platform)) {
+  if (mediaCount && mediaCount > 1 && ['facebook', 'pinterest', 'tiktok'].includes(provider)) {
     return 'carousel';
   }
   return 'photo';
@@ -358,14 +403,18 @@ export class PublerService {
       throw new Error('Impossibile determinare le piattaforme degli account selezionati. Sincronizza gli account dalla pagina Chiavi API.');
     }
 
-    // Verifica se Instagram è selezionato e non ci sono media
-    const hasInstagram = accountPlatforms.some(a => a.platform === 'instagram');
+    // Verifica se piattaforme che richiedono media sono selezionate
     const hasMedia = request.mediaIds && request.mediaIds.length > 0;
     const mediaCount = request.mediaIds?.length || 0;
     const mediaType = request.mediaType || 'image';
     
-    if (hasInstagram && !hasMedia) {
-      throw new Error('Instagram richiede almeno un\'immagine o video. Per pubblicare solo testo, deseleziona Instagram.');
+    // Check per piattaforme che richiedono media PRIMA di generare networks
+    const platformsRequiringMedia = ['instagram', 'pinterest', 'youtube', 'tiktok'];
+    for (const account of accountPlatforms) {
+      const normalizedPlatform = normalizeProvider(account.platform);
+      if (platformsRequiringMedia.includes(normalizedPlatform) && !hasMedia) {
+        throw new Error(`${normalizedPlatform.charAt(0).toUpperCase() + normalizedPlatform.slice(1)} richiede almeno un'immagine o video. Per pubblicare solo testo, deseleziona questo account.`);
+      }
     }
 
     // Build media array (to be included inside each network)
@@ -389,7 +438,7 @@ export class PublerService {
           text: request.text,
           ...(hasMedia ? { media: mediaArray } : {})
         };
-        console.log(`[PUBLER] Network for ${platform}: type=${contentType}, hasMedia=${hasMedia}`);
+        console.log(`[PUBLER] Network for ${platform} (normalized: ${normalizeProvider(platform)}): type=${contentType}, hasMedia=${hasMedia}`);
       } catch (err: any) {
         console.error(`[PUBLER] Error creating network for ${platform}:`, err.message);
         throw err;
