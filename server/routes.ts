@@ -118,6 +118,9 @@ import instagramWebhookRouter from "./routes/instagram/instagram-webhook-router"
 import instagramConfigRouter from "./routes/instagram/instagram-config-router";
 import instagramOAuthRouter from "./routes/instagram/instagram-oauth-router";
 import agentInstagramRouter from "./routes/instagram/agent-instagram-router";
+import twitterWebhookRouter from "./routes/twitter/twitter-webhook-router";
+import twitterConfigRouter from "./routes/twitter/twitter-config-router";
+import twitterOAuthRouter from "./routes/twitter/twitter-oauth-router";
 import leadImportRouter from "./routes/lead-import-router";
 import stripeConnectRouter from "./routes/stripe-connect-router";
 import consultantPricingRouter from "./routes/consultant-pricing-router";
@@ -12401,6 +12404,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.use("/api/instagram", instagramConfigRouter); // Authenticated config endpoints
   app.use("/api/instagram", instagramOAuthRouter); // OAuth flow endpoints
   app.use("/api/consultant/agents", agentInstagramRouter); // Per-agent Instagram config
+
+  // Twitter/X Integration routes
+  app.use("/api/twitter/webhook", twitterWebhookRouter); // Public webhook endpoints
+  app.use("/api/twitter", twitterConfigRouter); // Authenticated config endpoints
+  app.use("/api/twitter/oauth", twitterOAuthRouter); // OAuth flow endpoints
 
   // Lead Import routes (Excel/CSV/Google Sheets import)
   app.use("/api", leadImportRouter);
