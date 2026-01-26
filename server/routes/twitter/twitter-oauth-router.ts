@@ -52,9 +52,9 @@ router.get("/url", async (req: Request, res: Response) => {
     // Create OAuth 1.0a instance
     const oauth = new OAuth({
       consumer: { key: apiKey, secret: apiSecret },
-      signature_method: "HMAC-SHA256",
+      signature_method: "HMAC-SHA1",
       hash_function(baseString, key) {
-        return crypto.createHmac("sha256", key).update(baseString).digest("base64");
+        return crypto.createHmac("sha1", key).update(baseString).digest("base64");
       },
     });
 
@@ -168,9 +168,9 @@ router.get("/callback", async (req: Request, res: Response) => {
     // Create OAuth instance
     const oauth = new OAuth({
       consumer: { key: apiKey, secret: apiSecret },
-      signature_method: "HMAC-SHA256",
+      signature_method: "HMAC-SHA1",
       hash_function(baseString, key) {
-        return crypto.createHmac("sha256", key).update(baseString).digest("base64");
+        return crypto.createHmac("sha1", key).update(baseString).digest("base64");
       },
     });
 

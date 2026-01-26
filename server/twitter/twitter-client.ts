@@ -43,10 +43,10 @@ export class TwitterClient {
         key: config.apiKey,
         secret: config.apiSecret,
       },
-      signature_method: "HMAC-SHA256",
+      signature_method: "HMAC-SHA1",
       hash_function(baseString, key) {
         return crypto
-          .createHmac("sha256", key)
+          .createHmac("sha1", key)
           .update(baseString)
           .digest("base64");
       },
