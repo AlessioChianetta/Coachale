@@ -143,6 +143,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
   const [customText, setCustomText] = useState("");
   const [publishState, setPublishState] = useState<PublishState>("publish_now");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [usePlaceholderImage, setUsePlaceholderImage] = useState(false);
 
   const { data: configData } = useQuery<{ configured: boolean; isActive: boolean }>({
     queryKey: ["/api/publer/config"],
@@ -164,6 +165,20 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     enabled: open && !!configData?.configured,
   });
 
+  const uploadPlaceholderMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/publer/upload-placeholder", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore caricamento immagine");
+      }
+      return res.json() as Promise<{ mediaId: string }>;
+    },
+  });
+
   const publishMutation = useMutation({
     mutationFn: async (data: {
       postId: string;
@@ -172,6 +187,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       text: string;
       state: PublishState;
       scheduledAt?: string;
+      mediaIds?: string[];
     }) => {
       const res = await fetch("/api/publer/publish", {
         method: "POST",
@@ -206,6 +222,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     setCustomText("");
     setPublishState("publish_now");
     setScheduledAt("");
+    setUsePlaceholderImage(false);
   };
 
   useEffect(() => {
@@ -232,7 +249,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     );
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!post) return;
     if (selectedAccounts.length === 0) {
       toast({ title: "Seleziona almeno un account", variant: "destructive" });
@@ -252,6 +269,27 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       .filter(a => selectedAccounts.includes(a.id))
       .map(a => ({ id: a.id, platform: a.platform }));
     
+    // Verifica se Instagram è selezionato e serve immagine placeholder
+    const needsPlaceholder = usePlaceholderImage && 
+      accountPlatforms.some(a => a.platform === 'instagram');
+    
+    let mediaIds: string[] | undefined;
+    
+    if (needsPlaceholder) {
+      try {
+        toast({ title: "Caricamento immagine placeholder...", description: "Attendere prego" });
+        const result = await uploadPlaceholderMutation.mutateAsync();
+        mediaIds = [result.mediaId];
+      } catch (error) {
+        toast({ 
+          title: "Errore", 
+          description: "Impossibile caricare l'immagine placeholder", 
+          variant: "destructive" 
+        });
+        return;
+      }
+    }
+    
     publishMutation.mutate({
       postId: post.id,
       accountIds: selectedAccounts,
@@ -259,6 +297,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       text: composedText,
       state: publishState,
       scheduledAt: publishState === "scheduled" ? new Date(scheduledAt).toISOString() : undefined,
+      mediaIds,
     });
   };
 
@@ -442,9 +481,26 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                 <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
                   <AlertCircle className="h-4 w-4 text-amber-600" />
                   <AlertDescription className="text-amber-700 dark:text-amber-400">
-                    <strong>Attenzione:</strong> Instagram richiede sempre un'immagine o video. 
-                    I post solo testo non sono supportati e falliranno. 
-                    Per ora, deseleziona Instagram o usa solo Facebook/LinkedIn.
+                    <div className="space-y-3">
+                      <p>
+                        <strong>Attenzione:</strong> Instagram richiede sempre un'immagine o video.
+                      </p>
+                      <div className="flex items-center gap-2 p-2 bg-white/50 dark:bg-black/20 rounded-md">
+                        <Checkbox
+                          id="use-placeholder"
+                          checked={usePlaceholderImage}
+                          onCheckedChange={(checked) => setUsePlaceholderImage(checked === true)}
+                        />
+                        <Label htmlFor="use-placeholder" className="text-sm cursor-pointer flex-1">
+                          Usa immagine placeholder (verrà caricata un'immagine generica)
+                        </Label>
+                      </div>
+                      {!usePlaceholderImage && (
+                        <p className="text-xs opacity-80">
+                          Oppure deseleziona Instagram e usa solo Facebook/LinkedIn.
+                        </p>
+                      )}
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}

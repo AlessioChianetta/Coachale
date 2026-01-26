@@ -93,6 +93,21 @@ router.post('/accounts/sync', authenticateToken, requireRole('consultant'), asyn
   }
 });
 
+router.post('/upload-placeholder', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const status = await publerService.getConfigStatus(consultantId);
+    if (!status.configured || !status.isActive) {
+      return res.status(400).json({ success: false, error: 'Publer non configurato o disattivato' });
+    }
+    const result = await publerService.uploadPlaceholderImage(consultantId);
+    res.json({ success: true, mediaId: result.id });
+  } catch (error: any) {
+    console.error('[PUBLER] Error uploading placeholder:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/publish', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;

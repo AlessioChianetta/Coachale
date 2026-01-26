@@ -241,6 +241,53 @@ export class PublerService {
     return response.json();
   }
 
+  async uploadPlaceholderImage(consultantId: string): Promise<PublerMediaResult> {
+    const credentials = await this.getDecryptedApiKey(consultantId);
+    
+    if (!credentials) {
+      throw new Error('Publer non configurato');
+    }
+
+    // Leggi l'immagine placeholder dal filesystem
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const placeholderPath = path.join(process.cwd(), 'client', 'public', 'placeholder-social.png');
+    
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = await fs.readFile(placeholderPath);
+    } catch (error) {
+      throw new Error('Immagine placeholder non trovata');
+    }
+
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer], { type: 'image/png' });
+    formData.append('file', blob, 'placeholder-social.png');
+    formData.append('direct_upload', 'true');
+    formData.append('in_library', 'true');
+
+    console.log('[PUBLER] Uploading placeholder image...');
+
+    const response = await fetch(`${PUBLER_BASE_URL}/media`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer-API ${credentials.apiKey}`,
+        'Publer-Workspace-Id': credentials.workspaceId,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      console.error('[PUBLER] Placeholder upload failed:', error);
+      throw new Error(error.message || `Errore upload placeholder: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('[PUBLER] Placeholder uploaded successfully:', result.id);
+    return result;
+  }
+
   async schedulePost(consultantId: string, request: SchedulePostRequest): Promise<SchedulePostResult> {
     const credentials = await this.getDecryptedApiKey(consultantId);
     
