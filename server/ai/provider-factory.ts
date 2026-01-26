@@ -13,6 +13,7 @@ import { vertexAiSettings, vertexAiClientAccess, users, superadminVertexConfig, 
 import { eq, and, gt, sql } from "drizzle-orm";
 import { AiProviderMetadata } from "./retry-manager";
 import { decrypt } from "../encryption";
+import { rateLimitedGeminiCall } from "./gemini-rate-limiter";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -181,12 +182,9 @@ class VertexAIClientAdapter implements GeminiClient {
     systemInstruction?: { role: string; parts: Array<{ text: string }> };
     toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<{ response: { text: () => string; candidates?: any[] } }> {
-    // Extract systemInstruction from generationConfig if present (legacy support)
     const { systemInstruction: legacySystemInstruction, ...restConfig } = params.generationConfig || {};
-    // Prefer direct systemInstruction param over legacy
     const finalSystemInstruction = params.systemInstruction || legacySystemInstruction;
 
-    // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
     if (params.model && params.model !== this.currentModelName && this.vertexAI) {
       console.log(`🔄 Switching model from ${this.currentModelName} to ${params.model}`);
@@ -195,13 +193,17 @@ class VertexAIClientAdapter implements GeminiClient {
       this.model = modelToUse;
     }
 
-    const result = await modelToUse.generateContent({
-      contents: params.contents,
-      generationConfig: restConfig,
-      systemInstruction: finalSystemInstruction,
-      ...(params.tools && { tools: params.tools }),
-      ...(params.toolConfig && { toolConfig: params.toolConfig }),
-    });
+    // Wrap with rate limiter (semaphore + retry on 503)
+    const result = await rateLimitedGeminiCall(
+      () => modelToUse.generateContent({
+        contents: params.contents,
+        generationConfig: restConfig,
+        systemInstruction: finalSystemInstruction,
+        ...(params.tools && { tools: params.tools }),
+        ...(params.toolConfig && { toolConfig: params.toolConfig }),
+      }),
+      { context: `VertexAI.generateContent(${params.model || this.currentModelName})` }
+    );
 
     // Store candidates for function call extraction
     const candidates = result.response?.candidates;
@@ -282,11 +284,9 @@ class VertexAIClientAdapter implements GeminiClient {
     systemInstruction?: { role: string; parts: Array<{ text: string }> };
     toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<AsyncIterable<GeminiStreamChunk>> {
-    // Extract systemInstruction from generationConfig if present (legacy support)
     const { systemInstruction: legacySystemInstruction, ...restConfig } = params.generationConfig || {};
     const finalSystemInstruction = params.systemInstruction || legacySystemInstruction;
 
-    // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
     if (params.model && params.model !== this.currentModelName && this.vertexAI) {
       console.log(`🔄 Switching model from ${this.currentModelName} to ${params.model}`);
@@ -295,18 +295,21 @@ class VertexAIClientAdapter implements GeminiClient {
       this.model = modelToUse;
     }
 
-    const streamResult = await modelToUse.generateContentStream({
-      contents: params.contents,
-      generationConfig: restConfig,
-      systemInstruction: finalSystemInstruction,
-      ...(params.tools && { tools: params.tools }),
-      ...(params.toolConfig && { toolConfig: params.toolConfig }),
-    });
+    // Wrap with rate limiter for initial connection
+    const streamResult = await rateLimitedGeminiCall(
+      () => modelToUse.generateContentStream({
+        contents: params.contents,
+        generationConfig: restConfig,
+        systemInstruction: finalSystemInstruction,
+        ...(params.tools && { tools: params.tools }),
+        ...(params.toolConfig && { toolConfig: params.toolConfig }),
+      }),
+      { context: `VertexAI.generateContentStream(${params.model || this.currentModelName})` }
+    );
 
     return {
       async *[Symbol.asyncIterator]() {
         for await (const chunk of streamResult.stream) {
-          // Pass full candidates structure for thinking separation
           const candidates = chunk.candidates?.map((c: any) => ({
             content: {
               parts: c.content?.parts?.map((p: any) => ({
@@ -316,7 +319,6 @@ class VertexAIClientAdapter implements GeminiClient {
             },
           }));
           
-          // Also extract simple text for fallback
           const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
           
           yield { text, candidates };
@@ -341,48 +343,45 @@ class GeminiClientAdapter implements GeminiClient {
     systemInstruction?: { role: string; parts: Array<{ text: string }> };
     toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<{ response: { text: () => string; candidates?: any[] } }> {
-    // NEW API: Call ai.models.generateContent directly (no getGenerativeModel)
-    // Include tools, systemInstruction, and toolConfig for function calling support
-    const result = await this.ai.models.generateContent({
-      model: params.model,
-      contents: params.contents,
-      config: {
-        ...params.generationConfig,
-        ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
-        ...(params.systemInstruction && { systemInstruction: params.systemInstruction }),
-        ...(params.toolConfig && { toolConfig: params.toolConfig }),
-      },
-    });
-
-    // Store candidates for function call extraction
-    const candidates = (result as any).candidates || (result as any).response?.candidates;
-
-    // Normalize response format
-    return {
-      response: {
-        text: () => {
-          // Try multiple extraction paths
-          if (typeof result.response?.text === 'function') {
-            return result.response.text();
-          }
-          if (typeof result.response?.text === 'string') {
-            return result.response.text;
-          }
-          if (result.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
-            return result.response.candidates[0].content.parts[0].text;
-          }
-          if (result.text) {
-            return result.text;
-          }
-          // For function calls, text may be empty - that's OK
-          if (candidates?.[0]?.content?.parts?.[0]?.functionCall) {
-            return "";
-          }
-          throw new Error("Failed to extract text from response");
+    // Wrap with rate limiter (semaphore + retry on 503)
+    return rateLimitedGeminiCall(async () => {
+      const result = await this.ai.models.generateContent({
+        model: params.model,
+        contents: params.contents,
+        config: {
+          ...params.generationConfig,
+          ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
+          ...(params.systemInstruction && { systemInstruction: params.systemInstruction }),
+          ...(params.toolConfig && { toolConfig: params.toolConfig }),
         },
-        candidates
-      }
-    };
+      });
+
+      const candidates = (result as any).candidates || (result as any).response?.candidates;
+
+      return {
+        response: {
+          text: () => {
+            if (typeof result.response?.text === 'function') {
+              return result.response.text();
+            }
+            if (typeof result.response?.text === 'string') {
+              return result.response.text;
+            }
+            if (result.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+              return result.response.candidates[0].content.parts[0].text;
+            }
+            if (result.text) {
+              return result.text;
+            }
+            if (candidates?.[0]?.content?.parts?.[0]?.functionCall) {
+              return "";
+            }
+            throw new Error("Failed to extract text from response");
+          },
+          candidates
+        }
+      };
+    }, { context: `GeminiAdapter.generateContent(${params.model})` });
   }
 
   async generateContentStream(params: {
@@ -391,26 +390,25 @@ class GeminiClientAdapter implements GeminiClient {
     generationConfig?: any;
     tools?: any[];
   }): Promise<AsyncIterable<GeminiStreamChunk>> {
-    // NEW API: generateContentStream returns AsyncGenerator directly
-    // Include tools for File Search support (Google AI Studio only)
-    const streamGenerator = await this.ai.models.generateContentStream({
-      model: params.model,
-      contents: params.contents,
-      config: {
-        ...params.generationConfig,
-        ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
-      },
-    });
+    // For streaming, we use rate limiter for the initial connection only
+    // The stream iteration happens outside the semaphore to avoid holding it too long
+    const streamGenerator = await rateLimitedGeminiCall(
+      () => this.ai.models.generateContentStream({
+        model: params.model,
+        contents: params.contents,
+        config: {
+          ...params.generationConfig,
+          ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
+        },
+      }),
+      { context: `GeminiAdapter.generateContentStream(${params.model})` }
+    );
 
-    // Normalize streaming response with thinking support
     return {
       async *[Symbol.asyncIterator]() {
-        // Iterate directly on the AsyncGenerator
         for await (const chunk of streamGenerator) {
-          // Extract thinking from thoughtSummary (Google AI Studio SDK format)
           const thinking = (chunk as any).thoughtSummary;
           
-          // Extract candidates with parts structure if available
           const candidates = (chunk as any).candidates?.map((c: any) => ({
             content: {
               parts: c.content?.parts?.map((p: any) => ({
@@ -420,13 +418,11 @@ class GeminiClientAdapter implements GeminiClient {
             },
           }));
           
-          // Also check for parts directly on chunk (some SDK versions)
           const chunkParts = (chunk as any).parts?.map((p: any) => ({
             text: p.text,
             thought: p.thought,
           }));
           
-          // Extract text from chunk for fallback
           let text: string | undefined;
           if (typeof chunk.text === 'function') {
             text = chunk.text();
@@ -436,7 +432,6 @@ class GeminiClientAdapter implements GeminiClient {
             text = (chunk as any).candidates[0].content.parts[0].text;
           }
 
-          // Build candidates structure from chunkParts if no candidates
           const finalCandidates = candidates || (chunkParts ? [{
             content: { parts: chunkParts }
           }] : undefined);

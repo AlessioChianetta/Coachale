@@ -37,15 +37,12 @@ import {
 import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import { sendWhatsAppMessage, fetchMultipleTwilioTemplateBodies, fetchTwilioTemplateBody } from '../whatsapp/twilio-client';
 import { decryptForConsultant } from '../encryption';
+import { acquireCronLock, releaseCronLock } from './cron-lock-manager';
 
 let evaluationJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
 let coldLeadsJob: cron.ScheduledTask | null = null;
 let ghostLeadsJob: cron.ScheduledTask | null = null;
-let isEvaluationRunning = false;
-let isProcessingRunning = false;
-let isColdLeadsRunning = false;
-let isGhostLeadsRunning = false;
 
 const EVALUATION_INTERVAL = '*/5 * * * *'; // Every 5 minutes - HOT/WARM leads
 const PROCESSING_INTERVAL = '* * * * *';   // Every minute
@@ -384,12 +381,14 @@ export function stopFollowupScheduler(): void {
 }
 
 export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel[]): Promise<void> {
-  if (isEvaluationRunning) {
-    console.log('⚠️ [FOLLOWUP-SCHEDULER] Evaluation already running, skipping...');
+  const lockName = temperatureFilter ? `followup_eval_${temperatureFilter.join('_')}` : 'followup_eval_all';
+  const lockAcquired = await acquireCronLock(lockName, 10 * 60 * 1000); // 10 min lock
+  
+  if (!lockAcquired) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] Evaluation already running (DB lock), skipping...');
     return;
   }
 
-  isEvaluationRunning = true;
   const cycleId = generateCycleId();
   const startTime = Date.now();
   const filterLabel = temperatureFilter ? temperatureFilter.join('/').toUpperCase() : 'ALL';
@@ -488,7 +487,7 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
     logCycleMetrics(metrics);
     
   } finally {
-    isEvaluationRunning = false;
+    await releaseCronLock(lockName);
   }
 }
 
@@ -496,12 +495,14 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
  * Run evaluation for COLD leads only (every 2 hours)
  */
 export async function runColdLeadsEvaluation(): Promise<void> {
-  if (isColdLeadsRunning) {
-    console.log('⚠️ [FOLLOWUP-SCHEDULER] Cold leads evaluation already running, skipping...');
+  const lockName = 'followup_cold_leads';
+  const lockAcquired = await acquireCronLock(lockName, 15 * 60 * 1000); // 15 min lock
+  
+  if (!lockAcquired) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] Cold leads evaluation already running (DB lock), skipping...');
     return;
   }
 
-  isColdLeadsRunning = true;
   const startTime = Date.now();
   
   try {
@@ -550,7 +551,7 @@ export async function runColdLeadsEvaluation(): Promise<void> {
     console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Temp updates: ${temperatureUpdates}`);
     
   } finally {
-    isColdLeadsRunning = false;
+    await releaseCronLock(lockName);
   }
 }
 
@@ -558,12 +559,14 @@ export async function runColdLeadsEvaluation(): Promise<void> {
  * Run evaluation for GHOST leads only (daily at 10:00)
  */
 export async function runGhostLeadsEvaluation(): Promise<void> {
-  if (isGhostLeadsRunning) {
-    console.log('⚠️ [FOLLOWUP-SCHEDULER] Ghost leads evaluation already running, skipping...');
+  const lockName = 'followup_ghost_leads';
+  const lockAcquired = await acquireCronLock(lockName, 30 * 60 * 1000); // 30 min lock
+  
+  if (!lockAcquired) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] Ghost leads evaluation already running (DB lock), skipping...');
     return;
   }
 
-  isGhostLeadsRunning = true;
   const startTime = Date.now();
   
   try {
@@ -597,17 +600,19 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
     console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}`);
     
   } finally {
-    isGhostLeadsRunning = false;
+    await releaseCronLock(lockName);
   }
 }
 
 export async function processScheduledMessages(messageIds?: string[]): Promise<void> {
-  if (isProcessingRunning) {
-    console.log('⚠️ [FOLLOWUP-SCHEDULER] Message processing already running, skipping...');
+  const lockName = 'followup_processing';
+  const lockAcquired = await acquireCronLock(lockName, 5 * 60 * 1000); // 5 min lock
+  
+  if (!lockAcquired) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] Message processing already running (DB lock), skipping...');
     return;
   }
 
-  isProcessingRunning = true;
   const cycleId = generateCycleId();
   const startTime = Date.now();
   console.time(`[FOLLOWUP-SCHEDULER] Processing Cycle ${cycleId}`);
@@ -812,7 +817,7 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
     logCycleMetrics(metrics);
     
   } finally {
-    isProcessingRunning = false;
+    await releaseCronLock(lockName);
   }
 }
 
@@ -3156,7 +3161,7 @@ export function getSchedulerStatus(): {
   return {
     evaluationRunning: evaluationJob !== null,
     processingRunning: processingJob !== null,
-    isEvaluating: isEvaluationRunning,
-    isProcessing: isProcessingRunning,
+    isEvaluating: false, // Now uses DB locks - check cron_locks table
+    isProcessing: false, // Now uses DB locks - check cron_locks table
   };
 }
