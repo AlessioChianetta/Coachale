@@ -3046,14 +3046,21 @@ export default function ContentStudioPosts() {
                         ) : uploadedMedia.length > 0 ? (
                           <div className="space-y-3">
                             <div className="relative inline-block">
-                              <img
-                                src={uploadedMedia[0].path || uploadedMedia[0].localPreview}
-                                alt="Immagine caricata"
-                                className="max-h-40 rounded-lg border"
-                                onError={(e) => {
-                                  console.log('[IMG] Error loading image, path:', uploadedMedia[0].path);
-                                }}
-                              />
+                              {uploadedMedia[0].localPreview ? (
+                                <img
+                                  src={uploadedMedia[0].localPreview}
+                                  alt="Immagine caricata"
+                                  className="max-h-40 rounded-lg border"
+                                />
+                              ) : (
+                                <div className="flex items-center gap-3 p-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                                  <CheckCircle2 className="h-8 w-8 text-green-500 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium text-green-700 dark:text-green-400">Immagine salvata su Publer</p>
+                                    <p className="text-xs text-green-600 dark:text-green-500">Pronta per la pubblicazione</p>
+                                  </div>
+                                </div>
+                              )}
                               <Button
                                 variant="destructive"
                                 size="icon"
