@@ -87,6 +87,9 @@ import {
   Search,
   List,
   LayoutGrid,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -158,6 +161,10 @@ interface Post {
   };
   folderId?: string;
   folder?: { id: string; name: string; color?: string };
+  publerStatus?: 'draft' | 'scheduled' | 'published' | 'failed';
+  publerScheduledAt?: string;
+  publerPostId?: string;
+  publerError?: string;
 }
 
 interface ContentFolder {
@@ -633,7 +640,7 @@ export default function ContentStudioPosts() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortPosts, setSortPosts] = useState<string>("date-desc");
   const [showPreview, setShowPreview] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const [editingPost, setEditingPost] = useState<Post | null>(null);
@@ -1541,60 +1548,56 @@ export default function ContentStudioPosts() {
   };
 
   const FolderSidebar = () => (
-    <div className={`${isMobile ? (folderSidebarOpen ? "fixed inset-0 z-50 bg-background" : "hidden") : "w-72 border-r flex-shrink-0"} flex flex-col h-full bg-background`}>
+    <div className={`${isMobile ? (folderSidebarOpen ? "fixed inset-0 z-50 bg-white dark:bg-zinc-950" : "hidden") : "w-64 border-r border-gray-200 dark:border-gray-800 flex-shrink-0"} flex flex-col h-full`}>
       {isMobile && folderSidebarOpen && (
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="font-semibold">Cartelle</h2>
-          <Button variant="ghost" size="icon" onClick={() => setFolderSidebarOpen(false)}>
-            <X className="h-5 w-5" />
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">Cartelle</h2>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFolderSidebarOpen(false)}>
+            <X className="h-4 w-4" />
           </Button>
         </div>
       )}
       <ScrollArea className="flex-1">
-        <div className="p-3 space-y-1">
+        <div className="py-2 px-2">
           <button
             onClick={() => { setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded text-left text-sm transition-colors ${
               selectedFolderId === null
-                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                : "hover:bg-muted"
+                ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
             }`}
           >
-            <FileText className="h-5 w-5" />
+            <FileText className="h-4 w-4 flex-shrink-0" />
             <span className="flex-1 font-medium">Tutti i Post</span>
-            <Badge variant="secondary" className="text-xs">{getPostCountForFolder(null)}</Badge>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{getPostCountForFolder(null)}</span>
           </button>
           
           <button
             onClick={() => { setSelectedFolderId("root"); if (isMobile) setFolderSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded text-left text-sm transition-colors ${
               selectedFolderId === "root"
-                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                : "hover:bg-muted"
+                ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
             }`}
           >
-            <Folder className="h-5 w-5 text-gray-400" />
+            <Folder className="h-4 w-4 flex-shrink-0 text-gray-400" />
             <span className="flex-1">Senza Cartella</span>
-            <Badge variant="secondary" className="text-xs">{getPostCountForFolder("root")}</Badge>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{getPostCountForFolder("root")}</span>
           </button>
 
           {folderHierarchy.length > 0 && (
-            <>
-              <Separator className="my-3" />
-              <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cartelle</p>
-            </>
+            <div className="mt-4 mb-2 px-3">
+              <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Cartelle</span>
+            </div>
           )}
 
-          {/* Recursive folder tree rendering */}
           {(() => {
             const renderFolderItem = (folder: ContentFolder, depth: number = 0): React.ReactNode => {
               const hasChildren = folder.children && folder.children.length > 0;
               const isExpanded = expandedProjects.has(folder.id);
               const isProject = folder.folderType === "project";
               
-              // Get available parent options (projects and folders, excluding current folder and all descendants at any depth)
               const getAvailableParents = () => {
-                // Build parent->children map from flat folders array
                 const childrenMap = new Map<string | null, string[]>();
                 folders.forEach(f => {
                   const parentKey = f.parentId ?? null;
@@ -1604,7 +1607,6 @@ export default function ContentStudioPosts() {
                   childrenMap.get(parentKey)!.push(f.id);
                 });
                 
-                // Recursively collect all descendant IDs from the flat structure
                 const collectDescendantIds = (folderId: string): string[] => {
                   const ids = [folderId];
                   const children = childrenMap.get(folderId) || [];
@@ -1617,28 +1619,28 @@ export default function ContentStudioPosts() {
               };
               
               return (
-                <div key={folder.id} className="space-y-0.5">
+                <div key={folder.id}>
                   <div
-                    className={`group flex items-center gap-2 py-2 rounded-lg cursor-pointer transition-colors ${
+                    className={`group flex items-center gap-1.5 py-1.5 rounded text-sm cursor-pointer transition-colors ${
                       selectedFolderId === folder.id
-                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                        : "hover:bg-muted"
+                        ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
                     }`}
-                    style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: "8px" }}
+                    style={{ paddingLeft: `${12 + depth * 12}px`, paddingRight: "8px" }}
                   >
                     {hasChildren ? (
                       <button
                         onClick={() => toggleProjectExpanded(folder.id)}
-                        className="p-0.5 hover:bg-muted-foreground/10 rounded flex-shrink-0"
+                        className="p-0.5 rounded flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700"
                       >
                         {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3 w-3 text-gray-400" />
                         ) : (
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-3 w-3 text-gray-400" />
                         )}
                       </button>
                     ) : (
-                      <div className="w-5" />
+                      <div className="w-4" />
                     )}
                     <button
                       onClick={() => { setSelectedFolderId(folder.id); if (isMobile) setFolderSidebarOpen(false); }}
@@ -1647,28 +1649,27 @@ export default function ContentStudioPosts() {
                       {isProject ? (
                         <Briefcase className="h-4 w-4 flex-shrink-0 text-indigo-500" />
                       ) : (
-                        <Folder className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                        <Folder className="h-4 w-4 flex-shrink-0 text-gray-400" />
                       )}
-                      <span className={`truncate ${isProject ? "font-semibold text-indigo-700 dark:text-indigo-300" : ""}`}>{folder.name}</span>
+                      <span className={`truncate text-sm ${isProject ? "font-medium" : ""}`}>{folder.name}</span>
                     </button>
-                    <Badge variant="secondary" className="text-xs flex-shrink-0">{getPostCountForFolder(folder.id)}</Badge>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{getPostCountForFolder(folder.id)}</span>
                     
-                    {/* Dropdown menu for folder actions */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="p-1 rounded hover:bg-muted-foreground/10 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                          <MoreVertical className="h-3.5 w-3.5" />
+                        <button className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700">
+                          <MoreVertical className="h-3 w-3 text-gray-400" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent align="end" className="w-44">
                         <DropdownMenuItem onClick={() => { setRenameFolderId(folder.id); setRenameFolderName(folder.name); }}>
-                          <Pencil className="h-4 w-4 mr-2" />
+                          <Pencil className="h-3.5 w-3.5 mr-2" />
                           Rinomina
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>
-                            <MoveRight className="h-4 w-4 mr-2" />
+                            <MoveRight className="h-3.5 w-3.5 mr-2" />
                             Sposta in...
                           </DropdownMenuSubTrigger>
                           <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
@@ -1676,7 +1677,7 @@ export default function ContentStudioPosts() {
                               <DropdownMenuItem
                                 onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: null })}
                               >
-                                <FolderOpen className="h-4 w-4 mr-2 text-gray-400" />
+                                <FolderOpen className="h-3.5 w-3.5 mr-2 text-gray-400" />
                                 Livello Root
                               </DropdownMenuItem>
                             )}
@@ -1686,7 +1687,7 @@ export default function ContentStudioPosts() {
                                 onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: project.id })}
                                 disabled={folder.parentId === project.id}
                               >
-                                <Briefcase className="h-4 w-4 mr-2 text-indigo-500" />
+                                <Briefcase className="h-3.5 w-3.5 mr-2 text-indigo-500" />
                                 {project.name}
                               </DropdownMenuItem>
                             ))}
@@ -1699,7 +1700,7 @@ export default function ContentStudioPosts() {
                                     onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: f.id })}
                                     disabled={folder.parentId === f.id}
                                   >
-                                    <Folder className="h-4 w-4 mr-2 text-slate-400" />
+                                    <Folder className="h-3.5 w-3.5 mr-2 text-gray-400" />
                                     {f.name}
                                   </DropdownMenuItem>
                                 ))}
@@ -1711,9 +1712,8 @@ export default function ContentStudioPosts() {
                     </DropdownMenu>
                   </div>
 
-                  {/* Render children recursively */}
                   {isExpanded && hasChildren && (
-                    <div className="space-y-0.5">
+                    <div>
                       {folder.children!.map((child) => renderFolderItem(child, depth + 1))}
                     </div>
                   )}
@@ -1726,11 +1726,11 @@ export default function ContentStudioPosts() {
         </div>
       </ScrollArea>
       
-      <div className="p-3 border-t space-y-2">
+      <div className="p-2 border-t border-gray-200 dark:border-gray-800 space-y-1">
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="w-full justify-start gap-2"
+          className="w-full justify-start gap-2 h-8 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900"
           onClick={() => {
             setNewFolderType("project");
             setNewFolderParentId(null);
@@ -1743,7 +1743,7 @@ export default function ContentStudioPosts() {
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-2 text-muted-foreground"
+          className="w-full justify-start gap-2 h-8 text-sm text-gray-500 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900"
           onClick={() => {
             setNewFolderType("folder");
             setCreateFolderDialogOpen(true);
@@ -2795,99 +2795,129 @@ export default function ContentStudioPosts() {
               </div>
             ) : filteredPosts.length > 0 ? (
               viewMode === "list" ? (
-                <div className="border rounded-lg overflow-hidden bg-card">
-                  {filteredPosts.map((post) => {
+                <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+                  <div className="grid grid-cols-[1fr_120px_100px_100px_40px] gap-2 px-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    <span>Nome</span>
+                    <span>Stato</span>
+                    <span>Data</span>
+                    <span>Piattaforma</span>
+                    <span></span>
+                  </div>
+                  {filteredPosts.map((post, index) => {
                     const structured = post.structuredContent || {};
                     const hookText = structured.hook || post.hook || "";
+                    
+                    const renderPublerStatus = () => {
+                      if (post.publerStatus === 'scheduled' && post.publerScheduledAt) {
+                        const scheduledDate = new Date(post.publerScheduledAt);
+                        return (
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                            <Clock className="h-3 w-3" />
+                            {scheduledDate.toLocaleDateString("it-IT", { day: "2-digit", month: "short" })} {scheduledDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        );
+                      }
+                      if (post.publerStatus === 'published') {
+                        return (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Pubblicato
+                          </span>
+                        );
+                      }
+                      if (post.publerStatus === 'failed') {
+                        return (
+                          <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                            <XCircle className="h-3 w-3" />
+                            Errore
+                          </span>
+                        );
+                      }
+                      return null;
+                    };
+                    
+                    const getSimpleStatusText = (status: string) => {
+                      switch (status?.toLowerCase()) {
+                        case "draft":
+                        case "bozza":
+                          return <span className="text-gray-500">Bozza</span>;
+                        case "scheduled":
+                        case "programmato":
+                          return <span className="text-amber-600 dark:text-amber-400">Programmato</span>;
+                        case "published":
+                        case "pubblicato":
+                          return <span className="text-green-600 dark:text-green-400">Pubblicato</span>;
+                        default:
+                          return <span className="text-gray-500">{status}</span>;
+                      }
+                    };
+                    
                     return (
                       <div
                         key={post.id}
-                        className="flex items-center gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                        className={`grid grid-cols-[1fr_120px_100px_100px_40px] gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors cursor-pointer items-center`}
                         onClick={() => setViewingPost(post)}
                       >
-                        {/* Platform icon */}
-                        <div className={`p-2 rounded-lg flex-shrink-0 ${
-                          post.platform === "instagram" ? "bg-gradient-to-br from-purple-500/10 to-pink-500/10" :
-                          post.platform === "facebook" ? "bg-blue-500/10" :
-                          post.platform === "linkedin" ? "bg-blue-600/10" :
-                          post.platform === "twitter" ? "bg-sky-500/10" :
-                          post.platform === "tiktok" ? "bg-gradient-to-br from-cyan-400/10 to-pink-500/10" :
-                          "bg-muted"
-                        }`}>
-                          {getPlatformIcon(post.platform)}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <h4 className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                              {post.title || "Post senza titolo"}
+                            </h4>
+                            {hookText && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {hookText}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         
-                        {/* Title and hook */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm truncate">
-                            {post.title || "Post senza titolo"}
-                          </h4>
-                          {hookText && (
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {hookText}
-                            </p>
-                          )}
+                        <div className="text-sm">
+                          {renderPublerStatus() || getSimpleStatusText(post.status)}
                         </div>
                         
-                        {/* Badges */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {getStatusBadge(post.status)}
-                          {post.mediaType && (
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
-                              post.mediaType === "video" 
-                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
-                                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                            }`}>
-                              {post.mediaType === "video" ? <Video className="h-3 w-3" /> : <Image className="h-3 w-3" />}
-                            </span>
-                          )}
-                          {post.copyType && (
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                              post.copyType === "long" 
-                                ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" 
-                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                            }`}>
-                              {post.copyType === "long" ? "L" : "S"}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Date */}
-                        <span className="text-xs text-muted-foreground flex-shrink-0 w-20 text-right">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
                           {new Date(post.createdAt || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
                         </span>
                         
-                        {/* Actions */}
+                        <div className="flex items-center gap-1.5">
+                          {getPlatformIcon(post.platform)}
+                          <span className="text-sm text-gray-600 dark:text-gray-400 capitalize hidden sm:inline">
+                            {post.platform}
+                          </span>
+                        </div>
+                        
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 flex-shrink-0"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+                              style={{ opacity: 1 }}
                             >
-                              <MoreHorizontal className="h-4 w-4" />
+                              <MoreHorizontal className="h-4 w-4 text-gray-400" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuContent align="end" className="w-44">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditPost(post); }}>
-                              <Pencil className="h-4 w-4 mr-2" />
+                              <Pencil className="h-3.5 w-3.5 mr-2" />
                               Modifica
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setPublerPost(post); setPublerDialogOpen(true); }}>
-                              <Send className="h-4 w-4 mr-2 text-pink-500" />
+                              <Send className="h-3.5 w-3.5 mr-2" />
                               Pubblica su Publer
                             </DropdownMenuItem>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger>
-                                <MoveRight className="h-4 w-4 mr-2" />
+                                <MoveRight className="h-3.5 w-3.5 mr-2" />
                                 Sposta in cartella
                               </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent className="w-48">
+                              <DropdownMenuSubContent className="w-44">
                                 <DropdownMenuItem
                                   onClick={(e) => { e.stopPropagation(); moveToFolderMutation.mutate({ postId: post.id, folderId: null }); }}
                                   disabled={!post.folderId}
                                 >
-                                  <Folder className="h-4 w-4 mr-2 text-gray-400" />
+                                  <Folder className="h-3.5 w-3.5 mr-2 text-gray-400" />
                                   Senza Cartella
                                 </DropdownMenuItem>
                                 {folders.length > 0 && <DropdownMenuSeparator />}
@@ -2898,9 +2928,9 @@ export default function ContentStudioPosts() {
                                     disabled={post.folderId === folder.id}
                                   >
                                     {folder.folderType === "project" ? (
-                                      <FolderOpen className="h-4 w-4 mr-2" style={{ color: folder.color || "#6366f1" }} />
+                                      <FolderOpen className="h-3.5 w-3.5 mr-2" style={{ color: folder.color || "#6366f1" }} />
                                     ) : (
-                                      <Folder className="h-4 w-4 mr-2" style={{ color: folder.color || "#94a3b8" }} />
+                                      <Folder className="h-3.5 w-3.5 mr-2" style={{ color: folder.color || "#94a3b8" }} />
                                     )}
                                     {folder.name}
                                   </DropdownMenuItem>
@@ -2909,10 +2939,10 @@ export default function ContentStudioPosts() {
                             </DropdownMenuSub>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
+                              className="text-red-600 focus:text-red-600"
                               onClick={(e) => { e.stopPropagation(); deletePostMutation.mutate(post.id); }}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
+                              <Trash2 className="h-3.5 w-3.5 mr-2" />
                               Elimina
                             </DropdownMenuItem>
                           </DropdownMenuContent>
