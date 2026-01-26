@@ -9164,3 +9164,19 @@ export const publerAccounts = pgTable("publer_accounts", {
 
 export type PublerAccount = typeof publerAccounts.$inferSelect;
 export type InsertPublerAccount = typeof publerAccounts.$inferInsert;
+
+// ============================================================
+// CRON JOB LOCKS (Mutex for preventing duplicate executions)
+// ============================================================
+
+export const cronLocks = pgTable("cron_locks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobName: varchar("job_name").notNull().unique(),
+  lockedBy: varchar("locked_by").notNull(),
+  lockedAt: timestamp("locked_at").default(sql`now()`).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type CronLock = typeof cronLocks.$inferSelect;
+export type InsertCronLock = typeof cronLocks.$inferInsert;
