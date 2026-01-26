@@ -84,6 +84,9 @@ import {
   Briefcase,
   MoreVertical,
   Pencil,
+  Search,
+  List,
+  LayoutGrid,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -630,6 +633,8 @@ export default function ContentStudioPosts() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortPosts, setSortPosts] = useState<string>("date-desc");
   const [showPreview, setShowPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
@@ -820,6 +825,17 @@ export default function ContentStudioPosts() {
       result = result.filter((p) => p.folderId === selectedFolderId);
     }
 
+    // Filtro per ricerca
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((p) => {
+        const title = (p.title || "").toLowerCase();
+        const hook = (p.hook || p.structuredContent?.hook || "").toLowerCase();
+        const body = (p.body || p.structuredContent?.body || "").toLowerCase();
+        return title.includes(query) || hook.includes(query) || body.includes(query);
+      });
+    }
+
     if (filterPlatform !== "all") {
       result = result.filter(
         (p) => p.platform?.toLowerCase() === filterPlatform.toLowerCase()
@@ -847,7 +863,7 @@ export default function ContentStudioPosts() {
     }
 
     return result;
-  }, [posts, filterPlatform, filterStatus, sortPosts, selectedFolderId]);
+  }, [posts, filterPlatform, filterStatus, sortPosts, selectedFolderId, searchQuery]);
 
   const createPostMutation = useMutation({
     mutationFn: async (post: Partial<Post> & { id?: string }) => {
@@ -2676,68 +2692,236 @@ export default function ContentStudioPosts() {
 
             <Card>
               <CardContent className="p-4">
-                <div className="flex flex-wrap gap-4 items-center">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Filtri:</span>
+                <div className="flex flex-col gap-4">
+                  {/* Row 1: Search bar prominente */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cerca per titolo, hook o contenuto..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 h-10"
+                    />
                   </div>
-                  <Select value={filterPlatform} onValueChange={setFilterPlatform}>
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Piattaforma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutte</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="linkedin">LinkedIn</SelectItem>
-                      <SelectItem value="twitter">Twitter/X</SelectItem>
-                      <SelectItem value="tiktok">TikTok</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutti</SelectItem>
-                      <SelectItem value="draft">Bozza</SelectItem>
-                      <SelectItem value="scheduled">Programmato</SelectItem>
-                      <SelectItem value="published">Pubblicato</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                  
+                  {/* Row 2: Filters and view toggle */}
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Filtri:</span>
+                    </div>
+                    <Select value={filterPlatform} onValueChange={setFilterPlatform}>
+                      <SelectTrigger className="w-[130px] h-9">
+                        <SelectValue placeholder="Piattaforma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        <SelectItem value="instagram">Instagram</SelectItem>
+                        <SelectItem value="facebook">Facebook</SelectItem>
+                        <SelectItem value="linkedin">LinkedIn</SelectItem>
+                        <SelectItem value="twitter">Twitter/X</SelectItem>
+                        <SelectItem value="tiktok">TikTok</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-[130px] h-9">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti</SelectItem>
+                        <SelectItem value="draft">Bozza</SelectItem>
+                        <SelectItem value="scheduled">Programmato</SelectItem>
+                        <SelectItem value="published">Pubblicato</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Select value={sortPosts} onValueChange={setSortPosts}>
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Ordina per" />
+                      <SelectTrigger className="w-[130px] h-9">
+                        <SelectValue placeholder="Ordina" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="date-desc">Data recente</SelectItem>
                         <SelectItem value="title-asc">Titolo A-Z</SelectItem>
                       </SelectContent>
                     </Select>
+                    
+                    {/* View toggle */}
+                    <div className="flex items-center gap-1 ml-auto border rounded-lg p-1">
+                      <Button
+                        variant={viewMode === "list" ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setViewMode("list")}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={viewMode === "grid" ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setViewMode("grid")}
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className={viewMode === "list" ? "space-y-2" : "grid grid-cols-1 lg:grid-cols-2 gap-4"}>
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-5 space-y-3">
-                      <Skeleton className="h-5 w-32" />
-                      <Skeleton className="h-6 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                      <div className="flex gap-2">
-                        <Skeleton className="h-6 w-16" />
-                        <Skeleton className="h-6 w-16" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  viewMode === "list" ? (
+                    <div key={i} className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <Skeleton className="h-5 flex-1" />
+                      <Skeleton className="h-5 w-20" />
+                      <Skeleton className="h-5 w-24" />
+                    </div>
+                  ) : (
+                    <Card key={i}>
+                      <CardContent className="p-5 space-y-3">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-6 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <div className="flex gap-2">
+                          <Skeleton className="h-6 w-16" />
+                          <Skeleton className="h-6 w-16" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
                 ))}
               </div>
             ) : filteredPosts.length > 0 ? (
+              viewMode === "list" ? (
+                <div className="border rounded-lg overflow-hidden bg-card">
+                  {filteredPosts.map((post) => {
+                    const structured = post.structuredContent || {};
+                    const hookText = structured.hook || post.hook || "";
+                    return (
+                      <div
+                        key={post.id}
+                        className="flex items-center gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => setViewingPost(post)}
+                      >
+                        {/* Platform icon */}
+                        <div className={`p-2 rounded-lg flex-shrink-0 ${
+                          post.platform === "instagram" ? "bg-gradient-to-br from-purple-500/10 to-pink-500/10" :
+                          post.platform === "facebook" ? "bg-blue-500/10" :
+                          post.platform === "linkedin" ? "bg-blue-600/10" :
+                          post.platform === "twitter" ? "bg-sky-500/10" :
+                          post.platform === "tiktok" ? "bg-gradient-to-br from-cyan-400/10 to-pink-500/10" :
+                          "bg-muted"
+                        }`}>
+                          {getPlatformIcon(post.platform)}
+                        </div>
+                        
+                        {/* Title and hook */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm truncate">
+                            {post.title || "Post senza titolo"}
+                          </h4>
+                          {hookText && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {hookText}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Badges */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {getStatusBadge(post.status)}
+                          {post.mediaType && (
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+                              post.mediaType === "video" 
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
+                                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            }`}>
+                              {post.mediaType === "video" ? <Video className="h-3 w-3" /> : <Image className="h-3 w-3" />}
+                            </span>
+                          )}
+                          {post.copyType && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                              post.copyType === "long" 
+                                ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" 
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            }`}>
+                              {post.copyType === "long" ? "L" : "S"}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Date */}
+                        <span className="text-xs text-muted-foreground flex-shrink-0 w-20 text-right">
+                          {new Date(post.createdAt || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
+                        </span>
+                        
+                        {/* Actions */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditPost(post); }}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Modifica
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setPublerPost(post); setPublerDialogOpen(true); }}>
+                              <Send className="h-4 w-4 mr-2 text-pink-500" />
+                              Pubblica su Publer
+                            </DropdownMenuItem>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <MoveRight className="h-4 w-4 mr-2" />
+                                Sposta in cartella
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="w-48">
+                                <DropdownMenuItem
+                                  onClick={(e) => { e.stopPropagation(); moveToFolderMutation.mutate({ postId: post.id, folderId: null }); }}
+                                  disabled={!post.folderId}
+                                >
+                                  <Folder className="h-4 w-4 mr-2 text-gray-400" />
+                                  Senza Cartella
+                                </DropdownMenuItem>
+                                {folders.length > 0 && <DropdownMenuSeparator />}
+                                {folders.map((folder) => (
+                                  <DropdownMenuItem
+                                    key={folder.id}
+                                    onClick={(e) => { e.stopPropagation(); moveToFolderMutation.mutate({ postId: post.id, folderId: folder.id }); }}
+                                    disabled={post.folderId === folder.id}
+                                  >
+                                    {folder.folderType === "project" ? (
+                                      <FolderOpen className="h-4 w-4 mr-2" style={{ color: folder.color || "#6366f1" }} />
+                                    ) : (
+                                      <Folder className="h-4 w-4 mr-2" style={{ color: folder.color || "#94a3b8" }} />
+                                    )}
+                                    {folder.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); deletePostMutation.mutate(post.id); }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Elimina
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {filteredPosts.map((post) => {
                   const structured = post.structuredContent || {};
@@ -2982,6 +3166,7 @@ export default function ContentStudioPosts() {
                   );
                 })}
               </div>
+              )
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
