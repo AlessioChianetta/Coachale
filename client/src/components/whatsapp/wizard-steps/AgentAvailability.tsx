@@ -627,7 +627,7 @@ export default function AgentAvailability({ formData, onChange, errors }: AgentA
                             const valid = isRangeValid(range);
                             const overlap = hasOverlap(index);
                             return (
-                            <div key={index} className="flex items-center gap-2 flex-wrap">
+                              <div key={index} className="flex items-center gap-2 flex-wrap">
                               <Input
                                 type="time"
                                 value={range.start}
@@ -658,8 +658,9 @@ export default function AgentAvailability({ formData, onChange, errors }: AgentA
                                   <X className="h-4 w-4" />
                                 </Button>
                               )}
-                            </div>
-                          ))}
+                              </div>
+                            );
+                          })}
                           {ranges.length < 4 && (
                             <Button
                               type="button"
