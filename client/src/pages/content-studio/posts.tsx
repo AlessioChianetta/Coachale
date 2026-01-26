@@ -1904,8 +1904,8 @@ export default function ContentStudioPosts() {
                     </DialogTitle>
                     {sourceIdeaTitle && (
                       <div className="flex items-center gap-2 pt-2">
-                        <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                          <Sparkles className="h-3 w-3 mr-1" />
+                        <Badge variant="secondary" className="text-xs">
+                          <Sparkles className="h-3 w-3 mr-1 text-gray-500" />
                           Da idea: {sourceIdeaTitle}
                         </Badge>
                       </div>
@@ -1915,9 +1915,8 @@ export default function ContentStudioPosts() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       {/* Colonna sinistra - Impostazioni */}
                       <div className="space-y-4">
-                        <div className="p-4 rounded-lg border bg-muted/20 space-y-4">
-                          <h4 className="font-semibold text-sm flex items-center gap-2">
-                            <Globe className="h-4 w-4 text-blue-500" />
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                             Impostazioni
                           </h4>
                           
@@ -1946,8 +1945,8 @@ export default function ContentStudioPosts() {
                             <Label className="text-xs text-muted-foreground">Tipo Copy</Label>
                             {copyTypeFromIdea ? (
                               <Badge variant="secondary" className="text-xs w-full justify-center py-2">
-                                {selectedCopyType === "long" && "📄 Copy Lungo"}
-                                {selectedCopyType === "short" && "📝 Copy Corto"}
+                                {selectedCopyType === "long" && "Copy Lungo"}
+                                {selectedCopyType === "short" && "Copy Corto"}
                                 <span className="ml-1 text-muted-foreground">(da idea)</span>
                               </Badge>
                             ) : (
@@ -1959,8 +1958,8 @@ export default function ContentStudioPosts() {
                                   <SelectValue placeholder="Seleziona tipo" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="short">📝 Copy Corto</SelectItem>
-                                  <SelectItem value="long">📄 Copy Lungo</SelectItem>
+                                  <SelectItem value="short">Copy Corto</SelectItem>
+                                  <SelectItem value="long">Copy Lungo</SelectItem>
                                 </SelectContent>
                               </Select>
                             )}
@@ -1970,8 +1969,8 @@ export default function ContentStudioPosts() {
                             <Label className="text-xs text-muted-foreground">Tipo Media</Label>
                             {mediaTypeFromIdea ? (
                               <Badge variant="secondary" className="text-xs w-full justify-center py-2">
-                                {selectedMediaType === "video" && "🎬 Video"}
-                                {selectedMediaType === "foto" && "📷 Foto"}
+                                {selectedMediaType === "video" && "Video"}
+                                {selectedMediaType === "foto" && "Foto"}
                                 <span className="ml-1 text-muted-foreground">(da idea)</span>
                               </Badge>
                             ) : (
@@ -1983,8 +1982,8 @@ export default function ContentStudioPosts() {
                                   <SelectValue placeholder="Seleziona media" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="video">🎬 Video</SelectItem>
-                                  <SelectItem value="foto">📷 Foto</SelectItem>
+                                  <SelectItem value="video">Video</SelectItem>
+                                  <SelectItem value="foto">Foto</SelectItem>
                                 </SelectContent>
                               </Select>
                             )}
@@ -2000,17 +1999,17 @@ export default function ContentStudioPosts() {
                                 <SelectValue placeholder="Seleziona livello" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="level_1">🎯 Beneficio Diretto</SelectItem>
-                                <SelectItem value="level_2">📈 Amplifica Promessa</SelectItem>
-                                <SelectItem value="level_3">⚙️ Meccanismo Unico</SelectItem>
-                                <SelectItem value="level_4">🔧 Meccanismo Migliorato</SelectItem>
-                                <SelectItem value="level_5">🏆 Identità e Brand</SelectItem>
+                                <SelectItem value="level_1">Beneficio Diretto</SelectItem>
+                                <SelectItem value="level_2">Amplifica Promessa</SelectItem>
+                                <SelectItem value="level_3">Meccanismo Unico</SelectItem>
+                                <SelectItem value="level_4">Meccanismo Migliorato</SelectItem>
+                                <SelectItem value="level_5">Identità e Brand</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
 
-                          <div className="flex items-center gap-3 p-3 rounded-lg border bg-background">
-                            <Layers className="h-5 w-5 text-purple-500" />
+                          <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
+                            <Layers className="h-5 w-5 text-gray-500" />
                             <div className="flex-1">
                               <Label htmlFor="carousel-mode" className="font-medium cursor-pointer text-sm">
                                 Carosello
@@ -2032,9 +2031,9 @@ export default function ContentStudioPosts() {
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-lg border bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 space-y-3">
+                        <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 space-y-3">
                           <h4 className="font-semibold text-sm flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-purple-500" />
+                            <Sparkles className="h-4 w-4 text-gray-500" />
                             Genera con AI
                           </h4>
                           <Textarea
@@ -2049,7 +2048,7 @@ export default function ContentStudioPosts() {
                               variant="default"
                               onClick={handleGenerateCopy}
                               disabled={isGenerating}
-                              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                              className="flex-1"
                             >
                               {isGenerating ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -2083,7 +2082,7 @@ export default function ContentStudioPosts() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <Label className="flex items-center gap-2">
-                            <Layers className="h-4 w-4 text-purple-500" />
+                            <Layers className="h-4 w-4 text-gray-500" />
                             Slide del Carosello ({carouselSlides.length}/10)
                           </Label>
                           <Button
@@ -2106,8 +2105,8 @@ export default function ContentStudioPosts() {
                                     key={index}
                                     className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
                                       activeSlideIndex === index
-                                        ? "border-purple-500 bg-purple-500/10 shadow-sm"
-                                        : "border-border hover:border-purple-300 bg-background"
+                                        ? "border-gray-900 dark:border-gray-100 bg-gray-100 dark:bg-gray-800 shadow-sm"
+                                        : "border-border hover:border-gray-400 bg-background"
                                     }`}
                                     onClick={() => setActiveSlideIndex(index)}
                                   >
@@ -2115,7 +2114,7 @@ export default function ContentStudioPosts() {
                                       <div
                                         className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                                           activeSlideIndex === index
-                                            ? "bg-purple-500 text-white"
+                                            ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
                                             : "bg-muted text-muted-foreground"
                                         }`}
                                       >
@@ -2211,9 +2210,9 @@ export default function ContentStudioPosts() {
                                     key={idx}
                                     className={`w-12 h-12 rounded border flex items-center justify-center text-xs font-bold cursor-pointer transition-all ${
                                       idx === activeSlideIndex
-                                        ? "border-purple-500 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300"
+                                        ? "border-gray-900 dark:border-gray-100 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                         : slide.title || slide.content
-                                        ? "border-green-300 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                                        ? "border-gray-400 bg-gray-50 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300"
                                         : "border-dashed border-muted-foreground/30 text-muted-foreground"
                                     }`}
                                     onClick={() => setActiveSlideIndex(idx)}
@@ -2276,9 +2275,9 @@ export default function ContentStudioPosts() {
                           <div className="space-y-3">
                             {/* Show body field if it has content from idea.copyContent */}
                             {formData.body && !formData.chiCosaCome && !formData.errore && !formData.soluzione && !formData.riprovaSociale && (
-                              <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg space-y-2 border border-orange-200 dark:border-orange-800">
-                                <Label className="text-xs text-orange-600 dark:text-orange-400 font-semibold flex items-center gap-1">
-                                  📋 COPY COMPLETO (dall'idea)
+                              <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg space-y-2 border border-gray-200 dark:border-gray-800">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                  Copy Completo (dall'idea)
                                 </Label>
                                 <Textarea
                                   placeholder="Testo completo del copy..."
@@ -2287,14 +2286,14 @@ export default function ContentStudioPosts() {
                                   onChange={(e) => setFormData({ ...formData, body: e.target.value })}
                                   className="text-sm"
                                 />
-                                <p className="text-xs text-orange-600 dark:text-orange-400">
+                                <p className="text-xs text-gray-500">
                                   Puoi copiare parti di questo testo nei campi sottostanti per strutturare il copy
                                 </p>
                               </div>
                             )}
-                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
-                                1. 🎣 HOOK
+                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                1. Hook
                               </Label>
                               <Input
                                 placeholder="La frase che cattura l'attenzione..."
@@ -2302,9 +2301,9 @@ export default function ContentStudioPosts() {
                                 onChange={(e) => setFormData({ ...formData, hook: e.target.value })}
                               />
                             </div>
-                            <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
-                                2. 👋 CHI-COSA-COME
+                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                2. Chi-Cosa-Come
                               </Label>
                               <Textarea
                                 placeholder="Ciao, sono [Nome] e aiuto [chi] a [cosa] attraverso [metodo]..."
@@ -2313,9 +2312,9 @@ export default function ContentStudioPosts() {
                                 onChange={(e) => setFormData({ ...formData, chiCosaCome: e.target.value })}
                               />
                             </div>
-                            <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
-                                3. ❌ ERRORE
+                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                3. Errore
                               </Label>
                               <Textarea
                                 placeholder="L'errore specifico che il tuo target sta commettendo..."
@@ -2324,9 +2323,9 @@ export default function ContentStudioPosts() {
                                 onChange={(e) => setFormData({ ...formData, errore: e.target.value })}
                               />
                             </div>
-                            <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
-                                4. ✅ SOLUZIONE
+                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                4. Soluzione
                               </Label>
                               <Textarea
                                 placeholder="Il tuo metodo unico per risolvere il problema..."
@@ -2335,9 +2334,9 @@ export default function ContentStudioPosts() {
                                 onChange={(e) => setFormData({ ...formData, soluzione: e.target.value })}
                               />
                             </div>
-                            <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
-                                5. 💬 RIPROVA SOCIALE
+                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                5. Riprova Sociale
                               </Label>
                               <Textarea
                                 placeholder="Storie concrete con nomi ed eventi reali..."
@@ -2346,9 +2345,9 @@ export default function ContentStudioPosts() {
                                 onChange={(e) => setFormData({ ...formData, riprovaSociale: e.target.value })}
                               />
                             </div>
-                            <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
-                                6. 🎯 CTA
+                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                6. Call to Action
                               </Label>
                               <Input
                                 placeholder="Chiamata all'azione finale..."
@@ -2379,16 +2378,16 @@ export default function ContentStudioPosts() {
                             <CollapsibleTrigger asChild>
                               <Button variant="outline" className="w-full justify-between" type="button">
                                 <div className="flex items-center gap-2">
-                                  <Video className="h-4 w-4 text-purple-500" />
-                                  🎬 Script Video (riferimento produzione)
+                                  <Video className="h-4 w-4 text-gray-500" />
+                                  Script Video (riferimento produzione)
                                 </div>
                                 {videoSectionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="mt-3 space-y-3">
-                              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-3 rounded-lg space-y-2">
-                                <Label className="text-xs text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">
-                                  1. 🎣 HOOK VIDEO
+                              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                  1. Hook Video
                                 </Label>
                                 <Textarea
                                   placeholder="La frase di apertura che cattura l'attenzione..."
@@ -2397,9 +2396,9 @@ export default function ContentStudioPosts() {
                                   onChange={(e) => setFormData({ ...formData, videoHook: e.target.value })}
                                 />
                               </div>
-                              <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg space-y-2">
-                                <Label className="text-xs text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
-                                  2. ❌ PROBLEMA
+                              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                  2. Problema
                                 </Label>
                                 <Textarea
                                   placeholder="Il problema che affronti nel video..."
@@ -2408,9 +2407,9 @@ export default function ContentStudioPosts() {
                                   onChange={(e) => setFormData({ ...formData, videoProblema: e.target.value })}
                                 />
                               </div>
-                              <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg space-y-2">
-                                <Label className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
-                                  3. ✅ SOLUZIONE
+                              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                  3. Soluzione
                                 </Label>
                                 <Textarea
                                   placeholder="La soluzione o il contenuto principale..."
@@ -2419,9 +2418,9 @@ export default function ContentStudioPosts() {
                                   onChange={(e) => setFormData({ ...formData, videoSoluzione: e.target.value })}
                                 />
                               </div>
-                              <div className="bg-indigo-50 dark:bg-indigo-950/20 p-3 rounded-lg space-y-2">
-                                <Label className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
-                                  4. 🎯 CTA VIDEO
+                              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                  4. CTA Video
                                 </Label>
                                 <Input
                                   placeholder="Chiamata all'azione finale..."
@@ -2429,9 +2428,9 @@ export default function ContentStudioPosts() {
                                   onChange={(e) => setFormData({ ...formData, videoCta: e.target.value })}
                                 />
                               </div>
-                              <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
-                                <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1">
-                                  📜 SCRIPT COMPLETO
+                              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
+                                  Script Completo
                                 </Label>
                                 <Textarea
                                   placeholder="Lo script completo del video da leggere..."
@@ -2450,16 +2449,16 @@ export default function ContentStudioPosts() {
                             <CollapsibleTrigger asChild>
                               <Button variant="outline" className="w-full justify-between" type="button">
                                 <div className="flex items-center gap-2">
-                                  <Image className="h-4 w-4 text-pink-500" />
-                                  📷 Descrizione Immagine (riferimento grafico)
+                                  <Image className="h-4 w-4 text-gray-500" />
+                                  Descrizione Immagine (riferimento grafico)
                                 </div>
                                 {imageSectionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="mt-3 space-y-3">
-                              <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/20 dark:to-purple-950/20 p-3 rounded-lg space-y-2">
-                                <Label className="text-xs text-pink-600 dark:text-pink-400 font-semibold">
-                                  🖼️ DESCRIZIONE IMMAGINE
+                              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold">
+                                  Descrizione Immagine
                                 </Label>
                                 <Textarea
                                   placeholder="Descrivi il concetto visivo dell'immagine..."
@@ -2468,9 +2467,9 @@ export default function ContentStudioPosts() {
                                   onChange={(e) => setFormData({ ...formData, imageDescription: e.target.value })}
                                 />
                               </div>
-                              <div className="bg-slate-50 dark:bg-slate-950/20 p-3 rounded-lg space-y-2">
-                                <Label className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
-                                  📝 TESTO OVERLAY
+                              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
+                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold">
+                                  Testo Overlay
                                 </Label>
                                 <Input
                                   placeholder="Il testo che appare sull'immagine..."
@@ -2512,7 +2511,7 @@ export default function ContentStudioPosts() {
                     {selectedMediaType === "video" ? (
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
-                          <Video className="h-4 w-4 text-purple-500" />
+                          <Video className="h-4 w-4 text-gray-500" />
                           Link Video
                         </Label>
                         <div className="flex gap-2">
@@ -2533,7 +2532,7 @@ export default function ContentStudioPosts() {
                     ) : (
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
-                          <ImagePlus className="h-4 w-4 text-pink-500" />
+                          <ImagePlus className="h-4 w-4 text-gray-500" />
                           Immagine
                         </Label>
                         <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer">
