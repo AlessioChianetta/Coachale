@@ -649,6 +649,7 @@ export default function ContentStudioPosts() {
   const [publerPost, setPublerPost] = useState<Post | null>(null);
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedPublerFilter, setSelectedPublerFilter] = useState<string>("all");
   const [folderSidebarOpen, setFolderSidebarOpen] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
@@ -824,8 +825,14 @@ export default function ContentStudioPosts() {
     let result = [...posts];
 
     // Filtro per cartella
-    if (selectedFolderId === null || selectedFolderId === "root") {
-      // Vista principale: mostra SOLO i post senza cartella (non assegnati)
+    // Se selectedFolderId è null E abbiamo un filtro publerStatus attivo -> mostra TUTTI i post (ignora cartella)
+    // Se selectedFolderId è "root" -> mostra solo post senza cartella
+    // Se selectedFolderId è un ID specifico -> mostra post in quella cartella
+    if (selectedFolderId === null) {
+      // Nessun filtro cartella - mostra tutti i post (per permettere filtro stato pubblicazione)
+      // Non filtrare per cartella
+    } else if (selectedFolderId === "root") {
+      // Mostra solo i post senza cartella
       result = result.filter((p) => !p.folderId);
     } else if (selectedFolderId) {
       // Vista cartella specifica: mostra i post in quella cartella
@@ -859,6 +866,16 @@ export default function ContentStudioPosts() {
       });
     }
 
+    if (selectedPublerFilter !== "all") {
+      result = result.filter((p) => {
+        if (selectedPublerFilter === "draft") return !p.publerStatus || p.publerStatus === 'draft';
+        if (selectedPublerFilter === "scheduled") return p.publerStatus === 'scheduled';
+        if (selectedPublerFilter === "published") return p.publerStatus === 'published';
+        if (selectedPublerFilter === "failed") return p.publerStatus === 'failed';
+        return true;
+      });
+    }
+
     if (sortPosts === "date-desc") {
       result.sort((a, b) => {
         const dateA = new Date(a.createdAt || a.scheduledDate || 0).getTime();
@@ -870,7 +887,7 @@ export default function ContentStudioPosts() {
     }
 
     return result;
-  }, [posts, filterPlatform, filterStatus, sortPosts, selectedFolderId, searchQuery]);
+  }, [posts, filterPlatform, filterStatus, sortPosts, selectedFolderId, searchQuery, selectedPublerFilter]);
 
   const createPostMutation = useMutation({
     mutationFn: async (post: Partial<Post> & { id?: string }) => {
@@ -1547,182 +1564,249 @@ export default function ContentStudioPosts() {
     return getCharacterCount() > getCharacterLimit();
   };
 
+  const getPostCountByPublerStatus = (status: string | null) => {
+    if (status === "all" || status === null) return posts.length;
+    if (status === "draft") return posts.filter(p => !p.publerStatus || p.publerStatus === 'draft').length;
+    if (status === "scheduled") return posts.filter(p => p.publerStatus === 'scheduled').length;
+    if (status === "published") return posts.filter(p => p.publerStatus === 'published').length;
+    if (status === "failed") return posts.filter(p => p.publerStatus === 'failed').length;
+    return 0;
+  };
+
   const FolderSidebar = () => (
     <div className={`${isMobile ? (folderSidebarOpen ? "fixed inset-0 z-50 bg-white dark:bg-zinc-950" : "hidden") : "w-64 border-r border-gray-200 dark:border-gray-800 flex-shrink-0"} flex flex-col h-full`}>
       {isMobile && folderSidebarOpen && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">Cartelle</h2>
+          <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtri</h2>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFolderSidebarOpen(false)}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       )}
       <ScrollArea className="flex-1">
-        <div className="py-2 px-2">
-          <button
-            onClick={() => { setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded text-left text-sm transition-colors ${
-              selectedFolderId === null
-                ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
-                : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
-            }`}
-          >
-            <FileText className="h-4 w-4 flex-shrink-0" />
-            <span className="flex-1 font-medium">Tutti i Post</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{getPostCountForFolder(null)}</span>
-          </button>
-          
-          <button
-            onClick={() => { setSelectedFolderId("root"); if (isMobile) setFolderSidebarOpen(false); }}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded text-left text-sm transition-colors ${
-              selectedFolderId === "root"
-                ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
-                : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
-            }`}
-          >
-            <Folder className="h-4 w-4 flex-shrink-0 text-gray-400" />
-            <span className="flex-1">Senza Cartella</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{getPostCountForFolder("root")}</span>
-          </button>
-
-          {folderHierarchy.length > 0 && (
-            <div className="mt-4 mb-2 px-3">
-              <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Cartelle</span>
+        <div className="py-3 px-3">
+          <div className="mb-6">
+            <div className="px-1 mb-2">
+              <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Stato Pubblicazione</span>
             </div>
-          )}
+            
+            <button
+              onClick={() => { setSelectedPublerFilter("all"); setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors ${
+                selectedPublerFilter === "all" && selectedFolderId === null
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <FileText className="h-4 w-4 flex-shrink-0" />
+              <span className="flex-1">Tutti i Post</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{getPostCountByPublerStatus("all")}</span>
+            </button>
+            
+            <button
+              onClick={() => { setSelectedPublerFilter("draft"); setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors ${
+                selectedPublerFilter === "draft"
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <Pencil className="h-4 w-4 flex-shrink-0 text-gray-400" />
+              <span className="flex-1">Bozze</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{getPostCountByPublerStatus("draft")}</span>
+            </button>
+            
+            <button
+              onClick={() => { setSelectedPublerFilter("scheduled"); setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors ${
+                selectedPublerFilter === "scheduled"
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <Clock className="h-4 w-4 flex-shrink-0 text-amber-500" />
+              <span className="flex-1">Programmati</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600">{getPostCountByPublerStatus("scheduled")}</span>
+            </button>
+            
+            <button
+              onClick={() => { setSelectedPublerFilter("published"); setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors ${
+                selectedPublerFilter === "published"
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-green-500" />
+              <span className="flex-1">Pubblicati</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600">{getPostCountByPublerStatus("published")}</span>
+            </button>
+            
+            <button
+              onClick={() => { setSelectedPublerFilter("failed"); setSelectedFolderId(null); if (isMobile) setFolderSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors ${
+                selectedPublerFilter === "failed"
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <XCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
+              <span className="flex-1">Errori</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600">{getPostCountByPublerStatus("failed")}</span>
+            </button>
+          </div>
+          
+          <div>
+            <div className="px-1 mb-2">
+              <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Cartelle</span>
+            </div>
+            
+            <button
+              onClick={() => { setSelectedPublerFilter("all"); setSelectedFolderId("root"); if (isMobile) setFolderSidebarOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors ${
+                selectedFolderId === "root"
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <Folder className="h-4 w-4 flex-shrink-0 text-gray-400" />
+              <span className="flex-1">Senza Cartella</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{getPostCountForFolder("root")}</span>
+            </button>
 
-          {(() => {
-            const renderFolderItem = (folder: ContentFolder, depth: number = 0): React.ReactNode => {
-              const hasChildren = folder.children && folder.children.length > 0;
-              const isExpanded = expandedProjects.has(folder.id);
-              const isProject = folder.folderType === "project";
-              
-              const getAvailableParents = () => {
-                const childrenMap = new Map<string | null, string[]>();
-                folders.forEach(f => {
-                  const parentKey = f.parentId ?? null;
-                  if (!childrenMap.has(parentKey)) {
-                    childrenMap.set(parentKey, []);
-                  }
-                  childrenMap.get(parentKey)!.push(f.id);
-                });
+            {(() => {
+              const renderFolderItem = (folder: ContentFolder, depth: number = 0): React.ReactNode => {
+                const hasChildren = folder.children && folder.children.length > 0;
+                const isExpanded = expandedProjects.has(folder.id);
+                const isProject = folder.folderType === "project";
                 
-                const collectDescendantIds = (folderId: string): string[] => {
-                  const ids = [folderId];
-                  const children = childrenMap.get(folderId) || [];
-                  children.forEach(childId => ids.push(...collectDescendantIds(childId)));
-                  return ids;
+                const getAvailableParents = () => {
+                  const childrenMap = new Map<string | null, string[]>();
+                  folders.forEach(f => {
+                    const parentKey = f.parentId ?? null;
+                    if (!childrenMap.has(parentKey)) {
+                      childrenMap.set(parentKey, []);
+                    }
+                    childrenMap.get(parentKey)!.push(f.id);
+                  });
+                  
+                  const collectDescendantIds = (folderId: string): string[] => {
+                    const ids = [folderId];
+                    const children = childrenMap.get(folderId) || [];
+                    children.forEach(childId => ids.push(...collectDescendantIds(childId)));
+                    return ids;
+                  };
+                  
+                  const excludeIds = new Set(collectDescendantIds(folder.id));
+                  return folders.filter(f => !excludeIds.has(f.id));
                 };
                 
-                const excludeIds = new Set(collectDescendantIds(folder.id));
-                return folders.filter(f => !excludeIds.has(f.id));
+                return (
+                  <div key={folder.id}>
+                    <div
+                      className={`group flex items-center gap-1.5 py-1.5 rounded-md text-sm cursor-pointer transition-colors ${
+                        selectedFolderId === folder.id
+                          ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
+                      style={{ paddingLeft: `${12 + depth * 12}px`, paddingRight: "8px" }}
+                    >
+                      {hasChildren ? (
+                        <button
+                          onClick={() => toggleProjectExpanded(folder.id)}
+                          className="p-0.5 rounded flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-3 w-3 text-gray-400" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3 text-gray-400" />
+                          )}
+                        </button>
+                      ) : (
+                        <div className="w-4" />
+                      )}
+                      <button
+                        onClick={() => { setSelectedPublerFilter("all"); setSelectedFolderId(folder.id); if (isMobile) setFolderSidebarOpen(false); }}
+                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                      >
+                        {isProject ? (
+                          <Briefcase className="h-4 w-4 flex-shrink-0 text-indigo-500" />
+                        ) : (
+                          <Folder className="h-4 w-4 flex-shrink-0 text-gray-400" />
+                        )}
+                        <span className={`truncate text-sm ${isProject ? "font-medium" : ""}`}>{folder.name}</span>
+                      </button>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{getPostCountForFolder(folder.id)}</span>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700">
+                            <MoreVertical className="h-3 w-3 text-gray-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => { setRenameFolderId(folder.id); setRenameFolderName(folder.name); }}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                            Rinomina
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <MoveRight className="h-3.5 w-3.5 mr-2" />
+                              Sposta in...
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+                              {folder.parentId && (
+                                <DropdownMenuItem
+                                  onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: null })}
+                                >
+                                  <FolderOpen className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                                  Livello Root
+                                </DropdownMenuItem>
+                              )}
+                              {getAvailableParents().filter(f => f.folderType === "project").map(project => (
+                                <DropdownMenuItem
+                                  key={project.id}
+                                  onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: project.id })}
+                                  disabled={folder.parentId === project.id}
+                                >
+                                  <Briefcase className="h-3.5 w-3.5 mr-2 text-indigo-500" />
+                                  {project.name}
+                                </DropdownMenuItem>
+                              ))}
+                              {getAvailableParents().filter(f => f.folderType === "folder" && f.id !== folder.id).length > 0 && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  {getAvailableParents().filter(f => f.folderType === "folder").map(f => (
+                                    <DropdownMenuItem
+                                      key={f.id}
+                                      onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: f.id })}
+                                      disabled={folder.parentId === f.id}
+                                    >
+                                      <Folder className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                                      {f.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </>
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {isExpanded && hasChildren && (
+                      <div>
+                        {folder.children!.map((child) => renderFolderItem(child, depth + 1))}
+                      </div>
+                    )}
+                  </div>
+                );
               };
               
-              return (
-                <div key={folder.id}>
-                  <div
-                    className={`group flex items-center gap-1.5 py-1.5 rounded text-sm cursor-pointer transition-colors ${
-                      selectedFolderId === folder.id
-                        ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
-                    }`}
-                    style={{ paddingLeft: `${12 + depth * 12}px`, paddingRight: "8px" }}
-                  >
-                    {hasChildren ? (
-                      <button
-                        onClick={() => toggleProjectExpanded(folder.id)}
-                        className="p-0.5 rounded flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="h-3 w-3 text-gray-400" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3 text-gray-400" />
-                        )}
-                      </button>
-                    ) : (
-                      <div className="w-4" />
-                    )}
-                    <button
-                      onClick={() => { setSelectedFolderId(folder.id); if (isMobile) setFolderSidebarOpen(false); }}
-                      className="flex-1 flex items-center gap-2 text-left min-w-0"
-                    >
-                      {isProject ? (
-                        <Briefcase className="h-4 w-4 flex-shrink-0 text-indigo-500" />
-                      ) : (
-                        <Folder className="h-4 w-4 flex-shrink-0 text-gray-400" />
-                      )}
-                      <span className={`truncate text-sm ${isProject ? "font-medium" : ""}`}>{folder.name}</span>
-                    </button>
-                    <span className="text-xs text-gray-400 flex-shrink-0">{getPostCountForFolder(folder.id)}</span>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-700">
-                          <MoreVertical className="h-3 w-3 text-gray-400" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => { setRenameFolderId(folder.id); setRenameFolderName(folder.name); }}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" />
-                          Rinomina
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            <MoveRight className="h-3.5 w-3.5 mr-2" />
-                            Sposta in...
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
-                            {folder.parentId && (
-                              <DropdownMenuItem
-                                onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: null })}
-                              >
-                                <FolderOpen className="h-3.5 w-3.5 mr-2 text-gray-400" />
-                                Livello Root
-                              </DropdownMenuItem>
-                            )}
-                            {getAvailableParents().filter(f => f.folderType === "project").map(project => (
-                              <DropdownMenuItem
-                                key={project.id}
-                                onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: project.id })}
-                                disabled={folder.parentId === project.id}
-                              >
-                                <Briefcase className="h-3.5 w-3.5 mr-2 text-indigo-500" />
-                                {project.name}
-                              </DropdownMenuItem>
-                            ))}
-                            {getAvailableParents().filter(f => f.folderType === "folder" && f.id !== folder.id).length > 0 && (
-                              <>
-                                <DropdownMenuSeparator />
-                                {getAvailableParents().filter(f => f.folderType === "folder").map(f => (
-                                  <DropdownMenuItem
-                                    key={f.id}
-                                    onClick={() => moveFolderMutation.mutate({ folderId: folder.id, parentId: f.id })}
-                                    disabled={folder.parentId === f.id}
-                                  >
-                                    <Folder className="h-3.5 w-3.5 mr-2 text-gray-400" />
-                                    {f.name}
-                                  </DropdownMenuItem>
-                                ))}
-                              </>
-                            )}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {isExpanded && hasChildren && (
-                    <div>
-                      {folder.children!.map((child) => renderFolderItem(child, depth + 1))}
-                    </div>
-                  )}
-                </div>
-              );
-            };
-            
-            return folderHierarchy.map((folder) => renderFolderItem(folder, 0));
-          })()}
+              return folderHierarchy.map((folder) => renderFolderItem(folder, 0));
+            })()}
+          </div>
         </div>
       </ScrollArea>
       
