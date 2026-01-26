@@ -256,17 +256,24 @@ export class PublerService {
 
   async syncAccounts(consultantId: string): Promise<{ synced: number }> {
     const accounts = await this.getAccounts(consultantId);
+    
+    console.log('[PUBLER] Raw accounts from API:', JSON.stringify(accounts, null, 2));
 
     await db.delete(publerAccounts).where(eq(publerAccounts.consultantId, consultantId));
 
     for (const account of accounts) {
+      // Publer API returns 'provider' field with the network name (instagram, facebook, etc.)
+      // NOT 'type' which is the account type (profile, business, page)
+      const platform = account.provider || account.network || account.type;
+      console.log(`[PUBLER] Saving account ${account.id}: provider=${account.provider}, type=${account.type}, using platform=${platform}`);
+      
       await db.insert(publerAccounts).values({
         id: account.id,
         consultantId,
-        platform: account.type,
+        platform: platform,
         accountName: account.name,
         accountUsername: account.username,
-        profileImageUrl: account.profile_image,
+        profileImageUrl: account.picture || account.profile_image,
         isActive: true,
         syncedAt: new Date(),
       });
@@ -424,26 +431,35 @@ export class PublerService {
       alt_text: 'Social media post' 
     })) || [];
 
-    // Get unique platforms from selected accounts
+    // Get unique normalized platforms to determine content type
     const uniquePlatforms = [...new Set(accountPlatforms.map(a => a.platform))];
+    const normalizedPlatforms = [...new Set(uniquePlatforms.map(p => normalizeProvider(p)))];
     console.log('[PUBLER] Unique platforms:', uniquePlatforms);
+    console.log('[PUBLER] Normalized platforms:', normalizedPlatforms);
 
-    // Build networks object - one entry per platform (NOT 'default')
-    const networks: Record<string, any> = {};
-    for (const platform of uniquePlatforms) {
-      try {
-        const contentType = getContentType(platform, hasMedia, mediaType, mediaCount);
-        networks[platform] = {
-          type: contentType,
-          text: request.text,
-          ...(hasMedia ? { media: mediaArray } : {})
-        };
-        console.log(`[PUBLER] Network for ${platform} (normalized: ${normalizeProvider(platform)}): type=${contentType}, hasMedia=${hasMedia}`);
-      } catch (err: any) {
-        console.error(`[PUBLER] Error creating network for ${platform}:`, err.message);
-        throw err;
-      }
+    // Determine the most restrictive content type based on selected platforms
+    // Instagram/Pinterest/TikTok/YouTube require media, so we need to use 'photo'/'video' types
+    let contentType: string;
+    try {
+      // Use the first normalized platform to determine content type
+      // (they should all be compatible since we already validated media requirements)
+      contentType = getContentType(normalizedPlatforms[0], hasMedia, mediaType, mediaCount);
+      console.log(`[PUBLER] Determined content type: ${contentType} (based on ${normalizedPlatforms[0]})`);
+    } catch (err: any) {
+      console.error(`[PUBLER] Error determining content type:`, err.message);
+      throw err;
     }
+
+    // Use 'default' network which applies to all selected accounts
+    // This is the recommended approach per Publer API documentation
+    const networks: Record<string, any> = {
+      default: {
+        type: contentType,
+        text: request.text,
+        ...(hasMedia ? { media: mediaArray } : {})
+      }
+    };
+    console.log(`[PUBLER] Using networks.default with type=${contentType}, hasMedia=${hasMedia}`);
 
     // Build accounts array with scheduled_at INSIDE each account entry
     const accountsArray = request.accountIds.map(id => ({
