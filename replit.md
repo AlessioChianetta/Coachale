@@ -13,7 +13,7 @@ UI/UX design emphasizes modernity, accessibility, and responsiveness using `shad
 AI is deeply integrated, providing:
 - Personalized financial insights and a semantic search AI knowledge base with multi-tenant isolation.
 - Consultation summarization, generating summary emails and tasks from transcripts.
-- AI-powered WhatsApp Business and Instagram Direct Messaging integration via Twilio and Meta Graph API.
+- AI-powered WhatsApp Business, Instagram Direct Messaging, and X (Twitter) DM integration via Twilio, Meta Graph API, and X API v2.
 - Configurable AI sales agents and a 100% AI-driven follow-up system.
 - Automated weekly client check-ins via WhatsApp with AI-personalized messages.
 - AI tools for generating courses, pathways, and multi-language exercises.
@@ -50,6 +50,7 @@ Key enhancements include:
 - Publer Status Polling: Background scheduler syncs post statuses from Publer API every 5 minutes. Implements full pagination support for large post lists, updates local database when posts are published or failed on Publer. Includes manual sync endpoint for debugging (POST /api/publer/sync-statuses).
 - Gemini API Rate Limiter: Global semaphore limiting concurrent Gemini API calls to maximum 3 requests, with exponential backoff retry for 503 errors (2s, 4s, 8s delays). Integrated at provider-factory level via GeminiClientAdapter and VertexAIClientAdapter for automatic rate limiting across all AI calls.
 - Database-Based Cron Mutex: The `cron_locks` table prevents duplicate cron job executions across multi-process environments. Implements acquire/release pattern with configurable TTL. Applied to followup-scheduler functions (hot/warm evaluation, cold leads, ghost leads, message processing).
+- X (Twitter) DM Integration: Full Twitter/X direct messaging automation with OAuth 1.0a authentication, Account Activity API webhooks for real-time DM reception, CRC validation, AI-powered responses using Gemini, and conversation tracking. Database schema mirrors Instagram integration pattern with 6 tables (consultant_twitter_config, twitter_agent_config, twitter_conversations, twitter_messages, twitter_pending_messages, superadmin_twitter_config). Frontend UI integrated in AgentProfilePanel.tsx under Integrations tab.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
@@ -63,3 +64,4 @@ Key enhancements include:
 - **Fathom**: Consultation recording and transcription.
 - **Driver.js**: Interactive guided tours.
 - **Twilio API**: WhatsApp Business messaging.
+- **X (Twitter) API v2**: Direct message automation and Account Activity webhooks.
