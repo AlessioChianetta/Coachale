@@ -514,11 +514,22 @@ export class PublerService {
     // - media at POST level (not inside networks)
     // - media_ids as flat array (REQUIRED for Instagram to avoid nil.count bug)
     // - networks with Publer's internal keys (ig_business, fb_page, etc.)
+    // - COMPOSER METADATA: source, format, provider (REQUIRED for Instagram via API)
     const mediaIdsArray = request.mediaIds || [];
+    
+    // Determine if Instagram is one of the platforms (needs composer metadata)
+    const hasInstagram = normalizedPlatforms.includes('instagram');
     
     const postEntry: any = {
       accounts: accountsArray,
       networks,
+      // Composer metadata - REQUIRED for Instagram API publishing
+      // Without these, Publer returns "composer is in invalid state"
+      source: 'api',
+      ...(hasInstagram ? { 
+        provider: 'instagram',
+        format: 'feed'  // 'feed' for photos, 'reel' for vertical videos
+      } : {}),
       ...(hasMedia ? { 
         media: mediaArray,
         media_ids: mediaIdsArray  // IMPORTANT: Publer needs both media[] and media_ids[]
@@ -527,6 +538,7 @@ export class PublerService {
     };
     
     console.log('[PUBLER] Media IDs array:', mediaIdsArray);
+    console.log('[PUBLER] Has Instagram:', hasInstagram);
     
     const postPayload: any = {
       bulk: {
