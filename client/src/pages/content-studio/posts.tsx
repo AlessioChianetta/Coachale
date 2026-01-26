@@ -92,6 +92,7 @@ import {
   CheckCircle2,
   XCircle,
   Upload,
+  RefreshCw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -598,6 +599,7 @@ export default function ContentStudioPosts() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSyncingStatuses, setIsSyncingStatuses] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     hook: "",
@@ -1222,6 +1224,41 @@ export default function ContentStudioPosts() {
   };
 
   const folderHierarchy = useMemo(() => buildFolderHierarchy(folders), [folders]);
+
+  const handleSyncStatuses = async () => {
+    setIsSyncingStatuses(true);
+    try {
+      const response = await fetch('/api/publer/sync-statuses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({
+          title: "Sincronizzazione completata",
+          description: data.updated > 0 
+            ? `Aggiornati ${data.updated} post` 
+            : "Tutti i post sono già aggiornati",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/content-posts"] });
+      } else {
+        toast({
+          title: "Errore sincronizzazione",
+          description: data.error || "Impossibile sincronizzare",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante la sincronizzazione",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingStatuses(false);
+    }
+  };
 
   const handleGenerateCopy = async () => {
     if (!ideaForCopy || !formData.platform) {
@@ -2136,6 +2173,16 @@ export default function ContentStudioPosts() {
                     </p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSyncStatuses}
+                    disabled={isSyncingStatuses}
+                    title="Aggiorna stato post da Publer"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isSyncingStatuses ? 'animate-spin' : ''}`} />
+                  </Button>
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 // Block closing during upload
                 if (!open && (isUploadingMedia || isUploadingVideo)) {
@@ -3203,6 +3250,7 @@ export default function ContentStudioPosts() {
                   </div>
                 </DialogContent>
               </Dialog>
+                </div>
             </div>
 
             <Dialog open={showVariationsDialog} onOpenChange={setShowVariationsDialog}>
