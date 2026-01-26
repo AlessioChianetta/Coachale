@@ -342,14 +342,29 @@ export class PublerService {
         const jobData = await response.json();
         console.log(`[PUBLER] 📊 Job status (attempt ${attempt}/${maxAttempts}):`, JSON.stringify(jobData, null, 2));
         
-        // Verifica stato del job
-        if (jobData.status === 'completed') {
-          console.log('[PUBLER] ✅ Job completed successfully!');
+        // Verifica stato del job - 'complete' O 'completed' sono entrambi validi
+        if (jobData.status === 'completed' || jobData.status === 'complete') {
+          console.log('[PUBLER] ✅ Job finished with status:', jobData.status);
           
-          // Estrai post IDs dai risultati
           const postIds: string[] = [];
           const errors: string[] = [];
           
+          // IMPORTANTE: Controlla payload.failures per errori specifici degli account
+          if (jobData.payload?.failures) {
+            console.log('[PUBLER] ⚠️ Found failures in payload:', JSON.stringify(jobData.payload.failures, null, 2));
+            
+            for (const [postKey, accountErrors] of Object.entries(jobData.payload.failures)) {
+              if (Array.isArray(accountErrors)) {
+                for (const err of accountErrors as any[]) {
+                  const errorMsg = this.formatAccountError(err);
+                  console.error(`[PUBLER] ❌ Account failure [${err.provider}/${err.account_name}]:`, err.message);
+                  errors.push(errorMsg);
+                }
+              }
+            }
+          }
+          
+          // Estrai post IDs dai risultati (se presenti)
           if (jobData.results && Array.isArray(jobData.results)) {
             for (const r of jobData.results) {
               console.log('[PUBLER] 📝 Post result:', {
@@ -369,13 +384,19 @@ export class PublerService {
             }
           }
           
-          // Anche controlla se ci sono post creati nel payload
+          // Controlla post_ids nel payload
+          if (jobData.payload?.post_ids) {
+            postIds.push(...jobData.payload.post_ids);
+          }
           if (jobData.post_ids) {
             postIds.push(...jobData.post_ids);
           }
           
+          const success = errors.length === 0 && postIds.length > 0;
+          console.log(`[PUBLER] 📋 Final result: success=${success}, posts=${postIds.length}, errors=${errors.length}`);
+          
           return { 
-            success: errors.length === 0, 
+            success, 
             postIds: postIds.length > 0 ? postIds : undefined,
             errors: errors.length > 0 ? errors : undefined 
           };
@@ -399,6 +420,26 @@ export class PublerService {
     
     console.warn('[PUBLER] ⚠️ Job polling timeout - max attempts reached');
     return { success: false, errors: ['Job status polling timeout'] };
+  }
+
+  private formatAccountError(err: { provider?: string; account_name?: string; message?: string }): string {
+    const provider = err.provider || 'unknown';
+    const accountName = err.account_name || 'Account';
+    const message = err.message || 'Errore sconosciuto';
+    
+    // Messaggi user-friendly per errori comuni
+    if (provider === 'instagram') {
+      if (message.includes('compositore') || message.includes('composer')) {
+        return `Instagram (${accountName}): Questo account richiede un'immagine o video. Instagram non supporta post solo testo.`;
+      }
+    }
+    
+    // Messaggi generici per riconnessione
+    if (message.includes('riselezionarlo') || message.includes('aggiorna') || message.includes('refresh')) {
+      return `${provider} (${accountName}): Account scollegato. Riconnetti l'account in Publer.`;
+    }
+    
+    return `${provider} (${accountName}): ${message}`;
   }
 
   async updatePostStatus(

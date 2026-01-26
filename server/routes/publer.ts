@@ -109,6 +109,19 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
       mediaIds: data.mediaIds,
     });
     
+    // Se ci sono errori dal job polling, il post non è stato creato
+    if (!result.success && result.errors && result.errors.length > 0) {
+      if (data.postId) {
+        await publerService.updatePostStatus(data.postId, 'failed', undefined, undefined, result.errors[0]);
+      }
+      return res.status(400).json({ 
+        success: false, 
+        jobId: result.jobId,
+        error: result.errors[0],
+        errors: result.errors 
+      });
+    }
+    
     if (data.postId) {
       let publerStatus: 'draft' | 'scheduled' | 'published';
       if (data.state === 'draft') {
@@ -118,7 +131,8 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
       } else {
         publerStatus = 'scheduled';
       }
-      await publerService.updatePostStatus(data.postId, publerStatus, result.jobId, scheduledDate);
+      const postId = result.postIds?.[0] || result.jobId;
+      await publerService.updatePostStatus(data.postId, publerStatus, postId, scheduledDate);
     }
     
     const messages: Record<string, string> = {

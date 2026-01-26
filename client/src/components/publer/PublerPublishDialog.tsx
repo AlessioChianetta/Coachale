@@ -266,6 +266,16 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     post?.riprovaSociale ||
     post?.structuredContent?.chiCosaCome
   );
+  
+  // Verifica se è selezionato Instagram (richiede sempre un'immagine)
+  const hasInstagramSelected = useMemo(() => {
+    return accounts
+      .filter(a => selectedAccounts.includes(a.id))
+      .some(a => a.platform === 'instagram');
+  }, [accounts, selectedAccounts]);
+  
+  // Per ora non supportiamo upload media, quindi avvisiamo per Instagram
+  const instagramWarning = hasInstagramSelected;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -420,6 +430,17 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                   </Alert>
                 )}
               </div>
+
+              {instagramWarning && (
+                <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-700 dark:text-amber-400">
+                    <strong>Attenzione:</strong> Instagram richiede sempre un'immagine o video. 
+                    I post solo testo non sono supportati e falliranno. 
+                    Per ora, deseleziona Instagram o usa solo Facebook/LinkedIn.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <Separator />
 
