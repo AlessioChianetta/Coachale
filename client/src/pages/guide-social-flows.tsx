@@ -312,7 +312,7 @@ export default function GuideSocialFlows() {
               <PlatformCard
                 icon={Twitter}
                 title="X (Twitter)"
-                subtitle="Gestione manuale con CTA strategiche"
+                subtitle="Auto-DM con Typefully + handoff WhatsApp"
                 gradient="bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-950/50 dark:to-slate-900/30"
                 borderColor="border-gray-200 dark:border-gray-700"
                 iconColor="bg-gradient-to-br from-gray-700 to-black"
@@ -321,52 +321,112 @@ export default function GuideSocialFlows() {
                 <div className="space-y-1">
                   <FlowStep
                     icon={MousePointerClick}
-                    title="Pubblica contenuto con CTA"
-                    description="Post con call-to-action chiara: commenta, segui, o clicca il link in bio"
+                    title="Pubblica tweet con CTA"
+                    description="Il tweet DEVE menzionare che riceveranno un DM. Es: 'Reply ORBITA e ti mando un DM con checklist + audit'"
                     stepNumber={1}
                   />
                   <FlowStep
                     icon={MessageSquare}
-                    title="L'utente interagisce"
-                    description="Commenta 'INFO', ti segue, o clicca sul link nella bio"
+                    title="L'utente risponde al tweet"
+                    description="Commenta con la parola chiave (es: 'ORBITA', 'INFO', 'BONUS')"
                     stepNumber={2}
                   />
                   <FlowStep
                     icon={Send}
-                    title="Tu rispondi manualmente"
-                    description="Rispondi al commento con il link o invita a seguirti per ricevere contenuti"
+                    title="Typefully invia Auto-DM"
+                    description="DM automatico con link WhatsApp: 'Avvia l'audit su WhatsApp: wa.me/39XXX?text=ORBITA'"
                     stepNumber={3}
+                    automated
                   />
                   <FlowStep
-                    icon={Link2}
-                    title="Conversione via link"
-                    description="L'utente clicca sul link in bio → landing page → prenota call o richiede bonus"
+                    icon={Bot}
+                    title="AI takeover su WhatsApp"
+                    description="L'utente clicca il link → scrive su WhatsApp → l'AI prende il controllo della conversazione"
                     stepNumber={4}
+                    automated
                     isLast
                   />
+                </div>
+
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 rounded-xl p-4 mt-4 border border-purple-200 dark:border-purple-800">
+                  <h5 className="font-semibold mb-3 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    Setup Typefully Auto-DM (7 Step)
+                  </h5>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
+                      <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                      <div>
+                        <p className="font-medium">Collega X a Typefully</p>
+                        <p className="text-muted-foreground">typefully.com → Settings → Connected accounts → Collega X</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
+                      <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                      <div>
+                        <p className="font-medium">Scrivi il tweet con menzione DM</p>
+                        <p className="text-muted-foreground">Deve contenere "DM" o "message" altrimenti Typefully non attiva l'automazione</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
+                      <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                      <div>
+                        <p className="font-medium">Attiva Auto-DM</p>
+                        <p className="text-muted-foreground">Publish → Engagement tools → Toggle Auto-DM → Trigger: Reply</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
+                      <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">4</span>
+                      <div>
+                        <p className="font-medium">Scrivi il messaggio Auto-DM</p>
+                        <p className="text-muted-foreground">"Perfetto ✅ Avvia l'audit su WhatsApp: wa.me/39XXX?text=ORBITA"</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
+                      <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">5</span>
+                      <div>
+                        <p className="font-medium">Pubblica il tweet</p>
+                        <p className="text-muted-foreground">Publish now o Schedule → La campagna Auto-DM parte automaticamente</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
+                      <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">6</span>
+                      <div>
+                        <p className="font-medium">Backup pubblico (importante!)</p>
+                        <p className="text-muted-foreground">Rispondi al tuo tweet con il link WA → Cattura utenti con DM chiusi</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-lg p-3">
+                      <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">7</span>
+                      <div>
+                        <p className="font-medium">Testa con account secondario</p>
+                        <p className="text-muted-foreground">Rispondi al tweet → Verifica che arrivi il DM → Controlla in Typefully: Sent ✅</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-4 mt-4">
                   <h5 className="font-semibold mb-3 flex items-center gap-2">
                     <Target className="h-4 w-4 text-gray-600" />
-                    Esempi di CTA per i Post
+                    Template Tweet Pronto
                   </h5>
-                  <div className="grid gap-2">
-                    <CTAExample emoji="💬" text="Commenta 'INFO' per ricevere la guida gratuita" />
-                    <CTAExample emoji="👆" text="Link in bio per prenotare la tua call gratuita" />
-                    <CTAExample emoji="🔔" text="Seguimi per non perdere i prossimi consigli" />
-                    <CTAExample emoji="🎁" text="Rispondi 'BONUS' per ricevere il template esclusivo" />
+                  <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-4 text-sm font-mono">
+                    <p>Se ricevi lead su WhatsApp/IG e rispondi tardi, stai perdendo appuntamenti.</p>
+                    <p className="mt-2">Reply ORBITA e ti mando un DM con checklist + audit automatico.</p>
                   </div>
                 </div>
 
                 <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
-                  <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
-                    <Clock className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span>
-                      <strong>Nota:</strong> L'automazione DM su X richiede il piano Pro ($5.000/mese). 
-                      Per ora, usa le CTA strategiche nei post per guidare gli utenti al tuo link in bio.
-                    </span>
-                  </p>
+                  <h5 className="font-semibold mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <Clock className="h-4 w-4" />
+                    Limiti Typefully
+                  </h5>
+                  <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1">
+                    <li>• Controlla reply per 4 giorni dopo il post</li>
+                    <li>• Max 500 DM/giorno, 30/minuto</li>
+                    <li>• Fallisce se l'utente ha DM chiusi (usa backup pubblico!)</li>
+                  </ul>
                 </div>
               </PlatformCard>
 
