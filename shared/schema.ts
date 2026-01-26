@@ -8392,6 +8392,7 @@ export const contentPosts = pgTable("content_posts", {
   publerScheduledAt: timestamp("publer_scheduled_at"),
   publerPublishedAt: timestamp("publer_published_at"),
   publerError: text("publer_error"),
+  publerMediaIds: jsonb("publer_media_ids").$type<string[]>().default(sql`'[]'::jsonb`),
   
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

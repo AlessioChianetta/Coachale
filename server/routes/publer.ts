@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { publerService } from '../services/publer-service';
+import { upload } from '../middleware/upload';
 import { z } from 'zod';
+import fs from 'fs/promises';
 
 const router = Router();
 
@@ -105,6 +107,66 @@ router.post('/upload-placeholder', authenticateToken, requireRole('consultant'),
     res.json({ success: true, mediaId: result.id });
   } catch (error: any) {
     console.error('[PUBLER] Error uploading placeholder:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/upload-media', authenticateToken, requireRole('consultant'), upload.array('files', 35), async (req: AuthRequest, res) => {
+  const files = req.files as Express.Multer.File[];
+  
+  if (!files || files.length === 0) {
+    return res.status(400).json({ success: false, error: 'Nessun file caricato' });
+  }
+  
+  try {
+    const consultantId = req.user!.id;
+    const status = await publerService.getConfigStatus(consultantId);
+    if (!status.configured || !status.isActive) {
+      return res.status(400).json({ success: false, error: 'Publer non configurato o disattivato' });
+    }
+    
+    const uploadedMedia: { id: string; path: string; thumbnail?: string }[] = [];
+    const errors: string[] = [];
+    
+    for (const file of files) {
+      try {
+        const fileBuffer = await fs.readFile(file.path);
+        const result = await publerService.uploadMedia(consultantId, fileBuffer, file.originalname, file.mimetype);
+        uploadedMedia.push({
+          id: result.id,
+          path: result.path,
+          thumbnail: result.thumbnail,
+        });
+      } catch (uploadError: any) {
+        console.error(`[PUBLER] Error uploading file ${file.originalname}:`, uploadError);
+        errors.push(`${file.originalname}: ${uploadError.message}`);
+      } finally {
+        try {
+          await fs.unlink(file.path);
+        } catch (unlinkError) {
+          console.error(`[PUBLER] Error deleting temp file ${file.path}:`, unlinkError);
+        }
+      }
+    }
+    
+    if (uploadedMedia.length === 0 && errors.length > 0) {
+      return res.status(500).json({ success: false, error: errors.join('; ') });
+    }
+    
+    res.json({ 
+      success: true, 
+      media: uploadedMedia,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error: any) {
+    console.error('[PUBLER] Error in upload-media:', error);
+    for (const file of files) {
+      try {
+        await fs.unlink(file.path);
+      } catch (unlinkError) {
+        console.error(`[PUBLER] Error deleting temp file ${file.path}:`, unlinkError);
+      }
+    }
     res.status(500).json({ success: false, error: error.message });
   }
 });

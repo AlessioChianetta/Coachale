@@ -83,6 +83,7 @@ import {
   ClipboardCheck,
   Briefcase,
   MoreVertical,
+  MessageSquare,
   Pencil,
   Search,
   List,
@@ -90,6 +91,7 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -165,6 +167,7 @@ interface Post {
   publerScheduledAt?: string;
   publerPostId?: string;
   publerError?: string;
+  publerMediaIds?: string[];
 }
 
 interface ContentFolder {
@@ -635,6 +638,16 @@ export default function ContentStudioPosts() {
     { title: "", content: "" },
   ]);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  
+  const [uploadedMedia, setUploadedMedia] = useState<{ id: string; path: string; thumbnail?: string; localPreview?: string }[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  
+  const [uploadedVideo, setUploadedVideo] = useState<{ id: string; path: string; thumbnail?: string } | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoSourceType, setVideoSourceType] = useState<'link' | 'upload'>('link');
 
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -797,6 +810,17 @@ export default function ContentStudioPosts() {
     fetchIdea();
   }, [searchString]);
 
+  // Reset carousel mode when Twitter is selected (Twitter doesn't support carousels)
+  useEffect(() => {
+    if (formData.platform === 'twitter' && isCarouselMode) {
+      setIsCarouselMode(false);
+      toast({
+        title: "Carosello disattivato",
+        description: "Twitter/X non supporta i post carosello",
+      });
+    }
+  }, [formData.platform]);
+
   const { data: postsResponse, isLoading } = useQuery({
     queryKey: ["/api/content/posts"],
     queryFn: async () => {
@@ -945,6 +969,12 @@ export default function ContentStudioPosts() {
       setMediaTypeFromIdea(false);
       setSourceIdeaId(null);
       setSourceIdeaTitle(null);
+      // Cleanup object URLs to prevent memory leaks
+      uploadedMedia.forEach(m => {
+        if (m.localPreview) URL.revokeObjectURL(m.localPreview);
+      });
+      setUploadedMedia([]);
+      setUploadedVideo(null);
     },
     onError: (error: Error) => {
       toast({
@@ -1310,6 +1340,162 @@ export default function ContentStudioPosts() {
     setCarouselSlides(newSlides);
   };
 
+  const handleMediaUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    setIsUploadingMedia(true);
+    setUploadProgress(0);
+    
+    const localPreviews: { id: string; path: string; localPreview: string }[] = [];
+    for (const file of files) {
+      const localPreview = URL.createObjectURL(file);
+      localPreviews.push({
+        id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        path: '',
+        localPreview,
+      });
+    }
+    setUploadedMedia(prev => [...prev, ...localPreviews]);
+    
+    try {
+      const formDataUpload = new FormData();
+      files.forEach(file => {
+        formDataUpload.append('files', file);
+      });
+      
+      const headersObj = getAuthHeaders();
+      delete (headersObj as any)['Content-Type'];
+      
+      const response = await fetch('/api/publer/upload-media', {
+        method: 'POST',
+        headers: headersObj,
+        body: formDataUpload,
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Errore durante l\'upload');
+      }
+      
+      setUploadedMedia(prev => {
+        // Cleanup object URLs for local previews to prevent memory leaks
+        prev.forEach(m => {
+          if (m.id.startsWith('local-') && m.localPreview) {
+            URL.revokeObjectURL(m.localPreview);
+          }
+        });
+        const withoutLocalPreviews = prev.filter(m => !m.id.startsWith('local-'));
+        return [...withoutLocalPreviews, ...result.media];
+      });
+      
+      setUploadProgress(100);
+      
+      if (result.errors && result.errors.length > 0) {
+        toast({
+          title: "Upload parziale",
+          description: `Alcuni file non sono stati caricati: ${result.errors.join(', ')}`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Upload completato",
+          description: `${result.media.length} immagini caricate`,
+        });
+      }
+    } catch (error: any) {
+      console.error('[UPLOAD] Error:', error);
+      setUploadedMedia(prev => {
+        // Cleanup object URLs on error as well
+        prev.forEach(m => {
+          if (m.id.startsWith('local-') && m.localPreview) {
+            URL.revokeObjectURL(m.localPreview);
+          }
+        });
+        return prev.filter(m => !m.id.startsWith('local-'));
+      });
+      toast({
+        title: "Errore upload",
+        description: error.message || 'Errore durante l\'upload delle immagini',
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingMedia(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+    }
+  };
+
+  const handleVideoUpload = async (file: File) => {
+    if (!file) return;
+    
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "File troppo grande",
+        description: "Il video deve essere massimo 50MB",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const allowedTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/mov'];
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(mp4|mov|webm)$/i)) {
+      toast({
+        title: "Formato non supportato",
+        description: "Formati supportati: MP4, MOV, WebM",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsUploadingVideo(true);
+    setVideoUploadProgress(10);
+    
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('files', file);
+      
+      const headersObj = getAuthHeaders();
+      delete (headersObj as any)['Content-Type'];
+      
+      setVideoUploadProgress(30);
+      
+      const response = await fetch('/api/publer/upload-media', {
+        method: 'POST',
+        headers: headersObj,
+        body: formDataUpload,
+      });
+      
+      setVideoUploadProgress(70);
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Errore durante l\'upload');
+      }
+      
+      if (result.media && result.media.length > 0) {
+        setUploadedVideo(result.media[0]);
+        setVideoUploadProgress(100);
+        toast({
+          title: "Video caricato",
+          description: "Il video è stato caricato con successo",
+        });
+      }
+    } catch (error: any) {
+      console.error('[VIDEO UPLOAD] Error:', error);
+      toast({
+        title: "Errore upload video",
+        description: error.message || 'Errore durante l\'upload del video',
+        variant: "destructive",
+      });
+      setUploadedVideo(null);
+    } finally {
+      setIsUploadingVideo(false);
+      setTimeout(() => setVideoUploadProgress(0), 1000);
+    }
+  };
+
   const splitContentIntoSlides = (content: string): CarouselSlide[] => {
     const lines = content.split("\n").filter((line) => line.trim());
     const slides: CarouselSlide[] = [];
@@ -1386,6 +1572,17 @@ export default function ContentStudioPosts() {
       imageOverlayText: formData.imageOverlayText,
     };
 
+    // Build publerMediaIds from uploaded media
+    // Preserve existing IDs when editing if no new uploads
+    let publerMediaIds: string[] | undefined;
+    if (uploadedMedia.length > 0) {
+      publerMediaIds = uploadedMedia.map(m => m.id);
+    } else if (uploadedVideo) {
+      publerMediaIds = [uploadedVideo.id];
+    } else if (isEditing && editingPost?.publerMediaIds && Array.isArray(editingPost.publerMediaIds)) {
+      publerMediaIds = editingPost.publerMediaIds as string[];
+    }
+
     // Base payload with all flat fields for database columns
     const basePayload = {
       ...formData,
@@ -1404,6 +1601,7 @@ export default function ContentStudioPosts() {
       imageOverlayText: formData.imageOverlayText || undefined,
       structuredContent,
       ideaId: sourceIdeaId || undefined,
+      publerMediaIds,
     };
 
     if (isCarouselMode) {
@@ -1889,6 +2087,12 @@ export default function ContentStudioPosts() {
                   setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
                   setSuggestedHashtags([]);
                   resetCarouselState();
+                  // Cleanup object URLs when dialog is closed without saving
+                  uploadedMedia.forEach(m => {
+                    if (m.localPreview) URL.revokeObjectURL(m.localPreview);
+                  });
+                  setUploadedMedia([]);
+                  setUploadedVideo(null);
                 }
               }}>
                 <DialogTrigger asChild>
@@ -2021,6 +2225,7 @@ export default function ContentStudioPosts() {
                             <Switch
                               id="carousel-mode"
                               checked={isCarouselMode}
+                              disabled={formData.platform === 'twitter'}
                               onCheckedChange={(checked) => {
                                 setIsCarouselMode(checked);
                                 if (checked && carouselSlides.length === 1 && !carouselSlides[0].title && !carouselSlides[0].content) {
@@ -2028,6 +2233,11 @@ export default function ContentStudioPosts() {
                                 }
                               }}
                             />
+                            {formData.platform === 'twitter' && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                Twitter/X non supporta i caroselli
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -2224,6 +2434,151 @@ export default function ContentStudioPosts() {
                                 ))}
                               </div>
                             </div>
+                            
+                            {/* Image Upload for Carousel */}
+                            <div className="space-y-3 mt-4">
+                              <Label className="flex items-center gap-2">
+                                <ImagePlus className="h-4 w-4 text-gray-500" />
+                                Immagini Carosello ({uploadedMedia.length}/{formData.platform === 'tiktok' ? 35 : 10})
+                              </Label>
+                              
+                              <div
+                                className={`relative border-2 border-dashed rounded-lg p-4 transition-all ${
+                                  isDragOver 
+                                    ? "border-gray-900 dark:border-gray-100 bg-gray-100 dark:bg-gray-800" 
+                                    : "border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50"
+                                } ${isUploadingMedia ? "opacity-50 pointer-events-none" : "hover:border-gray-400 dark:hover:border-gray-600 cursor-pointer"}`}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  setIsDragOver(true);
+                                }}
+                                onDragLeave={(e) => {
+                                  e.preventDefault();
+                                  setIsDragOver(false);
+                                }}
+                                onDrop={async (e) => {
+                                  e.preventDefault();
+                                  setIsDragOver(false);
+                                  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                                  if (files.length === 0) return;
+                                  
+                                  const maxLimit = formData.platform === 'tiktok' ? 35 : 10;
+                                  const remainingSlots = maxLimit - uploadedMedia.length;
+                                  if (remainingSlots <= 0) {
+                                    toast({ title: "Limite raggiunto", description: `Massimo ${maxLimit} immagini per ${formData.platform || 'Instagram'}`, variant: "destructive" });
+                                    return;
+                                  }
+                                  
+                                  const filesToUpload = files.slice(0, remainingSlots);
+                                  await handleMediaUpload(filesToUpload);
+                                }}
+                                onClick={() => {
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.accept = 'image/*';
+                                  input.multiple = true;
+                                  input.onchange = async (e) => {
+                                    const files = Array.from((e.target as HTMLInputElement).files || []);
+                                    if (files.length === 0) return;
+                                    
+                                    const maxLimit = formData.platform === 'tiktok' ? 35 : 10;
+                                    const remainingSlots = maxLimit - uploadedMedia.length;
+                                    if (remainingSlots <= 0) {
+                                      toast({ title: "Limite raggiunto", description: `Massimo ${maxLimit} immagini per ${formData.platform || 'Instagram'}`, variant: "destructive" });
+                                      return;
+                                    }
+                                    
+                                    const filesToUpload = files.slice(0, remainingSlots);
+                                    await handleMediaUpload(filesToUpload);
+                                  };
+                                  input.click();
+                                }}
+                              >
+                                {isUploadingMedia ? (
+                                  <div className="text-center py-2">
+                                    <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin text-gray-500" />
+                                    <p className="text-sm text-muted-foreground">Caricamento in corso...</p>
+                                    <Progress value={uploadProgress} className="mt-2 h-1" />
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-2">
+                                    <ImagePlus className="h-6 w-6 mx-auto mb-2 text-gray-400" />
+                                    <p className="text-sm text-muted-foreground">
+                                      Trascina le immagini qui o clicca per selezionarle
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Max {formData.platform === 'tiktok' ? '35' : '10'} immagini • JPG, PNG, GIF, WebP
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {uploadedMedia.length > 0 && (
+                                <div className="grid grid-cols-5 gap-2">
+                                  {uploadedMedia.map((media, idx) => (
+                                    <div
+                                      key={media.id}
+                                      className="relative group aspect-square rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden bg-gray-100 dark:bg-gray-900"
+                                    >
+                                      <img
+                                        src={media.localPreview || media.thumbnail || media.path}
+                                        alt={`Media ${idx + 1}`}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Button
+                                          variant="destructive"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Cleanup object URL to prevent memory leak
+                                            if (media.localPreview) {
+                                              URL.revokeObjectURL(media.localPreview);
+                                            }
+                                            setUploadedMedia(prev => prev.filter(m => m.id !== media.id));
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                                        {idx + 1}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 border-t pt-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="carousel-caption" className="flex items-center gap-2">
+                              <MessageSquare className="h-4 w-4 text-gray-500" />
+                              Caption del Carosello
+                            </Label>
+                            <Textarea
+                              id="carousel-caption"
+                              placeholder="Il testo che accompagna il carosello sui social..."
+                              value={formData.body}
+                              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+                              className="min-h-[80px]"
+                              style={{ fieldSizing: 'content' } as React.CSSProperties}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Questa caption verrà pubblicata insieme alle immagini del carosello
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="carousel-cta">Call to Action</Label>
+                            <Input
+                              id="carousel-cta"
+                              placeholder="Es: Scorri per scoprire di più!"
+                              value={formData.cta}
+                              onChange={(e) => setFormData({ ...formData, cta: e.target.value })}
+                            />
                           </div>
                         </div>
                       </div>
@@ -2522,38 +2877,169 @@ export default function ContentStudioPosts() {
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                           <Video className="h-4 w-4 text-gray-500" />
-                          Link Video
+                          Video
                         </Label>
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="https://youtube.com/watch?v=... oppure TikTok, Instagram Reels..."
-                              value={formData.videoUrl || ""}
-                              onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                              className="pl-10"
-                            />
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Inserisci il link al video pubblicato (YouTube, TikTok, Instagram, etc.)
-                        </p>
+                        <Tabs value={videoSourceType} onValueChange={(v) => setVideoSourceType(v as 'link' | 'upload')} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 bg-gray-50 dark:bg-gray-900/50">
+                            <TabsTrigger value="link" className="text-xs">Link Esterno</TabsTrigger>
+                            <TabsTrigger value="upload" className="text-xs">Carica Video</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="link" className="mt-3">
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                  <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    placeholder="https://youtube.com/watch?v=..."
+                                    value={formData.videoUrl || ""}
+                                    onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                                    className="pl-10"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Inserisci link a YouTube, TikTok, Instagram, etc.
+                              </p>
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="upload" className="mt-3">
+                            <div className="space-y-3">
+                              {!uploadedVideo ? (
+                                <>
+                                  <div
+                                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                                      isUploadingVideo 
+                                        ? 'border-gray-300 bg-gray-50 dark:bg-gray-900/50' 
+                                        : 'border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 bg-gray-50 dark:bg-gray-900/50'
+                                    }`}
+                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const files = e.dataTransfer.files;
+                                      if (files.length > 0) handleVideoUpload(files[0]);
+                                    }}
+                                    onClick={() => {
+                                      const input = document.createElement('input');
+                                      input.type = 'file';
+                                      input.accept = 'video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm';
+                                      input.onchange = (e) => {
+                                        const file = (e.target as HTMLInputElement).files?.[0];
+                                        if (file) handleVideoUpload(file);
+                                      };
+                                      input.click();
+                                    }}
+                                  >
+                                    {isUploadingVideo ? (
+                                      <div className="space-y-3">
+                                        <Loader2 className="h-8 w-8 mx-auto text-gray-400 animate-spin" />
+                                        <p className="text-sm text-muted-foreground">Caricamento in corso...</p>
+                                        <Progress value={videoUploadProgress} className="w-full max-w-xs mx-auto h-2" />
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                                        <p className="text-sm text-muted-foreground">
+                                          Trascina un video o clicca per selezionare
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          MP4, MOV, WebM (max 50MB)
+                                        </p>
+                                      </>
+                                    )}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
+                                  <video
+                                    src={uploadedVideo.path}
+                                    className="w-full max-h-48 object-contain bg-black"
+                                    controls
+                                  />
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute top-2 right-2 h-6 w-6"
+                                    onClick={() => setUploadedVideo(null)}
+                                    type="button"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                           <ImagePlus className="h-4 w-4 text-gray-500" />
-                          Immagine
+                          Immagine {uploadedMedia.length > 0 && `(${uploadedMedia.length})`}
                         </Label>
-                        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer">
-                          <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                          <p className="text-sm text-muted-foreground">
-                            Clicca per caricare un'immagine
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            PNG, JPG fino a 10MB
-                          </p>
-                        </div>
+                        
+                        {uploadedMedia.length > 0 ? (
+                          <div className="space-y-3">
+                            <div className="relative inline-block">
+                              <img
+                                src={uploadedMedia[0].localPreview || uploadedMedia[0].path}
+                                alt="Immagine caricata"
+                                className="max-h-40 rounded-lg border"
+                              />
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                className="absolute -top-2 -right-2 h-6 w-6"
+                                onClick={() => {
+                                  if (uploadedMedia[0].localPreview) {
+                                    URL.revokeObjectURL(uploadedMedia[0].localPreview);
+                                  }
+                                  setUploadedMedia([]);
+                                }}
+                                type="button"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <p className="text-xs text-green-600">Immagine pronta per la pubblicazione</p>
+                          </div>
+                        ) : (
+                          <div 
+                            className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.onchange = (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) {
+                                  handleMediaUpload([file]);
+                                }
+                              };
+                              input.click();
+                            }}
+                          >
+                            {isUploadingMedia ? (
+                              <>
+                                <Loader2 className="h-8 w-8 mx-auto text-muted-foreground mb-2 animate-spin" />
+                                <p className="text-sm text-muted-foreground">
+                                  Caricamento in corso...
+                                </p>
+                                <Progress value={uploadProgress} className="mt-2 h-1" />
+                              </>
+                            ) : (
+                              <>
+                                <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                                <p className="text-sm text-muted-foreground">
+                                  Clicca per caricare un'immagine
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  PNG, JPG, GIF, WebP fino a 10MB
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 

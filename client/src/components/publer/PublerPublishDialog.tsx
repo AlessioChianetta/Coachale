@@ -183,6 +183,7 @@ interface Post {
   errore?: string;
   soluzione?: string;
   riprovaSociale?: string;
+  publerMediaIds?: string[];
 }
 
 interface PublerPublishDialogProps {
@@ -373,13 +374,14 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       .filter(a => selectedAccounts.includes(a.id))
       .map(a => ({ id: a.id, platform: a.platform }));
     
-    // Verifica se una piattaforma che richiede media è selezionata e serve immagine placeholder
-    const needsPlaceholder = usePlaceholderImage && 
-      accountPlatforms.some(a => isInstagramPlatform(a.platform));
-    
     let mediaIds: string[] | undefined;
     
-    if (needsPlaceholder) {
+    // SE il post ha già dei media Publer allegati, usali direttamente
+    if (post.publerMediaIds && post.publerMediaIds.length > 0) {
+      mediaIds = post.publerMediaIds;
+    } 
+    // ALTRIMENTI, verifica se serve placeholder per piattaforme che richiedono media
+    else if (usePlaceholderImage && accountPlatforms.some(a => isInstagramPlatform(a.platform))) {
       try {
         toast({ title: "Caricamento immagine placeholder...", description: "Attendere prego" });
         const result = await uploadPlaceholderMutation.mutateAsync();
@@ -631,8 +633,20 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                     ))}
                   </div>
                   
-                  {/* Checkbox per immagine placeholder se ci sono piattaforme che richiedono media */}
-                  {hasMediaRequiredPlatforms && (
+                  {/* Media già allegati al post */}
+                  {post?.publerMediaIds && post.publerMediaIds.length > 0 && hasMediaRequiredPlatforms && (
+                    <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-300 dark:border-green-700">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-sm text-green-700 dark:text-green-400">
+                          {post.publerMediaIds.length} media già allegati al post
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Checkbox per immagine placeholder se ci sono piattaforme che richiedono media e il post NON ha media */}
+                  {hasMediaRequiredPlatforms && (!post?.publerMediaIds || post.publerMediaIds.length === 0) && (
                     <div className="mt-3 p-3 bg-white dark:bg-black/30 rounded-md border border-amber-300 dark:border-amber-700">
                       <div className="flex items-center gap-2">
                         <Checkbox
@@ -722,7 +736,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
               selectedAccounts.length === 0 || 
               publishMutation.isPending || 
               !composedText.trim() ||
-              (hasMediaRequiredPlatforms && !usePlaceholderImage)
+              (hasMediaRequiredPlatforms && !usePlaceholderImage && (!post?.publerMediaIds || post.publerMediaIds.length === 0))
             }
           >
             {publishMutation.isPending ? (
