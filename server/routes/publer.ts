@@ -286,4 +286,52 @@ router.get('/media-proxy', async (req, res) => {
   }
 });
 
+// Manual sync endpoint for debugging
+router.post('/sync-statuses', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const result = await publerService.syncPostStatuses(consultantId);
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('[PUBLER] Error syncing statuses:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Polling scheduler: sync post statuses every 5 minutes
+const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+let syncIntervalId: NodeJS.Timeout | null = null;
+
+function startPublerStatusPolling() {
+  if (syncIntervalId) {
+    clearInterval(syncIntervalId);
+  }
+  
+  console.log('[PUBLER POLLING] Starting post status sync scheduler (every 5 minutes)');
+  
+  syncIntervalId = setInterval(async () => {
+    try {
+      console.log('[PUBLER POLLING] Running scheduled post status sync...');
+      const result = await publerService.syncAllConsultantsPostStatuses();
+      console.log(`[PUBLER POLLING] Sync complete: ${result.consultants} consultants, ${result.totalUpdated} posts updated`);
+    } catch (error: any) {
+      console.error('[PUBLER POLLING] Scheduled sync error:', error.message);
+    }
+  }, SYNC_INTERVAL_MS);
+  
+  // Run immediately on startup
+  setTimeout(async () => {
+    try {
+      console.log('[PUBLER POLLING] Initial post status sync...');
+      const result = await publerService.syncAllConsultantsPostStatuses();
+      console.log(`[PUBLER POLLING] Initial sync complete: ${result.consultants} consultants, ${result.totalUpdated} posts updated`);
+    } catch (error: any) {
+      console.error('[PUBLER POLLING] Initial sync error:', error.message);
+    }
+  }, 10000); // Wait 10 seconds after startup
+}
+
+// Start polling when module loads
+startPublerStatusPolling();
+
 export default router;

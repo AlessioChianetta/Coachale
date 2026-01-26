@@ -779,6 +779,139 @@ export class PublerService {
       accountCount: accounts.length,
     };
   }
+
+  async syncPostStatuses(consultantId: string): Promise<{ updated: number; errors: string[] }> {
+    const credentials = await this.getDecryptedApiKey(consultantId);
+    if (!credentials) {
+      return { updated: 0, errors: ['Publer non configurato'] };
+    }
+
+    const { apiKey, workspaceId } = credentials;
+    const errors: string[] = [];
+    let updated = 0;
+
+    try {
+      // Get local posts that have publerPostId and are not yet published
+      const localPosts = await db
+        .select()
+        .from(contentPosts)
+        .where(eq(contentPosts.consultantId, consultantId));
+
+      const postsWithPublerId = localPosts.filter(p => p.publerPostId && p.publerStatus !== 'published');
+      
+      if (postsWithPublerId.length === 0) {
+        return { updated: 0, errors: [] };
+      }
+
+      // Helper function to fetch all pages of posts with given state
+      const fetchAllPostsByState = async (state: 'published' | 'failed'): Promise<Set<string>> => {
+        const ids = new Set<string>();
+        let page = 1;
+        const perPage = 100;
+        
+        while (true) {
+          const response = await fetch(`${PUBLER_BASE_URL}/posts?state=${state}&per_page=${perPage}&page=${page}`, {
+            headers: {
+              'Authorization': `Bearer-API ${apiKey}`,
+              'Publer-Workspace-Id': workspaceId,
+            },
+          });
+
+          if (!response.ok) {
+            const errorMsg = `Publer API error (${state}): ${response.status} ${response.statusText}`;
+            console.error(`[PUBLER SYNC] ${errorMsg}`);
+            errors.push(errorMsg);
+            break;
+          }
+
+          const data = await response.json();
+          const posts = data.posts || [];
+          
+          posts.forEach((p: any) => ids.add(p.id));
+          
+          // Check if there are more pages
+          const totalPages = data.total_pages || 1;
+          if (page >= totalPages || posts.length < perPage) {
+            break;
+          }
+          page++;
+        }
+        
+        return ids;
+      };
+
+      // Fetch all published and failed posts with pagination
+      const [publishedIds, failedIds] = await Promise.all([
+        fetchAllPostsByState('published'),
+        fetchAllPostsByState('failed'),
+      ]);
+
+      // Update local posts based on Publer status
+      for (const post of postsWithPublerId) {
+        const publerIds = post.publerPostId?.split(',') || [];
+        
+        for (const publerId of publerIds) {
+          if (publishedIds.has(publerId.trim())) {
+            await db
+              .update(contentPosts)
+              .set({ 
+                publerStatus: 'published',
+                status: 'published',
+              })
+              .where(eq(contentPosts.id, post.id));
+            updated++;
+            console.log(`[PUBLER SYNC] Post ${post.id} marked as published`);
+            break;
+          } else if (failedIds.has(publerId.trim())) {
+            await db
+              .update(contentPosts)
+              .set({ 
+                publerStatus: 'failed',
+              })
+              .where(eq(contentPosts.id, post.id));
+            updated++;
+            console.log(`[PUBLER SYNC] Post ${post.id} marked as failed`);
+            break;
+          }
+        }
+      }
+
+      return { updated, errors };
+    } catch (error: any) {
+      console.error('[PUBLER SYNC] Error syncing post statuses:', error);
+      errors.push(error.message);
+      return { updated, errors };
+    }
+  }
+
+  async syncAllConsultantsPostStatuses(): Promise<{ consultants: number; totalUpdated: number }> {
+    let totalUpdated = 0;
+    let consultantCount = 0;
+
+    try {
+      // Get all consultants with active Publer config
+      const configs = await db
+        .select()
+        .from(publerConfigs)
+        .where(eq(publerConfigs.isActive, true));
+
+      for (const config of configs) {
+        try {
+          const result = await this.syncPostStatuses(config.consultantId);
+          totalUpdated += result.updated;
+          consultantCount++;
+        } catch (error: any) {
+          console.error(`[PUBLER SYNC] Error for consultant ${config.consultantId}:`, error.message);
+        }
+      }
+
+      console.log(`[PUBLER SYNC] Synced ${consultantCount} consultants, updated ${totalUpdated} posts`);
+      return { consultants: consultantCount, totalUpdated };
+    } catch (error: any) {
+      console.error('[PUBLER SYNC] Global sync error:', error);
+      return { consultants: consultantCount, totalUpdated };
+    }
+  }
 }
 
 export const publerService = new PublerService();
