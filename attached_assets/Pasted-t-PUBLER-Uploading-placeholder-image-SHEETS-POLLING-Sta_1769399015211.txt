@@ -1,0 +1,116 @@
+t
+[PUBLER] Uploading placeholder image...
+
+[SHEETS POLLING] Starting polling cycle (ExecID: tjbct1r)...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2026-01-26T03:43:00.058Z
+[SHEETS POLLING] Found 1 active polling jobs
+[SHEETS POLLING] Skipping job ca427ee2-05d4-4614-b7bf-c10af25d5953 - next poll in 0 minutes
+[SHEETS POLLING] Polling cycle completed (ExecID: tjbct1r)
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+[PUBLER] Placeholder uploaded successfully: 6976e2c491e908901b6be2e1
+3:43:01 AM [express] POST /api/publer/upload-placeholder 200 in 4759ms :: {"success":true,"mediaId":…
+[PUBLER] Scheduling post with state: publish_now for accounts: 1
+[PUBLER] Account platforms resolved: [
+  {
+    "id": "697685b559c689c71d4abc38",
+    "platform": "instagram"
+  }
+]
+[PUBLER] Unique platforms: [ 'instagram' ]
+[PUBLER] Normalized platforms: [ 'instagram' ]
+[PUBLER] Network for instagram: type=photo
+[PUBLER] Networks object: {"instagram":{"type":"photo","text":"Se pensi che un'intelligenza artificiale non possa parlare come te, è perché non hai mai visto un sistema istruito sulla TUA documentazione aziendale. 🤖\n\nMi chiamo Simone e la mia missione è rendere ogni azienda scalabile eliminando gli attriti operativi. Con il Sistema Orbitale, portiamo l'intelligenza artificiale generativa all'interno dei processi commerciali, creando collaboratori digitali che seguono rigorosamente le tue procedure interne.\n\nIl mercato è saturo di chatbot economici che dicono tutti la stessa cosa: 'Il migliore', 'Il più veloce'. Ma la verità è che la maggior parte di questi strumenti fallisce perché non ha contesto. \n\nUsano risposte preimpostate, suonano robotici e, cosa peggiore, non sanno nulla della tua azienda. Quando un lead fa una domanda specifica, il bot va in crisi o, peggio, inventa risposte. Questo distrugge la fiducia nel tuo brand e ti costringe comunque a intervenire manualmente per rimediare ai danni.\n\nIl nostro Meccanismo Unico si basa sull'istruzione profonda. Il Dipendente AI del Sistema Orbitale viene 'nutrito' con i tuoi documenti, i tuoi manuali di vendita e i tuoi casi studio. \n\nNon segue uno script rigido, ma comprende l'intento del cliente. Se un lead chiede dettagli tecnici sul tuo SaaS o sul tuo servizio di agenzia, l'AI risponde con precisione chirurgica usando il tuo Tone of Voice. È come avere un clone del tuo miglior commerciale attivo 24/7, che non si stanca mai e che qualifica ogni singola conversazione prima di passartela.\n\nI nostri partner hanno riportato che il 90% degli utenti non percepisce di interagire con un'intelligenza artificiale, grazie alla naturalezza del linguaggio e alla precisione delle informazioni fornite dal Sistema Orbitale.\n\nÈ ora di evolvere la tua gestione operativa. Richiedi oggi stesso una consulenza strategica per implementare il tuo Dipendente AI. 🔗"}}
+[PUBLER] Simulating publish_now with scheduled_at: 2026-01-26T03:46:02.799Z (+3 min)
+[PUBLER] ==================== REQUEST PAYLOAD ====================
+[PUBLER] Request payload: {
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "accounts": [
+          {
+            "id": "697685b559c689c71d4abc38"
+          }
+        ],
+        "networks": {
+          "instagram": {
+            "type": "photo",
+            "text": "Se pensi che un'intelligenza artificiale non possa parlare come te, è perché non hai mai visto un sistema istruito sulla TUA documentazione aziendale. 🤖\n\nMi chiamo Simone e la mia missione è rendere ogni azienda scalabile eliminando gli attriti operativi. Con il Sistema Orbitale, portiamo l'intelligenza artificiale generativa all'interno dei processi commerciali, creando collaboratori digitali che seguono rigorosamente le tue procedure interne.\n\nIl mercato è saturo di chatbot economici che dicono tutti la stessa cosa: 'Il migliore', 'Il più veloce'. Ma la verità è che la maggior parte di questi strumenti fallisce perché non ha contesto. \n\nUsano risposte preimpostate, suonano robotici e, cosa peggiore, non sanno nulla della tua azienda. Quando un lead fa una domanda specifica, il bot va in crisi o, peggio, inventa risposte. Questo distrugge la fiducia nel tuo brand e ti costringe comunque a intervenire manualmente per rimediare ai danni.\n\nIl nostro Meccanismo Unico si basa sull'istruzione profonda. Il Dipendente AI del Sistema Orbitale viene 'nutrito' con i tuoi documenti, i tuoi manuali di vendita e i tuoi casi studio. \n\nNon segue uno script rigido, ma comprende l'intento del cliente. Se un lead chiede dettagli tecnici sul tuo SaaS o sul tuo servizio di agenzia, l'AI risponde con precisione chirurgica usando il tuo Tone of Voice. È come avere un clone del tuo miglior commerciale attivo 24/7, che non si stanca mai e che qualifica ogni singola conversazione prima di passartela.\n\nI nostri partner hanno riportato che il 90% degli utenti non percepisce di interagire con un'intelligenza artificiale, grazie alla naturalezza del linguaggio e alla precisione delle informazioni fornite dal Sistema Orbitale.\n\nÈ ora di evolvere la tua gestione operativa. Richiedi oggi stesso una consulenza strategica per implementare il tuo Dipendente AI. 🔗"
+          }
+        },
+        "media": [
+          {
+            "id": "6976e2c491e908901b6be2e1",
+            "type": "image"
+          }
+        ],
+        "scheduled_at": "2026-01-26T03:46:02.799Z"
+      }
+    ]
+  }
+}
+[PUBLER] =========================================================
+[PUBLER] Using endpoint: https://app.publer.com/api/v1/posts/schedule (api_state: scheduled )
+[PUBLER] 🎫 Schedule request accepted, job_id: 6976e2c6d07e4543817009b9
+[PUBLER] 🔎 Starting job status polling for: 6976e2c6d07e4543817009b9
+[IMAP] Opened folder "[Gmail]/Bozze": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Bozze (drafts)
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 46
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[PUBLER] 📊 Job status (attempt 1/10): {
+  "status": "complete",
+  "payload": {
+    "failures": {
+      "post_0": [
+        {
+          "account_id": "697685b559c689c71d4abc38",
+          "account_name": "Frank Orbitale",
+          "provider": "instagram",
+          "message": "undefined method 'count' for nil"
+        }
+      ]
+    }
+  },
+  "plan": {
+    "bulks": 5,
+    "signature": 5,
+    "watermarking": 5,
+    "callbacks": 5,
+    "multiphoto": 10,
+    "video": 10,
+    "hashtags": 10,
+    "library": 20,
+    "recurring": 2,
+    "recycling": 2,
+    "vista_photos": 10,
+    "vista_videos": 10,
+    "analytics_reports": 20,
+    "ai": 30,
+    "rate": "business",
+    "locked": false
+  }
+}
+[PUBLER] ✅ Job finished with status: complete
+[PUBLER] ⚠️ Found failures in payload: {
+  "post_0": [
+    {
+      "account_id": "697685b559c689c71d4abc38",
+      "account_name": "Frank Orbitale",
+      "provider": "instagram",
+      "message": "undefined method 'count' for nil"
+    }
+  ]
+}
+[PUBLER] ❌ Account failure [instagram/Frank Orbitale]: undefined method 'count' for nil
+[PUBLER] 📋 Final result: success=false, posts=0, errors=1
+[PUBLER] Updating post status: 058832ab-7dc3-4d30-9120-9c7550855b5e failed
+[EMAIL-HUB AUTO] IDLE started for eurospace@
