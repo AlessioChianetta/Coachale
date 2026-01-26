@@ -6740,10 +6740,16 @@ export class FileSearchSyncService {
           return null;
         }
 
-        return result.storeId;
+        // Fetch the newly created store to get google_store_name
+        const newStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+        
+        return newStore?.googleStoreName || null;
       }
 
-      return store.id;
+      // Return the Google store name, not the local ID
+      return store.googleStoreName || null;
     } catch (error) {
       console.error('[FileSync] Error getting email account store:', error);
       return null;

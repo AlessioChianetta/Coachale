@@ -1709,12 +1709,30 @@ export class FileSearchService {
       return null;
     }
 
+    // Filter out invalid store names (must start with "corpora/" for Google API)
+    const validStoreNames = storeNames.filter(name => {
+      if (!name || typeof name !== 'string') {
+        console.warn(`⚠️ [FileSearch] Filtering out invalid store name: ${name}`);
+        return false;
+      }
+      if (!name.startsWith('corpora/')) {
+        console.warn(`⚠️ [FileSearch] Filtering out store name with invalid format: ${name}`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validStoreNames.length === 0) {
+      console.warn(`⚠️ [FileSearch] No valid store names remaining after filtering`);
+      return null;
+    }
+
     // Google File Search limit: max 5 corpora
     const MAX_STORES = 5;
-    const limitedStoreNames = storeNames.slice(0, MAX_STORES);
+    const limitedStoreNames = validStoreNames.slice(0, MAX_STORES);
     
-    if (storeNames.length > MAX_STORES) {
-      console.warn(`⚠️ [FileSearch] Limiting stores from ${storeNames.length} to ${MAX_STORES} (Google API limit)`);
+    if (validStoreNames.length > MAX_STORES) {
+      console.warn(`⚠️ [FileSearch] Limiting stores from ${validStoreNames.length} to ${MAX_STORES} (Google API limit)`);
     }
 
     return {

@@ -20,6 +20,54 @@ import { getAgentProfile, buildAgentPersonalityPrompt } from "./agent-profiles";
 export const USE_HUMAN_LIKE_AI = true;
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Retry Helper for API calls
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface RetryOptions {
+  maxRetries?: number;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+  retryableStatusCodes?: number[];
+}
+
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    baseDelayMs = 1000,
+    maxDelayMs = 10000,
+    retryableStatusCodes = [429, 500, 502, 503, 504]
+  } = options;
+
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      const statusCode = error?.status || error?.code || 0;
+      const isRetryable = retryableStatusCodes.includes(statusCode) ||
+        error?.message?.includes('overloaded') ||
+        error?.message?.includes('UNAVAILABLE') ||
+        error?.message?.includes('503');
+
+      if (!isRetryable || attempt === maxRetries) {
+        throw error;
+      }
+
+      const delay = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
+      console.log(`⏳ [FOLLOWUP-ENGINE] Retry ${attempt + 1}/${maxRetries} after ${delay}ms (error: ${statusCode || error?.message})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Interfaces
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -190,14 +238,17 @@ export async function evaluateFollowup(
     console.log(`🚀 [FOLLOWUP-ENGINE] Using ${aiProviderResult.metadata.name} for evaluation`);
     console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
 
-    const response = await aiProviderResult.client.generateContent({
-      model,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
-      },
-    });
+    const response = await withRetry(
+      () => aiProviderResult.client.generateContent({
+        model,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          ...(useThinking && { thinkingConfig: { thinkingLevel } }),
+        },
+      }),
+      { maxRetries: 3, baseDelayMs: 2000, maxDelayMs: 15000 }
+    );
 
     const resultText = response.response.text();
 
