@@ -1,0 +1,98 @@
+[PUBLER] Scheduling post with state: scheduled for accounts: 1
+[PUBLER] Request payload: {
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "accounts": [
+          {
+            "id": "697685b559c689c71d4abc38"
+          }
+        ],
+        "networks": {
+          "default": {
+            "type": "status",
+            "text": "Assumere un nuovo operatore per gestire i lead su WhatsApp è l'errore più costoso che puoi fare oggi. Non ti serve più personale, ti serve un sistema che non dorme mai.\n\nAiuto imprenditori con aziende SaaS e agenzie B2B a eliminare i colli di bottiglia operativi installando un Dipendente AI. Attraverso il mio 'Sistema Orbitale', trasformo la gestione dei lead in un processo autonomo che vende, fissa appuntamenti e assiste i clienti seguendo esattamente le tue regole, senza mai stancarsi.\n\nMolti imprenditori pensano che per gestire 50, 100 o 500 messaggi al giorno serva un team di customer care sempre più grande. Ma più persone significa più costi, più errori umani, più formazione e, paradossalmente, più tempo speso da te a supervisionare. Stai cercando di risolvere un problema di efficienza con la forza bruta del lavoro manuale. Questo è il motivo per cui sei bloccato e non riesci a scalare: sei schiavo delle chat e della gestione del personale.\n\nLa soluzione non è un altro umano, ma il Sistema Orbitale. A differenza dei vecchi chatbot a bottoni che frustrano l'utente, il mio Dipendente AI è un'intelligenza neurale che 'legge' la tua documentazione aziendale. Capisce il tono di voce, risponde in modo umano su WhatsApp e Instagram e chiude l'appuntamento direttamente sul tuo calendario. Il Sistema Orbitale crea una forza centrifuga che espelle il lavoro ripetitivo dalla tua scrivania, lasciandoti solo il tempo di scalare l'azienda.\n\nAbbiamo già aiutato agenzie B2B a gestire oltre 1.200 lead mensili senza aggiungere un singolo dipendente, portando il tasso di risposta sotto i 30 secondi e aumentando gli appuntamenti fissati del 40%. Imprenditori che prima passavano 4 ore al giorno su WhatsApp ora si dedicano esclusivamente alla strategia, mentre l'AI lavora 24/7 con la precisione di un chirurgo.\n\nSei pronto a riprenderti il tuo tempo? Commenta 'ORBITA' qui sotto e ti invierò il video dove ti mostro come installare il tuo primo Dipendente AI in azienda."
+          }
+        },
+        "media": [],
+        "scheduled_at": "2026-01-26T03:18:00.000Z"
+      }
+    ]
+  }
+}
+[PUBLER] 🎫 Schedule request accepted, job_id: 6976cf06a21fcf0de6a2f247
+[PUBLER] 🔎 Starting job status polling for: 6976cf06a21fcf0de6a2f247
+[PUBLER] 📊 Job status (attempt 1/10): {
+  "status": "complete",
+  "payload": {
+    "failures": {
+      "post_0": [
+        {
+          "account_id": "697685b559c689c71d4abc38",
+          "account_name": "Frank Orbitale",
+          "provider": "instagram",
+          "message": "Il compositore è in uno stato non valido per questo account. Prova a riselezionarlo o aggiorna Publer"
+        }
+      ]
+    }
+  },
+  "plan": {
+    "bulks": 5,
+    "signature": 5,
+    "watermarking": 5,
+    "callbacks": 5,
+    "multiphoto": 10,
+    "video": 10,
+    "hashtags": 10,
+    "library": 20,
+    "recurring": 2,
+    "recycling": 2,
+    "vista_photos": 10,
+    "vista_videos": 10,
+    "analytics_reports": 20,
+    "ai": 30,
+    "rate": "business",
+    "locked": false
+  }
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 2/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 3/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 4/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 5/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 6/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 7/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 8/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 9/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] 📊 Job status (attempt 10/10): {
+  "status": "complete"
+}
+[PUBLER] ⏳ Job still pending (status: complete), waiting...
+[PUBLER] ⚠️ Job polling timeout - max attempts reached
+[PUBLER] Updating post status: 148b00f3-1f81-42ec-afa2-3f2db9ccb926 scheduled
+2:18:58 AM [express] POST /api/publer/publish 200 in 13569ms :: {"success":false,"jobId":"6976cf06a2…
