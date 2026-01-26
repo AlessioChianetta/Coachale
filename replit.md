@@ -47,6 +47,7 @@ Key enhancements include:
 - Intent Follow-Through System: When users confirm AI proposals with "ok", "sì", "va bene", the system automatically extracts the proposed analysis from the assistant's last message and executes it through the full analytics pipeline. Features recursion prevention (_forceAnalytics flag), proposal pattern detection, and analytic content guards.
 - Conversation Context Flow: Result-explainer, query-planner, and intent-router all receive conversation history (last 6 messages, 500 chars each) for contextual understanding of user confirmations and follow-up queries.
 - Partner Webhook Notification System: Automatic webhook notifications to external partners when clients purchase Gold or Silver licenses via Stripe. Features HMAC-SHA256 signature verification, configurable per-tier notifications, secret key management with regeneration, test webhook functionality, and comprehensive logging with status tracking. UI card in Licenses tab for configuration.
+- Publer Status Polling: Background scheduler syncs post statuses from Publer API every 5 minutes. Implements full pagination support for large post lists, updates local database when posts are published or failed on Publer. Includes manual sync endpoint for debugging (POST /api/publer/sync-statuses).
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
