@@ -2040,8 +2040,8 @@ export default function ContentStudioPosts() {
                             placeholder="Descrivi l'idea del post..."
                             value={ideaForCopy}
                             onChange={(e) => setIdeaForCopy(e.target.value)}
-                            rows={3}
-                            className="bg-background"
+                            className="bg-background min-h-[60px]"
+                            style={{ fieldSizing: 'content' } as React.CSSProperties}
                           />
                           <div className="flex gap-2">
                             <Button
@@ -2191,11 +2191,12 @@ export default function ContentStudioPosts() {
                                 <Textarea
                                   id="slide-content"
                                   placeholder="Testo della slide..."
-                                  rows={6}
                                   value={carouselSlides[activeSlideIndex]?.content || ""}
                                   onChange={(e) =>
                                     handleUpdateSlide(activeSlideIndex, "content", e.target.value)
                                   }
+                                  className="min-h-[100px]"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
                                 />
                               </div>
                             </div>
@@ -2254,9 +2255,10 @@ export default function ContentStudioPosts() {
                               <Textarea
                                 id="body"
                                 placeholder="Il testo della caption..."
-                                rows={3}
                                 value={formData.body}
                                 onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+                                className="min-h-[60px]"
+                                style={{ fieldSizing: 'content' } as React.CSSProperties}
                               />
                             </div>
                             <div className="space-y-2">
@@ -2281,10 +2283,10 @@ export default function ContentStudioPosts() {
                                 </Label>
                                 <Textarea
                                   placeholder="Testo completo del copy..."
-                                  rows={4}
                                   value={formData.body}
                                   onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-                                  className="text-sm"
+                                  className="text-sm min-h-[80px]"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
                                 />
                                 <p className="text-xs text-gray-500">
                                   Puoi copiare parti di questo testo nei campi sottostanti per strutturare il copy
@@ -2307,9 +2309,10 @@ export default function ContentStudioPosts() {
                               </Label>
                               <Textarea
                                 placeholder="Ciao, sono [Nome] e aiuto [chi] a [cosa] attraverso [metodo]..."
-                                rows={2}
                                 value={formData.chiCosaCome || ""}
                                 onChange={(e) => setFormData({ ...formData, chiCosaCome: e.target.value })}
+                                className="min-h-[60px]"
+                                style={{ fieldSizing: 'content' } as React.CSSProperties}
                               />
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
@@ -2318,9 +2321,10 @@ export default function ContentStudioPosts() {
                               </Label>
                               <Textarea
                                 placeholder="L'errore specifico che il tuo target sta commettendo..."
-                                rows={2}
                                 value={formData.errore || ""}
                                 onChange={(e) => setFormData({ ...formData, errore: e.target.value })}
+                                className="min-h-[60px]"
+                                style={{ fieldSizing: 'content' } as React.CSSProperties}
                               />
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
@@ -2329,9 +2333,10 @@ export default function ContentStudioPosts() {
                               </Label>
                               <Textarea
                                 placeholder="Il tuo metodo unico per risolvere il problema..."
-                                rows={2}
                                 value={formData.soluzione || ""}
                                 onChange={(e) => setFormData({ ...formData, soluzione: e.target.value })}
+                                className="min-h-[60px]"
+                                style={{ fieldSizing: 'content' } as React.CSSProperties}
                               />
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
@@ -2340,9 +2345,10 @@ export default function ContentStudioPosts() {
                               </Label>
                               <Textarea
                                 placeholder="Storie concrete con nomi ed eventi reali..."
-                                rows={2}
                                 value={formData.riprovaSociale || ""}
                                 onChange={(e) => setFormData({ ...formData, riprovaSociale: e.target.value })}
+                                className="min-h-[60px]"
+                                style={{ fieldSizing: 'content' } as React.CSSProperties}
                               />
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
@@ -2391,9 +2397,10 @@ export default function ContentStudioPosts() {
                                 </Label>
                                 <Textarea
                                   placeholder="La frase di apertura che cattura l'attenzione..."
-                                  rows={2}
                                   value={formData.videoHook || ""}
                                   onChange={(e) => setFormData({ ...formData, videoHook: e.target.value })}
+                                  className="min-h-[60px]"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
                                 />
                               </div>
                               <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
@@ -2402,9 +2409,10 @@ export default function ContentStudioPosts() {
                                 </Label>
                                 <Textarea
                                   placeholder="Il problema che affronti nel video..."
-                                  rows={2}
                                   value={formData.videoProblema || ""}
                                   onChange={(e) => setFormData({ ...formData, videoProblema: e.target.value })}
+                                  className="min-h-[60px]"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
                                 />
                               </div>
                               <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
@@ -2413,9 +2421,10 @@ export default function ContentStudioPosts() {
                                 </Label>
                                 <Textarea
                                   placeholder="La soluzione o il contenuto principale..."
-                                  rows={3}
                                   value={formData.videoSoluzione || ""}
                                   onChange={(e) => setFormData({ ...formData, videoSoluzione: e.target.value })}
+                                  className="min-h-[60px]"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
                                 />
                               </div>
                               <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
@@ -2434,10 +2443,10 @@ export default function ContentStudioPosts() {
                                 </Label>
                                 <Textarea
                                   placeholder="Lo script completo del video da leggere..."
-                                  rows={5}
                                   value={formData.videoFullScript || ""}
                                   onChange={(e) => setFormData({ ...formData, videoFullScript: e.target.value })}
-                                  className="font-mono text-sm"
+                                  className="font-mono text-sm min-h-[100px]"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
                                 />
                               </div>
                             </CollapsibleContent>
@@ -2462,9 +2471,10 @@ export default function ContentStudioPosts() {
                                 </Label>
                                 <Textarea
                                   placeholder="Descrivi il concetto visivo dell'immagine..."
-                                  rows={3}
                                   value={formData.imageDescription || ""}
                                   onChange={(e) => setFormData({ ...formData, imageDescription: e.target.value })}
+                                  className="min-h-[60px]"
+                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
                                 />
                               </div>
                               <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
