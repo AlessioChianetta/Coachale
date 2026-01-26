@@ -810,7 +810,10 @@ export class PublerService {
         const perPage = 100;
         
         while (true) {
-          const response = await fetch(`${PUBLER_BASE_URL}/posts?state=${state}&per_page=${perPage}&page=${page}`, {
+          const url = `${PUBLER_BASE_URL}/posts?state=${state}&per_page=${perPage}&page=${page}`;
+          console.log(`[PUBLER SYNC] Fetching ${state} posts: ${url}`);
+          
+          const response = await fetch(url, {
             headers: {
               'Authorization': `Bearer-API ${apiKey}`,
               'Publer-Workspace-Id': workspaceId,
@@ -825,13 +828,20 @@ export class PublerService {
           }
 
           const data = await response.json();
-          const posts = data.posts || [];
+          const posts = data.posts || data || [];
           
-          posts.forEach((p: any) => ids.add(p.id));
+          console.log(`[PUBLER SYNC] Found ${Array.isArray(posts) ? posts.length : 0} ${state} posts on page ${page}`);
+          if (Array.isArray(posts) && posts.length > 0) {
+            console.log(`[PUBLER SYNC] Sample post IDs: ${posts.slice(0, 5).map((p: any) => p.id).join(', ')}`);
+          }
+          
+          if (Array.isArray(posts)) {
+            posts.forEach((p: any) => ids.add(p.id));
+          }
           
           // Check if there are more pages
           const totalPages = data.total_pages || 1;
-          if (page >= totalPages || posts.length < perPage) {
+          if (page >= totalPages || (Array.isArray(posts) && posts.length < perPage)) {
             break;
           }
           page++;
@@ -846,12 +856,22 @@ export class PublerService {
         fetchAllPostsByState('failed'),
       ]);
 
+      console.log(`[PUBLER SYNC] Total published IDs from Publer: ${publishedIds.size}`);
+      console.log(`[PUBLER SYNC] Total failed IDs from Publer: ${failedIds.size}`);
+      console.log(`[PUBLER SYNC] Local posts to check: ${postsWithPublerId.map(p => p.publerPostId).join(', ')}`);
+
       // Update local posts based on Publer status
       for (const post of postsWithPublerId) {
         const publerIds = post.publerPostId?.split(',') || [];
+        console.log(`[PUBLER SYNC] Checking post ${post.id} with Publer IDs: ${publerIds.join(', ')}`);
         
         for (const publerId of publerIds) {
-          if (publishedIds.has(publerId.trim())) {
+          const trimmedId = publerId.trim();
+          const isPublished = publishedIds.has(trimmedId);
+          const isFailed = failedIds.has(trimmedId);
+          console.log(`[PUBLER SYNC] ID ${trimmedId}: published=${isPublished}, failed=${isFailed}`);
+          
+          if (isPublished) {
             await db
               .update(contentPosts)
               .set({ 
