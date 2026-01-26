@@ -9184,3 +9184,327 @@ export const cronLocks = pgTable("cron_locks", {
 
 export type CronLock = typeof cronLocks.$inferSelect;
 export type InsertCronLock = typeof cronLocks.$inferInsert;
+
+// ============================================================
+// X (TWITTER) INTEGRATION
+// ============================================================
+
+// Superadmin Twitter Config (centralized App credentials)
+export const superadminTwitterConfig = pgTable("superadmin_twitter_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // X App Credentials (encrypted)
+  apiKeyEncrypted: text("api_key_encrypted"),
+  apiSecretEncrypted: text("api_secret_encrypted"),
+  bearerTokenEncrypted: text("bearer_token_encrypted"),
+  
+  // Webhook Configuration
+  webhookEnvName: varchar("webhook_env_name", { length: 50 }).default("production"),
+  webhookUrl: text("webhook_url"),
+  
+  // CRC Token for webhook verification
+  crcTokenSecret: text("crc_token_secret"),
+  
+  // Status
+  enabled: boolean("enabled").notNull().default(true),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type SuperadminTwitterConfig = typeof superadminTwitterConfig.$inferSelect;
+export type InsertSuperadminTwitterConfig = typeof superadminTwitterConfig.$inferInsert;
+
+// Twitter/X Configuration (per-consultant)
+export const consultantTwitterConfig = pgTable("consultant_twitter_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Agent Identity
+  agentName: text("agent_name").notNull().default("Agente X"),
+  agentType: text("agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success">().default("reactive_lead"),
+  
+  // X/Twitter Credentials (OAuth-populated)
+  twitterUserId: varchar("twitter_user_id", { length: 100 }),
+  twitterUsername: varchar("twitter_username", { length: 100 }),
+  accessToken: text("access_token"),
+  accessTokenSecret: text("access_token_secret"),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  
+  // Webhook Configuration
+  webhookId: varchar("webhook_id", { length: 100 }),
+  webhookUrl: text("webhook_url"),
+  webhookEnvName: varchar("webhook_env_name", { length: 50 }).default("production"),
+  
+  // Connection Status
+  isActive: boolean("is_active").notNull().default(true),
+  isConnected: boolean("is_connected").notNull().default(false),
+  connectedAt: timestamp("connected_at"),
+  
+  // AI Configuration
+  autoResponseEnabled: boolean("auto_response_enabled").notNull().default(true),
+  isDryRun: boolean("is_dry_run").notNull().default(true),
+  
+  // Working Hours
+  workingHoursEnabled: boolean("working_hours_enabled").notNull().default(false),
+  workingHoursStart: text("working_hours_start"),
+  workingHoursEnd: text("working_hours_end"),
+  workingDays: jsonb("working_days").$type<string[]>(),
+  afterHoursMessage: text("after_hours_message"),
+  
+  // Business Profile
+  businessName: text("business_name"),
+  consultantDisplayName: text("consultant_display_name"),
+  businessDescription: text("business_description"),
+  consultantBio: text("consultant_bio"),
+  salesScript: text("sales_script"),
+  
+  // AI Personality
+  aiPersonality: text("ai_personality").$type<"amico_fidato" | "coach_motivazionale" | "consulente_professionale" | "mentore_paziente" | "venditore_energico" | "consigliere_empatico" | "stratega_diretto" | "educatore_socratico" | "esperto_tecnico" | "compagno_entusiasta">().default("amico_fidato"),
+  
+  // Authority & Positioning
+  vision: text("vision"),
+  mission: text("mission"),
+  values: jsonb("values").$type<string[]>(),
+  usp: text("usp"),
+  
+  // Who We Help
+  whoWeHelp: text("who_we_help"),
+  whoWeDontHelp: text("who_we_dont_help"),
+  whatWeDo: text("what_we_do"),
+  howWeDoIt: text("how_we_do_it"),
+  
+  // Agent Instructions
+  agentInstructions: text("agent_instructions"),
+  agentInstructionsEnabled: boolean("agent_instructions_enabled").notNull().default(false),
+  
+  // Feature Blocks
+  bookingEnabled: boolean("booking_enabled").notNull().default(true),
+  objectionHandlingEnabled: boolean("objection_handling_enabled").notNull().default(true),
+  disqualificationEnabled: boolean("disqualification_enabled").notNull().default(true),
+  
+  // DM Automation - Keyword triggers
+  keywordDmEnabled: boolean("keyword_dm_enabled").notNull().default(false),
+  triggerKeywords: jsonb("trigger_keywords").$type<string[]>(),
+  autoDmMessage: text("auto_dm_message"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_twitter_config_consultant").on(table.consultantId),
+  userIdIdx: index("idx_twitter_config_user_id").on(table.twitterUserId),
+}));
+
+export type ConsultantTwitterConfig = typeof consultantTwitterConfig.$inferSelect;
+export type InsertConsultantTwitterConfig = typeof consultantTwitterConfig.$inferInsert;
+
+// Twitter Agent Config (per-agent, linked to WhatsApp agents)
+export const twitterAgentConfig = pgTable("twitter_agent_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  whatsappAgentId: varchar("whatsapp_agent_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  
+  // X/Twitter Credentials
+  twitterUserId: varchar("twitter_user_id", { length: 100 }),
+  twitterUsername: varchar("twitter_username", { length: 100 }),
+  accessToken: text("access_token"),
+  accessTokenSecret: text("access_token_secret"),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  isConnected: boolean("is_connected").notNull().default(false),
+  connectedAt: timestamp("connected_at"),
+  
+  // Webhook
+  webhookId: varchar("webhook_id", { length: 100 }),
+  webhookEnvName: varchar("webhook_env_name", { length: 50 }).default("production"),
+  
+  // General Settings
+  isActive: boolean("is_active").notNull().default(true),
+  autoResponseEnabled: boolean("auto_response_enabled").notNull().default(true),
+  isDryRun: boolean("is_dry_run").notNull().default(true),
+  
+  // Working Hours
+  workingHoursEnabled: boolean("working_hours_enabled").notNull().default(false),
+  workingHoursStart: text("working_hours_start"),
+  workingHoursEnd: text("working_hours_end"),
+  workingDays: jsonb("working_days").$type<string[]>(),
+  afterHoursMessage: text("after_hours_message"),
+  
+  // Business Info
+  businessName: text("business_name"),
+  consultantDisplayName: text("consultant_display_name"),
+  businessDescription: text("business_description"),
+  consultantBio: text("consultant_bio"),
+  
+  // AI Settings
+  aiPersonality: text("ai_personality").$type<"amico_fidato" | "coach_motivazionale" | "consulente_professionale" | "mentore_paziente" | "venditore_energico" | "consigliere_empatico" | "stratega_diretto" | "educatore_socratico" | "esperto_tecnico" | "compagno_entusiasta">().default("amico_fidato"),
+  agentInstructions: text("agent_instructions"),
+  agentInstructionsEnabled: boolean("agent_instructions_enabled").notNull().default(false),
+  salesScript: text("sales_script"),
+  
+  // Business Details
+  vision: text("vision"),
+  mission: text("mission"),
+  values: jsonb("values").$type<string[]>(),
+  usp: text("usp"),
+  whoWeHelp: text("who_we_help"),
+  whoWeDontHelp: text("who_we_dont_help"),
+  whatWeDo: text("what_we_do"),
+  howWeDoIt: text("how_we_do_it"),
+  
+  // Feature Toggles
+  bookingEnabled: boolean("booking_enabled").notNull().default(true),
+  objectionHandlingEnabled: boolean("objection_handling_enabled").notNull().default(true),
+  disqualificationEnabled: boolean("disqualification_enabled").notNull().default(true),
+  
+  // Keyword DM Automation
+  keywordDmEnabled: boolean("keyword_dm_enabled").notNull().default(false),
+  triggerKeywords: jsonb("trigger_keywords").$type<string[]>(),
+  autoDmMessage: text("auto_dm_message"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  whatsappAgentIdx: index("idx_twitter_agent_config_whatsapp").on(table.whatsappAgentId),
+  userIdIdx: index("idx_twitter_agent_config_user_id").on(table.twitterUserId),
+}));
+
+export type TwitterAgentConfig = typeof twitterAgentConfig.$inferSelect;
+export type InsertTwitterAgentConfig = typeof twitterAgentConfig.$inferInsert;
+
+// Twitter Conversations
+export const twitterConversations = pgTable("twitter_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantTwitterConfig.id, { onDelete: "cascade" }),
+  
+  // X User Info
+  twitterUserId: varchar("twitter_user_id", { length: 100 }).notNull(),
+  twitterUsername: varchar("twitter_username", { length: 100 }),
+  displayName: text("display_name"),
+  profileImageUrl: text("profile_image_url"),
+  
+  // Conversation Status
+  aiEnabled: boolean("ai_enabled").notNull().default(true),
+  isActive: boolean("is_active").notNull().default(true),
+  isLead: boolean("is_lead").notNull().default(true),
+  leadConvertedAt: timestamp("lead_converted_at"),
+  
+  // Conversation Source
+  sourceType: text("source_type").$type<"dm" | "mention" | "reply" | "keyword">().default("dm"),
+  sourceTweetId: varchar("source_tweet_id", { length: 100 }),
+  
+  // Conversation Phase
+  conversationPhase: text("conversation_phase").$type<"initial" | "qualification" | "interested" | "booking" | "booked" | "lost">().default("initial"),
+  
+  // Override
+  overriddenAt: timestamp("overridden_at"),
+  overriddenBy: varchar("overridden_by").references(() => users.id),
+  
+  // Stats
+  messageCount: integer("message_count").notNull().default(0),
+  unreadByConsultant: integer("unread_by_consultant").notNull().default(0),
+  lastMessageAt: timestamp("last_message_at").default(sql`now()`),
+  lastMessageFrom: text("last_message_from").$type<"client" | "consultant" | "ai">(),
+  
+  // DM Conversation ID from X API
+  dmConversationId: varchar("dm_conversation_id", { length: 100 }),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_twitter_conv_consultant").on(table.consultantId),
+  agentIdx: index("idx_twitter_conv_agent").on(table.agentConfigId),
+  userIdIdx: index("idx_twitter_conv_user_id").on(table.twitterUserId),
+}));
+
+export type TwitterConversation = typeof twitterConversations.$inferSelect;
+export type InsertTwitterConversation = typeof twitterConversations.$inferInsert;
+
+// Twitter Messages
+export const twitterMessages = pgTable("twitter_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => twitterConversations.id, { onDelete: "cascade" }).notNull(),
+  
+  // Message Content
+  messageText: text("message_text").notNull(),
+  direction: text("direction").$type<"inbound" | "outbound">().notNull(),
+  sender: text("sender").$type<"client" | "consultant" | "ai">().notNull(),
+  
+  // Media
+  mediaType: text("media_type").$type<"text" | "image" | "video" | "gif">().default("text"),
+  mediaUrl: text("media_url"),
+  mediaContentType: text("media_content_type"),
+  mediaSize: integer("media_size"),
+  localMediaPath: text("local_media_path"),
+  
+  // X-specific
+  twitterMessageId: varchar("twitter_message_id", { length: 255 }),
+  dmEventId: varchar("dm_event_id", { length: 255 }),
+  
+  // Delivery Status
+  status: text("status").$type<"sent" | "delivered" | "read" | "failed">(),
+  errorCode: text("error_code"),
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at"),
+  failedAt: timestamp("failed_at"),
+  
+  // AI Processing
+  isBatched: boolean("is_batched").notNull().default(false),
+  batchId: varchar("batch_id"),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  processedAt: timestamp("processed_at"),
+}, (table) => ({
+  conversationIdx: index("idx_twitter_msg_conversation").on(table.conversationId),
+  createdIdx: index("idx_twitter_msg_created").on(table.createdAt),
+}));
+
+export type TwitterMessage = typeof twitterMessages.$inferSelect;
+export type InsertTwitterMessage = typeof twitterMessages.$inferInsert;
+
+// Twitter Pending Messages (for batching)
+export const twitterPendingMessages = pgTable("twitter_pending_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => twitterConversations.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  twitterUserId: varchar("twitter_user_id", { length: 100 }).notNull(),
+  
+  // Message Content
+  messageText: text("message_text").notNull(),
+  
+  // Media
+  mediaType: text("media_type"),
+  mediaUrl: text("media_url"),
+  mediaContentType: text("media_content_type"),
+  
+  // X IDs
+  twitterMessageId: varchar("twitter_message_id", { length: 255 }),
+  dmEventId: varchar("dm_event_id", { length: 255 }),
+  
+  // Processing
+  receivedAt: timestamp("received_at").notNull().default(sql`now()`),
+  processedAt: timestamp("processed_at"),
+  batchId: varchar("batch_id"),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  conversationIdx: index("idx_twitter_pending_conv").on(table.conversationId),
+}));
+
+export type TwitterPendingMessage = typeof twitterPendingMessages.$inferSelect;
+export type InsertTwitterPendingMessage = typeof twitterPendingMessages.$inferInsert;
