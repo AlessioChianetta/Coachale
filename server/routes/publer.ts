@@ -132,6 +132,7 @@ router.post('/upload-media', authenticateToken, requireRole('consultant'), uploa
       try {
         const fileBuffer = await fs.readFile(file.path);
         const result = await publerService.uploadMedia(consultantId, fileBuffer, file.originalname, file.mimetype);
+        console.log('[PUBLER] Media upload result:', JSON.stringify(result, null, 2));
         uploadedMedia.push({
           id: result.id,
           path: result.path,

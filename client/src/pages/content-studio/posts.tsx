@@ -2079,6 +2079,10 @@ export default function ContentStudioPosts() {
                   </div>
                 </div>
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                // Block closing during upload
+                if (!open && (isUploadingMedia || isUploadingVideo)) {
+                  return;
+                }
                 setIsDialogOpen(open);
                 if (!open) {
                   setEditingPost(null);
@@ -2904,67 +2908,68 @@ export default function ContentStudioPosts() {
                           </TabsContent>
                           <TabsContent value="upload" className="mt-3">
                             <div className="space-y-3">
-                              {!uploadedVideo ? (
-                                <>
-                                  <div
-                                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
-                                      isUploadingVideo 
-                                        ? 'border-gray-300 bg-gray-50 dark:bg-gray-900/50' 
-                                        : 'border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 bg-gray-50 dark:bg-gray-900/50'
-                                    }`}
-                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                    onDrop={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const files = e.dataTransfer.files;
-                                      if (files.length > 0) handleVideoUpload(files[0]);
-                                    }}
-                                    onClick={() => {
-                                      const input = document.createElement('input');
-                                      input.type = 'file';
-                                      input.accept = 'video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm';
-                                      input.onchange = (e) => {
-                                        const file = (e.target as HTMLInputElement).files?.[0];
-                                        if (file) handleVideoUpload(file);
-                                      };
-                                      input.click();
-                                    }}
-                                  >
-                                    {isUploadingVideo ? (
-                                      <div className="space-y-3">
-                                        <Loader2 className="h-8 w-8 mx-auto text-gray-400 animate-spin" />
-                                        <p className="text-sm text-muted-foreground">Caricamento in corso...</p>
-                                        <Progress value={videoUploadProgress} className="w-full max-w-xs mx-auto h-2" />
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                                        <p className="text-sm text-muted-foreground">
-                                          Trascina un video o clicca per selezionare
-                                        </p>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          MP4, MOV, WebM (max 50MB)
-                                        </p>
-                                      </>
-                                    )}
+                              {isUploadingVideo ? (
+                                <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 text-center bg-blue-50 dark:bg-blue-950/20">
+                                  <Loader2 className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-spin" />
+                                  <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                                    Caricamento su Publer...
+                                  </p>
+                                  <Progress value={videoUploadProgress} className="mt-3 h-2 max-w-xs mx-auto" />
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    Non chiudere questa finestra
+                                  </p>
+                                </div>
+                              ) : uploadedVideo ? (
+                                <div className="space-y-3">
+                                  <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
+                                    <video
+                                      src={uploadedVideo.path}
+                                      className="w-full max-h-48 object-contain bg-black"
+                                      controls
+                                    />
+                                    <Button
+                                      variant="destructive"
+                                      size="icon"
+                                      className="absolute top-2 right-2 h-6 w-6"
+                                      onClick={() => setUploadedVideo(null)}
+                                      type="button"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
                                   </div>
-                                </>
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <p className="text-xs text-green-600">Video caricato su Publer - pronto per la pubblicazione</p>
+                                  </div>
+                                </div>
                               ) : (
-                                <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
-                                  <video
-                                    src={uploadedVideo.path}
-                                    className="w-full max-h-48 object-contain bg-black"
-                                    controls
-                                  />
-                                  <Button
-                                    variant="destructive"
-                                    size="icon"
-                                    className="absolute top-2 right-2 h-6 w-6"
-                                    onClick={() => setUploadedVideo(null)}
-                                    type="button"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
+                                <div
+                                  className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-gray-600 transition-colors cursor-pointer bg-gray-50 dark:bg-gray-900/50"
+                                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const files = e.dataTransfer.files;
+                                    if (files.length > 0) handleVideoUpload(files[0]);
+                                  }}
+                                  onClick={() => {
+                                    const input = document.createElement('input');
+                                    input.type = 'file';
+                                    input.accept = 'video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm';
+                                    input.onchange = (e) => {
+                                      const file = (e.target as HTMLInputElement).files?.[0];
+                                      if (file) handleVideoUpload(file);
+                                    };
+                                    input.click();
+                                  }}
+                                >
+                                  <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                                  <p className="text-sm text-muted-foreground">
+                                    Trascina un video o clicca per selezionare
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    MP4, MOV, WebM (max 50MB)
+                                  </p>
                                 </div>
                               )}
                             </div>
@@ -2978,13 +2983,27 @@ export default function ContentStudioPosts() {
                           Immagine {uploadedMedia.length > 0 && `(${uploadedMedia.length})`}
                         </Label>
                         
-                        {uploadedMedia.length > 0 ? (
+                        {isUploadingMedia ? (
+                          <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-8 text-center bg-blue-50 dark:bg-blue-950/20">
+                            <Loader2 className="h-8 w-8 mx-auto text-blue-500 mb-2 animate-spin" />
+                            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                              Caricamento su Publer...
+                            </p>
+                            <Progress value={uploadProgress} className="mt-3 h-2" />
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Non chiudere questa finestra
+                            </p>
+                          </div>
+                        ) : uploadedMedia.length > 0 ? (
                           <div className="space-y-3">
                             <div className="relative inline-block">
                               <img
-                                src={uploadedMedia[0].localPreview || uploadedMedia[0].path}
+                                src={uploadedMedia[0].path || uploadedMedia[0].localPreview}
                                 alt="Immagine caricata"
                                 className="max-h-40 rounded-lg border"
+                                onError={(e) => {
+                                  console.log('[IMG] Error loading image, path:', uploadedMedia[0].path);
+                                }}
                               />
                               <Button
                                 variant="destructive"
@@ -3001,7 +3020,10 @@ export default function ContentStudioPosts() {
                                 <X className="h-3 w-3" />
                               </Button>
                             </div>
-                            <p className="text-xs text-green-600">Immagine pronta per la pubblicazione</p>
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <p className="text-xs text-green-600">Caricata su Publer - pronta per la pubblicazione</p>
+                            </div>
                           </div>
                         ) : (
                           <div 
@@ -3019,25 +3041,13 @@ export default function ContentStudioPosts() {
                               input.click();
                             }}
                           >
-                            {isUploadingMedia ? (
-                              <>
-                                <Loader2 className="h-8 w-8 mx-auto text-muted-foreground mb-2 animate-spin" />
-                                <p className="text-sm text-muted-foreground">
-                                  Caricamento in corso...
-                                </p>
-                                <Progress value={uploadProgress} className="mt-2 h-1" />
-                              </>
-                            ) : (
-                              <>
-                                <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                                <p className="text-sm text-muted-foreground">
-                                  Clicca per caricare un'immagine
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  PNG, JPG, GIF, WebP fino a 10MB
-                                </p>
-                              </>
-                            )}
+                            <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              Clicca per caricare un'immagine
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              PNG, JPG, GIF, WebP fino a 10MB
+                            </p>
                           </div>
                         )}
                       </div>
