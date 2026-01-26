@@ -15,6 +15,7 @@ const publishSchema = z.object({
   postId: z.string().optional(),
   accountIds: z.array(z.string()).min(1, 'Seleziona almeno un account'),
   text: z.string().min(1, 'Testo del post richiesto'),
+  state: z.enum(['draft', 'publish_now', 'scheduled']).default('publish_now'),
   scheduledAt: z.string().datetime().optional(),
   mediaIds: z.array(z.string()).optional(),
 });
@@ -101,16 +102,30 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
     const result = await publerService.schedulePost(consultantId, {
       accountIds: data.accountIds,
       text: data.text,
+      state: data.state,
       scheduledAt: scheduledDate,
       mediaIds: data.mediaIds,
     });
     
     if (data.postId) {
-      const publerStatus = scheduledDate ? 'scheduled' : 'published';
+      let publerStatus: 'draft' | 'scheduled' | 'published';
+      if (data.state === 'draft') {
+        publerStatus = 'draft';
+      } else if (data.state === 'scheduled') {
+        publerStatus = 'scheduled';
+      } else {
+        publerStatus = 'scheduled';
+      }
       await publerService.updatePostStatus(data.postId, publerStatus, result.jobId, scheduledDate);
     }
     
-    res.json({ success: true, ...result, message: 'Post inviato a Publer' });
+    const messages: Record<string, string> = {
+      draft: 'Bozza salvata su Publer',
+      publish_now: 'Post pubblicato su Publer',
+      scheduled: 'Post programmato su Publer',
+    };
+    
+    res.json({ success: true, ...result, message: messages[data.state] });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: error.errors[0].message });

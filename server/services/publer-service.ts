@@ -21,9 +21,12 @@ interface PublerMediaResult {
   height?: number;
 }
 
+type PublishState = 'draft' | 'publish_now' | 'scheduled';
+
 interface SchedulePostRequest {
   accountIds: string[];
   text: string;
+  state?: PublishState;
   scheduledAt?: Date;
   mediaIds?: string[];
   platforms?: Record<string, { type: string; text: string }>;
@@ -77,7 +80,6 @@ export class PublerService {
     }
 
     try {
-      // Step 1: Test API key with /users/me endpoint (no workspace required)
       const meResponse = await fetch(`${PUBLER_BASE_URL}/users/me`, {
         method: 'GET',
         headers: {
@@ -100,7 +102,6 @@ export class PublerService {
       const meData = await meResponse.json();
       console.log('[PUBLER] /me success, user:', meData.email || meData.name || 'OK');
 
-      // Step 2: Get available workspaces
       const wsResponse = await fetch(`${PUBLER_BASE_URL}/workspaces`, {
         method: 'GET',
         headers: {
@@ -117,7 +118,6 @@ export class PublerService {
       const workspaces = await wsResponse.json();
       console.log('[PUBLER] Found workspaces:', workspaces.length);
 
-      // Step 3: If workspace ID provided, test accounts endpoint
       if (credentials.workspaceId) {
         const validWs = workspaces.find((ws: any) => ws.id === credentials.workspaceId);
         if (!validWs) {
@@ -144,7 +144,6 @@ export class PublerService {
         }
       }
 
-      // No workspace ID or couldn't get accounts - return available workspaces
       if (workspaces.length > 0) {
         const wsNames = workspaces.map((ws: any) => `${ws.name} (${ws.id})`).join(', ');
         return { 
@@ -248,15 +247,29 @@ export class PublerService {
       throw new Error('Publer non configurato');
     }
 
+    let publerState: string;
+    if (request.state === 'draft') {
+      publerState = 'draft';
+    } else if (request.state === 'scheduled' && request.scheduledAt) {
+      publerState = 'scheduled';
+    } else {
+      publerState = 'publish_now';
+    }
+
+    console.log('[PUBLER] Scheduling post with state:', publerState, 'for accounts:', request.accountIds.length);
+
     const postPayload: any = {
       bulk: {
-        state: request.scheduledAt ? 'scheduled' : 'publish_now',
+        state: publerState,
         posts: [
           {
-            accounts: request.accountIds.map(id => ({
-              id,
-              scheduled_at: request.scheduledAt?.toISOString(),
-            })),
+            accounts: request.accountIds.map(id => {
+              const accountEntry: any = { id };
+              if (publerState === 'scheduled' && request.scheduledAt) {
+                accountEntry.scheduled_at = request.scheduledAt.toISOString();
+              }
+              return accountEntry;
+            }),
             networks: request.platforms || {},
             media: request.mediaIds?.map(id => ({ id, type: 'image' })) || [],
           },
@@ -268,6 +281,8 @@ export class PublerService {
       postPayload.bulk.posts[0].text = request.text;
     }
 
+    console.log('[PUBLER] Request payload:', JSON.stringify(postPayload, null, 2));
+
     const response = await fetch(`${PUBLER_BASE_URL}/posts/schedule/publish`, {
       method: 'POST',
       headers: this.getHeaders(credentials.apiKey, credentials.workspaceId),
@@ -276,16 +291,18 @@ export class PublerService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
+      console.error('[PUBLER] Schedule post failed:', response.status, error);
       throw new Error(error.message || `Errore pubblicazione: ${response.status}`);
     }
 
     const result = await response.json();
+    console.log('[PUBLER] Schedule post success, job_id:', result.job_id);
     return { jobId: result.job_id, success: true };
   }
 
   async updatePostStatus(
     postId: string, 
-    status: 'scheduled' | 'published' | 'failed', 
+    status: 'draft' | 'scheduled' | 'published' | 'failed', 
     publerPostId?: string,
     scheduledAt?: Date,
     error?: string
@@ -299,6 +316,8 @@ export class PublerService {
     if (scheduledAt) updateData.publerScheduledAt = scheduledAt;
     if (status === 'published') updateData.publerPublishedAt = new Date();
     if (error) updateData.publerError = error;
+
+    console.log('[PUBLER] Updating post status:', postId, status);
 
     await db.update(contentPosts)
       .set(updateData)

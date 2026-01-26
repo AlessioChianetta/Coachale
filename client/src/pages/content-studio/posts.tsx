@@ -3808,11 +3808,7 @@ export default function ContentStudioPosts() {
       <PublerPublishDialog
         open={publerDialogOpen}
         onOpenChange={setPublerDialogOpen}
-        post={publerPost ? {
-          id: publerPost.id,
-          title: publerPost.title,
-          content: publerPost.hook || publerPost.body || "",
-        } : null}
+        post={publerPost}
       />
       </div>
     </div>
