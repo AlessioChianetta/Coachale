@@ -797,7 +797,7 @@ export default function ConsultantWhatsAppConversationsPage() {
               </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
-              <p className={`flex-1 text-sm truncate ${
+              <p className={`flex-1 min-w-0 text-sm truncate ${
                 conv.unreadByConsultant > 0 ? "text-gray-900 dark:text-gray-200" : "text-gray-500 dark:text-gray-400"
               }`}>
                 {(() => {

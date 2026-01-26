@@ -873,6 +873,19 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       }
     }
 
+    // Update lastMessageAt and increment unread count for consultant
+    if (inboundMessages.length > 0) {
+      await db
+        .update(whatsappConversations)
+        .set({
+          lastMessageAt: new Date(),
+          lastMessageFrom: 'client',
+          unreadByConsultant: sql`${whatsappConversations.unreadByConsultant} + ${inboundMessages.length}`,
+        })
+        .where(eq(whatsappConversations.id, conversation.id));
+      console.log(`🔄 [STEP 4b] Updated conversation lastMessageAt and unreadByConsultant (+${inboundMessages.length})`);
+    }
+
     // Detect if client sent audio message (for Mirror mode TTS response)
     const clientSentAudio = inboundMessages.some(msg => msg.mediaType === 'audio');
     if (clientSentAudio) {
@@ -2078,6 +2091,16 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
       })
       .returning();
     console.log(`✅ [STEP 9] AI response saved with ID: ${savedMessage.id} (timing: ${geminiTime}ms Gemini, ${currentTotalTime}ms total)`);
+
+    // Update lastMessageAt after AI response saved
+    await db
+      .update(whatsappConversations)
+      .set({
+        lastMessageAt: new Date(),
+        lastMessageFrom: 'ai',
+      })
+      .where(eq(whatsappConversations.id, conversation.id));
+    console.log(`🔄 [STEP 9b] Updated conversation lastMessageAt (AI response)`);
 
     // OBJECTION TRACKING DISABLED - Aligned with public share (Dec 2025)
 
