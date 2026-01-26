@@ -167,7 +167,7 @@ interface Post {
   publerScheduledAt?: string;
   publerPostId?: string;
   publerError?: string;
-  publerMediaIds?: string[];
+  publerMediaIds?: Array<string | { id: string; path?: string; thumbnail?: string }>;
 }
 
 interface ContentFolder {
@@ -820,6 +820,54 @@ export default function ContentStudioPosts() {
       });
     }
   }, [formData.platform]);
+
+  // Populate uploadedMedia/uploadedVideo when editing a post with saved media
+  useEffect(() => {
+    // Reset state when no post is being edited
+    if (!editingPost) {
+      setUploadedMedia([]);
+      setUploadedVideo(null);
+      return;
+    }
+    
+    if (editingPost.publerMediaIds && Array.isArray(editingPost.publerMediaIds) && editingPost.publerMediaIds.length > 0) {
+      const mediaItems = editingPost.publerMediaIds;
+      
+      // Check if these are old-format (string IDs) or new-format (objects with id, path, thumbnail)
+      const firstItem = mediaItems[0];
+      if (typeof firstItem === 'object' && firstItem !== null && 'id' in firstItem) {
+        // New format - objects with id, path, thumbnail
+        const mediaObjects = mediaItems as Array<{ id: string; path?: string; thumbnail?: string }>;
+        
+        // Check if this is a video (single item with video-like characteristics)
+        if (mediaObjects.length === 1 && editingPost.mediaType === 'video') {
+          setUploadedVideo({
+            id: mediaObjects[0].id,
+            path: mediaObjects[0].path || '',
+            thumbnail: mediaObjects[0].thumbnail
+          });
+          setUploadedMedia([]); // Clear images when it's a video
+        } else {
+          // Images
+          setUploadedMedia(mediaObjects.map(m => ({
+            id: m.id,
+            path: m.path,
+            thumbnail: m.thumbnail,
+            localPreview: undefined // No local preview for saved media
+          })));
+          setUploadedVideo(null); // Clear video when it's images
+        }
+      } else {
+        // Old format (string IDs only) - can't show previews, reset state
+        setUploadedMedia([]);
+        setUploadedVideo(null);
+      }
+    } else {
+      // No media saved - reset state
+      setUploadedMedia([]);
+      setUploadedVideo(null);
+    }
+  }, [editingPost]);
 
   const { data: postsResponse, isLoading } = useQuery({
     queryKey: ["/api/content/posts"],
@@ -1572,15 +1620,16 @@ export default function ContentStudioPosts() {
       imageOverlayText: formData.imageOverlayText,
     };
 
-    // Build publerMediaIds from uploaded media
-    // Preserve existing IDs when editing if no new uploads
-    let publerMediaIds: string[] | undefined;
+    // Build publerMediaIds from uploaded media - save complete objects with id, path, thumbnail
+    // Preserve existing media when editing if no new uploads
+    let publerMediaIds: Array<{ id: string; path?: string; thumbnail?: string }> | undefined;
     if (uploadedMedia.length > 0) {
-      publerMediaIds = uploadedMedia.map(m => m.id);
+      publerMediaIds = uploadedMedia.map(m => ({ id: m.id, path: m.path, thumbnail: m.thumbnail }));
     } else if (uploadedVideo) {
-      publerMediaIds = [uploadedVideo.id];
+      publerMediaIds = [{ id: uploadedVideo.id, path: uploadedVideo.path, thumbnail: uploadedVideo.thumbnail }];
     } else if (isEditing && editingPost?.publerMediaIds && Array.isArray(editingPost.publerMediaIds)) {
-      publerMediaIds = editingPost.publerMediaIds as string[];
+      // Keep existing media objects as-is
+      publerMediaIds = editingPost.publerMediaIds as Array<{ id: string; path?: string; thumbnail?: string }>;
     }
 
     // Base payload with all flat fields for database columns
