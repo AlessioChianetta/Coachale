@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig, consultantLicenses, superadminStripeConfig } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig, superadminTwitterConfig, consultantLicenses, superadminStripeConfig } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
@@ -1600,6 +1600,164 @@ router.delete(
       });
     } catch (error: any) {
       console.error("Delete superadmin instagram config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ============================================
+// Twitter/X API Configuration (SuperAdmin)
+// ============================================
+
+router.get(
+  "/admin/superadmin/twitter-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [config] = await db
+        .select()
+        .from(superadminTwitterConfig)
+        .limit(1);
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : process.env.BASE_URL || '';
+      
+      if (!config) {
+        return res.json({ 
+          success: true, 
+          configured: false,
+          config: null,
+          webhookUrl: `${baseUrl}/api/twitter/webhook`
+        });
+      }
+
+      // Decrypt secrets to show preview of last 8 characters for verification
+      let apiKeyPreview = null;
+      let apiSecretPreview = null;
+      if (config.apiKeyEncrypted) {
+        try {
+          const decrypted = decrypt(config.apiKeyEncrypted);
+          apiKeyPreview = `...${decrypted.slice(-8)}`;
+        } catch (e) {
+          apiKeyPreview = "***DECRYPT_ERROR***";
+        }
+      }
+      if (config.apiSecretEncrypted) {
+        try {
+          const decrypted = decrypt(config.apiSecretEncrypted);
+          apiSecretPreview = `...${decrypted.slice(-8)}`;
+        } catch (e) {
+          apiSecretPreview = "***DECRYPT_ERROR***";
+        }
+      }
+      
+      res.json({
+        success: true,
+        configured: true,
+        config: {
+          id: config.id,
+          apiKeyMasked: config.apiKeyEncrypted ? "***ENCRYPTED***" : null,
+          apiKeyPreview,
+          apiSecretMasked: config.apiSecretEncrypted ? "***ENCRYPTED***" : null,
+          apiSecretPreview,
+          webhookEnvName: config.webhookEnvName || "production",
+          webhookUrl: `${baseUrl}/api/twitter/webhook`,
+          enabled: config.enabled,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Get superadmin twitter config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/superadmin/twitter-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { apiKey, apiSecret, webhookEnvName, enabled } = req.body;
+
+      const [existing] = await db
+        .select()
+        .from(superadminTwitterConfig)
+        .limit(1);
+
+      // For first-time configuration, both keys are required
+      // For updates, allow partial updates (just enabled/webhookEnvName)
+      if (!existing && (!apiKey || !apiSecret)) {
+        return res.status(400).json({
+          success: false,
+          error: "API Key e API Secret richiesti per la prima configurazione",
+        });
+      }
+
+      let encryptedApiKey = existing?.apiKeyEncrypted;
+      let encryptedApiSecret = existing?.apiSecretEncrypted;
+      
+      if (apiKey && apiKey !== "***ENCRYPTED***") {
+        encryptedApiKey = encrypt(apiKey);
+      }
+      if (apiSecret && apiSecret !== "***ENCRYPTED***") {
+        encryptedApiSecret = encrypt(apiSecret);
+      }
+
+      const webhookUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/twitter/webhook`
+        : `${process.env.BASE_URL || ''}/api/twitter/webhook`;
+      
+      // Generate CRC token secret if not exists
+      const crcTokenSecret = existing?.crcTokenSecret || nanoid(32);
+
+      if (existing) {
+        await db
+          .update(superadminTwitterConfig)
+          .set({
+            apiKeyEncrypted: encryptedApiKey!,
+            apiSecretEncrypted: encryptedApiSecret!,
+            webhookEnvName: webhookEnvName || "production",
+            webhookUrl,
+            crcTokenSecret,
+            enabled: enabled ?? true,
+            updatedAt: new Date(),
+          })
+          .where(eq(superadminTwitterConfig.id, existing.id));
+      } else {
+        // First-time config - validation already done at the beginning
+        await db.insert(superadminTwitterConfig).values({
+          apiKeyEncrypted: encryptedApiKey!,
+          apiSecretEncrypted: encryptedApiSecret!,
+          webhookEnvName: webhookEnvName || "production",
+          webhookUrl,
+          crcTokenSecret,
+          enabled: enabled ?? true,
+        });
+      }
+
+      // Log audit
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: existing ? "update_superadmin_twitter_config" : "create_superadmin_twitter_config",
+        targetType: "setting",
+        targetId: "twitter-config",
+        details: { webhookEnvName, enabled },
+      });
+
+      console.log(`✅ ${existing ? 'Updated' : 'Created'} SuperAdmin Twitter config`);
+
+      res.json({
+        success: true,
+        message: `Configurazione X (Twitter) ${existing ? 'aggiornata' : 'salvata'} con successo`,
+        webhookUrl,
+      });
+    } catch (error: any) {
+      console.error("Save superadmin twitter config error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }
