@@ -1,0 +1,52 @@
+🔔🔔 [WEBHOOK] Received at 2026-01-26T18:03:31.442Z 🔔🔔🔔
+0|coachale-dev  | 📞 From: whatsapp:+393289391335
+0|coachale-dev  | 📱 To: whatsapp:+393534829735
+0|coachale-dev  | 💬 Body: Buonasera  mi scuso ma annullo l'appuntamento di domani inquanto mio marito non è d'accordo. Grazie ...
+0|coachale-dev  | 🆔 MessageSid: SM2b8b5bbcddf6d5791a9eb5be9ab86d2b
+0|coachale-dev  | ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | ✅ [ANTI-DUP] Messaggio SM2b8b5bbcddf6d5791a9eb5be9ab86d2b è nuovo, procedo con l'elaborazione
+0|coachale-dev  | 📞 Routing message to agent: Assistente Viaggio Spaziale (+393534829735)
+0|coachale-dev  | 🔍 [PROACTIVE LEAD MATCH] Checking if phone belongs to proactive lead...
+0|coachale-dev  |    📞 Normalized: +393289391335
+0|coachale-dev  |    📞 Without +: 393289391335
+0|coachale-dev  |    👤 Consultant: c2146759-f08a-430a-afdf-701bbc674300
+0|coachale-dev  |    🤖 Agent: 514afe1d-8e43-47c7-90fc-17d05b0783ac
+0|coachale-dev  | ✅ [PROACTIVE LEAD MATCH] FOUND! Lead ID: 2ff3b7a2-cfc8-4693-b788-b2bce805c699
+0|coachale-dev  |    👤 Name: Elisabetta Bordogna 
+0|coachale-dev  |    📧 Email: ebordogna@gmail.com
+0|coachale-dev  |    🏷️ Status: converted
+0|coachale-dev  | 🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for 83d1fd92-ef13-4e95-8bf7-574c8526c703
+0|coachale-dev  | 📨 Message queued for processing: +393289391335 (twilioSid: SM2b8b5bbcddf6d5791a9eb5be9ab86d2b)
+0|coachale-dev  | 🔍 [SCHEDULE] scheduleMessageProcessing called for +393289391335_c2146759-f08a-430a-afdf-701bbc674300
+0|coachale-dev  | ✅ [SCHEDULE] Timer set for +393289391335_c2146759-f08a-430a-afdf-701bbc674300, will fire in 4000ms
+0|coachale-dev  | 6:03:31 PM [express] POST /api/whatsapp/webhook 200 in 100ms
+0|coachale-dev  | 📬 [WHATSAPP POLLING] Processing 1 new message(s) for agent Assistente Viaggio Spaziale
+0|coachale-dev  | 📥 Processing message SM2b8b5bbcddf6d5791a9eb5be9ab86d2b: whatsapp:+393289391335 -> Buonasera  mi scuso ma annullo l'appuntamento di d...
+0|coachale-dev  | ⏭️ [ANTI-DUP] Messaggio SM2b8b5bbcddf6d5791a9eb5be9ab86d2b già in coda (whatsappPendingMessages) - skipping
+0|coachale-dev  | ✅ [WATERMARK] Updated for agent Assistente Viaggio Spaziale - latest seen: 2026-01-26T18:03:31.000Z (processed: 1)
+0|coachale-dev  | ⚡ [SCHEDULE] Timer fired for +393289391335_c2146759-f08a-430a-afdf-701bbc674300, enqueueing...
+0|coachale-dev  | 📥 [ENQUEUE] Adding to queue: +393289391335 for consultant c2146759-f08a-430a-afdf-701bbc674300
+0|coachale-dev  | 🆕 [ENQUEUE] Creating new queue for consultant c2146759-f08a-430a-afdf-701bbc674300
+0|coachale-dev  | 📊 [ENQUEUE] Queue size for consultant c2146759-f08a-430a-afdf-701bbc674300: 1
+0|coachale-dev  | 🚀 [ENQUEUE] Starting queue processing for consultant c2146759-f08a-430a-afdf-701bbc674300
+0|coachale-dev  | 📋 [PENDING] Found 1 pending messages for conversation 83d1fd92-ef13-4e95-8bf7-574c8526c703 (phone: +393289391335)
+0|coachale-dev  | ⏱️ [TIMING] Polling latency: 4.0s (from webhook to processing)
+0|coachale-dev  | 🔍 [PENDING] First message twilioSid: SM2b8b5bbcddf6d5791a9eb5be9ab86d2b, simulated: false, text: "Buonasera  mi scuso ma annullo l'appuntamento di d..."
+0|coachale-dev  | 🔍 [PARTICIPANT TYPE] unknown
+0|coachale-dev  | ✅ [CONFIG] Using agent from conversation: Assistente Viaggio Spaziale (514afe1d-8e43-47c7-90fc-17d05b0783ac)
+0|coachale-dev  | 🎯 [AGENT TYPE] Agent type: proactive_setter, isProactive: true
+0|coachale-dev  | ✅ AI is ENABLED and within working hours for consultant c2146759-f08a-430a-afdf-701bbc674300 - proceeding with AI response
+0|coachale-dev  | ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+0|coachale-dev  | ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 🆔 Conversation ID: 83d1fd92-ef13-4e95-8bf7-574c8526c703
+0|coachale-dev  | 👤 User Type: LEAD
+0|coachale-dev  | ✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+0|coachale-dev  | ✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+0|coachale-dev  |    🔑 Key: 1/1
+0|coachale-dev  | ✅ Selected AI Provider: studio
+0|coachale-dev  |    🔐 API Key: AIzaSyAzZA...CL20
+0|coachale-dev  |    🆔 Key ID: superadm...
+0|coachale-dev  | ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0|coachale-dev  | 🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+0|coachale-dev  | 💾 [STEP 4] Saving 1 inbound message(s) to database
