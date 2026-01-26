@@ -9508,3 +9508,81 @@ export const twitterPendingMessages = pgTable("twitter_pending_messages", {
 
 export type TwitterPendingMessage = typeof twitterPendingMessages.$inferSelect;
 export type InsertTwitterPendingMessage = typeof twitterPendingMessages.$inferInsert;
+
+// Twitter Processed Events - Idempotency tracking for webhook fallback
+export const twitterProcessedEvents = pgTable("twitter_processed_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Event Identification
+  eventId: varchar("event_id", { length: 255 }).notNull().unique(),
+  eventType: varchar("event_type", { length: 100 }).notNull(), // e.g., "MessageCreate", "ParticipantsJoin"
+  
+  // Association
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "set null" }),
+  configId: varchar("config_id"),
+  
+  // Timestamps
+  processedAt: timestamp("processed_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  eventIdIdx: index("idx_twitter_processed_event_id").on(table.eventId),
+  consultantIdx: index("idx_twitter_processed_consultant").on(table.consultantId),
+  configIdx: index("idx_twitter_processed_config").on(table.configId),
+  processedAtIdx: index("idx_twitter_processed_at").on(table.processedAt),
+}));
+
+export type TwitterProcessedEvent = typeof twitterProcessedEvents.$inferSelect;
+export type InsertTwitterProcessedEvent = typeof twitterProcessedEvents.$inferInsert;
+
+// Twitter Media Uploads - TTL tracking for 24h media expiry
+export const twitterMediaUploads = pgTable("twitter_media_uploads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Owner
+  consultantId: varchar("consultant_id").notNull(),
+  configId: varchar("config_id"),
+  
+  // Media Info
+  mediaId: varchar("media_id", { length: 255 }).notNull(),
+  mediaKey: varchar("media_key", { length: 255 }),
+  mediaType: varchar("media_type", { length: 50 }).notNull(), // 'image', 'video', 'gif'
+  originalUrl: text("original_url"),
+  fileSize: integer("file_size"),
+  
+  // TTL
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  expiresAtIdx: index("idx_twitter_media_expires_at").on(table.expiresAt),
+  mediaIdIdx: index("idx_twitter_media_id").on(table.mediaId),
+}));
+
+export type TwitterMediaUpload = typeof twitterMediaUploads.$inferSelect;
+export type InsertTwitterMediaUpload = typeof twitterMediaUploads.$inferInsert;
+
+// Twitter Users Cache - username to user_id resolution with 30-day TTL
+export const twitterUsersCache = pgTable("twitter_users_cache", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // User Info
+  twitterUserId: varchar("twitter_user_id", { length: 255 }).notNull().unique(),
+  username: varchar("username", { length: 255 }).notNull(),
+  displayName: varchar("display_name", { length: 255 }),
+  profileImageUrl: text("profile_image_url"),
+  verified: boolean("verified").default(false),
+  protected: boolean("protected").default(false),
+  followersCount: integer("followers_count"),
+  followingCount: integer("following_count"),
+  
+  // Cache TTL
+  cachedAt: timestamp("cached_at").notNull().default(sql`now()`),
+  expiresAt: timestamp("expires_at").notNull().default(sql`now() + interval '30 days'`),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+}, (table) => ({
+  usernameIdx: index("idx_twitter_users_cache_username").on(table.username),
+  expiresAtIdx: index("idx_twitter_users_cache_expires_at").on(table.expiresAt),
+}));
+
+export type TwitterUserCache = typeof twitterUsersCache.$inferSelect;
+export type InsertTwitterUserCache = typeof twitterUsersCache.$inferInsert;

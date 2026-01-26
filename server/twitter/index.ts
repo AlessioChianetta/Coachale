@@ -14,7 +14,9 @@ export * from "./types";
 
 // Core modules (lazy imports to avoid circular dependencies)
 export { TwitterClient, createTwitterClient } from "./twitter-client";
+export { TwitterMediaUploader, createTwitterMediaUploader } from "./media-uploader";
 export { handleTwitterWebhook, verifyTwitterWebhook } from "./webhook-handler";
+export { TwitterDMBackfill, createTwitterDMBackfill } from "./lookup-backfill";
 
 // Message processor exports (imported separately to avoid circular deps)
 export async function getMessageProcessor() {
