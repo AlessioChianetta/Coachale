@@ -13,6 +13,15 @@ const configSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
+const mediaIdSchema = z.union([
+  z.string(),
+  z.object({
+    id: z.string(),
+    path: z.string().optional(),
+    thumbnail: z.string().optional(),
+  }),
+]);
+
 const publishSchema = z.object({
   postId: z.string().optional(),
   accountIds: z.array(z.string()).min(1, 'Seleziona almeno un account'),
@@ -23,7 +32,7 @@ const publishSchema = z.object({
   text: z.string().min(1, 'Testo del post richiesto'),
   state: z.enum(['draft', 'publish_now', 'scheduled']).default('publish_now'),
   scheduledAt: z.string().datetime().optional(),
-  mediaIds: z.array(z.string()).optional(),
+  mediaIds: z.array(mediaIdSchema).optional(),
   mediaType: z.enum(['image', 'video']).optional(),
 });
 
@@ -188,7 +197,7 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
       text: data.text,
       state: data.state,
       scheduledAt: scheduledDate,
-      mediaIds: data.mediaIds,
+      mediaIds: data.mediaIds?.map(m => typeof m === 'string' ? m : m.id),
       mediaType: data.mediaType,
     });
     
