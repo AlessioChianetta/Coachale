@@ -425,55 +425,51 @@ export class PublerService {
       }
     }
 
-    // Build media array (to be included inside each network)
+    // Build media array - goes at POST level, not inside networks
     const mediaArray = request.mediaIds?.map(id => ({ 
       id, 
-      type: mediaType,
-      alt_text: 'Social media post' 
+      type: mediaType
     })) || [];
 
-    // Get unique normalized platforms to determine content type
+    // Get unique platforms from selected accounts
     const uniquePlatforms = [...new Set(accountPlatforms.map(a => a.platform))];
     const normalizedPlatforms = [...new Set(uniquePlatforms.map(p => normalizeProvider(p)))];
     console.log('[PUBLER] Unique platforms:', uniquePlatforms);
     console.log('[PUBLER] Normalized platforms:', normalizedPlatforms);
 
-    // Determine the most restrictive content type based on selected platforms
-    // Instagram/Pinterest/TikTok/YouTube require media, so we need to use 'photo'/'video' types
-    let contentType: string;
-    try {
-      // Use the first normalized platform to determine content type
-      // (they should all be compatible since we already validated media requirements)
-      contentType = getContentType(normalizedPlatforms[0], hasMedia, mediaType, mediaCount);
-      console.log(`[PUBLER] Determined content type: ${contentType} (based on ${normalizedPlatforms[0]})`);
-    } catch (err: any) {
-      console.error(`[PUBLER] Error determining content type:`, err.message);
-      throw err;
-    }
-
-    // Use 'default' network which applies to all selected accounts
-    // This is the recommended approach per Publer API documentation
-    const networks: Record<string, any> = {
-      default: {
-        type: contentType,
-        text: request.text,
-        ...(hasMedia ? { media: mediaArray } : {})
+    // Build networks object - one entry per NORMALIZED platform (instagram, twitter, etc.)
+    // NOT using 'default' key - Publer wants specific provider names
+    const networks: Record<string, any> = {};
+    for (const platform of normalizedPlatforms) {
+      try {
+        const contentType = getContentType(platform, hasMedia, mediaType, mediaCount);
+        networks[platform] = {
+          type: contentType,
+          text: request.text
+          // NOTE: media goes at POST level, NOT inside networks
+        };
+        console.log(`[PUBLER] Network for ${platform}: type=${contentType}`);
+      } catch (err: any) {
+        console.error(`[PUBLER] Error creating network for ${platform}:`, err.message);
+        throw err;
       }
-    };
-    console.log(`[PUBLER] Using networks.default with type=${contentType}, hasMedia=${hasMedia}`);
+    }
+    console.log(`[PUBLER] Networks object:`, JSON.stringify(networks));
 
-    // Build accounts array with scheduled_at INSIDE each account entry
-    const accountsArray = request.accountIds.map(id => ({
-      id,
+    // Build accounts array - just IDs, no scheduled_at here
+    const accountsArray = request.accountIds.map(id => ({ id }));
+
+    // Build post entry according to Publer API spec:
+    // - scheduled_at at POST level (not inside accounts)
+    // - media at POST level (not inside networks)
+    // - networks with provider names as keys (not 'default')
+    const postEntry: any = {
+      accounts: accountsArray,
+      networks,
+      ...(hasMedia ? { media: mediaArray } : {}),
       ...(publerState === 'scheduled' && request.scheduledAt 
         ? { scheduled_at: request.scheduledAt.toISOString() } 
         : {})
-    }));
-
-    // Build post entry - NO scheduled_at at post level, NO media at post level
-    const postEntry: any = {
-      networks,
-      accounts: accountsArray,
     };
     
     const postPayload: any = {
