@@ -1230,8 +1230,7 @@ export default function ContentStudioPosts() {
     try {
       const response = await fetch('/api/publer/sync-statuses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       const data = await response.json();
       if (data.success) {
