@@ -78,6 +78,25 @@ function normalizeProvider(publerPlatform: string): string {
   return providerMap[publerPlatform] || publerPlatform;
 }
 
+// Get the correct network key for Publer API
+// IMPORTANT: Publer backend expects specific keys like 'ig_business', NOT 'instagram'
+function getNetworkKey(normalizedProvider: string): string {
+  const networkKeyMap: Record<string, string> = {
+    'instagram': 'ig_business',  // Publer backend uses ig_business, NOT instagram
+    'facebook': 'fb_page',       // Use fb_page for Facebook pages
+    'linkedin': 'linkedin',
+    'twitter': 'twitter',
+    'tiktok': 'tiktok',
+    'pinterest': 'pinterest',
+    'youtube': 'youtube',
+    'telegram': 'telegram',
+    'threads': 'threads',
+    'bluesky': 'bluesky',
+    'google_business': 'google_business',
+  };
+  return networkKeyMap[normalizedProvider] || normalizedProvider;
+}
+
 function getContentType(
   platform: string, 
   hasMedia: boolean, 
@@ -440,18 +459,19 @@ export class PublerService {
     console.log('[PUBLER] Unique platforms:', uniquePlatforms);
     console.log('[PUBLER] Normalized platforms:', normalizedPlatforms);
 
-    // Build networks object - one entry per NORMALIZED platform (instagram, twitter, etc.)
-    // NOT using 'default' key - Publer wants specific provider names
+    // Build networks object - one entry per platform using Publer's internal keys
+    // IMPORTANT: Use ig_business (not instagram), fb_page (not facebook), etc.
     const networks: Record<string, any> = {};
     for (const platform of normalizedPlatforms) {
       try {
         const contentType = getContentType(platform, hasMedia, mediaType, mediaCount);
-        networks[platform] = {
+        const networkKey = getNetworkKey(platform); // Convert to Publer's internal key
+        networks[networkKey] = {
           type: contentType,
           text: request.text
           // NOTE: media goes at POST level, NOT inside networks
         };
-        console.log(`[PUBLER] Network for ${platform}: type=${contentType}`);
+        console.log(`[PUBLER] Network for ${platform} -> key=${networkKey}: type=${contentType}`);
       } catch (err: any) {
         console.error(`[PUBLER] Error creating network for ${platform}:`, err.message);
         throw err;
@@ -492,13 +512,21 @@ export class PublerService {
     // Build post entry according to Publer API spec:
     // - scheduled_at at POST level (not inside accounts)
     // - media at POST level (not inside networks)
-    // - networks with provider names as keys (not 'default')
+    // - media_ids as flat array (REQUIRED for Instagram to avoid nil.count bug)
+    // - networks with Publer's internal keys (ig_business, fb_page, etc.)
+    const mediaIdsArray = request.mediaIds || [];
+    
     const postEntry: any = {
       accounts: accountsArray,
       networks,
-      ...(hasMedia ? { media: mediaArray } : {}),
+      ...(hasMedia ? { 
+        media: mediaArray,
+        media_ids: mediaIdsArray  // IMPORTANT: Publer needs both media[] and media_ids[]
+      } : {}),
       ...(scheduledAtValue ? { scheduled_at: scheduledAtValue } : {})
     };
+    
+    console.log('[PUBLER] Media IDs array:', mediaIdsArray);
     
     const postPayload: any = {
       bulk: {
