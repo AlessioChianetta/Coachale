@@ -1,0 +1,142 @@
+Ho ricontrollato la guida API ufficiale di Publer: il payload che stai inviando non è aderente alla struttura prevista per Instagram, e questo da solo spiega perché continui a ottenere errori “composer invalid state”.
+
+Qui sotto ti dico cosa non torna nel tuo JSON e come va scritto secondo docs.
+
+1) scheduled_at è nel posto sbagliato
+
+Nella docs di Manual Scheduling, scheduled_at va dentro ogni oggetto di accounts[], non a livello del post.
+
+✅ Giusto:
+
+"accounts": [{ "id": "...", "scheduled_at": "2026-01-26T05:03:00.000Z" }]
+
+
+❌ Nel tuo payload attuale è così:
+
+"accounts": [{ "id": "..." }],
+"scheduled_at": "..."
+
+
+Risultato tipico: Publer tratta quel post come senza orario valido (e quindi può tentare logiche “time slots / posting schedule”, oppure fallire in modo poco chiaro).
+
+2) La chiave di networks deve essere il provider, non ig_business
+
+Nella Networks reference, Instagram è Provider: instagram.
+Quindi in networks la chiave deve essere "instagram", non "ig_business".
+
+✅ Giusto:
+
+"networks": { "instagram": { ... } }
+
+3) Per i Photo Posts, la media va dentro networks.instagram
+
+La docs dei Photo Posts mostra chiaramente che, per Instagram, la media è dentro networks.instagram (non top-level).
+
+✅ Giusto (schema docs):
+
+"networks": {
+  "instagram": {
+    "type": "photo",
+    "text": "...",
+    "media": [{ "id": "...", "type": "photo" }]
+  }
+}
+
+
+Tu invece stai mettendo spesso media / media_ids a livello root del post: quello non è l’esempio/documentazione per Instagram.
+
+4) Il type del media non è "image": è "photo"
+
+Sia nelle docs dei post (esempi) sia nella sezione media, il tipo è "photo"/"video" (e nel Media API la risposta riporta type come photo, video, document).
+
+Quindi:
+✅ type: "photo"
+❌ type: "image"
+
+5) I campi source / provider / format NON sono nella docs ufficiale
+
+Nelle pagine “Creating Posts / Content types / Networks / Manual scheduling” non risultano come campi richiesti o standard del payload.
+Magari il backend li ignora, ma non è quello che la docs ti dice di fare (quindi io non ci punterei come fix).
+
+✅ Payload “doc-compliant” per Instagram foto schedulata
+
+Prova (o fai provare al dev) esattamente questo:
+
+{
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "networks": {
+          "instagram": {
+            "type": "photo",
+            "text": "…",
+            "media": [
+              { "id": "6976e78ea21fcf0de6a31a4e", "type": "photo" }
+            ]
+          }
+        },
+        "accounts": [
+          {
+            "id": "697685b559c689c71d4abc38",
+            "scheduled_at": "2026-01-26T05:03:00.000Z"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+
+Questo segue:
+
+scheduled_at in accounts[]
+
+provider key instagram
+
+photo post con media dentro networks.instagram
+
+Log che ti conviene aggiungere (per chiudere la questione in 10 minuti)
+
+Log della risposta upload media (quella di Publer), e salva:
+
+id
+
+type (deve essere photo)
+
+validity.instagram.photo (se c’è; la docs spiega il validity)
+
+Log dell’headers (redatti):
+
+Publer-Workspace-Id presente
+
+Authorization in formato Bearer-API … (è proprio così in docs)
+
+Dopo la schedule: salva job_id e stampa payload.failures completo.
+
+Se vuoi evitare “fasce orarie”: non usarle
+
+Le “time slots / posting schedule” entrano in gioco quando non dai accounts[].scheduled_at (o quando usi bulk.state = "auto").
+Quindi, finché stai debug-gando Instagram, fai così:
+
+sempre bulk.state: "scheduled"
+
+sempre accounts[].scheduled_at
+
+Se dopo aver mandato esattamente il payload sopra (doc-compliant) ottieni ancora “composer invalid state”, allora è molto probabilmente:
+
+un bug lato Publer per quell’account specifico, oppure
+
+una condizione dell’account IG (permessi/scopes) che la UI “aggiusta” in modo diverso.
+
+In quel caso l’unica mossa rapida è scrivere al supporto Publer con:
+
+job_id
+
+workspace_id
+
+payload (senza token)
+
+account id
+
+Ma prima: prova la struttura corretta qui sopra, perché al momento stai mischiando ig_business, media top-level e image, che non combaciano con la docs.

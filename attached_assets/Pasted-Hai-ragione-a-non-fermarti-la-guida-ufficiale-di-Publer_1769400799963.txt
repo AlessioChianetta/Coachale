@@ -1,0 +1,84 @@
+Hai ragione a non fermarti: la guida ufficiale di Publer dice chiaramente come DEV’essere strutturato il payload — e nei tuoi log ci sono 2–3 differenze grosse che spiegano sia “fascia oraria” sia “composer invalid state”.
+
+1) Il punto chiave: scheduled_at va dentro accounts[] (non a livello post)
+
+Nella documentazione di Scheduled Publishing l’orario è accounts[].scheduled_at.
+Se lo mandi a livello root (post.scheduled_at), Publer può comportarsi come se mancasse l’orario e finire in logiche tipo AutoSchedule/slot → da qui errori come “Nessuna fascia oraria disponibile…”.
+
+✅ Payload corretto (Instagram foto – schedulato) (come da doc “Photo Posts”):
+
+{
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "networks": {
+          "instagram": {
+            "type": "photo",
+            "text": "...",
+            "media": [
+              { "id": "MEDIA_ID", "type": "photo" }
+            ]
+          }
+        },
+        "accounts": [
+          { "id": "ACCOUNT_ID", "scheduled_at": "2026-01-26T05:03:00.000Z" }
+        ]
+      }
+    ]
+  }
+}
+
+
+Nota: nei tuoi log stai spesso mettendo media a livello root e/o media_ids: nella guida “Photo Posts” l’esempio per Instagram mette la media dentro networks.instagram.media.
+
+2) “Publish now” NON è uno state
+
+La doc dice: per pubblicare subito usi l’endpoint POST /api/v1/posts/schedule/publish e togli scheduled_at (sempre dentro accounts[]). Lo state resta scheduled.
+
+✅ Payload corretto (publish now):
+
+{
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "networks": {
+          "instagram": {
+            "type": "photo",
+            "text": "...",
+            "media": [
+              { "id": "MEDIA_ID", "type": "photo" }
+            ]
+          }
+        },
+        "accounts": [
+          { "id": "ACCOUNT_ID" }
+        ]
+      }
+    ]
+  }
+}
+
+
+3) ig_business vs instagram: la guida usa i provider come chiave del networks
+
+Nella guida “Creating Posts” il campo networks è una mappa per provider (es. instagram, facebook, linkedin, ecc.).
+E nella doc “Accounts” l’account ha provider: "instagram" e type (es. business), ma la chiave in networks resta instagram.
+
+Quindi: anche se il tuo codice interno chiama la piattaforma “ig_business”, per Publer-docs la chiave del payload è networks.instagram.
+
+4) La “fascia oraria” esiste, ma serve solo per AutoSchedule/queue
+
+La documentazione Auto-Scheduling dice esplicitamente: se fai auto-scheduling e non ci sono slot → “No available slots” e devi aprire slot nella posting schedule.
+
+Se vuoi impostare gli slot in UI:
+
+vai su Social Accounts → seleziona l’account → Posting Schedule (ci sono guide help dedicate).
+
+Ma ripeto: se usi manual scheduling con accounts[].scheduled_at corretto, gli slot NON dovrebbero servire.
+
+5) Sul consiglio “source/provider/format”
+
+Quello che ti hanno scritto (“aggiungi source/api, format/feed, provider/instagram…”) non appare nella guida ufficiale dei Create Posts / Photo Posts che Publer pubblica. Io quindi lo tratterei come workaround “non documentato”.
+Prima fai una prova 100% allineata alla doc (punti 1–3). Se ancora fallisce con “composer invalid state”, allora sì: è molto probabile un limite/bug lato Publer e ha senso aprire ticket con job_id + payload + account id.
