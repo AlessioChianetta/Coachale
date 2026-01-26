@@ -455,8 +455,8 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
             </AlertDescription>
           </Alert>
         ) : (
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-6 py-4">
+          <ScrollArea className="flex-1 pr-4 max-h-[60vh]">
+            <div className="space-y-6 py-4 pb-8">
               {post && (
                 <div className="p-3 rounded-lg bg-muted/50">
                   <p className="font-medium text-sm">{post.title || "Post senza titolo"}</p>
