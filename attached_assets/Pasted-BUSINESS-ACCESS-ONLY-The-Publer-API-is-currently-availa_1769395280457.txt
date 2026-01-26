@@ -1,0 +1,226 @@
+BUSINESS ACCESS ONLY: The Publer API is currently available exclusively to Publer Business users.
+
+This guide walks you through the core steps to integrate with Publer’s API in minutes. By the end, you’ll have published your first scheduled post.
+
+Prerequisites
+A Business Publer account
+
+Basic familiarity with HTTP/JSON APIs
+
+A command-line tool (curl) or API client (Postman, Insomnia)
+
+Step 1: Generate an API Key
+Sign in to Publer and verify you have Business plan access.
+
+Go to Settings → Access & Login → API Keys.
+
+Click Create API Key.
+
+Enter a descriptive name, then select scopes:
+
+workspaces
+
+accounts
+
+posts
+
+Click Create.
+
+Copy and store the key securely—this value will not be shown again.
+
+Step 2: List Workspaces
+Before making other requests, let's retrieve your workspaces. The workspace ID is required in the header for most API operations:
+
+
+Copy
+curl -X GET "https://app.publer.com/api/v1/workspaces" \
+  -H "Authorization: Bearer-API YOUR_API_KEY"
+Sample Response
+
+Copy
+[
+    {
+      "id": "5f8d7a62c9e77e001f36e3a1",
+      "name": "My Primary Workspace",
+      "role": "owner",
+      "picture": "https://publer.io/uploads/workspaces/thumb_mini_workspace_123.png"
+    },
+    {
+      "id": "60a2e45f9b3c8d002a4b7c32",
+      "name": "Client Workspace",
+      "role": "admin",
+      "picture": "https://publer.io/uploads/workspaces/thumb_mini_workspace_456.png"
+    }
+]
+Now you can use a workspace ID in your subsequent requests by including it in the header:
+
+
+Copy
+Publer-Workspace-Id: 5f8d7a62c9e77e001f36e3a1
+Step 3: List Social Accounts
+Next, let's retrieve the social media accounts in your workspace. You'll need the account IDs to specify where to publish your posts:
+
+
+Copy
+curl -X GET "https://app.publer.com/api/v1/accounts" \
+  -H "Authorization: Bearer-API YOUR_API_KEY" \
+  -H "Publer-Workspace-ID: 5f8d7a62c9e77e001f36e3a1"
+Expected Response
+
+Copy
+{
+  "accounts": [
+    {
+      "id": "63c675b54e299e9cf2b667ea",
+      "name": "My Facebook Page",
+      "provider": "facebook",
+      "type": "page",
+      "picture": "https://publer.io/uploads/accounts/thumb_mini_facebook_page.jpg",
+      "status": "active"
+    },
+    {
+      "id": "63c675d74e299e9cf2b667eb",
+      "name": "Company LinkedIn Page",
+      "provider": "linkedin",
+      "type": "page",
+      "picture": "https://publer.io/uploads/accounts/thumb_mini_linkedin_page.jpg",
+      "status": "active"
+    },
+    {
+      "id": "63c675e94e299e9cf2b667ec",
+      "name": "Brand Twitter",
+      "provider": "twitter",
+      "type": "profile",
+      "picture": "https://publer.io/uploads/accounts/thumb_mini_twitter.jpg",
+      "status": "active"
+    }
+  ]
+}
+Make note of the account IDs as you'll need them to specify where to publish your content in the next step.
+
+Step 4: Create a Scheduled Post
+Make your first scheduled post with one API call:
+
+
+Copy
+curl -X POST "https://app.publer.com/api/v1/posts/schedule" \
+  -H "Authorization: Bearer-API YOUR_API_KEY" \
+  -H "Publer-Workspace-Id: 5f8d7a62c9e77e001f36e3a1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bulk": {
+      "state": "scheduled",
+      "posts": [
+        {
+          "networks": {
+            // You need to provide the network provider as the key, e.g., facebook, twitter
+            "facebook": {
+              "type": "status", // Type of the post
+              "text": "Status Update Post" // Text of the post
+            }
+          },
+          "accounts": [
+            {
+              "id": "63c675b54e299e9cf2b667ea", // Id of the selected account
+              "scheduled_at": "2025-09-06T14:16+02:00" // Scheduled time
+            }
+          ]
+        }
+      ]
+    }
+  }'
+Sample Response
+The API returns a job ID that you can use to check the status of your request:
+
+
+Copy
+{
+  "job_id": "68176fa0f0eb419444bee686"
+}
+Step 5: Poll Job Status
+Posts are created asynchronously. Use the returned job_id to check progress:
+
+
+Copy
+curl -X GET "https://app.publer.com/api/v1/job_status/68176fa0f0eb419444bee686" \
+  -H "Authorization: Bearer-API YOUR_API_KEY" \
+  -H "Publer-Workspace-Id: 5f8d7a62c9e77e001f36e3a1"
+Successful Job Response
+
+Copy
+{
+  "status": "complete",
+  "payload": {
+    "failures": {}
+  },
+  "plan": {
+    // other account-specific data
+  }
+}
+Failed Job Response
+If there's an error with your request, the response will include details about what went wrong:
+
+
+Copy
+{
+  "status": "complete",
+  "payload": {
+    "failures":[
+        {
+          "account_id": "63c675b54e299e9cf2b667ea",
+          "account_name": "Test Page",
+          "provider": "facebook",
+          "message": "There's another post at this time. A one minute gap is required between posts"
+        }
+    ]
+  },
+  "plan": {
+    // other account-specific data
+  }
+}
+Step 6: Verify Scheduled Posts
+List your scheduled posts to confirm creation:
+
+
+Copy
+curl -X GET "https://app.publer.com/api/v1/posts?state=scheduled" \
+  -H "Authorization: Bearer-API YOUR_API_KEY" \
+  -H "Publer-Workspace-ID: 5f8d7a62c9e77e001f36e3a1"
+Sample Response
+
+Copy
+{
+  "posts": [
+    {
+      "id": "68176f0e8bee9dc9b0ce3427",
+      "text": "Status Update Post for 2025-05-07!",
+      "url": null,
+      "title": null,
+      "state": "scheduled",
+      "type": "status",
+      "account_id": "63c675b54e299e9cf2b667ea",
+      "user": {
+        "id": "5b1ec026db27977424e8599e",
+        "name": "Business User",
+        "picture": "https://publer.io/uploads/photos/thumb_mini_magick20250123-28707-otuw0w.png"
+      },
+      "scheduled_at": "2025-05-08T14:30:00.000+02:00",
+      "post_link": null
+    }
+  ],
+  "total": 1
+}
+Understanding the Workflow
+Generate an API key
+
+List workspaces → pick a workspace ID
+
+List accounts → pick account IDs
+
+Submit a post creation request
+
+Poll job status until completed
+
+Fetch posts to verify
+
+This async pattern scales across multiple workspaces, accounts, and post types.

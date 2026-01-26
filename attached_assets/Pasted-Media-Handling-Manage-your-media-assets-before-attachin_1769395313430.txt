@@ -1,0 +1,493 @@
+Media Handling
+Manage your media assets before attaching them to posts. Publer’s API supports direct uploads and URL imports, returning media IDs you can reference when creating or updating posts.
+
+Overview
+Before including media in your social media posts, you must first upload those files to Publer's servers. The API provides two methods for uploading media:
+
+Direct file upload
+
+Upload from URL
+
+Once uploaded, you'll receive a media ID that can be referenced in your post requests.
+
+Direct File Upload
+Use this method when you have local media files that you want to upload directly.
+
+Limitation
+Maximum file size for direct uploads: 200MB per file.
+
+Requests exceeding 200MB will be rejected (typically with HTTP 413 Payload Too Large). For larger files, use the Upload from URL method.
+
+Request Format
+This endpoint expects a multipart/form-data request with the file included in the file field.
+
+Upload a media file directly
+post
+
+https://app.publer.com/api/v1
+/media
+Upload a media file (image, video, or document) to be used in social media posts
+
+Authorizations
+
+BearerApiAuth
+
+BearerApiAuth
+Authorization
+string
+API key authentication. Format: "Bearer-API YOUR_API_KEY"
+
+Header parameters
+Publer-Workspace-Id
+string
+ID of the workspace to upload media
+
+Body
+
+multipart/form-data
+
+multipart/form-data
+file
+string
+direct_upload
+boolean
+Whether to upload directly to our S3 cloud (slower, but required if you need the final media URL)
+
+Default: false
+in_library
+boolean
+Whether to save to media library
+
+Default: false
+Responses
+200
+Media file uploaded successfully
+
+application/json
+
+Response
+object
+400
+Invalid request parameters
+
+application/json
+401
+Unauthorized
+
+application/json
+413
+Permission denied or missing required scope
+
+application/json
+post
+/media
+
+HTTP
+
+HTTP
+
+Copy
+POST /api/v1/media HTTP/1.1
+Host: app.publer.com
+Authorization: YOUR_API_KEY
+Publer-Workspace-Id: text
+Content-Type: multipart/form-data
+Accept: */*
+Content-Length: 56
+
+{
+  "file": "text",
+  "direct_upload": false,
+  "in_library": false
+}
+Test it
+
+200
+Media file uploaded successfully
+
+
+
+Copy
+{
+  "id": "6813892b5ec8b1e65235ae9e",
+  "path": "https://cdn.publer.io/uploads/tmp/1746110763-128246820936684-0001-1648/mini_magick20250501-29172-ce1rot.png",
+  "thumbnail": "https://cdn.publer.io/uploads/tmp/1746110763-128246820936684-0001-1648/mini_magick20250501-29172-ce1rot.png",
+  "validity": {},
+  "width": 1451,
+  "height": 1005,
+  "source": null,
+  "type": "photo",
+  "name": "123_1kdw8ry.png",
+  "caption": null
+}
+Key Response Fields
+
+Field
+
+Description
+
+id
+
+Unique identifier for the uploaded media (use this in post requests)
+
+path
+
+URL path to access the uploaded media
+
+thumbnail
+
+URL path to access a thumbnail version of the media
+
+validity
+
+Indicates which networks and post types support this media
+
+width, height
+
+Dimensions of the uploaded media in pixels
+
+type
+
+Media type (photo, video, document)
+
+name
+
+Original filename
+
+Upload from URL
+Use this method when your media is already hosted elsewhere and you want to import it by URL.
+
+Upload media from URL
+post
+
+https://app.publer.com/api/v1
+/media/from-url
+Upload media files by providing URLs
+
+Authorizations
+
+BearerApiAuth
+
+BearerApiAuth
+Authorization
+string
+API key authentication. Format: "Bearer-API YOUR_API_KEY"
+
+Header parameters
+Publer-Workspace-Id
+string
+ID of the workspace to upload media
+
+Body
+
+application/json
+
+application/json
+
+media
+object[]
+List of media URLs and metadata
+
+type
+string · enum
+Upload type
+
+Example: single
+Possible values: singlethumbnailbulkthumbnail
+direct_upload
+boolean
+Whether to upload directly to our S3 cloud (slower, but required if you need the final media URL)
+
+Default: false
+in_library
+boolean
+Whether to save to media library
+
+Default: false
+Responses
+200
+Media upload job created successfully
+
+application/json
+
+Response
+object
+400
+Invalid request parameters
+
+application/json
+401
+Unauthorized
+
+application/json
+403
+Permission denied or missing required scope
+
+application/json
+post
+/media/from-url
+
+HTTP
+
+HTTP
+
+Copy
+POST /api/v1/media/from-url HTTP/1.1
+Host: app.publer.com
+Authorization: YOUR_API_KEY
+Publer-Workspace-Id: text
+Content-Type: application/json
+Accept: */*
+Content-Length: 220
+
+{
+  "media": [
+    {
+      "url": "https://example.com/path/to/image.jpg",
+      "name": "instagram: @auchynnikau",
+      "caption": "Photo by Slava Auchynnikau on Unsplash",
+      "source": "unsplash"
+    }
+  ],
+  "type": "single",
+  "direct_upload": false,
+  "in_library": false
+}
+Test it
+
+200
+Media upload job created successfully
+
+
+
+Copy
+{
+  "job_id": "68138a295ec8b1e65235aea0"
+}
+Request Parameters
+
+Parameter
+
+Description
+
+Required
+
+media[].url
+
+URL of the media file to download
+
+Yes
+
+media[].name
+
+Custom name for the media file
+
+Yes
+
+media[].caption
+
+Caption for the media
+
+No
+
+media[].source
+
+Source attribution
+
+No
+
+type
+
+Upload type (single or bulk)
+
+No
+
+direct_upload
+
+Whether to upload directly to our S3 cloud (slower, but required if you need the final media URL)
+
+(default: false)
+
+No
+
+in_library
+
+Whether to save to media library (default: false)
+
+No
+
+Unlike direct uploads, URL uploads are processed asynchronously. Use the returned job_id to check the status of your upload.
+
+Checking Upload Status
+Get job status
+get
+
+https://app.publer.com/api/v1
+/job_status/
+{job_id}
+Check the status of an asynchronous job, including URL media uploads
+
+Authorizations
+
+BearerApiAuth
+
+BearerApiAuth
+Authorization
+string
+API key authentication. Format: "Bearer-API YOUR_API_KEY"
+
+Path parameters
+job_id
+string
+ID of the job to check
+
+Header parameters
+Publer-Workspace-Id
+string
+ID of the workspace to retrieve posts from
+
+Responses
+200
+Job status retrieved successfully
+
+application/json
+
+Response
+object
+401
+Unauthorized
+
+application/json
+403
+Permission denied or missing required scope
+
+application/json
+get
+/job_status/{job_id}
+
+HTTP
+
+HTTP
+
+Copy
+GET /api/v1/job_status/{job_id} HTTP/1.1
+Host: app.publer.com
+Authorization: YOUR_API_KEY
+Publer-Workspace-Id: text
+Accept: */*
+Test it
+
+200
+Job status retrieved successfully
+
+
+
+Copy
+{
+  "success": true,
+  "data": {
+    "status": "complete",
+    "result": {
+      "status": "working",
+      "payload": {
+        "failures": {
+          "error": "Failed to upload media",
+          "code": 500
+        }
+      },
+      "plan": {
+        "rate": "business",
+        "locked": false
+      }
+    }
+  }
+}
+Using Media in Posts
+Once you've uploaded media and have the media ID, you can reference it in your post requests:
+
+
+Copy
+{
+  "bulk": {
+    "state": "scheduled",
+    "posts": [
+      {
+        "networks": {
+          "default": {
+            "type": "photo",
+            "text": "Check out our latest product!",
+            "media": [
+              {
+                "id": "6813892b5ec8b1e65235ae9e",
+                "type": "image",
+                "alt_text": "Product on white background"
+              }
+            ]
+          }
+        },
+        "accounts": [
+          {
+            "id": "66db83154e299efa19a2d8eb",
+            "scheduled_at": "2025-05-15T14:30:00Z"
+          }
+        ]
+      }
+    ]
+  }
+}
+Supported Media Types
+Images
+Supported formats: JPG, PNG, GIF, WEBP
+
+Recommended dimensions: Varies by platform (see Networks Reference)
+
+Maximum file size: Varies by platform, generally 5-10MB
+
+Videos
+Supported formats: MP4, MOV, AVI, WEBM
+
+Recommended dimensions: Varies by platform (see Networks Reference)
+
+Maximum file size: Varies by platform, generally 512MB-2GB
+
+Duration limits: Varies by platform and content type
+
+Documents
+Supported formats: PDF
+
+Maximum file size: 100MB
+
+Supported networks: LinkedIn only
+
+Network Validation
+The validity object in the media upload response indicates which networks and post types can use the uploaded media. This helps prevent errors when attempting to use incompatible media in your posts.
+
+For example, if validity.instagram.reel is false, the uploaded media cannot be used for Instagram Reels.
+
+Best Practices
+Image Optimization
+Resolution: Use appropriate image resolutions for each platform
+
+Aspect ratio: Follow recommended aspect ratios to avoid cropping
+
+File size: Optimize images for web to reduce file size
+
+Alt text: Always include descriptive alt text for accessibility
+
+Video Optimization
+Format: Use MP4 with H.264 encoding for maximum compatibility
+
+Dimensions: Use 1080p (1920x1080) for standard videos
+
+Aspect ratio: 16:9 for horizontal, 9:16 for vertical/stories/reels
+
+Duration: Keep videos under platform limits
+
+Thumbnails: Consider uploading custom thumbnails for videos
+
+General Tips
+Pre-check compatibility: Review the validity object before using media
+
+Error handling: Implement robust error handling for upload failures
+
+Caching: Cache media IDs to avoid unnecessary re-uploads
