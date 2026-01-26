@@ -37,6 +37,8 @@ import {
   Edit3,
   Eye,
   Save,
+  Info,
+  ImageIcon,
 } from "lucide-react";
 
 interface PublerAccount {
@@ -58,6 +60,83 @@ function isInstagramPlatform(platform: string): boolean {
 function platformRequiresMedia(platform: string): boolean {
   const mediaRequired = ['instagram', 'ig_business', 'ig_personal', 'pinterest', 'youtube', 'tiktok', 'tiktok_business'];
   return mediaRequired.includes(platform);
+}
+
+// Info sui requisiti delle piattaforme
+interface PlatformInfo {
+  name: string;
+  requiresMedia: boolean;
+  supportedTypes: string[];
+  maxChars?: number;
+  notes?: string;
+}
+
+function getPlatformInfo(platform: string): PlatformInfo {
+  const normalized = platform.toLowerCase();
+  
+  if (['instagram', 'ig_business', 'ig_personal'].includes(normalized)) {
+    return {
+      name: 'Instagram',
+      requiresMedia: true,
+      supportedTypes: ['Immagine', 'Video', 'Carosello'],
+      maxChars: 2200,
+      notes: 'Richiede sempre un\'immagine o video'
+    };
+  }
+  if (['facebook', 'fb_page', 'fb_group'].includes(normalized)) {
+    return {
+      name: 'Facebook',
+      requiresMedia: false,
+      supportedTypes: ['Testo', 'Immagine', 'Video', 'Link'],
+      notes: 'Supporta post solo testo'
+    };
+  }
+  if (['twitter', 'x'].includes(normalized)) {
+    return {
+      name: 'Twitter/X',
+      requiresMedia: false,
+      supportedTypes: ['Testo', 'Immagine', 'Video'],
+      maxChars: 280,
+      notes: 'Supporta post solo testo'
+    };
+  }
+  if (['linkedin', 'linkedin_page'].includes(normalized)) {
+    return {
+      name: 'LinkedIn',
+      requiresMedia: false,
+      supportedTypes: ['Testo', 'Immagine', 'Video', 'Documento'],
+      notes: 'Supporta post solo testo'
+    };
+  }
+  if (normalized === 'pinterest') {
+    return {
+      name: 'Pinterest',
+      requiresMedia: true,
+      supportedTypes: ['Immagine', 'Video'],
+      notes: 'Richiede sempre un\'immagine'
+    };
+  }
+  if (normalized === 'youtube') {
+    return {
+      name: 'YouTube',
+      requiresMedia: true,
+      supportedTypes: ['Video'],
+      notes: 'Richiede sempre un video'
+    };
+  }
+  if (['tiktok', 'tiktok_business'].includes(normalized)) {
+    return {
+      name: 'TikTok',
+      requiresMedia: true,
+      supportedTypes: ['Video'],
+      notes: 'Richiede sempre un video'
+    };
+  }
+  return {
+    name: platform,
+    requiresMedia: false,
+    supportedTypes: ['Testo', 'Immagine', 'Video']
+  };
 }
 
 interface StructuredContent {
@@ -333,8 +412,16 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       .some(a => isInstagramPlatform(a.platform));
   }, [accounts, selectedAccounts]);
   
-  // Per ora non supportiamo upload media, quindi avvisiamo per Instagram
-  const instagramWarning = hasInstagramSelected;
+  // Calcola info sulle piattaforme selezionate
+  const selectedPlatformsInfo = useMemo(() => {
+    const selectedAccountsList = accounts.filter(a => selectedAccounts.includes(a.id));
+    const uniquePlatforms = [...new Set(selectedAccountsList.map(a => a.platform))];
+    return uniquePlatforms.map(p => getPlatformInfo(p));
+  }, [accounts, selectedAccounts]);
+  
+  // Piattaforme che richiedono media
+  const platformsRequiringMedia = selectedPlatformsInfo.filter(p => p.requiresMedia);
+  const hasMediaRequiredPlatforms = platformsRequiringMedia.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -490,32 +577,72 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                 )}
               </div>
 
-              {instagramWarning && (
-                <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <AlertDescription className="text-amber-700 dark:text-amber-400">
-                    <div className="space-y-3">
-                      <p>
-                        <strong>Attenzione:</strong> Instagram richiede sempre un'immagine o video.
-                      </p>
-                      <div className="flex items-center gap-2 p-2 bg-white/50 dark:bg-black/20 rounded-md">
+              {/* Sezione informativa sui requisiti delle piattaforme */}
+              {selectedPlatformsInfo.length > 0 && (
+                <div className="rounded-lg border bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    Requisiti Piattaforme Selezionate
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {selectedPlatformsInfo.map((info, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`p-2 rounded-md text-xs ${
+                          info.requiresMedia 
+                            ? 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700' 
+                            : 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700'
+                        }`}
+                      >
+                        <div className="font-medium flex items-center gap-1">
+                          {info.requiresMedia ? (
+                            <ImageIcon className="h-3 w-3 text-amber-600" />
+                          ) : (
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                          )}
+                          {info.name}
+                        </div>
+                        <div className="text-muted-foreground mt-1">
+                          {info.notes}
+                        </div>
+                        <div className="text-muted-foreground">
+                          Tipi: {info.supportedTypes.join(', ')}
+                        </div>
+                        {info.maxChars && (
+                          <div className="text-muted-foreground">
+                            Max: {info.maxChars} caratteri
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Checkbox per immagine placeholder se ci sono piattaforme che richiedono media */}
+                  {hasMediaRequiredPlatforms && (
+                    <div className="mt-3 p-3 bg-white dark:bg-black/30 rounded-md border border-amber-300 dark:border-amber-700">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="use-placeholder"
                           checked={usePlaceholderImage}
                           onCheckedChange={(checked) => setUsePlaceholderImage(checked === true)}
                         />
                         <Label htmlFor="use-placeholder" className="text-sm cursor-pointer flex-1">
-                          Usa immagine placeholder (verrà caricata un'immagine generica)
+                          <span className="flex items-center gap-2">
+                            <ImageIcon className="h-4 w-4 text-amber-600" />
+                            Usa immagine placeholder per {platformsRequiringMedia.map(p => p.name).join(', ')}
+                          </span>
                         </Label>
                       </div>
                       {!usePlaceholderImage && (
-                        <p className="text-xs opacity-80">
-                          Oppure deseleziona Instagram e usa solo Facebook/LinkedIn.
+                        <p className="text-xs text-muted-foreground mt-2 ml-6">
+                          Le piattaforme evidenziate in giallo richiedono un'immagine. 
+                          Attiva questa opzione oppure deselezionale.
                         </p>
                       )}
                     </div>
-                  </AlertDescription>
-                </Alert>
+                  )}
+                </div>
               )}
 
               <Separator />
@@ -581,7 +708,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
               selectedAccounts.length === 0 || 
               publishMutation.isPending || 
               !composedText.trim() ||
-              (hasInstagramSelected && !usePlaceholderImage)
+              (hasMediaRequiredPlatforms && !usePlaceholderImage)
             }
           >
             {publishMutation.isPending ? (
