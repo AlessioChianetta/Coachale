@@ -14,7 +14,10 @@ const configSchema = z.object({
 const publishSchema = z.object({
   postId: z.string().optional(),
   accountIds: z.array(z.string()).min(1, 'Seleziona almeno un account'),
-  accountPlatforms: z.array(z.string()).optional(),
+  accountPlatforms: z.array(z.object({
+    id: z.string(),
+    platform: z.string(),
+  })).optional(),
   text: z.string().min(1, 'Testo del post richiesto'),
   state: z.enum(['draft', 'publish_now', 'scheduled']).default('publish_now'),
   scheduledAt: z.string().datetime().optional(),

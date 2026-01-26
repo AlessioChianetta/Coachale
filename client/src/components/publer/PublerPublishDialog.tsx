@@ -168,6 +168,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     mutationFn: async (data: {
       postId: string;
       accountIds: string[];
+      accountPlatforms: { id: string; platform: string }[];
       text: string;
       state: PublishState;
       scheduledAt?: string;
@@ -246,9 +247,15 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       return;
     }
 
+    // Prepara accountPlatforms per il backend (per validazione Instagram)
+    const accountPlatforms = accounts
+      .filter(a => selectedAccounts.includes(a.id))
+      .map(a => ({ id: a.id, platform: a.platform }));
+    
     publishMutation.mutate({
       postId: post.id,
       accountIds: selectedAccounts,
+      accountPlatforms,
       text: composedText,
       state: publishState,
       scheduledAt: publishState === "scheduled" ? new Date(scheduledAt).toISOString() : undefined,

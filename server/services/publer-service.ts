@@ -30,6 +30,7 @@ interface SchedulePostRequest {
   scheduledAt?: Date;
   mediaIds?: string[];
   platforms?: Record<string, { type: string; text: string }>;
+  accountPlatforms?: { id: string; platform: string }[];
 }
 
 interface SchedulePostResult {
@@ -258,17 +259,59 @@ export class PublerService {
 
     console.log('[PUBLER] Scheduling post with state:', publerState, 'for accounts:', request.accountIds.length);
 
+    // Determina le piattaforme selezionate
+    // Se accountPlatforms non è fornito, recupera dal database
+    let accountPlatforms = request.accountPlatforms;
+    if (!accountPlatforms || accountPlatforms.length === 0) {
+      // Fallback: recupera le platform dagli account salvati
+      const savedAccounts = await db
+        .select({ id: publerAccounts.accountId, platform: publerAccounts.platform })
+        .from(publerAccounts)
+        .where(eq(publerAccounts.consultantId, consultantId));
+      
+      accountPlatforms = request.accountIds
+        .map(id => {
+          const saved = savedAccounts.find(a => a.id === id);
+          return saved ? { id, platform: saved.platform } : null;
+        })
+        .filter((a): a is { id: string; platform: string } => a !== null);
+    }
+
+    // Verifica se Instagram è selezionato e non ci sono media
+    const hasInstagram = accountPlatforms.some(a => a.platform === 'instagram');
+    const hasMedia = request.mediaIds && request.mediaIds.length > 0;
+    
+    if (hasInstagram && !hasMedia) {
+      throw new Error('Instagram richiede almeno un\'immagine o video. Per pubblicare solo testo, deseleziona Instagram.');
+    }
+
     // REGOLA D'ORO PUBLER API:
     // 1. networks DEVE essere compilato (mai vuoto)
     // 2. text DEVE essere dentro networks.default.text
     // 3. scheduled_at DEVE essere a livello POST, NON dentro accounts
+    // 4. Instagram usa type: 'post', altre piattaforme usano 'status'
     // Questo vale per TUTTI gli stati: draft, scheduled, publish_now
+    
+    // Determina il tipo di post (Instagram usa 'post', altri 'status')
+    const postType = hasInstagram ? 'post' : 'status';
+    
+    // Se request.platforms è fornito, assicurati che Instagram usi type 'post'
+    let networks = request.platforms;
+    if (networks && hasInstagram) {
+      // Override del tipo per Instagram
+      if (networks.instagram) {
+        networks.instagram.type = 'post';
+      }
+      if (networks.default) {
+        networks.default.type = 'post';
+      }
+    }
     
     const postEntry: any = {
       accounts: request.accountIds.map(id => ({ id })),
-      networks: request.platforms || {
+      networks: networks || {
         default: {
-          type: 'status',
+          type: postType,
           text: request.text
         }
       },
