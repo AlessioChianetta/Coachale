@@ -19,7 +19,9 @@ import {
   Volume2,
   Globe,
   Timer,
-  CalendarDays
+  CalendarDays,
+  Plus,
+  X
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -514,64 +516,163 @@ export default function AgentAvailability({ formData, onChange, errors }: AgentA
               </div>
             </div>
 
-            {/* Working Hours per Day */}
+            {/* Working Hours per Day - Multiple Ranges Support */}
             <div>
               <Label className="flex items-center gap-2 mb-3">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 Orari Disponibilità per Giorno
               </Label>
+              <p className="text-xs text-muted-foreground mb-3">
+                Puoi aggiungere più fasce orarie per giorno (es. 09:00-13:00 e 14:00-18:00 per escludere la pausa pranzo)
+              </p>
               <div className="space-y-3">
                 {daysOfWeek.map((day) => {
                   const workingHours = formData.availabilityWorkingHours || {};
                   const dayConfig = workingHours[day.id] || { enabled: day.id !== 'saturday' && day.id !== 'sunday', start: "09:00", end: "18:00" };
                   
+                  // Normalize to ranges array format for UI
+                  const getRanges = (): Array<{ start: string; end: string }> => {
+                    if (dayConfig.ranges && Array.isArray(dayConfig.ranges)) {
+                      return dayConfig.ranges;
+                    }
+                    if (dayConfig.start && dayConfig.end) {
+                      return [{ start: dayConfig.start, end: dayConfig.end }];
+                    }
+                    return [{ start: "09:00", end: "18:00" }];
+                  };
+                  
+                  const ranges = getRanges();
+                  
+                  const updateRanges = (newRanges: Array<{ start: string; end: string }>) => {
+                    const newWorkingHours = {
+                      ...workingHours,
+                      [day.id]: { enabled: dayConfig.enabled, ranges: newRanges }
+                    };
+                    onChange("availabilityWorkingHours", newWorkingHours);
+                  };
+                  
+                  const addRange = () => {
+                    if (ranges.length < 4) {
+                      updateRanges([...ranges, { start: "14:00", end: "18:00" }]);
+                    }
+                  };
+                  
+                  const removeRange = (index: number) => {
+                    if (ranges.length > 1) {
+                      updateRanges(ranges.filter((_, i) => i !== index));
+                    }
+                  };
+                  
+                  const updateRange = (index: number, field: 'start' | 'end', value: string) => {
+                    const newRanges = [...ranges];
+                    newRanges[index] = { ...newRanges[index], [field]: value };
+                    updateRanges(newRanges);
+                  };
+                  
+                  // Helper to convert time to minutes
+                  const toMinutes = (time: string): number => {
+                    if (!time) return 0;
+                    const [h, m] = time.split(':').map(Number);
+                    return h * 60 + m;
+                  };
+                  
+                  // Check if a range is valid (start < end)
+                  const isRangeValid = (range: { start: string; end: string }): boolean => {
+                    if (!range.start || !range.end) return false;
+                    return toMinutes(range.start) < toMinutes(range.end);
+                  };
+                  
+                  // Check if range overlaps with another range
+                  const hasOverlap = (index: number): boolean => {
+                    if (ranges.length <= 1) return false;
+                    const current = ranges[index];
+                    if (!isRangeValid(current)) return false;
+                    const currentStart = toMinutes(current.start);
+                    const currentEnd = toMinutes(current.end);
+                    
+                    return ranges.some((other, i) => {
+                      if (i === index || !isRangeValid(other)) return false;
+                      const otherStart = toMinutes(other.start);
+                      const otherEnd = toMinutes(other.end);
+                      // Check if ranges overlap
+                      return currentStart < otherEnd && currentEnd > otherStart;
+                    });
+                  };
+                  
                   return (
                     <div key={day.id} className={cn(
-                      "flex items-center gap-4 p-3 rounded-lg border transition-all",
+                      "p-3 rounded-lg border transition-all",
                       dayConfig.enabled ? "bg-green-500/5 border-green-500/20" : "bg-muted/30 border-muted"
                     )}>
-                      <Checkbox
-                        checked={dayConfig.enabled}
-                        onCheckedChange={(checked) => {
-                          const newWorkingHours = {
-                            ...workingHours,
-                            [day.id]: { ...dayConfig, enabled: checked as boolean }
-                          };
-                          onChange("availabilityWorkingHours", newWorkingHours);
-                        }}
-                      />
-                      <span className="w-24 font-medium text-sm">{day.label}</span>
+                      <div className="flex items-center gap-4">
+                        <Checkbox
+                          checked={dayConfig.enabled}
+                          onCheckedChange={(checked) => {
+                            const newWorkingHours = {
+                              ...workingHours,
+                              [day.id]: { ...dayConfig, enabled: checked as boolean, ranges }
+                            };
+                            onChange("availabilityWorkingHours", newWorkingHours);
+                          }}
+                        />
+                        <span className="w-24 font-medium text-sm">{day.label}</span>
+                        {!dayConfig.enabled && (
+                          <span className="text-sm text-muted-foreground italic">Non disponibile</span>
+                        )}
+                      </div>
+                      
                       {dayConfig.enabled && (
-                        <>
-                          <Input
-                            type="time"
-                            value={dayConfig.start}
-                            onChange={(e) => {
-                              const newWorkingHours = {
-                                ...workingHours,
-                                [day.id]: { ...dayConfig, start: e.target.value }
-                              };
-                              onChange("availabilityWorkingHours", newWorkingHours);
-                            }}
-                            className="w-28"
-                          />
-                          <span className="text-muted-foreground">-</span>
-                          <Input
-                            type="time"
-                            value={dayConfig.end}
-                            onChange={(e) => {
-                              const newWorkingHours = {
-                                ...workingHours,
-                                [day.id]: { ...dayConfig, end: e.target.value }
-                              };
-                              onChange("availabilityWorkingHours", newWorkingHours);
-                            }}
-                            className="w-28"
-                          />
-                        </>
-                      )}
-                      {!dayConfig.enabled && (
-                        <span className="text-sm text-muted-foreground italic">Non disponibile</span>
+                        <div className="mt-2 ml-10 space-y-2">
+                          {ranges.map((range, index) => {
+                            const valid = isRangeValid(range);
+                            const overlap = hasOverlap(index);
+                            return (
+                            <div key={index} className="flex items-center gap-2 flex-wrap">
+                              <Input
+                                type="time"
+                                value={range.start}
+                                onChange={(e) => updateRange(index, 'start', e.target.value)}
+                                className={cn("w-28", (!valid || overlap) && "border-red-500")}
+                              />
+                              <span className="text-muted-foreground">-</span>
+                              <Input
+                                type="time"
+                                value={range.end}
+                                onChange={(e) => updateRange(index, 'end', e.target.value)}
+                                className={cn("w-28", (!valid || overlap) && "border-red-500")}
+                              />
+                              {!valid && (
+                                <span className="text-xs text-red-500">Orario non valido</span>
+                              )}
+                              {valid && overlap && (
+                                <span className="text-xs text-orange-500">Sovrapposizione (verrà unita automaticamente)</span>
+                              )}
+                              {ranges.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                  onClick={() => removeRange(index)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          {ranges.length < 4 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                              onClick={addRange}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Aggiungi fascia
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );

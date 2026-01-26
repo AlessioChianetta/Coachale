@@ -2750,14 +2750,18 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   availabilityBufferAfter: integer("availability_buffer_after").default(15), // minutes after appointment
   availabilityMaxDaysAhead: integer("availability_max_days_ahead").default(30), // max days in advance for booking
   availabilityMinHoursNotice: integer("availability_min_hours_notice").default(24), // minimum hours notice
+  // Working hours for booking availability - supports multiple time ranges per day
+  // Legacy format: { enabled: boolean; start: string; end: string }
+  // New format: { enabled: boolean; ranges: Array<{ start: string; end: string }> }
+  // Both formats are supported for backward compatibility
   availabilityWorkingHours: jsonb("availability_working_hours").$type<{
-    monday?: { enabled: boolean; start: string; end: string };
-    tuesday?: { enabled: boolean; start: string; end: string };
-    wednesday?: { enabled: boolean; start: string; end: string };
-    thursday?: { enabled: boolean; start: string; end: string };
-    friday?: { enabled: boolean; start: string; end: string };
-    saturday?: { enabled: boolean; start: string; end: string };
-    sunday?: { enabled: boolean; start: string; end: string };
+    monday?: { enabled: boolean; start?: string; end?: string; ranges?: Array<{ start: string; end: string }> };
+    tuesday?: { enabled: boolean; start?: string; end?: string; ranges?: Array<{ start: string; end: string }> };
+    wednesday?: { enabled: boolean; start?: string; end?: string; ranges?: Array<{ start: string; end: string }> };
+    thursday?: { enabled: boolean; start?: string; end?: string; ranges?: Array<{ start: string; end: string }> };
+    friday?: { enabled: boolean; start?: string; end?: string; ranges?: Array<{ start: string; end: string }> };
+    saturday?: { enabled: boolean; start?: string; end?: string; ranges?: Array<{ start: string; end: string }> };
+    sunday?: { enabled: boolean; start?: string; end?: string; ranges?: Array<{ start: string; end: string }> };
   }>().default(sql`'{"monday":{"enabled":true,"start":"09:00","end":"18:00"},"tuesday":{"enabled":true,"start":"09:00","end":"18:00"},"wednesday":{"enabled":true,"start":"09:00","end":"18:00"},"thursday":{"enabled":true,"start":"09:00","end":"18:00"},"friday":{"enabled":true,"start":"09:00","end":"18:00"},"saturday":{"enabled":false,"start":"09:00","end":"13:00"},"sunday":{"enabled":false,"start":"09:00","end":"13:00"}}'::jsonb`),
 
   // Account references and notes for credential tracking (per service)

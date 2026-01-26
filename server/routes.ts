@@ -19451,6 +19451,64 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       }
 
       // 2. Generate theoretical slots based on working hours
+      // Helper: Normalize working hours to ranges array format (backward compatible)
+      // Also validates, sorts ranges, filters invalid ones, and merges overlaps
+      const normalizeToRanges = (dayConfig: any): Array<{ start: string; end: string }> => {
+        if (!dayConfig?.enabled) return [];
+        
+        let ranges: Array<{ start: string; end: string }> = [];
+        
+        // New format: already has ranges array
+        if (dayConfig.ranges && Array.isArray(dayConfig.ranges)) {
+          ranges = dayConfig.ranges.filter((r: any) => r.start && r.end);
+        }
+        // Legacy format: single start/end
+        else if (dayConfig.start && dayConfig.end) {
+          ranges = [{ start: dayConfig.start, end: dayConfig.end }];
+        }
+        
+        // Helper to convert time string to minutes
+        const toMinutes = (time: string): number => {
+          const [h, m] = time.split(':').map(Number);
+          return h * 60 + m;
+        };
+        
+        // Helper to convert minutes back to time string
+        const toTimeStr = (minutes: number): string => {
+          const h = Math.floor(minutes / 60);
+          const m = minutes % 60;
+          return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        };
+        
+        // Validate: start must be before end
+        ranges = ranges.filter(r => toMinutes(r.start) < toMinutes(r.end));
+        
+        // Sort ranges by start time
+        ranges.sort((a, b) => toMinutes(a.start) - toMinutes(b.start));
+        
+        // Merge overlapping ranges
+        if (ranges.length > 1) {
+          const merged: Array<{ start: string; end: string }> = [ranges[0]];
+          for (let i = 1; i < ranges.length; i++) {
+            const last = merged[merged.length - 1];
+            const current = ranges[i];
+            const lastEnd = toMinutes(last.end);
+            const currentStart = toMinutes(current.start);
+            const currentEnd = toMinutes(current.end);
+            
+            // If overlapping or adjacent, merge them
+            if (currentStart <= lastEnd) {
+              last.end = toTimeStr(Math.max(lastEnd, currentEnd));
+            } else {
+              merged.push(current);
+            }
+          }
+          ranges = merged;
+        }
+        
+        return ranges;
+      };
+
       const theoreticalSlots: Array<{ start: Date; end: Date }> = [];
       const currentDate = new Date(start);
 
@@ -19462,39 +19520,44 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         // Check if this day is enabled in workingHours
         const dayConfig = workingHours?.[dayName];
         if (dayConfig?.enabled) {
-          // Use workingHours[day].start and workingHours[day].end for slot generation
-          // TIMEZONE LOGGING: Track how slots are created
-          const dayStartParts = dayConfig.start.split(':');
-          const dayEndParts = dayConfig.end.split(':');
-          let currentSlotTime = new Date(currentDate);
-          currentSlotTime.setHours(parseInt(dayStartParts[0]), parseInt(dayStartParts[1]), 0, 0);
+          // Get all time ranges for this day (supports multiple ranges like 09:00-13:00 + 14:00-18:00)
+          const ranges = normalizeToRanges(dayConfig);
           
-          const dayEndTime = new Date(currentDate);
-          dayEndTime.setHours(parseInt(dayEndParts[0]), parseInt(dayEndParts[1]), 0, 0);
-          
-          // LOG: Verify timezone interpretation
-          if (theoreticalSlots.length === 0) {
-            console.log(`\n🔍 [SLOT GENERATION DEBUG] First slot created:`);
-            console.log(`   📅 Date: ${currentDate.toISOString().split('T')[0]}`);
-            console.log(`   🕐 Working hours: ${dayConfig.start} - ${dayConfig.end}`);
-            console.log(`   🌍 Timezone setting: ${timezone || 'Europe/Rome'}`);
-            console.log(`   📍 Slot Start (UTC): ${currentSlotTime.toISOString()}`);
-            console.log(`   🌐 Slot Start (Local): ${currentSlotTime.toLocaleString('it-IT', { timeZone: timezone || 'Europe/Rome' })}`);
-          }
-
-          // Generate slots from start to end of the day
-          while (currentSlotTime < dayEndTime) {
-            const slotEnd = new Date(currentSlotTime);
-            slotEnd.setMinutes(slotEnd.getMinutes() + appointmentDuration);
+          // Generate slots for each time range
+          for (const range of ranges) {
+            const dayStartParts = range.start.split(':');
+            const dayEndParts = range.end.split(':');
+            let currentSlotTime = new Date(currentDate);
+            currentSlotTime.setHours(parseInt(dayStartParts[0]), parseInt(dayStartParts[1]), 0, 0);
             
-            if (slotEnd <= dayEndTime) {
-              theoreticalSlots.push({
-                start: new Date(currentSlotTime),
-                end: slotEnd
-              });
+            const dayEndTime = new Date(currentDate);
+            dayEndTime.setHours(parseInt(dayEndParts[0]), parseInt(dayEndParts[1]), 0, 0);
+            
+            // LOG: Verify timezone interpretation (only for first slot)
+            if (theoreticalSlots.length === 0) {
+              console.log(`\n🔍 [SLOT GENERATION DEBUG] First slot created:`);
+              console.log(`   📅 Date: ${currentDate.toISOString().split('T')[0]}`);
+              console.log(`   🕐 Working hours range: ${range.start} - ${range.end}`);
+              console.log(`   📊 Total ranges for day: ${ranges.length}`);
+              console.log(`   🌍 Timezone setting: ${timezone || 'Europe/Rome'}`);
+              console.log(`   📍 Slot Start (UTC): ${currentSlotTime.toISOString()}`);
+              console.log(`   🌐 Slot Start (Local): ${currentSlotTime.toLocaleString('it-IT', { timeZone: timezone || 'Europe/Rome' })}`);
             }
-            
-            currentSlotTime.setMinutes(currentSlotTime.getMinutes() + appointmentDuration);
+
+            // Generate slots from start to end of this range
+            while (currentSlotTime < dayEndTime) {
+              const slotEnd = new Date(currentSlotTime);
+              slotEnd.setMinutes(slotEnd.getMinutes() + appointmentDuration);
+              
+              if (slotEnd <= dayEndTime) {
+                theoreticalSlots.push({
+                  start: new Date(currentSlotTime),
+                  end: slotEnd
+                });
+              }
+              
+              currentSlotTime.setMinutes(currentSlotTime.getMinutes() + appointmentDuration);
+            }
           }
         }
 
