@@ -472,11 +472,13 @@ export class PublerService {
     let apiState: string | number;
     
     if (publerState === 'publish_now') {
-      // Simulate immediate publish by scheduling 1 minute from now
-      const publishTime = new Date(Date.now() + 60 * 1000); // NOW + 60 seconds
+      // Simulate immediate publish by scheduling 3 minutes from now
+      // IMPORTANT: Using 180 seconds (not 60) to avoid Publer's internal race condition
+      // that causes "undefined method count for nil" when scheduled_at is too close to NOW
+      const publishTime = new Date(Date.now() + 180 * 1000); // NOW + 3 minutes
       scheduledAtValue = publishTime.toISOString();
       apiState = 'scheduled';
-      console.log('[PUBLER] Simulating publish_now with scheduled_at:', scheduledAtValue);
+      console.log('[PUBLER] Simulating publish_now with scheduled_at:', scheduledAtValue, '(+3 min)');
     } else if (publerState === 'draft') {
       apiState = 1; // Draft uses numeric 1
     } else {
@@ -515,7 +517,7 @@ export class PublerService {
     // Using /posts/schedule with state: "publish_now" works correctly for immediate publishing
     const endpoint = `${PUBLER_BASE_URL}/posts/schedule`;
     
-    console.log('[PUBLER] Using endpoint:', endpoint, '(state:', publerState, ')');
+    console.log('[PUBLER] Using endpoint:', endpoint, '(api_state:', apiState, ')');
 
     const response = await fetch(endpoint, {
       method: 'POST',
