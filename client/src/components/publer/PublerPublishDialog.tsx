@@ -455,7 +455,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
             </AlertDescription>
           </Alert>
         ) : (
-          <ScrollArea className="flex-1 pr-4 max-h-[60vh]">
+          <div className="overflow-y-auto pr-4" style={{ maxHeight: '60vh' }}>
             <div className="space-y-6 py-4 pb-8">
               {post && (
                 <div className="p-3 rounded-lg bg-muted/50">
@@ -708,7 +708,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         <DialogFooter className="mt-4">
