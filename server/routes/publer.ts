@@ -237,7 +237,7 @@ router.post('/publish', authenticateToken, requireRole('consultant'), async (req
   }
 });
 
-router.get('/media-proxy', authenticateToken, async (req: AuthRequest, res) => {
+router.get('/media-proxy', async (req, res) => {
   try {
     const { url } = req.query;
     
