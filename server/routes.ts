@@ -12405,10 +12405,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.use("/api/instagram", instagramOAuthRouter); // OAuth flow endpoints
   app.use("/api/consultant/agents", agentInstagramRouter); // Per-agent Instagram config
 
-  // Twitter/X Integration routes
+  // Twitter/X Integration routes (order matters: more specific paths first)
   app.use("/api/twitter/webhook", twitterWebhookRouter); // Public webhook endpoints
+  app.use("/api/twitter/oauth", twitterOAuthRouter); // OAuth flow endpoints (before /api/twitter)
   app.use("/api/twitter", twitterConfigRouter); // Authenticated config endpoints
-  app.use("/api/twitter/oauth", twitterOAuthRouter); // OAuth flow endpoints
 
   // Lead Import routes (Excel/CSV/Google Sheets import)
   app.use("/api", leadImportRouter);
