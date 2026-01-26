@@ -88,13 +88,14 @@ function getContentType(
   const provider = normalizeProvider(platform);
   
   // Instagram NEVER supports 'status' - always requires media
+  // IMPORTANT: Publer API for Instagram uses "post" type, NOT "photo"
   if (provider === 'instagram') {
     if (!hasMedia) {
       throw new Error('Instagram richiede almeno un\'immagine o video. Impossibile pubblicare solo testo.');
     }
     if (mediaType === 'video') return 'video';
     if (mediaCount && mediaCount > 1) return 'carousel';
-    return 'photo';
+    return 'post'; // Instagram API uses 'post' not 'photo'
   }
   
   // Pinterest, YouTube, TikTok don't support text-only
