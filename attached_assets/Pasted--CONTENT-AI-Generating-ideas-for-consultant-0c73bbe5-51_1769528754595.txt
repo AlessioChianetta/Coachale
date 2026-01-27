@@ -1,0 +1,63 @@
+🤖 [CONTENT-AI] Generating ideas for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (mediaType: photo, copyType: long)
+[CONTENT-AI DEBUG] ========================================
+[CONTENT-AI DEBUG] Generation Parameters:
+[CONTENT-AI DEBUG]   copyType: "long"
+[CONTENT-AI DEBUG]   mediaType: "photo"
+[CONTENT-AI DEBUG]   charLimit: 2200
+[CONTENT-AI DEBUG]   postSchema: "originale"
+[CONTENT-AI DEBUG]   schemaLabel: "Originale (Universale)"
+[CONTENT-AI DEBUG]   schemaStructure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA"
+[CONTENT-AI DEBUG]   targetPlatform: "instagram"
+[CONTENT-AI DEBUG] ----------------------------------------
+[CONTENT-AI DEBUG] Structured Content Instructions (first 2000 chars):
+[CONTENT-AI DEBUG] 
+🚨🚨🚨 REGOLA ASSOLUTA: SEGUI LO SCHEMA ESATTAMENTE 🚨🚨🚨
+
+📋 SCHEMA SELEZIONATO: "Originale (Universale)"
+📐 STRUTTURA OBBLIGATORIA: 1. Hook → 2. Chi-Cosa-Come → 3. Errore → 4. Soluzione → 5. Riprova Sociale → 6. CTA
+
+⚠️ DEVI seguire questa struttura A PENNELLO:
+- OGNI sezione dello schema DEVE essere presente nel tuo contenuto
+- L'ORDINE delle sezioni DEVE essere esattamente quello indicato
+- NON saltare sezioni, NON invertire l'ordine, NON aggiungere sezioni extra
+- Il contenuto di captionCopy DEVE seguire questa sequenza: Hook → Chi-Cosa-Come → Errore → Soluzione → Riprova Sociale → CTA
+
+**ISTRUZIONI DETTAGLIATE PER OGNI SEZIONE:**
+
+**1. Campo "hook" (sezione: Hook)**
+   - Cattura l'attenzione nei primi 3 secondi. Usa domanda provocatoria, statistica sorprendente, o affermazione controintuitiva. Deve fermare lo scroll.
+   - Breve ma incisivo, ogni parola conta
+
+**2. Campo "chicosacome" (sezione: Chi-Cosa-Come)**
+   - Sviluppa questa sezione in modo chiaro, coinvolgente e rilevante per il target.
+   - Sviluppa con storytelling, dettagli concreti, esempi reali
+
+**3. Campo "errore" (sezione: Errore)**
+   - Mostra l'errore comune che il target commette senza saperlo. Usa 'Molti pensano che... ma in realtà...'
+   - Sviluppa con storytelling, dettagli concreti, esempi reali
+
+**4. Campo "soluzione" (sezione: Soluzione)**
+   - Spiega come si risolve il problema. Rendi il processo credibile, semplice e raggiungibile.
+   - Sviluppa con storytelling, dettagli concreti, esempi reali
+
+**5. Campo "riprova_sociale" (sezione: Riprova Sociale)**
+   - Inserisci prove di credibilità: numeri di clienti, risultati ottenuti, testimonianze.
+   - Sviluppa con storytelling, dettagli concreti, esempi reali
+
+**6. Campo "cta" (sezione: CTA)**
+   - Invito all'azione chiaro e diretto. Dì esattamente cosa fare e cosa succede dopo.
+   - Breve ma incisivo, ogni parola conta
+
+**structuredContent** (OBBLIGATORIO - oggetto JSON):
+{
+  "type": "copy_long",
+  "copyVariant": "long",
+  "schemaUsed": 
+[CONTENT-AI DEBUG] ========================================
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: content-ideas)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is a client, checking their consultant content-ideas's settings
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
