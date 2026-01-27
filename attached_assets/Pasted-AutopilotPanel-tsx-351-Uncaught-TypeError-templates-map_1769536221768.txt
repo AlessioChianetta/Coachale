@@ -1,0 +1,49 @@
+AutopilotPanel.tsx:351 Uncaught TypeError: templates?.map is not a function
+    at AutopilotPanel (AutopilotPanel.tsx:351:29)
+
+AutopilotPanel.tsx:351 Uncaught TypeError: templates?.map is not a function
+    at AutopilotPanel (AutopilotPanel.tsx:351:29)
+injected.js:37 The above error occurred in the <AutopilotPanel> component:
+
+    at AutopilotPanel (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/components/content-studio/AutopilotPanel.tsx:114:3)
+    at div
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:230:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…runner/workspace/node_modules/.vite/deps/chunk-FBHUCI54.js?v=896162d6:61:7
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:140:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:117:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:230:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…runner/workspace/node_modules/.vite/deps/chunk-UT4SXT3E.js?v=896162d6:34:5
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-RRZFOOTW.js?v=896162d6:329:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-RRZFOOTW.js?v=896162d6:252:58
+    at Presence (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-7QGJQHFX.js?v=896162d6:24:11)
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-RRZFOOTW.js?v=896162d6:243:64
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:140:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:117:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:230:13
+    at https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-FBHUCI54.js?v=896162d6:260:22
+    at Presence (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-7QGJQHFX.js?v=896162d6:24:11)
+    at Provider (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:44:15)
+    at DialogPortal (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…nner/workspace/node_modules/.vite/deps/chunk-RRZFOOTW.js?v=896162d6:205:11)
+    at _c3 (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/components/ui/dialog.tsx:52:12)
+    at Provider (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:44:15)
+    at Dialog (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-RRZFOOTW.js?v=896162d6:145:5)
+    at div
+    at ContentStudioIdeas (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/pages/content-studio/ideas.tsx:419:20)
+    at AuthGuard (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=896162d6:226:16)
+    at Switch (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=896162d6:283:17)
+    at Suspense
+    at Router (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/App.tsx?v=zwdzCvIE2Ksb5q-kotrQC:304:35)
+    at Provider (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=896162d6:44:15)
+    at TooltipProvider (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=896162d6:158:5)
+    at TourProvider (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=896162d6:3096:3)
+    at V (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=896162d6:44:25)
+    at J (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=896162d6:42:18)
+    at App (https://8efb43f7-2a88-4580-9854-494e73fae1f5-00-2ti9gvr7z7b1x.spock.replit.dev/src/App.tsx?v=zwdzCvIE2Ksb5q-kotrQC:1914:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=896162d6:9129 Uncaught TypeError: templates?.map is not a function
+    at AutopilotPanel (AutopilotPanel.tsx:351:29)

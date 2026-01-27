@@ -125,7 +125,8 @@ function AutopilotPanel({
       if (!response.ok) {
         return [];
       }
-      return response.json();
+      const json = await response.json();
+      return json.data || [];
     },
   });
 
