@@ -93,9 +93,10 @@ const COPY_TYPES = [
 ];
 
 const POST_CATEGORIES = [
-  { value: "ads", label: "Ads/Promozionale", icon: "📢" },
-  { value: "valore", label: "Valore/Educativo", icon: "📚" },
-  { value: "altri", label: "Altri", icon: "✨" },
+  { value: "ads", label: "Inserzioni (Ads)", icon: "📢" },
+  { value: "valore", label: "Post di Valore", icon: "📚" },
+  { value: "formazione", label: "Formazione", icon: "🎓" },
+  { value: "altri", label: "Altri Post", icon: "✨" },
 ];
 
 const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: string; structure: string; description: string }>>> = {
@@ -120,6 +121,14 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
       { value: "behind_scenes", label: "Behind the Scenes", structure: "Cosa stai facendo|Perché|Cosa hai imparato|CTA", description: "Umano, fidelizza" },
       { value: "story_fallimento", label: "Story: Fallimento → Lezione → Regola", structure: "Errore|Costo|Cosa hai cambiato|Regola", description: "Connessione + autorevolezza" },
     ],
+    formazione: [
+      { value: "tutorial_step", label: "Tutorial Step-by-Step", structure: "Obiettivo|Prerequisiti|Step 1|Step 2|Step 3|Step 4|Step 5|Risultato atteso|CTA", description: "Guida pratica completa" },
+      { value: "pillola_formativa", label: "Pillola Formativa", structure: "Concetto chiave|Perché è importante|Come applicarlo|Esempio pratico|Esercizio|CTA", description: "Micro-lezione veloce" },
+      { value: "errori_comuni", label: "Errori Comuni + Correzione", structure: "Errore #1|Perché è sbagliato|Correzione|Errore #2|Perché è sbagliato|Correzione|Errore #3|Perché è sbagliato|Correzione|CTA", description: "Impara dagli errori" },
+      { value: "quiz_domanda", label: "Quiz/Domanda Interattiva", structure: "Domanda|Opzione A|Opzione B|Opzione C|Risposta corretta|Spiegazione|CTA", description: "Coinvolgimento attivo" },
+      { value: "mini_lezione", label: "Mini-Lezione Completa", structure: "Titolo lezione|Introduzione|Teoria|Esempio 1|Esempio 2|Esercizio pratico|Recap|CTA", description: "Formazione strutturata" },
+      { value: "faq_format", label: "FAQ Format", structure: "Domanda frequente|Risposta breve|Approfondimento|Esempio|Risorse|CTA", description: "Risponde ai dubbi" },
+    ],
   },
   x: {
     ads: [
@@ -140,6 +149,12 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
       { value: "build_public", label: "Build in Public", structure: "Cosa hai fatto oggi|Cosa hai imparato|Prossima mossa", description: "Community e consistenza" },
       { value: "qa_prompt", label: "Q&A Prompt", structure: "Rispondo a domande su X...", description: "Genera conversazioni" },
     ],
+    formazione: [
+      { value: "thread_tutorial", label: "Thread Tutorial", structure: "Hook|Cosa imparerai|Step 1|Step 2|Step 3|Step 4|Step 5|Recap finale|CTA", description: "Thread formativo" },
+      { value: "pillola_tweet", label: "Pillola in 1 Tweet", structure: "Concetto|Perché conta|Come fare|CTA", description: "Ultra-compatto" },
+      { value: "errore_fix", label: "Errore → Fix", structure: "Errore comune|Soluzione in 3 punti|CTA", description: "Problema-soluzione rapido" },
+      { value: "tip_giornaliero", label: "Tip del Giorno", structure: "Tip|Esempio|Applicazione|CTA", description: "Valore quotidiano" },
+    ],
   },
   linkedin: {
     ads: [
@@ -157,12 +172,19 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
       { value: "opinion_dati", label: "Opinion + Dati", structure: "Tesi|Dato/prova|Implicazione|Cosa fare|CTA", description: "Per consulenza" },
     ],
     altri: [],
+    formazione: [
+      { value: "corso_carousel", label: "Mini-Corso Carousel", structure: "Titolo corso|Obiettivo|Lezione 1|Lezione 2|Lezione 3|Lezione 4|Lezione 5|Esercizio|Risorse|CTA", description: "Corso in slide" },
+      { value: "case_formativo", label: "Case Study Formativo", structure: "Situazione iniziale|Problema|Analisi|Soluzione applicata|Risultati|Lezioni apprese|Come replicare|CTA", description: "Impara dal caso reale" },
+      { value: "framework_professionale", label: "Framework Professionale", structure: "Nome framework|Quando usarlo|Passo 1|Passo 2|Passo 3|Passo 4|Esempio applicato|Template|CTA", description: "Metodo strutturato" },
+      { value: "skill_breakdown", label: "Skill Breakdown", structure: "Skill da sviluppare|Perché è cruciale|Componente 1|Componente 2|Componente 3|Come praticare|Risorse|CTA", description: "Scomponi le competenze" },
+      { value: "mentor_insight", label: "Mentor Insight", structure: "Lezione appresa|Contesto|Cosa facevo prima|Cosa faccio ora|Risultato|Consiglio|CTA", description: "Saggezza professionale" },
+    ],
   },
 };
 
 interface AutopilotPanelProps {
   targetPlatform?: "instagram" | "x" | "linkedin";
-  postCategory?: "ads" | "valore" | "altri";
+  postCategory?: "ads" | "valore" | "formazione" | "altri";
   postSchema?: string;
   writingStyle?: string;
   customInstructions?: string;
@@ -203,7 +225,7 @@ interface DayConfig {
   id: string;
   date: string;
   platform: "instagram" | "x" | "linkedin";
-  category: "ads" | "valore" | "altri";
+  category: "ads" | "valore" | "formazione" | "altri";
   schema: string;
   writingStyle: string;
   mediaType: string;
@@ -225,7 +247,7 @@ function AutopilotPanel({
   const today = new Date().toISOString().split("T")[0];
 
   const [localPlatforms, setLocalPlatforms] = useState<("instagram" | "x" | "linkedin")[]>([targetPlatform || "instagram"]);
-  const [localCategory, setLocalCategory] = useState<"ads" | "valore" | "altri">(postCategory || "valore");
+  const [localCategory, setLocalCategory] = useState<"ads" | "valore" | "formazione" | "altri">(postCategory || "valore");
   const [localSchema, setLocalSchema] = useState(postSchema || "originale");
   const [localWritingStyle, setLocalWritingStyle] = useState(writingStyle || "default");
   const [localCustomInstructions, setLocalCustomInstructions] = useState(customInstructions || "");
@@ -941,7 +963,7 @@ function AutopilotPanel({
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
                       className={`flex items-center gap-2 ${isSelected ? "bg-blue-600 hover:bg-blue-700" : ""}`}
-                      onClick={() => setLocalCategory(cat.value as "ads" | "valore" | "altri")}
+                      onClick={() => setLocalCategory(cat.value as "ads" | "valore" | "formazione" | "altri")}
                     >
                       <span>{cat.icon}</span>
                       <span className="text-xs">{cat.label}</span>
