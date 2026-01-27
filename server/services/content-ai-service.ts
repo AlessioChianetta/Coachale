@@ -1012,70 +1012,86 @@ Scrivi come se stessi parlando a un amico. Copy MAGNETICO, impossibile smettere 
 
 === 6 REGOLE D'ORO ===
 1. STORYTELLING PERSONALE: Racconta aneddoti veri, errori, scoperte. MAI parlare in astratto.
-2. DIALOGO INTERNO: Inserisci pensieri tra virgolette ("E io ho pensato: cavolo, è vero!")
-3. FRASI ULTRA-BREVI: 3-8 parole max. "SBAGLIATO.", "Esatto.", "Ecco il punto."
-4. PATTERN INTERRUPT: Frasi che spezzano il ritmo. "Ma aspetta.", "Fermati un secondo."
-5. DOMANDE DIRETTE: "Sai qual è la parte migliore?", "E indovina cosa è successo?"
-6. RIPETIZIONE STRATEGICA: Ribadisci i concetti chiave 2-3 volte in modi diversi
+2. DIALOGO INTERNO: Inserisci pensieri/obiezioni tra virgolette ("Ma se le cose andassero male?")
+3. UNA FRASE PER RIGA: Ogni frase va a capo. Alcune corte (3 parole), altre medie (fino a 15). Mai paragrafi.
+4. PATTERN INTERRUPT: "Pensaci un secondo.", "Fermati un istante.", "Sbagliato."
+5. DOMANDE RETORICHE: "Perché?", "E sai cosa?", "Sei pronto?"
+6. ANALOGIE CONCRETE: Spiega concetti con paragoni reali (es: "Un ingegnere non spera che il ponte regga. Lo progetta.")
 
 === STRUTTURA ===
 - HOOK: Inizia con qualcosa di personale/inaspettato (NON "Oggi parliamo di...")
-- BODY: Racconta una storia o un'esperienza. Usa → per elenchi brevi.
+- BODY: Racconta una storia o un'esperienza. Usa → per elenchi brevi (max 3-4 punti).
 - CLOSE: Rilancia il messaggio chiave con CTA
 
 === FORMATO OBBLIGATORIO ===
 - OGNI frase su riga separata (vai a capo con \\n dopo ogni frase)
-- Usa → per mini-elenchi (non elenchi puntati)
+- Le frasi possono variare: alcune brevi (3-5 parole), altre medie (10-15 parole)
+- Usa → per mini-elenchi (non elenchi puntati tradizionali)
 - Emoji minimal: solo ✅ e → quando servono
 
 === ESEMPIO PERFETTO DA SEGUIRE ===
-Più lead.
-Non dovrebbero significare più problemi.
-Ma spesso lo sono.
+C'è una cosa che devi sapere su di me.
 
-Fermati un secondo.
-Guarda la tua agenda.
-Guarda il tuo team.
-Siete sommersi?
+Prima di occuparmi di questo settore, facevo tutt'altro.
 
-Le notifiche non smettono mai.
-WhatsApp scoppia.
-Instagram è un caos.
+Ed è proprio lì che è nato tutto.
 
-E sai cosa?
-Questo non è scalare.
-Questo è affogare.
+Mi sono accorto che la maggior parte delle persone gestisce questo aspetto "a sentimento".
 
-Molti pensano di dover assumere.
-"Serve un altro commerciale."
-"Serve un nuovo segretario."
+Sperano che le cose vadano bene.
+
+Sperano che la scelta fatta sia quella giusta.
+
+"E se invece di sperare, usassimo la logica?"
+
+Ecco perché è nata la mia attività.
+
+Non sono qui per venderti sogni o formule magiche.
+
 Sbagliato.
 
-L'hiring lineare è una trappola.
-Più persone uguale più costi.
-I margini si stringono.
-Il caos aumenta.
+Sono qui per darti un sistema replicabile e misurabile.
 
-Ecco il punto.
-Esiste una soluzione diversa.
-Non è un semplice chatbot.
-È un'intelligenza istruita.
+Pensaci un secondo.
 
-Funziona davvero?
-Esatto.
-Le metriche non mentono.
+Se il successo dipendesse dalla fortuna, chi vince alla lotteria resterebbe ricco per sempre.
 
-Vuoi liberare il tuo tempo?
-Inizia oggi.
+Invece, le statistiche dicono che l'80% torna al punto di partenza.
+
+Perché?
+
+Perché non hanno un sistema.
+
+→ La fortuna è un'anomalia, non una strategia.
+
+→ Un sistema solido produce risultati prevedibili.
+
+→ La logica batte l'azzardo ogni giorno.
+
+Fermati un istante.
+
+"Ma se le cose andassero male?"
+
+Vedi, un ingegnere non spera che il ponte regga.
+
+Lo progetta calcolando ogni variabile.
+
+Noi facciamo lo stesso.
+
+Non lasciamo spazio alle emozioni o ai "sentito dire".
+
+Misuriamo, analizziamo e ottimizziamo.
+
+Sei pronto a smettere di scommettere sul tuo futuro?
+
 Clicca sul link in bio. →
 
 === VIETATO ASSOLUTAMENTE ===
 ❌ Iniziare con "Oggi parliamo di..." o "In questo post..."
-❌ Frasi lunghe (più di 10 parole)
-❌ Paragrafi discorsivi
+❌ Paragrafi discorsivi (più frasi sulla stessa riga)
 ❌ Tono formale o accademico
 ❌ Elencare fatti senza storytelling
-❌ Elenchi puntati tradizionali`
+❌ Elenchi puntati tradizionali (usa → invece)`
       },
       direct: {
         name: "Diretto",
