@@ -21,6 +21,7 @@ import fsPromises from "fs/promises";
 import path from "path";
 import { upload } from "../middleware/upload";
 import { extractTextFromFile } from "../services/document-processor";
+import { generateAutopilotBatch, AutopilotConfig } from "../services/content-autopilot-service";
 
 const router = Router();
 
@@ -2846,6 +2847,49 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
       success: false,
       error: error.message || "Failed to generate brand voice"
     });
+  }
+});
+
+// ============================================================
+// CONTENT AUTOPILOT - Batch generation with SSE progress
+// ============================================================
+
+router.post("/autopilot/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { startDate, endDate, platforms } = req.body;
+    
+    if (!startDate || !endDate || !platforms) {
+      return res.status(400).json({ error: "Missing required fields: startDate, endDate, platforms" });
+    }
+    
+    // Setup SSE
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+    
+    const config: AutopilotConfig = {
+      consultantId: user.id,
+      startDate,
+      endDate,
+      platforms,
+    };
+    
+    const result = await generateAutopilotBatch(config, res);
+    
+    res.write(`data: ${JSON.stringify({ type: "complete", ...result })}\n\n`);
+    res.end();
+  } catch (error: any) {
+    console.error("[AUTOPILOT ENDPOINT] Error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.write(`data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`);
+      res.end();
+    }
   }
 });
 

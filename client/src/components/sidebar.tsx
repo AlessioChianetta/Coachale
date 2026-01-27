@@ -51,6 +51,7 @@ import {
   LayoutGrid,
   PenLine,
   CreditCard,
+  Rocket,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -145,6 +146,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid, color: "text-purple-500" },
       { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb, color: "text-amber-500", badge: "AI" },
       { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine, color: "text-blue-500" },
+      { name: "Autopilot", href: "/consultant/content-studio/autopilot", icon: Rocket, color: "text-indigo-500", badge: "AI" },
+      { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar, color: "text-orange-500" },
       { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette, color: "text-violet-500" },
     ]
   },

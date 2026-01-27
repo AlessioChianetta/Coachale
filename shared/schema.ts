@@ -8218,6 +8218,11 @@ export const brandAssets = pgTable("brand_assets", {
   linkedinPage: varchar("linkedin_page", { length: 200 }),
   chiSono: text("chi_sono"),
   noteForAi: text("note_for_ai"),
+  postingSchedule: jsonb("posting_schedule").$type<{
+    instagram?: { times: string[]; writingStyle: string };
+    x?: { times: string[]; writingStyle: string };
+    linkedin?: { times: string[]; writingStyle: string };
+  }>().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

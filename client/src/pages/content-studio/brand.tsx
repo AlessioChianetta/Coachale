@@ -17,6 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Palette,
   Upload,
   X,
@@ -33,6 +40,8 @@ import {
   ChevronLeft,
   Check,
   Eye,
+  Clock,
+  Calendar,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -56,6 +65,17 @@ interface GeneratedBrandVoice {
   keywords: string[];
 }
 
+interface PostingSchedulePlatform {
+  times: string[];
+  writingStyle: string;
+}
+
+interface PostingSchedule {
+  instagram?: PostingSchedulePlatform;
+  x?: PostingSchedulePlatform;
+  linkedin?: PostingSchedulePlatform;
+}
+
 interface BrandAssets {
   id?: string;
   primaryColor?: string;
@@ -72,6 +92,7 @@ interface BrandAssets {
   logoUrl?: string;
   chiSono?: string;
   noteForAi?: string;
+  postingSchedule?: PostingSchedule;
 }
 
 export default function ContentStudioBrand() {
@@ -99,6 +120,20 @@ export default function ContentStudioBrand() {
     linkedin: "",
     twitter: "",
     youtube: "",
+  });
+
+  const writingStyleOptions = [
+    { value: "default", label: "Default" },
+    { value: "conversational", label: "Conversational" },
+    { value: "diretto", label: "Diretto" },
+    { value: "copy_persuasivo", label: "Copy Persuasivo" },
+    { value: "personalizzato", label: "Personalizzato" },
+  ];
+
+  const [postingSchedule, setPostingSchedule] = useState<PostingSchedule>({
+    instagram: { times: ["09:00", "18:00"], writingStyle: "default" },
+    x: { times: ["10:00", "17:00"], writingStyle: "default" },
+    linkedin: { times: ["08:00", "12:00"], writingStyle: "default" },
   });
 
   // Brand Voice Wizard state
@@ -281,6 +316,13 @@ export default function ContentStudioBrand() {
         twitter: data.twitterHandle || "",
         youtube: data.youtubeHandle || "",
       });
+      if (data.postingSchedule) {
+        setPostingSchedule({
+          instagram: data.postingSchedule.instagram || { times: ["09:00", "18:00"], writingStyle: "default" },
+          x: data.postingSchedule.x || { times: ["10:00", "17:00"], writingStyle: "default" },
+          linkedin: data.postingSchedule.linkedin || { times: ["08:00", "12:00"], writingStyle: "default" },
+        });
+      }
     }
   }, [brandResponse]);
 
@@ -353,6 +395,30 @@ export default function ContentStudioBrand() {
       linkedinHandle: socialHandles.linkedin,
       twitterHandle: socialHandles.twitter,
       youtubeHandle: socialHandles.youtube,
+      postingSchedule,
+    });
+  };
+
+  const updatePlatformSchedule = (
+    platform: "instagram" | "x" | "linkedin",
+    field: "times" | "writingStyle",
+    value: string[] | string,
+    timeIndex?: number
+  ) => {
+    setPostingSchedule((prev) => {
+      const current = prev[platform] || { times: ["", ""], writingStyle: "default" };
+      if (field === "times" && typeof timeIndex === "number") {
+        const newTimes = [...current.times];
+        newTimes[timeIndex] = value as string;
+        return {
+          ...prev,
+          [platform]: { ...current, times: newTimes },
+        };
+      }
+      return {
+        ...prev,
+        [platform]: { ...current, [field]: value },
+      };
     });
   };
 
@@ -762,6 +828,168 @@ export default function ContentStudioBrand() {
                       }
                       placeholder="TuoCanale"
                     />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-teal-200 dark:border-teal-800 bg-gradient-to-br from-teal-50/50 to-transparent dark:from-teal-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900">
+                    <Calendar className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  Posting Schedule
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Configura gli orari di pubblicazione e lo stile di scrittura per ogni piattaforma social.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <Instagram className="h-5 w-5 text-pink-500" />
+                    <span className="font-medium">Instagram</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Orario Post 1
+                      </Label>
+                      <Input
+                        type="time"
+                        value={postingSchedule.instagram?.times?.[0] || "09:00"}
+                        onChange={(e) => updatePlatformSchedule("instagram", "times", e.target.value, 0)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Orario Post 2
+                      </Label>
+                      <Input
+                        type="time"
+                        value={postingSchedule.instagram?.times?.[1] || "18:00"}
+                        onChange={(e) => updatePlatformSchedule("instagram", "times", e.target.value, 1)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Stile di Scrittura</Label>
+                      <Select
+                        value={postingSchedule.instagram?.writingStyle || "default"}
+                        onValueChange={(value) => updatePlatformSchedule("instagram", "writingStyle", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona stile" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {writingStyleOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <Twitter className="h-5 w-5 text-sky-500" />
+                    <span className="font-medium">X (Twitter)</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Orario Post 1
+                      </Label>
+                      <Input
+                        type="time"
+                        value={postingSchedule.x?.times?.[0] || "10:00"}
+                        onChange={(e) => updatePlatformSchedule("x", "times", e.target.value, 0)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Orario Post 2
+                      </Label>
+                      <Input
+                        type="time"
+                        value={postingSchedule.x?.times?.[1] || "17:00"}
+                        onChange={(e) => updatePlatformSchedule("x", "times", e.target.value, 1)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Stile di Scrittura</Label>
+                      <Select
+                        value={postingSchedule.x?.writingStyle || "default"}
+                        onValueChange={(value) => updatePlatformSchedule("x", "writingStyle", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona stile" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {writingStyleOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <Linkedin className="h-5 w-5 text-blue-700" />
+                    <span className="font-medium">LinkedIn</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Orario Post 1
+                      </Label>
+                      <Input
+                        type="time"
+                        value={postingSchedule.linkedin?.times?.[0] || "08:00"}
+                        onChange={(e) => updatePlatformSchedule("linkedin", "times", e.target.value, 0)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Orario Post 2
+                      </Label>
+                      <Input
+                        type="time"
+                        value={postingSchedule.linkedin?.times?.[1] || "12:00"}
+                        onChange={(e) => updatePlatformSchedule("linkedin", "times", e.target.value, 1)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Stile di Scrittura</Label>
+                      <Select
+                        value={postingSchedule.linkedin?.writingStyle || "default"}
+                        onValueChange={(value) => updatePlatformSchedule("linkedin", "writingStyle", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona stile" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {writingStyleOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </CardContent>
