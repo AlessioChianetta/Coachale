@@ -93,6 +93,354 @@ export interface StructuredImageCopy {
 
 export type StructuredContent = StructuredCopyShort | StructuredCopyLong | StructuredVideoScript | StructuredImageCopy;
 
+const SECTION_GUIDELINES: Record<string, { instruction: string; style: "narrative" | "concise" | "list" }> = {
+  "hook": {
+    instruction: "Cattura l'attenzione nei primi 3 secondi. Usa domanda provocatoria, statistica sorprendente, o affermazione controintuitiva. Deve fermare lo scroll.",
+    style: "concise"
+  },
+  "hot_take": {
+    instruction: "Afferma qualcosa che va contro il pensiero comune. Deve far pensare 'Non sono d'accordo!' o 'Finalmente qualcuno lo dice!'",
+    style: "concise"
+  },
+  "opinione": {
+    instruction: "Esprimi un punto di vista deciso e potenzialmente controverso. Prendi posizione netta.",
+    style: "concise"
+  },
+  "mito": {
+    instruction: "Presenta una credenza comune nel settore che in realtà è falsa o limitante.",
+    style: "concise"
+  },
+  "pain": {
+    instruction: "Descrivi il problema specifico che il target vive quotidianamente. Usa dettagli concreti, emozioni negative (frustrazione, ansia, stress). Il lettore deve pensare 'Parla proprio di me!'",
+    style: "narrative"
+  },
+  "problema": {
+    instruction: "Esponi il problema centrale con esempi reali e conseguenze tangibili. Mostra empatia.",
+    style: "narrative"
+  },
+  "errore": {
+    instruction: "Mostra l'errore comune che il target commette senza saperlo. Usa 'Molti pensano che... ma in realtà...'",
+    style: "narrative"
+  },
+  "costo": {
+    instruction: "Quantifica il costo del problema: tempo perso, soldi bruciati, opportunità mancate.",
+    style: "narrative"
+  },
+  "agitazione": {
+    instruction: "Amplifica il dolore: cosa perdono se non agiscono? Cosa rischiano? Cosa lasciano sul tavolo?",
+    style: "narrative"
+  },
+  "obiezione": {
+    instruction: "Presenta l'obiezione più comune del target, formulata esattamente come la penserebbe lui.",
+    style: "narrative"
+  },
+  "cosa_odiavo": {
+    instruction: "Racconta cosa ti frustrava prima di trovare la soluzione. Sii autentico sulla tua esperienza.",
+    style: "narrative"
+  },
+  "prima": {
+    instruction: "Dipingi la situazione attuale del target: problemi quotidiani, frustrazioni, cosa non funziona. Crea empatia.",
+    style: "narrative"
+  },
+  "punto_di_partenza": {
+    instruction: "Descrivi da dove è partito il cliente: situazione iniziale, sfide, limiti.",
+    style: "narrative"
+  },
+  "situazione": {
+    instruction: "Presenta il contesto iniziale: chi, dove, quando, cosa stava succedendo.",
+    style: "narrative"
+  },
+  "contesto": {
+    instruction: "Fornisci il background necessario per capire il resto. Conciso ma completo.",
+    style: "narrative"
+  },
+  "dopo": {
+    instruction: "Mostra il risultato ideale con dettagli sensoriali: come si sente, cosa fa di diverso, quali risultati ottiene.",
+    style: "narrative"
+  },
+  "risultato": {
+    instruction: "Presenta i risultati concreti: numeri specifici, trasformazioni misurabili, benefici tangibili.",
+    style: "narrative"
+  },
+  "benefit": {
+    instruction: "Presenta un vantaggio specifico e misurabile. Descrivi l'impatto concreto sulla vita/business.",
+    style: "narrative"
+  },
+  "soluzione": {
+    instruction: "Spiega come si risolve il problema. Rendi il processo credibile, semplice e raggiungibile.",
+    style: "narrative"
+  },
+  "ponte": {
+    instruction: "Collega il 'prima' al 'dopo'. Spiega il meccanismo che rende possibile la trasformazione.",
+    style: "narrative"
+  },
+  "nuovo_modo": {
+    instruction: "Presenta l'approccio alternativo. Differenzialo dai metodi tradizionali che non funzionano.",
+    style: "narrative"
+  },
+  "cosa_fare": {
+    instruction: "Dai indicazioni pratiche e actionable su cosa fare concretamente.",
+    style: "concise"
+  },
+  "confutazione": {
+    instruction: "Smonta l'obiezione con logica, prove concrete, esempi reali o testimonianze.",
+    style: "narrative"
+  },
+  "perche_falso": {
+    instruction: "Spiega perché il mito è sbagliato con fatti, dati o ragionamento logico.",
+    style: "narrative"
+  },
+  "regola_vera": {
+    instruction: "Presenta la verità che sostituisce il mito. Rendila memorabile e applicabile.",
+    style: "concise"
+  },
+  "cosa_ho_cambiato": {
+    instruction: "Descrivi il cambiamento specifico: azione, mentalità, processo.",
+    style: "narrative"
+  },
+  "come_farlo": {
+    instruction: "Spiega i passaggi pratici per replicare il risultato. Sii actionable.",
+    style: "concise"
+  },
+  "chi_cosa_come": {
+    instruction: "Spiega chi sei, cosa fai e come lo fai in modo unico. Differenziati dalla concorrenza.",
+    style: "narrative"
+  },
+  "chi_sono": {
+    instruction: "Presentati in modo autentico: chi sei, cosa fai, perché sei credibile.",
+    style: "narrative"
+  },
+  "riprova_sociale": {
+    instruction: "Inserisci prove di credibilità: numeri di clienti, risultati ottenuti, testimonianze.",
+    style: "narrative"
+  },
+  "prova": {
+    instruction: "Fornisci prove concrete: numeri, case study, screenshot, testimonianze verificabili.",
+    style: "concise"
+  },
+  "dimostrazione": {
+    instruction: "Mostra che funziona: esempio pratico, prima/dopo, demo del risultato.",
+    style: "narrative"
+  },
+  "esempio": {
+    instruction: "Illustra con un esempio concreto e specifico. Rendi tangibile il concetto.",
+    style: "narrative"
+  },
+  "caso_reale": {
+    instruction: "Racconta un caso reale: cliente, problema, processo, risultato.",
+    style: "narrative"
+  },
+  "step": {
+    instruction: "Descrivi questo passaggio in modo chiaro e actionable. Cosa fare e perché.",
+    style: "concise"
+  },
+  "leva": {
+    instruction: "Presenta una leva strategica chiave. Spiega cosa è e perché funziona.",
+    style: "concise"
+  },
+  "azioni": {
+    instruction: "Elenca le azioni concrete intraprese. Sii specifico.",
+    style: "list"
+  },
+  "ostacolo": {
+    instruction: "Presenta l'ostacolo incontrato: cosa ha reso difficile il percorso.",
+    style: "narrative"
+  },
+  "tensione": {
+    instruction: "Crea tensione narrativa: il momento critico, la sfida da superare.",
+    style: "narrative"
+  },
+  "decisione": {
+    instruction: "Racconta la scelta cruciale fatta. Cosa hai deciso e perché.",
+    style: "narrative"
+  },
+  "lezione": {
+    instruction: "Condividi l'insight chiave appreso. Rendilo memorabile e applicabile.",
+    style: "concise"
+  },
+  "regola": {
+    instruction: "Formula una regola chiara e memorabile che il lettore può applicare.",
+    style: "concise"
+  },
+  "cosa_ho_imparato": {
+    instruction: "Condividi l'apprendimento più importante. Sii genuino e specifico.",
+    style: "narrative"
+  },
+  "principio": {
+    instruction: "Enuncia un principio universale o una verità fondamentale del tuo campo.",
+    style: "concise"
+  },
+  "claim": {
+    instruction: "Fai un'affermazione forte e difendibile. Prendi posizione.",
+    style: "concise"
+  },
+  "offerta": {
+    instruction: "Presenta cosa offri in modo chiaro. Sottolinea il valore unico e cosa è incluso.",
+    style: "narrative"
+  },
+  "cosa_ottieni": {
+    instruction: "Elenca i benefici concreti che il cliente riceve. Sii specifico.",
+    style: "list"
+  },
+  "per_chi": {
+    instruction: "Specifica chi è il cliente ideale. Aiuta a pre-qualificare.",
+    style: "concise"
+  },
+  "bullet": {
+    instruction: "Presenta un beneficio chiave in modo conciso e d'impatto.",
+    style: "concise"
+  },
+  "titolo_asset": {
+    instruction: "Scrivi il titolo del lead magnet/risorsa in modo attraente e specifico.",
+    style: "concise"
+  },
+  "urgenza": {
+    instruction: "Crea scarsità legittima: posti limitati, deadline, bonus temporanei. Motiva ad agire ORA.",
+    style: "narrative"
+  },
+  "vincolo": {
+    instruction: "Presenta il limite: tempo, quantità, condizioni. Rendi credibile l'urgenza.",
+    style: "concise"
+  },
+  "cta": {
+    instruction: "Invito all'azione chiaro e diretto. Dì esattamente cosa fare e cosa succede dopo.",
+    style: "concise"
+  },
+  "cta_soft": {
+    instruction: "CTA morbida: invita a salvare, commentare, o riflettere. Non vendita diretta.",
+    style: "concise"
+  },
+  "domanda": {
+    instruction: "Poni una domanda che invita alla risposta/commento. Genera engagement.",
+    style: "concise"
+  },
+  "cosa_analizziamo": {
+    instruction: "Presenta cosa stai analizzando e perché è interessante/rilevante.",
+    style: "concise"
+  },
+  "cose_fatte_bene": {
+    instruction: "Evidenzia gli aspetti positivi con specifiche. Sii costruttivo.",
+    style: "list"
+  },
+  "da_migliorare": {
+    instruction: "Indica le aree di miglioramento con suggerimenti pratici.",
+    style: "list"
+  },
+  "punti_forti": {
+    instruction: "Elenca i punti di forza con esempi specifici.",
+    style: "list"
+  },
+  "template": {
+    instruction: "Fornisci un template pronto all'uso che il lettore può copiare.",
+    style: "concise"
+  },
+  "checklist": {
+    instruction: "Elenca i punti da verificare in modo chiaro e sequenziale.",
+    style: "list"
+  },
+  "punto": {
+    instruction: "Presenta un item della lista in modo chiaro e actionable.",
+    style: "concise"
+  },
+  "recap": {
+    instruction: "Riassumi i punti chiave in modo memorabile.",
+    style: "concise"
+  },
+  "cosa_hai_fatto": {
+    instruction: "Racconta cosa hai fatto oggi/di recente. Sii specifico e autentico.",
+    style: "narrative"
+  },
+  "prossima_mossa": {
+    instruction: "Condividi il prossimo step. Crea aspettativa.",
+    style: "concise"
+  },
+  "cosa_stai_facendo": {
+    instruction: "Descrivi l'attività in corso. Porta il lettore nel tuo processo.",
+    style: "narrative"
+  },
+  "perche": {
+    instruction: "Spiega la motivazione dietro la scelta o l'azione.",
+    style: "narrative"
+  },
+  "motivo": {
+    instruction: "Presenta un argomento a supporto della tua tesi. Sii specifico.",
+    style: "concise"
+  },
+  "mini_storia": {
+    instruction: "Racconta una breve storia esemplificativa. Usa personaggio, conflitto, risoluzione.",
+    style: "narrative"
+  },
+  "grafico_numero": {
+    instruction: "Presenta un dato numerico impattante che dimostra il risultato.",
+    style: "concise"
+  },
+  "condizione_vera": {
+    instruction: "Specifica quando/come la soluzione funziona davvero.",
+    style: "concise"
+  },
+  "promessa": {
+    instruction: "Fai una promessa chiara e specifica. Cosa otterrà il lettore?",
+    style: "concise"
+  },
+  "titolo": {
+    instruction: "Scrivi un titolo chiaro che prometta valore immediato. Usa numeri se possibile.",
+    style: "concise"
+  },
+  "framework": {
+    instruction: "Presenta il framework o metodo in modo strutturato e memorabile.",
+    style: "concise"
+  },
+  "applicazione": {
+    instruction: "Spiega come applicare concretamente il concetto nella pratica.",
+    style: "concise"
+  },
+  "quando_usarlo": {
+    instruction: "Specifica in quali situazioni usare questo template/metodo.",
+    style: "concise"
+  },
+  "obiettivo": {
+    instruction: "Definisci chiaramente l'obiettivo da raggiungere.",
+    style: "concise"
+  }
+};
+
+function getSectionGuideline(fieldName: string, sectionLabel: string): { instruction: string; style: string } {
+  const normalizedField = fieldName.toLowerCase().replace(/[_\d]+/g, '_').replace(/^_|_$/g, '');
+  const normalizedLabel = sectionLabel.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  
+  const searchTerms = [
+    normalizedField,
+    normalizedLabel,
+    ...normalizedField.split('_').filter(s => s.length > 2),
+    ...normalizedLabel.split('_').filter(s => s.length > 2)
+  ];
+  
+  for (const term of searchTerms) {
+    if (SECTION_GUIDELINES[term]) {
+      return SECTION_GUIDELINES[term];
+    }
+  }
+  
+  for (const key of Object.keys(SECTION_GUIDELINES)) {
+    for (const term of searchTerms) {
+      if (key.includes(term) || term.includes(key)) {
+        return SECTION_GUIDELINES[key];
+      }
+    }
+  }
+  
+  return {
+    instruction: "Sviluppa questa sezione in modo chiaro, coinvolgente e rilevante per il target.",
+    style: "narrative"
+  };
+}
+
+export { SECTION_GUIDELINES, getSectionGuideline };
+
 export interface ContentIdea {
   title: string;
   description: string;
@@ -706,17 +1054,22 @@ ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
           .replace(/^_|_$/g, '') || `section_${idx + 1}`;
       });
       
-      // Create detailed instructions for each section OUTSIDE the JSON
+      // Create detailed instructions for each section using SECTION_GUIDELINES
       const sectionInstructions = schemaParts.map((part, idx) => {
         const fieldName = fieldNames[idx];
-        if (isLongCopy) {
-          return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
-   - Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
-   - Usa frasi complete, storytelling, dettagli concreti, esempi reali`;
-        } else {
-          return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
-   - Conciso e diretto, ogni parola conta`;
-        }
+        const guideline = getSectionGuideline(fieldName, part);
+        
+        const styleNote = isLongCopy 
+          ? (guideline.style === "narrative" 
+              ? "Sviluppa con storytelling, dettagli concreti, esempi reali"
+              : guideline.style === "list"
+                ? "Usa elenco puntato chiaro e specifico"
+                : "Breve ma incisivo, ogni parola conta")
+          : "Conciso e diretto, massima densità informativa";
+        
+        return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
+   - ${guideline.instruction}
+   - ${styleNote}`;
       }).join("\n\n");
       
       // Simple JSON structure with placeholder descriptions

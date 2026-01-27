@@ -279,6 +279,113 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
   },
 };
 
+const SECTION_GUIDELINES_DISPLAY: Record<string, string> = {
+  "hook": "Cattura l'attenzione nei primi 3 secondi. Usa domanda provocatoria, statistica sorprendente, o affermazione controintuitiva.",
+  "hot_take": "Afferma qualcosa che va contro il pensiero comune. Deve far pensare 'Non sono d'accordo!' o 'Finalmente qualcuno lo dice!'",
+  "opinione": "Esprimi un punto di vista deciso e potenzialmente controverso. Prendi posizione netta.",
+  "mito": "Presenta una credenza comune nel settore che in realtà è falsa o limitante.",
+  "pain": "Descrivi il problema specifico che il target vive. Usa dettagli concreti e emozioni negative.",
+  "problema": "Esponi il problema centrale con esempi reali e conseguenze tangibili.",
+  "errore": "Mostra l'errore comune che il target commette senza saperlo.",
+  "costo": "Quantifica il costo del problema: tempo perso, soldi bruciati, opportunità mancate.",
+  "agitazione": "Amplifica il dolore: cosa perdono se non agiscono? Cosa rischiano?",
+  "obiezione": "Presenta l'obiezione più comune del target, formulata come la penserebbe lui.",
+  "cosa_odiavo": "Racconta cosa ti frustrava prima di trovare la soluzione. Sii autentico.",
+  "prima": "Dipingi la situazione attuale del target: problemi, frustrazioni, cosa non funziona.",
+  "punto_di_partenza": "Descrivi da dove è partito il cliente: situazione iniziale, sfide, limiti.",
+  "situazione": "Presenta il contesto iniziale: chi, dove, quando, cosa stava succedendo.",
+  "contesto": "Fornisci il background necessario per capire il resto.",
+  "dopo": "Mostra il risultato ideale: come si sente, cosa fa di diverso, quali risultati ottiene.",
+  "risultato": "Presenta i risultati concreti: numeri specifici, trasformazioni misurabili.",
+  "benefit": "Presenta un vantaggio specifico e misurabile. Descrivi l'impatto concreto.",
+  "soluzione": "Spiega come si risolve il problema. Rendi il processo credibile e raggiungibile.",
+  "ponte": "Collega il 'prima' al 'dopo'. Spiega il meccanismo della trasformazione.",
+  "nuovo_modo": "Presenta l'approccio alternativo. Differenzialo dai metodi tradizionali.",
+  "cosa_fare": "Dai indicazioni pratiche e actionable su cosa fare concretamente.",
+  "confutazione": "Smonta l'obiezione con logica, prove concrete, esempi reali.",
+  "perche_falso": "Spiega perché il mito è sbagliato con fatti, dati o ragionamento.",
+  "regola_vera": "Presenta la verità che sostituisce il mito. Rendila memorabile.",
+  "cosa_ho_cambiato": "Descrivi il cambiamento specifico: azione, mentalità, processo.",
+  "come_farlo": "Spiega i passaggi pratici per replicare il risultato.",
+  "chi_cosa_come": "Spiega chi sei, cosa fai e come lo fai in modo unico.",
+  "chi_sono": "Presentati in modo autentico: chi sei, cosa fai, perché sei credibile.",
+  "riprova_sociale": "Inserisci prove di credibilità: numeri, risultati, testimonianze.",
+  "prova": "Fornisci prove concrete: numeri, case study, testimonianze verificabili.",
+  "dimostrazione": "Mostra che funziona: esempio pratico, prima/dopo, demo del risultato.",
+  "esempio": "Illustra con un esempio concreto e specifico.",
+  "caso_reale": "Racconta un caso reale: cliente, problema, processo, risultato.",
+  "step": "Descrivi questo passaggio in modo chiaro e actionable.",
+  "leva": "Presenta una leva strategica chiave. Spiega cosa è e perché funziona.",
+  "azioni": "Elenca le azioni concrete intraprese. Sii specifico.",
+  "ostacolo": "Presenta l'ostacolo incontrato: cosa ha reso difficile il percorso.",
+  "tensione": "Crea tensione narrativa: il momento critico, la sfida da superare.",
+  "decisione": "Racconta la scelta cruciale fatta. Cosa hai deciso e perché.",
+  "lezione": "Condividi l'insight chiave appreso. Rendilo memorabile e applicabile.",
+  "regola": "Formula una regola chiara e memorabile che il lettore può applicare.",
+  "cosa_ho_imparato": "Condividi l'apprendimento più importante. Sii genuino.",
+  "principio": "Enuncia un principio universale o una verità del tuo campo.",
+  "claim": "Fai un'affermazione forte e difendibile. Prendi posizione.",
+  "offerta": "Presenta cosa offri in modo chiaro. Sottolinea il valore unico.",
+  "cosa_ottieni": "Elenca i benefici concreti che il cliente riceve.",
+  "per_chi": "Specifica chi è il cliente ideale. Aiuta a pre-qualificare.",
+  "bullet": "Presenta un beneficio chiave in modo conciso e d'impatto.",
+  "titolo_asset": "Scrivi il titolo del lead magnet/risorsa in modo attraente.",
+  "urgenza": "Crea scarsità legittima: posti limitati, deadline, bonus temporanei.",
+  "vincolo": "Presenta il limite: tempo, quantità, condizioni.",
+  "cta": "Invito all'azione chiaro e diretto. Dì cosa fare e cosa succede dopo.",
+  "cta_soft": "CTA morbida: invita a salvare, commentare, o riflettere.",
+  "domanda": "Poni una domanda che invita alla risposta/commento. Genera engagement.",
+  "cosa_analizziamo": "Presenta cosa stai analizzando e perché è rilevante.",
+  "cose_fatte_bene": "Evidenzia gli aspetti positivi con specifiche.",
+  "da_migliorare": "Indica le aree di miglioramento con suggerimenti pratici.",
+  "punti_forti": "Elenca i punti di forza con esempi specifici.",
+  "template": "Fornisci un template pronto all'uso che il lettore può copiare.",
+  "checklist": "Elenca i punti da verificare in modo chiaro e sequenziale.",
+  "punto": "Presenta un item della lista in modo chiaro e actionable.",
+  "recap": "Riassumi i punti chiave in modo memorabile.",
+  "cosa_hai_fatto": "Racconta cosa hai fatto oggi/di recente. Sii autentico.",
+  "prossima_mossa": "Condividi il prossimo step. Crea aspettativa.",
+  "cosa_stai_facendo": "Descrivi l'attività in corso. Porta il lettore nel tuo processo.",
+  "perche": "Spiega la motivazione dietro la scelta o l'azione.",
+  "motivo": "Presenta un argomento a supporto della tua tesi.",
+  "mini_storia": "Racconta una breve storia esemplificativa.",
+  "grafico_numero": "Presenta un dato numerico impattante.",
+  "condizione_vera": "Specifica quando/come la soluzione funziona davvero.",
+  "promessa": "Fai una promessa chiara e specifica. Cosa otterrà il lettore?",
+  "titolo": "Scrivi un titolo chiaro che prometta valore immediato.",
+  "framework": "Presenta il framework o metodo in modo strutturato.",
+  "applicazione": "Spiega come applicare concretamente il concetto.",
+  "quando_usarlo": "Specifica in quali situazioni usare questo template/metodo.",
+  "obiettivo": "Definisci chiaramente l'obiettivo da raggiungere."
+};
+
+function getSectionGuidelineDisplay(sectionLabel: string): string {
+  const normalizedLabel = sectionLabel.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .replace(/\d+/g, '');
+  
+  const searchTerms = [normalizedLabel, ...normalizedLabel.split('_').filter(s => s.length > 2)];
+  
+  for (const term of searchTerms) {
+    if (SECTION_GUIDELINES_DISPLAY[term]) {
+      return SECTION_GUIDELINES_DISPLAY[term];
+    }
+  }
+  
+  for (const key of Object.keys(SECTION_GUIDELINES_DISPLAY)) {
+    for (const term of searchTerms) {
+      if (key.includes(term) || term.includes(key)) {
+        return SECTION_GUIDELINES_DISPLAY[key];
+      }
+    }
+  }
+  
+  return "Sviluppa questa sezione in modo chiaro e coinvolgente.";
+}
+
 type HookType = "how-to" | "curiosità" | "numero" | "problema";
 
 function getHookType(hook: string): HookType {
@@ -352,6 +459,7 @@ export default function ContentStudioIdeas() {
   
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["all"]));
   const [viewingIdea, setViewingIdea] = useState<Idea | null>(null);
+  const [showSchemaInfoDialog, setShowSchemaInfoDialog] = useState(false);
   
   // Brand Voice & KB states for idea generation
   const [useBrandVoice, setUseBrandVoice] = useState(false);
@@ -1386,7 +1494,20 @@ export default function ContentStudioIdeas() {
                       {/* Schema Selection */}
                       {availableSchemas.length > 0 && (
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium">Schema del Post *</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium">Schema del Post *</Label>
+                            {selectedSchemaInfo && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowSchemaInfoDialog(true)}
+                                className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                              >
+                                <Eye className="h-3.5 w-3.5 mr-1" />
+                                Anteprima Struttura
+                              </Button>
+                            )}
+                          </div>
                           <div className="space-y-2">
                             {availableSchemas.map((schema) => {
                               const isSelected = postSchema === schema.value;
@@ -2152,6 +2273,46 @@ export default function ContentStudioIdeas() {
         </DialogContent>
       </Dialog>
 
+      {/* Schema Info Dialog */}
+      <Dialog open={showSchemaInfoDialog} onOpenChange={setShowSchemaInfoDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-indigo-500" />
+              Struttura Schema: {selectedSchemaInfo?.label}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSchemaInfo && (
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">{selectedSchemaInfo.description}</p>
+              <div className="space-y-3">
+                {selectedSchemaInfo.structure.split("|").map((section, idx) => {
+                  const instruction = getSectionGuidelineDisplay(section);
+                  return (
+                    <div key={idx} className="p-3 rounded-lg border bg-muted/30">
+                      <div className="flex items-start gap-3">
+                        <Badge variant="secondary" className="shrink-0 mt-0.5">
+                          {idx + 1}
+                        </Badge>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-foreground">{section}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{instruction}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground">
+                  L'AI seguirà questa struttura esattamente nell'ordine indicato, applicando le istruzioni specifiche per ogni sezione.
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showLevelsSuggestionDialog} onOpenChange={setShowLevelsSuggestionDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -2220,7 +2381,7 @@ export default function ContentStudioIdeas() {
             {generatedIdeas.map((idea, index) => {
               const copyLength = idea.copyContent?.length || 0;
               const platformLimits: Record<string, number> = { instagram: 2200, x: 280, linkedin: 3000 };
-              const charLimit = platformLimits[idea.targetPlatform || formData.targetPlatform || 'instagram'] || 2200;
+              const charLimit = platformLimits[idea.targetPlatform || targetPlatform || 'instagram'] || 2200;
               const charPercentage = Math.min((copyLength / charLimit) * 100, 100);
               const isOverLimit = copyLength > charLimit;
               
