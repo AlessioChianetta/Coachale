@@ -220,7 +220,7 @@ const PLATFORM_LIMITS = {
 const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: string; structure: string; description: string }>>> = {
   instagram: {
     ads: [
-      { value: "originale", label: "Originale (Universale)", structure: "Hook|Aiuto chi a fare cosa e come|Problema|Errore comune|Cosa fare|Riprova|CTA", description: "Schema classico universale: aggancia, spiega chi aiuti, mostra problema ed errore, guida all'azione" },
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico a 6 sezioni: aggancia, posizionamento, problema, soluzione, prova sociale, azione" },
       { value: "hook_problema_nuovo", label: "Hook → Problema → Nuovo modo → Prova → CTA", structure: "Hook|Problema|Nuovo modo|Prova sociale|Offerta|CTA", description: "Per Reels/Stories: aggancia, mostra frizione, presenta meccanismo" },
       { value: "before_after_bridge", label: "Before → After → Bridge → CTA", structure: "Prima|Dopo|Ponte (processo)|CTA", description: "Ottimo per creativi visual con trasformazione" },
       { value: "pain_benefit_offer", label: "3 Pain → 3 Benefit → Offer → Urgenza → CTA", structure: "Pain 1|Pain 2|Pain 3|Benefit 1|Benefit 2|Benefit 3|Offerta|Urgenza|CTA", description: "Perfetto per performance con elenco scorrevole" },
@@ -242,7 +242,7 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
   },
   x: {
     ads: [
-      { value: "originale", label: "Originale (Universale)", structure: "Hook|Aiuto chi a fare cosa e come|Problema|Errore comune|Cosa fare|Riprova|CTA", description: "Schema classico universale: aggancia, spiega chi aiuti, mostra problema ed errore, guida all'azione" },
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico a 6 sezioni: aggancia, posizionamento, problema, soluzione, prova sociale, azione" },
       { value: "oneliner_proof", label: "One-liner Value → Proof → CTA", structure: "Promessa (1 riga)|Prova (numero/risultato)|CTA", description: "Su X vince la chiarezza + credibilità" },
       { value: "pas_ultracompatto", label: "PAS Ultracompatto", structure: "Problema|Agitazione (1 riga)|Soluzione|CTA", description: "Per awareness e lead magnet" },
       { value: "contrarian_payoff", label: "Contrarian + Payoff", structure: "Hot take|Perché|Cosa fare invece|CTA", description: "Alta attenzione, CTR" },
@@ -262,7 +262,7 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
   },
   linkedin: {
     ads: [
-      { value: "originale", label: "Originale (Universale)", structure: "Hook|Aiuto chi a fare cosa e come|Problema|Errore comune|Cosa fare|Riprova|CTA", description: "Schema classico universale: aggancia, spiega chi aiuti, mostra problema ed errore, guida all'azione" },
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico a 6 sezioni: aggancia, posizionamento, problema, soluzione, prova sociale, azione" },
       { value: "problema_ruolo", label: "Problema di Ruolo → Costo → Soluzione → Prova → CTA", structure: "Se sei [ruolo]...|Problema|Costo|Soluzione|Proof|CTA", description: "LinkedIn richiede targeting per job-to-be-done" },
       { value: "case_study_ad", label: "Case Study Ad", structure: "Risultato|In quanto tempo|Cosa abbiamo cambiato|1 grafico/numero|CTA", description: "Best performer per B2B" },
       { value: "lead_magnet_ad", label: "Lead Magnet Ad", structure: "Titolo asset|Bullet 1|Bullet 2|Bullet 3|Per chi|CTA", description: "Ottimo CPL, semplice da validare" },
