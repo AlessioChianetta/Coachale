@@ -223,7 +223,7 @@ function AutopilotPanel({
   const { toast } = useToast();
   const today = new Date().toISOString().split("T")[0];
 
-  const [localPlatform, setLocalPlatform] = useState<"instagram" | "x" | "linkedin">(targetPlatform || "instagram");
+  const [localPlatforms, setLocalPlatforms] = useState<("instagram" | "x" | "linkedin")[]>([targetPlatform || "instagram"]);
   const [localCategory, setLocalCategory] = useState<"ads" | "valore" | "altri">(postCategory || "valore");
   const [localSchema, setLocalSchema] = useState(postSchema || "originale");
   const [localWritingStyle, setLocalWritingStyle] = useState(writingStyle || "default");
@@ -273,21 +273,32 @@ function AutopilotPanel({
     },
   });
 
-  const platformSchedule = brandAssets?.postingSchedule?.[localPlatform];
-  const configuredTimes = platformSchedule?.times || OPTIMAL_TIMES[localPlatform];
+  const primaryPlatform = localPlatforms[0] || "instagram";
+  const platformSchedule = brandAssets?.postingSchedule?.[primaryPlatform];
+  const configuredTimes = platformSchedule?.times || OPTIMAL_TIMES[primaryPlatform];
   const configuredPostsPerDay = platformSchedule?.postsPerDay || 1;
   const brandWritingStyle = platformSchedule?.writingStyle;
 
+  const togglePlatform = (platform: "instagram" | "x" | "linkedin") => {
+    setLocalPlatforms(prev => {
+      if (prev.includes(platform)) {
+        if (prev.length === 1) return prev;
+        return prev.filter(p => p !== platform);
+      }
+      return [...prev, platform];
+    });
+  };
+
   const availableSchemas = useMemo(() => {
-    return POST_SCHEMAS[localPlatform]?.[localCategory] || [];
-  }, [localPlatform, localCategory]);
+    return POST_SCHEMAS[primaryPlatform]?.[localCategory] || [];
+  }, [primaryPlatform, localCategory]);
 
   useEffect(() => {
-    const schemas = POST_SCHEMAS[localPlatform]?.[localCategory] || [];
+    const schemas = POST_SCHEMAS[primaryPlatform]?.[localCategory] || [];
     if (schemas.length > 0 && !schemas.find(s => s.value === localSchema)) {
       setLocalSchema(schemas[0].value);
     }
-  }, [localPlatform, localCategory, localSchema]);
+  }, [primaryPlatform, localCategory, localSchema]);
 
   useEffect(() => {
     if (mode === "automatica") {
@@ -392,9 +403,10 @@ function AutopilotPanel({
           
           const rotatedContentTheme = contentTypesToUse[index % contentTypesToUse.length];
           
+          const rotatedPlatform = localPlatforms[index % localPlatforms.length];
           return {
             date,
-            platform: localPlatform,
+            platform: rotatedPlatform,
             category: localCategory,
             schema: localSchema,
             writingStyle: localWritingStyle,
@@ -530,7 +542,7 @@ function AutopilotPanel({
           body: JSON.stringify({
             startDate,
             endDate,
-            targetPlatform: localPlatform,
+            targetPlatforms: localPlatforms,
             postCategory: localCategory,
             postSchema: localSchema,
             writingStyle: localWritingStyle,
@@ -678,9 +690,6 @@ function AutopilotPanel({
     }
   };
 
-  const platformConfig = PLATFORM_CONFIG[localPlatform];
-  const PlatformIcon = platformConfig.icon;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -696,10 +705,18 @@ function AutopilotPanel({
             <div className="flex-1">
               <CardTitle className="flex items-center gap-2 text-lg">
                 Autopilot
-                <Badge variant="secondary" className="text-xs">
-                  <PlatformIcon className={`h-3 w-3 mr-1 ${platformConfig.color}`} />
-                  {platformConfig.label}
-                </Badge>
+                <div className="flex gap-1">
+                  {localPlatforms.map(p => {
+                    const cfg = PLATFORM_CONFIG[p];
+                    const Icon = cfg.icon;
+                    return (
+                      <Badge key={p} variant="secondary" className="text-xs">
+                        <Icon className={`h-3 w-3 mr-1 ${cfg.color}`} />
+                        {cfg.label}
+                      </Badge>
+                    );
+                  })}
+                </div>
               </CardTitle>
               <CardDescription>
                 Genera contenuti in batch per il periodo selezionato
@@ -716,14 +733,14 @@ function AutopilotPanel({
               <span className="font-medium text-sm text-violet-700 dark:text-violet-300">Configurazione Autopilot</span>
             </div>
 
-            {/* Piattaforma */}
+            {/* Piattaforma (Multi-select) */}
             <div className="space-y-2">
-              <Label className="text-sm">Piattaforma</Label>
+              <Label className="text-sm">Piattaforme (seleziona una o più)</Label>
               <div className="grid grid-cols-3 gap-2">
                 {(["instagram", "x", "linkedin"] as const).map((platform) => {
                   const config = PLATFORM_CONFIG[platform];
                   const Icon = config.icon;
-                  const isSelected = localPlatform === platform;
+                  const isSelected = localPlatforms.includes(platform);
                   return (
                     <Button
                       key={platform}
@@ -731,7 +748,7 @@ function AutopilotPanel({
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
                       className={`flex items-center gap-2 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
-                      onClick={() => setLocalPlatform(platform)}
+                      onClick={() => togglePlatform(platform)}
                     >
                       <Icon className={`h-4 w-4 ${isSelected ? "text-white" : config.color}`} />
                       <span className="hidden sm:inline">{config.label}</span>
