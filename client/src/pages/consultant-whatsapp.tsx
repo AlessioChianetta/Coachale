@@ -2000,6 +2000,27 @@ export default function ConsultantWhatsAppPage() {
                 ctaLabel="Vai al Content Studio"
                 ctaHref="/consultant/content-studio"
               />
+
+              {/* Card 6 - Archie */}
+              <TeamMemberCard
+                name="Archie"
+                role="AI Builder"
+                avatar={archieAvatar}
+                quote="Trasformo le tue idee in dipendenti AI pronti all'uso: consulenziali, formativi, per appuntamenti e molto altro."
+                accentColor="indigo"
+                features={[
+                  { icon: Sparkles, label: "Genera Idee AI" },
+                  { icon: Bot, label: "Crea Agenti Custom" },
+                  { icon: Wand2, label: "Configurazione Guidata" },
+                ]}
+                details={{
+                  audience: "Imprenditori e professionisti che vogliono creare assistenti AI personalizzati senza competenze tecniche",
+                  whatIDo: "Analizzo le tue esigenze e genero proposte di dipendenti AI su misura: da agenti consulenziali a setter per appuntamenti, da formatori a customer success manager",
+                  howIDoIt: "Raccogli i tuoi documenti, descrivi il tuo business e i tuoi obiettivi. Io uso l'AI per generare configurazioni complete di agenti pronti da attivare con un click"
+                }}
+                ctaLabel="Crea Dipendente AI"
+                ctaHref="/consultant/whatsapp?tab=ideas"
+              />
             </div>
           </TabsContent>
 
