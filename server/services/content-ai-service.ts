@@ -672,45 +672,112 @@ ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
     // Generate dynamic structure based on schemaStructure if provided
     if (schemaStructure) {
       const schemaParts = schemaStructure.split("|").map(s => s.trim());
-      const charsPerSection = Math.floor((maxChars - 100) / schemaParts.length); // Reserve 100 chars for hashtags
-      const minPerSection = Math.floor(charsPerSection * 0.5);
-      const maxPerSection = Math.floor(charsPerSection * 1.5);
+      const numSections = schemaParts.length;
       
-      // Create dynamic JSON structure based on schema
-      const dynamicFields = schemaParts.map((part, idx) => {
-        const fieldName = part.toLowerCase()
+      // Calculate per-section character requirements to guarantee total minimum
+      // For long copy: distribute minChars across sections, ensuring sum >= minChars
+      // For short copy: distribute based on minChars (200) to maxChars (500)
+      const guaranteedMinPerSection = Math.ceil(minChars / numSections);
+      const targetMaxPerSection = Math.ceil(maxChars / numSections);
+      
+      // For long copy: each section must contribute enough to reach 1500+ total
+      // For short copy: align with overall 200-500 target
+      const minPerSection = isLongCopy 
+        ? Math.max(250, guaranteedMinPerSection) // At least 250 chars per section for long copy
+        : Math.max(40, Math.floor(minChars / numSections)); // Proportional for short
+      const maxPerSection = isLongCopy 
+        ? Math.min(800, targetMaxPerSection * 1.5) // Cap at 800 to avoid one section dominating
+        : Math.min(200, Math.ceil(maxChars / numSections)); // Proportional for short
+      
+      // Calculate what the guaranteed total would be
+      const guaranteedTotal = minPerSection * numSections;
+      
+      // Create field names from schema parts
+      const fieldNames = schemaParts.map((part, idx) => {
+        return part.toLowerCase()
           .replace(/[^a-z0-9\s]/g, '')
           .replace(/\s+/g, '_')
           .replace(/_+/g, '_')
           .replace(/^_|_$/g, '') || `section_${idx + 1}`;
-        
-        const charRange = isLongCopy 
-          ? `${minPerSection}-${maxPerSection} caratteri. Sviluppa in modo narrativo e coinvolgente.`
-          : `${Math.floor(minPerSection * 0.6)}-${Math.floor(maxPerSection * 0.6)} caratteri. Conciso e diretto.`;
-        
-        return `  "${fieldName}": "${part} - ${charRange}"`;
+      });
+      
+      // Create detailed instructions for each section OUTSIDE the JSON
+      const sectionInstructions = schemaParts.map((part, idx) => {
+        const fieldName = fieldNames[idx];
+        if (isLongCopy) {
+          return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
+   - LUNGHEZZA RICHIESTA: ${minPerSection}-${maxPerSection} caratteri
+   - CONTENUTO: Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
+   - STILE: Usa frasi complete, storytelling, dettagli concreti, esempi reali
+   - NON scrivere frasi telegrafiche o elenchi puntati - scrivi PARAGRAFI narrativi`;
+        } else {
+          return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
+   - LUNGHEZZA: ${minPerSection}-${maxPerSection} caratteri
+   - CONTENUTO: Conciso e diretto, ogni parola conta`;
+        }
+      }).join("\n\n");
+      
+      // Simple JSON structure with placeholder descriptions
+      const dynamicFields = fieldNames.map((fieldName, idx) => {
+        return `  "${fieldName}": "SCRIVI QUI il contenuto per: ${schemaParts[idx]}"`;
       }).join(",\n");
       
       const videoFields = isVideo ? `,
-  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause."` : "";
+  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche."` : "";
+      
+      // Length enforcement block
+      const lengthEnforcement = isLongCopy ? `
+⚠️⚠️⚠️ REQUISITO CRITICO DI LUNGHEZZA - LEGGI ATTENTAMENTE ⚠️⚠️⚠️
+
+IL COPY LUNGO RICHIEDE ALMENO ${minChars} CARATTERI TOTALI.
+
+CALCOLO OBBLIGATORIO:
+- Hai ${numSections} sezioni da scrivere
+- Ogni sezione DEVE avere ALMENO ${minPerSection} caratteri
+- ${numSections} sezioni × ${minPerSection} caratteri = ${guaranteedTotal} caratteri MINIMO
+
+Questo significa che:
+- Ogni sezione deve essere un PARAGRAFO COMPLETO di ${minPerSection}-${maxPerSection} caratteri
+- NON scrivere frasi brevi di 50-100 caratteri - sono INSUFFICIENTI
+- SVILUPPA ogni concetto con dettagli, esempi, emozioni, storytelling
+- Il campo "captionCopy" DEVE contenere ALMENO ${minChars} caratteri
+
+ESEMPIO DI LUNGHEZZA CORRETTA per UNA SINGOLA sezione (~${minPerSection} caratteri):
+"Ogni mattina ti svegli con l'ansia di controllare il telefono. Le notifiche sono tante, ma i clienti veri? Pochi. Passi ore a rispondere a curiosi che non compreranno mai, mentre i lead caldi si raffreddano perché non riesci a gestirli tutti. Il tuo team è sommerso, frustrato, e la crescita del business è bloccata da questo collo di bottiglia invisibile. Sai che potresti fare di più, ma il tempo non basta mai."
+
+SE IL TUO captionCopy È SOTTO ${minChars} CARATTERI, HAI FALLITO IL TASK.
+Conta i caratteri prima di rispondere.` : "";
       
       return `
+🚨🚨🚨 REGOLA ASSOLUTA: SEGUI LO SCHEMA ESATTAMENTE 🚨🚨🚨
+
+📋 SCHEMA SELEZIONATO: "${schemaLabel || 'Schema personalizzato'}"
+📐 STRUTTURA OBBLIGATORIA: ${schemaParts.map((p, i) => `${i + 1}. ${p}`).join(" → ")}
+
+⚠️ DEVI seguire questa struttura A PENNELLO:
+- OGNI sezione dello schema DEVE essere presente nel tuo contenuto
+- L'ORDINE delle sezioni DEVE essere esattamente quello indicato
+- NON saltare sezioni, NON invertire l'ordine, NON aggiungere sezioni extra
+- Il contenuto di captionCopy DEVE seguire questa sequenza: ${schemaParts.join(" → ")}
+
+**ISTRUZIONI DETTAGLIATE PER OGNI SEZIONE:**
+
+${sectionInstructions}
+
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
-Genera il contenuto seguendo ESATTAMENTE questa struttura basata sullo schema "${schemaLabel || 'selezionato'}":
 {
   "type": "${isVideo ? 'video_script' : (isLongCopy ? 'copy_long' : 'copy_short')}",
   "copyVariant": "${copyType}",
   "schemaUsed": "${postSchema}",
 ${dynamicFields},
-  "captionCopy": "Il copy COMPLETO che concatena tutte le sezioni sopra in un unico testo formattato. DEVE essere ${minChars}-${maxChars} caratteri.",
+  "captionCopy": "CONCATENA tutte le sezioni sopra in un unico testo formattato. DEVE essere ${minChars}-${maxChars} caratteri TOTALI.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}${videoFields}
 }
 
-📋 STRUTTURA DA SEGUIRE: ${schemaStructure.split("|").map((part, idx) => `${idx + 1}. ${part}`).join(" → ")}
-
 ${styleInstructions}
+${lengthEnforcement}
 
-LIMITE CARATTERI PIATTAFORMA: ${effectiveCharLimit} caratteri MAX totali
+LIMITE CARATTERI PIATTAFORMA: ${effectiveCharLimit} caratteri MAX
 ${isVideo ? `
 IMPORTANTE per fullScript (video):
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
