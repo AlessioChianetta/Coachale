@@ -87,6 +87,7 @@ import {
   BookOpen,
   Users,
   Type,
+  Palette,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -1142,13 +1143,79 @@ export default function ContentStudioIdeas() {
       }
 
       const result = await response.json();
-      setGeneratedIdeas(result.data.ideas || []);
-      setSavedIdeaIndexes(new Set()); // Reset saved state for new batch
+      const ideas = result.data.ideas || [];
+      setGeneratedIdeas(ideas);
+      
+      // Salva automaticamente tutte le idee generate nel database
+      const selectedSchema = availableSchemas.find(s => s.value === postSchema);
+      const savedIndexes = new Set<number>();
+      const failedIndexes: number[] = [];
+      
+      for (let i = 0; i < ideas.length; i++) {
+        const idea = ideas[i];
+        try {
+          const response = await fetch("/api/content/ideas", {
+            method: "POST",
+            headers: {
+              ...getAuthHeaders(),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: idea.title,
+              description: idea.description,
+              suggestedHook: idea.suggestedHook,
+              suggestedCta: idea.suggestedCta,
+              aiScore: idea.aiScore || 80,
+              aiReasoning: idea.aiReasoning,
+              targetAudience: targetAudience,
+              status: "new",
+              mediaType: idea.mediaType || mediaType,
+              copyType: idea.copyType || copyType,
+              videoScript: idea.videoScript,
+              imageDescription: idea.imageDescription || idea.structuredContent?.imageDescription,
+              imageOverlayText: idea.imageOverlayText || idea.structuredContent?.imageOverlayText,
+              copyContent: idea.copyContent,
+              structuredContent: idea.structuredContent,
+              awarenessLevel: awarenessLevel,
+              targetPlatform: targetPlatform,
+              postCategory: postCategory,
+              postSchema: postSchema,
+              schemaStructure: selectedSchema?.structure,
+              writingStyle: writingStyle,
+              customWritingInstructions: writingStyle === "custom" ? customWritingInstructions : undefined,
+            }),
+          });
+          
+          if (response.ok) {
+            savedIndexes.add(i);
+          } else {
+            const errorData = await response.json();
+            console.error(`Errore nel salvataggio dell'idea ${i}:`, errorData);
+            failedIndexes.push(i);
+          }
+        } catch (e) {
+          console.error(`Errore nel salvataggio dell'idea ${i}:`, e);
+          failedIndexes.push(i);
+        }
+      }
+      
+      setSavedIdeaIndexes(savedIndexes);
+      queryClient.invalidateQueries({ queryKey: ["/api/content/ideas"] });
       setShowGeneratedDialog(true);
-      toast({
-        title: "Idee generate!",
-        description: `Sono state generate ${result.data.ideas?.length || 0} nuove idee`,
-      });
+      
+      // Show appropriate toast message based on save results
+      if (failedIndexes.length === 0) {
+        toast({
+          title: "Idee generate e salvate!",
+          description: `${savedIndexes.size}/${ideas.length} idee sono state salvate automaticamente`,
+        });
+      } else {
+        toast({
+          title: "Salvataggio parziale",
+          description: `${savedIndexes.size}/${ideas.length} idee salvate. ${failedIndexes.length} salvataggi falliti (idee #${failedIndexes.map(i => i + 1).join(', ')})`,
+          variant: "destructive",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Errore nella generazione",
@@ -1682,7 +1749,32 @@ export default function ContentStudioIdeas() {
                         <Switch checked={useBrandVoice} onCheckedChange={setUseBrandVoice} />
                       </div>
                       
-                      {useBrandVoice && (
+                      {useBrandVoice && Object.keys(brandVoiceData).length === 0 && (
+                        <div className="p-4 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 space-y-2">
+                              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                Brand Voice non configurato
+                              </p>
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Per generare contenuti di qualità, configura prima il tuo Brand Voice con informazioni su chi sei, cosa fai e il tuo stile comunicativo.
+                              </p>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                <a 
+                                  href="/consultant/content-studio/brand"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                                >
+                                  <Palette className="h-3.5 w-3.5" />
+                                  Vai a Brand Voice
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {useBrandVoice && Object.keys(brandVoiceData).length > 0 && (
                         <BrandVoiceSection
                           data={brandVoiceData}
                           onDataChange={setBrandVoiceData}

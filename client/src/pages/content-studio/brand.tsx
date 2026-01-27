@@ -8,6 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
   Palette,
   Upload,
   X,
@@ -19,12 +28,33 @@ import {
   Twitter,
   Youtube,
   Loader2,
+  Sparkles,
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  Eye,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
+
+interface BrandVoiceWizardAnswers {
+  chiSei: string;
+  cosaFai: string;
+  perChi: string;
+  comeTiDifferenzi: string;
+  tono: string;
+  valori: string;
+}
+
+interface GeneratedBrandVoice {
+  chiSono: string;
+  brandVoice: string;
+  noteForAi: string;
+  keywords: string[];
+}
 
 interface BrandAssets {
   id?: string;
@@ -70,6 +100,150 @@ export default function ContentStudioBrand() {
     twitter: "",
     youtube: "",
   });
+
+  // Brand Voice Wizard state
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardAnswers, setWizardAnswers] = useState<BrandVoiceWizardAnswers>({
+    chiSei: "",
+    cosaFai: "",
+    perChi: "",
+    comeTiDifferenzi: "",
+    tono: "",
+    valori: "",
+  });
+  const [generatedVoice, setGeneratedVoice] = useState<GeneratedBrandVoice | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const generateBrandVoiceMutation = useMutation({
+    mutationFn: async (answers: BrandVoiceWizardAnswers) => {
+      const response = await fetch("/api/content/generate-brand-voice", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ answers }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to generate brand voice");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success && data.data) {
+        setGeneratedVoice(data.data);
+        setShowPreview(true);
+        toast({
+          title: "Brand Voice generata!",
+          description: "Verifica l'anteprima e clicca 'Applica' per usarla",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const wizardQuestions = [
+    {
+      key: "chiSei" as const,
+      title: "Chi sei?",
+      description: "Raccontaci chi sei, il tuo ruolo e la tua esperienza",
+      placeholder: "Es: Sono Marco Rossi, consulente finanziario con 15 anni di esperienza nel settore bancario. Ho aiutato oltre 500 clienti...",
+    },
+    {
+      key: "cosaFai" as const,
+      title: "Cosa fai?",
+      description: "Descrivi i tuoi servizi o prodotti principali",
+      placeholder: "Es: Offro consulenza personalizzata per la gestione del patrimonio, pianificazione pensionistica e investimenti...",
+    },
+    {
+      key: "perChi" as const,
+      title: "Per chi lo fai?",
+      description: "Chi è il tuo cliente ideale? Qual è il tuo target audience?",
+      placeholder: "Es: Professionisti e imprenditori tra i 35-55 anni che vogliono proteggere e far crescere il loro patrimonio...",
+    },
+    {
+      key: "comeTiDifferenzi" as const,
+      title: "Come ti differenzi?",
+      description: "Qual è la tua USP? Hai un metodo o approccio unico?",
+      placeholder: "Es: Il mio metodo '3 Step Finanza' permette di avere una visione chiara in sole 3 settimane...",
+    },
+    {
+      key: "tono" as const,
+      title: "Che tono vuoi usare?",
+      description: "Descrivi lo stile comunicativo che preferisci",
+      placeholder: "Es: Professionale ma accessibile, autorevole senza essere formale, amichevole ma competente...",
+    },
+    {
+      key: "valori" as const,
+      title: "Valori del brand",
+      description: "Cosa ti sta a cuore? Quali sono i tuoi valori fondamentali?",
+      placeholder: "Es: Trasparenza, fiducia, risultati misurabili, educazione finanziaria, rapporto personale con ogni cliente...",
+    },
+  ];
+
+  const handleNextStep = () => {
+    if (wizardStep < wizardQuestions.length - 1) {
+      setWizardStep(wizardStep + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (wizardStep > 0) {
+      setWizardStep(wizardStep - 1);
+    }
+  };
+
+  const handleGenerateBrandVoice = () => {
+    generateBrandVoiceMutation.mutate(wizardAnswers);
+  };
+
+  const handleApplyGeneratedVoice = () => {
+    if (generatedVoice) {
+      setChiSono(generatedVoice.chiSono);
+      setBrandVoice(generatedVoice.brandVoice);
+      setNoteForAi(generatedVoice.noteForAi);
+      setKeywords(generatedVoice.keywords);
+      setWizardOpen(false);
+      setShowPreview(false);
+      setWizardStep(0);
+      setWizardAnswers({
+        chiSei: "",
+        cosaFai: "",
+        perChi: "",
+        comeTiDifferenzi: "",
+        tono: "",
+        valori: "",
+      });
+      setGeneratedVoice(null);
+      toast({
+        title: "Brand Voice applicata!",
+        description: "I campi sono stati compilati. Ricorda di salvare le modifiche.",
+      });
+    }
+  };
+
+  const resetWizard = () => {
+    setWizardOpen(false);
+    setShowPreview(false);
+    setWizardStep(0);
+    setWizardAnswers({
+      chiSei: "",
+      cosaFai: "",
+      perChi: "",
+      comeTiDifferenzi: "",
+      tono: "",
+      valori: "",
+    });
+    setGeneratedVoice(null);
+  };
 
   const { data: brandResponse, isLoading } = useQuery({
     queryKey: ["/api/content/brand-assets"],
@@ -230,14 +404,24 @@ export default function ContentStudioBrand() {
                   Configura l'identità visiva e verbale del tuo brand
                 </p>
               </div>
-              <Button onClick={handleSave} disabled={saveBrandMutation.isPending}>
-                {saveBrandMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Salva
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setWizardOpen(true)}
+                  className="bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-300 dark:border-violet-700 hover:from-violet-500/20 hover:to-purple-500/20"
+                >
+                  <Sparkles className="h-4 w-4 mr-2 text-violet-500" />
+                  Genera con AI
+                </Button>
+                <Button onClick={handleSave} disabled={saveBrandMutation.isPending}>
+                  {saveBrandMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Salva
+                </Button>
+              </div>
             </div>
 
             <Card className="border-2 border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50/50 to-transparent dark:from-indigo-950/20">
@@ -600,6 +784,183 @@ export default function ContentStudioBrand() {
           </div>
         </div>
       </div>
+
+      {/* Brand Voice Generator Wizard Dialog */}
+      <Dialog open={wizardOpen} onOpenChange={(open) => !open && resetWizard()}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-violet-500" />
+              {showPreview ? "Anteprima Brand Voice Generata" : "Genera Brand Voice con AI"}
+            </DialogTitle>
+            <DialogDescription>
+              {showPreview 
+                ? "Verifica i contenuti generati e clicca 'Applica' per usarli"
+                : `Rispondi a ${wizardQuestions.length} semplici domande per generare la tua Brand Voice`
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] pr-4">
+            {!showPreview ? (
+              <div className="space-y-4 py-4">
+                {/* Progress indicator */}
+                <div className="flex items-center justify-between mb-6">
+                  {wizardQuestions.map((_, idx) => (
+                    <div key={idx} className="flex items-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                          idx < wizardStep
+                            ? "bg-violet-500 text-white"
+                            : idx === wizardStep
+                            ? "bg-violet-500 text-white ring-4 ring-violet-200 dark:ring-violet-800"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {idx < wizardStep ? <Check className="h-4 w-4" /> : idx + 1}
+                      </div>
+                      {idx < wizardQuestions.length - 1 && (
+                        <div
+                          className={`h-1 w-8 sm:w-12 mx-1 ${
+                            idx < wizardStep ? "bg-violet-500" : "bg-muted"
+                          }`}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Current question */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold">
+                    {wizardQuestions[wizardStep].title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {wizardQuestions[wizardStep].description}
+                  </p>
+                  <Textarea
+                    rows={5}
+                    value={wizardAnswers[wizardQuestions[wizardStep].key]}
+                    onChange={(e) =>
+                      setWizardAnswers({
+                        ...wizardAnswers,
+                        [wizardQuestions[wizardStep].key]: e.target.value,
+                      })
+                    }
+                    placeholder={wizardQuestions[wizardStep].placeholder}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 py-4">
+                {/* Preview section */}
+                {generatedVoice && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Chi Sono
+                      </Label>
+                      <div className="p-4 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap">
+                        {generatedVoice.chiSono}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Tono di Voce
+                      </Label>
+                      <div className="p-4 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap">
+                        {generatedVoice.brandVoice}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Note per l'AI
+                      </Label>
+                      <div className="p-4 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap font-mono">
+                        {generatedVoice.noteForAi}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Parole Chiave Suggerite
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {generatedVoice.keywords.map((kw, idx) => (
+                          <Badge key={idx} variant="secondary">
+                            {kw}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </ScrollArea>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {!showPreview ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handlePrevStep}
+                  disabled={wizardStep === 0}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Indietro
+                </Button>
+                
+                {wizardStep < wizardQuestions.length - 1 ? (
+                  <Button onClick={handleNextStep}>
+                    Avanti
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleGenerateBrandVoice}
+                    disabled={generateBrandVoiceMutation.isPending}
+                    className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                  >
+                    {generateBrandVoiceMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generazione in corso...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Genera Brand Voice
+                      </>
+                    )}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setShowPreview(false)}>
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Modifica Risposte
+                </Button>
+                <Button
+                  onClick={handleApplyGeneratedVoice}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Applica Brand Voice
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

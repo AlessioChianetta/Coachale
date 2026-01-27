@@ -2700,4 +2700,149 @@ router.post(
   }
 );
 
+// ============================================================
+// BRAND VOICE AI GENERATOR
+// ============================================================
+
+// POST /api/content/generate-brand-voice - Generate brand voice using AI
+router.post("/generate-brand-voice", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { answers } = req.body;
+    
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: "Answers object is required"
+      });
+    }
+    
+    const { chiSei, cosaFai, perChi, comeTiDifferenzi, tono, valori } = answers;
+    
+    console.log(`🤖 [BRAND-VOICE-AI] Generating brand voice for consultant ${consultantId}`);
+    
+    const { client, metadata } = await getAIProvider(consultantId, "brand-voice-generator");
+    const { model } = getModelWithThinking(metadata?.name);
+    
+    const prompt = `Sei un esperto di brand strategy e copywriting. Devi creare una Brand Voice completa basata sulle risposte dell'utente.
+
+=== RISPOSTE DELL'UTENTE ===
+
+**Chi sei?** (nome, ruolo, esperienza)
+${chiSei || "Non specificato"}
+
+**Cosa fai?** (servizi/prodotti principali)
+${cosaFai || "Non specificato"}
+
+**Per chi lo fai?** (target audience)
+${perChi || "Non specificato"}
+
+**Come ti differenzi?** (USP, metodo unico)
+${comeTiDifferenzi || "Non specificato"}
+
+**Che tono vuoi usare?**
+${tono || "Non specificato"}
+
+**Valori del brand?** (cosa ti sta a cuore)
+${valori || "Non specificato"}
+
+=== ISTRUZIONI ===
+
+Genera una Brand Voice completa con i seguenti elementi:
+
+1. **chiSono**: Una storia professionale completa e coinvolgente in prima persona (150-250 parole). Deve raccontare chi è la persona, la sua esperienza, cosa fa e per chi. Scrivi in modo autentico e personale.
+
+2. **brandVoice**: Una descrizione dettagliata del tono di voce da usare nei contenuti (80-150 parole). Descrivi lo stile comunicativo, il registro linguistico, come ci si rivolge al pubblico.
+
+3. **noteForAi**: Istruzioni specifiche per l'AI che genererà i contenuti (10-15 bullet points). Include indicazioni su:
+   - Stile di scrittura
+   - Parole/espressioni da usare o evitare
+   - Struttura dei contenuti
+   - Riferimenti al metodo/approccio unico
+   - Tono e personalità da mantenere
+
+4. **keywords**: Un array di 5-10 parole chiave rilevanti per il brand che dovrebbero apparire frequentemente nei contenuti.
+
+Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
+{
+  "chiSono": "<storia professionale completa>",
+  "brandVoice": "<descrizione del tono di voce>",
+  "noteForAi": "<istruzioni bullet point per l'AI>",
+  "keywords": ["parola1", "parola2", "parola3", ...]
+}`;
+
+    const result = await client.generateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 4096,
+      },
+    });
+    
+    const responseText = result.response.text();
+    console.log("[BRAND-VOICE-AI] Model:", model);
+    console.log("[BRAND-VOICE-AI] Response length:", responseText.length, "chars");
+    
+    // Remove markdown code blocks if present
+    let cleanedResponse = responseText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+    
+    // Try to find and parse JSON
+    const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("[BRAND-VOICE-AI] No JSON found in response");
+      return res.status(500).json({
+        success: false,
+        error: "L'AI non ha generato una risposta valida. Riprova."
+      });
+    }
+    
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Validate required fields
+      if (!parsed.chiSono || !parsed.brandVoice || !parsed.noteForAi || !parsed.keywords) {
+        console.error("[BRAND-VOICE-AI] Missing required fields in response");
+        return res.status(500).json({
+          success: false,
+          error: "La risposta dell'AI è incompleta. Riprova."
+        });
+      }
+      
+      // Ensure keywords is an array
+      if (!Array.isArray(parsed.keywords)) {
+        parsed.keywords = [];
+      }
+      
+      console.log(`✅ [BRAND-VOICE-AI] Successfully generated brand voice using ${model}`);
+      
+      return res.json({
+        success: true,
+        data: {
+          chiSono: parsed.chiSono,
+          brandVoice: parsed.brandVoice,
+          noteForAi: parsed.noteForAi,
+          keywords: parsed.keywords
+        },
+        modelUsed: model
+      });
+    } catch (parseError) {
+      console.error("[BRAND-VOICE-AI] JSON parse error:", parseError);
+      return res.status(500).json({
+        success: false,
+        error: "Errore nel parsing della risposta AI. Riprova."
+      });
+    }
+  } catch (error: any) {
+    console.error("❌ [BRAND-VOICE-AI] Error generating brand voice:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate brand voice"
+    });
+  }
+});
+
 export default router;

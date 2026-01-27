@@ -998,6 +998,83 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
 ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
   }
 
+  // Generate writing style prompt section - prominently placed in main prompt
+  const getWritingStylePromptSection = (): string => {
+    const styleMap: Record<string, { name: string; instructions: string }> = {
+      default: {
+        name: "Predefinito",
+        instructions: `Tono professionale e bilanciato, naturale ma autorevole. Alterna frasi brevi e medie per ritmo scorrevole. Usa emoji strategiche (max 5-7 per post).`
+      },
+      conversational: {
+        name: "Conversazionale (Nurturing)",
+        instructions: `🚨🚨🚨 STILE CONVERSAZIONALE OBBLIGATORIO - SEGUI QUESTE REGOLE A PENNELLO 🚨🚨🚨
+
+FORMATO TESTO:
+- OGNI FRASE SU RIGA SEPARATA - vai a capo dopo ogni frase
+- FRASI ULTRA-BREVI: massimo 3-8 parole per frase
+- NIENTE paragrafi lunghi - solo righe singole
+
+ESEMPI DI FRASI CORRETTE:
+"Più lead."
+"Non dovrebbero significare più problemi."
+""
+"Ma aspetta."
+""
+"Molti imprenditori pensano che la soluzione sia assumere."
+"Sbagliato."
+""
+"L'hiring lineare è una trappola."
+
+PATTERN INTERRUPT DA USARE:
+- "Ma aspetta."
+- "Fermati un secondo."
+- "E sai cosa?"
+- "Ecco il punto."
+- "Sbagliato."
+- "Esatto."
+
+DOMANDE DIRETTE:
+- "Sai qual è la parte migliore?"
+- "E indovina cosa è successo?"
+- "Vuoi sapere come?"
+
+DIALOGO INTERNO (tra virgolette):
+- "E io ho pensato: cavolo, è vero!"
+- "Mi sono detto: basta così."
+
+VIETATO ASSOLUTAMENTE:
+❌ Frasi lunghe (più di 10 parole)
+❌ Paragrafi discorsivi
+❌ Tono formale o accademico
+❌ Elenchi puntati lunghi
+❌ Spiegazioni prolisse
+
+EMOJI: solo ✅ e → quando servono, niente altro`
+      },
+      direct: {
+        name: "Diretto",
+        instructions: `Dritto al punto, zero fronzoli. Frasi brevi e assertive. No giri di parole. Bullet points per i concetti chiave. Tono deciso e incoraggiante.`
+      },
+      persuasive: {
+        name: "Copy Persuasivo",
+        instructions: `Copywriting classico: urgenza, scarsità, riprova sociale. Trigger emotivi: paura di perdere, desiderio di guadagnare. Headline d'impatto, hook magnetici. Power words: GRATIS, GARANTITO, ESCLUSIVO, IMMEDIATO, LIMITATO.`
+      },
+      custom: {
+        name: "Personalizzato",
+        instructions: customWritingInstructions || "Segui le istruzioni personalizzate dell'utente."
+      }
+    };
+
+    const style = styleMap[writingStyle] || styleMap.default;
+    
+    return `
+✍️ STILE DI SCRITTURA SELEZIONATO: ${style.name}
+${style.instructions}
+`;
+  };
+
+  const writingStyleSection = getWritingStylePromptSection();
+
   const getStructuredContentInstructions = () => {
     const imageFields = mediaType === "photo" ? `,
   "imageDescription": "Descrizione visiva dettagliata dell'immagine: soggetto, sfondo, colori, mood, stile fotografico",
@@ -1257,6 +1334,8 @@ ${styleInstructions}`;
   console.log(`[CONTENT-AI DEBUG]   schemaLabel: "${schemaLabel || 'none'}"`);
   console.log(`[CONTENT-AI DEBUG]   schemaStructure: "${schemaStructure || 'none'}"`);
   console.log(`[CONTENT-AI DEBUG]   targetPlatform: "${targetPlatform || 'none'}"`);
+  console.log(`[CONTENT-AI DEBUG]   writingStyle: "${writingStyle}"`);
+  console.log(`[CONTENT-AI DEBUG]   customWritingInstructions: "${customWritingInstructions ? 'provided' : 'none'}"`);
   console.log(`[CONTENT-AI DEBUG] ----------------------------------------`);
   console.log(`[CONTENT-AI DEBUG] Structured Content Instructions (first 2000 chars):`);
   console.log(`[CONTENT-AI DEBUG] ${structuredContentInstructions.substring(0, 2000)}`);
@@ -1272,6 +1351,7 @@ CONTESTO:
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
 ${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}
+${writingStyleSection}
 
 🎯 LIVELLO DI CONSAPEVOLEZZA DEL PUBBLICO: ${awarenessInfo.name}
 STRATEGIA CONSAPEVOLEZZA: ${awarenessInfo.strategy}
