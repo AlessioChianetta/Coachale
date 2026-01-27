@@ -1007,49 +1007,75 @@ ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
       },
       conversational: {
         name: "Conversazionale (Nurturing)",
-        instructions: `🚨🚨🚨 STILE CONVERSAZIONALE OBBLIGATORIO - SEGUI QUESTE REGOLE A PENNELLO 🚨🚨🚨
+        instructions: `🚨🚨🚨 STILE COPYWRITING CONVERSAZIONALE (OBBLIGATORIO) 🚨🚨🚨
+Scrivi come se stessi parlando a un amico. Copy MAGNETICO, impossibile smettere di leggere.
 
-FORMATO TESTO:
-- OGNI FRASE SU RIGA SEPARATA - vai a capo dopo ogni frase
-- FRASI ULTRA-BREVI: massimo 3-8 parole per frase
-- NIENTE paragrafi lunghi - solo righe singole
+=== 6 REGOLE D'ORO ===
+1. STORYTELLING PERSONALE: Racconta aneddoti veri, errori, scoperte. MAI parlare in astratto.
+2. DIALOGO INTERNO: Inserisci pensieri tra virgolette ("E io ho pensato: cavolo, è vero!")
+3. FRASI ULTRA-BREVI: 3-8 parole max. "SBAGLIATO.", "Esatto.", "Ecco il punto."
+4. PATTERN INTERRUPT: Frasi che spezzano il ritmo. "Ma aspetta.", "Fermati un secondo."
+5. DOMANDE DIRETTE: "Sai qual è la parte migliore?", "E indovina cosa è successo?"
+6. RIPETIZIONE STRATEGICA: Ribadisci i concetti chiave 2-3 volte in modi diversi
 
-ESEMPI DI FRASI CORRETTE:
-"Più lead."
-"Non dovrebbero significare più problemi."
-""
-"Ma aspetta."
-""
-"Molti imprenditori pensano che la soluzione sia assumere."
-"Sbagliato."
-""
-"L'hiring lineare è una trappola."
+=== STRUTTURA ===
+- HOOK: Inizia con qualcosa di personale/inaspettato (NON "Oggi parliamo di...")
+- BODY: Racconta una storia o un'esperienza. Usa → per elenchi brevi.
+- CLOSE: Rilancia il messaggio chiave con CTA
 
-PATTERN INTERRUPT DA USARE:
-- "Ma aspetta."
-- "Fermati un secondo."
-- "E sai cosa?"
-- "Ecco il punto."
-- "Sbagliato."
-- "Esatto."
+=== FORMATO OBBLIGATORIO ===
+- OGNI frase su riga separata (vai a capo con \\n dopo ogni frase)
+- Usa → per mini-elenchi (non elenchi puntati)
+- Emoji minimal: solo ✅ e → quando servono
 
-DOMANDE DIRETTE:
-- "Sai qual è la parte migliore?"
-- "E indovina cosa è successo?"
-- "Vuoi sapere come?"
+=== ESEMPIO PERFETTO DA SEGUIRE ===
+Più lead.
+Non dovrebbero significare più problemi.
+Ma spesso lo sono.
 
-DIALOGO INTERNO (tra virgolette):
-- "E io ho pensato: cavolo, è vero!"
-- "Mi sono detto: basta così."
+Fermati un secondo.
+Guarda la tua agenda.
+Guarda il tuo team.
+Siete sommersi?
 
-VIETATO ASSOLUTAMENTE:
+Le notifiche non smettono mai.
+WhatsApp scoppia.
+Instagram è un caos.
+
+E sai cosa?
+Questo non è scalare.
+Questo è affogare.
+
+Molti pensano di dover assumere.
+"Serve un altro commerciale."
+"Serve un nuovo segretario."
+Sbagliato.
+
+L'hiring lineare è una trappola.
+Più persone uguale più costi.
+I margini si stringono.
+Il caos aumenta.
+
+Ecco il punto.
+Esiste una soluzione diversa.
+Non è un semplice chatbot.
+È un'intelligenza istruita.
+
+Funziona davvero?
+Esatto.
+Le metriche non mentono.
+
+Vuoi liberare il tuo tempo?
+Inizia oggi.
+Clicca sul link in bio. →
+
+=== VIETATO ASSOLUTAMENTE ===
+❌ Iniziare con "Oggi parliamo di..." o "In questo post..."
 ❌ Frasi lunghe (più di 10 parole)
 ❌ Paragrafi discorsivi
 ❌ Tono formale o accademico
-❌ Elenchi puntati lunghi
-❌ Spiegazioni prolisse
-
-EMOJI: solo ✅ e → quando servono, niente altro`
+❌ Elencare fatti senza storytelling
+❌ Elenchi puntati tradizionali`
       },
       direct: {
         name: "Diretto",
