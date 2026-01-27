@@ -3571,9 +3571,22 @@ export default function ContentStudioPosts() {
                           {renderPublerStatus() || getSimpleStatusText(post.status)}
                         </div>
                         
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(post.createdAt || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
-                        </span>
+                        <div className="flex flex-col">
+                          {post.scheduledDate ? (
+                            <>
+                              <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                                📅 {new Date(post.scheduledDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                Creato: {new Date(post.createdAt || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {new Date(post.createdAt || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
+                            </span>
+                          )}
+                        </div>
                         
                         <div className="flex items-center gap-1.5">
                           {getPlatformIcon(post.platform)}
@@ -3688,7 +3701,10 @@ export default function ContentStudioPosts() {
                                 {getStatusBadge(post.status)}
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {new Date(post.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
+                                {post.scheduledDate 
+                                  ? `📅 ${new Date(post.scheduledDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}`
+                                  : new Date(post.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })
+                                }
                               </span>
                             </div>
                           </div>
