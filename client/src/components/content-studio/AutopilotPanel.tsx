@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,10 @@ import {
   Users,
   Play,
   Eye,
+  FileText,
+  Video,
+  Image,
+  Layers,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -65,12 +70,102 @@ const PLATFORM_CONFIG = {
   linkedin: { label: "LinkedIn", icon: Linkedin, color: "text-blue-600", bgColor: "bg-blue-600/10" },
 };
 
+const WRITING_STYLES = [
+  { value: "default", label: "Predefinito", description: "Professionale e bilanciato", icon: "📝" },
+  { value: "conversational", label: "Conversazionale", description: "Frasi brevi, storytelling", icon: "💬" },
+  { value: "direct", label: "Diretto", description: "Conciso, va dritto al punto", icon: "🎯" },
+  { value: "persuasive", label: "Copy Persuasivo", description: "Trigger emotivi, urgenza", icon: "🔥" },
+  { value: "custom", label: "Personalizzato", description: "Definisci le tue istruzioni", icon: "✏️" },
+];
+
+const MEDIA_TYPES = [
+  { value: "image", label: "Immagine", icon: "🖼️" },
+  { value: "video", label: "Video", icon: "🎬" },
+  { value: "carousel", label: "Carosello", icon: "📚" },
+  { value: "text", label: "Solo Testo", icon: "📝" },
+];
+
+const COPY_TYPES = [
+  { value: "short", label: "Short Copy", description: "Breve e d'impatto" },
+  { value: "long", label: "Long Copy", description: "Dettagliato e approfondito" },
+];
+
+const POST_CATEGORIES = [
+  { value: "ads", label: "Ads/Promozionale", icon: "📢" },
+  { value: "valore", label: "Valore/Educativo", icon: "📚" },
+  { value: "altri", label: "Altri", icon: "✨" },
+];
+
+const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: string; structure: string; description: string }>>> = {
+  instagram: {
+    ads: [
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico a 6 sezioni" },
+      { value: "hook_problema_nuovo", label: "Hook → Problema → Nuovo modo → Prova → CTA", structure: "Hook|Problema|Nuovo modo|Prova sociale|Offerta|CTA", description: "Per Reels/Stories" },
+      { value: "before_after_bridge", label: "Before → After → Bridge → CTA", structure: "Prima|Dopo|Ponte (processo)|CTA", description: "Ottimo per creativi visual" },
+      { value: "pain_benefit_offer", label: "3 Pain → 3 Benefit → Offer → Urgenza → CTA", structure: "Pain 1|Pain 2|Pain 3|Benefit 1|Benefit 2|Benefit 3|Offerta|Urgenza|CTA", description: "Perfetto per performance" },
+      { value: "obiezione_confutazione", label: "Obiezione → Confutazione → Demo → CTA", structure: "Obiezione forte|Confutazione|Mini-dimostrazione|CTA", description: "Per mercato scettico" },
+      { value: "ugc_founder", label: "UGC/Founder Script (15-30s)", structure: "Chi sono|Cosa odiavo|Cosa ho cambiato|Risultato|Come farlo|CTA", description: "Nativo, credibile" },
+    ],
+    valore: [
+      { value: "carousel_errore", label: "Carousel Errore → Perché → Cosa fare → Esempio", structure: "Errore #1|Perché succede|Cosa fare|Esempio|Checklist|CTA soft", description: "Altissima retention" },
+      { value: "framework_5step", label: "Framework in 5 Step", structure: "Hook|Contesto|Step 1|Step 2|Step 3|Step 4|Step 5|Caso reale|CTA", description: "Trasferisce metodo" },
+      { value: "teardown_analisi", label: "Teardown / Analisi", structure: "Hook|Cosa analizziamo|3 cose fatte bene|3 da migliorare|Template|CTA", description: "Autorità immediata" },
+      { value: "myth_busting", label: "Myth Busting", structure: "Mito|Perché è falso|La regola vera|Come applicarla|CTA", description: "Ottimo per differenziarti" },
+      { value: "case_study", label: "Case Study", structure: "Risultato|Punto di partenza|Azioni|Ostacolo|Soluzione|Lezione|CTA", description: "Prova sociale" },
+    ],
+    altri: [
+      { value: "pov_domanda", label: "POV + Domanda", structure: "Opinione forte|Motivo 1|Motivo 2|Domanda", description: "Genera discussione" },
+      { value: "behind_scenes", label: "Behind the Scenes", structure: "Cosa stai facendo|Perché|Cosa hai imparato|CTA", description: "Umano, fidelizza" },
+      { value: "story_fallimento", label: "Story: Fallimento → Lezione → Regola", structure: "Errore|Costo|Cosa hai cambiato|Regola", description: "Connessione + autorevolezza" },
+    ],
+  },
+  x: {
+    ads: [
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico" },
+      { value: "oneliner_proof", label: "One-liner Value → Proof → CTA", structure: "Promessa (1 riga)|Prova (numero/risultato)|CTA", description: "Chiarezza + credibilità" },
+      { value: "pas_ultracompatto", label: "PAS Ultracompatto", structure: "Problema|Agitazione (1 riga)|Soluzione|CTA", description: "Per awareness" },
+      { value: "contrarian_payoff", label: "Contrarian + Payoff", structure: "Hot take|Perché|Cosa fare invece|CTA", description: "Alta attenzione" },
+      { value: "offer_first", label: "Offer-first", structure: "Offerta|Chi è per|Cosa ottieni|Vincolo/urgenza|CTA", description: "Conversioni dirette" },
+    ],
+    valore: [
+      { value: "thread_manuale", label: "Thread Manuale Operativo", structure: "Hook tweet|Step 1|Step 2|Step 3|Step 4|Step 5|Esempio|Recap|CTA", description: "Thread salva follower" },
+      { value: "checklist", label: "Checklist", structure: "Titolo|Punto 1|Punto 2|Punto 3|Punto 4|Punto 5|Punto 6|Punto 7|CTA", description: "Facile da consumare" },
+      { value: "principio_caso_regola", label: "Principio → Caso → Regola", structure: "Principio|Mini-storia|Regola applicabile", description: "Authority senza lunghezza" },
+      { value: "mini_playbook", label: "Mini-playbook", structure: "Obiettivo|Leva 1|Leva 2|Leva 3|Errore 1|Errore 2|Errore 3|Template", description: "Altissimo valore" },
+      { value: "swipe_template", label: "Swipe/Template Tweet", structure: "Copia-incolla:|Template|Quando usarlo", description: "Condivisioni elevate" },
+    ],
+    altri: [
+      { value: "build_public", label: "Build in Public", structure: "Cosa hai fatto oggi|Cosa hai imparato|Prossima mossa", description: "Community e consistenza" },
+      { value: "qa_prompt", label: "Q&A Prompt", structure: "Rispondo a domande su X...", description: "Genera conversazioni" },
+    ],
+  },
+  linkedin: {
+    ads: [
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico" },
+      { value: "problema_ruolo", label: "Problema di Ruolo → Costo → Soluzione → Prova → CTA", structure: "Se sei [ruolo]...|Problema|Costo|Soluzione|Proof|CTA", description: "Targeting per job" },
+      { value: "case_study_ad", label: "Case Study Ad", structure: "Risultato|In quanto tempo|Cosa abbiamo cambiato|1 grafico/numero|CTA", description: "Best performer B2B" },
+      { value: "lead_magnet_ad", label: "Lead Magnet Ad", structure: "Titolo asset|Bullet 1|Bullet 2|Bullet 3|Per chi|CTA", description: "Ottimo CPL" },
+      { value: "obiezione_demo", label: "Obiezione → Risposta → Demo-invito", structure: "Non funziona se...|Condizione vera|Come lo rendiamo vero|CTA demo", description: "Riduce attrito" },
+    ],
+    valore: [
+      { value: "story_professionale", label: "Story Professionale", structure: "Situazione|Tensione|Decisione|Risultato|Lezione|CTA", description: "Narrazione + insight" },
+      { value: "carosello_pdf", label: "Carosello Documento (PDF)", structure: "Titolo|Problema|Framework|Esempi|Checklist|CTA", description: "Altissima permanenza" },
+      { value: "post_insegnamento", label: "Post Insegnamento", structure: "Claim|Perché|Esempio 1|Esempio 2|Esempio 3|Azione 1|Azione 2|Azione 3|CTA", description: "Autorità + praticità" },
+      { value: "teardown_b2b", label: "Teardown B2B", structure: "Cosa analizziamo|3 punti forti|3 errori|Come rifarlo|CTA", description: "Posizionamento" },
+      { value: "opinion_dati", label: "Opinion + Dati", structure: "Tesi|Dato/prova|Implicazione|Cosa fare|CTA", description: "Per consulenza" },
+    ],
+    altri: [],
+  },
+};
+
 interface AutopilotPanelProps {
-  targetPlatform: "instagram" | "x" | "linkedin";
-  postCategory: "ads" | "valore" | "altri";
-  postSchema: string;
-  writingStyle: string;
+  targetPlatform?: "instagram" | "x" | "linkedin";
+  postCategory?: "ads" | "valore" | "altri";
+  postSchema?: string;
+  writingStyle?: string;
   customInstructions?: string;
+  mediaType?: string;
+  copyType?: string;
 }
 
 interface Template {
@@ -87,20 +182,6 @@ interface BrandAssets {
     linkedin?: { postsPerDay: number; times: string[]; writingStyle: string };
   };
 }
-
-const WRITING_STYLE_LABELS: Record<string, string> = {
-  default: "Predefinito",
-  conversational: "Conversazionale/Nurturing",
-  diretto: "Diretto",
-  copy_persuasivo: "Copy Persuasivo",
-  personalizzato: "Personalizzato",
-};
-
-const POST_CATEGORY_LABELS: Record<string, string> = {
-  ads: "Ads/Promozionale",
-  valore: "Valore/Educativo",
-  altri: "Altri",
-};
 
 interface GenerationProgress {
   total: number;
@@ -122,9 +203,19 @@ function AutopilotPanel({
   postSchema,
   writingStyle,
   customInstructions,
+  mediaType,
+  copyType,
 }: AutopilotPanelProps) {
   const { toast } = useToast();
   const today = new Date().toISOString().split("T")[0];
+
+  const [localPlatform, setLocalPlatform] = useState<"instagram" | "x" | "linkedin">(targetPlatform || "instagram");
+  const [localCategory, setLocalCategory] = useState<"ads" | "valore" | "altri">(postCategory || "valore");
+  const [localSchema, setLocalSchema] = useState(postSchema || "originale");
+  const [localWritingStyle, setLocalWritingStyle] = useState(writingStyle || "default");
+  const [localCustomInstructions, setLocalCustomInstructions] = useState(customInstructions || "");
+  const [localMediaType, setLocalMediaType] = useState(mediaType || "image");
+  const [localCopyType, setLocalCopyType] = useState(copyType || "long");
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -167,10 +258,21 @@ function AutopilotPanel({
     },
   });
 
-  const platformSchedule = brandAssets?.postingSchedule?.[targetPlatform];
-  const configuredTimes = platformSchedule?.times || OPTIMAL_TIMES[targetPlatform];
+  const platformSchedule = brandAssets?.postingSchedule?.[localPlatform];
+  const configuredTimes = platformSchedule?.times || OPTIMAL_TIMES[localPlatform];
   const configuredPostsPerDay = platformSchedule?.postsPerDay || 1;
   const brandWritingStyle = platformSchedule?.writingStyle;
+
+  const availableSchemas = useMemo(() => {
+    return POST_SCHEMAS[localPlatform]?.[localCategory] || [];
+  }, [localPlatform, localCategory]);
+
+  useEffect(() => {
+    const schemas = POST_SCHEMAS[localPlatform]?.[localCategory] || [];
+    if (schemas.length > 0 && !schemas.find(s => s.value === localSchema)) {
+      setLocalSchema(schemas[0].value);
+    }
+  }, [localPlatform, localCategory, localSchema]);
 
   const toggleContentType = (typeId: string) => {
     setSelectedContentTypes((prev) =>
@@ -251,11 +353,13 @@ function AutopilotPanel({
         body: JSON.stringify({
           startDate,
           endDate,
-          targetPlatform,
-          postCategory,
-          postSchema,
-          writingStyle,
-          customInstructions,
+          targetPlatform: localPlatform,
+          postCategory: localCategory,
+          postSchema: localSchema,
+          writingStyle: localWritingStyle,
+          customInstructions: localWritingStyle === "custom" ? localCustomInstructions : undefined,
+          mediaType: localMediaType,
+          copyType: localCopyType,
           templateId: selectedTemplate !== "none" ? selectedTemplate : undefined,
           excludeWeekends,
           excludeHolidays,
@@ -320,7 +424,7 @@ function AutopilotPanel({
     }
   };
 
-  const platformConfig = PLATFORM_CONFIG[targetPlatform];
+  const platformConfig = PLATFORM_CONFIG[localPlatform];
   const PlatformIcon = platformConfig.icon;
 
   return (
@@ -351,43 +455,167 @@ function AutopilotPanel({
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Configurazione Attiva */}
-          <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800">
+          {/* Sezione Configurazione Autopilot */}
+          <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800 space-y-4">
             <div className="flex items-center gap-2 mb-3">
               <Settings className="h-4 w-4 text-violet-600" />
-              <span className="font-medium text-sm text-violet-700 dark:text-violet-300">Configurazione Attiva</span>
-              <span className="text-xs text-muted-foreground">(ereditata da Idee + Brand Assets)</span>
+              <span className="font-medium text-sm text-violet-700 dark:text-violet-300">Configurazione Autopilot</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Piattaforma</div>
-                <div className="flex items-center gap-1.5">
-                  <PlatformIcon className={`h-4 w-4 ${platformConfig.color}`} />
-                  <span className="font-medium">{platformConfig.label}</span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Stile Scrittura</div>
-                <div className="font-medium truncate">
-                  {WRITING_STYLE_LABELS[writingStyle] || writingStyle}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Categoria</div>
-                <div className="font-medium">
-                  {POST_CATEGORY_LABELS[postCategory] || postCategory}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Schema</div>
-                <div className="font-medium truncate capitalize">
-                  {postSchema === "originale" ? "Libero" : postSchema.replace(/_/g, " ")}
-                </div>
+
+            {/* Piattaforma */}
+            <div className="space-y-2">
+              <Label className="text-sm">Piattaforma</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["instagram", "x", "linkedin"] as const).map((platform) => {
+                  const config = PLATFORM_CONFIG[platform];
+                  const Icon = config.icon;
+                  const isSelected = localPlatform === platform;
+                  return (
+                    <Button
+                      key={platform}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      className={`flex items-center gap-2 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      onClick={() => setLocalPlatform(platform)}
+                    >
+                      <Icon className={`h-4 w-4 ${isSelected ? "text-white" : config.color}`} />
+                      <span className="hidden sm:inline">{config.label}</span>
+                    </Button>
+                  );
+                })}
               </div>
             </div>
-            
+
+            {/* Categoria/Obiettivo */}
+            <div className="space-y-2">
+              <Label className="text-sm">Categoria/Obiettivo</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {POST_CATEGORIES.map((cat) => {
+                  const isSelected = localCategory === cat.value;
+                  return (
+                    <Button
+                      key={cat.value}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      className={`flex items-center gap-2 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      onClick={() => setLocalCategory(cat.value as "ads" | "valore" | "altri")}
+                    >
+                      <span>{cat.icon}</span>
+                      <span className="text-xs">{cat.label}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Schema Post */}
+            <div className="space-y-2">
+              <Label className="text-sm">Schema Post</Label>
+              <Select value={localSchema} onValueChange={setLocalSchema}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona uno schema" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSchemas.length > 0 ? (
+                    availableSchemas.map((schema) => (
+                      <SelectItem key={schema.value} value={schema.value}>
+                        <div className="flex flex-col">
+                          <span>{schema.label}</span>
+                          <span className="text-xs text-muted-foreground">{schema.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="originale">Originale (Universale)</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Stile Scrittura */}
+            <div className="space-y-2">
+              <Label className="text-sm">Stile di Scrittura</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {WRITING_STYLES.map((style) => {
+                  const isSelected = localWritingStyle === style.value;
+                  return (
+                    <Button
+                      key={style.value}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      className={`flex items-center gap-1.5 h-auto py-2 px-3 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      onClick={() => setLocalWritingStyle(style.value)}
+                    >
+                      <span>{style.icon}</span>
+                      <div className="text-left">
+                        <div className="text-xs font-medium">{style.label}</div>
+                      </div>
+                    </Button>
+                  );
+                })}
+              </div>
+              {localWritingStyle === "custom" && (
+                <Textarea
+                  placeholder="Scrivi le tue istruzioni personalizzate per lo stile di scrittura..."
+                  value={localCustomInstructions}
+                  onChange={(e) => setLocalCustomInstructions(e.target.value)}
+                  className="mt-2"
+                  rows={3}
+                />
+              )}
+            </div>
+
+            {/* Tipo Media */}
+            <div className="space-y-2">
+              <Label className="text-sm">Tipo Media</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {MEDIA_TYPES.map((type) => {
+                  const isSelected = localMediaType === type.value;
+                  return (
+                    <Button
+                      key={type.value}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      className={`flex flex-col items-center gap-1 h-auto py-2 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      onClick={() => setLocalMediaType(type.value)}
+                    >
+                      <span className="text-lg">{type.icon}</span>
+                      <span className="text-xs">{type.label}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tipo Copy */}
+            <div className="space-y-2">
+              <Label className="text-sm">Tipo Copy</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {COPY_TYPES.map((type) => {
+                  const isSelected = localCopyType === type.value;
+                  return (
+                    <Button
+                      key={type.value}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      className={`flex flex-col items-center gap-1 h-auto py-3 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      onClick={() => setLocalCopyType(type.value)}
+                    >
+                      <span className="font-medium">{type.label}</span>
+                      <span className="text-xs text-muted-foreground">{type.description}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Orari Configurati */}
-            <div className="mt-4 pt-3 border-t border-violet-200 dark:border-violet-700">
+            <div className="pt-3 border-t border-violet-200 dark:border-violet-700">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="h-3.5 w-3.5 text-violet-600" />
                 <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
