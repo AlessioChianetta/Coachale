@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { generateContentIdeas } from "./content-ai-service";
 import { Response } from "express";
@@ -13,6 +13,12 @@ export interface AutopilotConfig {
     x?: { enabled: boolean; postsPerDay: number };
     linkedin?: { enabled: boolean; postsPerDay: number };
   };
+  postSchema?: string;
+  postCategory?: string;
+  contentTypes?: string[];
+  excludeWeekends?: boolean;
+  excludeHolidays?: boolean;
+  excludedDates?: string[];
 }
 
 export interface AutopilotProgress {
@@ -42,13 +48,44 @@ const PLATFORM_DB_MAP: Record<string, "instagram" | "facebook" | "linkedin" | "t
   linkedin: "linkedin",
 };
 
+const DEFAULT_CONTENT_TYPES = ["educativo", "promozionale", "storytelling", "behind-the-scenes"];
+
+const ITALIAN_HOLIDAYS_2026 = [
+  "2026-01-01", "2026-01-06", "2026-04-05", "2026-04-06",
+  "2026-04-25", "2026-05-01", "2026-06-02", "2026-08-15",
+  "2026-11-01", "2026-12-08", "2026-12-25", "2026-12-26"
+];
+
+function isWeekend(dateStr: string): boolean {
+  const date = new Date(dateStr);
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function isHoliday(dateStr: string): boolean {
+  return ITALIAN_HOLIDAYS_2026.includes(dateStr);
+}
+
 export async function generateAutopilotBatch(
   config: AutopilotConfig,
   res?: Response
 ): Promise<{ success: boolean; generated: number; errors: string[] }> {
-  const { consultantId, startDate, endDate, platforms } = config;
+  const { 
+    consultantId, 
+    startDate, 
+    endDate, 
+    platforms,
+    postSchema,
+    postCategory,
+    contentTypes = DEFAULT_CONTENT_TYPES,
+    excludeWeekends = false,
+    excludeHolidays = false,
+    excludedDates = []
+  } = config;
+  
   const errors: string[] = [];
   let generated = 0;
+  let contentTypeIndex = 0;
   
   const sendProgress = (progress: AutopilotProgress) => {
     if (res && !res.writableEnded) {
@@ -64,12 +101,19 @@ export async function generateAutopilotBatch(
     
     const postingSchedule = (brandAssets?.postingSchedule as any) || {};
     
-    const dates: string[] = [];
+    const allDates: string[] = [];
     const start = new Date(startDate);
     const end = new Date(endDate);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(d.toISOString().split("T")[0]);
+      allDates.push(d.toISOString().split("T")[0]);
     }
+    
+    const dates = allDates.filter(dateStr => {
+      if (excludeWeekends && isWeekend(dateStr)) return false;
+      if (excludeHolidays && isHoliday(dateStr)) return false;
+      if (excludedDates.includes(dateStr)) return false;
+      return true;
+    });
     
     let totalPosts = 0;
     const enabledPlatforms: string[] = [];
@@ -80,7 +124,7 @@ export async function generateAutopilotBatch(
       }
     }
     
-    console.log(`[AUTOPILOT] Starting batch generation: ${totalPosts} posts, ${dates.length} days, platforms: ${enabledPlatforms.join(", ")}`);
+    console.log(`[AUTOPILOT] Starting batch generation: ${totalPosts} posts, ${dates.length} days (filtered from ${allDates.length}), platforms: ${enabledPlatforms.join(", ")}`);
     
     for (const date of dates) {
       for (const platform of enabledPlatforms) {
@@ -88,6 +132,21 @@ export async function generateAutopilotBatch(
         if (!platformSettings?.enabled) continue;
         
         const postsPerDay = platformSettings.postsPerDay;
+        const dbPlatform = PLATFORM_DB_MAP[platform] || "instagram";
+        
+        const existingPosts = await db.select({ id: schema.contentPosts.id })
+          .from(schema.contentPosts)
+          .where(and(
+            eq(schema.contentPosts.consultantId, consultantId),
+            eq(schema.contentPosts.platform, dbPlatform),
+            eq(schema.contentPosts.scheduledAt, new Date(`${date}T00:00:00`))
+          ))
+          .limit(1);
+        
+        if (existingPosts.length > 0) {
+          console.log(`[AUTOPILOT] Skipping ${platform} on ${date} - posts already exist`);
+          continue;
+        }
         
         const scheduleForPlatform = postingSchedule[platform] || {};
         const writingStyle = scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
@@ -105,6 +164,8 @@ export async function generateAutopilotBatch(
         try {
           for (let i = 0; i < postsPerDay; i++) {
             const time = times[i] || times[0] || "12:00";
+            const currentContentType = contentTypes[contentTypeIndex % contentTypes.length];
+            contentTypeIndex++;
             
             const result = await generateContentIdeas({
               consultantId,
@@ -119,11 +180,12 @@ export async function generateAutopilotBatch(
               charLimit,
               awarenessLevel: "problem_aware",
               sophisticationLevel: "level_3",
+              postSchema: postSchema,
+              postCategory: postCategory,
             });
             
             if (result.ideas && result.ideas.length > 0) {
               const idea = result.ideas[0];
-              const dbPlatform = PLATFORM_DB_MAP[platform] || "instagram";
               
               const [insertedPost] = await db.insert(schema.contentPosts).values({
                 consultantId,
@@ -137,9 +199,10 @@ export async function generateAutopilotBatch(
                 mediaType: platform === "x" ? "foto" : "foto",
                 copyType: platform === "x" ? "short" : "long",
                 structuredContent: idea.structuredContent || {},
+                aiQualityScore: idea.aiQualityScore || null,
+                contentTheme: currentContentType,
               }).returning({ id: schema.contentPosts.id });
               
-              // Also create calendar entry for visibility
               if (insertedPost?.id) {
                 await db.insert(schema.contentCalendar).values({
                   consultantId,
@@ -154,7 +217,7 @@ export async function generateAutopilotBatch(
               }
               
               generated++;
-              console.log(`[AUTOPILOT] Generated post ${generated}/${totalPosts} for ${platform} on ${date}`);
+              console.log(`[AUTOPILOT] Generated post ${generated}/${totalPosts} for ${platform} on ${date} (theme: ${currentContentType})`);
             }
           }
         } catch (error: any) {

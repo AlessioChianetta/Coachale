@@ -12,7 +12,7 @@ import {
   insertContentTemplateSchema,
   insertContentFolderSchema
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, isNull, isNotNull, asc, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, lte, isNull, isNotNull, asc, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { ensureGeminiFileValid } from "../services/gemini-file-manager";
@@ -2854,12 +2854,47 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
 // CONTENT AUTOPILOT - Batch generation with SSE progress
 // ============================================================
 
+// GET /api/content/autopilot/templates - Get all templates (system + consultant)
+router.get("/autopilot/templates", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const templates = await db.select()
+      .from(schema.autopilotTemplates)
+      .where(
+        or(
+          eq(schema.autopilotTemplates.isDefault, true),
+          eq(schema.autopilotTemplates.consultantId, consultantId)
+        )
+      )
+      .orderBy(desc(schema.autopilotTemplates.isDefault), asc(schema.autopilotTemplates.name));
+    
+    res.json({ success: true, data: templates });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error fetching autopilot templates:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch autopilot templates"
+    });
+  }
+});
+
 router.post("/autopilot/generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "Unauthorized" });
     
-    const { startDate, endDate, platforms } = req.body;
+    const { 
+      startDate, 
+      endDate, 
+      platforms,
+      postSchema,
+      postCategory,
+      contentTypes,
+      excludeWeekends,
+      excludeHolidays,
+      excludedDates
+    } = req.body;
     
     if (!startDate || !endDate || !platforms) {
       return res.status(400).json({ error: "Missing required fields: startDate, endDate, platforms" });
@@ -2876,6 +2911,12 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       startDate,
       endDate,
       platforms,
+      postSchema,
+      postCategory,
+      contentTypes,
+      excludeWeekends,
+      excludeHolidays,
+      excludedDates,
     };
     
     const result = await generateAutopilotBatch(config, res);

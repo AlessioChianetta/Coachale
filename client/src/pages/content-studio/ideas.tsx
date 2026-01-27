@@ -98,6 +98,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
+import AutopilotPanel from "@/components/content-studio/AutopilotPanel";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -575,6 +576,7 @@ export default function ContentStudioIdeas() {
 
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [showAutopilotDialog, setShowAutopilotDialog] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1983,6 +1985,17 @@ export default function ContentStudioIdeas() {
                       {isGenerating ? "Generazione..." : "Genera Idee"}
                     </Button>
                     
+                    <Button
+                      onClick={() => setShowAutopilotDialog(true)}
+                      disabled={!objective || !useBrandVoice || Object.keys(brandVoiceData).length === 0 || !targetPlatform}
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 sm:flex-none border-orange-300 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950"
+                    >
+                      <Rocket className="h-5 w-5 mr-2 text-orange-500" />
+                      Autopilot
+                    </Button>
+                    
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
@@ -2954,6 +2967,25 @@ export default function ContentStudioIdeas() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Autopilot Dialog */}
+      <Dialog open={showAutopilotDialog} onOpenChange={setShowAutopilotDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Rocket className="h-5 w-5 text-orange-500" />
+              Content Autopilot
+            </DialogTitle>
+          </DialogHeader>
+          <AutopilotPanel
+            targetPlatform={targetPlatform as "instagram" | "x" | "linkedin"}
+            postCategory={postCategory}
+            postSchema={postSchema}
+            writingStyle={writingStyle}
+            customInstructions={customInstructions}
+          />
         </DialogContent>
       </Dialog>
     </div>
