@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lt } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { generateContentIdeas } from "./content-ai-service";
 import { Response } from "express";
@@ -50,7 +50,13 @@ const PLATFORM_DB_MAP: Record<string, "instagram" | "facebook" | "linkedin" | "t
 
 const DEFAULT_CONTENT_TYPES = ["educativo", "promozionale", "storytelling", "behind-the-scenes"];
 
-const ITALIAN_HOLIDAYS_2026 = [
+const ITALIAN_HOLIDAYS = [
+  "2024-01-01", "2024-01-06", "2024-03-31", "2024-04-01",
+  "2024-04-25", "2024-05-01", "2024-06-02", "2024-08-15",
+  "2024-11-01", "2024-12-08", "2024-12-25", "2024-12-26",
+  "2025-01-01", "2025-01-06", "2025-04-20", "2025-04-21",
+  "2025-04-25", "2025-05-01", "2025-06-02", "2025-08-15",
+  "2025-11-01", "2025-12-08", "2025-12-25", "2025-12-26",
   "2026-01-01", "2026-01-06", "2026-04-05", "2026-04-06",
   "2026-04-25", "2026-05-01", "2026-06-02", "2026-08-15",
   "2026-11-01", "2026-12-08", "2026-12-25", "2026-12-26"
@@ -63,7 +69,7 @@ function isWeekend(dateStr: string): boolean {
 }
 
 function isHoliday(dateStr: string): boolean {
-  return ITALIAN_HOLIDAYS_2026.includes(dateStr);
+  return ITALIAN_HOLIDAYS.includes(dateStr);
 }
 
 export async function generateAutopilotBatch(
@@ -134,12 +140,15 @@ export async function generateAutopilotBatch(
         const postsPerDay = platformSettings.postsPerDay;
         const dbPlatform = PLATFORM_DB_MAP[platform] || "instagram";
         
+        const dayStart = new Date(`${date}T00:00:00`);
+        const dayEnd = new Date(`${date}T23:59:59`);
         const existingPosts = await db.select({ id: schema.contentPosts.id })
           .from(schema.contentPosts)
           .where(and(
             eq(schema.contentPosts.consultantId, consultantId),
             eq(schema.contentPosts.platform, dbPlatform),
-            eq(schema.contentPosts.scheduledAt, new Date(`${date}T00:00:00`))
+            gte(schema.contentPosts.scheduledAt, dayStart),
+            lt(schema.contentPosts.scheduledAt, dayEnd)
           ))
           .limit(1);
         
