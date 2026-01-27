@@ -122,6 +122,7 @@ interface Post {
   platform: string;
   status: string;
   scheduledDate?: string;
+  scheduledAt?: string;
   contentType?: string;
   createdAt?: string;
   ideaId?: string;
@@ -3572,10 +3573,10 @@ export default function ContentStudioPosts() {
                         </div>
                         
                         <div className="flex flex-col">
-                          {post.scheduledDate ? (
+                          {(post.scheduledAt || post.scheduledDate) ? (
                             <>
                               <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                                📅 {new Date(post.scheduledDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
+                                📅 {new Date(post.scheduledAt || post.scheduledDate || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
                               </span>
                               <span className="text-[10px] text-gray-400">
                                 Creato: {new Date(post.createdAt || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
@@ -3701,8 +3702,8 @@ export default function ContentStudioPosts() {
                                 {getStatusBadge(post.status)}
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {post.scheduledDate 
-                                  ? `📅 ${new Date(post.scheduledDate).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}`
+                                {(post.scheduledAt || post.scheduledDate) 
+                                  ? `📅 ${new Date(post.scheduledAt || post.scheduledDate || "").toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}`
                                   : new Date(post.createdAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short" })
                                 }
                               </span>
@@ -3850,11 +3851,11 @@ export default function ContentStudioPosts() {
                         </div>
 
                         {/* Scheduled indicator */}
-                        {post.scheduledDate && (
+                        {(post.scheduledAt || post.scheduledDate) && (
                           <div className="flex items-center gap-2 mb-4 p-2.5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-800/30">
                             <Calendar className="h-4 w-4 text-blue-600" />
                             <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
-                              {new Date(post.scheduledDate).toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              {new Date(post.scheduledAt || post.scheduledDate || "").toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                             </span>
                           </div>
                         )}
@@ -4068,7 +4069,7 @@ export default function ContentStudioPosts() {
                   {/* Content Sections with Tabs */}
                   <div className="flex-1 overflow-y-auto min-h-0">
                     {/* Schedule info - always visible */}
-                    {viewingPost.scheduledDate && (
+                    {(viewingPost.scheduledAt || viewingPost.scheduledDate) && (
                       <div className="mx-6 mt-4 flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/30">
                         <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
                           <Calendar className="h-5 w-5 text-amber-600" />
@@ -4076,7 +4077,7 @@ export default function ContentStudioPosts() {
                         <div>
                           <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Programmato per</p>
                           <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                            {new Date(viewingPost.scheduledDate).toLocaleDateString("it-IT", { 
+                            {new Date(viewingPost.scheduledAt || viewingPost.scheduledDate || "").toLocaleDateString("it-IT", { 
                               weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" 
                             })}
                           </p>

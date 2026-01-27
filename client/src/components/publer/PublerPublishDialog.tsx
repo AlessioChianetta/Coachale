@@ -184,6 +184,8 @@ interface Post {
   soluzione?: string;
   riprovaSociale?: string;
   publerMediaIds?: string[];
+  scheduledAt?: string;
+  scheduledDate?: string;
 }
 
 interface PublerPublishDialogProps {
@@ -340,6 +342,20 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     if (open && post) {
       const initialText = composeText("hook_cta", post, "");
       setCustomText(initialText);
+    }
+  }, [open, post]);
+
+  // Pre-compila la data programmata se il post ha già una scheduledAt
+  useEffect(() => {
+    if (open && post) {
+      const postScheduledAt = post.scheduledAt || post.scheduledDate;
+      if (postScheduledAt) {
+        const date = new Date(postScheduledAt);
+        // Formato per datetime-local: YYYY-MM-DDTHH:mm
+        const formatted = date.toISOString().slice(0, 16);
+        setScheduledAt(formatted);
+        setPublishState("scheduled");
+      }
     }
   }, [open, post]);
 
