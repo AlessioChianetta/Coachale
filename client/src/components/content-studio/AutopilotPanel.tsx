@@ -913,26 +913,6 @@ function AutopilotPanel({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Template Preset
-            </Label>
-            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona un template (opzionale)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nessun template</SelectItem>
-                {Array.isArray(templates) && templates.map((template) => (
-                  <SelectItem key={template.id} value={template.id || "invalid"}>
-                    {template.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-4">
             <Label className="flex items-center gap-2">
               <CalendarOff className="h-4 w-4" />
