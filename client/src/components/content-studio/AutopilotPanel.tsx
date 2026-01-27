@@ -105,7 +105,7 @@ function AutopilotPanel({
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("none");
   const [excludeWeekends, setExcludeWeekends] = useState(false);
   const [excludeHolidays, setExcludeHolidays] = useState(false);
   const [postsPerDay, setPostsPerDay] = useState(1);
@@ -213,7 +213,7 @@ function AutopilotPanel({
           postSchema,
           writingStyle,
           customInstructions,
-          templateId: selectedTemplate || undefined,
+          templateId: selectedTemplate !== "none" ? selectedTemplate : undefined,
           excludeWeekends,
           excludeHolidays,
           postsPerDay,
@@ -347,7 +347,7 @@ function AutopilotPanel({
                 <SelectValue placeholder="Seleziona un template (opzionale)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nessun template</SelectItem>
+                <SelectItem value="none">Nessun template</SelectItem>
                 {templates?.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
                     {template.name}
