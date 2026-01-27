@@ -14,6 +14,8 @@ export interface AutopilotConfig {
     linkedin?: { enabled: boolean; postsPerDay: number };
   };
   postSchema?: string;
+  schemaStructure?: string;
+  schemaLabel?: string;
   postCategory?: string;
   contentTypes?: string[];
   excludeWeekends?: boolean;
@@ -93,6 +95,8 @@ export async function generateAutopilotBatch(
     endDate, 
     platforms,
     postSchema,
+    schemaStructure,
+    schemaLabel,
     postCategory,
     contentTypes = DEFAULT_CONTENT_TYPES,
     excludeWeekends = false,
@@ -209,6 +213,8 @@ export async function generateAutopilotBatch(
               awarenessLevel: "problem_aware",
               sophisticationLevel: "level_3",
               postSchema: postSchema,
+              schemaStructure: schemaStructure,
+              schemaLabel: schemaLabel,
               postCategory: postCategory,
             });
             

@@ -234,6 +234,15 @@ interface DayConfig {
   status: "pending" | "generating" | "generated" | "error";
 }
 
+function getSchemaDetails(platform: string, category: string, schemaValue: string): { structure: string; label: string } {
+  const platformSchemas = POST_SCHEMAS[platform];
+  if (!platformSchemas) return { structure: "", label: "" };
+  const categorySchemas = platformSchemas[category];
+  if (!categorySchemas) return { structure: "", label: "" };
+  const schema = categorySchemas.find(s => s.value === schemaValue);
+  return schema ? { structure: schema.structure, label: schema.label } : { structure: "", label: "" };
+}
+
 function AutopilotPanel({
   targetPlatform,
   postCategory,
@@ -459,6 +468,8 @@ function AutopilotPanel({
             targetPlatform: dayConfig.platform,
             postCategory: dayConfig.category,
             postSchema: dayConfig.schema,
+            schemaStructure: getSchemaDetails(dayConfig.platform, dayConfig.category, dayConfig.schema).structure,
+            schemaLabel: getSchemaDetails(dayConfig.platform, dayConfig.category, dayConfig.schema).label,
             writingStyle: dayConfig.writingStyle,
             customInstructions: dayConfig.writingStyle === "custom" ? localCustomInstructions : undefined,
             mediaType: dayConfig.mediaType,
@@ -661,6 +672,8 @@ function AutopilotPanel({
                 targetPlatform: dayConfig.platform,
                 postCategory: dayConfig.category,
                 postSchema: dayConfig.schema,
+                schemaStructure: getSchemaDetails(dayConfig.platform, dayConfig.category, dayConfig.schema).structure,
+                schemaLabel: getSchemaDetails(dayConfig.platform, dayConfig.category, dayConfig.schema).label,
                 writingStyle: dayConfig.writingStyle,
                 customInstructions: dayConfig.writingStyle === "custom" ? localCustomInstructions : undefined,
                 mediaType: dayConfig.mediaType,
@@ -737,6 +750,8 @@ function AutopilotPanel({
             targetPlatforms: localPlatforms,
             postCategory: localCategory,
             postSchema: localSchema,
+            schemaStructure: localPlatforms.length > 0 ? getSchemaDetails(localPlatforms[0], localCategory, localSchema).structure : "",
+            schemaLabel: localPlatforms.length > 0 ? getSchemaDetails(localPlatforms[0], localCategory, localSchema).label : "",
             writingStyle: localWritingStyle,
             customInstructions: localWritingStyle === "custom" ? localCustomInstructions : undefined,
             mediaType: localMediaType,
@@ -825,6 +840,8 @@ function AutopilotPanel({
           targetPlatform: dayConfig.platform,
           postCategory: dayConfig.category,
           postSchema: dayConfig.schema,
+          schemaStructure: getSchemaDetails(dayConfig.platform, dayConfig.category, dayConfig.schema).structure,
+          schemaLabel: getSchemaDetails(dayConfig.platform, dayConfig.category, dayConfig.schema).label,
           writingStyle: dayConfig.writingStyle,
           customInstructions: dayConfig.writingStyle === "custom" ? localCustomInstructions : undefined,
           mediaType: dayConfig.mediaType,
