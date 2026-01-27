@@ -79,6 +79,29 @@ interface Template {
   description: string;
 }
 
+interface BrandAssets {
+  id: string;
+  postingSchedule?: {
+    instagram?: { postsPerDay: number; times: string[]; writingStyle: string };
+    x?: { postsPerDay: number; times: string[]; writingStyle: string };
+    linkedin?: { postsPerDay: number; times: string[]; writingStyle: string };
+  };
+}
+
+const WRITING_STYLE_LABELS: Record<string, string> = {
+  default: "Predefinito",
+  conversational: "Conversazionale/Nurturing",
+  diretto: "Diretto",
+  copy_persuasivo: "Copy Persuasivo",
+  personalizzato: "Personalizzato",
+};
+
+const POST_CATEGORY_LABELS: Record<string, string> = {
+  ads: "Ads/Promozionale",
+  valore: "Valore/Educativo",
+  altri: "Altri",
+};
+
 interface GenerationProgress {
   total: number;
   completed: number;
@@ -129,6 +152,25 @@ function AutopilotPanel({
       return json.data || [];
     },
   });
+
+  const { data: brandAssets } = useQuery<BrandAssets | null>({
+    queryKey: ["brand-assets-autopilot"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/brand-assets", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        return null;
+      }
+      const json = await response.json();
+      return json.data || null;
+    },
+  });
+
+  const platformSchedule = brandAssets?.postingSchedule?.[targetPlatform];
+  const configuredTimes = platformSchedule?.times || OPTIMAL_TIMES[targetPlatform];
+  const configuredPostsPerDay = platformSchedule?.postsPerDay || 1;
+  const brandWritingStyle = platformSchedule?.writingStyle;
 
   const toggleContentType = (typeId: string) => {
     setSelectedContentTypes((prev) =>
@@ -309,6 +351,64 @@ function AutopilotPanel({
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {/* Configurazione Attiva */}
+          <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800">
+            <div className="flex items-center gap-2 mb-3">
+              <Settings className="h-4 w-4 text-violet-600" />
+              <span className="font-medium text-sm text-violet-700 dark:text-violet-300">Configurazione Attiva</span>
+              <span className="text-xs text-muted-foreground">(ereditata da Idee + Brand Assets)</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Piattaforma</div>
+                <div className="flex items-center gap-1.5">
+                  <PlatformIcon className={`h-4 w-4 ${platformConfig.color}`} />
+                  <span className="font-medium">{platformConfig.label}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Stile Scrittura</div>
+                <div className="font-medium truncate">
+                  {WRITING_STYLE_LABELS[writingStyle] || writingStyle}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Categoria</div>
+                <div className="font-medium">
+                  {POST_CATEGORY_LABELS[postCategory] || postCategory}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Schema</div>
+                <div className="font-medium truncate capitalize">
+                  {postSchema === "originale" ? "Libero" : postSchema.replace(/_/g, " ")}
+                </div>
+              </div>
+            </div>
+            
+            {/* Orari Configurati */}
+            <div className="mt-4 pt-3 border-t border-violet-200 dark:border-violet-700">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-3.5 w-3.5 text-violet-600" />
+                <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+                  Orari Pubblicazione {platformSchedule ? "(da Brand Assets)" : "(default ottimali)"}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {configuredTimes.map((time, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs bg-white dark:bg-gray-900">
+                    {time}
+                  </Badge>
+                ))}
+              </div>
+              {!platformSchedule && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Configura orari personalizzati in Brand Assets → Posting Schedule
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="autopilot-start" className="flex items-center gap-2">
