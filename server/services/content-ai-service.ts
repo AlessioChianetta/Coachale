@@ -590,21 +590,26 @@ const AWARENESS_LEVEL_INSTRUCTIONS: Record<AwarenessLevel, { name: string; strat
 
 function validateAndEnrichCopyLength(
   copyType: string | undefined,
-  copyLength: number
+  copyLength: number,
+  platformCharLimit?: number
 ): string | undefined {
+  // Use platform-specific limit, default to sensible fallbacks
+  const longMaxLimit = platformCharLimit || 2200; // Instagram default
+  const shortMaxLimit = Math.min(500, platformCharLimit || 500);
+  
   if (copyType === "long") {
     if (copyLength < 1500) {
       return "Copy troppo corto (min 1500 caratteri)";
     }
-    if (copyLength > 3000) {
-      return "Copy troppo lungo (max 3000 caratteri)";
+    if (copyLength > longMaxLimit) {
+      return `Copy troppo lungo (max ${longMaxLimit} caratteri)`;
     }
   } else if (copyType === "short") {
     if (copyLength < 200) {
       return "Copy troppo corto (min 200 caratteri)";
     }
-    if (copyLength > 500) {
-      return "Copy troppo lungo (max 500 caratteri)";
+    if (copyLength > shortMaxLimit) {
+      return `Copy troppo lungo (max ${shortMaxLimit} caratteri)`;
     }
   }
   return undefined;
@@ -706,14 +711,11 @@ ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
         const fieldName = fieldNames[idx];
         if (isLongCopy) {
           return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
-   - LUNGHEZZA RICHIESTA: ${minPerSection}-${maxPerSection} caratteri
-   - CONTENUTO: Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
-   - STILE: Usa frasi complete, storytelling, dettagli concreti, esempi reali
-   - NON scrivere frasi telegrafiche o elenchi puntati - scrivi PARAGRAFI narrativi`;
+   - Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
+   - Usa frasi complete, storytelling, dettagli concreti, esempi reali`;
         } else {
           return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
-   - LUNGHEZZA: ${minPerSection}-${maxPerSection} caratteri
-   - CONTENUTO: Conciso e diretto, ogni parola conta`;
+   - Conciso e diretto, ogni parola conta`;
         }
       }).join("\n\n");
       
@@ -725,27 +727,22 @@ ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
       const videoFields = isVideo ? `,
   "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche."` : "";
       
-      // Length enforcement block
+      // Length enforcement block - focus on TOTAL only, let AI distribute freely
       const lengthEnforcement = isLongCopy ? `
-⚠️⚠️⚠️ REQUISITO CRITICO DI LUNGHEZZA - LEGGI ATTENTAMENTE ⚠️⚠️⚠️
+⚠️⚠️⚠️ LIMITE CARATTERI OBBLIGATORIO ⚠️⚠️⚠️
 
-IL COPY LUNGO RICHIEDE ALMENO ${minChars} CARATTERI TOTALI.
+LUNGHEZZA COPY TOTALE: tra ${minChars} e ${maxChars} caratteri
 
-CALCOLO OBBLIGATORIO:
-- Hai ${numSections} sezioni da scrivere
-- Ogni sezione DEVE avere ALMENO ${minPerSection} caratteri
-- ${numSections} sezioni × ${minPerSection} caratteri = ${guaranteedTotal} caratteri MINIMO
+Il campo "captionCopy" DEVE essere:
+- MINIMO ${minChars} caratteri (copy troppo corto = fallimento)
+- MASSIMO ${maxChars} caratteri (limite piattaforma ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
 
-Questo significa che:
-- Ogni sezione deve essere un PARAGRAFO COMPLETO di ${minPerSection}-${maxPerSection} caratteri
-- NON scrivere frasi brevi di 50-100 caratteri - sono INSUFFICIENTI
-- SVILUPPA ogni concetto con dettagli, esempi, emozioni, storytelling
-- Il campo "captionCopy" DEVE contenere ALMENO ${minChars} caratteri
+Distribuisci liberamente il contenuto tra le ${numSections} sezioni dello schema.
+Ogni sezione deve essere sviluppata con storytelling e dettagli concreti.
 
-ESEMPIO DI LUNGHEZZA CORRETTA per UNA SINGOLA sezione (~${minPerSection} caratteri):
-"Ogni mattina ti svegli con l'ansia di controllare il telefono. Le notifiche sono tante, ma i clienti veri? Pochi. Passi ore a rispondere a curiosi che non compreranno mai, mentre i lead caldi si raffreddano perché non riesci a gestirli tutti. Il tuo team è sommerso, frustrato, e la crescita del business è bloccata da questo collo di bottiglia invisibile. Sai che potresti fare di più, ma il tempo non basta mai."
+⛔ SE IL captionCopy SUPERA ${maxChars} CARATTERI, HAI FALLITO IL TASK.
+⛔ SE IL captionCopy È SOTTO ${minChars} CARATTERI, HAI FALLITO IL TASK.
 
-SE IL TUO captionCopy È SOTTO ${minChars} CARATTERI, HAI FALLITO IL TASK.
 Conta i caratteri prima di rispondere.` : "";
       
       return `
@@ -1066,7 +1063,7 @@ RISPONDI SOLO con un JSON valido nel formato:
       
       const finalCopyContent = idea.copyContent || copyContent;
       const effectiveCopyType = (idea.copyType || copyType) as "short" | "long";
-      const lengthWarning = validateAndEnrichCopyLength(effectiveCopyType, copyLength);
+      const lengthWarning = validateAndEnrichCopyLength(effectiveCopyType, copyLength, charLimit);
       
       console.log(`[CONTENT-AI] Enriching idea "${idea.title}": mediaType=${idea.mediaType || mediaType}, structuredType=${sc?.type}, hasVideoScript=${!!videoScript}, hasImageDesc=${!!imageDescription}, hasCopyContent=${!!finalCopyContent}, copyLength=${copyLength}, lengthWarning=${lengthWarning || 'none'}`);
       
