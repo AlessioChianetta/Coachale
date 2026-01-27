@@ -1101,6 +1101,11 @@ export default function ContentStudioIdeas() {
     const platformLimit = PLATFORM_LIMITS[targetPlatform];
 
     setIsGenerating(true);
+    
+    // Debug log per verificare lo stato di writingStyle
+    console.log("[GENERATE] Current writingStyle state:", writingStyle);
+    console.log("[GENERATE] customWritingInstructions:", customWritingInstructions);
+    
     try {
       const response = await fetch("/api/content/ai/generate-ideas", {
         method: "POST",
@@ -1474,8 +1479,12 @@ export default function ContentStudioIdeas() {
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {WRITING_STYLES.map((style) => (
                           <button
+                            type="button"
                             key={style.value}
-                            onClick={() => setWritingStyle(style.value)}
+                            onClick={() => {
+                              console.log("[WRITING_STYLE] Setting style to:", style.value);
+                              setWritingStyle(style.value);
+                            }}
                             className={`p-2.5 rounded-lg border-2 transition-all text-left ${
                               writingStyle === style.value
                                 ? "border-teal-500 bg-teal-50 dark:bg-teal-950/30"
