@@ -217,6 +217,39 @@ const PLATFORM_LIMITS = {
   linkedin: { post: 3000, article: 125000, description: "Post max 3.000 caratteri" },
 } as const;
 
+const WRITING_STYLES = [
+  { 
+    value: "default", 
+    label: "Predefinito", 
+    description: "Professionale e bilanciato, tono naturale",
+    icon: "📝"
+  },
+  { 
+    value: "conversational", 
+    label: "Conversazionale (Nurturing)", 
+    description: "Frasi brevi, riga per riga, storytelling personale, pattern interrupt",
+    icon: "💬"
+  },
+  { 
+    value: "direct", 
+    label: "Diretto", 
+    description: "Conciso, va dritto al punto, no fronzoli",
+    icon: "🎯"
+  },
+  { 
+    value: "persuasive", 
+    label: "Copy Persuasivo", 
+    description: "Tecnico copywriting, trigger emotivi, urgenza",
+    icon: "🔥"
+  },
+  { 
+    value: "custom", 
+    label: "Personalizzato", 
+    description: "Definisci le tue istruzioni di stile",
+    icon: "✏️"
+  },
+] as const;
+
 const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: string; structure: string; description: string }>>> = {
   instagram: {
     ads: [
@@ -437,10 +470,12 @@ export default function ContentStudioIdeas() {
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
   const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
-  const [copyType, setCopyType] = useState<"short" | "long">("short");
+  const [copyType, setCopyType] = useState<"short" | "long">("long");
   const [targetPlatform, setTargetPlatform] = useState<"instagram" | "x" | "linkedin">("instagram");
   const [postCategory, setPostCategory] = useState<"ads" | "valore" | "altri">("ads");
   const [postSchema, setPostSchema] = useState<string>("originale");
+  const [writingStyle, setWritingStyle] = useState<string>("default");
+  const [customWritingInstructions, setCustomWritingInstructions] = useState<string>("");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
   const [isGeneratingNicheTarget, setIsGeneratingNicheTarget] = useState(false);
@@ -1088,6 +1123,8 @@ export default function ContentStudioIdeas() {
           schemaStructure: selectedSchema?.structure,
           schemaLabel: selectedSchema?.label,
           charLimit: targetPlatform === "x" ? platformLimit.tweet : (targetPlatform === "linkedin" ? platformLimit.post : platformLimit.caption),
+          writingStyle,
+          customWritingInstructions: writingStyle === "custom" ? customWritingInstructions : undefined,
           ...(useBrandVoice && Object.keys(brandVoiceData).length > 0 && { brandVoiceData }),
           ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
           ...(useKnowledgeBase && tempFiles.filter(f => f.status === "success").length > 0 && { 
@@ -1146,6 +1183,8 @@ export default function ContentStudioIdeas() {
       postCategory: postCategory,
       postSchema: postSchema,
       schemaStructure: selectedSchema?.structure,
+      writingStyle: writingStyle,
+      customWritingInstructions: writingStyle === "custom" ? customWritingInstructions : undefined,
     }, {
       onSuccess: () => {
         setSavedIdeaIndexes(prev => new Set(prev).add(index));
@@ -1361,6 +1400,40 @@ export default function ContentStudioIdeas() {
                           </button>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Writing Style Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Stile di Scrittura</Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {WRITING_STYLES.map((style) => (
+                          <button
+                            key={style.value}
+                            onClick={() => setWritingStyle(style.value)}
+                            className={`p-2.5 rounded-lg border-2 transition-all text-left ${
+                              writingStyle === style.value
+                                ? "border-teal-500 bg-teal-50 dark:bg-teal-950/30"
+                                : "border-border hover:border-teal-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{style.icon}</span>
+                              <span className={`font-medium text-sm ${writingStyle === style.value ? "text-teal-700 dark:text-teal-300" : ""}`}>
+                                {style.label}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{style.description}</p>
+                          </button>
+                        ))}
+                      </div>
+                      {writingStyle === "custom" && (
+                        <Textarea
+                          placeholder="Descrivi come vuoi che scriva l'AI... Es: 'Usa un tono ironico e provocatorio, con riferimenti alla cultura pop italiana'"
+                          value={customWritingInstructions}
+                          onChange={(e) => setCustomWritingInstructions(e.target.value)}
+                          className="mt-2 min-h-[80px]"
+                        />
+                      )}
                     </div>
 
                     {/* Number of ideas - compact */}

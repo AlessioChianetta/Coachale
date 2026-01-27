@@ -28,6 +28,8 @@ export interface GenerateIdeasParams {
   schemaStructure?: string;
   schemaLabel?: string;
   charLimit?: number;
+  writingStyle?: string;
+  customWritingInstructions?: string;
   brandVoiceData?: {
     consultantDisplayName?: string;
     businessName?: string;
@@ -965,7 +967,7 @@ function validateAndEnrichCopyLength(
 
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
   const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware", sophisticationLevel = "level_3" } = params;
-  const { targetPlatform, postCategory, postSchema, schemaStructure, schemaLabel, charLimit } = params;
+  const { targetPlatform, postCategory, postSchema, schemaStructure, schemaLabel, charLimit, writingStyle = "default", customWritingInstructions } = params;
   
   await rateLimitCheck(consultantId);
   
@@ -1009,18 +1011,52 @@ ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
     const minChars = isLongCopy ? Math.min(1500, Math.floor(effectiveCharLimit * 0.7)) : 200;
     const maxChars = isLongCopy ? Math.min(3000, effectiveCharLimit) : Math.min(500, effectiveCharLimit);
     
-    // Style instructions based on copyType
+    // Writing style instructions based on selected style
+    const writingStyleInstructions: Record<string, string> = {
+      default: `STILE PREDEFINITO:
+- Tono professionale e bilanciato, naturale ma autorevole
+- Usa emoji strategiche (max 5-7 per post)
+- Alterna frasi brevi e medie per ritmo scorrevole`,
+      conversational: `STILE CONVERSAZIONALE (NURTURING):
+- Scrivi come se stessi parlando a un amico, diretto e personale
+- FRASI ULTRA-BREVI: 3-8 parole max. "SBAGLIATO.", "Esatto.", "Ecco il punto."
+- OGNI FRASE SU RIGA SEPARATA, crea ritmo incalzante
+- PATTERN INTERRUPT: "Ma aspetta.", "Fermati un secondo.", "E sai cosa?"
+- DOMANDE DIRETTE: "Sai qual è la parte migliore?", "E indovina cosa è successo?"
+- DIALOGO INTERNO: Inserisci pensieri tra virgolette ("E io ho pensato: cavolo, è vero!")
+- STORYTELLING PERSONALE: Racconta aneddoti, errori, scoperte
+- Emoji minimal: solo ✅ e → quando servono
+- VIETATO: frasi lunghe, tono formale, elenchi noiosi`,
+      direct: `STILE DIRETTO:
+- Dritto al punto, zero fronzoli
+- Frasi brevi e assertive
+- No giri di parole, no storytelling elaborato
+- Bullet points per i concetti chiave
+- Tono deciso e incoraggiante`,
+      persuasive: `STILE COPY PERSUASIVO:
+- Usa i principi di copywriting classico (urgenza, scarsità, riprova sociale)
+- Trigger emotivi: paura di perdere, desiderio di guadagnare
+- Headline d'impatto, hook magnetici
+- Transizioni potenti tra le sezioni
+- CTA aggressive ma non spam
+- Power words: GRATIS, GARANTITO, ESCLUSIVO, IMMEDIATO, LIMITATO`,
+      custom: customWritingInstructions || "Segui le istruzioni personalizzate dell'utente."
+    };
+
+    // Style instructions based on copyType + writingStyle
     const styleInstructions = isLongCopy 
       ? `STILE COPY LUNGO:
 - Ogni sezione deve essere sviluppata in modo narrativo e approfondito
 - Il copy TOTALE deve essere tra ${minChars}-${maxChars} caratteri
-- Usa emoji strategiche (max 5-7 per post) per rendere visivamente scorrevole
 - Separa i pensieri all'interno di ogni blocco con righe vuote
-- Il tono deve essere empatico, autorevole e persuasivo`
+
+${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`
       : `STILE COPY CORTO:
 - Il copy TOTALE deve essere tra ${minChars}-${maxChars} caratteri
 - Dritto al punto, ogni parola deve contare
-- Massimo 3-4 blocchi di testo totali`;
+- Massimo 3-4 blocchi di testo totali
+
+${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
 
     // Generate dynamic structure based on schemaStructure if provided
     if (schemaStructure) {

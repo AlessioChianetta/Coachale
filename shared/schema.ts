@@ -8253,6 +8253,8 @@ export const contentIdeas = pgTable("content_ideas", {
   postCategory: varchar("post_category", { length: 50 }).$type<"ads" | "valore" | "altri">(),
   postSchema: varchar("post_schema", { length: 100 }),
   schemaStructure: text("schema_structure"),
+  writingStyle: varchar("writing_style", { length: 50 }).default("default").$type<"default" | "conversational" | "direct" | "persuasive" | "custom">(),
+  customWritingInstructions: text("custom_writing_instructions"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
