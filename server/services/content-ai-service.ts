@@ -1000,26 +1000,61 @@ RISPONDI SOLO con un JSON valido nel formato:
             }
           }
         } else if (sc.type === "copy_long") {
-          const copyParts = [sc.hook, sc.chiCosaCome, sc.errore, sc.soluzione, sc.riprovaSociale, sc.cta].filter(Boolean);
-          if (copyParts.length > 0) {
-            copyContent = copyParts.join("\n\n");
+          // PRIORITY 1: Use captionCopy if available (AI should always generate this)
+          if (sc.captionCopy && typeof sc.captionCopy === 'string' && sc.captionCopy.length > 0) {
+            copyContent = sc.captionCopy;
+            copyLength = sc.captionCopy.length;
+          } else {
+            // PRIORITY 2: Try original schema fields (backwards compatibility)
+            const originalSchemaParts = [sc.hook, sc.chiCosaCome, sc.errore, sc.soluzione, sc.riprovaSociale, sc.cta].filter(Boolean);
+            if (originalSchemaParts.length > 0) {
+              copyContent = originalSchemaParts.join("\n\n");
+              copyLength = copyContent.length;
+            } else {
+              // PRIORITY 3: Dynamic fallback - collect ALL text fields from any schema
+              const excludedFields = ['type', 'copyVariant', 'schemaUsed', 'hashtags', 'imageDescription', 'imageOverlayText', 'captionCopy'];
+              const dynamicParts: string[] = [];
+              for (const key of Object.keys(sc)) {
+                if (!excludedFields.includes(key) && typeof sc[key] === 'string' && sc[key].length > 0) {
+                  dynamicParts.push(sc[key]);
+                }
+              }
+              if (dynamicParts.length > 0) {
+                copyContent = dynamicParts.join("\n\n");
+                copyLength = copyContent.length;
+              }
+            }
           }
           imageDescription = sc.imageDescription;
           imageOverlayText = sc.imageOverlayText;
-          // Per copy_long, usa copyContent
-          if (copyContent) {
-            copyLength = copyContent.length;
-          }
         } else if (sc.type === "copy_short") {
-          const copyParts = [sc.hook, sc.body, sc.cta].filter(Boolean);
-          if (copyParts.length > 0) {
-            copyContent = copyParts.join("\n\n");
+          // PRIORITY 1: Use captionCopy if available
+          if (sc.captionCopy && typeof sc.captionCopy === 'string' && sc.captionCopy.length > 0) {
+            copyContent = sc.captionCopy;
+            copyLength = sc.captionCopy.length;
+          } else {
+            // PRIORITY 2: Try original schema fields
+            const copyParts = [sc.hook, sc.body, sc.cta].filter(Boolean);
+            if (copyParts.length > 0) {
+              copyContent = copyParts.join("\n\n");
+              copyLength = copyParts.join("").length;
+            } else {
+              // PRIORITY 3: Dynamic fallback
+              const excludedFields = ['type', 'copyVariant', 'schemaUsed', 'hashtags', 'imageDescription', 'imageOverlayText', 'captionCopy'];
+              const dynamicParts: string[] = [];
+              for (const key of Object.keys(sc)) {
+                if (!excludedFields.includes(key) && typeof sc[key] === 'string' && sc[key].length > 0) {
+                  dynamicParts.push(sc[key]);
+                }
+              }
+              if (dynamicParts.length > 0) {
+                copyContent = dynamicParts.join("\n\n");
+                copyLength = dynamicParts.join("").length;
+              }
+            }
           }
           imageDescription = sc.imageDescription;
           imageOverlayText = sc.imageOverlayText;
-          // Per copy_short, calcola da hook + body + cta senza separatori
-          const shortParts = [sc.hook, sc.body, sc.cta].filter(Boolean);
-          copyLength = shortParts.join("").length;
         } else if (sc.type === "image_copy") {
           imageDescription = sc.conceptDescription;
           imageOverlayText = sc.imageText;
