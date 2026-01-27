@@ -2984,7 +2984,7 @@ export default function ContentStudioIdeas() {
             postCategory={postCategory}
             postSchema={postSchema}
             writingStyle={writingStyle}
-            customInstructions={customInstructions}
+            customInstructions={customWritingInstructions}
           />
         </DialogContent>
       </Dialog>
