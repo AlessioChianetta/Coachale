@@ -629,7 +629,7 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
   const sophisticationInfo = SOPHISTICATION_LEVEL_INSTRUCTIONS[sophisticationLevel];
 
-  // Build platform and schema context
+  // Build platform context (schema structure is now handled dynamically in getStructuredContentInstructions)
   let platformSchemaContext = "";
   if (targetPlatform || postSchema) {
     const platformNames: Record<string, string> = { instagram: "Instagram", x: "X (Twitter)", linkedin: "LinkedIn" };
@@ -640,15 +640,7 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
 📱 PIATTAFORMA TARGET: ${platformNames[targetPlatform || "instagram"] || targetPlatform}
 📝 TIPO POST: ${categoryNames[postCategory || "valore"] || postCategory}
 🔢 LIMITE CARATTERI: ${charLimit || 2200} caratteri MAX per il copy principale
-
-${schemaLabel ? `📋 SCHEMA DA SEGUIRE: ${schemaLabel}` : ""}
-${schemaStructure ? `
-STRUTTURA OBBLIGATORIA DEL CONTENUTO:
-Il post DEVE seguire questa struttura esatta, nell'ordine indicato:
-${schemaStructure.split("|").map((part, idx) => `${idx + 1}. ${part}`).join("\n")}
-
-IMPORTANTE: Ogni sezione dello schema deve essere presente e ben sviluppata nel contenuto.
-Il contenuto DEVE rispettare il limite di ${charLimit || 2200} caratteri.` : ""}`;
+${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
   }
 
   const getStructuredContentInstructions = () => {
@@ -656,7 +648,78 @@ Il contenuto DEVE rispettare il limite di ${charLimit || 2200} caratteri.` : ""}
   "imageDescription": "Descrizione visiva dettagliata dell'immagine: soggetto, sfondo, colori, mood, stile fotografico",
   "imageOverlayText": "Testo breve e d'impatto da sovrapporre all'immagine (max 10 parole)"` : "";
     
-    if (mediaType === "video" && copyType === "long") {
+    const effectiveCharLimit = charLimit || 2200;
+    const isLongCopy = copyType === "long";
+    const isVideo = mediaType === "video";
+    
+    // Calculate character ranges based on copyType and charLimit
+    const minChars = isLongCopy ? Math.min(1500, Math.floor(effectiveCharLimit * 0.7)) : 200;
+    const maxChars = isLongCopy ? Math.min(3000, effectiveCharLimit) : Math.min(500, effectiveCharLimit);
+    
+    // Style instructions based on copyType
+    const styleInstructions = isLongCopy 
+      ? `STILE COPY LUNGO:
+- Ogni sezione deve essere sviluppata in modo narrativo e approfondito
+- Il copy TOTALE deve essere tra ${minChars}-${maxChars} caratteri
+- Usa emoji strategiche (max 5-7 per post) per rendere visivamente scorrevole
+- Separa i pensieri all'interno di ogni blocco con righe vuote
+- Il tono deve essere empatico, autorevole e persuasivo`
+      : `STILE COPY CORTO:
+- Il copy TOTALE deve essere tra ${minChars}-${maxChars} caratteri
+- Dritto al punto, ogni parola deve contare
+- Massimo 3-4 blocchi di testo totali`;
+
+    // Generate dynamic structure based on schemaStructure if provided
+    if (schemaStructure) {
+      const schemaParts = schemaStructure.split("|").map(s => s.trim());
+      const charsPerSection = Math.floor((maxChars - 100) / schemaParts.length); // Reserve 100 chars for hashtags
+      const minPerSection = Math.floor(charsPerSection * 0.5);
+      const maxPerSection = Math.floor(charsPerSection * 1.5);
+      
+      // Create dynamic JSON structure based on schema
+      const dynamicFields = schemaParts.map((part, idx) => {
+        const fieldName = part.toLowerCase()
+          .replace(/[^a-z0-9\s]/g, '')
+          .replace(/\s+/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_|_$/g, '') || `section_${idx + 1}`;
+        
+        const charRange = isLongCopy 
+          ? `${minPerSection}-${maxPerSection} caratteri. Sviluppa in modo narrativo e coinvolgente.`
+          : `${Math.floor(minPerSection * 0.6)}-${Math.floor(maxPerSection * 0.6)} caratteri. Conciso e diretto.`;
+        
+        return `  "${fieldName}": "${part} - ${charRange}"`;
+      }).join(",\n");
+      
+      const videoFields = isVideo ? `,
+  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause."` : "";
+      
+      return `
+**structuredContent** (OBBLIGATORIO - oggetto JSON):
+Genera il contenuto seguendo ESATTAMENTE questa struttura basata sullo schema "${schemaLabel || 'selezionato'}":
+{
+  "type": "${isVideo ? 'video_script' : (isLongCopy ? 'copy_long' : 'copy_short')}",
+  "copyVariant": "${copyType}",
+  "schemaUsed": "${postSchema}",
+${dynamicFields},
+  "captionCopy": "Il copy COMPLETO che concatena tutte le sezioni sopra in un unico testo formattato. DEVE essere ${minChars}-${maxChars} caratteri.",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}${videoFields}
+}
+
+📋 STRUTTURA DA SEGUIRE: ${schemaStructure.split("|").map((part, idx) => `${idx + 1}. ${part}`).join(" → ")}
+
+${styleInstructions}
+
+LIMITE CARATTERI PIATTAFORMA: ${effectiveCharLimit} caratteri MAX totali
+${isVideo ? `
+IMPORTANTE per fullScript (video):
+- Scritto per essere DETTO A VOCE, frasi corte e incisive
+- Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
+- Usa '...' per micro-pause di respiro` : ""}`;
+    }
+    
+    // Fallback to default structure when no schemaStructure is provided (schema "originale")
+    if (isVideo && isLongCopy) {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
@@ -668,22 +731,18 @@ Il contenuto DEVE rispettare il limite di ${charLimit || 2200} caratteri.` : ""}
   "soluzione": "300-500 caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
   "riprovaSociale": "200-400 caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
   "cta": "100-200 caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
-  "captionCopy": "Il copy COMPLETO che concatena tutte le sezioni sopra in un unico testo formattato per Instagram. DEVE essere 1500-3000 caratteri.",
+  "captionCopy": "Il copy COMPLETO che concatena tutte le sezioni sopra in un unico testo formattato per Instagram. DEVE essere ${minChars}-${maxChars} caratteri.",
   "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause. Esempio: 'Il tuo telefono... [PAUSA] ...è diventato una catena.'",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
 
-IMPORTANTE PER VIDEO + COPY LUNGO:
-- captionCopy DEVE essere ALMENO 1500 caratteri e MASSIMO 3000 caratteri
-- captionCopy deve contenere: Hook → Chi/Cosa/Come → Errore → Soluzione → Riprova Sociale → CTA
-- Ogni sezione separata da una riga vuota
-- Il tono deve essere empatico, autorevole e persuasivo
+${styleInstructions}
 
 IMPORTANTE per fullScript:
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
 - Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
 - Usa '...' per micro-pause di respiro`;
-    } else if (mediaType === "video" && copyType === "short") {
+    } else if (isVideo && !isLongCopy) {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
@@ -692,20 +751,18 @@ IMPORTANTE per fullScript:
   "hook": "La prima frase d'impatto che cattura attenzione (50-100 caratteri)",
   "body": "Il corpo del messaggio - conciso, dritto al punto (100-300 caratteri)",
   "cta": "Call to action finale (50-100 caratteri)",
-  "captionCopy": "Il copy COMPLETO che concatena hook+body+cta in un unico testo. DEVE essere 200-500 caratteri.",
+  "captionCopy": "Il copy COMPLETO che concatena hook+body+cta in un unico testo. DEVE essere ${minChars}-${maxChars} caratteri.",
   "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
 
-IMPORTANTE PER VIDEO + COPY CORTO:
-- captionCopy DEVE essere MINIMO 200 e MASSIMO 500 caratteri
-- Dritto al punto, ogni parola deve contare
+${styleInstructions}
 
 IMPORTANTE per fullScript:
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
 - Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
 - Usa '...' per micro-pause di respiro`;
-    } else if (copyType === "long") {
+    } else if (isLongCopy) {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
@@ -719,13 +776,7 @@ IMPORTANTE per fullScript:
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
 
-IMPORTANTE PER COPY LUNGO:
-- Il copy lungo DEVE essere ALMENO 1500 caratteri totali. Ogni sezione deve essere sviluppata in modo narrativo e approfondito.
-- Il copy TOTALE deve essere tra 1500-3000 caratteri
-- Ogni sezione deve essere sviluppata, narrativa e coinvolgente emotivamente
-- Usa emoji strategiche (max 5-7 per post) per rendere visivamente scorrevole
-- Separa i pensieri all'interno di ogni blocco con righe vuote
-- Il tono deve essere empatico, autorevole e persuasivo`;
+${styleInstructions}`;
     } else {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
@@ -737,11 +788,7 @@ IMPORTANTE PER COPY LUNGO:
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
 
-IMPORTANTE PER COPY CORTO:
-- Il copy corto DEVE essere MASSIMO 500 caratteri totali. Dritto al punto.
-- Il copy TOTALE deve essere tra 200-500 caratteri
-- Massimo 3-4 blocchi di testo totali
-- Dritto al punto, ogni parola deve contare`;
+${styleInstructions}`;
     }
   };
 

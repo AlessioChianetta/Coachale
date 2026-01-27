@@ -472,6 +472,38 @@ export default function ContentStudioIdeas() {
     }
   }, [brandVoiceResponse]);
 
+  // Auto-suggest postCategory based on objective
+  useEffect(() => {
+    if (!objective) return;
+    
+    let suggestedCategory: "ads" | "valore" | "altri" = "ads";
+    
+    switch (objective) {
+      case "sales":
+      case "leads":
+        suggestedCategory = "ads";
+        break;
+      case "engagement":
+      case "education":
+      case "authority":
+        suggestedCategory = "valore";
+        break;
+      case "awareness":
+        suggestedCategory = "altri";
+        break;
+      default:
+        suggestedCategory = "ads";
+    }
+    
+    // Check if the suggested category has schemas for current platform
+    const hasSchemas = (POST_SCHEMAS[targetPlatform]?.[suggestedCategory]?.length || 0) > 0;
+    
+    if (hasSchemas && postCategory !== suggestedCategory) {
+      setPostCategory(suggestedCategory);
+      setPostSchema("");
+    }
+  }, [objective, targetPlatform]);
+
   // Save Brand Voice to Content Studio config
   const [saveSuccess, setSaveSuccess] = useState(false);
   
@@ -1276,8 +1308,10 @@ export default function ContentStudioIdeas() {
                               <button
                                 key={platform.value}
                                 onClick={() => {
-                                  setTargetPlatform(platform.value);
-                                  setPostSchema(""); // Reset schema when platform changes
+                                  if (targetPlatform !== platform.value) {
+                                    setTargetPlatform(platform.value);
+                                    setPostSchema("");
+                                  }
                                 }}
                                 className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
                                   isSelected
@@ -1314,9 +1348,9 @@ export default function ContentStudioIdeas() {
                                   <TooltipTrigger asChild>
                                     <button
                                       onClick={() => {
-                                        if (hasSchemas) {
+                                        if (hasSchemas && postCategory !== category.value) {
                                           setPostCategory(category.value as "ads" | "valore" | "altri");
-                                          setPostSchema(""); // Reset schema when category changes
+                                          setPostSchema("");
                                         }
                                       }}
                                       disabled={!hasSchemas}
