@@ -207,6 +207,7 @@ interface DayConfig {
   writingStyle: string;
   mediaType: string;
   copyType: string;
+  contentTheme: string;
   status: "pending" | "generating" | "generated" | "error";
 }
 
@@ -383,9 +384,14 @@ function AutopilotPanel({
       const removedDates = dayConfigs.filter(d => !calculation.validDates.includes(d.date));
       
       if (newDates.length > 0 || removedDates.length > 0) {
-        const newConfigs: DayConfig[] = calculation.validDates.map(date => {
+        const contentTypesToUse = selectedContentTypes.length > 0 ? selectedContentTypes : ["educativo"];
+        
+        const newConfigs: DayConfig[] = calculation.validDates.map((date, index) => {
           const existing = dayConfigs.find(d => d.date === date);
           if (existing) return existing;
+          
+          const rotatedContentTheme = contentTypesToUse[index % contentTypesToUse.length];
+          
           return {
             date,
             platform: localPlatform,
@@ -394,13 +400,14 @@ function AutopilotPanel({
             writingStyle: localWritingStyle,
             mediaType: localMediaType,
             copyType: localCopyType,
+            contentTheme: rotatedContentTheme,
             status: "pending" as const,
           };
         });
         setDayConfigs(newConfigs);
       }
     }
-  }, [mode, calculation.validDates]);
+  }, [mode, calculation.validDates, selectedContentTypes]);
 
   const canGenerate =
     startDate &&
@@ -459,7 +466,7 @@ function AutopilotPanel({
                 excludeHolidays: false,
                 postsPerDay,
                 mode: "controllata",
-                contentTypes: selectedContentTypes,
+                contentTypes: [dayConfig.contentTheme],
                 optimalTimes: configuredTimes,
               }),
             });
@@ -623,7 +630,7 @@ function AutopilotPanel({
           excludeHolidays: false,
           postsPerDay,
           mode: "controllata",
-          contentTypes: selectedContentTypes,
+          contentTypes: [dayConfig.contentTheme],
           optimalTimes: configuredTimes,
         }),
       });
@@ -1080,6 +1087,20 @@ function AutopilotPanel({
                               <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                               <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{formatDayLabel(config.date)}</span>
                             </div>
+                            {/* Content Theme Badge */}
+                            {(() => {
+                              const themeInfo = CONTENT_TYPES.find(t => t.id === config.contentTheme);
+                              const ThemeIcon = themeInfo?.icon || BookOpen;
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] px-2 py-0.5 flex items-center gap-1 bg-violet-50 text-violet-700 border-violet-300 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700"
+                                >
+                                  <ThemeIcon className="h-3 w-3" />
+                                  {themeInfo?.label || config.contentTheme}
+                                </Badge>
+                              );
+                            })()}
                             <Badge
                               variant="secondary"
                               className={`text-[10px] px-2 py-0.5 flex items-center gap-1 ${
@@ -1199,9 +1220,33 @@ function AutopilotPanel({
                               </Select>
                             </div>
 
-                            {/* Row: Writing Style, Media Type, Copy Type */}
+                            {/* Row: Content Theme, Writing Style, Media Type, Copy Type */}
                             <div className="p-2.5 rounded-lg bg-gray-50/60 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700/30">
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="grid grid-cols-4 gap-2">
+                                {/* Content Theme */}
+                                <Select
+                                  value={config.contentTheme}
+                                  onValueChange={(v) => updateDayConfig(index, { contentTheme: v })}
+                                  disabled={config.status === "generating" || config.status === "generated"}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-violet-400 dark:hover:border-violet-600 transition-colors">
+                                    <SelectValue placeholder="Tema" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {CONTENT_TYPES.map((type) => {
+                                      const TypeIcon = type.icon;
+                                      return (
+                                        <SelectItem key={type.id} value={type.id}>
+                                          <div className="flex items-center gap-1">
+                                            <TypeIcon className="h-3 w-3" />
+                                            <span className="text-xs">{type.label}</span>
+                                          </div>
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+
                                 {/* Writing Style */}
                                 <Select
                                   value={config.writingStyle}
