@@ -449,8 +449,8 @@ function AutopilotPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nessun template</SelectItem>
-                {templates?.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
+                {Array.isArray(templates) && templates.map((template) => (
+                  <SelectItem key={template.id} value={template.id || "invalid"}>
                     {template.name}
                   </SelectItem>
                 ))}
@@ -622,8 +622,9 @@ function AutopilotPanel({
                 )}
 
                 <div className="mt-3 text-xs text-muted-foreground">
-                  <span className="font-medium">Orari ottimali:</span>{" "}
-                  {OPTIMAL_TIMES[targetPlatform].join(", ")}
+                  <span className="font-medium">Orari pubblicazione:</span>{" "}
+                  {configuredTimes.join(", ")}
+                  {platformSchedule && <span className="ml-1 text-green-600">(Brand Assets)</span>}
                 </div>
               </motion.div>
             )}

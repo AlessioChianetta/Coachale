@@ -19,6 +19,9 @@ export interface AutopilotConfig {
   excludeWeekends?: boolean;
   excludeHolidays?: boolean;
   excludedDates?: string[];
+  writingStyle?: string;
+  customInstructions?: string;
+  optimalTimes?: string[];
 }
 
 export interface AutopilotProgress {
@@ -46,6 +49,12 @@ const PLATFORM_DB_MAP: Record<string, "instagram" | "facebook" | "linkedin" | "t
   instagram: "instagram",
   x: "twitter",
   linkedin: "linkedin",
+};
+
+const OPTIMAL_TIMES: Record<string, string[]> = {
+  instagram: ["11:00", "14:00", "19:00"],
+  x: ["09:00", "12:00", "17:00"],
+  linkedin: ["08:00", "12:00", "17:30"],
 };
 
 const DEFAULT_CONTENT_TYPES = ["educativo", "promozionale", "storytelling", "behind-the-scenes"];
@@ -86,7 +95,10 @@ export async function generateAutopilotBatch(
     contentTypes = DEFAULT_CONTENT_TYPES,
     excludeWeekends = false,
     excludeHolidays = false,
-    excludedDates = []
+    excludedDates = [],
+    writingStyle: passedWritingStyle,
+    customInstructions,
+    optimalTimes: passedOptimalTimes,
   } = config;
   
   const errors: string[] = [];
@@ -158,8 +170,8 @@ export async function generateAutopilotBatch(
         }
         
         const scheduleForPlatform = postingSchedule[platform] || {};
-        const writingStyle = scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
-        const times = scheduleForPlatform.times || ["09:00", "18:00"];
+        const writingStyle = passedWritingStyle || scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
+        const times = passedOptimalTimes || scheduleForPlatform.times || OPTIMAL_TIMES[platform] || ["09:00", "18:00"];
         const charLimit = PLATFORM_CHAR_LIMITS[platform] || 2200;
         
         sendProgress({

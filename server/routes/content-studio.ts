@@ -2888,16 +2888,28 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       startDate, 
       endDate, 
       platforms,
+      targetPlatform,
+      postsPerDay,
       postSchema,
       postCategory,
       contentTypes,
       excludeWeekends,
       excludeHolidays,
-      excludedDates
+      excludedDates,
+      writingStyle,
+      customInstructions,
+      optimalTimes,
     } = req.body;
     
-    if (!startDate || !endDate || !platforms) {
-      return res.status(400).json({ error: "Missing required fields: startDate, endDate, platforms" });
+    let resolvedPlatforms = platforms;
+    if (!resolvedPlatforms && targetPlatform) {
+      resolvedPlatforms = {
+        [targetPlatform]: { enabled: true, postsPerDay: postsPerDay || 1 }
+      };
+    }
+    
+    if (!startDate || !endDate || !resolvedPlatforms) {
+      return res.status(400).json({ error: "Missing required fields: startDate, endDate, platforms or targetPlatform" });
     }
     
     // Setup SSE
@@ -2910,13 +2922,16 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       consultantId: user.id,
       startDate,
       endDate,
-      platforms,
+      platforms: resolvedPlatforms,
       postSchema,
       postCategory,
       contentTypes,
       excludeWeekends,
       excludeHolidays,
       excludedDates,
+      writingStyle,
+      customInstructions,
+      optimalTimes,
     };
     
     const result = await generateAutopilotBatch(config, res);
