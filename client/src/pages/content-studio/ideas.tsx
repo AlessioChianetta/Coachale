@@ -1496,7 +1496,7 @@ export default function ContentStudioIdeas() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <Label className="text-sm font-medium">Schema del Post *</Label>
-                            {selectedSchemaInfo && (
+                            {selectedSchemaDetails && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -2279,14 +2279,14 @@ export default function ContentStudioIdeas() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-indigo-500" />
-              Struttura Schema: {selectedSchemaInfo?.label}
+              Struttura Schema: {selectedSchemaDetails?.label}
             </DialogTitle>
           </DialogHeader>
-          {selectedSchemaInfo && (
+          {selectedSchemaDetails && (
             <div className="space-y-4 py-4">
-              <p className="text-sm text-muted-foreground">{selectedSchemaInfo.description}</p>
+              <p className="text-sm text-muted-foreground">{selectedSchemaDetails.description}</p>
               <div className="space-y-3">
-                {selectedSchemaInfo.structure.split("|").map((section, idx) => {
+                {selectedSchemaDetails.structure.split("|").map((section, idx) => {
                   const instruction = getSectionGuidelineDisplay(section);
                   return (
                     <div key={idx} className="p-3 rounded-lg border bg-muted/30">
