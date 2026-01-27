@@ -19,6 +19,7 @@ import {
 import {
   Rocket,
   Calendar,
+  CalendarDays,
   Clock,
   CheckCircle,
   Settings,
@@ -40,6 +41,7 @@ import {
   Video,
   Image,
   Layers,
+  XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -416,8 +418,6 @@ function AutopilotPanel({
     let finalResult: GenerationResult | null = null;
 
     try {
-      const token = localStorage.getItem("auth_token");
-
       if (mode === "controllata" && dayConfigs.length > 0) {
         let totalGenerated = 0;
         const allErrors: string[] = [];
@@ -442,7 +442,7 @@ function AutopilotPanel({
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
+                ...getAuthHeaders(),
               },
               body: JSON.stringify({
                 startDate: dayConfig.date,
@@ -518,7 +518,7 @@ function AutopilotPanel({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            ...getAuthHeaders(),
           },
           body: JSON.stringify({
             startDate,
@@ -602,12 +602,11 @@ function AutopilotPanel({
     updateDayConfig(dayIndex, { status: "generating" });
 
     try {
-      const token = localStorage.getItem("auth_token");
       const response = await fetch("/api/content/autopilot/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({
           startDate: dayConfig.date,
@@ -1055,24 +1054,35 @@ function AutopilotPanel({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800 space-y-4"
+                className="p-5 rounded-xl bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/20 border-2 border-amber-200/80 dark:border-amber-700/60 shadow-lg shadow-amber-100/50 dark:shadow-amber-900/20 space-y-5"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-sm text-amber-700 dark:text-amber-300">
-                      Configurazione Giorno per Giorno
-                    </span>
-                    <Badge variant="outline" className="text-xs">
-                      {dayConfigs.length} giorni
-                    </Badge>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-md">
+                      <CalendarDays className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <span className="font-semibold text-sm text-amber-800 dark:text-amber-200">
+                        Configurazione Giorno per Giorno
+                      </span>
+                      <Badge variant="secondary" className="ml-2 text-xs bg-amber-200/60 text-amber-800 dark:bg-amber-800/40 dark:text-amber-200">
+                        {dayConfigs.length} giorni
+                      </Badge>
+                    </div>
                   </div>
                 </div>
 
-                <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
+                <div className="max-h-[450px] overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-amber-300 dark:scrollbar-thumb-amber-700">
                   {dayConfigs.map((config, index) => {
                     const DayPlatformIcon = PLATFORM_CONFIG[config.platform].icon;
                     const daySchemas = getAvailableSchemasForDay(config.platform, config.category);
+                    
+                    const statusColors = {
+                      pending: "border-l-gray-400 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-800",
+                      generating: "border-l-blue-500 bg-gradient-to-r from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 shadow-blue-100 dark:shadow-blue-900/30",
+                      generated: "border-l-emerald-500 bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/30 dark:to-gray-900 shadow-emerald-100 dark:shadow-emerald-900/30",
+                      error: "border-l-red-500 bg-gradient-to-r from-red-50 to-white dark:from-red-950/30 dark:to-gray-900 shadow-red-100 dark:shadow-red-900/30",
+                    };
                     
                     return (
                       <motion.div
@@ -1080,188 +1090,192 @@ function AutopilotPanel({
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.02 }}
-                        className={`p-3 rounded-lg border bg-white dark:bg-gray-900 ${
-                          config.status === "generated" 
-                            ? "border-green-300 dark:border-green-700" 
-                            : config.status === "error"
-                            ? "border-red-300 dark:border-red-700"
-                            : config.status === "generating"
-                            ? "border-amber-400 dark:border-amber-600"
-                            : "border-gray-200 dark:border-gray-700"
-                        }`}
+                        whileHover={{ scale: 1.01, y: -2 }}
+                        className={`relative p-4 rounded-xl border-l-4 border border-gray-200/80 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200 ${statusColors[config.status]}`}
                       >
-                        <div className="grid grid-cols-[80px_1fr] gap-3 items-start">
+                        <div className="grid grid-cols-[100px_1fr] gap-4 items-start">
                           {/* Data e Status */}
-                          <div className="flex flex-col items-start gap-1">
-                            <span className="font-semibold text-sm">{formatDayLabel(config.date)}</span>
+                          <div className="flex flex-col items-start gap-2">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{formatDayLabel(config.date)}</span>
+                            </div>
                             <Badge
-                              variant={
-                                config.status === "generated" ? "default" :
-                                config.status === "error" ? "destructive" :
-                                config.status === "generating" ? "secondary" : "outline"
-                              }
-                              className={`text-[10px] px-1.5 py-0 ${
-                                config.status === "generated" ? "bg-green-500" :
-                                config.status === "generating" ? "bg-amber-500 animate-pulse" : ""
+                              variant="secondary"
+                              className={`text-[10px] px-2 py-0.5 flex items-center gap-1 ${
+                                config.status === "pending" 
+                                  ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-600" 
+                                  : config.status === "generating" 
+                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-300 dark:border-blue-700" 
+                                  : config.status === "generated" 
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700" 
+                                  : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border border-red-300 dark:border-red-700"
                               }`}
                             >
-                              {config.status === "pending" && "Da fare"}
-                              {config.status === "generating" && "Generando..."}
-                              {config.status === "generated" && "Generato"}
-                              {config.status === "error" && "Errore"}
+                              {config.status === "pending" && <><Clock className="h-3 w-3" /> Da fare</>}
+                              {config.status === "generating" && <><Loader2 className="h-3 w-3 animate-spin" /> Generando</>}
+                              {config.status === "generated" && <><CheckCircle className="h-3 w-3" /> Generato</>}
+                              {config.status === "error" && <><XCircle className="h-3 w-3" /> Errore</>}
                             </Badge>
                           </div>
 
                           {/* Controlli */}
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-3 gap-2">
-                              {/* Piattaforma */}
-                              <Select
-                                value={config.platform}
-                                onValueChange={(v) => updateDayConfig(index, { platform: v as "instagram" | "x" | "linkedin" })}
-                                disabled={config.status === "generating" || config.status === "generated"}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <DayPlatformIcon className={`h-3 w-3 mr-1 ${PLATFORM_CONFIG[config.platform].color}`} />
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {(["instagram", "x", "linkedin"] as const).map((p) => {
-                                    const PIcon = PLATFORM_CONFIG[p].icon;
-                                    return (
-                                      <SelectItem key={p} value={p}>
-                                        <div className="flex items-center gap-1">
-                                          <PIcon className={`h-3 w-3 ${PLATFORM_CONFIG[p].color}`} />
-                                          <span className="text-xs">{PLATFORM_CONFIG[p].label}</span>
-                                        </div>
+                          <div className="space-y-3">
+                            <div className="p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700/50">
+                              <div className="grid grid-cols-3 gap-2 mb-2">
+                                {/* Piattaforma */}
+                                <Select
+                                  value={config.platform}
+                                  onValueChange={(v) => updateDayConfig(index, { platform: v as "instagram" | "x" | "linkedin" })}
+                                  disabled={config.status === "generating" || config.status === "generated"}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                    <DayPlatformIcon className={`h-3 w-3 mr-1 ${PLATFORM_CONFIG[config.platform].color}`} />
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {(["instagram", "x", "linkedin"] as const).map((p) => {
+                                      const PIcon = PLATFORM_CONFIG[p].icon;
+                                      return (
+                                        <SelectItem key={p} value={p}>
+                                          <div className="flex items-center gap-1">
+                                            <PIcon className={`h-3 w-3 ${PLATFORM_CONFIG[p].color}`} />
+                                            <span className="text-xs">{PLATFORM_CONFIG[p].label}</span>
+                                          </div>
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+
+                                {/* Categoria */}
+                                <Select
+                                  value={config.category}
+                                  onValueChange={(v) => updateDayConfig(index, { category: v as "ads" | "valore" | "altri" })}
+                                  disabled={config.status === "generating" || config.status === "generated"}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {POST_CATEGORIES.map((cat) => (
+                                      <SelectItem key={cat.value} value={cat.value}>
+                                        <span className="text-xs">{cat.icon} {cat.label}</span>
                                       </SelectItem>
-                                    );
-                                  })}
-                                </SelectContent>
-                              </Select>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
 
-                              {/* Categoria */}
+                                {/* Pulsante Genera */}
+                                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                                  <Button
+                                    size="sm"
+                                    variant={config.status === "generated" ? "outline" : "default"}
+                                    className={`w-full h-8 text-xs font-medium transition-all duration-200 ${
+                                      config.status === "pending" 
+                                        ? "bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white shadow-md hover:shadow-lg" 
+                                        : config.status === "generated"
+                                        ? "text-emerald-600 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+                                        : config.status === "error"
+                                        ? "bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white"
+                                        : ""
+                                    }`}
+                                    onClick={() => handleGenerateSingleDay(index)}
+                                    disabled={config.status === "generating" || config.status === "generated"}
+                                  >
+                                    {config.status === "generating" ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : config.status === "generated" ? (
+                                      <><CheckCircle className="h-3 w-3 mr-1" /> Fatto</>
+                                    ) : config.status === "error" ? (
+                                      <><Zap className="h-3 w-3 mr-1" /> Riprova</>
+                                    ) : (
+                                      <><Sparkles className="h-3 w-3 mr-1" /> Genera</>
+                                    )}
+                                  </Button>
+                                </motion.div>
+                              </div>
+
+                              {/* Schema */}
                               <Select
-                                value={config.category}
-                                onValueChange={(v) => updateDayConfig(index, { category: v as "ads" | "valore" | "altri" })}
+                                value={config.schema}
+                                onValueChange={(v) => updateDayConfig(index, { schema: v })}
                                 disabled={config.status === "generating" || config.status === "generated"}
                               >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue />
+                                <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                  <SelectValue placeholder="Schema post" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {POST_CATEGORIES.map((cat) => (
-                                    <SelectItem key={cat.value} value={cat.value}>
-                                      <span className="text-xs">{cat.icon} {cat.label}</span>
-                                    </SelectItem>
-                                  ))}
+                                  {daySchemas.length > 0 ? (
+                                    daySchemas.map((schema) => (
+                                      <SelectItem key={schema.value} value={schema.value}>
+                                        <span className="text-xs">{schema.label}</span>
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <SelectItem value="originale">Originale</SelectItem>
+                                  )}
                                 </SelectContent>
                               </Select>
-
-                              {/* Pulsante Genera */}
-                              <Button
-                                size="sm"
-                                variant={config.status === "generated" ? "outline" : "default"}
-                                className={`h-8 text-xs ${
-                                  config.status === "pending" 
-                                    ? "bg-violet-600 hover:bg-violet-700" 
-                                    : config.status === "generated"
-                                    ? "text-green-600"
-                                    : ""
-                                }`}
-                                onClick={() => handleGenerateSingleDay(index)}
-                                disabled={config.status === "generating" || config.status === "generated"}
-                              >
-                                {config.status === "generating" ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : config.status === "generated" ? (
-                                  <CheckCircle className="h-3 w-3" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="h-3 w-3 mr-1" />
-                                    Genera
-                                  </>
-                                )}
-                              </Button>
                             </div>
 
-                            {/* Schema */}
-                            <Select
-                              value={config.schema}
-                              onValueChange={(v) => updateDayConfig(index, { schema: v })}
-                              disabled={config.status === "generating" || config.status === "generated"}
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="Schema post" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {daySchemas.length > 0 ? (
-                                  daySchemas.map((schema) => (
-                                    <SelectItem key={schema.value} value={schema.value}>
-                                      <span className="text-xs">{schema.label}</span>
-                                    </SelectItem>
-                                  ))
-                                ) : (
-                                  <SelectItem value="originale">Originale</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-
                             {/* Row: Writing Style, Media Type, Copy Type */}
-                            <div className="grid grid-cols-3 gap-2">
-                              {/* Writing Style */}
-                              <Select
-                                value={config.writingStyle}
-                                onValueChange={(v) => updateDayConfig(index, { writingStyle: v })}
-                                disabled={config.status === "generating" || config.status === "generated"}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Stile" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {WRITING_STYLES.map((style) => (
-                                    <SelectItem key={style.value} value={style.value}>
-                                      <span className="text-xs">{style.icon} {style.label}</span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                            <div className="p-2.5 rounded-lg bg-gray-50/60 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700/30">
+                              <div className="grid grid-cols-3 gap-2">
+                                {/* Writing Style */}
+                                <Select
+                                  value={config.writingStyle}
+                                  onValueChange={(v) => updateDayConfig(index, { writingStyle: v })}
+                                  disabled={config.status === "generating" || config.status === "generated"}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                    <SelectValue placeholder="Stile" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {WRITING_STYLES.map((style) => (
+                                      <SelectItem key={style.value} value={style.value}>
+                                        <span className="text-xs">{style.icon} {style.label}</span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
 
-                              {/* Media Type */}
-                              <Select
-                                value={config.mediaType}
-                                onValueChange={(v) => updateDayConfig(index, { mediaType: v })}
-                                disabled={config.status === "generating" || config.status === "generated"}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Media" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {MEDIA_TYPES.map((type) => (
-                                    <SelectItem key={type.value} value={type.value}>
-                                      <span className="text-xs">{type.icon} {type.label}</span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                {/* Media Type */}
+                                <Select
+                                  value={config.mediaType}
+                                  onValueChange={(v) => updateDayConfig(index, { mediaType: v })}
+                                  disabled={config.status === "generating" || config.status === "generated"}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                    <SelectValue placeholder="Media" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {MEDIA_TYPES.map((type) => (
+                                      <SelectItem key={type.value} value={type.value}>
+                                        <span className="text-xs">{type.icon} {type.label}</span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
 
-                              {/* Copy Type */}
-                              <Select
-                                value={config.copyType}
-                                onValueChange={(v) => updateDayConfig(index, { copyType: v })}
-                                disabled={config.status === "generating" || config.status === "generated"}
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Copy" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {COPY_TYPES.map((type) => (
-                                    <SelectItem key={type.value} value={type.value}>
-                                      <span className="text-xs">{type.label}</span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                {/* Copy Type */}
+                                <Select
+                                  value={config.copyType}
+                                  onValueChange={(v) => updateDayConfig(index, { copyType: v })}
+                                  disabled={config.status === "generating" || config.status === "generated"}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                    <SelectValue placeholder="Copy" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {COPY_TYPES.map((type) => (
+                                      <SelectItem key={type.value} value={type.value}>
+                                        <span className="text-xs">{type.label}</span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1271,16 +1285,22 @@ function AutopilotPanel({
                 </div>
 
                 {/* Summary footer */}
-                <div className="flex items-center justify-between pt-2 border-t border-amber-200 dark:border-amber-700">
-                  <div className="flex gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                <div className="flex items-center justify-between pt-3 border-t-2 border-amber-200/60 dark:border-amber-700/40">
+                  <div className="flex gap-4 text-xs font-medium">
+                    <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                      <Clock className="h-3.5 w-3.5 text-gray-400" />
                       Pending: {dayConfigs.filter(d => d.status === "pending").length}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle className="h-3.5 w-3.5" />
                       Generati: {dayConfigs.filter(d => d.status === "generated").length}
                     </span>
+                    {dayConfigs.filter(d => d.status === "error").length > 0 && (
+                      <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                        <XCircle className="h-3.5 w-3.5" />
+                        Errori: {dayConfigs.filter(d => d.status === "error").length}
+                      </span>
+                    )}
                   </div>
                 </div>
               </motion.div>
