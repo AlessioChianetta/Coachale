@@ -22,6 +22,8 @@ export interface AutopilotConfig {
   writingStyle?: string;
   customInstructions?: string;
   optimalTimes?: string[];
+  mediaType?: string;
+  copyType?: string;
 }
 
 export interface AutopilotProgress {
@@ -99,6 +101,8 @@ export async function generateAutopilotBatch(
     writingStyle: passedWritingStyle,
     customInstructions,
     optimalTimes: passedOptimalTimes,
+    mediaType: passedMediaType,
+    copyType: passedCopyType,
   } = config;
   
   const errors: string[] = [];
@@ -188,14 +192,17 @@ export async function generateAutopilotBatch(
             const currentContentType = contentTypes[contentTypeIndex % contentTypes.length];
             contentTypeIndex++;
             
+            const effectiveMediaType = passedMediaType || "photo";
+            const effectiveCopyType = passedCopyType || (platform === "x" ? "short" : "long");
+            
             const result = await generateContentIdeas({
               consultantId,
               niche: "content marketing",
               targetAudience: "pubblico target",
               objective: "engagement",
               count: 1,
-              mediaType: "photo",
-              copyType: platform === "x" ? "short" : "long",
+              mediaType: effectiveMediaType,
+              copyType: effectiveCopyType,
               targetPlatform: platform as "instagram" | "x" | "linkedin",
               writingStyle,
               charLimit,
@@ -208,6 +215,10 @@ export async function generateAutopilotBatch(
             if (result.ideas && result.ideas.length > 0) {
               const idea = result.ideas[0];
               
+              const dbMediaType = effectiveMediaType === "image" ? "foto" : 
+                                effectiveMediaType === "video" ? "video" : 
+                                effectiveMediaType === "carousel" ? "carosello" : "foto";
+              
               const [insertedPost] = await db.insert(schema.contentPosts).values({
                 consultantId,
                 title: idea.title,
@@ -217,8 +228,8 @@ export async function generateAutopilotBatch(
                 contentType: "post",
                 status: "scheduled",
                 scheduledAt: new Date(`${date}T${time}:00`),
-                mediaType: platform === "x" ? "foto" : "foto",
-                copyType: platform === "x" ? "short" : "long",
+                mediaType: dbMediaType,
+                copyType: effectiveCopyType,
                 structuredContent: idea.structuredContent || {},
                 aiQualityScore: idea.aiQualityScore || null,
                 contentTheme: currentContentType,
