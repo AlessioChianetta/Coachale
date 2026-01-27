@@ -262,7 +262,7 @@ function AutopilotPanel({
           postsPerDay,
           mode,
           contentTypes: selectedContentTypes,
-          optimalTimes: OPTIMAL_TIMES[targetPlatform],
+          optimalTimes: configuredTimes,
         }),
       });
 
