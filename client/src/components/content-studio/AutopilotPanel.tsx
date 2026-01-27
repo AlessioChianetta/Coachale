@@ -244,6 +244,9 @@ function AutopilotPanel({
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
   const [dayConfigs, setDayConfigs] = useState<DayConfig[]>([]);
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
+  const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
   const { data: templates, isLoading: templatesLoading } = useQuery<Template[]>({
     queryKey: ["autopilot-templates"],
@@ -339,6 +342,164 @@ function AutopilotPanel({
         ? prev.filter((id) => id !== typeId)
         : [...prev, typeId]
     );
+  };
+
+  const getDayKey = (config: DayConfig) => `${config.date}-${config.platform}`;
+
+  const toggleSelectDay = (key: string) => {
+    setSelectedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const filteredDayConfigs = useMemo(() => {
+    return dayConfigs.filter(config => {
+      if (filterPlatform && config.platform !== filterPlatform) return false;
+      if (filterStatus && config.status !== filterStatus) return false;
+      return true;
+    });
+  }, [dayConfigs, filterPlatform, filterStatus]);
+
+  const toggleSelectAll = () => {
+    const filteredKeys = filteredDayConfigs.map(getDayKey);
+    const allSelected = filteredKeys.every(key => selectedDays.has(key));
+    
+    if (allSelected) {
+      setSelectedDays(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(key => next.delete(key));
+        return next;
+      });
+    } else {
+      setSelectedDays(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(key => next.add(key));
+        return next;
+      });
+    }
+  };
+
+  const selectAllPending = () => {
+    const pendingKeys = dayConfigs
+      .filter(d => d.status === "pending")
+      .map(getDayKey);
+    setSelectedDays(new Set(pendingKeys));
+  };
+
+  const handleGenerateSelected = async () => {
+    if (selectedDays.size === 0) return;
+    
+    setIsGenerating(true);
+    setProgress(null);
+    setGenerationResult(null);
+    
+    const selectedConfigs = dayConfigs.filter(config => 
+      selectedDays.has(getDayKey(config)) && 
+      (config.status === "pending" || config.status === "error")
+    );
+    
+    let totalGenerated = 0;
+    const allErrors: string[] = [];
+
+    for (let i = 0; i < selectedConfigs.length; i++) {
+      const dayConfig = selectedConfigs[i];
+      const dayIndex = dayConfigs.findIndex(d => 
+        d.date === dayConfig.date && d.platform === dayConfig.platform
+      );
+
+      updateDayConfig(dayIndex, { status: "generating" });
+
+      setProgress({
+        total: selectedConfigs.length,
+        completed: i,
+        currentDate: dayConfig.date,
+        currentPlatform: dayConfig.platform,
+        status: `Generando ${formatDayLabel(dayConfig.date)}...`,
+      });
+
+      try {
+        const response = await fetch("/api/content/autopilot/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({
+            startDate: dayConfig.date,
+            endDate: dayConfig.date,
+            targetPlatform: dayConfig.platform,
+            postCategory: dayConfig.category,
+            postSchema: dayConfig.schema,
+            writingStyle: dayConfig.writingStyle,
+            customInstructions: dayConfig.writingStyle === "custom" ? localCustomInstructions : undefined,
+            mediaType: dayConfig.mediaType,
+            copyType: dayConfig.copyType,
+            templateId: selectedTemplate !== "none" ? selectedTemplate : undefined,
+            excludeWeekends: false,
+            excludeHolidays: false,
+            postsPerDay,
+            mode: "controllata",
+            contentTypes: [dayConfig.contentTheme],
+            optimalTimes: configuredTimes,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Errore per ${dayConfig.date}`);
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let daySuccess = false;
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value);
+            const lines = text.split("\n").filter((line) => line.startsWith("data: "));
+
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line.replace("data: ", ""));
+                if (data.type === "complete" && data.success) {
+                  daySuccess = true;
+                  totalGenerated += data.generated || 1;
+                } else if (data.type === "error") {
+                  allErrors.push(`${dayConfig.date}: ${data.error}`);
+                }
+              } catch (e) {}
+            }
+          }
+        }
+
+        updateDayConfig(dayIndex, { status: daySuccess ? "generated" : "error" });
+      } catch (err: any) {
+        updateDayConfig(dayIndex, { status: "error" });
+        allErrors.push(`${dayConfig.date}: ${err.message}`);
+      }
+    }
+
+    setGenerationResult({
+      success: allErrors.length === 0,
+      generated: totalGenerated,
+      errors: allErrors,
+    });
+    setProgress(null);
+    setIsGenerating(false);
+    setSelectedDays(new Set());
+
+    toast({
+      title: "Generazione completata!",
+      description: `${totalGenerated} post generati${allErrors.length > 0 ? ` con ${allErrors.length} errori` : ""}.`,
+    });
   };
 
   const calculation = useMemo(() => {
@@ -1065,164 +1226,240 @@ function AutopilotPanel({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="p-5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-5"
+                className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
               >
-                <div className="flex items-center justify-between">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-600">
-                      <CalendarDays className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">
-                        Configurazione Giorno per Giorno
-                      </span>
-                      <Badge variant="secondary" className="ml-2 text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                        {dayConfigs.length} giorni
-                      </Badge>
-                    </div>
+                    <CalendarDays className="h-5 w-5 text-blue-600" />
+                    <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">
+                      Configurazione Giorno per Giorno
+                    </span>
+                    <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      {filteredDayConfigs.length}/{dayConfigs.length}
+                    </Badge>
                   </div>
                 </div>
 
-                <div className="max-h-[450px] overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
-                  {dayConfigs.map((config, index) => {
-                    const DayPlatformIcon = PLATFORM_CONFIG[config.platform].icon;
-                    const daySchemas = getAvailableSchemasForDay(config.platform, config.category);
-                    
-                    const statusColors = {
-                      pending: "border-l-gray-400 bg-white dark:bg-gray-900",
-                      generating: "border-l-blue-500 bg-white dark:bg-gray-900",
-                      generated: "border-l-emerald-500 bg-white dark:bg-gray-900",
-                      error: "border-l-red-500 bg-white dark:bg-gray-900",
-                    };
-                    
-                    return (
-                      <div
-                        key={`${config.date}-${config.platform}`}
-                        className={`relative p-4 rounded-lg border-l-4 border border-gray-200 dark:border-gray-700 transition-colors ${statusColors[config.status]}`}
-                      >
-                        <div className="grid grid-cols-[100px_1fr] gap-4 items-start">
-                          {/* Data e Status */}
-                          <div className="flex flex-col items-start gap-2">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                              <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{formatDayLabel(config.date)}</span>
-                            </div>
-                            {/* Content Theme Badge */}
-                            {(() => {
-                              const themeInfo = CONTENT_TYPES.find(t => t.id === config.contentTheme);
-                              const ThemeIcon = themeInfo?.icon || BookOpen;
-                              return (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] px-2 py-0.5 flex items-center gap-1 bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
-                                >
-                                  <ThemeIcon className="h-3 w-3" />
-                                  {themeInfo?.label || config.contentTheme}
-                                </Badge>
-                              );
-                            })()}
-                            <Badge
-                              variant="secondary"
-                              className={`text-[10px] px-2 py-0.5 flex items-center gap-1 ${
-                                config.status === "pending" 
-                                  ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-600" 
-                                  : config.status === "generating" 
-                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-300 dark:border-blue-700" 
-                                  : config.status === "generated" 
-                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700" 
-                                  : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border border-red-300 dark:border-red-700"
-                              }`}
+                {/* Filtri rapidi */}
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex flex-wrap items-center gap-4">
+                    {/* Filtro Piattaforma */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Piattaforma:</span>
+                      <div className="flex gap-1">
+                        {(["instagram", "x", "linkedin"] as const).map((p) => {
+                          const PIcon = PLATFORM_CONFIG[p].icon;
+                          const isActive = filterPlatform === p;
+                          return (
+                            <Button
+                              key={p}
+                              size="sm"
+                              variant={isActive ? "default" : "outline"}
+                              className={`h-7 px-2 text-xs ${isActive ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+                              onClick={() => setFilterPlatform(isActive ? null : p)}
                             >
-                              {config.status === "pending" && <><Clock className="h-3 w-3" /> Da fare</>}
-                              {config.status === "generating" && <><Loader2 className="h-3 w-3 animate-spin" /> Generando</>}
-                              {config.status === "generated" && <><CheckCircle className="h-3 w-3" /> Generato</>}
-                              {config.status === "error" && <><XCircle className="h-3 w-3" /> Errore</>}
-                            </Badge>
-                          </div>
+                              <PIcon className={`h-3 w-3 ${isActive ? "text-white" : PLATFORM_CONFIG[p].color}`} />
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                          {/* Controlli */}
-                          <div className="space-y-3">
-                            <div className="p-2.5 rounded-lg bg-white/60 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-700/50">
-                              <div className="grid grid-cols-3 gap-2 mb-2">
-                                {/* Piattaforma */}
-                                <Select
-                                  value={config.platform}
-                                  onValueChange={(v) => updateDayConfig(index, { platform: v as "instagram" | "x" | "linkedin" })}
-                                  disabled={config.status === "generating" || config.status === "generated"}
-                                >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                    <DayPlatformIcon className={`h-3 w-3 mr-1 ${PLATFORM_CONFIG[config.platform].color}`} />
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {(["instagram", "x", "linkedin"] as const).map((p) => {
-                                      const PIcon = PLATFORM_CONFIG[p].icon;
-                                      return (
-                                        <SelectItem key={p} value={p}>
-                                          <div className="flex items-center gap-1">
-                                            <PIcon className={`h-3 w-3 ${PLATFORM_CONFIG[p].color}`} />
-                                            <span className="text-xs">{PLATFORM_CONFIG[p].label}</span>
-                                          </div>
-                                        </SelectItem>
-                                      );
-                                    })}
-                                  </SelectContent>
-                                </Select>
+                    {/* Filtro Stato */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Stato:</span>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant={filterStatus === "pending" ? "default" : "outline"}
+                          className={`h-7 px-2 text-xs ${filterStatus === "pending" ? "bg-gray-600 hover:bg-gray-700" : ""}`}
+                          onClick={() => setFilterStatus(filterStatus === "pending" ? null : "pending")}
+                        >
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={filterStatus === "generated" ? "default" : "outline"}
+                          className={`h-7 px-2 text-xs ${filterStatus === "generated" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+                          onClick={() => setFilterStatus(filterStatus === "generated" ? null : "generated")}
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Generato
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={filterStatus === "error" ? "default" : "outline"}
+                          className={`h-7 px-2 text-xs ${filterStatus === "error" ? "bg-red-600 hover:bg-red-700" : ""}`}
+                          onClick={() => setFilterStatus(filterStatus === "error" ? null : "error")}
+                        >
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Errore
+                        </Button>
+                      </div>
+                    </div>
 
-                                {/* Categoria */}
-                                <Select
-                                  value={config.category}
-                                  onValueChange={(v) => updateDayConfig(index, { category: v as "ads" | "valore" | "altri" })}
-                                  disabled={config.status === "generating" || config.status === "generated"}
-                                >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {POST_CATEGORIES.map((cat) => (
-                                      <SelectItem key={cat.value} value={cat.value}>
-                                        <span className="text-xs">{cat.icon} {cat.label}</span>
+                    {/* Reset filtri */}
+                    {(filterPlatform || filterStatus) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs text-gray-500"
+                        onClick={() => { setFilterPlatform(null); setFilterStatus(null); }}
+                      >
+                        Reset filtri
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Azioni bulk */}
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {selectedDays.size > 0 ? `${selectedDays.size} selezionati` : "Nessuna selezione"}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        onClick={selectAllPending}
+                      >
+                        Seleziona tutti pending
+                      </Button>
+                    </div>
+                    {selectedDays.size > 0 && (
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs bg-blue-600 hover:bg-blue-700"
+                        onClick={handleGenerateSelected}
+                        disabled={isGenerating}
+                      >
+                        {isGenerating ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <Sparkles className="h-3 w-3 mr-1" />
+                        )}
+                        Genera selezionati ({selectedDays.size})
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tabella */}
+                <div className="max-h-[400px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                      <tr>
+                        <th className="w-10 p-2 text-center">
+                          <Checkbox
+                            checked={filteredDayConfigs.length > 0 && filteredDayConfigs.every(c => selectedDays.has(getDayKey(c)))}
+                            onCheckedChange={toggleSelectAll}
+                          />
+                        </th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Data</th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Piattaforma</th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Tema</th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Schema</th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Stile</th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Stato</th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Azioni</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDayConfigs.map((config, filteredIndex) => {
+                        const dayKey = getDayKey(config);
+                        const index = dayConfigs.findIndex(d => d.date === config.date && d.platform === config.platform);
+                        const uniqueKey = `${dayKey}-${index}`;
+                        const DayPlatformIcon = PLATFORM_CONFIG[config.platform].icon;
+                        const daySchemas = getAvailableSchemasForDay(config.platform, config.category);
+                        const isSelected = selectedDays.has(dayKey);
+                        const isDisabled = config.status === "generating" || config.status === "generated";
+
+                        return (
+                          <tr
+                            key={uniqueKey}
+                            className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isSelected ? "bg-blue-50 dark:bg-blue-950/30" : ""}`}
+                          >
+                            {/* Checkbox */}
+                            <td className="p-2 text-center">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelectDay(dayKey)}
+                              />
+                            </td>
+
+                            {/* Data */}
+                            <td className="p-2">
+                              <span className="text-xs font-medium text-gray-800 dark:text-gray-200">
+                                {formatDayLabel(config.date)}
+                              </span>
+                            </td>
+
+                            {/* Piattaforma */}
+                            <td className="p-2">
+                              <Select
+                                value={config.platform}
+                                onValueChange={(v) => updateDayConfig(index, { platform: v as "instagram" | "x" | "linkedin" })}
+                                disabled={isDisabled}
+                              >
+                                <SelectTrigger className="h-7 w-24 text-xs bg-transparent border-gray-200 dark:border-gray-700">
+                                  <DayPlatformIcon className={`h-3 w-3 mr-1 ${PLATFORM_CONFIG[config.platform].color}`} />
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(["instagram", "x", "linkedin"] as const).map((p) => {
+                                    const PIcon = PLATFORM_CONFIG[p].icon;
+                                    return (
+                                      <SelectItem key={p} value={p}>
+                                        <div className="flex items-center gap-1">
+                                          <PIcon className={`h-3 w-3 ${PLATFORM_CONFIG[p].color}`} />
+                                          <span className="text-xs">{PLATFORM_CONFIG[p].label}</span>
+                                        </div>
                                       </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </td>
 
-                                {/* Pulsante Genera */}
-                                <Button
-                                  size="sm"
-                                  variant={config.status === "generated" ? "outline" : "default"}
-                                  className={`w-full h-8 text-xs font-medium ${
-                                    config.status === "pending" 
-                                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                                      : config.status === "generated"
-                                      ? "text-emerald-600 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
-                                      : config.status === "error"
-                                      ? "bg-red-600 hover:bg-red-700 text-white"
-                                      : ""
-                                  }`}
-                                  onClick={() => handleGenerateSingleDay(index)}
-                                  disabled={config.status === "generating" || config.status === "generated"}
-                                >
-                                  {config.status === "generating" ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : config.status === "generated" ? (
-                                    <><CheckCircle className="h-3 w-3 mr-1" /> Fatto</>
-                                  ) : config.status === "error" ? (
-                                    <><Zap className="h-3 w-3 mr-1" /> Riprova</>
-                                  ) : (
-                                    <><Sparkles className="h-3 w-3 mr-1" /> Genera</>
-                                  )}
-                                </Button>
-                              </div>
+                            {/* Tema */}
+                            <td className="p-2">
+                              <Select
+                                value={config.contentTheme}
+                                onValueChange={(v) => updateDayConfig(index, { contentTheme: v })}
+                                disabled={isDisabled}
+                              >
+                                <SelectTrigger className="h-7 w-28 text-xs bg-transparent border-gray-200 dark:border-gray-700">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CONTENT_TYPES.map((type) => {
+                                    const TypeIcon = type.icon;
+                                    return (
+                                      <SelectItem key={type.id} value={type.id}>
+                                        <div className="flex items-center gap-1">
+                                          <TypeIcon className="h-3 w-3" />
+                                          <span className="text-xs">{type.label}</span>
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </td>
 
-                              {/* Schema */}
+                            {/* Schema */}
+                            <td className="p-2">
                               <Select
                                 value={config.schema}
                                 onValueChange={(v) => updateDayConfig(index, { schema: v })}
-                                disabled={config.status === "generating" || config.status === "generated"}
+                                disabled={isDisabled}
                               >
-                                <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                  <SelectValue placeholder="Schema post" />
+                                <SelectTrigger className="h-7 w-32 text-xs bg-transparent border-gray-200 dark:border-gray-700">
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {daySchemas.length > 0 ? (
@@ -1236,99 +1473,86 @@ function AutopilotPanel({
                                   )}
                                 </SelectContent>
                               </Select>
-                            </div>
+                            </td>
 
-                            {/* Row: Content Theme, Writing Style, Media Type, Copy Type */}
-                            <div className="p-2.5 rounded-lg bg-gray-50/60 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700/30">
-                              <div className="grid grid-cols-4 gap-2">
-                                {/* Content Theme */}
-                                <Select
-                                  value={config.contentTheme}
-                                  onValueChange={(v) => updateDayConfig(index, { contentTheme: v })}
-                                  disabled={config.status === "generating" || config.status === "generated"}
-                                >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                    <SelectValue placeholder="Tema" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {CONTENT_TYPES.map((type) => {
-                                      const TypeIcon = type.icon;
-                                      return (
-                                        <SelectItem key={type.id} value={type.id}>
-                                          <div className="flex items-center gap-1">
-                                            <TypeIcon className="h-3 w-3" />
-                                            <span className="text-xs">{type.label}</span>
-                                          </div>
-                                        </SelectItem>
-                                      );
-                                    })}
-                                  </SelectContent>
-                                </Select>
+                            {/* Stile */}
+                            <td className="p-2">
+                              <Select
+                                value={config.writingStyle}
+                                onValueChange={(v) => updateDayConfig(index, { writingStyle: v })}
+                                disabled={isDisabled}
+                              >
+                                <SelectTrigger className="h-7 w-28 text-xs bg-transparent border-gray-200 dark:border-gray-700">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {WRITING_STYLES.map((style) => (
+                                    <SelectItem key={style.value} value={style.value}>
+                                      <span className="text-xs">{style.icon} {style.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
 
-                                {/* Writing Style */}
-                                <Select
-                                  value={config.writingStyle}
-                                  onValueChange={(v) => updateDayConfig(index, { writingStyle: v })}
-                                  disabled={config.status === "generating" || config.status === "generated"}
-                                >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                    <SelectValue placeholder="Stile" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {WRITING_STYLES.map((style) => (
-                                      <SelectItem key={style.value} value={style.value}>
-                                        <span className="text-xs">{style.icon} {style.label}</span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                            {/* Stato */}
+                            <td className="p-2">
+                              <Badge
+                                variant="secondary"
+                                className={`text-[10px] px-2 py-0.5 flex items-center gap-1 w-fit ${
+                                  config.status === "pending"
+                                    ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                                    : config.status === "generating"
+                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                    : config.status === "generated"
+                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                    : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                                }`}
+                              >
+                                {config.status === "pending" && <><Clock className="h-3 w-3" /> Pending</>}
+                                {config.status === "generating" && <><Loader2 className="h-3 w-3 animate-spin" /> Gen...</>}
+                                {config.status === "generated" && <><CheckCircle className="h-3 w-3" /> OK</>}
+                                {config.status === "error" && <><XCircle className="h-3 w-3" /> Err</>}
+                              </Badge>
+                            </td>
 
-                                {/* Media Type */}
-                                <Select
-                                  value={config.mediaType}
-                                  onValueChange={(v) => updateDayConfig(index, { mediaType: v })}
-                                  disabled={config.status === "generating" || config.status === "generated"}
-                                >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                    <SelectValue placeholder="Media" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {MEDIA_TYPES.map((type) => (
-                                      <SelectItem key={type.value} value={type.value}>
-                                        <span className="text-xs">{type.icon} {type.label}</span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-
-                                {/* Copy Type */}
-                                <Select
-                                  value={config.copyType}
-                                  onValueChange={(v) => updateDayConfig(index, { copyType: v })}
-                                  disabled={config.status === "generating" || config.status === "generated"}
-                                >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                    <SelectValue placeholder="Copy" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {COPY_TYPES.map((type) => (
-                                      <SelectItem key={type.value} value={type.value}>
-                                        <span className="text-xs">{type.label}</span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                            {/* Azioni */}
+                            <td className="p-2">
+                              <Button
+                                size="sm"
+                                variant={config.status === "generated" ? "outline" : "default"}
+                                className={`h-7 px-2 text-xs ${
+                                  config.status === "pending"
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                    : config.status === "generated"
+                                    ? "text-emerald-600 border-emerald-300"
+                                    : config.status === "error"
+                                    ? "bg-red-600 hover:bg-red-700 text-white"
+                                    : ""
+                                }`}
+                                onClick={() => handleGenerateSingleDay(index)}
+                                disabled={isDisabled}
+                              >
+                                {config.status === "generating" ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : config.status === "generated" ? (
+                                  <CheckCircle className="h-3 w-3" />
+                                ) : config.status === "error" ? (
+                                  <><Zap className="h-3 w-3" /></>
+                                ) : (
+                                  <Sparkles className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* Summary footer */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex gap-4 text-xs font-medium">
                     <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                       <Clock className="h-3.5 w-3.5 text-gray-400" />
