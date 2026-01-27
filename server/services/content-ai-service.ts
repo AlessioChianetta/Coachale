@@ -861,6 +861,21 @@ ${styleInstructions}`;
 
   const structuredContentInstructions = getStructuredContentInstructions();
 
+  // DEBUG: Log the parameters and generated instructions
+  console.log(`[CONTENT-AI DEBUG] ========================================`);
+  console.log(`[CONTENT-AI DEBUG] Generation Parameters:`);
+  console.log(`[CONTENT-AI DEBUG]   copyType: "${copyType}"`);
+  console.log(`[CONTENT-AI DEBUG]   mediaType: "${mediaType}"`);
+  console.log(`[CONTENT-AI DEBUG]   charLimit: ${charLimit}`);
+  console.log(`[CONTENT-AI DEBUG]   postSchema: "${postSchema || 'none'}"`);
+  console.log(`[CONTENT-AI DEBUG]   schemaLabel: "${schemaLabel || 'none'}"`);
+  console.log(`[CONTENT-AI DEBUG]   schemaStructure: "${schemaStructure || 'none'}"`);
+  console.log(`[CONTENT-AI DEBUG]   targetPlatform: "${targetPlatform || 'none'}"`);
+  console.log(`[CONTENT-AI DEBUG] ----------------------------------------`);
+  console.log(`[CONTENT-AI DEBUG] Structured Content Instructions (first 2000 chars):`);
+  console.log(`[CONTENT-AI DEBUG] ${structuredContentInstructions.substring(0, 2000)}`);
+  console.log(`[CONTENT-AI DEBUG] ========================================`);
+
   const prompt = `Sei un esperto di content marketing italiano specializzato nella Piramide della Consapevolezza. Genera ${count} idee creative per contenuti COMPLETI.
 
 CONTESTO:
