@@ -1,0 +1,65 @@
+}
+2:41:51 PM [express] POST /api/content/ai/suggest-niche-target 200 in 7683ms :: {"success":true,"dat…
+🤖 [CONTENT-AI] Generating ideas for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (mediaType: photo, copyType: long)
+[CONTENT-AI DEBUG] ========================================
+[CONTENT-AI DEBUG] Generation Parameters:
+[CONTENT-AI DEBUG]   copyType: "long"
+[CONTENT-AI DEBUG]   mediaType: "photo"
+[CONTENT-AI DEBUG]   charLimit: 2200
+[CONTENT-AI DEBUG]   postSchema: "before_after_bridge"
+[CONTENT-AI DEBUG]   schemaLabel: "Before → After → Bridge → CTA"
+[CONTENT-AI DEBUG]   schemaStructure: "Prima|Dopo|Ponte (processo)|CTA"
+[CONTENT-AI DEBUG]   targetPlatform: "instagram"
+[CONTENT-AI DEBUG] ----------------------------------------
+[CONTENT-AI DEBUG] Structured Content Instructions (first 2000 chars):
+[CONTENT-AI DEBUG] 
+🚨🚨🚨 REGOLA ASSOLUTA: SEGUI LO SCHEMA ESATTAMENTE 🚨🚨🚨
+
+📋 SCHEMA SELEZIONATO: "Before → After → Bridge → CTA"
+📐 STRUTTURA OBBLIGATORIA: 1. Prima → 2. Dopo → 3. Ponte (processo) → 4. CTA
+
+⚠️ DEVI seguire questa struttura A PENNELLO:
+- OGNI sezione dello schema DEVE essere presente nel tuo contenuto
+- L'ORDINE delle sezioni DEVE essere esattamente quello indicato
+- NON saltare sezioni, NON invertire l'ordine, NON aggiungere sezioni extra
+- Il contenuto di captionCopy DEVE seguire questa sequenza: Prima → Dopo → Ponte (processo) → CTA
+
+**ISTRUZIONI DETTAGLIATE PER OGNI SEZIONE:**
+
+**1. Campo "prima" (sezione: Prima)**
+   - Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
+   - Usa frasi complete, storytelling, dettagli concreti, esempi reali
+
+**2. Campo "dopo" (sezione: Dopo)**
+   - Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
+   - Usa frasi complete, storytelling, dettagli concreti, esempi reali
+
+**3. Campo "ponte_processo" (sezione: Ponte (processo))**
+   - Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
+   - Usa frasi complete, storytelling, dettagli concreti, esempi reali
+
+**4. Campo "cta" (sezione: CTA)**
+   - Sviluppa questa sezione in modo narrativo, emotivo, coinvolgente
+   - Usa frasi complete, storytelling, dettagli concreti, esempi reali
+
+**structuredContent** (OBBLIGATORIO - oggetto JSON):
+{
+  "type": "copy_long",
+  "copyVariant": "long",
+  "schemaUsed": "before_after_bridge",
+  "prima": "SCRIVI QUI il contenuto per: Prima",
+  "dopo": "SCRIVI QUI il contenuto per: Dopo",
+  "ponte_processo": "SCRIVI QUI il contenuto per: Ponte (processo)",
+  "cta": "SCRIVI QUI il contenuto per: CTA",
+  "captionCopy": "CONCATENA tutte le sezioni sopra in un unico testo formattato. DEVE essere 1500-2200 caratteri TOTALI.",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"],
+  "imageDescription": "Descrizione visiva dettagliata dell'immagine: soggetto, sfondo, colori, mood, stile fotografico",
+  "imageOverlayText": "Tes
+[CONTENT-AI DEBUG] ========================================
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: content-ideas)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is a client, checking their consultant content-ideas's settings
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
