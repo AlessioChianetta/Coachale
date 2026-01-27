@@ -113,7 +113,11 @@ import {
   Zap,
   Webhook,
   Send,
-  RotateCcw
+  RotateCcw,
+  Instagram,
+  Linkedin,
+  Share2,
+  Camera
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -136,6 +140,8 @@ import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_ava
 import echoAvatar from "@assets/generated_images/echo_ai_summarizer_avatar.png";
 import specAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
+import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
+import archieAvatar from "@assets/generated_images/archie_ai_builder_avatar.png";
 import ceoAvatar from "@assets/generated_images/realistic_ceo_businessman_headshot.png";
 import {
   Table,
@@ -199,7 +205,7 @@ interface TeamMemberCardProps {
   role: string;
   avatar: string;
   quote: string;
-  accentColor: "purple" | "orange" | "cyan" | "emerald" | "gold";
+  accentColor: "purple" | "orange" | "cyan" | "emerald" | "gold" | "pink" | "indigo";
   features: Array<{ icon: React.ComponentType<{ className?: string }>; label: string }>;
   details: {
     audience: string;
@@ -242,6 +248,22 @@ const accentColors = {
     button: "bg-emerald-600 hover:bg-emerald-700 text-white",
     text: "text-emerald-600 dark:text-emerald-400",
     iconBg: "bg-emerald-50 dark:bg-emerald-900/20",
+  },
+  pink: {
+    border: "border-pink-200 dark:border-pink-800 hover:border-pink-400 dark:hover:border-pink-600",
+    ring: "ring-pink-500/20",
+    badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300",
+    button: "bg-pink-600 hover:bg-pink-700 text-white",
+    text: "text-pink-600 dark:text-pink-400",
+    iconBg: "bg-pink-50 dark:bg-pink-900/20",
+  },
+  indigo: {
+    border: "border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600",
+    ring: "ring-indigo-500/20",
+    badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+    button: "bg-indigo-600 hover:bg-indigo-700 text-white",
+    text: "text-indigo-600 dark:text-indigo-400",
+    iconBg: "bg-indigo-50 dark:bg-indigo-900/20",
   },
   gold: {
     border: "border-amber-300 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-500",
@@ -1957,12 +1979,56 @@ export default function ConsultantWhatsAppPage() {
                 ctaLabel="Gestisci Agenti"
                 ctaHref="/consultant/whatsapp?tab=agents"
               />
+
+              {/* Card 5 - Nova */}
+              <TeamMemberCard
+                name="Nova"
+                role="Social Media Manager"
+                avatar={novaAvatar}
+                quote="Creo e pubblico contenuti sui tuoi social per costruire il tuo brand e attrarre nuovi clienti."
+                accentColor="pink"
+                features={[
+                  { icon: Camera, label: "Contenuti Visivi Pro" },
+                  { icon: Share2, label: "Multi-piattaforma" },
+                  { icon: Target, label: "Target Personalizzato" },
+                ]}
+                details={{
+                  audience: "Professionisti e aziende che vogliono crescere sui social senza perdere ore a creare contenuti",
+                  whatIDo: "Creo post accattivanti, gestisco il calendario editoriale e pubblico automaticamente su LinkedIn, Instagram e X, mantenendo coerenza con il tuo brand",
+                  howIDoIt: "Uso l'AI per generare testi e immagini autentiche, analizzo il tuo target per massimizzare l'engagement e pubblico nei momenti migliori usando il Content Studio"
+                }}
+                ctaLabel="Vai al Content Studio"
+                ctaHref="/consultant/content-studio"
+              />
             </div>
           </TabsContent>
 
           <TabsContent value="ideas" className="space-y-6">
+            {/* Archie - AI Builder Card */}
+            <div className="max-w-md mx-auto mb-8">
+              <TeamMemberCard
+                name="Archie"
+                role="AI Builder"
+                avatar={archieAvatar}
+                quote="Trasformo le tue idee in dipendenti AI pronti all'uso: consulenziali, formativi, per appuntamenti e molto altro."
+                accentColor="indigo"
+                features={[
+                  { icon: Sparkles, label: "Genera Idee AI" },
+                  { icon: Bot, label: "Crea Agenti Custom" },
+                  { icon: Wand2, label: "Configurazione Guidata" },
+                ]}
+                details={{
+                  audience: "Imprenditori e professionisti che vogliono creare assistenti AI personalizzati senza competenze tecniche",
+                  whatIDo: "Analizzo le tue esigenze e genero proposte di dipendenti AI su misura: da agenti consulenziali a setter per appuntamenti, da formatori a customer success manager",
+                  howIDoIt: "Raccogli i tuoi documenti, descrivi il tuo business e i tuoi obiettivi. Io uso l'AI per generare configurazioni complete di agenti pronti da attivare con un click"
+                }}
+                ctaLabel="Inizia a Creare"
+                ctaHref="#create-agent-form"
+              />
+            </div>
+
             {/* Lovable-style Hero Section */}
-            <div className="max-w-3xl mx-auto space-y-8">
+            <div className="max-w-3xl mx-auto space-y-8" id="create-agent-form">
               {/* Hero Header */}
               <div className="text-center space-y-3">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/25">
