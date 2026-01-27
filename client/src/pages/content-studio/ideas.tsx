@@ -1147,7 +1147,6 @@ export default function ContentStudioIdeas() {
       setGeneratedIdeas(ideas);
       
       // Salva automaticamente tutte le idee generate nel database
-      const selectedSchema = availableSchemas.find(s => s.value === postSchema);
       const savedIndexes = new Set<number>();
       const failedIndexes: number[] = [];
       
