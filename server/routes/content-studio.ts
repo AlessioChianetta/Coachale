@@ -1506,6 +1506,12 @@ const generateIdeasSchema = z.object({
   copyType: z.enum(["short", "long"]).default("short"),
   awarenessLevel: z.enum(["unaware", "problem_aware", "solution_aware", "product_aware", "most_aware"]).default("problem_aware"),
   sophisticationLevel: z.enum(["level_1", "level_2", "level_3", "level_4", "level_5"]).optional().nullable(),
+  targetPlatform: z.enum(["instagram", "x", "linkedin"]).optional(),
+  postCategory: z.enum(["ads", "valore", "altri"]).optional(),
+  postSchema: z.string().optional(),
+  schemaStructure: z.string().optional(),
+  schemaLabel: z.string().optional(),
+  charLimit: z.number().optional(),
   brandVoiceData: z.object({
     consultantDisplayName: z.string().nullish(),
     businessName: z.string().nullish(),
@@ -1661,6 +1667,12 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       sophisticationLevel: validatedData.sophisticationLevel,
       brandVoiceData: validatedData.brandVoiceData,
       kbContent: kbContent,
+      targetPlatform: validatedData.targetPlatform,
+      postCategory: validatedData.postCategory,
+      postSchema: validatedData.postSchema,
+      schemaStructure: validatedData.schemaStructure,
+      schemaLabel: validatedData.schemaLabel,
+      charLimit: validatedData.charLimit,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);

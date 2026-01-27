@@ -80,6 +80,13 @@ import {
   Wand2,
   Building2,
   Download,
+  Instagram,
+  Twitter,
+  Linkedin,
+  Megaphone,
+  BookOpen,
+  Users,
+  Type,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -117,6 +124,10 @@ interface Idea {
   copyContent?: string;
   developedPostId?: string;
   lengthWarning?: string;
+  targetPlatform?: "instagram" | "x" | "linkedin";
+  postCategory?: "ads" | "valore" | "altri";
+  postSchema?: string;
+  schemaStructure?: string;
 }
 
 type IdeaStatus = "new" | "in_progress" | "developed" | "archived";
@@ -188,6 +199,83 @@ const SOPHISTICATION_LEVELS = [
   { value: "level_5", label: "Livello 5 - Identità e Brand", description: "Mercato scettico, connessione emotiva", icon: Crown, color: "pink" },
 ];
 
+const TARGET_PLATFORMS = [
+  { value: "instagram", label: "Instagram", icon: Instagram, color: "bg-gradient-to-br from-purple-500 to-pink-500", charLimit: 2200 },
+  { value: "x", label: "X (Twitter)", icon: Twitter, color: "bg-black", charLimit: 280 },
+  { value: "linkedin", label: "LinkedIn", icon: Linkedin, color: "bg-blue-700", charLimit: 3000 },
+] as const;
+
+const POST_CATEGORIES = [
+  { value: "ads", label: "Inserzioni (Ads)", description: "Contenuti sponsorizzati per conversioni", icon: Megaphone },
+  { value: "valore", label: "Post di Valore", description: "Contenuti educativi e informativi", icon: BookOpen },
+  { value: "altri", label: "Altri Post", description: "Community, relazione, engagement", icon: Users },
+] as const;
+
+const PLATFORM_LIMITS = {
+  instagram: { caption: 2200, hashtags: 30, description: "Caption max 2.200 caratteri" },
+  x: { tweet: 280, thread: 25000, description: "Tweet max 280 caratteri" },
+  linkedin: { post: 3000, article: 125000, description: "Post max 3.000 caratteri" },
+} as const;
+
+const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: string; structure: string; description: string }>>> = {
+  instagram: {
+    ads: [
+      { value: "hook_problema_nuovo", label: "Hook → Problema → Nuovo modo → Prova → CTA", structure: "Hook|Problema|Nuovo modo|Prova sociale|Offerta|CTA", description: "Per Reels/Stories: aggancia, mostra frizione, presenta meccanismo" },
+      { value: "before_after_bridge", label: "Before → After → Bridge → CTA", structure: "Prima|Dopo|Ponte (processo)|CTA", description: "Ottimo per creativi visual con trasformazione" },
+      { value: "pain_benefit_offer", label: "3 Pain → 3 Benefit → Offer → Urgenza → CTA", structure: "Pain 1|Pain 2|Pain 3|Benefit 1|Benefit 2|Benefit 3|Offerta|Urgenza|CTA", description: "Perfetto per performance con elenco scorrevole" },
+      { value: "obiezione_confutazione", label: "Obiezione → Confutazione → Demo → CTA", structure: "Obiezione forte|Confutazione|Mini-dimostrazione|CTA", description: "Funziona quando il mercato è scettico" },
+      { value: "ugc_founder", label: "UGC/Founder Script (15-30s)", structure: "Chi sono|Cosa odiavo|Cosa ho cambiato|Risultato|Come farlo|CTA", description: "Nativo, credibile, ottimo CPC/CPA" },
+    ],
+    valore: [
+      { value: "carousel_errore", label: "Carousel Errore → Perché → Cosa fare → Esempio", structure: "Errore #1|Perché succede|Cosa fare|Esempio|Checklist|CTA soft", description: "Altissima retention: ogni slide una micro-promessa" },
+      { value: "framework_5step", label: "Framework in 5 Step", structure: "Hook|Contesto|Step 1|Step 2|Step 3|Step 4|Step 5|Caso reale|CTA", description: "Trasferisce metodo, non solo tips" },
+      { value: "teardown_analisi", label: "Teardown / Analisi", structure: "Hook|Cosa analizziamo|3 cose fatte bene|3 da migliorare|Template|CTA", description: "Autorità immediata, salva/condivisioni" },
+      { value: "myth_busting", label: "Myth Busting", structure: "Mito|Perché è falso|La regola vera|Come applicarla|CTA", description: "Ottimo per differenziarti" },
+      { value: "case_study", label: "Case Study", structure: "Risultato|Punto di partenza|Azioni|Ostacolo|Soluzione|Lezione|CTA", description: "Prova sociale senza vantarsi" },
+    ],
+    altri: [
+      { value: "pov_domanda", label: "POV + Domanda", structure: "Opinione forte|Motivo 1|Motivo 2|Domanda", description: "Genera commenti e discussione" },
+      { value: "behind_scenes", label: "Behind the Scenes", structure: "Cosa stai facendo|Perché|Cosa hai imparato|CTA", description: "Umano, fidelizza" },
+      { value: "story_fallimento", label: "Story: Fallimento → Lezione → Regola", structure: "Errore|Costo|Cosa hai cambiato|Regola", description: "Connessione + autorevolezza" },
+    ],
+  },
+  x: {
+    ads: [
+      { value: "oneliner_proof", label: "One-liner Value → Proof → CTA", structure: "Promessa (1 riga)|Prova (numero/risultato)|CTA", description: "Su X vince la chiarezza + credibilità" },
+      { value: "pas_ultracompatto", label: "PAS Ultracompatto", structure: "Problema|Agitazione (1 riga)|Soluzione|CTA", description: "Per awareness e lead magnet" },
+      { value: "contrarian_payoff", label: "Contrarian + Payoff", structure: "Hot take|Perché|Cosa fare invece|CTA", description: "Alta attenzione, CTR" },
+      { value: "offer_first", label: "Offer-first", structure: "Offerta|Chi è per|Cosa ottieni|Vincolo/urgenza|CTA", description: "Funziona per conversioni dirette" },
+    ],
+    valore: [
+      { value: "thread_manuale", label: "Thread Manuale Operativo", structure: "Hook tweet|Step 1|Step 2|Step 3|Step 4|Step 5|Esempio|Recap|CTA", description: "Thread salva/riporta follower" },
+      { value: "checklist", label: "Checklist", structure: "Titolo|Punto 1|Punto 2|Punto 3|Punto 4|Punto 5|Punto 6|Punto 7|CTA", description: "Facile da consumare e salvare" },
+      { value: "principio_caso_regola", label: "Principio → Caso → Regola", structure: "Principio|Mini-storia|Regola applicabile", description: "Authority senza lunghezza" },
+      { value: "mini_playbook", label: "Mini-playbook", structure: "Obiettivo|Leva 1|Leva 2|Leva 3|Errore 1|Errore 2|Errore 3|Template", description: "Altissimo valore percepito" },
+      { value: "swipe_template", label: "Swipe/Template Tweet", structure: "Copia-incolla:|Template|Quando usarlo", description: "Condivisioni elevate" },
+    ],
+    altri: [
+      { value: "build_public", label: "Build in Public", structure: "Cosa hai fatto oggi|Cosa hai imparato|Prossima mossa", description: "Community e consistenza" },
+      { value: "qa_prompt", label: "Q&A Prompt", structure: "Rispondo a domande su X...", description: "Genera conversazioni e contenuti futuri" },
+    ],
+  },
+  linkedin: {
+    ads: [
+      { value: "problema_ruolo", label: "Problema di Ruolo → Costo → Soluzione → Prova → CTA", structure: "Se sei [ruolo]...|Problema|Costo|Soluzione|Proof|CTA", description: "LinkedIn richiede targeting per job-to-be-done" },
+      { value: "case_study_ad", label: "Case Study Ad", structure: "Risultato|In quanto tempo|Cosa abbiamo cambiato|1 grafico/numero|CTA", description: "Best performer per B2B" },
+      { value: "lead_magnet_ad", label: "Lead Magnet Ad", structure: "Titolo asset|Bullet 1|Bullet 2|Bullet 3|Per chi|CTA", description: "Ottimo CPL, semplice da validare" },
+      { value: "obiezione_demo", label: "Obiezione → Risposta → Demo-invito", structure: "Non funziona se...|Condizione vera|Come lo rendiamo vero|CTA demo", description: "Riduce attrito sui lead" },
+    ],
+    valore: [
+      { value: "story_professionale", label: "Story Professionale", structure: "Situazione|Tensione|Decisione|Risultato|Lezione|CTA", description: "LinkedIn ama narrazione + insight" },
+      { value: "carosello_pdf", label: "Carosello Documento (PDF)", structure: "Titolo|Problema|Framework|Esempi|Checklist|CTA", description: "Altissima permanenza e salvataggi" },
+      { value: "post_insegnamento", label: "Post Insegnamento", structure: "Claim|Perché|Esempio 1|Esempio 2|Esempio 3|Azione 1|Azione 2|Azione 3|CTA", description: "Autorità + praticità" },
+      { value: "teardown_b2b", label: "Teardown B2B", structure: "Cosa analizziamo|3 punti forti|3 errori|Come rifarlo|CTA", description: "Posizionamento immediato" },
+      { value: "opinion_dati", label: "Opinion + Dati", structure: "Tesi|Dato/prova|Implicazione|Cosa fare|CTA", description: "Perfetto per consulenza/servizi" },
+    ],
+    altri: [],
+  },
+};
+
 type HookType = "how-to" | "curiosità" | "numero" | "problema";
 
 function getHookType(hook: string): HookType {
@@ -240,6 +328,10 @@ export default function ContentStudioIdeas() {
   const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
   const [copyType, setCopyType] = useState<"short" | "long">("short");
+  const [targetPlatform, setTargetPlatform] = useState<"instagram" | "x" | "linkedin">("instagram");
+  const [postCategory, setPostCategory] = useState<"ads" | "valore" | "altri">("valore");
+  const [postSchema, setPostSchema] = useState<string>("");
+  const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [isSuggestingLevels, setIsSuggestingLevels] = useState(false);
   const [isGeneratingNicheTarget, setIsGeneratingNicheTarget] = useState(false);
   const [showLevelsSuggestionDialog, setShowLevelsSuggestionDialog] = useState(false);
@@ -286,16 +378,34 @@ export default function ContentStudioIdeas() {
     });
   };
   
-  // Calculate form completion progress - Nicchia, Target, Obiettivo e Brand Voice sono obbligatori
+  // Get available schemas based on platform and category
+  const availableSchemas = useMemo(() => {
+    const schemas = POST_SCHEMAS[targetPlatform]?.[postCategory] || [];
+    return schemas;
+  }, [targetPlatform, postCategory]);
+
+  // Get current platform info
+  const currentPlatformInfo = useMemo(() => {
+    return TARGET_PLATFORMS.find(p => p.value === targetPlatform);
+  }, [targetPlatform]);
+
+  // Get selected schema details
+  const selectedSchemaDetails = useMemo(() => {
+    if (!postSchema) return null;
+    return availableSchemas.find(s => s.value === postSchema);
+  }, [postSchema, availableSchemas]);
+
+  // Calculate form completion progress - Nicchia, Target, Obiettivo, Piattaforma e Brand Voice sono obbligatori
   const formProgress = useMemo(() => {
     let completed = 0;
-    const total = 4; // Nicchia, Target, Obiettivo, Brand Voice
+    const total = 5; // Nicchia, Target, Obiettivo, Piattaforma+Schema, Brand Voice
     if (topic?.trim()) completed++; // Nicchia compilata
     if (targetAudience?.trim()) completed++; // Pubblico Target compilato
     if (objective) completed++; // Obiettivo selezionato
+    if (targetPlatform && postSchema) completed++; // Piattaforma e Schema selezionati
     if (useBrandVoice && Object.keys(brandVoiceData).length > 0) completed++; // Brand Voice configurato
     return { completed, total, percentage: Math.round((completed / total) * 100) };
-  }, [topic, targetAudience, objective, useBrandVoice, brandVoiceData]);
+  }, [topic, targetAudience, objective, targetPlatform, postSchema, useBrandVoice, brandVoiceData]);
 
   const toggleFilter = (filter: string) => {
     setActiveFilters(prev => {
@@ -548,6 +658,11 @@ export default function ContentStudioIdeas() {
       );
     }
 
+    // Filtra per piattaforma
+    if (filterPlatform !== "all") {
+      result = result.filter((idea) => idea.targetPlatform === filterPlatform);
+    }
+
     if (!activeFilters.has("all")) {
       result = result.filter((idea) => {
         const matchesVideo = activeFilters.has("video") && idea.mediaType === "video";
@@ -573,13 +688,15 @@ export default function ContentStudioIdeas() {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case "content-type":
           return (a.contentType || "").localeCompare(b.contentType || "");
+        case "platform":
+          return (a.targetPlatform || "").localeCompare(b.targetPlatform || "");
         default:
           return 0;
       }
     });
 
     return result;
-  }, [ideas, statusFilter, filterContentType, sortBy, activeFilters]);
+  }, [ideas, statusFilter, filterContentType, sortBy, activeFilters, filterPlatform]);
 
   const createIdeaMutation = useMutation({
     mutationFn: async (idea: Partial<Idea>) => {
@@ -792,6 +909,18 @@ export default function ContentStudioIdeas() {
       return;
     }
 
+    if (!postSchema) {
+      toast({
+        title: "Schema richiesto",
+        description: "Seleziona uno schema per il post nella sezione Piattaforma & Schema",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedSchema = availableSchemas.find(s => s.value === postSchema);
+    const platformLimit = PLATFORM_LIMITS[targetPlatform];
+
     setIsGenerating(true);
     try {
       const response = await fetch("/api/content/ai/generate-ideas", {
@@ -810,6 +939,12 @@ export default function ContentStudioIdeas() {
           copyType,
           awarenessLevel,
           sophisticationLevel,
+          targetPlatform,
+          postCategory,
+          postSchema,
+          schemaStructure: selectedSchema?.structure,
+          schemaLabel: selectedSchema?.label,
+          charLimit: targetPlatform === "x" ? platformLimit.tweet : (targetPlatform === "linkedin" ? platformLimit.post : platformLimit.caption),
           ...(useBrandVoice && Object.keys(brandVoiceData).length > 0 && { brandVoiceData }),
           ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
           ...(useKnowledgeBase && tempFiles.filter(f => f.status === "success").length > 0 && { 
@@ -846,6 +981,7 @@ export default function ContentStudioIdeas() {
   };
 
   const handleSaveGeneratedIdea = (idea: any, index: number) => {
+    const selectedSchema = availableSchemas.find(s => s.value === postSchema);
     createIdeaMutation.mutate({
       title: idea.title,
       description: idea.description,
@@ -863,6 +999,10 @@ export default function ContentStudioIdeas() {
       copyContent: idea.copyContent,
       structuredContent: idea.structuredContent,
       awarenessLevel: awarenessLevel,
+      targetPlatform: targetPlatform,
+      postCategory: postCategory,
+      postSchema: postSchema,
+      schemaStructure: selectedSchema?.structure,
     }, {
       onSuccess: () => {
         setSavedIdeaIndexes(prev => new Set(prev).add(index));
@@ -1098,16 +1238,183 @@ export default function ContentStudioIdeas() {
                 </div>
               </Card>
 
-              {/* Step 2: Brand Voice & Context (optional) */}
+              {/* Step 2: Piattaforma & Schema */}
+              <Card className="overflow-hidden">
+                <button
+                  onClick={() => toggleSection("platform")}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-950/30 dark:to-violet-950/30 hover:from-indigo-100 hover:to-violet-100 dark:hover:from-indigo-950/40 dark:hover:to-violet-950/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">2</div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-foreground">Piattaforma & Schema</h3>
+                      <p className="text-xs text-muted-foreground">Dove vuoi pubblicare e che struttura usare</p>
+                    </div>
+                    {targetPlatform && postSchema && (
+                      <CheckCircle className="h-5 w-5 text-green-500 ml-2" />
+                    )}
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${expandedSections.has("platform") ? "rotate-180" : ""}`} />
+                </button>
+                
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${expandedSections.has("platform") ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                >
+                  <div className="overflow-hidden">
+                    <CardContent className="pt-4 space-y-5">
+                      {/* Platform Selection */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Piattaforma Target *</Label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {TARGET_PLATFORMS.map((platform) => {
+                            const IconComponent = platform.icon;
+                            const isSelected = targetPlatform === platform.value;
+                            return (
+                              <button
+                                key={platform.value}
+                                onClick={() => {
+                                  setTargetPlatform(platform.value);
+                                  setPostSchema(""); // Reset schema when platform changes
+                                }}
+                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                                  isSelected
+                                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                                    : "border-muted hover:border-indigo-200 dark:hover:border-indigo-800"
+                                }`}
+                              >
+                                <div className={`h-10 w-10 rounded-full ${platform.color} flex items-center justify-center`}>
+                                  <IconComponent className="h-5 w-5 text-white" />
+                                </div>
+                                <span className={`text-sm font-medium ${isSelected ? "text-indigo-700 dark:text-indigo-300" : "text-muted-foreground"}`}>
+                                  {platform.label}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Max {platform.charLimit.toLocaleString()} char
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Category Selection */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Tipo di Post *</Label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {POST_CATEGORIES.map((category) => {
+                            const IconComponent = category.icon;
+                            const isSelected = postCategory === category.value;
+                            const hasSchemas = (POST_SCHEMAS[targetPlatform]?.[category.value]?.length || 0) > 0;
+                            return (
+                              <TooltipProvider key={category.value}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      onClick={() => {
+                                        if (hasSchemas) {
+                                          setPostCategory(category.value as "ads" | "valore" | "altri");
+                                          setPostSchema(""); // Reset schema when category changes
+                                        }
+                                      }}
+                                      disabled={!hasSchemas}
+                                      className={`p-3 rounded-lg border transition-all flex items-center gap-2 ${
+                                        !hasSchemas
+                                          ? "border-muted bg-muted/30 opacity-50 cursor-not-allowed"
+                                          : isSelected
+                                            ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                                            : "border-muted hover:border-indigo-200 dark:hover:border-indigo-800"
+                                      }`}
+                                    >
+                                      <IconComponent className={`h-4 w-4 ${isSelected ? "text-indigo-600" : "text-muted-foreground"}`} />
+                                      <div className="text-left">
+                                        <span className={`text-sm font-medium block ${isSelected ? "text-indigo-700 dark:text-indigo-300" : ""}`}>
+                                          {category.label}
+                                        </span>
+                                        {!hasSchemas && (
+                                          <span className="text-xs text-muted-foreground">Non disponibile</span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">{category.description}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Schema Selection */}
+                      {availableSchemas.length > 0 && (
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Schema del Post *</Label>
+                          <div className="space-y-2">
+                            {availableSchemas.map((schema) => {
+                              const isSelected = postSchema === schema.value;
+                              return (
+                                <button
+                                  key={schema.value}
+                                  onClick={() => setPostSchema(schema.value)}
+                                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                                    isSelected
+                                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                                      : "border-muted hover:border-indigo-200 dark:hover:border-indigo-800"
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      <p className={`font-medium text-sm ${isSelected ? "text-indigo-700 dark:text-indigo-300" : ""}`}>
+                                        {schema.label}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mt-1">{schema.description}</p>
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {schema.structure.split("|").map((part, idx) => (
+                                          <Badge key={idx} variant="outline" className="text-xs">
+                                            {part}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <CheckCircle className="h-5 w-5 text-indigo-500 shrink-0" />
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Character Limit Info */}
+                      {currentPlatformInfo && (
+                        <div className="bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-950/30 dark:to-violet-950/30 rounded-lg p-4 flex items-center gap-3">
+                          <Type className="h-5 w-5 text-indigo-600" />
+                          <div>
+                            <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                              {PLATFORM_LIMITS[targetPlatform].description}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              L'AI genererà contenuti rispettando questo limite
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Step 3: Brand Voice & Context (optional) */}
               <Card className="overflow-hidden">
                 <button
                   onClick={() => toggleSection("context")}
                   className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 hover:from-teal-100 hover:to-cyan-100 dark:hover:from-teal-950/40 dark:hover:to-cyan-950/40 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-sm">
-                      <Building2 className="h-4 w-4" />
-                    </div>
+                    <div className="h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold text-sm">3</div>
                     <div className="text-left">
                       <h3 className="font-semibold text-foreground">Brand Voice & Contesto</h3>
                       <p className="text-xs text-muted-foreground">Brand Voice obbligatorio, Knowledge Base opzionale</p>
@@ -1511,6 +1818,52 @@ export default function ContentStudioIdeas() {
                 >
                   <FileTextIcon className="h-3 w-3" />
                   Corto
+                </button>
+                
+                <span className="text-xs text-muted-foreground self-center mx-2">|</span>
+                <span className="text-xs text-muted-foreground self-center mr-2">Piattaforma:</span>
+                <button
+                  onClick={() => setFilterPlatform("all")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    filterPlatform === "all"
+                      ? "bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  Tutte
+                </button>
+                <button
+                  onClick={() => setFilterPlatform("instagram")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    filterPlatform === "instagram"
+                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <Instagram className="h-3 w-3" />
+                  Instagram
+                </button>
+                <button
+                  onClick={() => setFilterPlatform("x")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    filterPlatform === "x"
+                      ? "bg-gray-800 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <Twitter className="h-3 w-3" />
+                  X
+                </button>
+                <button
+                  onClick={() => setFilterPlatform("linkedin")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    filterPlatform === "linkedin"
+                      ? "bg-blue-700 text-white shadow-md"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <Linkedin className="h-3 w-3" />
+                  LinkedIn
                 </button>
               </div>
 

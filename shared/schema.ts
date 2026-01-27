@@ -8249,12 +8249,17 @@ export const contentIdeas = pgTable("content_ideas", {
   structuredContent: jsonb("structured_content").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
   status: varchar("status", { length: 50 }).default("new").$type<"new" | "in_progress" | "developed" | "archived">(),
   developedPostId: varchar("developed_post_id"),
+  targetPlatform: varchar("target_platform", { length: 50 }).$type<"instagram" | "x" | "linkedin">(),
+  postCategory: varchar("post_category", { length: 50 }).$type<"ads" | "valore" | "altri">(),
+  postSchema: varchar("post_schema", { length: 100 }),
+  schemaStructure: text("schema_structure"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
   consultantIdx: index("idx_content_ideas_consultant").on(table.consultantId),
   statusIdx: index("idx_content_ideas_status").on(table.status),
   developedIdx: index("idx_content_ideas_developed").on(table.developedPostId),
+  platformIdx: index("idx_content_ideas_platform").on(table.targetPlatform),
 }));
 
 export type AwarenessLevel = "unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware";

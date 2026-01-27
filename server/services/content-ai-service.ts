@@ -22,6 +22,12 @@ export interface GenerateIdeasParams {
   copyType?: "short" | "long";
   awarenessLevel?: AwarenessLevel;
   sophisticationLevel?: SophisticationLevel;
+  targetPlatform?: "instagram" | "x" | "linkedin";
+  postCategory?: "ads" | "valore" | "altri";
+  postSchema?: string;
+  schemaStructure?: string;
+  schemaLabel?: string;
+  charLimit?: number;
   brandVoiceData?: {
     consultantDisplayName?: string;
     businessName?: string;
@@ -606,6 +612,7 @@ function validateAndEnrichCopyLength(
 
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
   const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware", sophisticationLevel = "level_3" } = params;
+  const { targetPlatform, postCategory, postSchema, schemaStructure, schemaLabel, charLimit } = params;
   
   await rateLimitCheck(consultantId);
   
@@ -621,6 +628,28 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
 
   const awarenessInfo = AWARENESS_LEVEL_INSTRUCTIONS[awarenessLevel];
   const sophisticationInfo = SOPHISTICATION_LEVEL_INSTRUCTIONS[sophisticationLevel];
+
+  // Build platform and schema context
+  let platformSchemaContext = "";
+  if (targetPlatform || postSchema) {
+    const platformNames: Record<string, string> = { instagram: "Instagram", x: "X (Twitter)", linkedin: "LinkedIn" };
+    const categoryNames: Record<string, string> = { ads: "Inserzioni (Ads)", valore: "Post di Valore", altri: "Altri Post" };
+    
+    platformSchemaContext = `
+
+📱 PIATTAFORMA TARGET: ${platformNames[targetPlatform || "instagram"] || targetPlatform}
+📝 TIPO POST: ${categoryNames[postCategory || "valore"] || postCategory}
+🔢 LIMITE CARATTERI: ${charLimit || 2200} caratteri MAX per il copy principale
+
+${schemaLabel ? `📋 SCHEMA DA SEGUIRE: ${schemaLabel}` : ""}
+${schemaStructure ? `
+STRUTTURA OBBLIGATORIA DEL CONTENUTO:
+Il post DEVE seguire questa struttura esatta, nell'ordine indicato:
+${schemaStructure.split("|").map((part, idx) => `${idx + 1}. ${part}`).join("\n")}
+
+IMPORTANTE: Ogni sezione dello schema deve essere presente e ben sviluppata nel contenuto.
+Il contenuto DEVE rispettare il limite di ${charLimit || 2200} caratteri.` : ""}`;
+  }
 
   const getStructuredContentInstructions = () => {
     const imageFields = mediaType === "photo" ? `,
@@ -727,7 +756,7 @@ CONTESTO:
 - Tipo Media: ${mediaType}
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
-${brandContext}${brandVoiceContext}${kbContext}
+${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}
 
 🎯 LIVELLO DI CONSAPEVOLEZZA DEL PUBBLICO: ${awarenessInfo.name}
 STRATEGIA CONSAPEVOLEZZA: ${awarenessInfo.strategy}
