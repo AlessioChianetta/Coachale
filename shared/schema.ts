@@ -8219,9 +8219,9 @@ export const brandAssets = pgTable("brand_assets", {
   chiSono: text("chi_sono"),
   noteForAi: text("note_for_ai"),
   postingSchedule: jsonb("posting_schedule").$type<{
-    instagram?: { times: string[]; writingStyle: string };
-    x?: { times: string[]; writingStyle: string };
-    linkedin?: { times: string[]; writingStyle: string };
+    instagram?: { postsPerDay: number; times: string[]; writingStyle: string };
+    x?: { postsPerDay: number; times: string[]; writingStyle: string };
+    linkedin?: { postsPerDay: number; times: string[]; writingStyle: string };
   }>().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -8410,6 +8410,14 @@ export const contentPosts = pgTable("content_posts", {
   publerError: text("publer_error"),
   publerMediaIds: jsonb("publer_media_ids").$type<Array<string | { id: string; path?: string; thumbnail?: string }>>().default(sql`'[]'::jsonb`),
   
+  // AI Quality Score (1-10)
+  aiQualityScore: integer("ai_quality_score"),
+  aiQualityReasoning: text("ai_quality_reasoning"),
+  
+  // Autopilot metadata
+  contentTheme: varchar("content_theme", { length: 50 }).$type<"educativo" | "promozionale" | "storytelling" | "behind-the-scenes">(),
+  generatedBy: varchar("generated_by", { length: 50 }).$type<"manual" | "autopilot">(),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -8496,6 +8504,29 @@ export const contentCalendar = pgTable("content_calendar", {
 
 export type ContentCalendarItem = typeof contentCalendar.$inferSelect;
 export type InsertContentCalendarItem = typeof contentCalendar.$inferInsert;
+
+// Autopilot Templates - Saved frequency presets for batch generation
+export const autopilotTemplates = pgTable("autopilot_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  platforms: jsonb("platforms").$type<{
+    instagram?: { enabled: boolean; postsPerDay: number };
+    x?: { enabled: boolean; postsPerDay: number };
+    linkedin?: { enabled: boolean; postsPerDay: number };
+  }>().default(sql`'{}'::jsonb`),
+  excludeWeekends: boolean("exclude_weekends").default(false),
+  excludeHolidays: boolean("exclude_holidays").default(false),
+  excludedDates: jsonb("excluded_dates").$type<string[]>().default(sql`'[]'::jsonb`),
+  contentTypes: jsonb("content_types").$type<string[]>().default(sql`'["educativo", "promozionale", "storytelling", "behind-the-scenes"]'::jsonb`),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type AutopilotTemplate = typeof autopilotTemplates.$inferSelect;
+export type InsertAutopilotTemplate = typeof autopilotTemplates.$inferInsert;
 
 // Generated Images - AI-generated images
 export const generatedImages = pgTable("generated_images", {
