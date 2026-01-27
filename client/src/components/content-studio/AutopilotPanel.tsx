@@ -197,6 +197,17 @@ interface GenerationResult {
   errors: string[];
 }
 
+interface DayConfig {
+  date: string;
+  platform: "instagram" | "x" | "linkedin";
+  category: "ads" | "valore" | "altri";
+  schema: string;
+  writingStyle: string;
+  mediaType: string;
+  copyType: string;
+  status: "pending" | "generating" | "generated" | "error";
+}
+
 function AutopilotPanel({
   targetPlatform,
   postCategory,
@@ -229,6 +240,7 @@ function AutopilotPanel({
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
+  const [dayConfigs, setDayConfigs] = useState<DayConfig[]>([]);
 
   const { data: templates, isLoading: templatesLoading } = useQuery<Template[]>({
     queryKey: ["autopilot-templates"],
@@ -274,6 +286,39 @@ function AutopilotPanel({
     }
   }, [localPlatform, localCategory, localSchema]);
 
+  useEffect(() => {
+    if (mode === "automatica") {
+      setDayConfigs([]);
+    }
+  }, [mode]);
+
+  const updateDayConfig = (index: number, updates: Partial<DayConfig>) => {
+    setDayConfigs(prev => {
+      const newConfigs = [...prev];
+      newConfigs[index] = { ...newConfigs[index], ...updates };
+      if (updates.platform || updates.category) {
+        const platform = updates.platform || newConfigs[index].platform;
+        const category = updates.category || newConfigs[index].category;
+        const schemas = POST_SCHEMAS[platform]?.[category] || [];
+        if (schemas.length > 0 && !schemas.find(s => s.value === newConfigs[index].schema)) {
+          newConfigs[index].schema = schemas[0].value;
+        }
+      }
+      return newConfigs;
+    });
+  };
+
+  const getAvailableSchemasForDay = (platform: string, category: string) => {
+    return POST_SCHEMAS[platform]?.[category] || [];
+  };
+
+  const formatDayLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const days = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+    const months = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  };
+
   const toggleContentType = (typeId: string) => {
     setSelectedContentTypes((prev) =>
       prev.includes(typeId)
@@ -284,12 +329,13 @@ function AutopilotPanel({
 
   const calculation = useMemo(() => {
     if (!startDate || !endDate) {
-      return { totalDays: 0, totalPosts: 0, excludedDays: [], validDays: 0 };
+      return { totalDays: 0, totalPosts: 0, excludedDays: [], validDays: 0, validDates: [] as string[] };
     }
 
     const start = new Date(startDate);
     const end = new Date(endDate);
     const excludedDays: { date: string; reason: string }[] = [];
+    const validDates: string[] = [];
     let validDays = 0;
 
     const current = new Date(start);
@@ -315,6 +361,7 @@ function AutopilotPanel({
         excludedDays.push({ date: dateStr, reason: reasons.join(", ") });
       } else {
         validDays++;
+        validDates.push(dateStr);
       }
 
       current.setDate(current.getDate() + 1);
@@ -324,8 +371,34 @@ function AutopilotPanel({
     const totalDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
     const totalPosts = validDays * postsPerDay;
 
-    return { totalDays, totalPosts, excludedDays, validDays };
+    return { totalDays, totalPosts, excludedDays, validDays, validDates };
   }, [startDate, endDate, excludeWeekends, excludeHolidays, postsPerDay]);
+
+  useEffect(() => {
+    if (mode === "controllata" && calculation.validDates.length > 0) {
+      const existingDates = new Set(dayConfigs.map(d => d.date));
+      const newDates = calculation.validDates.filter(d => !existingDates.has(d));
+      const removedDates = dayConfigs.filter(d => !calculation.validDates.includes(d.date));
+      
+      if (newDates.length > 0 || removedDates.length > 0) {
+        const newConfigs: DayConfig[] = calculation.validDates.map(date => {
+          const existing = dayConfigs.find(d => d.date === date);
+          if (existing) return existing;
+          return {
+            date,
+            platform: localPlatform,
+            category: localCategory,
+            schema: localSchema,
+            writingStyle: localWritingStyle,
+            mediaType: localMediaType,
+            copyType: localCopyType,
+            status: "pending" as const,
+          };
+        });
+        setDayConfigs(newConfigs);
+      }
+    }
+  }, [mode, calculation.validDates]);
 
   const canGenerate =
     startDate &&
@@ -344,74 +417,172 @@ function AutopilotPanel({
 
     try {
       const token = localStorage.getItem("auth_token");
-      const response = await fetch("/api/content/autopilot/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          startDate,
-          endDate,
-          targetPlatform: localPlatform,
-          postCategory: localCategory,
-          postSchema: localSchema,
-          writingStyle: localWritingStyle,
-          customInstructions: localWritingStyle === "custom" ? localCustomInstructions : undefined,
-          mediaType: localMediaType,
-          copyType: localCopyType,
-          templateId: selectedTemplate !== "none" ? selectedTemplate : undefined,
-          excludeWeekends,
-          excludeHolidays,
-          postsPerDay,
-          mode,
-          contentTypes: selectedContentTypes,
-          optimalTimes: configuredTimes,
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error("Errore nell'avvio della generazione");
-      }
+      if (mode === "controllata" && dayConfigs.length > 0) {
+        let totalGenerated = 0;
+        const allErrors: string[] = [];
+        const pendingConfigs = dayConfigs.filter(d => d.status === "pending" || d.status === "error");
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
+        for (let i = 0; i < pendingConfigs.length; i++) {
+          const dayConfig = pendingConfigs[i];
+          const dayIndex = dayConfigs.findIndex(d => d.date === dayConfig.date);
 
-      if (!reader) {
-        throw new Error("Risposta non valida");
-      }
+          updateDayConfig(dayIndex, { status: "generating" });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+          setProgress({
+            total: pendingConfigs.length,
+            completed: i,
+            currentDate: dayConfig.date,
+            currentPlatform: dayConfig.platform,
+            status: `Generando ${formatDayLabel(dayConfig.date)}...`,
+          });
 
-        const text = decoder.decode(value);
-        const lines = text.split("\n").filter((line) => line.startsWith("data: "));
-
-        for (const line of lines) {
           try {
-            const data = JSON.parse(line.replace("data: ", ""));
+            const response = await fetch("/api/content/autopilot/generate", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                startDate: dayConfig.date,
+                endDate: dayConfig.date,
+                targetPlatform: dayConfig.platform,
+                postCategory: dayConfig.category,
+                postSchema: dayConfig.schema,
+                writingStyle: dayConfig.writingStyle,
+                customInstructions: dayConfig.writingStyle === "custom" ? localCustomInstructions : undefined,
+                mediaType: dayConfig.mediaType,
+                copyType: dayConfig.copyType,
+                templateId: selectedTemplate !== "none" ? selectedTemplate : undefined,
+                excludeWeekends: false,
+                excludeHolidays: false,
+                postsPerDay,
+                mode: "controllata",
+                contentTypes: selectedContentTypes,
+                optimalTimes: configuredTimes,
+              }),
+            });
 
-            if (data.type === "complete") {
-              finalResult = {
-                success: data.success,
-                generated: data.generated,
-                errors: data.errors || [],
-              };
-              setGenerationResult(finalResult);
-            } else if (data.type === "error") {
-              throw new Error(data.error);
-            } else {
-              setProgress(data);
+            if (!response.ok) {
+              throw new Error(`Errore per ${dayConfig.date}`);
             }
-          } catch (e) {}
-        }
-      }
 
-      toast({
-        title: "Generazione completata!",
-        description: `${finalResult?.generated || 0} post generati con successo.`,
-      });
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let daySuccess = false;
+
+            if (reader) {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const text = decoder.decode(value);
+                const lines = text.split("\n").filter((line) => line.startsWith("data: "));
+
+                for (const line of lines) {
+                  try {
+                    const data = JSON.parse(line.replace("data: ", ""));
+                    if (data.type === "complete" && data.success) {
+                      daySuccess = true;
+                      totalGenerated += data.generated || 1;
+                    } else if (data.type === "error") {
+                      allErrors.push(`${dayConfig.date}: ${data.error}`);
+                    }
+                  } catch (e) {}
+                }
+              }
+            }
+
+            updateDayConfig(dayIndex, { status: daySuccess ? "generated" : "error" });
+          } catch (err: any) {
+            updateDayConfig(dayIndex, { status: "error" });
+            allErrors.push(`${dayConfig.date}: ${err.message}`);
+          }
+        }
+
+        finalResult = {
+          success: allErrors.length === 0,
+          generated: totalGenerated,
+          errors: allErrors,
+        };
+        setGenerationResult(finalResult);
+        setProgress(null);
+
+        toast({
+          title: "Generazione completata!",
+          description: `${totalGenerated} post generati${allErrors.length > 0 ? ` con ${allErrors.length} errori` : ""}.`,
+        });
+      } else {
+        const response = await fetch("/api/content/autopilot/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            startDate,
+            endDate,
+            targetPlatform: localPlatform,
+            postCategory: localCategory,
+            postSchema: localSchema,
+            writingStyle: localWritingStyle,
+            customInstructions: localWritingStyle === "custom" ? localCustomInstructions : undefined,
+            mediaType: localMediaType,
+            copyType: localCopyType,
+            templateId: selectedTemplate !== "none" ? selectedTemplate : undefined,
+            excludeWeekends,
+            excludeHolidays,
+            postsPerDay,
+            mode,
+            contentTypes: selectedContentTypes,
+            optimalTimes: configuredTimes,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Errore nell'avvio della generazione");
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) {
+          throw new Error("Risposta non valida");
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          const lines = text.split("\n").filter((line) => line.startsWith("data: "));
+
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line.replace("data: ", ""));
+
+              if (data.type === "complete") {
+                finalResult = {
+                  success: data.success,
+                  generated: data.generated,
+                  errors: data.errors || [],
+                };
+                setGenerationResult(finalResult);
+              } else if (data.type === "error") {
+                throw new Error(data.error);
+              } else {
+                setProgress(data);
+              }
+            } catch (e) {}
+          }
+        }
+
+        toast({
+          title: "Generazione completata!",
+          description: `${finalResult?.generated || 0} post generati con successo.`,
+        });
+      }
     } catch (error: any) {
       console.error("Generation error:", error);
       toast({
@@ -421,6 +592,83 @@ function AutopilotPanel({
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateSingleDay = async (dayIndex: number) => {
+    const dayConfig = dayConfigs[dayIndex];
+    if (!dayConfig || dayConfig.status === "generating") return;
+
+    updateDayConfig(dayIndex, { status: "generating" });
+
+    try {
+      const token = localStorage.getItem("auth_token");
+      const response = await fetch("/api/content/autopilot/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          startDate: dayConfig.date,
+          endDate: dayConfig.date,
+          targetPlatform: dayConfig.platform,
+          postCategory: dayConfig.category,
+          postSchema: dayConfig.schema,
+          writingStyle: dayConfig.writingStyle,
+          customInstructions: dayConfig.writingStyle === "custom" ? localCustomInstructions : undefined,
+          mediaType: dayConfig.mediaType,
+          copyType: dayConfig.copyType,
+          templateId: selectedTemplate !== "none" ? selectedTemplate : undefined,
+          excludeWeekends: false,
+          excludeHolidays: false,
+          postsPerDay,
+          mode: "controllata",
+          contentTypes: selectedContentTypes,
+          optimalTimes: configuredTimes,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Errore nella generazione");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          const lines = text.split("\n").filter((line) => line.startsWith("data: "));
+
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line.replace("data: ", ""));
+              if (data.type === "complete" && data.success) {
+                updateDayConfig(dayIndex, { status: "generated" });
+              } else if (data.type === "error") {
+                updateDayConfig(dayIndex, { status: "error" });
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
+      toast({
+        title: "Giorno generato!",
+        description: `Post per ${formatDayLabel(dayConfig.date)} generato con successo.`,
+      });
+    } catch (error: any) {
+      console.error("Single day generation error:", error);
+      updateDayConfig(dayIndex, { status: "error" });
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -799,6 +1047,245 @@ function AutopilotPanel({
               })}
             </div>
           </div>
+
+          {/* Configurazione Giorno per Giorno - Solo in modalità controllata */}
+          <AnimatePresence>
+            {mode === "controllata" && dayConfigs.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800 space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-amber-600" />
+                    <span className="font-medium text-sm text-amber-700 dark:text-amber-300">
+                      Configurazione Giorno per Giorno
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      {dayConfigs.length} giorni
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
+                  {dayConfigs.map((config, index) => {
+                    const DayPlatformIcon = PLATFORM_CONFIG[config.platform].icon;
+                    const daySchemas = getAvailableSchemasForDay(config.platform, config.category);
+                    
+                    return (
+                      <motion.div
+                        key={config.date}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                        className={`p-3 rounded-lg border bg-white dark:bg-gray-900 ${
+                          config.status === "generated" 
+                            ? "border-green-300 dark:border-green-700" 
+                            : config.status === "error"
+                            ? "border-red-300 dark:border-red-700"
+                            : config.status === "generating"
+                            ? "border-amber-400 dark:border-amber-600"
+                            : "border-gray-200 dark:border-gray-700"
+                        }`}
+                      >
+                        <div className="grid grid-cols-[80px_1fr] gap-3 items-start">
+                          {/* Data e Status */}
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="font-semibold text-sm">{formatDayLabel(config.date)}</span>
+                            <Badge
+                              variant={
+                                config.status === "generated" ? "default" :
+                                config.status === "error" ? "destructive" :
+                                config.status === "generating" ? "secondary" : "outline"
+                              }
+                              className={`text-[10px] px-1.5 py-0 ${
+                                config.status === "generated" ? "bg-green-500" :
+                                config.status === "generating" ? "bg-amber-500 animate-pulse" : ""
+                              }`}
+                            >
+                              {config.status === "pending" && "Da fare"}
+                              {config.status === "generating" && "Generando..."}
+                              {config.status === "generated" && "Generato"}
+                              {config.status === "error" && "Errore"}
+                            </Badge>
+                          </div>
+
+                          {/* Controlli */}
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              {/* Piattaforma */}
+                              <Select
+                                value={config.platform}
+                                onValueChange={(v) => updateDayConfig(index, { platform: v as "instagram" | "x" | "linkedin" })}
+                                disabled={config.status === "generating" || config.status === "generated"}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <DayPlatformIcon className={`h-3 w-3 mr-1 ${PLATFORM_CONFIG[config.platform].color}`} />
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(["instagram", "x", "linkedin"] as const).map((p) => {
+                                    const PIcon = PLATFORM_CONFIG[p].icon;
+                                    return (
+                                      <SelectItem key={p} value={p}>
+                                        <div className="flex items-center gap-1">
+                                          <PIcon className={`h-3 w-3 ${PLATFORM_CONFIG[p].color}`} />
+                                          <span className="text-xs">{PLATFORM_CONFIG[p].label}</span>
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Categoria */}
+                              <Select
+                                value={config.category}
+                                onValueChange={(v) => updateDayConfig(index, { category: v as "ads" | "valore" | "altri" })}
+                                disabled={config.status === "generating" || config.status === "generated"}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {POST_CATEGORIES.map((cat) => (
+                                    <SelectItem key={cat.value} value={cat.value}>
+                                      <span className="text-xs">{cat.icon} {cat.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Pulsante Genera */}
+                              <Button
+                                size="sm"
+                                variant={config.status === "generated" ? "outline" : "default"}
+                                className={`h-8 text-xs ${
+                                  config.status === "pending" 
+                                    ? "bg-violet-600 hover:bg-violet-700" 
+                                    : config.status === "generated"
+                                    ? "text-green-600"
+                                    : ""
+                                }`}
+                                onClick={() => handleGenerateSingleDay(index)}
+                                disabled={config.status === "generating" || config.status === "generated"}
+                              >
+                                {config.status === "generating" ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : config.status === "generated" ? (
+                                  <CheckCircle className="h-3 w-3" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="h-3 w-3 mr-1" />
+                                    Genera
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+
+                            {/* Schema */}
+                            <Select
+                              value={config.schema}
+                              onValueChange={(v) => updateDayConfig(index, { schema: v })}
+                              disabled={config.status === "generating" || config.status === "generated"}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Schema post" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {daySchemas.length > 0 ? (
+                                  daySchemas.map((schema) => (
+                                    <SelectItem key={schema.value} value={schema.value}>
+                                      <span className="text-xs">{schema.label}</span>
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="originale">Originale</SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+
+                            {/* Row: Writing Style, Media Type, Copy Type */}
+                            <div className="grid grid-cols-3 gap-2">
+                              {/* Writing Style */}
+                              <Select
+                                value={config.writingStyle}
+                                onValueChange={(v) => updateDayConfig(index, { writingStyle: v })}
+                                disabled={config.status === "generating" || config.status === "generated"}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Stile" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {WRITING_STYLES.map((style) => (
+                                    <SelectItem key={style.value} value={style.value}>
+                                      <span className="text-xs">{style.icon} {style.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Media Type */}
+                              <Select
+                                value={config.mediaType}
+                                onValueChange={(v) => updateDayConfig(index, { mediaType: v })}
+                                disabled={config.status === "generating" || config.status === "generated"}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Media" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {MEDIA_TYPES.map((type) => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                      <span className="text-xs">{type.icon} {type.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Copy Type */}
+                              <Select
+                                value={config.copyType}
+                                onValueChange={(v) => updateDayConfig(index, { copyType: v })}
+                                disabled={config.status === "generating" || config.status === "generated"}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Copy" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {COPY_TYPES.map((type) => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                      <span className="text-xs">{type.label}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Summary footer */}
+                <div className="flex items-center justify-between pt-2 border-t border-amber-200 dark:border-amber-700">
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                      Pending: {dayConfigs.filter(d => d.status === "pending").length}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      Generati: {dayConfigs.filter(d => d.status === "generated").length}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {calculation.totalDays > 0 && (
