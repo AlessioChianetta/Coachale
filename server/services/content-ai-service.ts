@@ -1,7 +1,7 @@
 import { getAIProvider, getModelWithThinking, GEMINI_3_MODEL } from "../ai/provider-factory";
 import { db } from "../db";
-import { brandAssets } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { brandAssets, contentIdeas, contentPosts } from "@shared/schema";
+import { eq, desc, and, inArray } from "drizzle-orm";
 
 export type ContentType = "post" | "carosello" | "reel" | "video" | "story" | "articolo";
 export type ContentObjective = "awareness" | "engagement" | "leads" | "sales" | "education";
@@ -965,11 +965,142 @@ function validateAndEnrichCopyLength(
   return undefined;
 }
 
+// ============================================================
+// SISTEMA ANTI-RIPETIZIONE (come Email Nurturing 365)
+// ============================================================
+
+interface PreviousIdea {
+  title: string;
+  hook: string | null;
+  description: string | null;
+  platform: string | null;
+}
+
+interface PreviousPost {
+  title: string | null;
+  hook: string | null;
+  fullCopy: string | null;
+  platform: string | null;
+}
+
+async function fetchPreviousContent(consultantId: string): Promise<{
+  ideas: PreviousIdea[];
+  posts: PreviousPost[];
+}> {
+  try {
+    // Recupera ultime 50 idee
+    const ideas = await db.select({
+      title: contentIdeas.title,
+      hook: contentIdeas.suggestedHook,
+      description: contentIdeas.description,
+      platform: contentIdeas.targetPlatform,
+    })
+      .from(contentIdeas)
+      .where(eq(contentIdeas.consultantId, consultantId))
+      .orderBy(desc(contentIdeas.createdAt))
+      .limit(50);
+
+    // Recupera ultimi 30 post (draft, scheduled, published)
+    const posts = await db.select({
+      title: contentPosts.title,
+      hook: contentPosts.hook,
+      fullCopy: contentPosts.fullCopy,
+      platform: contentPosts.platform,
+    })
+      .from(contentPosts)
+      .where(and(
+        eq(contentPosts.consultantId, consultantId),
+        inArray(contentPosts.status, ['draft', 'scheduled', 'published'])
+      ))
+      .orderBy(desc(contentPosts.createdAt))
+      .limit(30);
+
+    return { ideas, posts };
+  } catch (error) {
+    console.error("[CONTENT-AI] Error fetching previous content:", error);
+    return { ideas: [], posts: [] };
+  }
+}
+
+function buildAntiRepetitionContext(
+  ideas: PreviousIdea[],
+  posts: PreviousPost[]
+): string {
+  if (ideas.length === 0 && posts.length === 0) {
+    return "";
+  }
+
+  let context = `
+
+=== ⚠️ CONTENUTI GIÀ ESISTENTI - VIETATO RIPETERE! ===
+Questi contenuti sono GIÀ stati creati. Le nuove idee DEVONO essere COMPLETAMENTE DIVERSE.
+
+`;
+
+  // Elenco titoli idee (tutti)
+  if (ideas.length > 0) {
+    context += `📋 TITOLI IDEE GIÀ USATI (${ideas.length}):\n`;
+    for (const idea of ideas) {
+      context += `- "${idea.title}"${idea.platform ? ` [${idea.platform}]` : ''}\n`;
+    }
+    context += "\n";
+  }
+
+  // Elenco hook idee (primi 20)
+  const hooksIdeas = ideas.filter(i => i.hook).slice(0, 20);
+  if (hooksIdeas.length > 0) {
+    context += `🎣 HOOK GIÀ USATI (${hooksIdeas.length}):\n`;
+    for (const idea of hooksIdeas) {
+      context += `- "${idea.hook}"\n`;
+    }
+    context += "\n";
+  }
+
+  // Elenco post pubblicati/schedulati
+  const postsWithTitle = posts.filter(p => p.title);
+  if (postsWithTitle.length > 0) {
+    context += `📱 POST GIÀ CREATI/PUBBLICATI (${postsWithTitle.length}):\n`;
+    for (const post of postsWithTitle) {
+      context += `- "${post.title}"${post.platform ? ` [${post.platform}]` : ''}\n`;
+    }
+    context += "\n";
+  }
+
+  // Hook dai post (primi 15)
+  const hooksFromPosts = posts.filter(p => p.hook).slice(0, 15);
+  if (hooksFromPosts.length > 0) {
+    context += `🎣 HOOK DAI POST (${hooksFromPosts.length}):\n`;
+    for (const post of hooksFromPosts) {
+      context += `- "${post.hook}"\n`;
+    }
+    context += "\n";
+  }
+
+  // Regole anti-ripetizione (come Email Nurturing 365)
+  context += `
+⛔ REGOLE ANTI-RIPETIZIONE OBBLIGATORIE:
+1. TITOLI COMPLETAMENTE DIVERSI - NON usare parole chiave già presenti nei titoli sopra
+2. HOOK DIVERSI - Nessun hook simile a quelli già usati (cambia struttura, domande, affermazioni)
+3. ANGOLI NUOVI - Affronta l'argomento da prospettive NON ancora trattate
+4. STRUTTURE VARIATE - Se le idee precedenti usano domande, usa affermazioni e viceversa
+5. METAFORE ORIGINALI - NON riutilizzare analogie/esempi già presenti
+
+🎯 OBIETTIVO: Ogni nuova idea deve sembrare FRESCA e ORIGINALE, come se fosse la prima volta che ne parli.
+`;
+
+  return context;
+}
+
 export async function generateContentIdeas(params: GenerateIdeasParams): Promise<GenerateIdeasResult> {
   const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware", sophisticationLevel = "level_3" } = params;
   const { targetPlatform, postCategory, postSchema, schemaStructure, schemaLabel, charLimit, writingStyle = "default", customWritingInstructions } = params;
   
   await rateLimitCheck(consultantId);
+  
+  // SISTEMA ANTI-RIPETIZIONE: Recupera contenuti precedenti
+  const { ideas: previousIdeas, posts: previousPosts } = await fetchPreviousContent(consultantId);
+  const antiRepetitionContext = buildAntiRepetitionContext(previousIdeas, previousPosts);
+  console.log(`[CONTENT-AI] Anti-ripetizione: ${previousIdeas.length} idee + ${previousPosts.length} post caricati`);
   
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
@@ -1393,6 +1524,7 @@ CONTESTO:
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
 ${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}
+${antiRepetitionContext}
 ${writingStyleSection}
 
 🎯 LIVELLO DI CONSAPEVOLEZZA DEL PUBBLICO: ${awarenessInfo.name}
@@ -1449,7 +1581,7 @@ RISPONDI SOLO con un JSON valido nel formato:
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.8,
+        temperature: 1.0,  // Aumentata da 0.8 a 1.0 per maggiore varietà (come Email Nurturing 365)
         maxOutputTokens: 8192,
       },
     });
