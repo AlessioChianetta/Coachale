@@ -1512,6 +1512,8 @@ const generateIdeasSchema = z.object({
   schemaStructure: z.string().optional(),
   schemaLabel: z.string().optional(),
   charLimit: z.number().optional(),
+  writingStyle: z.enum(["default", "conversational", "direct", "persuasive", "custom"]).default("default"),
+  customWritingInstructions: z.string().optional(),
   brandVoiceData: z.object({
     consultantDisplayName: z.string().nullish(),
     businessName: z.string().nullish(),
@@ -1673,6 +1675,8 @@ router.post("/ai/generate-ideas", authenticateToken, requireRole("consultant"), 
       schemaStructure: validatedData.schemaStructure,
       schemaLabel: validatedData.schemaLabel,
       charLimit: validatedData.charLimit,
+      writingStyle: validatedData.writingStyle,
+      customWritingInstructions: validatedData.customWritingInstructions,
     });
     
     console.log(`✅ [CONTENT-AI] Generated ${result.ideas.length} ideas using ${result.modelUsed}`);
