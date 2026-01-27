@@ -383,10 +383,10 @@ function AutopilotPanel({
 
     const diffTime = end.getTime() - start.getTime();
     const totalDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
-    const totalPosts = validDays * postsPerDay;
+    const totalPosts = validDays * postsPerDay * localPlatforms.length;
 
     return { totalDays, totalPosts, excludedDays, validDays, validDates };
-  }, [startDate, endDate, excludeWeekends, excludeHolidays, postsPerDay]);
+  }, [startDate, endDate, excludeWeekends, excludeHolidays, postsPerDay, localPlatforms.length]);
 
   useEffect(() => {
     if (mode === "controllata" && calculation.validDates.length > 0) {
@@ -397,29 +397,37 @@ function AutopilotPanel({
       if (newDates.length > 0 || removedDates.length > 0) {
         const contentTypesToUse = selectedContentTypes.length > 0 ? selectedContentTypes : ["educativo"];
         
-        const newConfigs: DayConfig[] = calculation.validDates.map((date, index) => {
-          const existing = dayConfigs.find(d => d.date === date);
-          if (existing) return existing;
-          
-          const rotatedContentTheme = contentTypesToUse[index % contentTypesToUse.length];
-          
-          const rotatedPlatform = localPlatforms[index % localPlatforms.length];
-          return {
-            date,
-            platform: rotatedPlatform,
-            category: localCategory,
-            schema: localSchema,
-            writingStyle: localWritingStyle,
-            mediaType: localMediaType,
-            copyType: localCopyType,
-            contentTheme: rotatedContentTheme,
-            status: "pending" as const,
-          };
+        const newConfigs: DayConfig[] = [];
+        let contentThemeIndex = 0;
+        
+        calculation.validDates.forEach((date) => {
+          localPlatforms.forEach((platform) => {
+            const existingKey = `${date}-${platform}`;
+            const existing = dayConfigs.find(d => d.date === date && d.platform === platform);
+            if (existing) {
+              newConfigs.push(existing);
+            } else {
+              const rotatedContentTheme = contentTypesToUse[contentThemeIndex % contentTypesToUse.length];
+              contentThemeIndex++;
+              
+              newConfigs.push({
+                date,
+                platform,
+                category: localCategory,
+                schema: localSchema,
+                writingStyle: localWritingStyle,
+                mediaType: localMediaType,
+                copyType: localCopyType,
+                contentTheme: rotatedContentTheme,
+                status: "pending" as const,
+              });
+            }
+          });
         });
         setDayConfigs(newConfigs);
       }
     }
-  }, [mode, calculation.validDates, selectedContentTypes]);
+  }, [mode, calculation.validDates, selectedContentTypes, localPlatforms]);
 
   const canGenerate =
     startDate &&
@@ -1090,7 +1098,7 @@ function AutopilotPanel({
                     
                     return (
                       <motion.div
-                        key={config.date}
+                        key={`${config.date}-${config.platform}`}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.02 }}
