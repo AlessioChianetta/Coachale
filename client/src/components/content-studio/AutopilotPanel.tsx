@@ -1093,9 +1093,19 @@ function AutopilotPanel({
                 ))}
               </div>
               {!platformSchedule && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Configura orari personalizzati in Brand Assets → Posting Schedule
-                </p>
+                <div className="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                        Posting Schedule non configurato
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                        Stai usando orari di default. Configura orari personalizzati in Brand Assets → Posting Schedule
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
