@@ -200,6 +200,7 @@ interface GenerationResult {
 }
 
 interface DayConfig {
+  id: string;
   date: string;
   platform: "instagram" | "x" | "linkedin";
   category: "ads" | "valore" | "altri";
@@ -563,7 +564,6 @@ function AutopilotPanel({
         
         calculation.validDates.forEach((date) => {
           localPlatforms.forEach((platform) => {
-            const existingKey = `${date}-${platform}`;
             const existing = dayConfigs.find(d => d.date === date && d.platform === platform);
             if (existing) {
               newConfigs.push(existing);
@@ -572,6 +572,7 @@ function AutopilotPanel({
               contentThemeIndex++;
               
               newConfigs.push({
+                id: crypto.randomUUID?.() || `${date}-${platform}-${Date.now()}`,
                 date,
                 platform,
                 category: localCategory,
@@ -613,7 +614,7 @@ function AutopilotPanel({
 
         for (let i = 0; i < pendingConfigs.length; i++) {
           const dayConfig = pendingConfigs[i];
-          const dayIndex = dayConfigs.findIndex(d => d.date === dayConfig.date);
+          const dayIndex = dayConfigs.findIndex(d => d.date === dayConfig.date && d.platform === dayConfig.platform);
 
           updateDayConfig(dayIndex, { status: "generating" });
 
