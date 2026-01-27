@@ -704,10 +704,10 @@ function AutopilotPanel({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="border-2 border-dashed border-violet-200 dark:border-violet-800">
+      <Card className="border border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600">
+            <div className="p-2 rounded-lg bg-blue-600">
               <Rocket className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1">
@@ -735,10 +735,10 @@ function AutopilotPanel({
 
         <CardContent className="space-y-6">
           {/* Sezione Configurazione Autopilot */}
-          <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800 space-y-4">
+          <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 space-y-4">
             <div className="flex items-center gap-2 mb-3">
-              <Settings className="h-4 w-4 text-violet-600" />
-              <span className="font-medium text-sm text-violet-700 dark:text-violet-300">Configurazione Autopilot</span>
+              <Settings className="h-4 w-4 text-gray-600" />
+              <span className="font-medium text-sm text-gray-700 dark:text-gray-300">Configurazione Autopilot</span>
             </div>
 
             {/* Piattaforma (Multi-select) */}
@@ -755,7 +755,7 @@ function AutopilotPanel({
                       type="button"
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
-                      className={`flex items-center gap-2 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      className={`flex items-center gap-2 ${isSelected ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                       onClick={() => togglePlatform(platform)}
                     >
                       <Icon className={`h-4 w-4 ${isSelected ? "text-white" : config.color}`} />
@@ -778,7 +778,7 @@ function AutopilotPanel({
                       type="button"
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
-                      className={`flex items-center gap-2 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      className={`flex items-center gap-2 ${isSelected ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                       onClick={() => setLocalCategory(cat.value as "ads" | "valore" | "altri")}
                     >
                       <span>{cat.icon}</span>
@@ -825,7 +825,7 @@ function AutopilotPanel({
                       type="button"
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
-                      className={`flex items-center gap-1.5 h-auto py-2 px-3 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      className={`flex items-center gap-1.5 h-auto py-2 px-3 ${isSelected ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                       onClick={() => setLocalWritingStyle(style.value)}
                     >
                       <span>{style.icon}</span>
@@ -859,7 +859,7 @@ function AutopilotPanel({
                       type="button"
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
-                      className={`flex flex-col items-center gap-1 h-auto py-2 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      className={`flex flex-col items-center gap-1 h-auto py-2 ${isSelected ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                       onClick={() => setLocalMediaType(type.value)}
                     >
                       <span className="text-lg">{type.icon}</span>
@@ -882,7 +882,7 @@ function AutopilotPanel({
                       type="button"
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
-                      className={`flex flex-col items-center gap-1 h-auto py-3 ${isSelected ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                      className={`flex flex-col items-center gap-1 h-auto py-3 ${isSelected ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                       onClick={() => setLocalCopyType(type.value)}
                     >
                       <span className="font-medium">{type.label}</span>
@@ -894,10 +894,10 @@ function AutopilotPanel({
             </div>
 
             {/* Orari Configurati */}
-            <div className="pt-3 border-t border-violet-200 dark:border-violet-700">
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-3.5 w-3.5 text-violet-600" />
-                <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+                <Clock className="h-3.5 w-3.5 text-gray-600" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                   Orari Pubblicazione {platformSchedule ? "(da Brand Assets)" : "(default ottimali)"}
                 </span>
               </div>
@@ -1035,12 +1035,11 @@ function AutopilotPanel({
                 const TypeIcon = type.icon;
                 const isSelected = selectedContentTypes.includes(type.id);
                 return (
-                  <motion.div
+                  <div
                     key={type.id}
-                    whileTap={{ scale: 0.98 }}
                     className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                       isSelected
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-950"
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
                         : "border-border hover:border-muted-foreground/30"
                     }`}
                     onClick={() => toggleContentType(type.id)}
@@ -1050,10 +1049,10 @@ function AutopilotPanel({
                       onCheckedChange={() => toggleContentType(type.id)}
                     />
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <TypeIcon className={`h-4 w-4 flex-shrink-0 ${isSelected ? "text-violet-600" : "text-muted-foreground"}`} />
+                      <TypeIcon className={`h-4 w-4 flex-shrink-0 ${isSelected ? "text-blue-600" : "text-muted-foreground"}`} />
                       <span className="text-sm font-medium truncate">{type.label}</span>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -1066,50 +1065,46 @@ function AutopilotPanel({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="p-5 rounded-xl bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/20 border-2 border-amber-200/80 dark:border-amber-700/60 shadow-lg shadow-amber-100/50 dark:shadow-amber-900/20 space-y-5"
+                className="p-5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-5"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-md">
+                    <div className="p-2 rounded-lg bg-blue-600">
                       <CalendarDays className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <span className="font-semibold text-sm text-amber-800 dark:text-amber-200">
+                      <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">
                         Configurazione Giorno per Giorno
                       </span>
-                      <Badge variant="secondary" className="ml-2 text-xs bg-amber-200/60 text-amber-800 dark:bg-amber-800/40 dark:text-amber-200">
+                      <Badge variant="secondary" className="ml-2 text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                         {dayConfigs.length} giorni
                       </Badge>
                     </div>
                   </div>
                 </div>
 
-                <div className="max-h-[450px] overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-amber-300 dark:scrollbar-thumb-amber-700">
+                <div className="max-h-[450px] overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
                   {dayConfigs.map((config, index) => {
                     const DayPlatformIcon = PLATFORM_CONFIG[config.platform].icon;
                     const daySchemas = getAvailableSchemasForDay(config.platform, config.category);
                     
                     const statusColors = {
-                      pending: "border-l-gray-400 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-800",
-                      generating: "border-l-blue-500 bg-gradient-to-r from-blue-50 to-white dark:from-blue-950/30 dark:to-gray-900 shadow-blue-100 dark:shadow-blue-900/30",
-                      generated: "border-l-emerald-500 bg-gradient-to-r from-emerald-50 to-white dark:from-emerald-950/30 dark:to-gray-900 shadow-emerald-100 dark:shadow-emerald-900/30",
-                      error: "border-l-red-500 bg-gradient-to-r from-red-50 to-white dark:from-red-950/30 dark:to-gray-900 shadow-red-100 dark:shadow-red-900/30",
+                      pending: "border-l-gray-400 bg-white dark:bg-gray-900",
+                      generating: "border-l-blue-500 bg-white dark:bg-gray-900",
+                      generated: "border-l-emerald-500 bg-white dark:bg-gray-900",
+                      error: "border-l-red-500 bg-white dark:bg-gray-900",
                     };
                     
                     return (
-                      <motion.div
+                      <div
                         key={`${config.date}-${config.platform}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.02 }}
-                        whileHover={{ scale: 1.01, y: -2 }}
-                        className={`relative p-4 rounded-xl border-l-4 border border-gray-200/80 dark:border-gray-700/60 shadow-sm hover:shadow-md transition-all duration-200 ${statusColors[config.status]}`}
+                        className={`relative p-4 rounded-lg border-l-4 border border-gray-200 dark:border-gray-700 transition-colors ${statusColors[config.status]}`}
                       >
                         <div className="grid grid-cols-[100px_1fr] gap-4 items-start">
                           {/* Data e Status */}
                           <div className="flex flex-col items-start gap-2">
                             <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              <Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                               <span className="font-bold text-sm text-gray-800 dark:text-gray-100">{formatDayLabel(config.date)}</span>
                             </div>
                             {/* Content Theme Badge */}
@@ -1119,7 +1114,7 @@ function AutopilotPanel({
                               return (
                                 <Badge
                                   variant="outline"
-                                  className="text-[10px] px-2 py-0.5 flex items-center gap-1 bg-violet-50 text-violet-700 border-violet-300 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700"
+                                  className="text-[10px] px-2 py-0.5 flex items-center gap-1 bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
                                 >
                                   <ThemeIcon className="h-3 w-3" />
                                   {themeInfo?.label || config.contentTheme}
@@ -1155,7 +1150,7 @@ function AutopilotPanel({
                                   onValueChange={(v) => updateDayConfig(index, { platform: v as "instagram" | "x" | "linkedin" })}
                                   disabled={config.status === "generating" || config.status === "generated"}
                                 >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
                                     <DayPlatformIcon className={`h-3 w-3 mr-1 ${PLATFORM_CONFIG[config.platform].color}`} />
                                     <SelectValue />
                                   </SelectTrigger>
@@ -1180,7 +1175,7 @@ function AutopilotPanel({
                                   onValueChange={(v) => updateDayConfig(index, { category: v as "ads" | "valore" | "altri" })}
                                   disabled={config.status === "generating" || config.status === "generated"}
                                 >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1193,33 +1188,31 @@ function AutopilotPanel({
                                 </Select>
 
                                 {/* Pulsante Genera */}
-                                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                                  <Button
-                                    size="sm"
-                                    variant={config.status === "generated" ? "outline" : "default"}
-                                    className={`w-full h-8 text-xs font-medium transition-all duration-200 ${
-                                      config.status === "pending" 
-                                        ? "bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white shadow-md hover:shadow-lg" 
-                                        : config.status === "generated"
-                                        ? "text-emerald-600 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
-                                        : config.status === "error"
-                                        ? "bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white"
-                                        : ""
-                                    }`}
-                                    onClick={() => handleGenerateSingleDay(index)}
-                                    disabled={config.status === "generating" || config.status === "generated"}
-                                  >
-                                    {config.status === "generating" ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : config.status === "generated" ? (
-                                      <><CheckCircle className="h-3 w-3 mr-1" /> Fatto</>
-                                    ) : config.status === "error" ? (
-                                      <><Zap className="h-3 w-3 mr-1" /> Riprova</>
-                                    ) : (
-                                      <><Sparkles className="h-3 w-3 mr-1" /> Genera</>
-                                    )}
-                                  </Button>
-                                </motion.div>
+                                <Button
+                                  size="sm"
+                                  variant={config.status === "generated" ? "outline" : "default"}
+                                  className={`w-full h-8 text-xs font-medium ${
+                                    config.status === "pending" 
+                                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                      : config.status === "generated"
+                                      ? "text-emerald-600 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+                                      : config.status === "error"
+                                      ? "bg-red-600 hover:bg-red-700 text-white"
+                                      : ""
+                                  }`}
+                                  onClick={() => handleGenerateSingleDay(index)}
+                                  disabled={config.status === "generating" || config.status === "generated"}
+                                >
+                                  {config.status === "generating" ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : config.status === "generated" ? (
+                                    <><CheckCircle className="h-3 w-3 mr-1" /> Fatto</>
+                                  ) : config.status === "error" ? (
+                                    <><Zap className="h-3 w-3 mr-1" /> Riprova</>
+                                  ) : (
+                                    <><Sparkles className="h-3 w-3 mr-1" /> Genera</>
+                                  )}
+                                </Button>
                               </div>
 
                               {/* Schema */}
@@ -1228,7 +1221,7 @@ function AutopilotPanel({
                                 onValueChange={(v) => updateDayConfig(index, { schema: v })}
                                 disabled={config.status === "generating" || config.status === "generated"}
                               >
-                                <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
                                   <SelectValue placeholder="Schema post" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1254,7 +1247,7 @@ function AutopilotPanel({
                                   onValueChange={(v) => updateDayConfig(index, { contentTheme: v })}
                                   disabled={config.status === "generating" || config.status === "generated"}
                                 >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-violet-400 dark:hover:border-violet-600 transition-colors">
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
                                     <SelectValue placeholder="Tema" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1278,7 +1271,7 @@ function AutopilotPanel({
                                   onValueChange={(v) => updateDayConfig(index, { writingStyle: v })}
                                   disabled={config.status === "generating" || config.status === "generated"}
                                 >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
                                     <SelectValue placeholder="Stile" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1296,7 +1289,7 @@ function AutopilotPanel({
                                   onValueChange={(v) => updateDayConfig(index, { mediaType: v })}
                                   disabled={config.status === "generating" || config.status === "generated"}
                                 >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
                                     <SelectValue placeholder="Media" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1314,7 +1307,7 @@ function AutopilotPanel({
                                   onValueChange={(v) => updateDayConfig(index, { copyType: v })}
                                   disabled={config.status === "generating" || config.status === "generated"}
                                 >
-                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-600 transition-colors">
+                                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
                                     <SelectValue placeholder="Copy" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1329,13 +1322,13 @@ function AutopilotPanel({
                             </div>
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
 
                 {/* Summary footer */}
-                <div className="flex items-center justify-between pt-3 border-t-2 border-amber-200/60 dark:border-amber-700/40">
+                <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex gap-4 text-xs font-medium">
                     <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                       <Clock className="h-3.5 w-3.5 text-gray-400" />
@@ -1363,24 +1356,24 @@ function AutopilotPanel({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="p-4 rounded-lg bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20"
+                className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <Clock className="h-5 w-5 text-violet-600" />
+                  <Clock className="h-5 w-5 text-gray-600" />
                   <span className="font-semibold">Preview Calcolo</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-                    <p className="text-xl font-bold text-violet-600">{calculation.totalDays}</p>
+                  <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="text-xl font-bold text-blue-600">{calculation.totalDays}</p>
                     <p className="text-xs text-muted-foreground">Giorni Totali</p>
                   </div>
-                  <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                  <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
                     <p className="text-xl font-bold text-green-600">{calculation.validDays}</p>
                     <p className="text-xs text-muted-foreground">Giorni Validi</p>
                   </div>
-                  <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
-                    <p className="text-xl font-bold text-indigo-600">{calculation.totalPosts}</p>
+                  <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="text-xl font-bold text-blue-600">{calculation.totalPosts}</p>
                     <p className="text-xs text-muted-foreground">Post Totali</p>
                   </div>
                 </div>
@@ -1418,7 +1411,7 @@ function AutopilotPanel({
           <Button
             onClick={handleGenerate}
             disabled={!canGenerate || isGenerating}
-            className="w-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             size="lg"
           >
             {isGenerating ? (
