@@ -1761,11 +1761,11 @@ FRAMEWORK PERSUASIVO (6 STEP):
 
 FORMATTAZIONE OBBLIGATORIA per fullCopy:
 - NON creare muri di testo! Il copy deve essere ARIOSO e facile da leggere
-- Usa frasi CORTE (max 10-15 parole per riga)
 - Separa i concetti con RIGHE VUOTE (\\n\\n) ogni 2-3 frasi
 - Inserisci "pattern interrupts" ogni tanto: frasi brevissime tipo "E sai cosa?", "Ma aspetta.", "Ecco il punto."
 - Usa frecce → per elenchi o punti chiave invece di paragrafi densi
 - Le sezioni devono respirare: hook separato, problema separato, soluzione separata
+- Il risultato finale deve essere un post FLUIDO e NATURALE, non robotico
 
 Genera tutti i 6 elementi + il fullCopy che li unisce in un post fluido, naturale e ben formattato.
 
@@ -1926,11 +1926,11 @@ Genera 3 VARIAZIONI di INSERZIONI COMPLETE usando il FRAMEWORK PERSUASIVO a 6 ST
 
 FORMATTAZIONE OBBLIGATORIA:
 - NON creare muri di testo! Ogni copy deve essere ARIOSO e facile da leggere
-- Usa frasi CORTE (max 10-15 parole per riga)
 - Separa i concetti con RIGHE VUOTE (\\n\\n) ogni 2-3 frasi
 - Inserisci "pattern interrupts" ogni tanto: frasi brevissime tipo "E sai cosa?", "Ma aspetta.", "Ecco il punto."
 - Usa frecce → per elenchi o punti chiave invece di paragrafi densi
 - Le sezioni devono respirare: hook separato, problema separato, soluzione separata
+- Il risultato finale deve essere un post FLUIDO e NATURALE, non robotico
 
 IMPORTANTE: Le 3 variazioni devono essere SIGNIFICATIVAMENTE diverse tra loro in tono e approccio.
 
