@@ -70,6 +70,8 @@ interface ContentPost {
   platform?: string;
   status?: string;
   copyType?: string;
+  createdAt?: string;
+  scheduledDate?: string;
   publerMediaIds?: (string | { id: string })[];
   structuredContent?: {
     hook?: string;
@@ -124,7 +126,7 @@ const AdVisagePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'factory' | 'pitch'>('factory');
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showPublerDialog, setShowPublerDialog] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState<{ url: string; conceptId: string } | null>(null);
+  const [uploadingImage, setUploadingImage] = useState<{ url: string; conceptId: string; sourcePostId?: string; sourcePostTitle?: string } | null>(null);
   const [isUploadingToPubler, setIsUploadingToPubler] = useState(false);
   const [selectedPostForMedia, setSelectedPostForMedia] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState<string | null>(null);
@@ -213,15 +215,22 @@ const AdVisagePage: React.FC = () => {
   const importFromPost = (post: ContentPost) => {
     const fullCopy = getPostFullCopy(post);
     const platform = (post.platform || 'instagram') as SocialPlatform;
-    setPostInputs([{
-      id: Math.random().toString(36).substr(2, 9),
-      text: fullCopy,
-      platform,
-    }]);
+    
+    // AGGIUNGE alla lista esistente con COLLEGAMENTO al post originale
+    setPostInputs(prev => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        text: fullCopy,
+        platform,
+        sourcePostId: post.id,  // Mantiene il collegamento
+        sourcePostTitle: post.title || 'Post senza titolo',
+      }
+    ]);
     setShowImportDialog(false);
     toast({
-      title: "Post importato",
-      description: "Il contenuto del post è stato importato nella coda",
+      title: "Post collegato",
+      description: `"${post.title || 'Post'}" collegato - le immagini generate saranno associate automaticamente`,
     });
   };
 
@@ -262,6 +271,9 @@ const AdVisagePage: React.FC = () => {
       const newPrompts = { ...customPrompts };
       for (const post of valid) {
         const result = await analyzeAdText(post.text, post.platform, settings);
+        // Mantiene il collegamento al post originale
+        result.sourcePostId = post.sourcePostId;
+        result.sourcePostTitle = post.sourcePostTitle;
         results.push(result);
         result.concepts.forEach(c => {
           newPrompts[`${c.id}_text`] = c.promptWithText;
@@ -325,7 +337,17 @@ const AdVisagePage: React.FC = () => {
   };
 
   const handleUploadToPubler = async (imageUrl: string, conceptId: string) => {
-    setUploadingImage({ url: imageUrl, conceptId });
+    // Trova il post attivo per ottenere il sourcePostId
+    const sourcePostId = activePost?.sourcePostId;
+    const sourcePostTitle = activePost?.sourcePostTitle;
+    
+    setUploadingImage({ url: imageUrl, conceptId, sourcePostId, sourcePostTitle });
+    
+    // Se c'è un sourcePostId, pre-seleziona quel post
+    if (sourcePostId) {
+      setSelectedPostForMedia(sourcePostId);
+    }
+    
     setShowPublerDialog(true);
   };
 
@@ -523,8 +545,14 @@ const AdVisagePage: React.FC = () => {
 
                   <div className="flex-1 space-y-4">
                     {postInputs.map((post, idx) => (
-                      <Card key={post.id} className={`relative group ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
-                        <CardContent className="p-6">
+                      <Card key={post.id} className={`relative group ${isDark ? 'bg-slate-900/50 border-slate-800' : ''} ${post.sourcePostId ? 'ring-2 ring-emerald-500/50' : ''}`}>
+                        {post.sourcePostId && (
+                          <div className="absolute top-0 left-0 right-0 bg-emerald-500/10 border-b border-emerald-200 px-4 py-2 flex items-center gap-2">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span className="text-xs font-medium text-emerald-700">Collegato a: {post.sourcePostTitle}</span>
+                          </div>
+                        )}
+                        <CardContent className={`p-6 ${post.sourcePostId ? 'pt-12' : ''}`}>
                           <div className="flex flex-col md:flex-row gap-4">
                             <div className="md:w-40 shrink-0">
                               <label className="text-xs font-medium text-muted-foreground mb-2 block">Piattaforma</label>
@@ -880,19 +908,47 @@ const AdVisagePage: React.FC = () => {
               <div className="space-y-2">
                 {existingPosts.map((post: ContentPost) => {
                   const fullCopy = getPostFullCopy(post);
+                  const dateStr = post.scheduledDate 
+                    ? new Date(post.scheduledDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : post.createdAt 
+                      ? new Date(post.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : null;
+                  
+                  const platformColors: Record<string, string> = {
+                    instagram: 'bg-pink-500/10 text-pink-600 border-pink-200',
+                    tiktok: 'bg-slate-500/10 text-slate-600 border-slate-200',
+                    linkedin: 'bg-blue-500/10 text-blue-600 border-blue-200',
+                    facebook: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+                  };
+                  
                   return (
                     <button
                       key={post.id}
                       onClick={() => importFromPost(post)}
                       className="w-full text-left p-4 rounded-lg border hover:bg-accent transition-colors flex items-start gap-3"
                     >
-                      {getPlatformIcon(post.platform || 'instagram')}
+                      <div className={`p-2 rounded-lg ${platformColors[post.platform || 'instagram'] || 'bg-slate-100'}`}>
+                        {getPlatformIcon(post.platform || 'instagram')}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{post.title || 'Post senza titolo'}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{fullCopy}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-sm truncate">{post.title || 'Post senza titolo'}</p>
+                          {dateStr && (
+                            <span className="text-[10px] text-muted-foreground shrink-0">{dateStr}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{fullCopy}</p>
                         <div className="flex gap-2 mt-2">
-                          <Badge variant="outline" className="text-[10px]">{post.platform}</Badge>
-                          {post.status && <Badge variant="secondary" className="text-[10px]">{post.status}</Badge>}
+                          <Badge className={`text-[10px] ${platformColors[post.platform || 'instagram']}`}>
+                            {post.platform?.toUpperCase() || 'INSTAGRAM'}
+                          </Badge>
+                          {post.status && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {post.status === 'scheduled' ? 'Programmato' : 
+                               post.status === 'published' ? 'Pubblicato' : 
+                               post.status === 'draft' ? 'Bozza' : post.status}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
@@ -909,7 +965,11 @@ const AdVisagePage: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Carica su Publer</DialogTitle>
-            <DialogDescription>Carica l'immagine su Publer e opzionalmente associala a un post</DialogDescription>
+            <DialogDescription>
+              {uploadingImage?.sourcePostId 
+                ? `Immagine collegata a "${uploadingImage.sourcePostTitle}" - verrà associata automaticamente`
+                : 'Carica l\'immagine su Publer e opzionalmente associala a un post'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             {uploadingImage && (
@@ -918,8 +978,17 @@ const AdVisagePage: React.FC = () => {
               </div>
             )}
             
+            {uploadingImage?.sourcePostId && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-200 text-emerald-700">
+                <Check className="w-4 h-4" />
+                <span className="text-sm font-medium">Post collegato: {uploadingImage.sourcePostTitle}</span>
+              </div>
+            )}
+            
             <div>
-              <label className="text-sm font-medium mb-2 block">Associa a un post (opzionale)</label>
+              <label className="text-sm font-medium mb-2 block">
+                {uploadingImage?.sourcePostId ? 'Post associato' : 'Associa a un post (opzionale)'}
+              </label>
               <Select value={selectedPostForMedia || ''} onValueChange={setSelectedPostForMedia}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona un post..." />

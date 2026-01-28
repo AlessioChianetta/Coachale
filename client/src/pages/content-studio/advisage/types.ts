@@ -5,6 +5,8 @@ export interface PostInput {
   id: string;
   text: string;
   platform: SocialPlatform;
+  sourcePostId?: string;  // ID del post originale se importato
+  sourcePostTitle?: string; // Titolo del post per riferimento
 }
 
 export interface AdAnalysis {
@@ -28,6 +30,8 @@ export interface AdAnalysis {
   }[];
   competitiveEdge: string;
   status: 'pending' | 'analyzing' | 'completed' | 'error';
+  sourcePostId?: string;  // ID del post originale se importato
+  sourcePostTitle?: string;
 }
 
 export interface VisualConcept {
