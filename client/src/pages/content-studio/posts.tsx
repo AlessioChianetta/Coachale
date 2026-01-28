@@ -800,6 +800,19 @@ export default function ContentStudioPosts() {
           newFormData.imageOverlayText = idea.imageOverlayText || "";
         }
 
+        // DEBUG: Log idea data to understand what's being loaded
+        console.log("[IDEA LOAD DEBUG]", {
+          ideaId: idea.id,
+          title: idea.title,
+          description: idea.description?.substring(0, 100) + "...",
+          copyContent: idea.copyContent?.substring(0, 100) + "...",
+          copyType: idea.copyType,
+          ideaCopyType,
+          structuredType: structured?.type,
+          newFormData_fullCopy: newFormData.fullCopy?.substring(0, 100) + "...",
+          newFormData_body: newFormData.body?.substring(0, 100) + "...",
+        });
+
         setFormData((prev) => ({
           ...prev,
           ...newFormData,
