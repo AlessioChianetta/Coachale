@@ -1503,7 +1503,7 @@ function AutopilotPanel({
                         </th>
                         <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Data</th>
                         <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Piattaforma</th>
-                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Tema</th>
+                        <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Tipo Post</th>
                         <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Schema</th>
                         <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Stile</th>
                         <th className="p-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Stato</th>
@@ -1567,28 +1567,22 @@ function AutopilotPanel({
                               </Select>
                             </td>
 
-                            {/* Tema */}
+                            {/* Tipo Post (Category) */}
                             <td className="p-2">
                               <Select
-                                value={config.contentTheme}
-                                onValueChange={(v) => updateDayConfig(index, { contentTheme: v })}
+                                value={config.category}
+                                onValueChange={(v) => updateDayConfig(index, { category: v as "ads" | "valore" | "formazione" | "altri" })}
                                 disabled={isDisabled}
                               >
                                 <SelectTrigger className="h-7 w-28 text-xs bg-transparent border-gray-200 dark:border-gray-700">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {CONTENT_TYPES.map((type) => {
-                                    const TypeIcon = type.icon;
-                                    return (
-                                      <SelectItem key={type.id} value={type.id}>
-                                        <div className="flex items-center gap-1">
-                                          <TypeIcon className="h-3 w-3" />
-                                          <span className="text-xs">{type.label}</span>
-                                        </div>
-                                      </SelectItem>
-                                    );
-                                  })}
+                                  {POST_CATEGORIES.map((cat) => (
+                                    <SelectItem key={cat.value} value={cat.value}>
+                                      <span className="text-xs">{cat.icon} {cat.label}</span>
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </td>
