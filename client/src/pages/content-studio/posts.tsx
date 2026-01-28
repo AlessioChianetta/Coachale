@@ -1789,6 +1789,18 @@ export default function ContentStudioPosts() {
   const handleEditPost = (post: Post) => {
     const structured = post.structuredContent || {};
     
+    // DEBUG: Log post data when editing
+    console.log("[EDIT POST DEBUG]", {
+      postId: post.id,
+      postTitle: post.title,
+      postFullCopy: post.fullCopy?.substring(0, 100) + "...",
+      postBody: post.body?.substring(0, 100) + "...",
+      structuredFullCopy: structured.fullCopy?.substring(0, 100) + "...",
+      structuredBody: structured.body?.substring(0, 100) + "...",
+      copyType: structured.copyType || post.copyType,
+      finalFullCopy: (post.fullCopy || structured.fullCopy || "").substring(0, 100) + "...",
+    });
+    
     setFormData({
       title: post.title || "",
       hook: structured.hook || post.hook || "",
