@@ -1007,12 +1007,15 @@ const AdVisagePage: React.FC = () => {
               <label className="text-sm font-medium mb-2 block">
                 {uploadingImage?.sourcePostId ? 'Post associato' : 'Associa a un post (opzionale)'}
               </label>
-              <Select value={selectedPostForMedia || ''} onValueChange={setSelectedPostForMedia}>
+              <Select 
+                value={selectedPostForMedia || '__none__'} 
+                onValueChange={(v) => setSelectedPostForMedia(v === '__none__' ? null : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleziona un post..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nessuna associazione</SelectItem>
+                  <SelectItem value="__none__">Nessuna associazione</SelectItem>
                   {existingPosts.map((post: ContentPost) => (
                     <SelectItem key={post.id} value={post.id}>
                       {post.title || 'Post senza titolo'} ({post.platform})
