@@ -93,6 +93,7 @@ import {
   XCircle,
   Upload,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -3511,6 +3512,15 @@ export default function ContentStudioPosts() {
                     const structured = post.structuredContent || {};
                     const hookText = structured.hook || post.hook || "";
                     
+                    // Calcola lunghezza contenuto per avviso limite caratteri
+                    const fullCopyText = post.fullCopy || structured.fullCopy || "";
+                    const bodyText = structured.body || post.body || "";
+                    const ctaText = structured.cta || post.cta || "";
+                    const totalContent = fullCopyText || [hookText, bodyText, ctaText].filter(Boolean).join("\n\n");
+                    const contentLength = totalContent.length;
+                    const platformLimit = PLATFORM_CHAR_LIMITS[post.platform?.toLowerCase() || "instagram"] || 2200;
+                    const isPostOverLimit = contentLength > platformLimit;
+                    
                     const renderPublerStatus = () => {
                       if (post.publerStatus === 'scheduled' && post.publerScheduledAt) {
                         const scheduledDate = new Date(post.publerScheduledAt);
@@ -3564,10 +3574,27 @@ export default function ContentStudioPosts() {
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <div className="min-w-0">
-                            <h4 className="text-sm text-gray-900 dark:text-gray-100 truncate">
-                              {post.title || "Post senza titolo"}
-                            </h4>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                                {post.title || "Post senza titolo"}
+                              </h4>
+                              {isPostOverLimit && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        {contentLength}/{platformLimit}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Limite caratteri superato: {contentLength} / {platformLimit}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
                             {hookText && (
                               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {hookText}
