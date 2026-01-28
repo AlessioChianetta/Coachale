@@ -51,7 +51,6 @@ import {
   TrendingUp,
   Cog,
   Crown,
-  Rocket,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
