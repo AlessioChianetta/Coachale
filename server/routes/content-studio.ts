@@ -3017,6 +3017,8 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       optimalTimes,
       mediaType,
       copyType,
+      awarenessLevel,
+      sophisticationLevel,
     } = req.body;
     
     let resolvedPlatforms = platforms;
@@ -3059,6 +3061,8 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       optimalTimes,
       mediaType,
       copyType,
+      awarenessLevel,
+      sophisticationLevel,
     };
     
     const result = await generateAutopilotBatch(config, res);

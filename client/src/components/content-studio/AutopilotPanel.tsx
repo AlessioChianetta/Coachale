@@ -42,6 +42,16 @@ import {
   Image,
   Layers,
   XCircle,
+  Brain,
+  AlertTriangle,
+  Compass,
+  Package,
+  Gift,
+  Target,
+  TrendingUp,
+  Cog,
+  Crown,
+  Rocket,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +61,22 @@ const ITALIAN_HOLIDAYS = [
   "2024-01-01", "2024-01-06", "2024-03-31", "2024-04-01", "2024-04-25", "2024-05-01", "2024-06-02", "2024-08-15", "2024-11-01", "2024-12-08", "2024-12-25", "2024-12-26",
   "2025-01-01", "2025-01-06", "2025-04-20", "2025-04-21", "2025-04-25", "2025-05-01", "2025-06-02", "2025-08-15", "2025-11-01", "2025-12-08", "2025-12-25", "2025-12-26",
   "2026-01-01", "2026-01-06", "2026-04-05", "2026-04-06", "2026-04-25", "2026-05-01", "2026-06-02", "2026-08-15", "2026-11-01", "2026-12-08", "2026-12-25", "2026-12-26",
+];
+
+const AWARENESS_LEVELS = [
+  { value: "unaware", label: "Non Consapevole", description: "Non sa di avere un problema", icon: Brain, color: "red" },
+  { value: "problem_aware", label: "Consapevole Problema", description: "Sente disagio ma non conosce soluzioni", icon: AlertTriangle, color: "orange" },
+  { value: "solution_aware", label: "Consapevole Soluzione", description: "Conosce soluzioni ma non la tua", icon: Compass, color: "yellow" },
+  { value: "product_aware", label: "Consapevole Prodotto", description: "Conosce il tuo prodotto ma non è convinto", icon: Package, color: "blue" },
+  { value: "most_aware", label: "Più Consapevole", description: "Desidera il prodotto, aspetta l'offerta giusta", icon: Gift, color: "green" },
+];
+
+const SOPHISTICATION_LEVELS = [
+  { value: "level_1", label: "Livello 1 - Beneficio Diretto", description: "Primo sul mercato, claim semplice", icon: Target, color: "emerald" },
+  { value: "level_2", label: "Livello 2 - Amplifica Promessa", description: "Secondo sul mercato, prove concrete", icon: TrendingUp, color: "blue" },
+  { value: "level_3", label: "Livello 3 - Meccanismo Unico", description: "Mercato saturo, differenziati", icon: Cog, color: "purple" },
+  { value: "level_4", label: "Livello 4 - Meccanismo Migliorato", description: "Concorrenza attiva, specializzati", icon: Rocket, color: "orange" },
+  { value: "level_5", label: "Livello 5 - Identità e Brand", description: "Mercato scettico, connessione emotiva", icon: Crown, color: "pink" },
 ];
 
 const OPTIMAL_TIMES = {
@@ -262,6 +288,8 @@ function AutopilotPanel({
   const [localCustomInstructions, setLocalCustomInstructions] = useState(customInstructions || "");
   const [localMediaType, setLocalMediaType] = useState(mediaType || "image");
   const [localCopyType, setLocalCopyType] = useState(copyType || "long");
+  const [localAwarenessLevel, setLocalAwarenessLevel] = useState("problem_aware");
+  const [localSophisticationLevel, setLocalSophisticationLevel] = useState("level_3");
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -531,6 +559,8 @@ function AutopilotPanel({
             mode: "controllata",
             contentTypes: [dayConfig.contentTheme],
             optimalTimes: configuredTimes,
+            awarenessLevel: localAwarenessLevel,
+            sophisticationLevel: localSophisticationLevel,
           }),
         });
 
@@ -735,6 +765,8 @@ function AutopilotPanel({
                 mode: "controllata",
                 contentTypes: [dayConfig.contentTheme],
                 optimalTimes: configuredTimes,
+                awarenessLevel: localAwarenessLevel,
+                sophisticationLevel: localSophisticationLevel,
               }),
             });
 
@@ -813,6 +845,8 @@ function AutopilotPanel({
             mode,
             contentTypes: selectedContentTypes,
             optimalTimes: configuredTimes,
+            awarenessLevel: localAwarenessLevel,
+            sophisticationLevel: localSophisticationLevel,
           }),
         });
 
@@ -903,6 +937,8 @@ function AutopilotPanel({
           mode: "controllata",
           contentTypes: [dayConfig.contentTheme],
           optimalTimes: configuredTimes,
+          awarenessLevel: localAwarenessLevel,
+          sophisticationLevel: localSophisticationLevel,
         }),
       });
 
@@ -1096,6 +1132,58 @@ function AutopilotPanel({
                   rows={3}
                 />
               )}
+            </div>
+
+            {/* Livello Consapevolezza */}
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-1.5">
+                <Brain className="h-4 w-4 text-orange-500" />
+                Livello Consapevolezza
+              </Label>
+              <Select value={localAwarenessLevel} onValueChange={setLocalAwarenessLevel}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AWARENESS_LEVELS.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      <span className="flex items-center gap-2">
+                        <level.icon className="h-4 w-4" />
+                        {level.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {AWARENESS_LEVELS.find(l => l.value === localAwarenessLevel)?.description}
+              </p>
+            </div>
+
+            {/* Livello Sofisticazione */}
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-1.5">
+                <Target className="h-4 w-4 text-purple-500" />
+                Livello Sofisticazione
+              </Label>
+              <Select value={localSophisticationLevel} onValueChange={setLocalSophisticationLevel}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOPHISTICATION_LEVELS.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      <span className="flex items-center gap-2">
+                        <level.icon className="h-4 w-4" />
+                        {level.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {SOPHISTICATION_LEVELS.find(l => l.value === localSophisticationLevel)?.description}
+              </p>
             </div>
 
             {/* Tipo Media */}

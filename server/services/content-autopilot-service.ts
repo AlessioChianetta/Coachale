@@ -26,6 +26,8 @@ export interface AutopilotConfig {
   optimalTimes?: string[];
   mediaType?: string;
   copyType?: string;
+  awarenessLevel?: string;
+  sophisticationLevel?: string;
 }
 
 export interface AutopilotProgress {
@@ -107,6 +109,8 @@ export async function generateAutopilotBatch(
     optimalTimes: passedOptimalTimes,
     mediaType: passedMediaType,
     copyType: passedCopyType,
+    awarenessLevel: passedAwarenessLevel,
+    sophisticationLevel: passedSophisticationLevel,
   } = config;
   
   const errors: string[] = [];
@@ -120,10 +124,30 @@ export async function generateAutopilotBatch(
   };
   
   try {
+    // Carica Brand Assets per postingSchedule e X Premium
     const [brandAssets] = await db.select()
       .from(schema.brandAssets)
       .where(eq(schema.brandAssets.consultantId, consultantId))
       .limit(1);
+    
+    // Carica Content Studio Config per Brand Voice Data
+    const [contentStudioConfig] = await db.select()
+      .from(schema.contentStudioConfig)
+      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+      .limit(1);
+    
+    const brandVoiceData = contentStudioConfig?.brandVoiceData || {};
+    const brandVoiceEnabled = contentStudioConfig?.brandVoiceEnabled || false;
+    
+    // Estrai niche e targetAudience da Brand Voice
+    const niche = (brandVoiceData as any)?.businessDescription || 
+                  (brandVoiceData as any)?.whatWeDo || 
+                  (brandAssets?.chiSono ? "consulenza e formazione" : "content marketing");
+    const targetAudience = (brandVoiceData as any)?.whoWeHelp || 
+                           (brandAssets?.noteForAi ? "il mio pubblico target" : "pubblico target");
+    const objective = (brandVoiceData as any)?.usp ? "leads" : "engagement";
+    
+    console.log(`[AUTOPILOT] Brand Voice loaded: enabled=${brandVoiceEnabled}, hasData=${Object.keys(brandVoiceData).length > 0}, niche="${niche.substring(0, 50)}...", target="${targetAudience.substring(0, 50)}..."`);
     
     const postingSchedule = (brandAssets?.postingSchedule as any) || {};
     
@@ -230,21 +254,23 @@ export async function generateAutopilotBatch(
             
             const result = await generateContentIdeas({
               consultantId,
-              niche: "content marketing",
-              targetAudience: "pubblico target",
-              objective: "engagement",
+              niche,
+              targetAudience,
+              objective,
               count: 1,
               mediaType: effectiveMediaType,
               copyType: effectiveCopyType,
               targetPlatform: platform as "instagram" | "x" | "linkedin",
               writingStyle,
               charLimit,
-              awarenessLevel: "problem_aware",
-              sophisticationLevel: "level_3",
+              awarenessLevel: (passedAwarenessLevel || "problem_aware") as any,
+              sophisticationLevel: (passedSophisticationLevel || "level_3") as any,
               postSchema: postSchema,
               schemaStructure: schemaStructure,
               schemaLabel: schemaLabel,
               postCategory: postCategory,
+              customWritingInstructions: customInstructions,
+              brandVoiceData: brandVoiceEnabled ? brandVoiceData as any : undefined,
             });
             
             if (result.ideas && result.ideas.length > 0) {
