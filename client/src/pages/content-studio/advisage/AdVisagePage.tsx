@@ -971,9 +971,15 @@ const AdVisagePage: React.FC = () => {
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Importa da Post Esistenti</DialogTitle>
-            <DialogDescription>Seleziona un post per importare il suo contenuto</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-indigo-500" />
+              Importa da Post Esistenti
+            </DialogTitle>
+            <DialogDescription>
+              Seleziona un post per generare visual creativi. Mostra solo post senza immagini e non ancora pubblicati.
+            </DialogDescription>
           </DialogHeader>
+          
           <ScrollArea className="max-h-[50vh] mt-4">
             {isLoadingPosts ? (
               <div className="space-y-3">
@@ -981,83 +987,115 @@ const AdVisagePage: React.FC = () => {
                   <Skeleton key={i} className="h-20 w-full" />
                 ))}
               </div>
-            ) : existingPosts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Nessun post disponibile</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {existingPosts.map((post: ContentPost) => {
-                  const fullCopy = getPostFullCopy(post);
-                  const dateStr = post.scheduledDate 
-                    ? new Date(post.scheduledDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
-                    : post.createdAt 
-                      ? new Date(post.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
-                      : null;
+            ) : (() => {
+              const platformColors: Record<string, string> = {
+                instagram: 'bg-pink-500/10 text-pink-600 border-pink-200',
+                tiktok: 'bg-slate-500/10 text-slate-600 border-slate-200',
+                linkedin: 'bg-blue-500/10 text-blue-600 border-blue-200',
+                facebook: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+                twitter: 'bg-sky-500/10 text-sky-600 border-sky-200',
+              };
+              
+              const filteredPosts = existingPosts.filter((post: ContentPost) => {
+                if (post.status === 'published' || post.publerStatus === 'published') return false;
+                const hasMedia = post.publerMediaIds && Array.isArray(post.publerMediaIds) && post.publerMediaIds.length > 0;
+                if (hasMedia) return false;
+                return true;
+              });
+              
+              if (filteredPosts.length === 0) {
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium mb-1">Nessun post disponibile</p>
+                    <p className="text-xs">Tutti i post sono già pubblicati o hanno già delle immagini</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground px-1 mb-3">
+                    <span>{filteredPosts.length} post disponibili per visual</span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span> Programmato
+                      <span className="w-2 h-2 rounded-full bg-gray-400 ml-2"></span> Bozza
+                    </span>
+                  </div>
                   
-                  const platformColors: Record<string, string> = {
-                    instagram: 'bg-pink-500/10 text-pink-600 border-pink-200',
-                    tiktok: 'bg-slate-500/10 text-slate-600 border-slate-200',
-                    linkedin: 'bg-blue-500/10 text-blue-600 border-blue-200',
-                    facebook: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
-                    twitter: 'bg-sky-500/10 text-sky-600 border-sky-200',
-                  };
-                  
-                  // Verifica se il post è già nella coda
-                  const isAlreadyInQueue = postInputs.some(p => p.sourcePostId === post.id);
-                  
-                  return (
-                    <button
-                      key={post.id}
-                      onClick={() => !isAlreadyInQueue && importFromPost(post)}
-                      disabled={isAlreadyInQueue}
-                      className={`w-full text-left p-4 rounded-lg border transition-colors flex items-start gap-3 ${
-                        isAlreadyInQueue 
-                          ? 'opacity-50 cursor-not-allowed bg-emerald-50 border-emerald-200' 
-                          : 'hover:bg-accent'
-                      }`}
-                    >
-                      <div className={`p-2 rounded-lg ${platformColors[post.platform || 'instagram'] || 'bg-slate-100'}`}>
-                        {getPlatformIcon(post.platform || 'instagram')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm truncate">{post.title || 'Post senza titolo'}</p>
-                          {dateStr && (
-                            <span className="text-[10px] text-muted-foreground shrink-0">{dateStr}</span>
+                  {filteredPosts.map((post: ContentPost) => {
+                    const fullCopy = getPostFullCopy(post);
+                    const dateStr = post.scheduledDate 
+                      ? new Date(post.scheduledDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : post.createdAt 
+                        ? new Date(post.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : null;
+                    
+                    const isAlreadyInQueue = postInputs.some(p => p.sourcePostId === post.id);
+                    const isScheduled = post.status === 'scheduled';
+                    const charCount = fullCopy.length;
+                    
+                    return (
+                      <button
+                        key={post.id}
+                        onClick={() => !isAlreadyInQueue && importFromPost(post)}
+                        disabled={isAlreadyInQueue}
+                        className={`w-full text-left p-4 rounded-lg border transition-all flex items-start gap-3 ${
+                          isAlreadyInQueue 
+                            ? 'opacity-50 cursor-not-allowed bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800' 
+                            : isScheduled
+                              ? 'hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:border-amber-300 border-amber-200 dark:border-amber-800'
+                              : 'hover:bg-accent hover:border-indigo-300'
+                        }`}
+                      >
+                        <div className="relative">
+                          <div className={`p-2.5 rounded-lg ${platformColors[post.platform || 'instagram'] || 'bg-slate-100'}`}>
+                            {getPlatformIcon(post.platform || 'instagram')}
+                          </div>
+                          {isScheduled && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900" />
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{fullCopy}</p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge className={`text-[10px] ${platformColors[post.platform || 'instagram']}`}>
-                            {post.platform?.toUpperCase() || 'INSTAGRAM'}
-                          </Badge>
-                          {post.status && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              {post.status === 'scheduled' ? 'Programmato' : 
-                               post.status === 'published' ? 'Pubblicato' : 
-                               post.status === 'draft' ? 'Bozza' : post.status}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <p className="font-semibold text-sm truncate flex-1">{post.title || 'Post senza titolo'}</p>
+                            {dateStr && (
+                              <Badge variant="outline" className="text-[10px] shrink-0">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                {dateStr}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{fullCopy}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={`text-[10px] ${platformColors[post.platform || 'instagram']}`}>
+                              {post.platform?.toUpperCase() || 'INSTAGRAM'}
                             </Badge>
-                          )}
-                          {isAlreadyInQueue && (
-                            <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">
-                              <Check className="w-3 h-3 mr-1" />
-                              In coda
+                            <Badge variant={isScheduled ? 'default' : 'secondary'} className={`text-[10px] ${isScheduled ? 'bg-amber-500 hover:bg-amber-500' : ''}`}>
+                              {isScheduled ? '📅 Programmato' : '📝 Bozza'}
                             </Badge>
-                          )}
+                            <span className="text-[10px] text-muted-foreground ml-auto">
+                              {charCount} caratteri
+                            </span>
+                            {isAlreadyInQueue && (
+                              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">
+                                <Check className="w-3 h-3 mr-1" />
+                                In coda
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      {isAlreadyInQueue ? (
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-1" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                        {isAlreadyInQueue ? (
+                          <Check className="w-5 h-5 text-emerald-600 shrink-0 mt-1" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </ScrollArea>
         </DialogContent>
       </Dialog>
