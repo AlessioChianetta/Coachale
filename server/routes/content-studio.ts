@@ -3081,17 +3081,17 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
       "competitiveEdge": "string"
     }`;
     
-    console.log("[ADVISAGE] Calling AI provider...");
+    console.log("[ADVISAGE] Calling AI provider with model:", modelConfig.model);
     const response = await client.generateContent({
       model: modelConfig.model,
-      contents: prompt,
-      config: {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.7,
       }
     });
     
-    const responseText = response.text?.trim() || "";
+    const responseText = (response.response?.text?.() || response.text?.() || "").trim();
     console.log("[ADVISAGE] Response length:", responseText.length);
     
     if (!responseText) {
