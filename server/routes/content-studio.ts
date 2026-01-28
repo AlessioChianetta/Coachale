@@ -1560,6 +1560,7 @@ import {
   generatePostCopyVariations,
   generateCampaignContent,
   generateImagePrompt,
+  shortenCopy,
   type ContentType,
   type ContentObjective,
   type Platform,
@@ -1931,6 +1932,49 @@ router.post("/ai/generate-image-prompt", authenticateToken, requireRole("consult
     res.status(500).json({
       success: false,
       error: error.message || "Failed to generate image prompt",
+    });
+  }
+});
+
+// Shorten copy to fit character limits
+const shortenCopySchema = z.object({
+  originalCopy: z.string().min(1, "Original copy is required"),
+  targetLimit: z.number().min(100, "Target limit must be at least 100"),
+  platform: z.string().min(1, "Platform is required"),
+});
+
+router.post("/ai/shorten-copy", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validatedData = shortenCopySchema.parse(req.body);
+    
+    console.log(`✂️ [CONTENT-AI] Shortening copy for consultant ${consultantId}: ${validatedData.originalCopy.length} chars -> ${validatedData.targetLimit} limit`);
+    
+    const result = await shortenCopy({
+      consultantId,
+      originalCopy: validatedData.originalCopy,
+      targetLimit: validatedData.targetLimit,
+      platform: validatedData.platform,
+    });
+    
+    console.log(`✅ [CONTENT-AI] Shortened copy: ${result.originalLength} -> ${result.newLength} chars`);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')}`,
+        details: error.errors,
+      });
+    }
+    console.error("❌ [CONTENT-AI] Error shortening copy:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to shorten copy",
     });
   }
 });

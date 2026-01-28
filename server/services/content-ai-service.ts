@@ -2489,3 +2489,97 @@ RISPONDI SOLO con un JSON valido:
     throw new Error(`Failed to generate image prompt: ${error.message}`);
   }
 }
+
+// Shorten copy to fit character limit
+export interface ShortenCopyParams {
+  consultantId: string;
+  originalCopy: string;
+  targetLimit: number;
+  platform: string;
+}
+
+export interface ShortenCopyResult {
+  shortenedCopy: string;
+  originalLength: number;
+  newLength: number;
+  modelUsed: string;
+  withinLimit: boolean;
+}
+
+export async function shortenCopy(params: ShortenCopyParams): Promise<ShortenCopyResult> {
+  const { consultantId, originalCopy, targetLimit, platform } = params;
+  
+  await rateLimitCheck(consultantId);
+  
+  const safeLimit = Math.floor(targetLimit * 0.95); // 5% margin for safety
+  
+  const prompt = `Sei un editor esperto. Devi ACCORCIARE il seguente testo per farlo stare nel limite di ${safeLimit} caratteri.
+
+TESTO ORIGINALE (${originalCopy.length} caratteri):
+---
+${originalCopy}
+---
+
+REGOLE:
+1. Il testo accorciato DEVE essere MASSIMO ${safeLimit} caratteri
+2. Mantieni il MESSAGGIO PRINCIPALE e la CTA
+3. Rimuovi ripetizioni e frasi superflue
+4. Mantieni il tono e lo stile originale
+5. Mantieni la formattazione (righe vuote, emoji, frecce →)
+6. Se ci sono elenchi, riducili ai punti essenziali
+7. L'hook iniziale deve rimanere d'impatto
+
+PIATTAFORMA: ${platform.toUpperCase()}
+
+RISPONDI SOLO con il testo accorciato, niente altro. Non aggiungere spiegazioni.`;
+
+  try {
+    const { client, metadata } = await getAIProvider(consultantId, "shorten-copy");
+    const { model } = getModelWithThinking(metadata?.name);
+    
+    const result = await client.generateContent({
+      model,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.3, // Low temperature for more focused editing
+        maxOutputTokens: 2048,
+      },
+    });
+    
+    let shortenedCopy = result.response.text().trim();
+    
+    // If still over limit, try to trim intelligently (keep last CTA line)
+    if (shortenedCopy.length > targetLimit) {
+      console.log(`[CONTENT-AI] First attempt still over limit (${shortenedCopy.length}/${targetLimit}), trimming...`);
+      
+      // Find last paragraph break and trim there
+      const lines = shortenedCopy.split('\n\n');
+      let trimmed = '';
+      for (const line of lines) {
+        if ((trimmed + (trimmed ? '\n\n' : '') + line).length <= targetLimit) {
+          trimmed += (trimmed ? '\n\n' : '') + line;
+        } else {
+          break;
+        }
+      }
+      
+      // If we have meaningful content, use trimmed version
+      if (trimmed.length > originalCopy.length * 0.5) {
+        shortenedCopy = trimmed;
+      }
+    }
+    
+    console.log(`[CONTENT-AI] Shortened copy: ${originalCopy.length} -> ${shortenedCopy.length} chars (limit: ${targetLimit})`);
+    
+    return {
+      shortenedCopy,
+      originalLength: originalCopy.length,
+      newLength: shortenedCopy.length,
+      modelUsed: model,
+      withinLimit: shortenedCopy.length <= targetLimit,
+    };
+  } catch (error: any) {
+    console.error("[CONTENT-AI] Error shortening copy:", error);
+    throw new Error(`Failed to shorten copy: ${error.message}`);
+  }
+}

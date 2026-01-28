@@ -88,6 +88,7 @@ import {
   Users,
   Type,
   Palette,
+  Scissors,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -1042,6 +1043,76 @@ export default function ContentStudioIdeas() {
         title: "Errore",
         description: error.message,
         variant: "destructive",
+      });
+    },
+  });
+
+  // State for tracking which ideas are being shortened
+  const [shorteningIndexes, setShorteningIndexes] = useState<Set<number>>(new Set());
+
+  // Mutation to shorten copy that exceeds platform limit
+  const shortenCopyMutation = useMutation({
+    mutationFn: async ({ originalCopy, targetLimit, platform, index }: { 
+      originalCopy: string; 
+      targetLimit: number; 
+      platform: string;
+      index: number;
+    }) => {
+      const response = await fetch("/api/content/ai/shorten-copy", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ originalCopy, targetLimit, platform }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to shorten copy");
+      }
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to shorten copy");
+      }
+      return { data, index };
+    },
+    onMutate: async (variables) => {
+      // Set loading state before mutation starts
+      setShorteningIndexes(prev => new Set(prev).add(variables.index));
+    },
+    onSuccess: ({ data, index }) => {
+      // Update the generated idea with shortened copy
+      if (data.data?.shortenedCopy) {
+        setGeneratedIdeas(prev => {
+          const updated = [...prev];
+          if (updated[index]) {
+            updated[index] = {
+              ...updated[index],
+              copyContent: data.data.shortenedCopy,
+            };
+          }
+          return updated;
+        });
+        const withinLimit = data.data.withinLimit;
+        toast({
+          title: withinLimit ? "Copy accorciato" : "Copy ridotto",
+          description: withinLimit 
+            ? `Ridotto da ${data.data.originalLength} a ${data.data.newLength} caratteri`
+            : `Ridotto a ${data.data.newLength} caratteri (potrebbe servire un altro passaggio)`,
+          variant: withinLimit ? "default" : "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: (_, __, variables) => {
+      // Always clean up loading state
+      setShorteningIndexes(prev => {
+        const next = new Set(prev);
+        next.delete(variables.index);
+        return next;
       });
     },
   });
@@ -2582,6 +2653,27 @@ export default function ContentStudioIdeas() {
                               <Badge variant={isOverLimit ? "destructive" : "secondary"} className="text-xs font-mono">
                                 {copyLength.toLocaleString()}/{charLimit.toLocaleString()} char
                               </Badge>
+                            )}
+                            {isOverLimit && idea.copyContent && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => shortenCopyMutation.mutate({
+                                  originalCopy: idea.copyContent!,
+                                  targetLimit: charLimit,
+                                  platform: ideaPlatform,
+                                  index,
+                                })}
+                                disabled={shorteningIndexes.has(index)}
+                                className="h-6 px-2 text-xs border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                              >
+                                {shorteningIndexes.has(index) ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Scissors className="h-3 w-3" />
+                                )}
+                                <span className="ml-1">Accorcia</span>
+                              </Button>
                             )}
                           </div>
                           <h4 className="font-semibold text-base leading-tight">{idea.title}</h4>
