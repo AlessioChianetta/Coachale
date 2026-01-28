@@ -1025,11 +1025,12 @@ const AdVisagePage: React.FC = () => {
                   
                   {filteredPosts.map((post: ContentPost) => {
                     const fullCopy = getPostFullCopy(post);
-                    const dateStr = post.scheduledDate 
-                      ? new Date(post.scheduledDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
-                      : post.createdAt 
-                        ? new Date(post.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
-                        : null;
+                    const createdDateStr = post.createdAt 
+                      ? new Date(post.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })
+                      : null;
+                    const scheduledDateStr = (post.scheduledDate || post.scheduledAt)
+                      ? new Date(post.scheduledDate || post.scheduledAt || '').toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : null;
                     
                     const isAlreadyInQueue = postInputs.some(p => p.sourcePostId === post.id);
                     const isScheduled = post.status === 'scheduled';
@@ -1057,14 +1058,21 @@ const AdVisagePage: React.FC = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                             <p className="font-semibold text-sm truncate flex-1">{post.title || 'Post senza titolo'}</p>
-                            {dateStr && (
-                              <Badge variant="outline" className="text-[10px] shrink-0">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                {dateStr}
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {createdDateStr && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  Creato: {createdDateStr}
+                                </span>
+                              )}
+                              {scheduledDateStr && (
+                                <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-700 dark:text-amber-400">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  Pubblica: {scheduledDateStr}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{fullCopy}</p>
                           <div className="flex items-center gap-2 flex-wrap">
