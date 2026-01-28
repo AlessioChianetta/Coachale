@@ -267,6 +267,14 @@ const accentColors = {
     text: "text-indigo-600 dark:text-indigo-400",
     iconBg: "bg-indigo-50 dark:bg-indigo-900/20",
   },
+  teal: {
+    border: "border-teal-200 dark:border-teal-800 hover:border-teal-400 dark:hover:border-teal-600",
+    ring: "ring-teal-500/20",
+    badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
+    button: "bg-teal-600 hover:bg-teal-700 text-white",
+    text: "text-teal-600 dark:text-teal-400",
+    iconBg: "bg-teal-50 dark:bg-teal-900/20",
+  },
   gold: {
     border: "border-amber-300 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-500",
     ring: "ring-amber-400/30",
