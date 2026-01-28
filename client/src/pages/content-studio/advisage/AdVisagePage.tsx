@@ -921,11 +921,19 @@ const AdVisagePage: React.FC = () => {
                     facebook: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
                   };
                   
+                  // Verifica se il post è già nella coda
+                  const isAlreadyInQueue = postInputs.some(p => p.sourcePostId === post.id);
+                  
                   return (
                     <button
                       key={post.id}
-                      onClick={() => importFromPost(post)}
-                      className="w-full text-left p-4 rounded-lg border hover:bg-accent transition-colors flex items-start gap-3"
+                      onClick={() => !isAlreadyInQueue && importFromPost(post)}
+                      disabled={isAlreadyInQueue}
+                      className={`w-full text-left p-4 rounded-lg border transition-colors flex items-start gap-3 ${
+                        isAlreadyInQueue 
+                          ? 'opacity-50 cursor-not-allowed bg-emerald-50 border-emerald-200' 
+                          : 'hover:bg-accent'
+                      }`}
                     >
                       <div className={`p-2 rounded-lg ${platformColors[post.platform || 'instagram'] || 'bg-slate-100'}`}>
                         {getPlatformIcon(post.platform || 'instagram')}
@@ -949,9 +957,19 @@ const AdVisagePage: React.FC = () => {
                                post.status === 'draft' ? 'Bozza' : post.status}
                             </Badge>
                           )}
+                          {isAlreadyInQueue && (
+                            <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">
+                              <Check className="w-3 h-3 mr-1" />
+                              In coda
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                      {isAlreadyInQueue ? (
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-1" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                      )}
                     </button>
                   );
                 })}
