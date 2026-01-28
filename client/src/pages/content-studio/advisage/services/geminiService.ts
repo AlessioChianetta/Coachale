@@ -4,7 +4,7 @@ import { AdAnalysis, AppSettings, SocialPlatform } from "../types";
 import { apiRequest } from "@/lib/queryClient";
 
 export const analyzeAdText = async (text: string, platform: SocialPlatform, settings: AppSettings): Promise<AdAnalysis> => {
-  const response = await apiRequest("POST", "/api/content/advisage/analyze", {
+  const result = await apiRequest("POST", "/api/content/advisage/analyze", {
     text,
     platform,
     mood: settings.mood,
@@ -13,7 +13,6 @@ export const analyzeAdText = async (text: string, platform: SocialPlatform, sett
     brandFont: settings.brandFont,
   });
   
-  const result = await response.json();
   if (!result.success) {
     throw new Error(result.error || "Analisi fallita");
   }
