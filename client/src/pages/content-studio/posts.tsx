@@ -772,9 +772,16 @@ export default function ContentStudioPosts() {
           newFormData.body = structured?.body || idea.copyContent || idea.description || "";
         }
         
-        // Always ensure body has content from copyContent if not already set
-        if (!newFormData.body && idea.copyContent) {
-          newFormData.body = idea.copyContent;
+        // Fallback: ensure copyContent goes to the right field based on selected copy type
+        if (idea.copyContent) {
+          // If copy type is long (either from idea or default), put in fullCopy
+          if ((ideaCopyType === "long" || (!ideaCopyType && !newFormData.fullCopy)) && !newFormData.fullCopy) {
+            newFormData.fullCopy = idea.copyContent;
+          }
+          // If copy type is short and body is empty, put in body
+          else if (!newFormData.body) {
+            newFormData.body = idea.copyContent;
+          }
         }
 
         // Populate video script fields (from structuredContent.videoScript or idea.videoScript)
