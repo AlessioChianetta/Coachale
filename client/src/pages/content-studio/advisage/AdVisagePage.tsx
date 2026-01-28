@@ -55,9 +55,11 @@ import {
   Instagram,
   Linkedin,
   Facebook,
+  Twitter,
   ChevronRight,
   AlertCircle,
   Layers,
+  Calendar,
 } from "lucide-react";
 
 interface ContentPost {
@@ -226,6 +228,9 @@ const AdVisagePage: React.FC = () => {
         platform,
         sourcePostId: post.id,  // Mantiene il collegamento
         sourcePostTitle: post.title || 'Post senza titolo',
+        sourceScheduledDate: post.scheduledDate || post.scheduledAt || undefined,
+        sourceStatus: post.status || 'draft',
+        sourceMediaType: post.mediaType || undefined,
       }
     ]);
     setShowImportDialog(false);
@@ -447,6 +452,8 @@ const AdVisagePage: React.FC = () => {
       case 'instagram': return <Instagram className="w-4 h-4" />;
       case 'linkedin': return <Linkedin className="w-4 h-4" />;
       case 'facebook': return <Facebook className="w-4 h-4" />;
+      case 'twitter': return <Twitter className="w-4 h-4" />;
+      case 'tiktok': return <span className="text-sm">🎵</span>;
       default: return <FileText className="w-4 h-4" />;
     }
   };
@@ -570,55 +577,104 @@ const AdVisagePage: React.FC = () => {
                   </aside>
 
                   <div className="flex-1 space-y-4">
-                    {postInputs.map((post, idx) => (
-                      <Card key={post.id} className={`relative group ${isDark ? 'bg-slate-900/50 border-slate-800' : ''} ${post.sourcePostId ? 'ring-2 ring-emerald-500/50' : ''}`}>
-                        {post.sourcePostId && (
-                          <div className="absolute top-0 left-0 right-0 bg-emerald-500/10 border-b border-emerald-200 px-4 py-2 flex items-center gap-2">
-                            <Check className="w-3 h-3 text-emerald-600" />
-                            <span className="text-xs font-medium text-emerald-700">Collegato a: {post.sourcePostTitle}</span>
-                          </div>
-                        )}
-                        <CardContent className={`p-6 ${post.sourcePostId ? 'pt-12' : ''}`}>
-                          <div className="flex flex-col md:flex-row gap-4">
-                            <div className="md:w-40 shrink-0">
-                              <label className="text-xs font-medium text-muted-foreground mb-2 block">Piattaforma</label>
-                              <Select value={post.platform} onValueChange={(v) => updatePost(post.id, { platform: v as SocialPlatform })}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="instagram">Instagram</SelectItem>
-                                  <SelectItem value="tiktok">TikTok</SelectItem>
-                                  <SelectItem value="linkedin">LinkedIn</SelectItem>
-                                  <SelectItem value="facebook">Facebook</SelectItem>
-                                </SelectContent>
-                              </Select>
+                    {postInputs.map((post, idx) => {
+                      const getStatusBadge = (status?: string) => {
+                        switch (status) {
+                          case 'scheduled': return <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Programmato</Badge>;
+                          case 'published': return <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Pubblicato</Badge>;
+                          case 'draft': return <Badge className="text-[10px] bg-gray-100 text-gray-700 border-gray-200">Bozza</Badge>;
+                          default: return null;
+                        }
+                      };
+                      
+                      const formatDate = (dateStr?: string) => {
+                        if (!dateStr) return null;
+                        const date = new Date(dateStr);
+                        return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+                      };
+                      
+                      return (
+                        <Card key={post.id} className={`relative group ${isDark ? 'bg-slate-900/50 border-slate-800' : ''} ${post.sourcePostId ? 'ring-2 ring-emerald-500/50' : ''}`}>
+                          {post.sourcePostId && (
+                            <div className="absolute top-0 left-0 right-0 bg-emerald-500/10 border-b border-emerald-200 dark:border-emerald-800 px-4 py-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Collegato:</span>
+                                  </div>
+                                  <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300 truncate max-w-[200px]">{post.sourcePostTitle}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {post.sourceScheduledDate && (
+                                    <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                      <Calendar className="w-3 h-3" />
+                                      <span className="text-[10px] font-medium">{formatDate(post.sourceScheduledDate)}</span>
+                                    </div>
+                                  )}
+                                  {getStatusBadge(post.sourceStatus)}
+                                  {post.sourceMediaType && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                      {post.sourceMediaType === 'carosello' ? 'Carousel' : post.sourceMediaType}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                                Ad Copy #{idx + 1}
-                              </label>
-                              <Textarea
-                                value={post.text}
-                                onChange={(e) => updatePost(post.id, { text: e.target.value })}
-                                placeholder="Scrivi o importa il testo del post qui..."
-                                className="min-h-[120px] resize-none"
-                              />
+                          )}
+                          <CardContent className={`p-6 ${post.sourcePostId ? 'pt-14' : ''}`}>
+                            <div className="flex flex-col md:flex-row gap-4">
+                              <div className="md:w-40 shrink-0 space-y-3">
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Piattaforma</label>
+                                  <Select value={post.platform} onValueChange={(v) => updatePost(post.id, { platform: v as SocialPlatform })}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="instagram">Instagram</SelectItem>
+                                      <SelectItem value="tiktok">TikTok</SelectItem>
+                                      <SelectItem value="linkedin">LinkedIn</SelectItem>
+                                      <SelectItem value="facebook">Facebook</SelectItem>
+                                      <SelectItem value="twitter">X (Twitter)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-medium">{post.text.length}</span> caratteri
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                                  Ad Copy #{idx + 1}
+                                </label>
+                                <Textarea
+                                  value={post.text}
+                                  onChange={(e) => updatePost(post.id, { text: e.target.value })}
+                                  placeholder="Scrivi o importa il testo del post qui..."
+                                  className="min-h-[120px] resize-none"
+                                />
+                              </div>
                             </div>
-                          </div>
-                          {postInputs.length > 1 && (
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
-                              onClick={() => removePostInput(post.id)}
+                              className={`absolute ${post.sourcePostId ? 'top-12' : 'top-4'} right-4 opacity-0 group-hover:opacity-100 transition-opacity text-destructive`}
+                              onClick={() => {
+                                if (postInputs.length === 1) {
+                                  // Se rimane solo 1 post, resetta invece di cancellare
+                                  setPostInputs([{ id: Math.random().toString(36).substr(2, 9), text: '', platform: 'instagram' }]);
+                                } else {
+                                  removePostInput(post.id);
+                                }
+                              }}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                     
                     <div className="flex gap-3">
                       <Button variant="outline" className="flex-1" onClick={addPostInput}>
@@ -945,6 +1001,7 @@ const AdVisagePage: React.FC = () => {
                     tiktok: 'bg-slate-500/10 text-slate-600 border-slate-200',
                     linkedin: 'bg-blue-500/10 text-blue-600 border-blue-200',
                     facebook: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+                    twitter: 'bg-sky-500/10 text-sky-600 border-sky-200',
                   };
                   
                   // Verifica se il post è già nella coda

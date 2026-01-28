@@ -1,5 +1,5 @@
 
-export type SocialPlatform = 'instagram' | 'facebook' | 'linkedin' | 'tiktok';
+export type SocialPlatform = 'instagram' | 'facebook' | 'linkedin' | 'tiktok' | 'twitter';
 
 export interface PostInput {
   id: string;
@@ -7,6 +7,9 @@ export interface PostInput {
   platform: SocialPlatform;
   sourcePostId?: string;  // ID del post originale se importato
   sourcePostTitle?: string; // Titolo del post per riferimento
+  sourceScheduledDate?: string; // Data programmata del post originale
+  sourceStatus?: string; // Stato del post originale (draft, scheduled, published)
+  sourceMediaType?: string; // Tipo media del post originale
 }
 
 export interface AdAnalysis {
