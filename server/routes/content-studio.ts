@@ -3081,6 +3081,7 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
       "competitiveEdge": "string"
     }`;
     
+    console.log("[ADVISAGE] Calling AI provider...");
     const response = await client.generateContent({
       model: modelConfig.model,
       contents: prompt,
@@ -3091,7 +3092,19 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
     });
     
     const responseText = response.text?.trim() || "";
-    const parsed = JSON.parse(responseText);
+    console.log("[ADVISAGE] Response length:", responseText.length);
+    
+    if (!responseText) {
+      throw new Error("La risposta AI è vuota. Riprova.");
+    }
+    
+    let parsed;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("[ADVISAGE] JSON parse error. Response:", responseText.substring(0, 500));
+      throw new Error("Errore nel parsing della risposta AI. Riprova.");
+    }
     
     const postId = Math.random().toString(36).substr(2, 9);
     const result = {
@@ -3108,7 +3121,7 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
     
     res.json({ success: true, data: result });
   } catch (error: any) {
-    console.error("[ADVISAGE] Analysis error:", error);
+    console.error("[ADVISAGE] Analysis error:", error.message);
     res.status(500).json({ 
       success: false, 
       error: error.message || "Analisi fallita" 
