@@ -1139,6 +1139,14 @@ Scrivi come parla una persona normale. Il testo deve SCORRERE naturalmente, esse
 - Le frasi devono fluire l'una nell'altra come in una conversazione
 - Evita costruzioni rigide che spezzano il ritmo
 - Se rileggendo il testo "suona strano", riscrivilo più semplice
+
+📝 FORMATTAZIONE OBBLIGATORIA:
+- NON creare muri di testo! Il copy deve essere ARIOSO e facile da leggere
+- Separa i concetti con RIGHE VUOTE (\\n\\n) ogni 2-3 frasi
+- Inserisci "pattern interrupts" ogni tanto: frasi brevissime tipo "E sai cosa?", "Ma aspetta.", "Ecco il punto."
+- Usa frecce → per elenchi o punti chiave invece di paragrafi densi
+- Le sezioni devono respirare: hook separato, problema separato, soluzione separata
+- Il risultato finale deve essere un post FLUIDO e NATURALE, non robotico
 `;
     
     const styleMap: Record<string, { name: string; instructions: string }> = {
@@ -1759,14 +1767,6 @@ FRAMEWORK PERSUASIVO (6 STEP):
 5. PROOF - Riprova sociale: testimonianze, risultati, numeri, casi studio (anche struttura suggerita se non hai dati reali)
 6. CTA - Call to action finale (chiara, urgente, specifica)
 
-FORMATTAZIONE OBBLIGATORIA per fullCopy:
-- NON creare muri di testo! Il copy deve essere ARIOSO e facile da leggere
-- Separa i concetti con RIGHE VUOTE (\\n\\n) ogni 2-3 frasi
-- Inserisci "pattern interrupts" ogni tanto: frasi brevissime tipo "E sai cosa?", "Ma aspetta.", "Ecco il punto."
-- Usa frecce → per elenchi o punti chiave invece di paragrafi densi
-- Le sezioni devono respirare: hook separato, problema separato, soluzione separata
-- Il risultato finale deve essere un post FLUIDO e NATURALE, non robotico
-
 Genera tutti i 6 elementi + il fullCopy che li unisce in un post fluido, naturale e ben formattato.
 
 RISPONDI SOLO con un JSON valido:
@@ -1923,14 +1923,6 @@ Genera 3 VARIAZIONI di INSERZIONI COMPLETE usando il FRAMEWORK PERSUASIVO a 6 ST
 4. SOLUZIONE - Il metodo unico con nome proprio: "Il mio metodo [Nome] non è [cosa comune], è [cosa unica che lo differenzia]"
 5. RIPROVA SOCIALE - Storie concrete con nomi, eventi specifici, risultati misurabili (anche struttura suggerita)
 6. CTA - Azione specifica con urgenza chiara
-
-FORMATTAZIONE OBBLIGATORIA:
-- NON creare muri di testo! Ogni copy deve essere ARIOSO e facile da leggere
-- Separa i concetti con RIGHE VUOTE (\\n\\n) ogni 2-3 frasi
-- Inserisci "pattern interrupts" ogni tanto: frasi brevissime tipo "E sai cosa?", "Ma aspetta.", "Ecco il punto."
-- Usa frecce → per elenchi o punti chiave invece di paragrafi densi
-- Le sezioni devono respirare: hook separato, problema separato, soluzione separata
-- Il risultato finale deve essere un post FLUIDO e NATURALE, non robotico
 
 IMPORTANTE: Le 3 variazioni devono essere SIGNIFICATIVAMENTE diverse tra loro in tono e approccio.
 
