@@ -363,34 +363,6 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     }
   }, [open, post]);
 
-  // Auto-seleziona account social in base alla piattaforma del post
-  useEffect(() => {
-    if (open && post && accounts.length > 0 && selectedAccounts.length === 0) {
-      const postPlatform = post.platform?.toLowerCase();
-      if (postPlatform) {
-        // Mappa le piattaforme del post ai tipi Publer
-        const platformMappings: Record<string, string[]> = {
-          instagram: ['instagram', 'ig_business', 'ig_personal'],
-          facebook: ['facebook', 'fb_page', 'fb_group'],
-          linkedin: ['linkedin', 'linkedin_page'],
-          twitter: ['twitter', 'x'],
-          x: ['twitter', 'x'],
-          youtube: ['youtube'],
-          tiktok: ['tiktok', 'tiktok_business'],
-        };
-        
-        const matchingPlatforms = platformMappings[postPlatform] || [postPlatform];
-        const matchingAccounts = accounts.filter(a => 
-          matchingPlatforms.includes(a.platform.toLowerCase())
-        );
-        
-        if (matchingAccounts.length > 0) {
-          setSelectedAccounts(matchingAccounts.map(a => a.id));
-        }
-      }
-    }
-  }, [open, post, accounts]);
-
   // Pre-compila la data programmata se il post ha già una scheduledAt
   useEffect(() => {
     if (open && post) {
@@ -471,6 +443,34 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
 
   const accounts = accountsData?.accounts || [];
   const isConfigured = configData?.configured && configData?.isActive;
+
+  // Auto-seleziona account social in base alla piattaforma del post
+  useEffect(() => {
+    if (open && post && accounts.length > 0 && selectedAccounts.length === 0) {
+      const postPlatform = post.platform?.toLowerCase();
+      if (postPlatform) {
+        // Mappa le piattaforme del post ai tipi Publer
+        const platformMappings: Record<string, string[]> = {
+          instagram: ['instagram', 'ig_business', 'ig_personal'],
+          facebook: ['facebook', 'fb_page', 'fb_group'],
+          linkedin: ['linkedin', 'linkedin_page'],
+          twitter: ['twitter', 'x'],
+          x: ['twitter', 'x'],
+          youtube: ['youtube'],
+          tiktok: ['tiktok', 'tiktok_business'],
+        };
+        
+        const matchingPlatforms = platformMappings[postPlatform] || [postPlatform];
+        const matchingAccounts = accounts.filter(a => 
+          matchingPlatforms.includes(a.platform.toLowerCase())
+        );
+        
+        if (matchingAccounts.length > 0) {
+          setSelectedAccounts(matchingAccounts.map(a => a.id));
+        }
+      }
+    }
+  }, [open, post, accounts]);
 
   const hasVideoScript = !!(post?.videoFullScript || post?.structuredContent?.videoFullScript);
   const hasLongCopy = !!(
