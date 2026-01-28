@@ -194,7 +194,7 @@ interface PublerPublishDialogProps {
   post: Post | null;
 }
 
-type ContentSource = "hook_cta" | "copy_complete" | "video_script" | "custom";
+type ContentSource = "full_message" | "hook_cta" | "copy_complete" | "video_script" | "custom";
 type PublishState = "draft" | "publish_now" | "scheduled";
 
 const platformIcons: Record<string, React.ReactNode> = {
@@ -207,6 +207,24 @@ const platformIcons: Record<string, React.ReactNode> = {
 
 function composeText(source: ContentSource, post: Post, customText: string): string {
   switch (source) {
+    case "full_message": {
+      // Combina TUTTI i campi disponibili in un unico messaggio completo
+      const s = post.structuredContent || {};
+      const parts = [
+        post.hook || s.hook,
+        post.body || s.body,
+        post.chiCosaCome || s.chiCosaCome,
+        post.errore || s.errore,
+        post.soluzione || s.soluzione,
+        post.riprovaSociale || s.riprovaSociale,
+        post.cta || s.cta,
+      ].filter(Boolean);
+      // Se non ci sono parti, prova videoFullScript
+      if (parts.length === 0) {
+        return post.videoFullScript || s.videoFullScript || "";
+      }
+      return parts.join("\n\n");
+    }
     case "hook_cta": {
       const parts = [post.hook, post.cta].filter(Boolean);
       if (parts.length === 0) {
@@ -242,7 +260,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
-  const [contentSource, setContentSource] = useState<ContentSource>("hook_cta");
+  const [contentSource, setContentSource] = useState<ContentSource>("full_message");
   const [customText, setCustomText] = useState("");
   const [publishState, setPublishState] = useState<PublishState>("publish_now");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -325,7 +343,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
 
   const resetForm = () => {
     setSelectedAccounts([]);
-    setContentSource("hook_cta");
+    setContentSource("full_message");
     setCustomText("");
     setPublishState("publish_now");
     setScheduledAt("");
@@ -340,10 +358,38 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
 
   useEffect(() => {
     if (open && post) {
-      const initialText = composeText("hook_cta", post, "");
+      const initialText = composeText("full_message", post, "");
       setCustomText(initialText);
     }
   }, [open, post]);
+
+  // Auto-seleziona account social in base alla piattaforma del post
+  useEffect(() => {
+    if (open && post && accounts.length > 0 && selectedAccounts.length === 0) {
+      const postPlatform = post.platform?.toLowerCase();
+      if (postPlatform) {
+        // Mappa le piattaforme del post ai tipi Publer
+        const platformMappings: Record<string, string[]> = {
+          instagram: ['instagram', 'ig_business', 'ig_personal'],
+          facebook: ['facebook', 'fb_page', 'fb_group'],
+          linkedin: ['linkedin', 'linkedin_page'],
+          twitter: ['twitter', 'x'],
+          x: ['twitter', 'x'],
+          youtube: ['youtube'],
+          tiktok: ['tiktok', 'tiktok_business'],
+        };
+        
+        const matchingPlatforms = platformMappings[postPlatform] || [postPlatform];
+        const matchingAccounts = accounts.filter(a => 
+          matchingPlatforms.includes(a.platform.toLowerCase())
+        );
+        
+        if (matchingAccounts.length > 0) {
+          setSelectedAccounts(matchingAccounts.map(a => a.id));
+        }
+      }
+    }
+  }, [open, post, accounts]);
 
   // Pre-compila la data programmata se il post ha già una scheduledAt
   useEffect(() => {
@@ -496,6 +542,15 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                   onValueChange={(v) => setContentSource(v as ContentSource)}
                   className="grid grid-cols-2 gap-2"
                 >
+                  <div className="flex items-center space-x-2 col-span-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                    <RadioGroupItem value="full_message" id="full_message" />
+                    <Label htmlFor="full_message" className="text-sm cursor-pointer font-medium">
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-3 w-3 text-primary" />
+                        Messaggio Completo
+                      </span>
+                    </Label>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="hook_cta" id="hook_cta" />
                     <Label htmlFor="hook_cta" className="text-sm cursor-pointer">
@@ -508,7 +563,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                       htmlFor="copy_complete"
                       className={`text-sm cursor-pointer ${!hasLongCopy ? "opacity-50" : ""}`}
                     >
-                      Copy Completo
+                      Copy Strutturato
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
