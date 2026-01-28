@@ -1176,75 +1176,14 @@ export default function ContentStudioIdeas() {
       const ideas = result.data.ideas || [];
       setGeneratedIdeas(ideas);
       
-      // Salva automaticamente tutte le idee generate nel database
-      const savedIndexes = new Set<number>();
-      const failedIndexes: number[] = [];
-      
-      for (let i = 0; i < ideas.length; i++) {
-        const idea = ideas[i];
-        try {
-          const response = await fetch("/api/content/ideas", {
-            method: "POST",
-            headers: {
-              ...getAuthHeaders(),
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              title: idea.title,
-              description: idea.description,
-              suggestedHook: idea.suggestedHook,
-              suggestedCta: idea.suggestedCta,
-              aiScore: idea.aiScore || 80,
-              aiReasoning: idea.aiReasoning,
-              targetAudience: targetAudience,
-              status: "new",
-              mediaType: idea.mediaType || mediaType,
-              copyType: idea.copyType || copyType,
-              videoScript: idea.videoScript,
-              imageDescription: idea.imageDescription || idea.structuredContent?.imageDescription,
-              imageOverlayText: idea.imageOverlayText || idea.structuredContent?.imageOverlayText,
-              copyContent: idea.copyContent,
-              structuredContent: idea.structuredContent,
-              awarenessLevel: awarenessLevel,
-              targetPlatform: targetPlatform,
-              postCategory: postCategory,
-              postSchema: postSchema,
-              schemaStructure: selectedSchema?.structure,
-              writingStyle: writingStyle,
-              customWritingInstructions: writingStyle === "custom" ? customWritingInstructions : undefined,
-            }),
-          });
-          
-          if (response.ok) {
-            savedIndexes.add(i);
-          } else {
-            const errorData = await response.json();
-            console.error(`Errore nel salvataggio dell'idea ${i}:`, errorData);
-            failedIndexes.push(i);
-          }
-        } catch (e) {
-          console.error(`Errore nel salvataggio dell'idea ${i}:`, e);
-          failedIndexes.push(i);
-        }
-      }
-      
-      setSavedIdeaIndexes(savedIndexes);
-      queryClient.invalidateQueries({ queryKey: ["/api/content/ideas"] });
+      // Reset saved indexes - user decides what to save manually
+      setSavedIdeaIndexes(new Set());
       setShowGeneratedDialog(true);
       
-      // Show appropriate toast message based on save results
-      if (failedIndexes.length === 0) {
-        toast({
-          title: "Idee generate e salvate!",
-          description: `${savedIndexes.size}/${ideas.length} idee sono state salvate automaticamente`,
-        });
-      } else {
-        toast({
-          title: "Salvataggio parziale",
-          description: `${savedIndexes.size}/${ideas.length} idee salvate. ${failedIndexes.length} salvataggi falliti (idee #${failedIndexes.map(i => i + 1).join(', ')})`,
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Idee generate!",
+        description: `${ideas.length} idee pronte. Clicca "Salva" su quelle che vuoi conservare.`,
+      });
     } catch (error: any) {
       toast({
         title: "Errore nella generazione",
@@ -2626,19 +2565,23 @@ export default function ContentStudioIdeas() {
                           )}
                         </div>
                         <Button
-                          size="sm"
+                          size="default"
                           onClick={() => handleSaveGeneratedIdea(idea, index)}
                           disabled={createIdeaMutation.isPending || savedIdeaIndexes.has(index)}
-                          className={`shrink-0 ${savedIdeaIndexes.has(index) ? "bg-green-500 hover:bg-green-500" : ""}`}
+                          className={`shrink-0 font-semibold px-5 py-2 ${
+                            savedIdeaIndexes.has(index) 
+                              ? "bg-green-500 hover:bg-green-500 text-white" 
+                              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+                          }`}
                         >
                           {createIdeaMutation.isPending && !savedIdeaIndexes.has(index) ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-5 w-5 animate-spin" />
                           ) : savedIdeaIndexes.has(index) ? (
-                            <Check className="h-4 w-4" />
+                            <Check className="h-5 w-5" />
                           ) : (
-                            <Bookmark className="h-4 w-4" />
+                            <Bookmark className="h-5 w-5" />
                           )}
-                          <span className="ml-1.5 hidden sm:inline">{savedIdeaIndexes.has(index) ? "Salvata" : "Salva"}</span>
+                          <span className="ml-2">{savedIdeaIndexes.has(index) ? "Salvata" : "Salva"}</span>
                         </Button>
                       </div>
                       
