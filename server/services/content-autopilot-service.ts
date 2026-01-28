@@ -252,6 +252,19 @@ export async function generateAutopilotBatch(
             const effectiveMediaType = passedMediaType || "photo";
             const effectiveCopyType = passedCopyType || (platform === "x" ? "short" : "long");
             
+            // DEBUG: Log tutti i parametri passati a generateContentIdeas
+            console.log(`[AUTOPILOT DEBUG] ========================================`);
+            console.log(`[AUTOPILOT DEBUG] Calling generateContentIdeas with:`);
+            console.log(`[AUTOPILOT DEBUG]   platform: "${platform}"`);
+            console.log(`[AUTOPILOT DEBUG]   charLimit: ${charLimit}`);
+            console.log(`[AUTOPILOT DEBUG]   copyType: "${effectiveCopyType}"`);
+            console.log(`[AUTOPILOT DEBUG]   mediaType: "${effectiveMediaType}"`);
+            console.log(`[AUTOPILOT DEBUG]   postSchema: "${postSchema || 'UNDEFINED'}"`);
+            console.log(`[AUTOPILOT DEBUG]   schemaStructure: "${schemaStructure || 'UNDEFINED'}"`);
+            console.log(`[AUTOPILOT DEBUG]   schemaLabel: "${schemaLabel || 'UNDEFINED'}"`);
+            console.log(`[AUTOPILOT DEBUG]   writingStyle: "${writingStyle}"`);
+            console.log(`[AUTOPILOT DEBUG] ========================================`);
+            
             const result = await generateContentIdeas({
               consultantId,
               niche,

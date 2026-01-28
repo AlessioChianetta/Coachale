@@ -1310,6 +1310,17 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       const schemaParts = schemaStructure.split("|").map(s => s.trim());
       const numSections = schemaParts.length;
       
+      // DEBUG: Log calcolo limiti per schema dinamico
+      console.log(`[CONTENT-AI SCHEMA DEBUG] ========================================`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG] Schema dinamico rilevato!`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   schemaStructure: "${schemaStructure}"`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   numSections: ${numSections}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   charLimit (input): ${charLimit}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   effectiveCharLimit: ${effectiveCharLimit}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   isLongCopy: ${isLongCopy}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   minChars: ${minChars}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   maxChars: ${maxChars}`);
+      
       // Calculate per-section character requirements to guarantee total minimum
       // For long copy: distribute minChars across sections, ensuring sum >= minChars
       // For short copy: distribute based on minChars (200) to maxChars (500)
@@ -1327,6 +1338,13 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       
       // Calculate what the guaranteed total would be
       const guaranteedTotal = minPerSection * numSections;
+      
+      // DEBUG: Log calcolo finale per sezione
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   minPerSection: ${minPerSection}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   maxPerSection: ${maxPerSection}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   guaranteedTotal: ${guaranteedTotal}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   maxTotal (numSections × maxPerSection): ${numSections * maxPerSection}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG] ========================================`);
       
       // Create field names from schema parts
       const fieldNames = schemaParts.map((part, idx) => {
@@ -1421,6 +1439,17 @@ IMPORTANTE per fullScript (video):
     }
     
     // Fallback to default structure when no schemaStructure is provided (schema "originale")
+    // DEBUG: Log quando usa schema Originale
+    console.log(`[CONTENT-AI ORIGINALE DEBUG] ========================================`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG] Usando schema ORIGINALE (no schemaStructure)`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG]   charLimit (input): ${charLimit}`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG]   effectiveCharLimit: ${effectiveCharLimit}`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG]   isLongCopy: ${isLongCopy}`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG]   isVideo: ${isVideo}`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG]   minChars: ${minChars}`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG]   maxChars: ${maxChars}`);
+    console.log(`[CONTENT-AI ORIGINALE DEBUG] ========================================`);
+    
     if (isVideo && isLongCopy) {
       // Calcola range dinamici basati su charLimit con margine 15%
       const safeLimit = Math.floor(effectiveCharLimit * 0.85);
@@ -1732,6 +1761,16 @@ RISPONDI SOLO con un JSON valido nel formato:
       const finalCopyContent = idea.copyContent || copyContent;
       const effectiveCopyType = (idea.copyType || copyType) as "short" | "long";
       const lengthWarning = validateAndEnrichCopyLength(effectiveCopyType, copyLength, charLimit);
+      
+      // DEBUG: Log dettagliato lunghezza contenuto generato
+      console.log(`[CONTENT-AI RESULT DEBUG] ========================================`);
+      console.log(`[CONTENT-AI RESULT DEBUG] Idea: "${idea.title}"`);
+      console.log(`[CONTENT-AI RESULT DEBUG]   copyLength: ${copyLength}`);
+      console.log(`[CONTENT-AI RESULT DEBUG]   charLimit: ${charLimit || 'UNDEFINED'}`);
+      console.log(`[CONTENT-AI RESULT DEBUG]   copyType: ${effectiveCopyType}`);
+      console.log(`[CONTENT-AI RESULT DEBUG]   SUPERA LIMITE: ${charLimit && copyLength > charLimit ? `SI! (${copyLength}/${charLimit})` : 'NO'}`);
+      console.log(`[CONTENT-AI RESULT DEBUG]   lengthWarning: ${lengthWarning || 'none'}`);
+      console.log(`[CONTENT-AI RESULT DEBUG] ========================================`);
       
       console.log(`[CONTENT-AI] Enriching idea "${idea.title}": mediaType=${idea.mediaType || mediaType}, structuredType=${sc?.type}, hasVideoScript=${!!videoScript}, hasImageDesc=${!!imageDescription}, hasCopyContent=${!!finalCopyContent}, copyLength=${copyLength}, lengthWarning=${lengthWarning || 'none'}`);
       
