@@ -374,12 +374,21 @@ const AdVisagePage: React.FC = () => {
       const result = await response.json();
       
       if (result.success && result.media && result.media.length > 0) {
-        const mediaId = result.media[0].id;
+        const uploadedMediaItem = result.media[0];
+        const mediaObject = {
+          id: uploadedMediaItem.id,
+          path: uploadedMediaItem.path,
+          thumbnail: uploadedMediaItem.thumbnail,
+        };
         
         if (selectedPostForMedia) {
           const post = existingPosts.find((p: ContentPost) => p.id === selectedPostForMedia);
           const currentMediaIds = post?.publerMediaIds || [];
-          const newMediaIds = [...currentMediaIds.map((m: any) => typeof m === 'string' ? m : m.id), mediaId];
+          // Mantieni oggetti completi con path/thumbnail
+          const existingMediaObjects = currentMediaIds.map((m: any) => 
+            typeof m === 'string' ? { id: m } : { id: m.id, path: m.path, thumbnail: m.thumbnail }
+          );
+          const newMediaIds = [...existingMediaObjects, mediaObject];
           
           await updatePostMutation.mutateAsync({
             postId: selectedPostForMedia,
@@ -389,7 +398,7 @@ const AdVisagePage: React.FC = () => {
 
         toast({
           title: "Caricato su Publer",
-          description: `Media ID: ${mediaId}`,
+          description: `Media ID: ${mediaObject.id}`,
         });
         
         setShowPublerDialog(false);
