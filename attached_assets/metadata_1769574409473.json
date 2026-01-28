@@ -1,0 +1,5 @@
+{
+  "name": "AdVisage AI",
+  "description": "Un'applicazione avanzata per analizzare testi pubblicitari e generare automaticamente concept visuali e immagini coerenti per i social media utilizzando l'intelligenza artificiale Gemini.",
+  "requestFramePermissions": []
+}
