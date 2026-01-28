@@ -606,6 +606,7 @@ export default function ContentStudioPosts() {
     hook: "",
     body: "",
     cta: "",
+    fullCopy: "",
     platform: "",
     status: "draft",
     chiCosaCome: "",
@@ -1022,7 +1023,7 @@ export default function ContentStudioPosts() {
       }
       setIsDialogOpen(false);
       setEditingPost(null);
-      setFormData({ title: "", hook: "", body: "", cta: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
+      setFormData({ title: "", hook: "", body: "", cta: "", fullCopy: "", platform: "", status: "draft", chiCosaCome: "", errore: "", soluzione: "", riprovaSociale: "", videoHook: "", videoProblema: "", videoSoluzione: "", videoCta: "", videoFullScript: "", videoUrl: "", imageDescription: "", imageOverlayText: "" });
       setSuggestedHashtags([]);
       resetCarouselState();
       setCopyTypeFromIdea(false);
@@ -1654,6 +1655,7 @@ export default function ContentStudioPosts() {
       hook: formData.hook,
       body: formData.body,
       cta: formData.cta,
+      fullCopy: formData.fullCopy,
       chiCosaCome: formData.chiCosaCome,
       errore: formData.errore,
       soluzione: formData.soluzione,
@@ -1684,6 +1686,7 @@ export default function ContentStudioPosts() {
       ...formData,
       copyType: selectedCopyType,
       mediaType: selectedMediaType,
+      fullCopy: formData.fullCopy || undefined,
       chiCosaCome: formData.chiCosaCome || undefined,
       errore: formData.errore || undefined,
       soluzione: formData.soluzione || undefined,
@@ -1766,6 +1769,7 @@ export default function ContentStudioPosts() {
       hook: structured.hook || post.hook || "",
       body: structured.body || post.body || "",
       cta: structured.cta || post.cta || "",
+      fullCopy: post.fullCopy || structured.fullCopy || "",
       platform: post.platform || "",
       status: post.status || "draft",
       chiCosaCome: structured.chiCosaCome || "",

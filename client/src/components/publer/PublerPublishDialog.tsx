@@ -554,7 +554,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                   onValueChange={(v) => setContentSource(v as ContentSource)}
                   className="grid grid-cols-2 gap-2"
                 >
-                  <div className="flex items-center space-x-2 col-span-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+                  <div className="flex items-center space-x-2 p-2 rounded-md bg-primary/5 border border-primary/20">
                     <RadioGroupItem value="full_message" id="full_message" />
                     <Label htmlFor="full_message" className="text-sm cursor-pointer font-medium">
                       <span className="flex items-center gap-1">
@@ -563,34 +563,7 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
                       </span>
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="hook_cta" id="hook_cta" />
-                    <Label htmlFor="hook_cta" className="text-sm cursor-pointer">
-                      Hook + CTA
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="copy_complete" id="copy_complete" disabled={!hasLongCopy} />
-                    <Label
-                      htmlFor="copy_complete"
-                      className={`text-sm cursor-pointer ${!hasLongCopy ? "opacity-50" : ""}`}
-                    >
-                      Copy Strutturato
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="video_script" id="video_script" disabled={!hasVideoScript} />
-                    <Label
-                      htmlFor="video_script"
-                      className={`text-sm cursor-pointer ${!hasVideoScript ? "opacity-50" : ""}`}
-                    >
-                      <span className="flex items-center gap-1">
-                        <Video className="h-3 w-3" />
-                        Script Video
-                      </span>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 p-2 rounded-md border hover:bg-muted/50">
                     <RadioGroupItem value="custom" id="custom" />
                     <Label htmlFor="custom" className="text-sm cursor-pointer">
                       <span className="flex items-center gap-1">
