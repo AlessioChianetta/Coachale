@@ -207,6 +207,7 @@ interface LongCopyVariation {
   soluzione: string;
   riprovaSociale: string;
   cta: string;
+  fullCopy?: string;
   hashtags?: string[];
 }
 
@@ -1349,6 +1350,7 @@ export default function ContentStudioPosts() {
         break;
       case "copy_long":
         updates.hook = variation.hook || "";
+        updates.fullCopy = variation.fullCopy || "";
         updates.chiCosaCome = variation.chiCosaCome || "";
         updates.errore = variation.errore || "";
         updates.soluzione = variation.soluzione || "";
