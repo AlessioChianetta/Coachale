@@ -210,6 +210,7 @@ const TARGET_PLATFORMS = [
 const POST_CATEGORIES = [
   { value: "ads", label: "Inserzioni (Ads)", description: "Contenuti sponsorizzati per conversioni", icon: Megaphone },
   { value: "valore", label: "Post di Valore", description: "Contenuti educativi e informativi", icon: BookOpen },
+  { value: "formazione", label: "Formazione", description: "Corsi, tutorial e contenuti educativi", icon: GraduationCap },
   { value: "altri", label: "Altri Post", description: "Community, relazione, engagement", icon: Users },
 ] as const;
 
