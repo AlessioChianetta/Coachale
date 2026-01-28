@@ -148,6 +148,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine, color: "text-blue-500" },
       { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar, color: "text-orange-500" },
       { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette, color: "text-violet-500" },
+      { name: "AdVisage AI", href: "/consultant/content-studio/advisage", icon: Zap, color: "text-indigo-500", badge: "PRO" },
     ]
   },
   {

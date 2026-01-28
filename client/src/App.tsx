@@ -151,6 +151,7 @@ const ContentStudioCampaigns = lazy(() => import("@/pages/content-studio/campaig
 const ContentStudioVisuals = lazy(() => import("@/pages/content-studio/visuals"));
 const ContentStudioCalendar = lazy(() => import("@/pages/content-studio/calendar"));
 const ContentStudioBrand = lazy(() => import("@/pages/content-studio/brand"));
+const ContentStudioAdVisage = lazy(() => import("@/pages/content-studio/advisage/AdVisagePage"));
 
 // Client Data Analysis pages
 const ConsultantClientDataAnalysis = lazy(() => import("@/pages/consultant/ClientDataAnalysis"));
@@ -649,6 +650,12 @@ function Router() {
           <Route path="/consultant/content-studio/brand">
             <AuthGuard requiredRole="consultant">
               <ContentStudioBrand />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/content-studio/advisage">
+            <AuthGuard requiredRole="consultant">
+              <ContentStudioAdVisage />
             </AuthGuard>
           </Route>
 
