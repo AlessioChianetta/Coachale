@@ -759,10 +759,11 @@ export default function ContentStudioPosts() {
             newFormData.errore = structured?.errore || "";
             newFormData.soluzione = structured?.soluzione || "";
             newFormData.riprovaSociale = structured?.riprovaSociale || "";
-          } else if (idea.copyContent) {
-            // Fallback: use copyContent as the full body text
-            // The user can see it and manually edit into structured fields if needed
-            newFormData.body = idea.copyContent;
+          }
+          
+          // Always populate fullCopy for copy_long - this is the main content field
+          if (idea.copyContent) {
+            newFormData.fullCopy = idea.copyContent;
           }
         }
 
@@ -797,7 +798,9 @@ export default function ContentStudioPosts() {
           ...newFormData,
         }));
 
-        setIdeaForCopy(idea.copyContent || idea.description || idea.title || "");
+        // ideaForCopy should contain only the original idea/description for regeneration reference
+        // copyContent goes to fullCopy/body fields instead
+        setIdeaForCopy(idea.description || idea.title || "");
         setIsDialogOpen(true);
         toast({
           title: "Idea caricata",
