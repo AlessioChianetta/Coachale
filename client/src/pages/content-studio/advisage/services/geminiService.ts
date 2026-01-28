@@ -26,14 +26,14 @@ export const generateImageConcept = async (prompt: string, aspectRatio: "1:1" | 
   }
   
   console.log('[AdVisage Image] Using API key:', settings.manualApiKey.substring(0, 10) + '...');
-  console.log('[AdVisage Image] Model: gemini-2.0-flash-exp-image-generation');
+  console.log('[AdVisage Image] Model: gemini-2.5-flash-preview-04-17');
   console.log('[AdVisage Image] Aspect ratio:', aspectRatio);
   
   const ai = new GoogleGenAI({ apiKey: settings.manualApiKey });
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp-image-generation',
+      model: 'gemini-2.5-flash-preview-04-17',
       contents: prompt,
       config: { 
         responseModalities: ['Text', 'Image'],
