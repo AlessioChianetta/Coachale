@@ -173,6 +173,7 @@ interface Post {
   hook?: string;
   body?: string;
   cta?: string;
+  fullCopy?: string;
   videoFullScript?: string;
   imageDescription?: string;
   copyType?: string;
@@ -208,7 +209,18 @@ const platformIcons: Record<string, React.ReactNode> = {
 function composeText(source: ContentSource, post: Post, customText: string): string {
   switch (source) {
     case "full_message": {
-      // Combina TUTTI i campi disponibili in un unico messaggio completo
+      // Prima cerca fullCopy (campo principale per copy completo dal DB)
+      if (post.fullCopy) {
+        // Se c'è fullCopy, combina con hook e cta se disponibili
+        const parts = [
+          post.hook,
+          post.fullCopy,
+          post.cta,
+        ].filter(Boolean);
+        return parts.join("\n\n");
+      }
+      
+      // Fallback: combina tutti i campi strutturati disponibili
       const s = post.structuredContent || {};
       const parts = [
         post.hook || s.hook,
