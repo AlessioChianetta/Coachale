@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -93,6 +94,7 @@ interface BrandAssets {
   chiSono?: string;
   noteForAi?: string;
   postingSchedule?: PostingSchedule;
+  xPremiumSubscription?: boolean;
 }
 
 export default function ContentStudioBrand() {
@@ -135,6 +137,7 @@ export default function ContentStudioBrand() {
     x: { times: ["10:00", "17:00"], writingStyle: "default" },
     linkedin: { times: ["08:00", "12:00"], writingStyle: "default" },
   });
+  const [xPremiumSubscription, setXPremiumSubscription] = useState(false);
 
   // Brand Voice Wizard state
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -323,6 +326,7 @@ export default function ContentStudioBrand() {
           linkedin: data.postingSchedule.linkedin || { times: ["08:00", "12:00"], writingStyle: "default" },
         });
       }
+      setXPremiumSubscription(data.xPremiumSubscription || false);
     }
   }, [brandResponse]);
 
@@ -396,6 +400,7 @@ export default function ContentStudioBrand() {
       twitterHandle: socialHandles.twitter,
       youtubeHandle: socialHandles.youtube,
       postingSchedule,
+      xPremiumSubscription,
     });
   };
 
@@ -941,6 +946,18 @@ export default function ContentStudioBrand() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">X Premium / Blue</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Attiva se hai un abbonamento X Premium per sbloccare post lunghi (fino a 4.000 caratteri)
+                      </p>
+                    </div>
+                    <Switch
+                      checked={xPremiumSubscription}
+                      onCheckedChange={setXPremiumSubscription}
+                    />
                   </div>
                 </div>
 
