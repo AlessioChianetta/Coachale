@@ -2547,24 +2547,43 @@ RISPONDI SOLO con il testo accorciato, niente altro. Non aggiungere spiegazioni.
     
     let shortenedCopy = result.response.text().trim();
     
-    // If still over limit, try to trim intelligently (keep last CTA line)
+    // If still over limit, try to trim intelligently - never cut mid-sentence
     if (shortenedCopy.length > targetLimit) {
       console.log(`[CONTENT-AI] First attempt still over limit (${shortenedCopy.length}/${targetLimit}), trimming...`);
       
-      // Find last paragraph break and trim there
-      const lines = shortenedCopy.split('\n\n');
-      let trimmed = '';
-      for (const line of lines) {
-        if ((trimmed + (trimmed ? '\n\n' : '') + line).length <= targetLimit) {
-          trimmed += (trimmed ? '\n\n' : '') + line;
+      // Strategy 1: Try to keep complete paragraphs
+      const paragraphs = shortenedCopy.split('\n\n');
+      let trimmedByParagraph = '';
+      for (const para of paragraphs) {
+        if ((trimmedByParagraph + (trimmedByParagraph ? '\n\n' : '') + para).length <= targetLimit) {
+          trimmedByParagraph += (trimmedByParagraph ? '\n\n' : '') + para;
         } else {
           break;
         }
       }
       
-      // If we have meaningful content, use trimmed version
-      if (trimmed.length > originalCopy.length * 0.5) {
-        shortenedCopy = trimmed;
+      // Strategy 2: If paragraph trimming leaves too little, try sentence-level trimming
+      if (trimmedByParagraph.length < targetLimit * 0.6) {
+        // Find the last complete sentence that fits within the limit
+        const sentences = shortenedCopy.match(/[^.!?]*[.!?]+/g) || [];
+        let trimmedBySentence = '';
+        for (const sentence of sentences) {
+          if ((trimmedBySentence + sentence).length <= targetLimit) {
+            trimmedBySentence += sentence;
+          } else {
+            break;
+          }
+        }
+        
+        // Use sentence trimming if it gives more content
+        if (trimmedBySentence.length > trimmedByParagraph.length) {
+          trimmedByParagraph = trimmedBySentence.trim();
+        }
+      }
+      
+      // Use trimmed version if we have meaningful content (at least 40% of original)
+      if (trimmedByParagraph.length > originalCopy.length * 0.4) {
+        shortenedCopy = trimmedByParagraph;
       }
     }
     
