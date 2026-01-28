@@ -160,27 +160,54 @@ export async function generateAutopilotBatch(
         const postsPerDay = platformSettings.postsPerDay;
         const dbPlatform = PLATFORM_DB_MAP[platform] || "instagram";
         
-        const dayStart = new Date(`${date}T00:00:00`);
-        const dayEnd = new Date(`${date}T23:59:59`);
-        const existingPosts = await db.select({ id: schema.contentPosts.id })
-          .from(schema.contentPosts)
-          .where(and(
-            eq(schema.contentPosts.consultantId, consultantId),
-            eq(schema.contentPosts.platform, dbPlatform),
-            gte(schema.contentPosts.scheduledAt, dayStart),
-            lt(schema.contentPosts.scheduledAt, dayEnd)
-          ))
-          .limit(1);
-        
-        if (existingPosts.length > 0) {
-          console.log(`[AUTOPILOT] Skipping ${platform} on ${date} - posts already exist`);
-          continue;
-        }
-        
+        // Get schedule times for this platform
         const scheduleForPlatform = postingSchedule[platform] || {};
         const writingStyle = passedWritingStyle || scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
         const times = passedOptimalTimes || scheduleForPlatform.times || OPTIMAL_TIMES[platform] || ["09:00", "18:00"];
         const charLimit = PLATFORM_CHAR_LIMITS[platform] || 2200;
+        
+        // Fetch ALL existing SCHEDULED posts for this day/platform to check which time slots are occupied
+        // Only count posts with status "scheduled" - not drafts, published, or cancelled
+        const dayStart = new Date(`${date}T00:00:00`);
+        const dayEnd = new Date(`${date}T23:59:59`);
+        const existingPosts = await db.select({ 
+          id: schema.contentPosts.id,
+          scheduledAt: schema.contentPosts.scheduledAt 
+        })
+          .from(schema.contentPosts)
+          .where(and(
+            eq(schema.contentPosts.consultantId, consultantId),
+            eq(schema.contentPosts.platform, dbPlatform),
+            eq(schema.contentPosts.status, "scheduled"),
+            gte(schema.contentPosts.scheduledAt, dayStart),
+            lt(schema.contentPosts.scheduledAt, dayEnd)
+          ));
+        
+        // Extract occupied time slots (HH:MM format)
+        const occupiedTimeSlots = new Set<string>();
+        for (const post of existingPosts) {
+          if (post.scheduledAt) {
+            const postTime = new Date(post.scheduledAt);
+            const hours = postTime.getHours().toString().padStart(2, '0');
+            const minutes = postTime.getMinutes().toString().padStart(2, '0');
+            occupiedTimeSlots.add(`${hours}:${minutes}`);
+          }
+        }
+        
+        // Filter available time slots (not already occupied)
+        const availableTimeSlots = times.filter(time => !occupiedTimeSlots.has(time));
+        
+        if (availableTimeSlots.length === 0) {
+          console.log(`[AUTOPILOT] Skipping ${platform} on ${date} - all ${times.length} time slots already occupied`);
+          continue;
+        }
+        
+        if (occupiedTimeSlots.size > 0) {
+          console.log(`[AUTOPILOT] ${platform} on ${date}: ${occupiedTimeSlots.size} slots occupied, ${availableTimeSlots.length} available`);
+        }
+        
+        // Limit postsPerDay to available slots
+        const effectivePostsPerDay = Math.min(postsPerDay, availableTimeSlots.length);
         
         sendProgress({
           total: totalPosts,
@@ -191,8 +218,8 @@ export async function generateAutopilotBatch(
         });
         
         try {
-          for (let i = 0; i < postsPerDay; i++) {
-            const time = times[i] || times[0] || "12:00";
+          for (let i = 0; i < effectivePostsPerDay; i++) {
+            const time = availableTimeSlots[i] || availableTimeSlots[0] || "12:00";
             const currentContentType = contentTypes[contentTypeIndex % contentTypes.length];
             contentTypeIndex++;
             

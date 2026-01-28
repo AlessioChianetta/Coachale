@@ -622,6 +622,75 @@ router.get("/posts", authenticateToken, requireRole("consultant"), async (req: A
   }
 });
 
+// GET /api/content/posts/scheduled-count - Count scheduled posts in date range
+router.get("/posts/scheduled-count", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { startDate, endDate, platforms } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, error: "startDate and endDate are required" });
+    }
+    
+    const platformList = (platforms as string)?.split(",").filter(Boolean) || [];
+    const platformDbMap: Record<string, string> = {
+      instagram: "instagram",
+      x: "twitter",
+      linkedin: "linkedin",
+    };
+    
+    const dbPlatforms = platformList.map(p => platformDbMap[p] || p);
+    
+    const posts = await db.select({
+      id: schema.contentPosts.id,
+      platform: schema.contentPosts.platform,
+      scheduledAt: schema.contentPosts.scheduledAt,
+      status: schema.contentPosts.status,
+    })
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.consultantId, consultantId),
+        eq(schema.contentPosts.status, "scheduled"),
+        gte(schema.contentPosts.scheduledAt, new Date(`${startDate}T00:00:00`)),
+        lt(schema.contentPosts.scheduledAt, new Date(`${endDate}T23:59:59`))
+      ));
+    
+    // Filter by platforms if specified
+    const filteredPosts = dbPlatforms.length > 0 
+      ? posts.filter(p => dbPlatforms.includes(p.platform || ""))
+      : posts;
+    
+    // Count by platform
+    const byPlatform: Record<string, number> = {};
+    const byDate: Record<string, number> = {};
+    
+    for (const post of filteredPosts) {
+      const platform = post.platform || "unknown";
+      byPlatform[platform] = (byPlatform[platform] || 0) + 1;
+      
+      if (post.scheduledAt) {
+        const dateStr = new Date(post.scheduledAt).toISOString().split("T")[0];
+        byDate[dateStr] = (byDate[dateStr] || 0) + 1;
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        total: filteredPosts.length,
+        byPlatform,
+        byDate,
+      }
+    });
+  } catch (error: any) {
+    console.error("❌ [CONTENT-STUDIO] Error counting scheduled posts:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to count scheduled posts"
+    });
+  }
+});
+
 // POST /api/content/posts - Create new post
 router.post("/posts", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {

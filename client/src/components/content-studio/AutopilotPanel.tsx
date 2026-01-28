@@ -308,11 +308,61 @@ function AutopilotPanel({
     },
   });
 
+  // Query to check existing scheduled posts in the selected date range
+  const { data: existingScheduledPosts } = useQuery<{
+    total: number;
+    byPlatform: Record<string, number>;
+    byDate: Record<string, number>;
+  } | null>({
+    queryKey: ["existing-scheduled-posts", startDate, endDate, localPlatforms],
+    queryFn: async () => {
+      if (!startDate || !endDate) return null;
+      
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        platforms: localPlatforms.join(","),
+      });
+      
+      const response = await fetch(`/api/content/posts/scheduled-count?${params}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        return null;
+      }
+      const json = await response.json();
+      return json.data || null;
+    },
+    enabled: Boolean(startDate && endDate && localPlatforms.length > 0),
+  });
+
   const primaryPlatform = localPlatforms[0] || "instagram";
   const platformSchedule = brandAssets?.postingSchedule?.[primaryPlatform];
   const configuredTimes = platformSchedule?.times || OPTIMAL_TIMES[primaryPlatform];
   const configuredPostsPerDay = platformSchedule?.postsPerDay || 1;
   const brandWritingStyle = platformSchedule?.writingStyle;
+
+  // Calculate maximum posts per day based on available time slots across all selected platforms
+  const maxPostsPerDay = useMemo(() => {
+    if (localPlatforms.length === 0) return 5;
+    
+    // For each selected platform, get the number of available time slots
+    const slotsPerPlatform = localPlatforms.map(platform => {
+      const schedule = brandAssets?.postingSchedule?.[platform];
+      const times = schedule?.times || OPTIMAL_TIMES[platform];
+      return times.length;
+    });
+    
+    // Return the minimum across all platforms (bottleneck)
+    return Math.min(...slotsPerPlatform, 5);
+  }, [localPlatforms, brandAssets]);
+
+  // Auto-adjust postsPerDay if it exceeds the maximum available slots
+  useEffect(() => {
+    if (postsPerDay > maxPostsPerDay) {
+      setPostsPerDay(maxPostsPerDay);
+    }
+  }, [maxPostsPerDay, postsPerDay]);
 
   const togglePlatform = (platform: "instagram" | "x" | "linkedin") => {
     setLocalPlatforms(prev => {
@@ -1156,6 +1206,37 @@ function AutopilotPanel({
             </div>
           </div>
 
+          {/* Warning for existing scheduled posts */}
+          {existingScheduledPosts && existingScheduledPosts.total > 0 && (
+            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Hai già {existingScheduledPosts.total} post programmati in questo periodo
+                  </p>
+                  <div className="text-xs text-amber-700 dark:text-amber-400 space-y-1">
+                    <p>L'autopilot salterà automaticamente gli orari già occupati:</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {Object.entries(existingScheduledPosts.byPlatform).map(([platform, count]) => (
+                        <Badge 
+                          key={platform} 
+                          variant="outline" 
+                          className="text-xs bg-amber-100 dark:bg-amber-900/50 border-amber-300 dark:border-amber-700"
+                        >
+                          {platform === "twitter" ? "X" : platform.charAt(0).toUpperCase() + platform.slice(1)}: {count}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                    Solo gli slot orari liberi verranno utilizzati per i nuovi post.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             <Label className="flex items-center gap-2">
               <CalendarOff className="h-4 w-4" />
@@ -1189,6 +1270,11 @@ function AutopilotPanel({
             <Label className="flex items-center gap-2">
               <Zap className="h-4 w-4" />
               Frequenza Post/Giorno
+              {maxPostsPerDay < 5 && (
+                <span className="text-xs text-amber-600 dark:text-amber-400">
+                  (max {maxPostsPerDay} per orari disponibili)
+                </span>
+              )}
             </Label>
             <Select
               value={postsPerDay.toString()}
@@ -1198,13 +1284,19 @@ function AutopilotPanel({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[1, 2, 3, 4, 5].map((n) => (
+                {Array.from({ length: maxPostsPerDay }, (_, i) => i + 1).map((n) => (
                   <SelectItem key={n} value={n.toString()}>
                     {n} post/giorno
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {maxPostsPerDay < 3 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Configura più orari in Brand Assets → Posting Schedule per aumentare il limite
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
