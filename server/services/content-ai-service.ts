@@ -1322,7 +1322,7 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
         ? Math.max(250, guaranteedMinPerSection) // At least 250 chars per section for long copy
         : Math.max(40, Math.floor(minChars / numSections)); // Proportional for short
       const maxPerSection = isLongCopy 
-        ? Math.min(800, targetMaxPerSection * 1.5) // Cap at 800 to avoid one section dominating
+        ? Math.floor(maxChars * 0.85 / numSections) // 85% del limite diviso per sezioni = margine 15% sicurezza
         : Math.min(200, Math.ceil(maxChars / numSections)); // Proportional for short
       
       // Calculate what the guaranteed total would be
@@ -1350,9 +1350,10 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
                 : "Breve ma incisivo, ogni parola conta")
           : "Conciso e diretto, massima densità informativa";
         
-        return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})**
+        return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})** [MAX ${maxPerSection} caratteri]
    - ${guideline.instruction}
-   - ${styleNote}`;
+   - ${styleNote}
+   - ⛔ NON superare ${maxPerSection} caratteri per questa sezione`;
       }).join("\n\n");
       
       // Simple JSON structure with placeholder descriptions
@@ -1363,23 +1364,24 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       const videoFields = isVideo ? `,
   "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche."` : "";
       
-      // Length enforcement block - focus on TOTAL only, let AI distribute freely
+      // Length enforcement block - focus on TOTAL with per-section limits
       const lengthEnforcement = isLongCopy ? `
 ⚠️⚠️⚠️ LIMITE CARATTERI OBBLIGATORIO ⚠️⚠️⚠️
 
-LUNGHEZZA COPY TOTALE: tra ${minChars} e ${maxChars} caratteri
+🎯 LIMITE TOTALE: ${maxChars} caratteri MAX (piattaforma ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
+📐 LIMITE PER SEZIONE: ${maxPerSection} caratteri MAX ciascuna (${numSections} sezioni × ${maxPerSection} = ${numSections * maxPerSection} totale)
 
 Il campo "captionCopy" DEVE essere:
 - MINIMO ${minChars} caratteri (copy troppo corto = fallimento)
-- MASSIMO ${maxChars} caratteri (limite piattaforma ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
+- MASSIMO ${maxChars} caratteri (limite piattaforma ASSOLUTO)
 
-Distribuisci liberamente il contenuto tra le ${numSections} sezioni dello schema.
-Ogni sezione deve essere sviluppata con storytelling e dettagli concreti.
+REGOLA MATEMATICA: ${numSections} sezioni × max ${maxPerSection} char = max ${numSections * maxPerSection} caratteri totali
 
-⛔ SE IL captionCopy SUPERA ${maxChars} CARATTERI, HAI FALLITO IL TASK.
-⛔ SE IL captionCopy È SOTTO ${minChars} CARATTERI, HAI FALLITO IL TASK.
+⛔ SE UNA SEZIONE SUPERA ${maxPerSection} CARATTERI = FALLIMENTO
+⛔ SE captionCopy SUPERA ${maxChars} CARATTERI = FALLIMENTO
+⛔ SE captionCopy È SOTTO ${minChars} CARATTERI = FALLIMENTO
 
-Conta i caratteri prima di rispondere.` : "";
+📊 CONTA I CARATTERI DI OGNI SEZIONE PRIMA DI RISPONDERE.` : "";
       
       return `
 🚨🚨🚨 REGOLA ASSOLUTA: SEGUI LO SCHEMA ESATTAMENTE 🚨🚨🚨
@@ -1420,21 +1422,34 @@ IMPORTANTE per fullScript (video):
     
     // Fallback to default structure when no schemaStructure is provided (schema "originale")
     if (isVideo && isLongCopy) {
+      // Calcola range dinamici basati su charLimit con margine 15%
+      const safeLimit = Math.floor(effectiveCharLimit * 0.85);
+      const hookMax = Math.floor(safeLimit * 0.10);
+      const chiCosaComeMax = Math.floor(safeLimit * 0.15);
+      const erroreMax = Math.floor(safeLimit * 0.25);
+      const soluzioneMax = Math.floor(safeLimit * 0.25);
+      const riprovaSocialeMax = Math.floor(safeLimit * 0.15);
+      const ctaMax = Math.floor(safeLimit * 0.10);
+      
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "video_script",
   "copyVariant": "long",
-  "hook": "100-200 caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
-  "chiCosaCome": "200-400 caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
-  "errore": "300-500 caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
-  "soluzione": "300-500 caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
-  "riprovaSociale": "200-400 caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
-  "cta": "100-200 caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
+  "hook": "MAX ${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
+  "chiCosaCome": "MAX ${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
+  "errore": "MAX ${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
+  "soluzione": "MAX ${soluzioneMax} caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
+  "riprovaSociale": "MAX ${riprovaSocialeMax} caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
+  "cta": "MAX ${ctaMax} caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
   "captionCopy": "Il copy COMPLETO che concatena tutte le sezioni sopra in un unico testo formattato per Instagram. DEVE essere ${minChars}-${maxChars} caratteri.",
   "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause. Esempio: 'Il tuo telefono... [PAUSA] ...è diventato una catena.'",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
+
+⛔ LIMITE PIATTAFORMA: ${effectiveCharLimit} caratteri
+⚠️ SOMMA TUTTE LE SEZIONI (escluso captionCopy) DEVE ESSERE < ${safeLimit} caratteri
+📊 CONTA I CARATTERI DI OGNI SEZIONE PRIMA DI RISPONDERE
 
 ${styleInstructions}
 
@@ -1463,18 +1478,31 @@ IMPORTANTE per fullScript:
 - Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
 - Usa '...' per micro-pause di respiro`;
     } else if (isLongCopy) {
+      // Calcola range dinamici basati su charLimit con margine 15%
+      const safeLimit = Math.floor(effectiveCharLimit * 0.85);
+      const hookMax = Math.floor(safeLimit * 0.10);
+      const chiCosaComeMax = Math.floor(safeLimit * 0.15);
+      const erroreMax = Math.floor(safeLimit * 0.25);
+      const soluzioneMax = Math.floor(safeLimit * 0.25);
+      const riprovaSocialeMax = Math.floor(safeLimit * 0.15);
+      const ctaMax = Math.floor(safeLimit * 0.10);
+      
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "copy_long",
-  "hook": "100-200 caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
-  "chiCosaCome": "200-400 caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
-  "errore": "300-500 caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
-  "soluzione": "300-500 caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
-  "riprovaSociale": "200-400 caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
-  "cta": "100-200 caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
+  "hook": "MAX ${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
+  "chiCosaCome": "MAX ${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
+  "errore": "MAX ${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
+  "soluzione": "MAX ${soluzioneMax} caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
+  "riprovaSociale": "MAX ${riprovaSocialeMax} caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
+  "cta": "MAX ${ctaMax} caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
+
+⛔ LIMITE PIATTAFORMA: ${effectiveCharLimit} caratteri
+⚠️ SOMMA TUTTE LE SEZIONI DEVE ESSERE < ${safeLimit} caratteri (margine sicurezza 15%)
+📊 CONTA I CARATTERI DI OGNI SEZIONE PRIMA DI RISPONDERE
 
 ${styleInstructions}`;
     } else {
