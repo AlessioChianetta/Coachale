@@ -28,12 +28,9 @@ export const generateImageConcept = async (prompt: string, aspectRatio: "1:1" | 
   
   const ai = new GoogleGenAI({ apiKey: settings.manualApiKey });
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash-exp-image-generation',
+    model: 'gemini-2.5-flash-image',
     contents: { parts: [{ text: prompt }] },
-    config: { 
-      responseModalities: ["image", "text"],
-      imageSafetySettings: { method: "semantic" },
-    }
+    config: { imageConfig: { aspectRatio } }
   });
 
   const part = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
