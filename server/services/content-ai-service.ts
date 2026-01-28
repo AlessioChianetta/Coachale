@@ -1147,6 +1147,13 @@ Scrivi come parla una persona normale. Il testo deve SCORRERE naturalmente, esse
 - Usa frecce → per elenchi o punti chiave invece di paragrafi densi
 - Le sezioni devono respirare: hook separato, problema separato, soluzione separata
 - Il risultato finale deve essere un post FLUIDO e NATURALE, non robotico
+
+⚠️ RISPETTA IL LIMITE CARATTERI:
+- Conta mentalmente i caratteri mentre scrivi
+- Quando arrivi al 70-80% del limite, inizia a concludere
+- Se il limite è 2200 caratteri, a 1700 caratteri devi essere già verso la CTA
+- NON superare MAI il limite della piattaforma - altrimenti il post non può essere pubblicato
+- Meglio un post più corto e completo che un post troppo lungo e tagliato
 `;
     
     const styleMap: Record<string, { name: string; instructions: string }> = {
