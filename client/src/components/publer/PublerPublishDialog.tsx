@@ -209,15 +209,10 @@ const platformIcons: Record<string, React.ReactNode> = {
 function composeText(source: ContentSource, post: Post, customText: string): string {
   switch (source) {
     case "full_message": {
-      // Prima cerca fullCopy (campo principale per copy completo dal DB)
+      // fullCopy è il testo COMPLETO del post (già include hook, body, cta)
+      // NON aggiungere hook/cta separatamente per evitare duplicazioni!
       if (post.fullCopy) {
-        // Se c'è fullCopy, combina con hook e cta se disponibili
-        const parts = [
-          post.hook,
-          post.fullCopy,
-          post.cta,
-        ].filter(Boolean);
-        return parts.join("\n\n");
+        return post.fullCopy;
       }
       
       // Fallback: combina tutti i campi strutturati disponibili

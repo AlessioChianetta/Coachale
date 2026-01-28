@@ -1,9 +1,93 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { analyzeAdText, generateImageConcept } from './services/geminiService';
 import { AdAnalysis, GeneratedImage, VisualConcept, AppSettings, PostInput, SocialPlatform } from './types';
+import Navbar from "@/components/navbar";
+import Sidebar from "@/components/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Sun,
+  Moon,
+  Settings,
+  Plus,
+  Trash2,
+  Download,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
+  Sparkles,
+  CloudUpload,
+  FileText,
+  Copy,
+  Check,
+  RefreshCw,
+  Zap,
+  X,
+  Instagram,
+  Linkedin,
+  Facebook,
+  ChevronRight,
+  AlertCircle,
+  Layers,
+} from "lucide-react";
+
+interface ContentPost {
+  id: string;
+  title?: string;
+  hook?: string;
+  body?: string;
+  cta?: string;
+  fullCopy?: string;
+  platform?: string;
+  status?: string;
+  copyType?: string;
+  publerMediaIds?: (string | { id: string })[];
+  structuredContent?: {
+    hook?: string;
+    body?: string;
+    cta?: string;
+    chiCosaCome?: string;
+    errore?: string;
+    soluzione?: string;
+    riprovaSociale?: string;
+  };
+}
 
 const AdVisagePage: React.FC = () => {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const [postInputs, setPostInputs] = useState<PostInput[]>(() => {
     const saved = localStorage.getItem('advisage_infinite_v3');
     return saved ? JSON.parse(saved) : [{ id: 'init-1', text: '', platform: 'instagram' }];
@@ -38,6 +122,47 @@ const AdVisagePage: React.FC = () => {
   const [variantToggle, setVariantToggle] = useState<Record<string, 'clean' | 'text'>>({});
   const [showSettings, setShowSettings] = useState(false);
   const [viewMode, setViewMode] = useState<'factory' | 'pitch'>('factory');
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showPublerDialog, setShowPublerDialog] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState<{ url: string; conceptId: string } | null>(null);
+  const [isUploadingToPubler, setIsUploadingToPubler] = useState(false);
+  const [selectedPostForMedia, setSelectedPostForMedia] = useState<string | null>(null);
+  const [copiedCaption, setCopiedCaption] = useState<string | null>(null);
+
+  const { data: postsData, isLoading: isLoadingPosts } = useQuery({
+    queryKey: ['/api/content/posts'],
+    queryFn: async () => {
+      const response = await fetch('/api/content/posts', {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error('Failed to fetch posts');
+      return response.json();
+    },
+  });
+
+  const updatePostMutation = useMutation({
+    mutationFn: async ({ postId, publerMediaIds }: { postId: string; publerMediaIds: string[] }) => {
+      const response = await fetch(`/api/content/posts/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ publerMediaIds }),
+      });
+      if (!response.ok) throw new Error('Failed to update post');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/content/posts'] });
+      toast({
+        title: "Media associato",
+        description: "L'immagine è stata associata al post con successo",
+      });
+    },
+  });
+
+  const existingPosts = postsData?.data || [];
 
   useEffect(() => {
     localStorage.setItem('advisage_infinite_v3', JSON.stringify(postInputs));
@@ -64,6 +189,40 @@ const AdVisagePage: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const getPostFullCopy = (post: ContentPost): string => {
+    // Prioritizza fullCopy se presente (è il testo completo del post)
+    if (post.fullCopy) {
+      return post.fullCopy;
+    }
+    // Fallback: componi dai campi strutturati
+    const content = post.structuredContent || {};
+    const parts = [
+      content.hook || post.hook,
+      content.chiCosaCome,
+      content.errore,
+      content.soluzione,
+      content.riprovaSociale,
+      content.body || post.body,
+      content.cta || post.cta,
+    ].filter(Boolean);
+    return parts.join('\n\n');
+  };
+
+  const importFromPost = (post: ContentPost) => {
+    const fullCopy = getPostFullCopy(post);
+    const platform = (post.platform || 'instagram') as SocialPlatform;
+    setPostInputs([{
+      id: Math.random().toString(36).substr(2, 9),
+      text: fullCopy,
+      platform,
+    }]);
+    setShowImportDialog(false);
+    toast({
+      title: "Post importato",
+      description: "Il contenuto del post è stato importato nella coda",
+    });
   };
 
   const fetchFromExternalSource = async () => {
@@ -140,7 +299,6 @@ const AdVisagePage: React.FC = () => {
     try {
       for (const result of batchResults) {
         const firstConcept = result.concepts[0];
-        // Controlla se l'immagine è già stata generata
         const alreadyExists = generatedImages.some(img => img.conceptId === firstConcept.id);
         if (!alreadyExists) {
           await handleGenerateOne(firstConcept, 'text');
@@ -153,322 +311,655 @@ const AdVisagePage: React.FC = () => {
     }
   };
 
+  const base64ToBlob = (base64: string): Blob => {
+    const parts = base64.split(',');
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  const handleUploadToPubler = async (imageUrl: string, conceptId: string) => {
+    setUploadingImage({ url: imageUrl, conceptId });
+    setShowPublerDialog(true);
+  };
+
+  const executePublerUpload = async () => {
+    if (!uploadingImage) return;
+    
+    setIsUploadingToPubler(true);
+    try {
+      const blob = base64ToBlob(uploadingImage.url);
+      const formData = new FormData();
+      formData.append('files', blob, `advisage-${uploadingImage.conceptId}-${Date.now()}.png`);
+
+      const response = await fetch('/api/publer/upload-media', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Errore caricamento');
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.media && result.media.length > 0) {
+        const mediaId = result.media[0].id;
+        
+        if (selectedPostForMedia) {
+          const post = existingPosts.find((p: ContentPost) => p.id === selectedPostForMedia);
+          const currentMediaIds = post?.publerMediaIds || [];
+          const newMediaIds = [...currentMediaIds.map((m: any) => typeof m === 'string' ? m : m.id), mediaId];
+          
+          await updatePostMutation.mutateAsync({
+            postId: selectedPostForMedia,
+            publerMediaIds: newMediaIds,
+          });
+        }
+
+        toast({
+          title: "Caricato su Publer",
+          description: `Media ID: ${mediaId}`,
+        });
+        
+        setShowPublerDialog(false);
+        setUploadingImage(null);
+        setSelectedPostForMedia(null);
+      }
+    } catch (err: any) {
+      toast({
+        title: "Errore",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingToPubler(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCaption(id);
+    setTimeout(() => setCopiedCaption(null), 2000);
+  };
+
   const activePost = useMemo(() => batchResults.find(p => p.id === activePostId), [batchResults, activePostId]);
   const isDark = theme === 'dark';
-  const bgColor = isDark ? 'bg-[#020617]' : 'bg-[#f8fafc]';
-  const cardBg = isDark ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm';
+
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case 'instagram': return <Instagram className="w-4 h-4" />;
+      case 'linkedin': return <Linkedin className="w-4 h-4" />;
+      case 'facebook': return <Facebook className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
 
   return (
-    <div className={`min-h-screen flex flex-col ${bgColor} ${isDark ? 'text-slate-100' : 'text-slate-900'} font-['Inter'] transition-colors duration-500`}>
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-          <div className={`max-w-md w-full p-10 rounded-[3rem] border ${cardBg} shadow-2xl animate-in zoom-in-95`}>
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-black uppercase tracking-tighter">Advanced Config</h3>
-              <button onClick={() => setShowSettings(false)} className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center"><i className="fas fa-times"></i></button>
-            </div>
-            <div className="space-y-6">
-              <div>
-                <label className="text-[10px] font-black uppercase mb-2 block opacity-50">API Key di Google AI Studio</label>
-                <input 
-                  type="password" 
-                  value={settings.manualApiKey}
-                  onChange={e => setSettings({...settings, manualApiKey: e.target.value})}
-                  className={`w-full h-12 px-4 rounded-xl border outline-none text-sm ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`}
-                  placeholder="Incolla qui la tua API Key..."
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase mb-2 block opacity-50">Endpoint Generatore Testi (JSON)</label>
-                <input 
-                  type="text" 
-                  value={settings.externalSourceUrl}
-                  onChange={e => setSettings({...settings, externalSourceUrl: e.target.value})}
-                  className={`w-full h-12 px-4 rounded-xl border outline-none text-sm ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`}
-                  placeholder="https://progetto.replit.app/api/generatesti"
-                />
-              </div>
-              <button onClick={() => setShowSettings(false)} className="w-full py-4 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg">Salva e Chiudi</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <header className={`h-20 ${isDark ? 'bg-black/40 border-white/5' : 'bg-white border-slate-200'} border-b sticky top-0 z-50 flex items-center backdrop-blur-xl`}>
-        <div className="max-w-7xl mx-auto px-8 w-full flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg"><i className="fas fa-bolt-lightning text-white"></i></div>
-            <h1 className="text-lg font-black tracking-tighter">ADVISAGE <span className="text-indigo-500">PRO</span></h1>
-          </div>
-          <div className="flex items-center gap-4">
-             <button onClick={() => setViewMode(viewMode === 'factory' ? 'pitch' : 'factory')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase border transition-all ${viewMode === 'pitch' ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg' : isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
-                {viewMode === 'factory' ? 'Client Pitch Mode' : 'Back to Factory'}
-             </button>
-             <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
-                <i className="fas fa-cog"></i>
-             </button>
-             <button onClick={toggleTheme} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center"><i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'}`}></i></button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-7xl mx-auto px-8 py-12 w-full relative">
-        {!batchResults.length ? (
-          <div className="flex flex-col lg:flex-row gap-12 items-start animate-in fade-in duration-500">
-            <aside className="lg:w-80 shrink-0 space-y-6">
-              <div className={`p-8 rounded-[2.5rem] border ${cardBg}`}>
-                <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-6">Factory Styles</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[9px] font-bold uppercase opacity-40 mb-2 block">Mood</label>
-                    <select value={settings.mood} onChange={e => setSettings({...settings, mood: e.target.value as any})} className={`w-full h-11 rounded-xl text-xs px-3 border outline-none ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-white text-slate-800'}`}>
-                      <option value="luxury">Luxury / Elegant</option>
-                      <option value="energetic">Vibrant / Energetic</option>
-                      <option value="professional">Enterprise / Trusted</option>
-                      <option value="minimalist">Minimalist / Zen</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase opacity-40 mb-2 block">Art Style</label>
-                    <select value={settings.stylePreference} onChange={e => setSettings({...settings, stylePreference: e.target.value as any})} className={`w-full h-11 rounded-xl text-xs px-3 border outline-none ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-white text-slate-800'}`}>
-                      <option value="realistic">Photography</option>
-                      <option value="3d-render">3D Product Render</option>
-                      <option value="illustration">Flat Design</option>
-                      <option value="cyberpunk">Cyber / Neon</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              
-              <button 
-                onClick={fetchFromExternalSource} 
-                disabled={isFetchingFromSource}
-                className={`w-full py-5 rounded-[2rem] border-2 border-dashed ${isDark ? 'border-indigo-500/20 bg-indigo-500/5 text-indigo-400' : 'border-indigo-200 bg-white text-indigo-600'} text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 disabled:opacity-50`}
-              >
-                <i className={`fas ${isFetchingFromSource ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-down'}`}></i> 
-                Importa da Generatore
-              </button>
-            </aside>
-
-            <div className="flex-1 space-y-6">
-              <div className="flex flex-col gap-4">
-                {postInputs.map((post, idx) => (
-                  <div key={post.id} className={`p-8 rounded-[2.5rem] border ${cardBg} flex flex-col md:flex-row gap-6 relative group transition-all hover:border-indigo-500/30`}>
-                    <div className="md:w-40 shrink-0">
-                       <label className="text-[9px] font-black uppercase opacity-40 mb-3 block">Social Platform</label>
-                       <select value={post.platform} onChange={e => updatePost(post.id, { platform: e.target.value as any })} className={`w-full h-10 rounded-xl text-[10px] font-black uppercase px-2 border outline-none ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50'}`}>
-                          <option value="instagram">Instagram</option>
-                          <option value="tiktok">TikTok</option>
-                          <option value="linkedin">LinkedIn</option>
-                          <option value="facebook">Facebook</option>
-                       </select>
+    <div className="min-h-screen bg-background">
+      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        
+        <div className="flex-1 overflow-y-auto">
+          <div className={`min-h-full ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+            <div className="border-b sticky top-0 z-40 backdrop-blur-xl bg-background/80">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <Zap className="w-5 h-5 text-white" />
                     </div>
-                    <div className="flex-1">
-                       <label className="text-[9px] font-black uppercase opacity-40 mb-3 block">Ad Copy Content #{idx+1}</label>
-                       <textarea value={post.text} onChange={e => updatePost(post.id, { text: e.target.value })} className="w-full h-32 bg-transparent border-none focus:ring-0 text-sm outline-none resize-none leading-relaxed" placeholder="Scrivi o importa il testo qui..." />
-                       {postInputs.length > 1 && (
-                         <button onClick={() => removePostInput(post.id)} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-rose-500 transition-all">
-                           <i className="fas fa-trash-alt"></i>
-                         </button>
-                       )}
+                    <div>
+                      <h1 className="text-xl font-bold tracking-tight">AdVisage <span className="text-indigo-500">PRO</span></h1>
+                      <p className="text-xs text-muted-foreground">AI Creative Factory</p>
                     </div>
-                  </div>
-                ))}
-                <div className="flex gap-4">
-                   <button onClick={addPostInput} className={`flex-1 py-6 border-2 border-dashed ${isDark ? 'border-white/10' : 'border-slate-200'} rounded-[2rem] text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all`}>Aggiungi Post</button>
-                   <button onClick={handleStartBatch} disabled={isProcessingBatch} className="flex-[2] py-6 bg-indigo-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-xl hover:bg-indigo-500 transition-all disabled:opacity-50">
-                      {isProcessingBatch ? <><i className="fas fa-cog fa-spin mr-3"></i> Analisi in corso...</> : 'Inizia Produzione Batch'}
-                   </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row gap-10">
-            <aside className="lg:w-80 shrink-0">
-               <div className={`p-6 rounded-[2.5rem] border ${cardBg} sticky top-28 space-y-3 shadow-xl`}>
-                  <h4 className="text-[10px] font-black uppercase opacity-40 px-4 mb-4">Coda Elaborata</h4>
-                  <div className="space-y-2 mb-6">
-                    {batchResults.map(p => {
-                      const firstConceptId = p.concepts[0].id;
-                      const hasImage = generatedImages.some(img => img.conceptId === firstConceptId);
-                      const isGenerating = generatingIds.has(firstConceptId);
-                      
-                      return (
-                        <button key={p.id} onClick={() => setActivePostId(p.id)} className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center gap-3 ${activePostId === p.id ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg' : isDark ? 'bg-black/20 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-                           <div className="relative">
-                             <i className={`fab fa-${p.socialNetwork} text-xs opacity-60`}></i>
-                             {hasImage && <div className="absolute -top-2 -right-2 w-2 h-2 bg-emerald-500 rounded-full shadow-lg"></div>}
-                             {isGenerating && <div className="absolute -top-2 -right-2 w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>}
-                           </div>
-                           <div className="truncate">
-                             <p className="text-[10px] font-black uppercase truncate">{p.context.sector}</p>
-                             <p className="text-[8px] opacity-60 truncate">{p.tone}</p>
-                           </div>
-                        </button>
-                      );
-                    })}
                   </div>
                   
-                  <button 
-                    onClick={handleBatchGenerateFirstImages}
-                    disabled={isBatchRendering}
-                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <i className={`fas ${isBatchRendering ? 'fa-spinner fa-spin' : 'fa-layer-group'}`}></i>
-                    {isBatchRendering ? 'Rendering in corso...' : 'Renderizza Anteprime Batch'}
-                  </button>
-
-                  <div className="pt-4 mt-4 border-t border-white/5">
-                    <button onClick={() => { setBatchResults([]); setPostInputs([{ id: 'reset', text: '', platform: 'instagram' }]); }} className="w-full py-3 text-[9px] font-black uppercase tracking-widest text-rose-500">Pulisci Tutto</button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant={viewMode === 'pitch' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode(viewMode === 'factory' ? 'pitch' : 'factory')}
+                    >
+                      {viewMode === 'factory' ? 'Client Pitch Mode' : 'Back to Factory'}
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => setShowSettings(true)}>
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={toggleTheme}>
+                      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                    </Button>
                   </div>
-               </div>
-            </aside>
+                </div>
+              </div>
+            </div>
 
-            <div className="flex-1 space-y-12 animate-in slide-in-from-bottom-6 duration-700">
-               {activePost && (
-                 <>
-                   {/* Meta Analysis */}
-                   <div className={`p-10 rounded-[3.5rem] border ${cardBg} shadow-2xl relative overflow-hidden group`}>
-                      <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:rotate-12 transition-transform pointer-events-none">
-                         <i className={`fab fa-${activePost.socialNetwork} text-[15rem]`}></i>
-                      </div>
-                      <div className="max-w-2xl relative z-10">
-                        <h2 className="text-4xl font-black tracking-tighter mb-8">Brand Strategy <span className="text-indigo-500">Report</span></h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                           <div className={`p-6 rounded-3xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
-                              <p className="text-[9px] font-black uppercase opacity-40 mb-2">Obiettivo Campagna</p>
-                              <p className="text-sm font-bold">{activePost.objective}</p>
-                           </div>
-                           <div className={`p-6 rounded-3xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
-                              <p className="text-[9px] font-black uppercase opacity-40 mb-2">Assetto Emotivo</p>
-                              <p className="text-sm font-bold text-indigo-500">{activePost.emotion}</p>
-                           </div>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+              {!batchResults.length ? (
+                <div className="flex flex-col lg:flex-row gap-8">
+                  <aside className="lg:w-80 shrink-0 space-y-6">
+                    <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-indigo-500" />
+                          Factory Styles
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-2 block">Mood</label>
+                          <Select value={settings.mood} onValueChange={(v) => setSettings({...settings, mood: v as any})}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="luxury">Luxury / Elegant</SelectItem>
+                              <SelectItem value="energetic">Vibrant / Energetic</SelectItem>
+                              <SelectItem value="professional">Enterprise / Trusted</SelectItem>
+                              <SelectItem value="minimalist">Minimalist / Zen</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <div className={`p-8 rounded-[2.5rem] border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
-                           <p className="text-[10px] font-black uppercase text-indigo-500 mb-3 flex items-center gap-2">
-                             <i className="fas fa-chess-knight"></i> Competitive Edge
-                           </p>
-                           <p className="text-sm leading-relaxed opacity-80 italic">"{activePost.competitiveEdge}"</p>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-2 block">Art Style</label>
+                          <Select value={settings.stylePreference} onValueChange={(v) => setSettings({...settings, stylePreference: v as any})}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="realistic">Photography</SelectItem>
+                              <SelectItem value="3d-render">3D Product Render</SelectItem>
+                              <SelectItem value="illustration">Flat Design</SelectItem>
+                              <SelectItem value="cyberpunk">Cyber / Neon</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </div>
-                   </div>
+                      </CardContent>
+                    </Card>
 
-                   {/* Captions Generator */}
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {activePost.socialCaptions.map((cap, i) => (
-                        <div key={i} className={`p-8 rounded-[3rem] border ${cardBg} flex flex-col group hover:scale-[1.02] transition-all`}>
-                           <div className="flex justify-between items-center mb-6">
-                             <span className="text-[9px] font-black uppercase px-3 py-1 bg-indigo-600 text-white rounded-full">{cap.tone}</span>
-                             <button onClick={() => navigator.clipboard.writeText(cap.text)} className="text-slate-500 hover:text-indigo-500"><i className="fas fa-copy"></i></button>
-                           </div>
-                           <p className="text-xs leading-relaxed mb-8 opacity-70 line-clamp-6">{cap.text}</p>
-                           <div className="mt-auto flex flex-wrap gap-2">
-                              {cap.hashtags.map(h => <span key={h} className="text-[9px] text-indigo-500 font-black">#{h}</span>)}
-                           </div>
-                        </div>
-                      ))}
-                   </div>
-
-                   {/* Concepts Section */}
-                   <div className="space-y-16">
-                      {activePost.concepts.map(concept => {
-                        const isGen = generatingIds.has(concept.id);
-                        const variant = variantToggle[concept.id] || 'text';
-                        const currentImg = generatedImages.find(i => i.conceptId === concept.id && i.variant === variant)?.imageUrl;
+                    <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-blue-500" />
+                          Importa Contenuti
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => setShowImportDialog(true)}
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Importa da Post Esistenti
+                          <Badge variant="secondary" className="ml-auto">{existingPosts.length}</Badge>
+                        </Button>
                         
-                        return (
-                          <div key={concept.id} className={`rounded-[4rem] border overflow-hidden flex flex-col lg:flex-row items-stretch ${cardBg} shadow-2xl hover:border-indigo-500/30 transition-all`}>
-                            <div className={`lg:w-[500px] bg-black shrink-0 relative flex items-center justify-center overflow-hidden group/img
-                              ${activePost.socialNetwork === 'tiktok' ? 'aspect-[9/16]' : 'aspect-square'}`}>
-                               {currentImg ? (
-                                 <>
-                                   <img src={currentImg} className="w-full h-full object-cover animate-in fade-in duration-1000" />
-                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                      <button 
-                                        onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}-${variant}.png`)}
-                                        className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
-                                      >
-                                        <i className="fas fa-download text-lg"></i>
-                                      </button>
-                                   </div>
-                                 </>
-                               ) : (
-                                 <div className="flex flex-col items-center opacity-20">
-                                   <i className="fas fa-wand-sparkles text-7xl mb-4"></i>
-                                   <p className="text-[10px] font-black uppercase tracking-[0.3em]">Ready for Render</p>
-                                 </div>
-                               )}
-                               {isGen && (
-                                 <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10 backdrop-blur-xl">
-                                    <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-                                    <p className="text-[10px] font-black uppercase text-white tracking-[0.5em]">Synthesizing...</p>
-                                 </div>
-                               )}
-                            </div>
-                            
-                            <div className="flex-1 p-12 flex flex-col">
-                               <div className="flex flex-wrap justify-between items-start mb-10 gap-4">
-                                  <div className="flex-1">
-                                     <h3 className="text-3xl font-black mb-2 tracking-tighter">{concept.title}</h3>
-                                     <p className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">{concept.styleType}</p>
-                                  </div>
-                                  <div className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase border flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`}>
-                                     <i className="fas fa-crop-simple"></i> Ratio {concept.recommendedFormat}
-                                  </div>
-                               </div>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={fetchFromExternalSource}
+                          disabled={isFetchingFromSource}
+                        >
+                          {isFetchingFromSource ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                          )}
+                          Importa da Generatore
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </aside>
 
-                               <div className="space-y-6 mb-12">
-                                  <p className="text-[13px] leading-relaxed opacity-60 italic">"{concept.description}"</p>
-                                  <div className={`p-6 rounded-3xl border ${isDark ? 'bg-black/40 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                                     <p className="text-[10px] font-black uppercase opacity-40 mb-2">Strategy Reasoning</p>
-                                     <p className="text-[11px] leading-relaxed opacity-80">{concept.reasoning}</p>
-                                  </div>
-                               </div>
-                               
-                               <div className="mt-auto space-y-6">
-                                  <div className={`flex p-2 rounded-3xl border ${isDark ? 'bg-black/60 border-white/5' : 'bg-slate-100 border-slate-200'}`}>
-                                     <button 
-                                      onClick={() => setVariantToggle({...variantToggle, [concept.id]: 'text'})} 
-                                      className={`flex-1 py-4 rounded-2xl text-[11px] font-black uppercase transition-all flex items-center justify-center gap-2 ${variant === 'text' ? 'bg-white text-black shadow-xl scale-[1.02]' : 'opacity-40 hover:opacity-100'}`}
-                                     >
-                                       <i className="fas fa-font"></i> Con Testo Ad
-                                     </button>
-                                     <button 
-                                      onClick={() => setVariantToggle({...variantToggle, [concept.id]: 'clean'})} 
-                                      className={`flex-1 py-4 rounded-2xl text-[11px] font-black uppercase transition-all flex items-center justify-center gap-2 ${variant === 'clean' ? 'bg-white text-black shadow-xl scale-[1.02]' : 'opacity-40 hover:opacity-100'}`}
-                                     >
-                                       <i className="fas fa-image"></i> Solo Visual
-                                     </button>
-                                  </div>
-                                  <button 
-                                    onClick={() => handleGenerateOne(concept)} 
-                                    disabled={isGen}
-                                    className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-500 hover:scale-[1.01] transition-all disabled:opacity-50"
-                                  >
-                                    Renderizza Asset Pro
-                                  </button>
-                               </div>
+                  <div className="flex-1 space-y-4">
+                    {postInputs.map((post, idx) => (
+                      <Card key={post.id} className={`relative group ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
+                        <CardContent className="p-6">
+                          <div className="flex flex-col md:flex-row gap-4">
+                            <div className="md:w-40 shrink-0">
+                              <label className="text-xs font-medium text-muted-foreground mb-2 block">Piattaforma</label>
+                              <Select value={post.platform} onValueChange={(v) => updatePost(post.id, { platform: v as SocialPlatform })}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="instagram">Instagram</SelectItem>
+                                  <SelectItem value="tiktok">TikTok</SelectItem>
+                                  <SelectItem value="linkedin">LinkedIn</SelectItem>
+                                  <SelectItem value="facebook">Facebook</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                                Ad Copy #{idx + 1}
+                              </label>
+                              <Textarea
+                                value={post.text}
+                                onChange={(e) => updatePost(post.id, { text: e.target.value })}
+                                placeholder="Scrivi o importa il testo del post qui..."
+                                className="min-h-[120px] resize-none"
+                              />
                             </div>
                           </div>
-                        );
-                      })}
-                   </div>
-                 </>
-               )}
+                          {postInputs.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                              onClick={() => removePostInput(post.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                    
+                    <div className="flex gap-3">
+                      <Button variant="outline" className="flex-1" onClick={addPostInput}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Aggiungi Post
+                      </Button>
+                      <Button 
+                        className="flex-[2] bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                        onClick={handleStartBatch}
+                        disabled={isProcessingBatch}
+                      >
+                        {isProcessingBatch ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Analisi in corso...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Inizia Produzione Batch
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col lg:flex-row gap-8">
+                  <aside className="lg:w-72 shrink-0">
+                    <Card className={`sticky top-28 ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-semibold">Coda Elaborata</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <ScrollArea className="max-h-[300px]">
+                          {batchResults.map(p => {
+                            const firstConceptId = p.concepts[0].id;
+                            const hasImage = generatedImages.some(img => img.conceptId === firstConceptId);
+                            const isGenerating = generatingIds.has(firstConceptId);
+                            
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => setActivePostId(p.id)}
+                                className={`w-full text-left p-3 rounded-lg border mb-2 transition-all flex items-center gap-3 ${
+                                  activePostId === p.id 
+                                    ? 'bg-indigo-600 text-white border-indigo-500' 
+                                    : isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 hover:bg-slate-200'
+                                }`}
+                              >
+                                <div className="relative">
+                                  {getPlatformIcon(p.socialNetwork)}
+                                  {hasImage && <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />}
+                                  {isGenerating && <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />}
+                                </div>
+                                <div className="truncate flex-1">
+                                  <p className="text-xs font-semibold truncate">{p.context.sector}</p>
+                                  <p className="text-[10px] opacity-60 truncate">{p.tone}</p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </ScrollArea>
+                        
+                        <Button
+                          className="w-full bg-emerald-600 hover:bg-emerald-700"
+                          onClick={handleBatchGenerateFirstImages}
+                          disabled={isBatchRendering}
+                        >
+                          {isBatchRendering ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Rendering...
+                            </>
+                          ) : (
+                            <>
+                              <Layers className="w-4 h-4 mr-2" />
+                              Renderizza Batch
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          className="w-full text-destructive"
+                          onClick={() => {
+                            setBatchResults([]);
+                            setPostInputs([{ id: 'reset', text: '', platform: 'instagram' }]);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Pulisci Tutto
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </aside>
+
+                  <div className="flex-1 space-y-8">
+                    {activePost && (
+                      <>
+                        <Card className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
+                          <CardContent className="p-8">
+                            <h2 className="text-2xl font-bold mb-6">Brand Strategy <span className="text-indigo-500">Report</span></h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                              <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Obiettivo Campagna</p>
+                                <p className="font-semibold">{activePost.objective}</p>
+                              </div>
+                              <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Assetto Emotivo</p>
+                                <p className="font-semibold text-indigo-500">{activePost.emotion}</p>
+                              </div>
+                            </div>
+                            <div className={`p-6 rounded-xl ${isDark ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-indigo-50 border border-indigo-100'}`}>
+                              <p className="text-xs font-semibold text-indigo-500 mb-2">Competitive Edge</p>
+                              <p className="text-sm italic opacity-80">"{activePost.competitiveEdge}"</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {activePost.socialCaptions.map((cap, i) => (
+                            <Card key={i} className={isDark ? 'bg-slate-900/50 border-slate-800' : ''}>
+                              <CardContent className="p-5">
+                                <div className="flex justify-between items-center mb-4">
+                                  <Badge variant="secondary">{cap.tone}</Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => copyToClipboard(cap.text, `cap-${i}`)}
+                                  >
+                                    {copiedCaption === `cap-${i}` ? (
+                                      <Check className="w-4 h-4 text-green-500" />
+                                    ) : (
+                                      <Copy className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                                <p className="text-xs leading-relaxed opacity-70 line-clamp-5 mb-4">{cap.text}</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {cap.hashtags.slice(0, 5).map(h => (
+                                    <span key={h} className="text-[10px] text-indigo-500 font-medium">#{h}</span>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+
+                        {activePost.concepts.map(concept => {
+                          const isGen = generatingIds.has(concept.id);
+                          const variant = variantToggle[concept.id] || 'text';
+                          const currentImg = generatedImages.find(i => i.conceptId === concept.id && i.variant === variant)?.imageUrl;
+                          
+                          return (
+                            <Card key={concept.id} className={`overflow-hidden ${isDark ? 'bg-slate-900/50 border-slate-800' : ''}`}>
+                              <div className="flex flex-col lg:flex-row">
+                                <div className={`lg:w-[400px] shrink-0 relative flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'} ${
+                                  activePost.socialNetwork === 'tiktok' ? 'aspect-[9/16]' : 'aspect-square'
+                                }`}>
+                                  {currentImg ? (
+                                    <>
+                                      <img src={currentImg} className="w-full h-full object-cover" alt={concept.title} />
+                                      <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                        <Button
+                                          size="icon"
+                                          variant="secondary"
+                                          onClick={() => downloadImage(currentImg, `advisage-${concept.title.replace(/\s+/g, '-').toLowerCase()}-${variant}.png`)}
+                                        >
+                                          <Download className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="default"
+                                          className="bg-indigo-600 hover:bg-indigo-700"
+                                          onClick={() => handleUploadToPubler(currentImg, concept.id)}
+                                        >
+                                          <CloudUpload className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="flex flex-col items-center opacity-30">
+                                      <ImageIcon className="w-16 h-16 mb-4" />
+                                      <p className="text-xs font-semibold uppercase tracking-wider">Ready for Render</p>
+                                    </div>
+                                  )}
+                                  {isGen && (
+                                    <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10">
+                                      <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
+                                      <p className="text-xs font-semibold uppercase tracking-wider">Synthesizing...</p>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1 p-8">
+                                  <div className="flex flex-wrap justify-between items-start mb-6 gap-4">
+                                    <div>
+                                      <h3 className="text-xl font-bold mb-1">{concept.title}</h3>
+                                      <Badge variant="outline" className="text-indigo-500">{concept.styleType}</Badge>
+                                    </div>
+                                    <Badge variant="secondary">Ratio {concept.recommendedFormat}</Badge>
+                                  </div>
+
+                                  <p className="text-sm opacity-70 italic mb-6">"{concept.description}"</p>
+                                  
+                                  <div className={`p-4 rounded-xl mb-6 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2">Strategy Reasoning</p>
+                                    <p className="text-xs leading-relaxed opacity-80">{concept.reasoning}</p>
+                                  </div>
+                                  
+                                  <Tabs value={variant} onValueChange={(v) => setVariantToggle({...variantToggle, [concept.id]: v as 'text' | 'clean'})}>
+                                    <TabsList className="w-full mb-4">
+                                      <TabsTrigger value="text" className="flex-1">Con Testo</TabsTrigger>
+                                      <TabsTrigger value="clean" className="flex-1">Solo Visual</TabsTrigger>
+                                    </TabsList>
+                                  </Tabs>
+
+                                  <Button
+                                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                                    onClick={() => handleGenerateOne(concept)}
+                                    disabled={isGen}
+                                  >
+                                    {isGen ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Generazione...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles className="w-4 h-4 mr-2" />
+                                        Renderizza Asset Pro
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </main>
+
+            {error && (
+              <div className="fixed bottom-6 right-6 bg-destructive text-destructive-foreground p-4 rounded-xl shadow-2xl z-50 flex items-center gap-3 max-w-md">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span className="text-sm">{error}</span>
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setError(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Impostazioni Avanzate</DialogTitle>
+            <DialogDescription>Configura le tue preferenze per AdVisage PRO</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">API Key di Google AI Studio</label>
+              <Input
+                type="password"
+                value={settings.manualApiKey}
+                onChange={e => setSettings({...settings, manualApiKey: e.target.value})}
+                placeholder="Incolla qui la tua API Key..."
+              />
+              <p className="text-xs text-muted-foreground mt-1">Necessaria per la generazione immagini</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Endpoint Generatore Testi (JSON)</label>
+              <Input
+                type="text"
+                value={settings.externalSourceUrl}
+                onChange={e => setSettings({...settings, externalSourceUrl: e.target.value})}
+                placeholder="https://progetto.replit.app/api/genera"
+              />
+            </div>
+            <Button onClick={() => setShowSettings(false)} className="w-full">
+              Salva e Chiudi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Importa da Post Esistenti</DialogTitle>
+            <DialogDescription>Seleziona un post per importare il suo contenuto</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[50vh] mt-4">
+            {isLoadingPosts ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : existingPosts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Nessun post disponibile</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {existingPosts.map((post: ContentPost) => {
+                  const fullCopy = getPostFullCopy(post);
+                  return (
+                    <button
+                      key={post.id}
+                      onClick={() => importFromPost(post)}
+                      className="w-full text-left p-4 rounded-lg border hover:bg-accent transition-colors flex items-start gap-3"
+                    >
+                      {getPlatformIcon(post.platform || 'instagram')}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{post.title || 'Post senza titolo'}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{fullCopy}</p>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="outline" className="text-[10px]">{post.platform}</Badge>
+                          {post.status && <Badge variant="secondary" className="text-[10px]">{post.status}</Badge>}
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPublerDialog} onOpenChange={setShowPublerDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Carica su Publer</DialogTitle>
+            <DialogDescription>Carica l'immagine su Publer e opzionalmente associala a un post</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {uploadingImage && (
+              <div className="rounded-lg overflow-hidden border">
+                <img src={uploadingImage.url} alt="Preview" className="w-full max-h-48 object-contain bg-slate-100" />
+              </div>
+            )}
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">Associa a un post (opzionale)</label>
+              <Select value={selectedPostForMedia || ''} onValueChange={setSelectedPostForMedia}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona un post..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna associazione</SelectItem>
+                  {existingPosts.map((post: ContentPost) => (
+                    <SelectItem key={post.id} value={post.id}>
+                      {post.title || 'Post senza titolo'} ({post.platform})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowPublerDialog(false)}>
+                Annulla
+              </Button>
+              <Button 
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                onClick={executePublerUpload}
+                disabled={isUploadingToPubler}
+              >
+                {isUploadingToPubler ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Caricamento...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Carica su Publer
+                  </>
+                )}
+              </Button>
             </div>
           </div>
-        )}
-      </main>
-
-      {error && (
-        <div className="fixed bottom-10 right-10 bg-rose-600 text-white p-6 rounded-[2rem] shadow-2xl z-[100] animate-in slide-in-from-right-10 flex items-center gap-4">
-          <i className="fas fa-circle-exclamation"></i>
-          <span className="text-xs font-black uppercase">{error}</span>
-          <button onClick={() => setError(null)} className="ml-4 opacity-50"><i className="fas fa-times"></i></button>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
