@@ -649,6 +649,7 @@ export default function ContentStudioPosts() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [mediaModified, setMediaModified] = useState(false); // Traccia se l'utente ha modificato le immagini
+  const lastLoadedPostIdRef = useRef<string | null>(null); // Traccia l'ultimo post caricato per evitare reload su refetch
   
   const [uploadedVideo, setUploadedVideo] = useState<{ id: string; path: string; thumbnail?: string } | null>(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -858,10 +859,18 @@ export default function ContentStudioPosts() {
       setUploadedMedia([]);
       setUploadedVideo(null);
       setMediaModified(false); // Reset flag modifica
+      lastLoadedPostIdRef.current = null;
       return;
     }
     
-    // Reset flag modifica quando si apre un post per editing
+    // Solo ricaricare i media se stiamo aprendo un NUOVO post (ID diverso)
+    // Ignora i refetch dello stesso post per non sovrascrivere le modifiche dell'utente
+    if (lastLoadedPostIdRef.current === editingPost.id) {
+      return; // Stesso post, non ricaricare
+    }
+    
+    // Nuovo post - aggiorna il ref e resetta il flag modifica
+    lastLoadedPostIdRef.current = editingPost.id;
     setMediaModified(false);
     
     if (editingPost.publerMediaIds && Array.isArray(editingPost.publerMediaIds) && editingPost.publerMediaIds.length > 0) {
@@ -3115,6 +3124,7 @@ export default function ContentStudioPosts() {
                                     URL.revokeObjectURL(uploadedMedia[0].localPreview);
                                   }
                                   setUploadedMedia([]);
+                                  setMediaModified(true); // Traccia la cancellazione
                                 }}
                                 type="button"
                               >
