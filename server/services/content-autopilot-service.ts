@@ -225,11 +225,14 @@ export async function generateAutopilotBatch(
                                 effectiveMediaType === "video" ? "video" : 
                                 effectiveMediaType === "carousel" ? "carosello" : "foto";
               
+              const resolvedFullCopy = (idea.structuredContent as any)?.fullCopy || idea.copyContent || "";
+              console.log(`[AUTOPILOT DEBUG] Creating post "${idea.title}": fullCopy source=${(idea.structuredContent as any)?.fullCopy ? 'structuredContent' : idea.copyContent ? 'copyContent' : 'empty'}, length=${resolvedFullCopy.length}`);
+              
               const [insertedPost] = await db.insert(schema.contentPosts).values({
                 consultantId,
                 title: idea.title,
                 hook: idea.suggestedHook || null,
-                fullCopy: (idea.structuredContent as any)?.fullCopy || idea.description || "",
+                fullCopy: resolvedFullCopy,
                 platform: dbPlatform,
                 contentType: "post",
                 status: "scheduled",

@@ -1,0 +1,37 @@
+✅ Restoring existing session: 76f12afb-3ea1-4a44-8301-11c733f563df
+injected.js:37 [EDIT POST DEBUG] {postId: '50442f92-b6d6-4486-98b8-a410c327830d', postTitle: "L'Effetto Risonanza: Smetti di Essere un 'Postatore Utile'", postFullCopy: 'Un mini-corso intensivo per trasformare il content…keting da dispenser di consigli gratuiti a mag...', postBody: 'undefined...', structuredFullCopy: 'undefined...', …}
+injected.js:37 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ injected.js:37
+(anonymous) @ chunk-RRZFOOTW.js?v=896162d6:433
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=896162d6:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=896162d6:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=896162d6:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=896162d6:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=896162d6:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=896162d6:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=896162d6:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=896162d6:19416
+commitRoot @ chunk-RPCDYKBN.js?v=896162d6:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=896162d6:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=896162d6:9119
+flushSync @ chunk-RPCDYKBN.js?v=896162d6:18959
+flushSync$1 @ chunk-RPCDYKBN.js?v=896162d6:21538
+dispatchDiscreteCustomEvent @ chunk-66JOO7XH.js?v=896162d6:241
+handleSelect @ @radix-ui_react-dropdown-menu.js?v=896162d6:526
+handleEvent @ chunk-66JOO7XH.js?v=896162d6:102
+callCallback2 @ chunk-RPCDYKBN.js?v=896162d6:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=896162d6:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=896162d6:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=896162d6:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=896162d6:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=896162d6:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=896162d6:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=896162d6:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=896162d6:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=896162d6:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=896162d6:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=896162d6:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=896162d6:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=896162d6:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=896162d6:5449Understand this warning
+injected.js:37 [EDIT POST DEBUG] {postId: '4942e685-ce4f-402d-a900-9608f980ac13', postTitle: 'Contenuto di valore per il tuo pubblico', postFullCopy: 'Un contenuto che parla al tuo target di pubblico target nel settore content marketing...', postBody: 'undefined...', structuredFullCopy: 'undefined...', …}
