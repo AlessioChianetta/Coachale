@@ -117,7 +117,8 @@ import {
   Instagram,
   Linkedin,
   Share2,
-  Camera
+  Camera,
+  Inbox
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -142,6 +143,7 @@ import specAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import archieAvatar from "@assets/generated_images/archie_ai_builder_avatar.png";
+import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
 import ceoAvatar from "@assets/generated_images/realistic_ceo_businessman_headshot.png";
 import {
   Table,
@@ -2020,6 +2022,27 @@ export default function ConsultantWhatsAppPage() {
                 }}
                 ctaLabel="Crea Dipendente AI"
                 ctaHref="/consultant/whatsapp?tab=ideas"
+              />
+
+              {/* Card 7 - Iris */}
+              <TeamMemberCard
+                name="Iris"
+                role="Email Hub Manager"
+                avatar={irisAvatar}
+                quote="Gestisco la tua casella email, rispondo con AI e assegno ticket al team quando serve."
+                accentColor="teal"
+                features={[
+                  { icon: Mail, label: "Risposte AI alle Email" },
+                  { icon: Users, label: "Assegnazione Ticket" },
+                  { icon: Inbox, label: "Inbox Unificata" },
+                ]}
+                details={{
+                  audience: "Professionisti e team che ricevono molte email e vogliono rispondere più velocemente senza perdere messaggi importanti",
+                  whatIDo: "Monitoro la tua casella email 24/7, genero risposte AI personalizzate usando la tua knowledge base, e assegno automaticamente ticket al team quando una richiesta richiede intervento umano",
+                  howIDoIt: "Collego i tuoi account email via IMAP/SMTP, analizzo ogni messaggio con l'AI, suggerisco risposte pronte da inviare e creo ticket per il team con priorità e assegnazioni automatiche"
+                }}
+                ctaLabel="Gestisci Email Hub"
+                ctaHref="/consultant/email-hub"
               />
             </div>
           </TabsContent>
