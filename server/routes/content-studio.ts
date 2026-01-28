@@ -3032,4 +3032,88 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
   }
 });
 
+// ============================================================
+// ADVISAGE AI - Ad Copy Analysis
+// ============================================================
+
+const advisageAnalysisSchema = z.object({
+  text: z.string().min(5),
+  platform: z.enum(['instagram', 'facebook', 'linkedin', 'tiktok']),
+  mood: z.enum(['professional', 'energetic', 'luxury', 'minimalist', 'playful']),
+  stylePreference: z.enum(['realistic', '3d-render', 'illustration', 'cyberpunk', 'lifestyle']),
+  brandColor: z.string().optional(),
+  brandFont: z.string().optional(),
+});
+
+router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validated = advisageAnalysisSchema.parse(req.body);
+    
+    const { client, metadata } = await getAIProvider(consultantId, consultantId);
+    const modelConfig = getModelWithThinking(metadata.name);
+    
+    const brandInfo = validated.brandColor 
+      ? `BRAND COLOR: ${validated.brandColor}. BRAND FONT: ${validated.brandFont || 'Modern Sans'}.` 
+      : '';
+    
+    const prompt = `Analizza questo copy pubblicitario per ${validated.platform.toUpperCase()}.
+    FACTORY SETTINGS: Mood: ${validated.mood}, Style: ${validated.stylePreference}. ${brandInfo}
+    
+    TEXT: "${validated.text}"
+    
+    TASK: 
+    1. Crea 3 concept visuali per generazione immagini AI.
+    2. Crea 3 caption social (Emozionale, Tecnico, Diretto) con hashtag.
+    3. Fornisci un breve vantaggio competitivo.
+    
+    REGOLE TESTO: Il testo nell'immagine deve stare in una "SAFE ZONE" centrale (15% di margine dai bordi).
+    
+    OUTPUT JSON VALIDO con questa struttura esatta:
+    {
+      "tone": "string",
+      "objective": "string", 
+      "emotion": "string",
+      "cta": "string",
+      "context": { "sector": "string", "product": "string", "target": "string" },
+      "concepts": [{ "id": "string", "title": "string", "description": "string", "styleType": "string", "recommendedFormat": "1:1|4:5|9:16", "promptClean": "string", "promptWithText": "string", "textContent": "string", "reasoning": "string" }],
+      "socialCaptions": [{ "tone": "string", "text": "string", "hashtags": ["string"] }],
+      "competitiveEdge": "string"
+    }`;
+    
+    const response = await client.generateContent({
+      model: modelConfig.model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.7,
+      }
+    });
+    
+    const responseText = response.text?.trim() || "";
+    const parsed = JSON.parse(responseText);
+    
+    const postId = Math.random().toString(36).substr(2, 9);
+    const result = {
+      ...parsed,
+      id: postId,
+      concepts: (parsed.concepts || []).map((c: any, idx: number) => ({ 
+        ...c, 
+        id: `${postId}_concept_${idx}` 
+      })),
+      originalText: validated.text,
+      socialNetwork: validated.platform,
+      status: 'completed'
+    };
+    
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("[ADVISAGE] Analysis error:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || "Analisi fallita" 
+    });
+  }
+});
+
 export default router;
