@@ -1508,7 +1508,7 @@ const generateIdeasSchema = z.object({
   awarenessLevel: z.enum(["unaware", "problem_aware", "solution_aware", "product_aware", "most_aware"]).default("problem_aware"),
   sophisticationLevel: z.enum(["level_1", "level_2", "level_3", "level_4", "level_5"]).optional().nullable(),
   targetPlatform: z.enum(["instagram", "x", "linkedin"]).optional(),
-  postCategory: z.enum(["ads", "valore", "altri"]).optional(),
+  postCategory: z.enum(["ads", "valore", "formazione", "altri"]).optional(),
   postSchema: z.string().optional(),
   schemaStructure: z.string().optional(),
   schemaLabel: z.string().optional(),
