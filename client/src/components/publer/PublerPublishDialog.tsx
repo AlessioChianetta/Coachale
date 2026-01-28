@@ -394,6 +394,9 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
     return composeText(contentSource, post, customText);
   }, [contentSource, post, customText]);
 
+  const accounts = accountsData?.accounts || [];
+  const isConfigured = configData?.configured && configData?.isActive;
+
   const handleToggleAccount = (accountId: string) => {
     setSelectedAccounts((prev) =>
       prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]
@@ -452,9 +455,6 @@ export function PublerPublishDialog({ open, onOpenChange, post }: PublerPublishD
       mediaIds,
     });
   };
-
-  const accounts = accountsData?.accounts || [];
-  const isConfigured = configData?.configured && configData?.isActive;
 
   // Auto-seleziona account social in base alla piattaforma del post
   useEffect(() => {
