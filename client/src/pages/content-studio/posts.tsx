@@ -648,6 +648,7 @@ export default function ContentStudioPosts() {
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [mediaModified, setMediaModified] = useState(false); // Traccia se l'utente ha modificato le immagini
   
   const [uploadedVideo, setUploadedVideo] = useState<{ id: string; path: string; thumbnail?: string } | null>(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -856,8 +857,12 @@ export default function ContentStudioPosts() {
     if (!editingPost) {
       setUploadedMedia([]);
       setUploadedVideo(null);
+      setMediaModified(false); // Reset flag modifica
       return;
     }
+    
+    // Reset flag modifica quando si apre un post per editing
+    setMediaModified(false);
     
     if (editingPost.publerMediaIds && Array.isArray(editingPost.publerMediaIds) && editingPost.publerMediaIds.length > 0) {
       const mediaItems = editingPost.publerMediaIds;
@@ -1060,6 +1065,7 @@ export default function ContentStudioPosts() {
       });
       setUploadedMedia([]);
       setUploadedVideo(null);
+      setMediaModified(false); // Reset flag modifica immagini
     },
     onError: (error: Error) => {
       toast({
@@ -1695,14 +1701,17 @@ export default function ContentStudioPosts() {
     };
 
     // Build publerMediaIds from uploaded media - save complete objects with id, path, thumbnail
-    // Preserve existing media when editing if no new uploads
+    // Preserve existing media when editing if no new uploads AND media wasn't modified
     let publerMediaIds: Array<{ id: string; path?: string; thumbnail?: string }> | undefined;
     if (uploadedMedia.length > 0) {
       publerMediaIds = uploadedMedia.map(m => ({ id: m.id, path: m.path, thumbnail: m.thumbnail }));
     } else if (uploadedVideo) {
       publerMediaIds = [{ id: uploadedVideo.id, path: uploadedVideo.path, thumbnail: uploadedVideo.thumbnail }];
+    } else if (mediaModified) {
+      // L'utente ha modificato le immagini (es. cancellato tutte) - salva array vuoto
+      publerMediaIds = [];
     } else if (isEditing && editingPost?.publerMediaIds && Array.isArray(editingPost.publerMediaIds)) {
-      // Keep existing media objects as-is
+      // Keep existing media objects as-is (utente non ha modificato nulla)
       publerMediaIds = editingPost.publerMediaIds as Array<{ id: string; path?: string; thumbnail?: string }>;
     }
 
@@ -2244,6 +2253,7 @@ export default function ContentStudioPosts() {
                   });
                   setUploadedMedia([]);
                   setUploadedVideo(null);
+                  setMediaModified(false); // Reset flag modifica immagini
                 }
               }}>
                 <DialogTrigger asChild>
@@ -2688,6 +2698,7 @@ export default function ContentStudioPosts() {
                                               URL.revokeObjectURL(media.localPreview);
                                             }
                                             setUploadedMedia(prev => prev.filter(m => m.id !== media.id));
+                                            setMediaModified(true); // Traccia che l'utente ha modificato le immagini
                                           }}
                                         >
                                           <Trash2 className="h-3 w-3" />

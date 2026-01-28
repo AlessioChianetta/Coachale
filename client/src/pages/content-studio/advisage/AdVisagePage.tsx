@@ -70,9 +70,10 @@ interface ContentPost {
   platform?: string;
   status?: string;
   copyType?: string;
+  mediaType?: string;
   createdAt?: string;
   scheduledDate?: string;
-  publerMediaIds?: (string | { id: string })[];
+  publerMediaIds?: (string | { id: string; path?: string; thumbnail?: string })[];
   structuredContent?: {
     hook?: string;
     body?: string;
@@ -143,7 +144,7 @@ const AdVisagePage: React.FC = () => {
   });
 
   const updatePostMutation = useMutation({
-    mutationFn: async ({ postId, publerMediaIds }: { postId: string; publerMediaIds: string[] }) => {
+    mutationFn: async ({ postId, publerMediaIds }: { postId: string; publerMediaIds: Array<{ id: string; path?: string; thumbnail?: string }> }) => {
       const response = await fetch(`/api/content/posts/${postId}`, {
         method: 'PUT',
         headers: {
@@ -384,11 +385,22 @@ const AdVisagePage: React.FC = () => {
         if (selectedPostForMedia) {
           const post = existingPosts.find((p: ContentPost) => p.id === selectedPostForMedia);
           const currentMediaIds = post?.publerMediaIds || [];
-          // Mantieni oggetti completi con path/thumbnail
-          const existingMediaObjects = currentMediaIds.map((m: any) => 
-            typeof m === 'string' ? { id: m } : { id: m.id, path: m.path, thumbnail: m.thumbnail }
-          );
-          const newMediaIds = [...existingMediaObjects, mediaObject];
+          
+          // Per post non-carosello, limitare a 1 sola immagine
+          const isCarousel = post?.mediaType === 'carosello' || post?.mediaType === 'carousel';
+          
+          let newMediaIds: Array<{ id: string; path?: string; thumbnail?: string }>;
+          
+          if (isCarousel) {
+            // Carosello: aggiungi all'array esistente
+            const existingMediaObjects = currentMediaIds.map((m: any) => 
+              typeof m === 'string' ? { id: m } : { id: m.id, path: m.path, thumbnail: m.thumbnail }
+            );
+            newMediaIds = [...existingMediaObjects, mediaObject];
+          } else {
+            // Non-carosello: sostituisci con la nuova immagine
+            newMediaIds = [mediaObject];
+          }
           
           await updatePostMutation.mutateAsync({
             postId: selectedPostForMedia,
@@ -396,9 +408,14 @@ const AdVisagePage: React.FC = () => {
           });
         }
 
+        // Invalida la cache dei post per ricaricare i dati aggiornati
+        queryClient.invalidateQueries({ queryKey: ['/api/content/posts'] });
+        
         toast({
           title: "Caricato su Publer",
-          description: `Media ID: ${mediaObject.id}`,
+          description: selectedPostForMedia 
+            ? `Immagine associata al post con successo` 
+            : `Media ID: ${mediaObject.id}`,
         });
         
         setShowPublerDialog(false);
