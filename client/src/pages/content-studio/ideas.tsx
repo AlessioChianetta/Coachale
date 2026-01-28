@@ -628,6 +628,29 @@ export default function ContentStudioIdeas() {
     },
   });
 
+  const { data: brandAssetsResponse } = useQuery({
+    queryKey: ["/api/content/brand-assets"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/brand-assets", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { data: null };
+      return response.json();
+    },
+  });
+
+  const xPremiumSubscription = brandAssetsResponse?.data?.xPremiumSubscription || false;
+
+  const dynamicPlatformLimits = useMemo(() => ({
+    instagram: { caption: 2200, hashtags: 30, description: "Caption max 2.200 caratteri" },
+    x: { 
+      tweet: xPremiumSubscription ? 4000 : 280, 
+      thread: 25000, 
+      description: xPremiumSubscription ? "Post X Premium max 4.000 caratteri" : "Tweet max 280 caratteri" 
+    },
+    linkedin: { post: 3000, article: 125000, description: "Post max 3.000 caratteri" },
+  }), [xPremiumSubscription]);
+
   // State for saving brand voice
   const [isSavingBrandVoice, setIsSavingBrandVoice] = useState(false);
 
@@ -1123,7 +1146,7 @@ export default function ContentStudioIdeas() {
     }
 
     const selectedSchema = availableSchemas.find(s => s.value === postSchema);
-    const platformLimit = PLATFORM_LIMITS[targetPlatform];
+    const platformLimit = dynamicPlatformLimits[targetPlatform];
 
     setIsGenerating(true);
     
@@ -1546,7 +1569,7 @@ export default function ContentStudioIdeas() {
                                   {platform.label}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  Max {platform.charLimit.toLocaleString()} char
+                                  Max {(platform.value === 'x' ? dynamicPlatformLimits.x.tweet : platform.value === 'linkedin' ? dynamicPlatformLimits.linkedin.post : dynamicPlatformLimits.instagram.caption).toLocaleString()} char
                                 </span>
                               </button>
                             );
@@ -1664,7 +1687,7 @@ export default function ContentStudioIdeas() {
                           <Type className="h-5 w-5 text-indigo-600" />
                           <div>
                             <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                              {PLATFORM_LIMITS[targetPlatform].description}
+                              {dynamicPlatformLimits[targetPlatform].description}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               L'AI genererà contenuti rispettando questo limite
@@ -2528,8 +2551,10 @@ export default function ContentStudioIdeas() {
           <div className="space-y-4 pt-4">
             {generatedIdeas.map((idea, index) => {
               const copyLength = idea.copyContent?.length || 0;
-              const platformLimits: Record<string, number> = { instagram: 2200, x: 280, linkedin: 3000 };
-              const charLimit = platformLimits[idea.targetPlatform || targetPlatform || 'instagram'] || 2200;
+              const ideaPlatform = idea.targetPlatform || targetPlatform || 'instagram';
+              const charLimit = ideaPlatform === 'x' 
+                ? dynamicPlatformLimits.x.tweet 
+                : (ideaPlatform === 'linkedin' ? dynamicPlatformLimits.linkedin.post : dynamicPlatformLimits.instagram.caption);
               const charPercentage = Math.min((copyLength / charLimit) * 100, 100);
               const isOverLimit = copyLength > charLimit;
               

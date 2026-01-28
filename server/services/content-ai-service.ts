@@ -1725,13 +1725,18 @@ export async function generatePostCopy(params: GeneratePostCopyParams): Promise<
   const brandVoiceContext = buildBrandVoiceContext(brandVoiceData);
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
 
+  const xCharLimit = assets?.xPremiumSubscription ? 4000 : 280;
+  const xGuideline = assets?.xPremiumSubscription 
+    ? `Account X Premium: puoi usare fino a ${xCharLimit} caratteri per post lunghi e long-form content. Sfrutta lo spazio per contenuti approfonditi.`
+    : `Max ${xCharLimit} caratteri, conciso, usa thread se necessario, hashtag limitati.`;
+
   const platformGuidelines: Record<Platform, string> = {
     instagram: "Usa emoji moderati, hashtag (max 10), formato verticale. Max 2200 caratteri ma primo paragrafo cruciale.",
     facebook: "Testo più lungo accettato, meno hashtag, incoraggia commenti e condivisioni.",
     linkedin: "Tono professionale, focus su valore business, usa bullet points, no emoji eccessivi.",
     tiktok: "Ultra breve, diretto, trendy, usa riferimenti pop culture, hashtag trending.",
     youtube: "Descrizione SEO-friendly, timestamps, link, CTA per subscribe e like.",
-    twitter: "Max 280 caratteri, conciso, usa thread se necessario, hashtag limitati.",
+    twitter: xGuideline,
   };
 
   const prompt = `Sei un copywriter esperto di social media italiano. Crea il copy completo per un post usando il FRAMEWORK PERSUASIVO a 6 step.
@@ -2171,13 +2176,18 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
   const effectiveBrandVoice = brandVoice || assets?.brandVoice || 'professional';
   const effectiveTone = tone || 'friendly professional';
 
+  const xCharLimit = assets?.xPremiumSubscription ? 4000 : 280;
+  const xGuideline = assets?.xPremiumSubscription 
+    ? `Account X Premium: puoi usare fino a ${xCharLimit} caratteri per post lunghi e long-form content. Sfrutta lo spazio per contenuti approfonditi.`
+    : `Max ${xCharLimit} caratteri, conciso, usa thread se necessario, hashtag limitati.`;
+
   const platformGuidelines: Record<Platform, string> = {
     instagram: "Usa emoji moderati, hashtag (max 10), formato verticale. Max 2200 caratteri ma primo paragrafo cruciale.",
     facebook: "Testo più lungo accettato, meno hashtag, incoraggia commenti e condivisioni.",
     linkedin: "Tono professionale, focus su valore business, usa bullet points, no emoji eccessivi.",
     tiktok: "Ultra breve, diretto, trendy, usa riferimenti pop culture, hashtag trending.",
     youtube: "Descrizione SEO-friendly, timestamps, link, CTA per subscribe e like.",
-    twitter: "Max 280 caratteri, conciso, usa thread se necessario, hashtag limitati.",
+    twitter: xGuideline,
   };
 
   const prompt = getPromptForOutputType(

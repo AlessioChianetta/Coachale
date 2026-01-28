@@ -164,7 +164,9 @@ export async function generateAutopilotBatch(
         const scheduleForPlatform = postingSchedule[platform] || {};
         const writingStyle = passedWritingStyle || scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
         const times = passedOptimalTimes || scheduleForPlatform.times || OPTIMAL_TIMES[platform] || ["09:00", "18:00"];
-        const charLimit = PLATFORM_CHAR_LIMITS[platform] || 2200;
+        const charLimit = platform === "x" && brandAssets?.xPremiumSubscription 
+          ? 4000 
+          : (PLATFORM_CHAR_LIMITS[platform] || 2200);
         
         // Fetch ALL existing SCHEDULED posts for this day/platform to check which time slots are occupied
         // Only count posts with status "scheduled" - not drafts, published, or cancelled
