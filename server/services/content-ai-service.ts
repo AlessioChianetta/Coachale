@@ -1131,106 +1131,80 @@ ${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
 
   // Generate writing style prompt section - prominently placed in main prompt
   const getWritingStylePromptSection = (): string => {
+    // REGOLA UNIVERSALE per tutti gli stili
+    const universalRule = `
+🎯 REGOLA FONDAMENTALE (VALE PER TUTTI GLI STILI):
+Scrivi come parla una persona normale. Il testo deve SCORRERE naturalmente, essere FACILE da leggere e PIACEVOLE da seguire.
+- MAI suonare robotico, forzato o artificiale
+- Le frasi devono fluire l'una nell'altra come in una conversazione
+- Evita costruzioni rigide che spezzano il ritmo
+- Se rileggendo il testo "suona strano", riscrivilo più semplice
+`;
+    
     const styleMap: Record<string, { name: string; instructions: string }> = {
       default: {
         name: "Predefinito",
-        instructions: `Tono professionale e bilanciato, naturale ma autorevole. Alterna frasi brevi e medie per ritmo scorrevole. Usa emoji strategiche (max 5-7 per post).`
+        instructions: `Scrivi in modo naturale e scorrevole, come se stessi spiegando qualcosa a un collega.
+- Tono professionale ma accessibile, mai pomposo
+- Frasi che scorrono naturalmente, alternate tra brevi e medie
+- Emoji solo dove aggiungono valore (non più di 4-5)
+- Vai dritto al punto ma con garbo`
       },
       conversational: {
         name: "Conversazionale (Nurturing)",
-        instructions: `🚨🚨🚨 STILE COPYWRITING CONVERSAZIONALE (OBBLIGATORIO) 🚨🚨🚨
-Scrivi come se stessi parlando a un amico. Copy MAGNETICO, impossibile smettere di leggere.
+        instructions: `Scrivi come se stessi raccontando qualcosa a un amico al bar. Naturale, personale, coinvolgente.
 
-=== 6 REGOLE D'ORO ===
-1. STORYTELLING PERSONALE: Racconta aneddoti veri, errori, scoperte. MAI parlare in astratto.
-2. DIALOGO INTERNO: Inserisci pensieri/obiezioni tra virgolette ("Ma se le cose andassero male?")
-3. UNA FRASE PER RIGA: Ogni frase va a capo. Alcune corte (3 parole), altre medie (fino a 15). Mai paragrafi.
-4. PATTERN INTERRUPT: "Pensaci un secondo.", "Fermati un istante.", "Sbagliato."
-5. DOMANDE RETORICHE: "Perché?", "E sai cosa?", "Sei pronto?"
-6. ANALOGIE CONCRETE: Spiega concetti con paragoni reali (es: "Un ingegnere non spera che il ponte regga. Lo progetta.")
+TONO: Caldo e diretto, come una chiacchierata tra persone che si conoscono.
 
-=== STRUTTURA ===
-- HOOK: Inizia con qualcosa di personale/inaspettato (NON "Oggi parliamo di...")
-- BODY: Racconta una storia o un'esperienza. Usa → per elenchi brevi (max 3-4 punti).
-- CLOSE: Rilancia il messaggio chiave con CTA
+COME SCRIVERE:
+- Racconta esperienze vere, aneddoti, errori che hai fatto
+- Fai domande che il lettore si sta già facendo
+- Usa il "tu" e il "io" liberamente
+- Ogni tanto inserisci un pensiero tra virgolette ("E lì ho capito una cosa...")
+- Vai a capo spesso per dare respiro al testo
 
-=== FORMATO OBBLIGATORIO ===
-- OGNI frase su riga separata (vai a capo con \\n dopo ogni frase)
-- Le frasi possono variare: alcune brevi (3-5 parole), altre medie (10-15 parole)
-- Usa → per mini-elenchi (non elenchi puntati tradizionali)
-- Emoji minimal: solo ✅ e → quando servono
+STRUTTURA NATURALE:
+1. Inizia con qualcosa che cattura (una storia, un'osservazione, una domanda)
+2. Sviluppa il concetto come lo spiegheresti a voce
+3. Chiudi con un invito all'azione semplice
 
-=== ESEMPIO PERFETTO DA SEGUIRE ===
-C'è una cosa che devi sapere su di me.
+ESEMPIO DI TONO GIUSTO:
+"Ti racconto una cosa che mi è successa la settimana scorsa.
 
-Prima di occuparmi di questo settore, facevo tutt'altro.
+Stavo parlando con un cliente che mi dice: 'Ma come faccio a sapere se funziona?'
 
-Ed è proprio lì che è nato tutto.
+E lì ho capito che il problema non era il metodo.
+Era la fiducia.
 
-Mi sono accorto che la maggior parte delle persone gestisce questo aspetto "a sentimento".
+Perché quando non hai mai visto risultati concreti, è normale dubitare.
 
-Sperano che le cose vadano bene.
+La differenza? Smettere di sperare e iniziare a misurare.
 
-Sperano che la scelta fatta sia quella giusta.
+Ti faccio un esempio pratico..."
 
-"E se invece di sperare, usassimo la logica?"
-
-Ecco perché è nata la mia attività.
-
-Non sono qui per venderti sogni o formule magiche.
-
-Sbagliato.
-
-Sono qui per darti un sistema replicabile e misurabile.
-
-Pensaci un secondo.
-
-Se il successo dipendesse dalla fortuna, chi vince alla lotteria resterebbe ricco per sempre.
-
-Invece, le statistiche dicono che l'80% torna al punto di partenza.
-
-Perché?
-
-Perché non hanno un sistema.
-
-→ La fortuna è un'anomalia, non una strategia.
-
-→ Un sistema solido produce risultati prevedibili.
-
-→ La logica batte l'azzardo ogni giorno.
-
-Fermati un istante.
-
-"Ma se le cose andassero male?"
-
-Vedi, un ingegnere non spera che il ponte regga.
-
-Lo progetta calcolando ogni variabile.
-
-Noi facciamo lo stesso.
-
-Non lasciamo spazio alle emozioni o ai "sentito dire".
-
-Misuriamo, analizziamo e ottimizziamo.
-
-Sei pronto a smettere di scommettere sul tuo futuro?
-
-Clicca sul link in bio. →
-
-=== VIETATO ASSOLUTAMENTE ===
-❌ Iniziare con "Oggi parliamo di..." o "In questo post..."
-❌ Paragrafi discorsivi (più frasi sulla stessa riga)
-❌ Tono formale o accademico
-❌ Elencare fatti senza storytelling
-❌ Elenchi puntati tradizionali (usa → invece)`
+EVITA:
+- Frasi troppo corte in sequenza (suonano robotiche)
+- Pattern ripetitivi che sembrano forzati
+- Tono da "guru" o predicatore`
       },
       direct: {
         name: "Diretto",
-        instructions: `Dritto al punto, zero fronzoli. Frasi brevi e assertive. No giri di parole. Bullet points per i concetti chiave. Tono deciso e incoraggiante.`
+        instructions: `Vai al sodo. Niente giri di parole, niente premesse infinite.
+- Frasi chiare e concise
+- Punti chiave ben evidenziati
+- Tono sicuro ma non arrogante
+- Meno parole, più sostanza
+- Ogni frase deve avere un motivo per esistere`
       },
       persuasive: {
         name: "Copy Persuasivo",
-        instructions: `Copywriting classico: urgenza, scarsità, riprova sociale. Trigger emotivi: paura di perdere, desiderio di guadagnare. Headline d'impatto, hook magnetici. Power words: GRATIS, GARANTITO, ESCLUSIVO, IMMEDIATO, LIMITATO.`
+        instructions: `Copywriting che convince senza sembrare "da venditore".
+- Evidenzia il problema che risolvi
+- Mostra i benefici concreti, non le caratteristiche
+- Usa prove sociali in modo naturale (risultati, testimonianze)
+- Crea senso di opportunità, non di urgenza forzata
+- Chiudi con una call-to-action chiara
+- Evita toni aggressivi o "da televendita"`
       },
       custom: {
         name: "Personalizzato",
@@ -1240,7 +1214,7 @@ Clicca sul link in bio. →
 
     const style = styleMap[writingStyle] || styleMap.default;
     
-    return `
+    return `${universalRule}
 ✍️ STILE DI SCRITTURA SELEZIONATO: ${style.name}
 ${style.instructions}
 `;
@@ -1261,35 +1235,26 @@ ${style.instructions}
     const minChars = isLongCopy ? Math.min(1500, Math.floor(effectiveCharLimit * 0.7)) : 200;
     const maxChars = isLongCopy ? Math.min(3000, effectiveCharLimit) : Math.min(500, effectiveCharLimit);
     
-    // Writing style instructions based on selected style
+    // Writing style instructions based on selected style - SIMPLIFIED for natural flow
     const writingStyleInstructions: Record<string, string> = {
       default: `STILE PREDEFINITO:
-- Tono professionale e bilanciato, naturale ma autorevole
-- Usa emoji strategiche (max 5-7 per post)
-- Alterna frasi brevi e medie per ritmo scorrevole`,
-      conversational: `STILE CONVERSAZIONALE (NURTURING):
-- Scrivi come se stessi parlando a un amico, diretto e personale
-- FRASI ULTRA-BREVI: 3-8 parole max. "SBAGLIATO.", "Esatto.", "Ecco il punto."
-- OGNI FRASE SU RIGA SEPARATA, crea ritmo incalzante
-- PATTERN INTERRUPT: "Ma aspetta.", "Fermati un secondo.", "E sai cosa?"
-- DOMANDE DIRETTE: "Sai qual è la parte migliore?", "E indovina cosa è successo?"
-- DIALOGO INTERNO: Inserisci pensieri tra virgolette ("E io ho pensato: cavolo, è vero!")
-- STORYTELLING PERSONALE: Racconta aneddoti, errori, scoperte
-- Emoji minimal: solo ✅ e → quando servono
-- VIETATO: frasi lunghe, tono formale, elenchi noiosi`,
+- Scrivi in modo naturale e scorrevole
+- Tono professionale ma accessibile
+- Emoji solo dove aggiungono valore`,
+      conversational: `STILE CONVERSAZIONALE:
+- Scrivi come parleresti a un amico
+- Racconta, non elencare
+- Vai a capo spesso per dare respiro
+- Evita toni robotici o forzati`,
       direct: `STILE DIRETTO:
-- Dritto al punto, zero fronzoli
-- Frasi brevi e assertive
-- No giri di parole, no storytelling elaborato
-- Bullet points per i concetti chiave
-- Tono deciso e incoraggiante`,
-      persuasive: `STILE COPY PERSUASIVO:
-- Usa i principi di copywriting classico (urgenza, scarsità, riprova sociale)
-- Trigger emotivi: paura di perdere, desiderio di guadagnare
-- Headline d'impatto, hook magnetici
-- Transizioni potenti tra le sezioni
-- CTA aggressive ma non spam
-- Power words: GRATIS, GARANTITO, ESCLUSIVO, IMMEDIATO, LIMITATO`,
+- Vai al sodo, niente giri di parole
+- Frasi chiare e concise
+- Tono sicuro ma non arrogante`,
+      persuasive: `STILE PERSUASIVO:
+- Evidenzia benefici concreti
+- Usa prove e risultati
+- Chiudi con call-to-action chiara
+- Evita toni "da televendita"`,
       custom: customWritingInstructions || "Segui le istruzioni personalizzate dell'utente."
     };
 
