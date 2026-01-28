@@ -2744,27 +2744,9 @@ export default function ContentStudioPosts() {
 
                         {selectedCopyType === "long" && (
                           <div className="space-y-3">
-                            {/* Show body field if it has content from idea.copyContent */}
-                            {formData.body && !formData.chiCosaCome && !formData.errore && !formData.soluzione && !formData.riprovaSociale && (
-                              <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg space-y-2 border border-gray-200 dark:border-gray-800">
-                                <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                  Copy Completo (dall'idea)
-                                </Label>
-                                <Textarea
-                                  placeholder="Testo completo del copy..."
-                                  value={formData.body}
-                                  onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-                                  className="text-sm min-h-[80px]"
-                                  style={{ fieldSizing: 'content' } as React.CSSProperties}
-                                />
-                                <p className="text-xs text-gray-500">
-                                  Puoi copiare parti di questo testo nei campi sottostanti per strutturare il copy
-                                </p>
-                              </div>
-                            )}
-                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                1. Hook
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200 dark:border-purple-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-purple-700 dark:text-purple-300 font-semibold flex items-center gap-1">
+                                🎣 Hook
                               </Label>
                               <Input
                                 placeholder="La frase che cattura l'attenzione..."
@@ -2774,55 +2756,19 @@ export default function ContentStudioPosts() {
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
                               <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                2. Chi-Cosa-Come
+                                📝 Copy Completo
                               </Label>
                               <Textarea
-                                placeholder="Ciao, sono [Nome] e aiuto [chi] a [cosa] attraverso [metodo]..."
-                                value={formData.chiCosaCome || ""}
-                                onChange={(e) => setFormData({ ...formData, chiCosaCome: e.target.value })}
-                                className="min-h-[60px]"
+                                placeholder="Il contenuto principale del post..."
+                                value={formData.fullCopy || ""}
+                                onChange={(e) => setFormData({ ...formData, fullCopy: e.target.value })}
+                                className="min-h-[150px]"
                                 style={{ fieldSizing: 'content' } as React.CSSProperties}
                               />
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                3. Errore
-                              </Label>
-                              <Textarea
-                                placeholder="L'errore specifico che il tuo target sta commettendo..."
-                                value={formData.errore || ""}
-                                onChange={(e) => setFormData({ ...formData, errore: e.target.value })}
-                                className="min-h-[60px]"
-                                style={{ fieldSizing: 'content' } as React.CSSProperties}
-                              />
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                4. Soluzione
-                              </Label>
-                              <Textarea
-                                placeholder="Il tuo metodo unico per risolvere il problema..."
-                                value={formData.soluzione || ""}
-                                onChange={(e) => setFormData({ ...formData, soluzione: e.target.value })}
-                                className="min-h-[60px]"
-                                style={{ fieldSizing: 'content' } as React.CSSProperties}
-                              />
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                5. Riprova Sociale
-                              </Label>
-                              <Textarea
-                                placeholder="Storie concrete con nomi ed eventi reali..."
-                                value={formData.riprovaSociale || ""}
-                                onChange={(e) => setFormData({ ...formData, riprovaSociale: e.target.value })}
-                                className="min-h-[60px]"
-                                style={{ fieldSizing: 'content' } as React.CSSProperties}
-                              />
-                            </div>
-                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 p-3 rounded-lg space-y-2">
-                              <Label className="text-xs text-gray-600 dark:text-gray-400 font-semibold flex items-center gap-1">
-                                6. Call to Action
+                            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800 p-3 rounded-lg space-y-2">
+                              <Label className="text-xs text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-1">
+                                🎯 Call to Action
                               </Label>
                               <Input
                                 placeholder="Chiamata all'azione finale..."
@@ -3940,7 +3886,8 @@ export default function ContentStudioPosts() {
             const viewStructured = viewingPost.structuredContent || {};
             const viewCopyType = viewStructured.copyType || viewingPost.copyType || "short";
             const hookText = viewStructured.hook || viewingPost.hook;
-            const bodyText = viewStructured.body || viewingPost.body;
+            const fullCopyText = viewingPost.fullCopy || viewStructured.fullCopy;
+            const bodyText = fullCopyText || viewStructured.body || viewingPost.body;
             const ctaText = viewStructured.cta || viewingPost.cta;
             
             return (
@@ -4174,52 +4121,6 @@ export default function ContentStudioPosts() {
                             </div>
                           </div>
                         )}
-
-                        {/* Long Copy Sections - Prima del CTA */}
-                        {(() => {
-                          const chiCosaCome = viewStructured.chiCosaCome || viewingPost.chiCosaCome;
-                          const errore = viewStructured.errore || viewingPost.errore;
-                          const soluzione = viewStructured.soluzione || viewingPost.soluzione;
-                          const riprovaSociale = viewStructured.riprovaSociale || viewingPost.riprovaSociale;
-                          const hasLongCopyContent = (chiCosaCome?.trim()) || (errore?.trim()) || (soluzione?.trim()) || (riprovaSociale?.trim());
-                          
-                          if (hasLongCopyContent) {
-                            return (
-                              <div className="rounded-xl border overflow-hidden">
-                                <div className="bg-violet-100 dark:bg-violet-900/30 px-4 py-2">
-                                  <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide">📄 Copy Lungo - Sezioni</span>
-                                </div>
-                                <div className="divide-y">
-                                  {chiCosaCome && (
-                                    <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20">
-                                      <p className="text-xs font-semibold text-blue-600 mb-1">👤 Chi-Cosa-Come</p>
-                                      <p className="text-sm">{chiCosaCome}</p>
-                                    </div>
-                                  )}
-                                  {errore && (
-                                    <div className="p-4 bg-red-50/50 dark:bg-red-950/20">
-                                      <p className="text-xs font-semibold text-red-600 mb-1">❌ Errore</p>
-                                      <p className="text-sm">{errore}</p>
-                                    </div>
-                                  )}
-                                  {soluzione && (
-                                    <div className="p-4 bg-green-50/50 dark:bg-green-950/20">
-                                      <p className="text-xs font-semibold text-green-600 mb-1">✅ Soluzione</p>
-                                      <p className="text-sm">{soluzione}</p>
-                                    </div>
-                                  )}
-                                  {riprovaSociale && (
-                                    <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20">
-                                      <p className="text-xs font-semibold text-amber-600 mb-1">📊 Riprova Sociale</p>
-                                      <p className="text-sm">{riprovaSociale}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
 
                         {/* CTA - Alla fine */}
                         {ctaText && (
