@@ -1152,40 +1152,57 @@ Scrivi come parla una persona normale. Il testo deve SCORRERE naturalmente, esse
       },
       conversational: {
         name: "Conversazionale (Nurturing)",
-        instructions: `Scrivi come se stessi raccontando qualcosa a un amico al bar. Naturale, personale, coinvolgente.
+        instructions: `Scrivi come se stessi raccontando qualcosa a un amico. Naturale, personale, coinvolgente.
+
+=== FORMATO OBBLIGATORIO: UNA FRASE PER RIGA ===
+Ogni frase va a capo (usa \\n dopo ogni frase).
+Non scrivere paragrafi lunghi - il testo deve "respirare".
 
 TONO: Caldo e diretto, come una chiacchierata tra persone che si conoscono.
 
 COME SCRIVERE:
-- Racconta esperienze vere, aneddoti, errori che hai fatto
+- Storytelling personale: racconta esperienze vere, aneddoti, errori
 - Fai domande che il lettore si sta già facendo
 - Usa il "tu" e il "io" liberamente
-- Ogni tanto inserisci un pensiero tra virgolette ("E lì ho capito una cosa...")
-- Vai a capo spesso per dare respiro al testo
+- Inserisci pensieri tra virgolette ("E lì ho capito una cosa...")
+- Pattern interrupt naturali: "Pensaci un attimo.", "E sai cosa?", "Ecco il punto."
+- Usa → per mini-elenchi (non elenchi puntati tradizionali)
 
-STRUTTURA NATURALE:
-1. Inizia con qualcosa che cattura (una storia, un'osservazione, una domanda)
-2. Sviluppa il concetto come lo spiegheresti a voce
-3. Chiudi con un invito all'azione semplice
+STRUTTURA:
+1. Hook: inizia con qualcosa di personale o inaspettato
+2. Sviluppo: racconta come lo spiegheresti a voce, riga per riga
+3. Chiusura: CTA semplice e diretta
 
-ESEMPIO DI TONO GIUSTO:
-"Ti racconto una cosa che mi è successa la settimana scorsa.
+ESEMPIO DI FORMATO CORRETTO:
+Ti racconto una cosa che mi è successa.
 
-Stavo parlando con un cliente che mi dice: 'Ma come faccio a sapere se funziona?'
+Stavo parlando con un cliente.
 
-E lì ho capito che il problema non era il metodo.
+Mi dice: "Ma come faccio a sapere se funziona?"
+
+E lì ho capito.
+
+Il problema non era il metodo.
+
 Era la fiducia.
 
-Perché quando non hai mai visto risultati concreti, è normale dubitare.
+Perché quando non hai mai visto risultati, è normale dubitare.
 
-La differenza? Smettere di sperare e iniziare a misurare.
+Pensaci un attimo.
 
-Ti faccio un esempio pratico..."
+Se qualcuno ti promette qualcosa senza mostrarti i numeri...
+
+...perché dovresti credergli?
+
+→ La differenza è smettere di sperare
+→ E iniziare a misurare
+
+Ti faccio vedere come.
 
 EVITA:
-- Frasi troppo corte in sequenza (suonano robotiche)
-- Pattern ripetitivi che sembrano forzati
-- Tono da "guru" o predicatore`
+- Paragrafi lunghi (più frasi sulla stessa riga)
+- Tono formale o accademico
+- Pattern troppo ripetitivi che suonano robotici`
       },
       direct: {
         name: "Diretto",
@@ -1241,11 +1258,12 @@ ${style.instructions}
 - Scrivi in modo naturale e scorrevole
 - Tono professionale ma accessibile
 - Emoji solo dove aggiungono valore`,
-      conversational: `STILE CONVERSAZIONALE:
-- Scrivi come parleresti a un amico
-- Racconta, non elencare
-- Vai a capo spesso per dare respiro
-- Evita toni robotici o forzati`,
+      conversational: `STILE CONVERSAZIONALE (RIGA PER RIGA):
+- UNA FRASE PER RIGA (vai a capo dopo ogni frase)
+- Storytelling personale, racconta esperienze
+- Pattern interrupt: "Pensaci.", "E sai cosa?"
+- Usa → per mini-elenchi
+- Tono naturale, mai robotico`,
       direct: `STILE DIRETTO:
 - Vai al sodo, niente giri di parole
 - Frasi chiare e concise
