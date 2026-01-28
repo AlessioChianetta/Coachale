@@ -25,14 +25,31 @@ export const generateImageConcept = async (prompt: string, aspectRatio: "1:1" | 
     throw new Error("Inserisci la tua API Key di Google AI Studio nelle impostazioni per generare immagini.");
   }
   
+  console.log('[AdVisage Image] Using API key:', settings.manualApiKey.substring(0, 10) + '...');
+  console.log('[AdVisage Image] Model: gemini-2.0-flash-exp-image-generation');
+  console.log('[AdVisage Image] Aspect ratio:', aspectRatio);
+  
   const ai = new GoogleGenAI({ apiKey: settings.manualApiKey });
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: { parts: [{ text: prompt }] },
-    config: { imageConfig: { aspectRatio } }
-  });
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp-image-generation',
+      contents: prompt,
+      config: { 
+        responseModalities: ['Text', 'Image'],
+      }
+    });
 
-  const part = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
-  if (part?.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-  throw new Error("Generazione fallita. Controlla la tua API Key nelle impostazioni.");
+    console.log('[AdVisage Image] Response received:', JSON.stringify(response).substring(0, 500));
+    
+    const part = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+    if (part?.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    throw new Error("Nessuna immagine generata. Riprova.");
+  } catch (error: any) {
+    console.error('[AdVisage Image] Error:', error);
+    if (error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+      throw new Error("Quota API esaurita. Attendi qualche minuto o controlla i limiti su Google AI Studio.");
+    }
+    throw new Error(error.message || "Generazione fallita. Controlla la tua API Key nelle impostazioni.");
+  }
 };
