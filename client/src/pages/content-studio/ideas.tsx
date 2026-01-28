@@ -127,7 +127,7 @@ interface Idea {
   developedPostId?: string;
   lengthWarning?: string;
   targetPlatform?: "instagram" | "x" | "linkedin";
-  postCategory?: "ads" | "valore" | "altri";
+  postCategory?: "ads" | "valore" | "formazione" | "altri";
   postSchema?: string;
   schemaStructure?: string;
 }
@@ -270,6 +270,14 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
       { value: "myth_busting", label: "Myth Busting", structure: "Mito|Perché è falso|La regola vera|Come applicarla|CTA", description: "Ottimo per differenziarti" },
       { value: "case_study", label: "Case Study", structure: "Risultato|Punto di partenza|Azioni|Ostacolo|Soluzione|Lezione|CTA", description: "Prova sociale senza vantarsi" },
     ],
+    formazione: [
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico a 6 sezioni: aggancia, posizionamento, problema, soluzione, prova sociale, azione" },
+      { value: "tutorial_step", label: "Tutorial Step-by-Step", structure: "Hook|Obiettivo|Step 1|Step 2|Step 3|Step 4|Step 5|Risultato|CTA", description: "Guida pratica passo-passo per imparare qualcosa" },
+      { value: "lezione_concetto", label: "Lezione: Concetto → Applicazione", structure: "Hook|Concetto chiave|Perché importante|Esempio 1|Esempio 2|Come applicarlo|Errore comune|CTA", description: "Insegna un concetto con esempi pratici" },
+      { value: "corso_teaser", label: "Teaser Corso/Modulo", structure: "Hook|Cosa imparerai|Modulo 1|Modulo 2|Modulo 3|Per chi è|Risultato atteso|CTA", description: "Presenta un corso o modulo formativo" },
+      { value: "esercizio_pratico", label: "Esercizio Pratico", structure: "Hook|Obiettivo esercizio|Materiali|Istruzioni|Errori da evitare|Risultato atteso|CTA", description: "Propone un esercizio da fare" },
+      { value: "quiz_verifica", label: "Quiz/Verifica Apprendimento", structure: "Hook|Domanda 1|Domanda 2|Domanda 3|Risposte|Spiegazione|CTA", description: "Testa le conoscenze del pubblico" },
+    ],
     altri: [
       { value: "pov_domanda", label: "POV + Domanda", structure: "Opinione forte|Motivo 1|Motivo 2|Domanda", description: "Genera commenti e discussione" },
       { value: "behind_scenes", label: "Behind the Scenes", structure: "Cosa stai facendo|Perché|Cosa hai imparato|CTA", description: "Umano, fidelizza" },
@@ -291,6 +299,13 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
       { value: "mini_playbook", label: "Mini-playbook", structure: "Obiettivo|Leva 1|Leva 2|Leva 3|Errore 1|Errore 2|Errore 3|Template", description: "Altissimo valore percepito" },
       { value: "swipe_template", label: "Swipe/Template Tweet", structure: "Copia-incolla:|Template|Quando usarlo", description: "Condivisioni elevate" },
     ],
+    formazione: [
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico a 6 sezioni" },
+      { value: "thread_tutorial", label: "Thread Tutorial", structure: "Hook tweet|Obiettivo|Step 1|Step 2|Step 3|Step 4|Step 5|Recap|CTA", description: "Thread formativo passo-passo" },
+      { value: "lezione_rapida", label: "Lezione Rapida (280 char)", structure: "Concetto|Perché|Come applicarlo|CTA", description: "Micro-lezione in un tweet" },
+      { value: "tip_giornaliero", label: "Tip Giornaliero", structure: "Tip|Esempio|Azione immediata", description: "Pillola formativa quotidiana" },
+      { value: "errore_correzione", label: "Errore → Correzione", structure: "Errore comune|Perché sbagliato|Come farlo bene|CTA", description: "Corregge un errore frequente" },
+    ],
     altri: [
       { value: "build_public", label: "Build in Public", structure: "Cosa hai fatto oggi|Cosa hai imparato|Prossima mossa", description: "Community e consistenza" },
       { value: "qa_prompt", label: "Q&A Prompt", structure: "Rispondo a domande su X...", description: "Genera conversazioni e contenuti futuri" },
@@ -310,6 +325,13 @@ const POST_SCHEMAS: Record<string, Record<string, Array<{ value: string; label: 
       { value: "post_insegnamento", label: "Post Insegnamento", structure: "Claim|Perché|Esempio 1|Esempio 2|Esempio 3|Azione 1|Azione 2|Azione 3|CTA", description: "Autorità + praticità" },
       { value: "teardown_b2b", label: "Teardown B2B", structure: "Cosa analizziamo|3 punti forti|3 errori|Come rifarlo|CTA", description: "Posizionamento immediato" },
       { value: "opinion_dati", label: "Opinion + Dati", structure: "Tesi|Dato/prova|Implicazione|Cosa fare|CTA", description: "Perfetto per consulenza/servizi" },
+    ],
+    formazione: [
+      { value: "originale", label: "Originale (Universale)", structure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA", description: "Schema classico a 6 sezioni" },
+      { value: "post_educativo", label: "Post Educativo Professionale", structure: "Hook|Contesto professionale|Concetto chiave|3 Punti pratici|Esempio reale|Takeaway|CTA", description: "Formato long-form educativo per LinkedIn" },
+      { value: "carosello_corso", label: "Carosello Formativo (PDF)", structure: "Titolo corso/modulo|Obiettivo|Lezione 1|Lezione 2|Lezione 3|Esercizio|CTA", description: "Carosello PDF con contenuto formativo" },
+      { value: "case_study_formativo", label: "Case Study Formativo", structure: "Situazione iniziale|Sfida formativa|Metodo usato|Risultati|Lezioni apprese|CTA", description: "Racconta un percorso di formazione" },
+      { value: "framework_educativo", label: "Framework Educativo", structure: "Hook|Nome framework|Componente 1|Componente 2|Componente 3|Come applicarlo|CTA", description: "Presenta un framework di apprendimento" },
     ],
     altri: [],
   },
@@ -475,7 +497,7 @@ export default function ContentStudioIdeas() {
   const [mediaType, setMediaType] = useState<"video" | "photo">("photo");
   const [copyType, setCopyType] = useState<"short" | "long">("long");
   const [targetPlatform, setTargetPlatform] = useState<"instagram" | "x" | "linkedin">("instagram");
-  const [postCategory, setPostCategory] = useState<"ads" | "valore" | "altri">("ads");
+  const [postCategory, setPostCategory] = useState<"ads" | "valore" | "formazione" | "altri">("ads");
   const [postSchema, setPostSchema] = useState<string>("originale");
   const [writingStyle, setWritingStyle] = useState<string>("default");
   const [customWritingInstructions, setCustomWritingInstructions] = useState<string>("");
@@ -623,7 +645,7 @@ export default function ContentStudioIdeas() {
   useEffect(() => {
     if (!objective) return;
     
-    let suggestedCategory: "ads" | "valore" | "altri" = "ads";
+    let suggestedCategory: "ads" | "valore" | "formazione" | "altri" = "ads";
     
     switch (objective) {
       case "sales":
@@ -1608,7 +1630,7 @@ export default function ContentStudioIdeas() {
                                     <button
                                       onClick={() => {
                                         if (hasSchemas && postCategory !== category.value) {
-                                          setPostCategory(category.value as "ads" | "valore" | "altri");
+                                          setPostCategory(category.value as "ads" | "valore" | "formazione" | "altri");
                                           setPostSchema("");
                                         }
                                       }}
