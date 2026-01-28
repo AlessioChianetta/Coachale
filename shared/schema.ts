@@ -8223,6 +8223,7 @@ export const brandAssets = pgTable("brand_assets", {
     x?: { postsPerDay: number; times: string[]; writingStyle: string };
     linkedin?: { postsPerDay: number; times: string[]; writingStyle: string };
   }>().default(sql`'{}'::jsonb`),
+  xPremiumSubscription: boolean("x_premium_subscription").default(false),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
