@@ -202,6 +202,11 @@ export interface UserContext {
     level: string;
     enrolledAt: string | null;
   };
+  consultant: {
+    id: string;
+    name: string;
+    businessName: string | null;
+  } | null;
   dashboard: {
     pendingExercises: number;
     completedExercises: number;
@@ -514,7 +519,7 @@ export async function buildUserContext(
     ongoingCalendarEvents,
     recentCalendarEvents,
   ] = await Promise.all([
-    // User info - SEMPRE
+    // User info - SEMPRE (include consultantId for consultant lookup)
     db
       .select({
         id: users.id,
@@ -523,6 +528,7 @@ export async function buildUserContext(
         email: users.email,
         level: users.level,
         enrolledAt: users.enrolledAt,
+        consultantId: users.consultantId,
       })
       .from(users)
       .where(eq(users.id, clientId))
@@ -715,6 +721,29 @@ export async function buildUserContext(
   const [user] = userResult;
   if (!user) {
     throw new Error("User not found");
+  }
+
+  // Fetch consultant info if user has a consultant
+  let consultantInfo: { id: string; name: string; businessName: string | null } | null = null;
+  if (user.consultantId) {
+    const [consultant] = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        businessName: users.businessName,
+      })
+      .from(users)
+      .where(eq(users.id, user.consultantId))
+      .limit(1);
+    
+    if (consultant) {
+      consultantInfo = {
+        id: consultant.id,
+        name: `${consultant.firstName || ''} ${consultant.lastName || ''}`.trim(),
+        businessName: consultant.businessName || null,
+      };
+    }
   }
 
   const [todayReflection] = todayReflectionResult;
@@ -1720,6 +1749,7 @@ export async function buildUserContext(
       level: user.level || 'studente',
       enrolledAt: user.enrolledAt ? user.enrolledAt.toISOString() : null,
     },
+    consultant: consultantInfo,
     dashboard: {
       pendingExercises: allExercises.filter(e => e.status === 'pending' || e.status === 'in_progress').length,
       completedExercises: allExercises.filter(e => e.status === 'completed').length,
