@@ -1352,13 +1352,23 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       console.log(`[CONTENT-AI SCHEMA DEBUG]   maxTotal (numSections × maxPerSection): ${numSections * maxPerSection}`);
       console.log(`[CONTENT-AI SCHEMA DEBUG] ========================================`);
       
-      // Create field names from schema parts
+      // Create field names from schema parts - ENSURE UNIQUE NAMES
+      const usedNames: Record<string, number> = {};
       const fieldNames = schemaParts.map((part, idx) => {
-        return part.toLowerCase()
+        let baseName = part.toLowerCase()
           .replace(/[^a-z0-9\s]/g, '')
           .replace(/\s+/g, '_')
           .replace(/_+/g, '_')
           .replace(/^_|_$/g, '') || `section_${idx + 1}`;
+        
+        // Se il nome è già stato usato, aggiungi un suffisso numerico
+        if (usedNames[baseName] !== undefined) {
+          usedNames[baseName]++;
+          baseName = `${baseName}_${usedNames[baseName]}`;
+        } else {
+          usedNames[baseName] = 1;
+        }
+        return baseName;
       });
       
       // Create detailed instructions for each section using SECTION_GUIDELINES
@@ -1366,12 +1376,16 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
         const fieldName = fieldNames[idx];
         const guideline = getSectionGuideline(fieldName, part);
         
+        // Quando il limite per sezione è stretto (< 200), non incoraggiare storytelling lungo
+        const isCompactSection = maxPerSection < 200;
         const styleNote = isLongCopy 
-          ? (guideline.style === "narrative" 
-              ? "Sviluppa con storytelling, dettagli concreti, esempi reali"
-              : guideline.style === "list"
-                ? "Usa elenco puntato chiaro e specifico"
-                : "Breve ma incisivo, ogni parola conta")
+          ? (isCompactSection 
+              ? "Conciso ma completo, rispetta RIGOROSAMENTE il limite caratteri" // NO storytelling per sezioni compatte
+              : (guideline.style === "narrative" 
+                  ? "Sviluppa con storytelling, dettagli concreti, esempi reali"
+                  : guideline.style === "list"
+                    ? "Usa elenco puntato chiaro e specifico"
+                    : "Breve ma incisivo, ogni parola conta"))
           : "Conciso e diretto, massima densità informativa";
         
         return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})** [MAX ${maxPerSection} caratteri]
@@ -1389,23 +1403,27 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
   "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche."` : "";
       
       // Length enforcement block - focus on TOTAL with per-section limits
+      // Se il maxTotal teorico è inferiore a minChars, adatta minChars al 70% del maxTotal
+      const maxTotalTheoretical = numSections * maxPerSection;
+      const effectiveMinChars = maxTotalTheoretical < minChars 
+        ? Math.floor(maxTotalTheoretical * 0.7) 
+        : minChars;
+      
       const lengthEnforcement = isLongCopy ? `
-⚠️⚠️⚠️ LIMITE CARATTERI OBBLIGATORIO ⚠️⚠️⚠️
+⚠️⚠️⚠️ LIMITE CARATTERI OBBLIGATORIO - PRIORITÀ ASSOLUTA ⚠️⚠️⚠️
 
-🎯 LIMITE TOTALE: ${maxChars} caratteri MAX (piattaforma ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
-📐 LIMITE PER SEZIONE: ${maxPerSection} caratteri MAX ciascuna (${numSections} sezioni × ${maxPerSection} = ${numSections * maxPerSection} totale)
+🎯 LIMITE MASSIMO TOTALE: ${maxChars} caratteri (limite piattaforma ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
+📐 LIMITE PER SEZIONE: ${maxPerSection} caratteri MAX ciascuna
 
-Il campo "captionCopy" DEVE essere:
-- MINIMO ${minChars} caratteri (copy troppo corto = fallimento)
-- MASSIMO ${maxChars} caratteri (limite piattaforma ASSOLUTO)
+⛔⛔⛔ IL SUPERAMENTO DEL LIMITE È IL PEGGIOR ERRORE POSSIBILE ⛔⛔⛔
 
-REGOLA MATEMATICA: ${numSections} sezioni × max ${maxPerSection} char = max ${numSections * maxPerSection} caratteri totali
+REGOLA MATEMATICA INVIOLABILE:
+- ${numSections} sezioni × max ${maxPerSection} caratteri = max ${maxTotalTheoretical} caratteri totali
+- Ogni sezione DEVE stare sotto ${maxPerSection} caratteri
+- Il totale captionCopy DEVE stare tra ${effectiveMinChars}-${maxChars} caratteri
 
-⛔ SE UNA SEZIONE SUPERA ${maxPerSection} CARATTERI = FALLIMENTO
-⛔ SE captionCopy SUPERA ${maxChars} CARATTERI = FALLIMENTO
-⛔ SE captionCopy È SOTTO ${minChars} CARATTERI = FALLIMENTO
-
-📊 CONTA I CARATTERI DI OGNI SEZIONE PRIMA DI RISPONDERE.` : "";
+📊 VERIFICA: Conta i caratteri di OGNI sezione PRIMA di rispondere.
+Se una sezione supera ${maxPerSection} caratteri → RISCRIVILA più corta.` : "";
       
       return `
 🚨🚨🚨 REGOLA ASSOLUTA: SEGUI LO SCHEMA ESATTAMENTE 🚨🚨🚨
