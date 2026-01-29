@@ -1,0 +1,32 @@
+ideas.tsx:3172 Uncaught ReferenceError: CheckCircle2 is not defined
+    at ideas.tsx:3172:36
+    at Array.map (<anonymous>)
+    at ContentStudioIdeas (ideas.tsx:3159:50)
+
+ideas.tsx:3172 Uncaught ReferenceError: CheckCircle2 is not defined
+    at ideas.tsx:3172:36
+    at Array.map (<anonymous>)
+    at ContentStudioIdeas (ideas.tsx:3159:50)
+injected.js:37 The above error occurred in the <ContentStudioIdeas> component:
+
+    at ContentStudioIdeas (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.dev/src/pages/content-studio/ideas.tsx:444:20)
+    at AuthGuard (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:226:16)
+    at Switch (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:283:17)
+    at Suspense
+    at Router (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.dev/src/App.tsx?v=3mlYCVpHx9EFqKfC6C_t:306:35)
+    at Provider (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at TooltipProvider (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=98a5f318:158:5)
+    at TourProvider (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=98a5f318:3096:3)
+    at V (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:44:25)
+    at J (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:42:18)
+    at App (https://dba91402-cc67-4fc9-b1e9-1442e0f90a21-00-1aa3q5256tbai.kirk.replit.dev/src/App.tsx?v=3mlYCVpHx9EFqKfC6C_t:1929:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=98a5f318:19413 Uncaught ReferenceError: CheckCircle2 is not defined
+    at ideas.tsx:3172:36
+    at Array.map (<anonymous>)
+    at ContentStudioIdeas (ideas.tsx:3159:50)

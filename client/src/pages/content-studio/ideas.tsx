@@ -73,6 +73,7 @@ import {
   FileText as FileTextIcon,
   AlignLeft,
   CheckCircle,
+  CheckCircle2,
   Clock,
   Archive,
   ExternalLink,
