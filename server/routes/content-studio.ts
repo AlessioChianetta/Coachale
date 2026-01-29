@@ -12,7 +12,7 @@ import {
   insertContentTemplateSchema,
   insertContentFolderSchema
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, isNull, isNotNull, asc, inArray, or } from "drizzle-orm";
+import { eq, and, desc, gte, lte, isNull, isNotNull, asc, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { ensureGeminiFileValid } from "../services/gemini-file-manager";
@@ -3174,6 +3174,291 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
       success: false, 
       error: error.message || "Analisi fallita" 
     });
+  }
+});
+
+// ============================================================
+// ADVISAGE AI - Server-side Image Generation
+// ============================================================
+
+import { analyzeAdTextServerSide, generateImageServerSide, analyzeAndGenerateImage } from "../services/advisage-server-service";
+
+const advisageImageSchema = z.object({
+  prompt: z.string().min(10),
+  aspectRatio: z.enum(['1:1', '3:4', '4:3', '9:16', '16:9']).default('1:1'),
+});
+
+router.post("/advisage/generate-image-server", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validated = advisageImageSchema.parse(req.body);
+    
+    console.log(`[ADVISAGE-SERVER] Image generation request from ${consultantId}`);
+    
+    const { imageUrl, error } = await generateImageServerSide(
+      consultantId,
+      validated.prompt,
+      validated.aspectRatio
+    );
+    
+    if (error) {
+      return res.status(500).json({ success: false, error });
+    }
+    
+    res.json({ success: true, data: { imageUrl } });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SERVER] Endpoint error:", error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || "Generazione immagine fallita" 
+    });
+  }
+});
+
+const advisageFullPipelineSchema = z.object({
+  text: z.string().min(5),
+  platform: z.enum(['instagram', 'facebook', 'linkedin', 'tiktok', 'x']),
+  settings: z.object({
+    mood: z.enum(['professional', 'energetic', 'luxury', 'minimalist', 'playful']).default('professional'),
+    stylePreference: z.enum(['realistic', '3d-render', 'illustration', 'cyberpunk', 'lifestyle']).default('realistic'),
+    brandColor: z.string().optional(),
+    brandFont: z.string().optional(),
+  }).optional(),
+});
+
+router.post("/advisage/analyze-and-generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const validated = advisageFullPipelineSchema.parse(req.body);
+    
+    console.log(`[ADVISAGE-SERVER] Full pipeline request from ${consultantId}`);
+    
+    const result = await analyzeAndGenerateImage(
+      consultantId,
+      validated.text,
+      validated.platform,
+      validated.settings as any
+    );
+    
+    if (!result.analysis && result.error) {
+      return res.status(500).json({ success: false, error: result.error });
+    }
+    
+    res.json({ 
+      success: true, 
+      data: {
+        analysis: result.analysis,
+        imageUrl: result.imageUrl,
+        error: result.error
+      }
+    });
+  } catch (error: any) {
+    console.error("[ADVISAGE-SERVER] Full pipeline error:", error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || "Pipeline AdVisage fallita" 
+    });
+  }
+});
+
+// ============================================================
+// AUTOPILOT BATCHES - Review Mode Endpoints
+// ============================================================
+
+router.get("/autopilot/batches", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const batches = await db.select()
+      .from(schema.autopilotBatches)
+      .where(eq(schema.autopilotBatches.consultantId, consultantId))
+      .orderBy(desc(schema.autopilotBatches.createdAt))
+      .limit(50);
+    
+    res.json({ success: true, data: batches });
+  } catch (error: any) {
+    console.error("[AUTOPILOT-BATCH] List error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/autopilot/batches/:batchId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { batchId } = req.params;
+    
+    const [batch] = await db.select()
+      .from(schema.autopilotBatches)
+      .where(and(
+        eq(schema.autopilotBatches.id, batchId),
+        eq(schema.autopilotBatches.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!batch) {
+      return res.status(404).json({ success: false, error: "Batch non trovato" });
+    }
+    
+    const posts = await db.select()
+      .from(schema.contentPosts)
+      .where(eq(schema.contentPosts.autopilotBatchId, batchId))
+      .orderBy(schema.contentPosts.scheduledAt);
+    
+    res.json({ success: true, data: { batch, posts } });
+  } catch (error: any) {
+    console.error("[AUTOPILOT-BATCH] Get error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+const approveBatchSchema = z.object({
+  postIds: z.array(z.string()).optional(),
+  action: z.enum(['approve_all', 'reject_all', 'approve_selected']),
+});
+
+router.post("/autopilot/batches/:batchId/approve", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { batchId } = req.params;
+    const validated = approveBatchSchema.parse(req.body);
+    
+    const [batch] = await db.select()
+      .from(schema.autopilotBatches)
+      .where(and(
+        eq(schema.autopilotBatches.id, batchId),
+        eq(schema.autopilotBatches.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!batch) {
+      return res.status(404).json({ success: false, error: "Batch non trovato" });
+    }
+    
+    let updatedCount = 0;
+    
+    if (validated.action === 'approve_all') {
+      const result = await db.update(schema.contentPosts)
+        .set({ 
+          reviewStatus: 'approved', 
+          reviewedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(schema.contentPosts.autopilotBatchId, batchId),
+          eq(schema.contentPosts.reviewStatus, 'pending')
+        ));
+      updatedCount = result.rowCount || 0;
+      
+    } else if (validated.action === 'reject_all') {
+      const result = await db.update(schema.contentPosts)
+        .set({ 
+          reviewStatus: 'rejected', 
+          reviewedAt: new Date(),
+          status: 'archived',
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(schema.contentPosts.autopilotBatchId, batchId),
+          eq(schema.contentPosts.reviewStatus, 'pending')
+        ));
+      updatedCount = result.rowCount || 0;
+      
+    } else if (validated.action === 'approve_selected' && validated.postIds?.length) {
+      for (const postId of validated.postIds) {
+        await db.update(schema.contentPosts)
+          .set({ 
+            reviewStatus: 'approved', 
+            reviewedAt: new Date(),
+            updatedAt: new Date()
+          })
+          .where(and(
+            eq(schema.contentPosts.id, postId),
+            eq(schema.contentPosts.autopilotBatchId, batchId)
+          ));
+        updatedCount++;
+      }
+    }
+    
+    const approvedPosts = await db.select({ count: sql`count(*)` })
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.autopilotBatchId, batchId),
+        eq(schema.contentPosts.reviewStatus, 'approved')
+      ));
+    
+    await db.update(schema.autopilotBatches)
+      .set({
+        approvedPosts: Number(approvedPosts[0]?.count || 0),
+        status: 'approved',
+        approvedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(schema.autopilotBatches.id, batchId));
+    
+    res.json({ success: true, data: { updatedCount } });
+  } catch (error: any) {
+    console.error("[AUTOPILOT-BATCH] Approve error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/autopilot/batches/:batchId/publish", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { batchId } = req.params;
+    
+    const [batch] = await db.select()
+      .from(schema.autopilotBatches)
+      .where(and(
+        eq(schema.autopilotBatches.id, batchId),
+        eq(schema.autopilotBatches.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!batch) {
+      return res.status(404).json({ success: false, error: "Batch non trovato" });
+    }
+    
+    const approvedPosts = await db.select()
+      .from(schema.contentPosts)
+      .where(and(
+        eq(schema.contentPosts.autopilotBatchId, batchId),
+        eq(schema.contentPosts.reviewStatus, 'approved'),
+        eq(schema.contentPosts.status, 'scheduled')
+      ));
+    
+    console.log(`[AUTOPILOT-BATCH] Publishing ${approvedPosts.length} approved posts from batch ${batchId}`);
+    
+    let publishedCount = 0;
+    const errors: string[] = [];
+    
+    for (const post of approvedPosts) {
+      try {
+        publishedCount++;
+      } catch (err: any) {
+        errors.push(`Post ${post.id}: ${err.message}`);
+      }
+    }
+    
+    await db.update(schema.autopilotBatches)
+      .set({
+        publishedPosts: publishedCount,
+        status: 'published',
+        publishedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(schema.autopilotBatches.id, batchId));
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        publishedCount,
+        errors: errors.length > 0 ? errors : undefined
+      } 
+    });
+  } catch (error: any) {
+    console.error("[AUTOPILOT-BATCH] Publish error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

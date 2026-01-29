@@ -2,6 +2,7 @@ import { db } from "../db";
 import { eq, and, gte, lt } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { generateContentIdeas } from "./content-ai-service";
+import { analyzeAndGenerateImage, AdvisageSettings } from "./advisage-server-service";
 import { Response } from "express";
 
 export interface AutopilotConfig {
@@ -28,7 +29,15 @@ export interface AutopilotConfig {
   copyType?: string;
   awarenessLevel?: string;
   sophisticationLevel?: string;
+  
+  // New flags for image generation and publishing
+  autoGenerateImages?: boolean;
+  autoPublish?: boolean;
+  reviewMode?: boolean;
+  advisageSettings?: AdvisageSettings;
 }
+
+const MAX_CHAR_LIMIT_RETRIES = 3;
 
 export interface AutopilotProgress {
   total: number;
@@ -123,7 +132,33 @@ export async function generateAutopilotBatch(
     }
   };
   
+  // Batch tracking variables
+  let batchId: string | null = null;
+  let imagesGenerated = 0;
+  
   try {
+    // Step 1: Create batch record if reviewMode or autoGenerateImages is enabled
+    if (config.reviewMode || config.autoGenerateImages) {
+      const [batch] = await db.insert(schema.autopilotBatches).values({
+        consultantId,
+        config: config as any,
+        autoGenerateImages: config.autoGenerateImages || false,
+        autoPublish: config.autoPublish || false,
+        reviewMode: config.reviewMode || false,
+        advisageSettings: config.advisageSettings || { mood: 'professional', stylePreference: 'realistic' },
+        status: "generating",
+        totalPosts: 0,
+        generatedPosts: 0,
+        imagesGenerated: 0,
+        approvedPosts: 0,
+        publishedPosts: 0,
+        failedPosts: 0,
+      }).returning({ id: schema.autopilotBatches.id });
+      
+      batchId = batch?.id || null;
+      console.log(`[AUTOPILOT] Created batch ${batchId} with reviewMode=${config.reviewMode}, autoGenerateImages=${config.autoGenerateImages}`);
+    }
+    
     // Carica Brand Assets per postingSchedule e X Premium
     const [brandAssets] = await db.select()
       .from(schema.brandAssets)
@@ -267,29 +302,57 @@ export async function generateAutopilotBatch(
             console.log(`[AUTOPILOT DEBUG]   writingStyle: "${writingStyle}"`);
             console.log(`[AUTOPILOT DEBUG] ========================================`);
             
-            const result = await generateContentIdeas({
-              consultantId,
-              niche,
-              targetAudience,
-              objective,
-              count: 1,
-              mediaType: effectiveMediaType,
-              copyType: effectiveCopyType,
-              targetPlatform: platform as "instagram" | "x" | "linkedin",
-              writingStyle,
-              charLimit,
-              awarenessLevel: (passedAwarenessLevel || "problem_aware") as any,
-              sophisticationLevel: (passedSophisticationLevel || "level_3") as any,
-              postSchema: postSchema,
-              schemaStructure: schemaStructure,
-              schemaLabel: schemaLabel,
-              postCategory: postCategory,
-              customWritingInstructions: customInstructions,
-              brandVoiceData: brandVoiceEnabled ? brandVoiceData as any : undefined,
-            });
+            // Retry loop for character limit
+            let validIdea: any = null;
+            let charLimitRetries = 0;
             
-            if (result.ideas && result.ideas.length > 0) {
-              const idea = result.ideas[0];
+            for (let retry = 0; retry < MAX_CHAR_LIMIT_RETRIES; retry++) {
+              const result = await generateContentIdeas({
+                consultantId,
+                niche,
+                targetAudience,
+                objective,
+                count: 1,
+                mediaType: effectiveMediaType,
+                copyType: effectiveCopyType,
+                targetPlatform: platform as "instagram" | "x" | "linkedin",
+                writingStyle,
+                charLimit,
+                awarenessLevel: (passedAwarenessLevel || "problem_aware") as any,
+                sophisticationLevel: (passedSophisticationLevel || "level_3") as any,
+                postSchema: postSchema,
+                schemaStructure: schemaStructure,
+                schemaLabel: schemaLabel,
+                postCategory: postCategory,
+                customWritingInstructions: customInstructions,
+                brandVoiceData: brandVoiceEnabled ? brandVoiceData as any : undefined,
+              });
+              
+              if (result.ideas && result.ideas.length > 0) {
+                const idea = result.ideas[0];
+                const resolvedFullCopy = (idea.structuredContent as any)?.fullCopy || idea.copyContent || "";
+                
+                // Check if content exceeds character limit
+                if (resolvedFullCopy.length <= charLimit) {
+                  validIdea = idea;
+                  charLimitRetries = retry;
+                  console.log(`[AUTOPILOT] Content within char limit on attempt ${retry + 1}: ${resolvedFullCopy.length}/${charLimit}`);
+                  break;
+                } else {
+                  console.log(`[AUTOPILOT] Content exceeds char limit (${resolvedFullCopy.length}/${charLimit}), retry ${retry + 1}/${MAX_CHAR_LIMIT_RETRIES}`);
+                  charLimitRetries = retry + 1;
+                  
+                  // On last retry, accept the content anyway but log warning
+                  if (retry === MAX_CHAR_LIMIT_RETRIES - 1) {
+                    console.log(`[AUTOPILOT] Max retries reached, accepting content as-is`);
+                    validIdea = idea;
+                  }
+                }
+              }
+            }
+            
+            if (validIdea) {
+              const idea = validIdea;
               
               const dbMediaType = effectiveMediaType === "image" ? "foto" : 
                                 effectiveMediaType === "video" ? "video" : 
@@ -298,6 +361,10 @@ export async function generateAutopilotBatch(
               const resolvedFullCopy = (idea.structuredContent as any)?.fullCopy || idea.copyContent || "";
               console.log(`[AUTOPILOT DEBUG] Creating post "${idea.title}": fullCopy source=${(idea.structuredContent as any)?.fullCopy ? 'structuredContent' : idea.copyContent ? 'copyContent' : 'empty'}, length=${resolvedFullCopy.length}`);
               
+              // Determine initial status based on reviewMode
+              const postStatus = config.reviewMode ? "draft" : "scheduled";
+              const reviewStatus = config.reviewMode ? "pending" : undefined;
+              
               const [insertedPost] = await db.insert(schema.contentPosts).values({
                 consultantId,
                 title: idea.title,
@@ -305,30 +372,101 @@ export async function generateAutopilotBatch(
                 fullCopy: resolvedFullCopy,
                 platform: dbPlatform,
                 contentType: "post",
-                status: "scheduled",
+                status: postStatus,
                 scheduledAt: new Date(`${date}T${time}:00`),
                 mediaType: dbMediaType,
                 copyType: effectiveCopyType,
                 structuredContent: idea.structuredContent || {},
                 aiQualityScore: idea.aiQualityScore || null,
                 contentTheme: currentContentType,
+                generatedBy: "autopilot",
+                // Autopilot batch fields
+                autopilotBatchId: batchId,
+                imageGenerationStatus: config.autoGenerateImages ? "pending" : "skipped",
+                reviewStatus: reviewStatus,
+                charLimitRetries: charLimitRetries,
               }).returning({ id: schema.contentPosts.id });
               
               if (insertedPost?.id) {
-                await db.insert(schema.contentCalendar).values({
-                  consultantId,
-                  postId: insertedPost.id,
-                  scheduledDate: date,
-                  scheduledTime: time,
-                  title: idea.title,
-                  platform: dbPlatform,
-                  contentType: "post",
-                  status: "scheduled",
-                });
+                // Only create calendar entry if not in review mode
+                if (!config.reviewMode) {
+                  await db.insert(schema.contentCalendar).values({
+                    consultantId,
+                    postId: insertedPost.id,
+                    scheduledDate: date,
+                    scheduledTime: time,
+                    title: idea.title,
+                    platform: dbPlatform,
+                    contentType: "post",
+                    status: "scheduled",
+                  });
+                }
+                
+                // Step 2d: If autoGenerateImages is enabled, generate image with AdVisage
+                if (config.autoGenerateImages) {
+                  try {
+                    console.log(`[AUTOPILOT] Generating image for post ${insertedPost.id}...`);
+                    
+                    // Update status to generating
+                    await db.update(schema.contentPosts)
+                      .set({ imageGenerationStatus: "generating" })
+                      .where(eq(schema.contentPosts.id, insertedPost.id));
+                    
+                    const advisageSettings = config.advisageSettings || {
+                      mood: 'professional' as const,
+                      stylePreference: 'realistic' as const,
+                    };
+                    
+                    const imageResult = await analyzeAndGenerateImage(
+                      consultantId,
+                      resolvedFullCopy,
+                      platform,
+                      advisageSettings
+                    );
+                    
+                    if (imageResult.imageUrl && !imageResult.error) {
+                      // Get image prompt from analysis
+                      const imagePrompt = imageResult.analysis?.concepts?.[0]?.promptClean || 
+                                          imageResult.analysis?.concepts?.[0]?.description || "";
+                      const imageDescription = imageResult.analysis?.concepts?.[0]?.title || "";
+                      
+                      await db.update(schema.contentPosts)
+                        .set({ 
+                          imageUrl: imageResult.imageUrl,
+                          imagePrompt: imagePrompt,
+                          imageDescription: imageDescription,
+                          imageGenerationStatus: "completed",
+                          imageGeneratedAt: new Date(),
+                        })
+                        .where(eq(schema.contentPosts.id, insertedPost.id));
+                      
+                      imagesGenerated++;
+                      console.log(`[AUTOPILOT] Image generated successfully for post ${insertedPost.id}`);
+                    } else {
+                      // Image generation failed
+                      await db.update(schema.contentPosts)
+                        .set({ 
+                          imageGenerationStatus: "failed",
+                          imageGenerationError: imageResult.error || "Unknown error",
+                        })
+                        .where(eq(schema.contentPosts.id, insertedPost.id));
+                      
+                      console.log(`[AUTOPILOT] Image generation failed for post ${insertedPost.id}: ${imageResult.error}`);
+                    }
+                  } catch (imageError: any) {
+                    console.error(`[AUTOPILOT] Image generation error for post ${insertedPost.id}:`, imageError.message);
+                    await db.update(schema.contentPosts)
+                      .set({ 
+                        imageGenerationStatus: "failed",
+                        imageGenerationError: imageError.message,
+                      })
+                      .where(eq(schema.contentPosts.id, insertedPost.id));
+                  }
+                }
               }
               
               generated++;
-              console.log(`[AUTOPILOT] Generated post ${generated}/${totalPosts} for ${platform} on ${date} (theme: ${currentContentType})`);
+              console.log(`[AUTOPILOT] Generated post ${generated}/${totalPosts} for ${platform} on ${date} (theme: ${currentContentType}, retries: ${charLimitRetries})`);
             }
           }
         } catch (error: any) {
@@ -336,6 +474,26 @@ export async function generateAutopilotBatch(
           errors.push(`${platform} ${date}: ${error.message}`);
         }
       }
+    }
+    
+    // Step 3: Update batch with final counts
+    if (batchId) {
+      const batchStatus = config.reviewMode ? "awaiting_review" : 
+                          (config.autoPublish ? "publishing" : "approved");
+      
+      await db.update(schema.autopilotBatches)
+        .set({
+          status: batchStatus,
+          totalPosts: generated,
+          generatedPosts: generated,
+          imagesGenerated: imagesGenerated,
+          approvedPosts: config.reviewMode ? 0 : generated,
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.autopilotBatches.id, batchId));
+      
+      console.log(`[AUTOPILOT] Batch ${batchId} completed: ${generated} posts, ${imagesGenerated} images, status=${batchStatus}`);
     }
     
     sendProgress({
@@ -349,6 +507,19 @@ export async function generateAutopilotBatch(
     return { success: true, generated, errors };
   } catch (error: any) {
     console.error("[AUTOPILOT] Fatal error:", error.message);
+    
+    // Update batch status to failed if batch was created
+    if (batchId) {
+      await db.update(schema.autopilotBatches)
+        .set({
+          status: "failed",
+          failedPosts: generated > 0 ? 1 : 0,
+          lastError: error.message,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.autopilotBatches.id, batchId));
+    }
+    
     sendProgress({
       total: 0,
       completed: 0,
