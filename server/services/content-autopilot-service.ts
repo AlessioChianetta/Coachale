@@ -612,6 +612,28 @@ export async function generateAutopilotBatch(
               
               generated++;
               console.log(`[AUTOPILOT] Generated post ${generated}/${totalPosts} for ${platform} on ${date} (theme: ${currentContentType}, retries: ${charLimitRetries})`);
+              
+              // Send detailed progress event for this post
+              sendProgress({
+                total: totalPosts,
+                completed: generated,
+                currentDate: date,
+                currentPlatform: platform,
+                currentDayIndex: dayIndex + 1,
+                totalDays: totalDays,
+                status: "running",
+                postGenerated: {
+                  id: insertedPost?.id || "",
+                  title: idea.title,
+                  platform: platform,
+                  date: date,
+                  charCount: resolvedFullCopy.length,
+                  charLimit: charLimitReal,
+                  retries: charLimitRetries,
+                  theme: currentContentType,
+                  imageGenerated: config.autoGenerateImages && currentPost?.imageUrl ? true : false,
+                },
+              });
             }
           }
         } catch (error: any) {

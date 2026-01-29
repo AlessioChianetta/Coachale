@@ -605,6 +605,17 @@ export default function ContentStudioIdeas() {
   const [autopilotPostsPerDay, setAutopilotPostsPerDay] = useState(2);
   const [isAutopilotGenerating, setIsAutopilotGenerating] = useState(false);
   const [autopilotProgress, setAutopilotProgress] = useState<{total: number; completed: number; currentDate?: string; currentPlatform?: string; currentDayIndex?: number; totalDays?: number} | null>(null);
+  const [autopilotGeneratedPosts, setAutopilotGeneratedPosts] = useState<Array<{
+    id: string;
+    title: string;
+    platform: string;
+    date: string;
+    charCount: number;
+    charLimit: number;
+    retries: number;
+    theme: string;
+    imageGenerated: boolean;
+  }>>([]);
 
   // Multi-platform autopilot config
   interface AutopilotPlatformConfig {
@@ -647,8 +658,8 @@ export default function ContentStudioIdeas() {
   // Track if Brand Assets have been loaded to autopilot
   const [brandAssetsLoadedForAutopilot, setBrandAssetsLoadedForAutopilot] = useState(false);
   const [expandedAutopilotPlatforms, setExpandedAutopilotPlatforms] = useState<Set<string>>(new Set(["instagram"]));
-  const [autopilotIncludeWeekends, setAutopilotIncludeWeekends] = useState(false);
-  const [autopilotIncludeHolidays, setAutopilotIncludeHolidays] = useState(false);
+  const [autopilotIncludeWeekends, setAutopilotIncludeWeekends] = useState(true);
+  const [autopilotIncludeHolidays, setAutopilotIncludeHolidays] = useState(true);
 
   const toggleAutopilotPlatformExpanded = (platform: string) => {
     setExpandedAutopilotPlatforms(prev => {
@@ -1572,6 +1583,7 @@ export default function ContentStudioIdeas() {
     
     setIsAutopilotGenerating(true);
     setAutopilotProgress(null);
+    setAutopilotGeneratedPosts([]);
     
     try {
       const kbContentParts: string[] = [];
@@ -1678,6 +1690,11 @@ export default function ContentStudioIdeas() {
                     currentDayIndex: data.currentDayIndex,
                     totalDays: data.totalDays,
                   });
+                  
+                  // Collect generated post details
+                  if (data.postGenerated) {
+                    setAutopilotGeneratedPosts(prev => [...prev, data.postGenerated]);
+                  }
                 }
                 if (data.status === "completed") {
                   toast({
@@ -3108,6 +3125,92 @@ export default function ContentStudioIdeas() {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Pannello Progresso Dettagliato */}
+                  {(isAutopilotGenerating || autopilotGeneratedPosts.length > 0) && (
+                    <div className="mt-4 border border-orange-200 dark:border-orange-800 rounded-lg bg-white dark:bg-gray-900 overflow-hidden">
+                      <div className="p-3 bg-orange-50 dark:bg-orange-950/30 border-b border-orange-200 dark:border-orange-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-orange-500" />
+                          <span className="font-medium text-sm">Dettaglio Generazione</span>
+                          <Badge variant="outline" className="text-xs">
+                            {autopilotGeneratedPosts.length} post
+                          </Badge>
+                        </div>
+                        {!isAutopilotGenerating && autopilotGeneratedPosts.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setAutopilotGeneratedPosts([])}
+                            className="h-6 text-xs"
+                          >
+                            Chiudi
+                          </Button>
+                        )}
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {autopilotGeneratedPosts.length === 0 && isAutopilotGenerating && (
+                          <div className="p-4 text-center text-muted-foreground text-sm">
+                            <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                            Generazione in corso...
+                          </div>
+                        )}
+                        {autopilotGeneratedPosts.map((post, idx) => {
+                          const platformInfo = TARGET_PLATFORMS.find(p => p.value === post.platform);
+                          const PlatformIcon = platformInfo?.icon || Instagram;
+                          const charPercentage = Math.round((post.charCount / post.charLimit) * 100);
+                          const isOverLimit = post.charCount > post.charLimit;
+                          
+                          return (
+                            <div
+                              key={`${post.id}-${idx}`}
+                              className="p-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                  <div className={`p-1 rounded ${platformInfo?.color || "bg-gray-500"}`}>
+                                    <PlatformIcon className="h-3 w-3 text-white" />
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{post.title}</p>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatDateItalian(post.date)}
+                                    </span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-xs ${
+                                        isOverLimit 
+                                          ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950 dark:text-red-400" 
+                                          : charPercentage > 90 
+                                            ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950 dark:text-amber-400"
+                                            : "bg-green-50 text-green-600 border-green-200 dark:bg-green-950 dark:text-green-400"
+                                      }`}
+                                    >
+                                      {post.charCount}/{post.charLimit} caratteri
+                                    </Badge>
+                                    {post.retries > 0 && (
+                                      <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
+                                        {post.retries} retry
+                                      </Badge>
+                                    )}
+                                    {post.imageGenerated && (
+                                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-600 border-purple-200">
+                                        <ImageIcon className="h-3 w-3 mr-1" />
+                                        Immagine
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </div>
