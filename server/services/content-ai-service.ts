@@ -1,6 +1,6 @@
 import { getAIProvider, getModelWithThinking, GEMINI_3_MODEL } from "../ai/provider-factory";
 import { db } from "../db";
-import { brandAssets, contentIdeas, contentPosts } from "@shared/schema";
+import { brandAssets, contentIdeas, contentPosts, contentTopics } from "@shared/schema";
 import { eq, desc, and, inArray } from "drizzle-orm";
 
 export type ContentType = "post" | "carosello" | "reel" | "video" | "story" | "articolo";
@@ -30,6 +30,7 @@ export interface GenerateIdeasParams {
   charLimit?: number;
   writingStyle?: string;
   customWritingInstructions?: string;
+  topicId?: string;
   brandVoiceData?: {
     consultantDisplayName?: string;
     businessName?: string;
@@ -446,6 +447,91 @@ function getSectionGuideline(fieldName: string, sectionLabel: string): { instruc
 export { SECTION_GUIDELINES, getSectionGuideline };
 
 /**
+ * Dynamic Section Instruction Variants
+ * Each section has 3-5 variants to reduce repetitive AI output
+ */
+const SECTION_INSTRUCTION_VARIANTS: Record<string, string[]> = {
+  hook: [
+    "La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante.",
+    "L'apertura che cattura l'attenzione immediatamente - domanda diretta o affermazione audace.",
+    "Il gancio iniziale che fa pensare 'Devo leggere di più' - sorprendente o controintuitivo.",
+    "La frase d'impatto che interrompe lo scrolling - statistica shock o verità scomoda.",
+    "L'hook che crea curiosità irresistibile - promessa intrigante o sfida al lettore."
+  ],
+  chiCosaCome: [
+    "Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento unico.",
+    "Chi servi, quale trasformazione offri e con quale metodo distintivo.",
+    "Il tuo elevator pitch: target + risultato + approccio in una formula chiara.",
+    "La tua proposta di valore: a chi parli, cosa ottengono, come ci arrivi.",
+    "Posizionamento cristallino: cliente ideale + beneficio principale + metodo proprietario."
+  ],
+  errore: [
+    "L'errore comune che il tuo target sta commettendo senza saperlo.",
+    "Il problema nascosto che blocca i tuoi potenziali clienti dal raggiungere i risultati.",
+    "La trappola mentale in cui cade chi non ha ancora capito il vero ostacolo.",
+    "Quello che tutti sbagliano nel tuo settore (e perché costa caro).",
+    "L'errore invisibile che sabota i risultati - e quasi nessuno ne parla."
+  ],
+  soluzione: [
+    "La tua soluzione unica al problema - cosa offri e perché funziona.",
+    "Il metodo che hai sviluppato per risolvere questo problema specifico.",
+    "La via d'uscita che proponi - perché è diversa dalle alternative sul mercato.",
+    "Il sistema/approccio che funziona quando tutto il resto ha fallito.",
+    "La tua formula proprietaria per ottenere il risultato desiderato."
+  ],
+  riprovaSociale: [
+    "Testimonianze, risultati concreti, numeri specifici che dimostrano credibilità.",
+    "Prove sociali che validano la tua expertise: clienti serviti, trasformazioni reali.",
+    "Credibilità tangibile: case study, numeri, feedback verificabili.",
+    "Risultati misurabili e storie di successo che parlano da sole.",
+    "Social proof potente: dati, testimonianze, riconoscimenti che costruiscono fiducia."
+  ],
+  cta: [
+    "Call to action finale chiara e urgente.",
+    "Invito all'azione specifico: cosa fare adesso e cosa succede dopo.",
+    "Il passo successivo immediato - semplice, chiaro, irresistibile.",
+    "CTA che crea urgenza senza essere aggressiva - azione + beneficio.",
+    "L'azione concreta da compiere ORA per ottenere il risultato promesso."
+  ],
+  body: [
+    "Il corpo del messaggio che sviluppa l'idea principale con valore concreto.",
+    "Contenuto centrale che approfondisce il tema e mantiene l'attenzione.",
+    "Il cuore del post: insight, valore pratico, connessione emotiva.",
+    "Sviluppo del messaggio con esempi, dettagli e punti chiave.",
+    "La parte centrale che trasforma curiosità in interesse genuino."
+  ],
+  problema: [
+    "Esponi il problema centrale con esempi reali e conseguenze tangibili.",
+    "Descrivi la frustrazione quotidiana che il tuo target vive sulla propria pelle.",
+    "Il pain point specifico raccontato con empatia e dettagli concreti.",
+    "La sfida che il tuo pubblico affronta - e perché le soluzioni comuni non funzionano."
+  ],
+  fullScript: [
+    "Lo script completo parlato fluido. USA [PAUSA] per pause drammatiche.",
+    "Il copione video naturale, come parleresti a un amico. Includi [PAUSA] per enfasi.",
+    "Script conversazionale per video - ritmo naturale con [PAUSA] nei momenti chiave.",
+    "Testo parlato coinvolgente con transizioni fluide. [PAUSA] dove serve impatto."
+  ]
+};
+
+/**
+ * Returns randomly selected instruction variants for each section
+ * This creates variety in AI-generated content by varying the prompts
+ */
+function getRandomSectionInstructions(): Record<string, string> {
+  const selected: Record<string, string> = {};
+  
+  for (const [section, variants] of Object.entries(SECTION_INSTRUCTION_VARIANTS)) {
+    const randomIndex = Math.floor(Math.random() * variants.length);
+    selected[section] = variants[randomIndex];
+  }
+  
+  return selected;
+}
+
+export { SECTION_INSTRUCTION_VARIANTS, getRandomSectionInstructions };
+
+/**
  * AI Compression - Shortens content that exceeds character limits while preserving meaning
  * @param content The original content to compress
  * @param targetLimit The target character limit
@@ -528,6 +614,7 @@ export interface GenerateIdeasResult {
   ideas: ContentIdea[];
   modelUsed: string;
   tokensUsed?: number;
+  topicId?: string;
 }
 
 export interface GeneratePostCopyParams {
@@ -1002,6 +1089,207 @@ const AWARENESS_LEVEL_INSTRUCTIONS: Record<AwarenessLevel, { name: string; strat
   }
 };
 
+// ============================================================
+// HOOK PATTERN ROTATION SYSTEM
+// ============================================================
+
+export type HookPatternType = 
+  | "domanda" 
+  | "statistica" 
+  | "storia" 
+  | "controintuitivo" 
+  | "problema" 
+  | "curiosita" 
+  | "social_proof" 
+  | "us_vs_them" 
+  | "urgenza" 
+  | "provocazione";
+
+interface HookPatternInfo {
+  pattern: HookPatternType;
+  name: string;
+  instruction: string;
+  example: string;
+}
+
+const HOOK_PATTERNS: HookPatternInfo[] = [
+  {
+    pattern: "domanda",
+    name: "Domanda Provocatoria",
+    instruction: "Inizia con una DOMANDA che sfida le convinzioni del lettore. La domanda deve provocare una reazione emotiva immediata: 'Non ci avevo pensato!' o 'Aspetta, davvero?'. Evita domande banali - punta a quelle che fanno riflettere.",
+    example: "Stai davvero lavorando per il tuo sogno, o per quello di qualcun altro?"
+  },
+  {
+    pattern: "statistica",
+    name: "Statistica Scioccante",
+    instruction: "Apri con un NUMERO o DATO statistico che sorprende. I numeri fermano lo scroll perché sono concreti. Usa percentuali, cifre specifiche, tempi. Il dato deve sembrare quasi incredibile ma credibile.",
+    example: "Il 73% degli imprenditori fallisce entro 5 anni. E sai qual è l'errore #1?"
+  },
+  {
+    pattern: "storia",
+    name: "Mini Storia (Apertura)",
+    instruction: "Inizia con l'apertura di una STORIA personale o di un cliente. Crea tensione e curiosità: inizia in medias res, nel momento critico. Il lettore deve voler sapere come finisce.",
+    example: "3 anni fa stavo per chiudere tutto. Poi ho scoperto una cosa."
+  },
+  {
+    pattern: "controintuitivo",
+    name: "Affermazione Controintuitiva",
+    instruction: "Fai un'affermazione che va CONTRO il pensiero comune del settore. Deve far pensare 'Impossibile!' o 'Finalmente qualcuno lo dice!'. Sfida i luoghi comuni e le best practice accettate.",
+    example: "Lavorare meno ti fa guadagnare di più. Ecco perché."
+  },
+  {
+    pattern: "problema",
+    name: "Pain Point Diretto",
+    instruction: "Colpisci subito il DOLORE specifico del target. Descrivi il problema con parole che il lettore usa nella sua testa. Deve pensare 'Parla proprio di me!'. Sii specifico, non generico.",
+    example: "Ogni mattina ti svegli già stanco pensando a quel cliente impossibile."
+  },
+  {
+    pattern: "curiosita",
+    name: "Curiosity Gap",
+    instruction: "Crea un GAP di curiosità che il lettore vuole colmare. Prometti una rivelazione, un segreto, qualcosa di nascosto. Non svelare tutto subito - fai venire voglia di leggere.",
+    example: "C'è una cosa che i consulenti di successo non dicono mai ad alta voce."
+  },
+  {
+    pattern: "social_proof",
+    name: "Social Proof / Testimonianza",
+    instruction: "Apri con un RISULTATO concreto o una testimonianza. Numeri specifici, nomi (anche inventati come struttura), trasformazioni misurabili. La prova sociale immediata costruisce credibilità.",
+    example: "Marco ha triplicato i suoi clienti in 60 giorni. Ecco come."
+  },
+  {
+    pattern: "us_vs_them",
+    name: "Us vs Them (Contrasto)",
+    instruction: "Crea un CONTRASTO netto tra due gruppi: chi capisce vs chi no, chi agisce vs chi aspetta, vecchio modo vs nuovo modo. Fai sentire il lettore parte del gruppo 'giusto'.",
+    example: "Alcuni imprenditori lavorano 12 ore. Altri 4. La differenza? Non è il talento."
+  },
+  {
+    pattern: "urgenza",
+    name: "Urgenza / FOMO",
+    instruction: "Crea senso di URGENZA o paura di perdere qualcosa (FOMO). Il tempo stringe, l'opportunità sta scappando, il mercato sta cambiando. Motiva ad agire ORA, non domani.",
+    example: "Tra 6 mesi sarà troppo tardi. Ecco perché."
+  },
+  {
+    pattern: "provocazione",
+    name: "Affermazione Bold / Provocazione",
+    instruction: "Fai un'affermazione AUDACE che prende posizione forte. Può essere controversa, può dividere - ma non lascia indifferenti. Mostra autorità e sicurezza nel tuo punto di vista.",
+    example: "Il marketing digitale è morto. E chi non lo capisce sta perdendo soldi."
+  }
+];
+
+/**
+ * Returns a random hook pattern with Italian instructions
+ * Use this to add variety to generated hooks
+ */
+export function getRandomHookPattern(): HookPatternInfo {
+  const randomIndex = Math.floor(Math.random() * HOOK_PATTERNS.length);
+  return HOOK_PATTERNS[randomIndex];
+}
+
+/**
+ * Returns all available hook patterns
+ */
+export function getAllHookPatterns(): HookPatternInfo[] {
+  return HOOK_PATTERNS;
+}
+
+// ============================================================
+// CONTENT ANGLE ROTATION SYSTEM
+// ============================================================
+
+export interface ContentAngle {
+  levaEmotiva: "paura" | "desiderio";
+  approccio: "logico" | "emotivo";
+  prospettiva: "prima_persona" | "terza_persona";
+  stileNarrativo: "diretto" | "storytelling";
+}
+
+interface AngleDescription {
+  levaEmotiva: { value: string; instruction: string };
+  approccio: { value: string; instruction: string };
+  prospettiva: { value: string; instruction: string };
+  stileNarrativo: { value: string; instruction: string };
+}
+
+const ANGLE_OPTIONS = {
+  levaEmotiva: [
+    { value: "paura", instruction: "Usa la PAURA come leva: perdita, rischio, cosa succede se non agiscono, conseguenze negative dell'inazione." },
+    { value: "desiderio", instruction: "Usa il DESIDERIO come leva: guadagno, opportunità, cosa ottengono se agiscono, visione positiva del futuro." }
+  ],
+  approccio: [
+    { value: "logico", instruction: "Approccio LOGICO: usa dati, numeri, ragionamenti, prove concrete, step-by-step, argomentazioni razionali." },
+    { value: "emotivo", instruction: "Approccio EMOTIVO: usa storie, emozioni, immagini vivide, connessione personale, empatia, sentimenti." }
+  ],
+  prospettiva: [
+    { value: "prima_persona", instruction: "Scrivi in PRIMA PERSONA: 'Io ho scoperto...', 'La mia esperienza...', racconta dal tuo punto di vista, sii personale." },
+    { value: "terza_persona", instruction: "Scrivi in TERZA PERSONA: 'I professionisti che...', 'Chi vuole...', parla del target o di casi esterni, sii osservatore." }
+  ],
+  stileNarrativo: [
+    { value: "diretto", instruction: "Stile DIRETTO: vai al punto, niente giri di parole, frasi corte, affermazioni chiare, no storytelling." },
+    { value: "storytelling", instruction: "Stile STORYTELLING: racconta una storia, crea tensione narrativa, usa personaggi, conflitto e risoluzione." }
+  ]
+};
+
+/**
+ * Returns a random combination of content angles
+ * Creates unique perspective combinations for variety
+ */
+export function getRandomAngle(): { angle: ContentAngle; description: AngleDescription } {
+  const randomPick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  
+  const levaEmotiva = randomPick(ANGLE_OPTIONS.levaEmotiva);
+  const approccio = randomPick(ANGLE_OPTIONS.approccio);
+  const prospettiva = randomPick(ANGLE_OPTIONS.prospettiva);
+  const stileNarrativo = randomPick(ANGLE_OPTIONS.stileNarrativo);
+  
+  return {
+    angle: {
+      levaEmotiva: levaEmotiva.value as "paura" | "desiderio",
+      approccio: approccio.value as "logico" | "emotivo",
+      prospettiva: prospettiva.value as "prima_persona" | "terza_persona",
+      stileNarrativo: stileNarrativo.value as "diretto" | "storytelling"
+    },
+    description: {
+      levaEmotiva: { value: levaEmotiva.value, instruction: levaEmotiva.instruction },
+      approccio: { value: approccio.value, instruction: approccio.instruction },
+      prospettiva: { value: prospettiva.value, instruction: prospettiva.instruction },
+      stileNarrativo: { value: stileNarrativo.value, instruction: stileNarrativo.instruction }
+    }
+  };
+}
+
+/**
+ * Builds a prompt section describing the selected hook pattern and angle
+ */
+export function buildHookPatternAndAnglePrompt(): { 
+  hookPattern: HookPatternInfo; 
+  angle: ReturnType<typeof getRandomAngle>;
+  promptSection: string;
+} {
+  const hookPattern = getRandomHookPattern();
+  const angle = getRandomAngle();
+  
+  const promptSection = `
+🎣 PATTERN HOOK DA USARE: ${hookPattern.name}
+${hookPattern.instruction}
+📝 Esempio: "${hookPattern.example}"
+⚠️ IMPORTANTE: L'hook DEVE essere MASSIMO 125 caratteri (limite Meta Ads - dopo 125 char appare "...Altro")
+
+🎯 ANGOLI DEL CONTENUTO:
+- Leva emotiva: ${angle.description.levaEmotiva.value.toUpperCase()} → ${angle.description.levaEmotiva.instruction}
+- Approccio: ${angle.description.approccio.value.toUpperCase()} → ${angle.description.approccio.instruction}
+- Prospettiva: ${angle.description.prospettiva.value.toUpperCase()} → ${angle.description.prospettiva.instruction}
+- Stile: ${angle.description.stileNarrativo.value.toUpperCase()} → ${angle.description.stileNarrativo.instruction}
+
+Combina il pattern hook "${hookPattern.name}" con gli angoli sopra per creare contenuto unico e variegato.
+`;
+
+  return { hookPattern, angle, promptSection };
+}
+
+// ============================================================
+// MAX HOOK CHARACTER LIMIT (Meta Ads visibility)
+// ============================================================
+const MAX_HOOK_CHARS = 125; // Meta Ads shows only 125 chars before "...Altro"
+
 function validateAndEnrichCopyLength(
   copyType: string | undefined,
   copyLength: number,
@@ -1086,6 +1374,267 @@ async function fetchPreviousContent(consultantId: string): Promise<{
   }
 }
 
+// ============================================================
+// PATTERN DETECTION SYSTEM - Analyze hook patterns for variety
+// ============================================================
+
+interface PatternAnalysis {
+  pattern: string;
+  count: number;
+  percentage: number;
+  examples: string[];
+}
+
+interface AngleAnalysis {
+  angle: string;
+  count: number;
+  percentage: number;
+}
+
+interface ContentFingerprint {
+  totalHooks: number;
+  patterns: PatternAnalysis[];
+  angles: AngleAnalysis[];
+  overusedPatterns: string[];
+  underusedPatterns: string[];
+  overusedAngles: string[];
+  underusedAngles: string[];
+}
+
+/**
+ * Detects the pattern type of a hook based on heuristics
+ */
+function detectHookPattern(hook: string): string[] {
+  const patterns: string[] = [];
+  const hookLower = hook.toLowerCase().trim();
+  
+  // Pattern: Domanda (ends with ?)
+  if (hook.trim().endsWith("?")) {
+    patterns.push("domanda");
+  }
+  
+  // Pattern: Statistica (contains numbers)
+  if (/\d+/.test(hook)) {
+    patterns.push("statistica");
+  }
+  
+  // Pattern: Storia (narrative opening)
+  if (/^(quando|c'era|era|un giorno|quella volta|ricordo|anni fa|tempo fa)/i.test(hookLower)) {
+    patterns.push("storia");
+  }
+  
+  // Pattern: Problema (negative/error focus)
+  if (/(non|sbagliato|sbaglia|errore|errori|problema|problemi|fallimento|fallisci|perdere|perdi|evita)/i.test(hookLower)) {
+    patterns.push("problema");
+  }
+  
+  // Pattern: Provocazione (controversial/bold statement)
+  if (/(smetti|basta|stop|la verità|nessuno ti dice|pochi sanno|segreto|quello che non|mai più)/i.test(hookLower)) {
+    patterns.push("provocazione");
+  }
+  
+  // Pattern: Social Proof (results/testimonials)
+  if (/(clienti|risultati|testimonianza|ho aiutato|abbiamo|successo|trasformato|fatturato|cresciuto)/i.test(hookLower)) {
+    patterns.push("social_proof");
+  }
+  
+  // Pattern: Curiosità (intrigue/mystery)
+  if (/(scopri|impara|ecco|il motivo|perché|come|cosa succede|sai che|sapevi)/i.test(hookLower)) {
+    patterns.push("curiosita");
+  }
+  
+  // Pattern: Lista/Numeri (numbered lists)
+  if (/^(\d+|tre|quattro|cinque|sei|sette|otto|nove|dieci)\s/i.test(hookLower) || 
+      /(i \d+ |le \d+ |gli \d+ )/i.test(hookLower)) {
+    patterns.push("lista");
+  }
+  
+  // Pattern: Comando diretto (imperative)
+  if (/^(fai|smetti|inizia|prova|usa|crea|costruisci|evita|leggi|guarda|ascolta)/i.test(hookLower)) {
+    patterns.push("comando");
+  }
+  
+  // Pattern: Confessione (personal admission)
+  if (/(confesso|ammetto|devo dire|non volevo|ho sbagliato|il mio errore)/i.test(hookLower)) {
+    patterns.push("confessione");
+  }
+  
+  // Default if no pattern detected
+  if (patterns.length === 0) {
+    patterns.push("generico");
+  }
+  
+  return patterns;
+}
+
+/**
+ * Detects the angle/perspective used in content
+ */
+function detectContentAngle(text: string): string[] {
+  const angles: string[] = [];
+  const textLower = text.toLowerCase();
+  
+  // Angle: Prima persona (personal experience)
+  if (/(^io |ho |mio |mia |la mia |il mio |i miei |le mie |mi sono |quando ho )/i.test(textLower)) {
+    angles.push("prima_persona");
+  }
+  
+  // Angle: Terza persona (others' stories)
+  if (/(lui |lei |i clienti|il cliente|un imprenditore|un professionista|molti |alcuni |chi )/i.test(textLower)) {
+    angles.push("terza_persona");
+  }
+  
+  // Angle: Leva paura (fear-based)
+  if (/(paura|rischio|pericolo|attenzione|stai perdendo|non perdere|prima che|troppo tardi)/i.test(textLower)) {
+    angles.push("leva_paura");
+  }
+  
+  // Angle: Leva desiderio (desire-based)
+  if (/(sogno|obiettivo|risultato|trasforma|immagina|finalmente|libero|libertà|successo)/i.test(textLower)) {
+    angles.push("leva_desiderio");
+  }
+  
+  // Angle: Educativo (teaching)
+  if (/(ecco come|ti spiego|impara|passaggi|step|metodo|strategia|sistema|processo)/i.test(textLower)) {
+    angles.push("educativo");
+  }
+  
+  // Angle: Contrario (contrarian)
+  if (/(contrario|opposto|invece|non è vero|mito|falso|credono che|pensano che)/i.test(textLower)) {
+    angles.push("contrario");
+  }
+  
+  // Angle: Urgente (urgency)
+  if (/(adesso|ora|subito|oggi|non aspettare|urgente|ultimo|limitato|solo \d+)/i.test(textLower)) {
+    angles.push("urgente");
+  }
+  
+  return angles;
+}
+
+/**
+ * Analyzes all hooks and content to create a fingerprint
+ */
+function analyzeContentFingerprint(hooks: string[]): ContentFingerprint {
+  const ALL_PATTERNS = ["domanda", "statistica", "storia", "problema", "provocazione", 
+                        "social_proof", "curiosita", "lista", "comando", "confessione", "generico"];
+  const ALL_ANGLES = ["prima_persona", "terza_persona", "leva_paura", "leva_desiderio", 
+                      "educativo", "contrario", "urgente"];
+  
+  const patternCounts: Record<string, { count: number; examples: string[] }> = {};
+  const angleCounts: Record<string, number> = {};
+  
+  // Initialize counters
+  ALL_PATTERNS.forEach(p => patternCounts[p] = { count: 0, examples: [] });
+  ALL_ANGLES.forEach(a => angleCounts[a] = 0);
+  
+  // Analyze each hook
+  for (const hook of hooks) {
+    if (!hook) continue;
+    
+    const detectedPatterns = detectHookPattern(hook);
+    const detectedAngles = detectContentAngle(hook);
+    
+    for (const pattern of detectedPatterns) {
+      if (patternCounts[pattern]) {
+        patternCounts[pattern].count++;
+        if (patternCounts[pattern].examples.length < 2) {
+          patternCounts[pattern].examples.push(hook.substring(0, 60) + (hook.length > 60 ? "..." : ""));
+        }
+      }
+    }
+    
+    for (const angle of detectedAngles) {
+      if (angleCounts[angle] !== undefined) {
+        angleCounts[angle]++;
+      }
+    }
+  }
+  
+  const totalHooks = hooks.filter(h => h).length;
+  
+  // Calculate percentages and sort patterns
+  const patterns: PatternAnalysis[] = Object.entries(patternCounts)
+    .map(([pattern, data]) => ({
+      pattern,
+      count: data.count,
+      percentage: totalHooks > 0 ? Math.round((data.count / totalHooks) * 100) : 0,
+      examples: data.examples
+    }))
+    .sort((a, b) => b.count - a.count);
+  
+  const angles: AngleAnalysis[] = Object.entries(angleCounts)
+    .map(([angle, count]) => ({
+      angle,
+      count,
+      percentage: totalHooks > 0 ? Math.round((count / totalHooks) * 100) : 0
+    }))
+    .sort((a, b) => b.count - a.count);
+  
+  // Determine overused (>30%) and underused (<10%) patterns
+  const overusedPatterns = patterns
+    .filter(p => p.percentage > 30 && p.pattern !== "generico")
+    .map(p => p.pattern);
+  
+  const underusedPatterns = patterns
+    .filter(p => p.percentage < 10 && p.pattern !== "generico")
+    .map(p => p.pattern);
+  
+  const overusedAngles = angles
+    .filter(a => a.percentage > 40)
+    .map(a => a.angle);
+  
+  const underusedAngles = angles
+    .filter(a => a.percentage < 15)
+    .map(a => a.angle);
+  
+  return {
+    totalHooks,
+    patterns,
+    angles,
+    overusedPatterns,
+    underusedPatterns,
+    overusedAngles,
+    underusedAngles
+  };
+}
+
+/**
+ * Translates pattern names to Italian descriptions
+ */
+function getPatternDescription(pattern: string): string {
+  const descriptions: Record<string, string> = {
+    domanda: "Domande dirette al lettore",
+    statistica: "Numeri e statistiche",
+    storia: "Aperture narrative/storytelling",
+    problema: "Focus su errori e problemi",
+    provocazione: "Affermazioni provocatorie",
+    social_proof: "Prove sociali e risultati",
+    curiosita: "Ganci di curiosità",
+    lista: "Liste numerate",
+    comando: "Comandi diretti/imperativi",
+    confessione: "Confessioni personali",
+    generico: "Hook generici"
+  };
+  return descriptions[pattern] || pattern;
+}
+
+/**
+ * Translates angle names to Italian descriptions
+ */
+function getAngleDescription(angle: string): string {
+  const descriptions: Record<string, string> = {
+    prima_persona: "Prospettiva in prima persona (io, la mia esperienza)",
+    terza_persona: "Prospettiva terza persona (i clienti, altri)",
+    leva_paura: "Leva emotiva paura/rischio",
+    leva_desiderio: "Leva emotiva desiderio/aspirazione",
+    educativo: "Angolo educativo/didattico",
+    contrario: "Angolo contrarian/sfida credenze",
+    urgente: "Leva urgenza/scarsità"
+  };
+  return descriptions[angle] || angle;
+}
+
 function buildAntiRepetitionContext(
   ideas: PreviousIdea[],
   posts: PreviousPost[]
@@ -1093,6 +1642,15 @@ function buildAntiRepetitionContext(
   if (ideas.length === 0 && posts.length === 0) {
     return "";
   }
+
+  // Collect all hooks for pattern analysis
+  const allHooks: string[] = [
+    ...ideas.filter(i => i.hook).map(i => i.hook!),
+    ...posts.filter(p => p.hook).map(p => p.hook!)
+  ];
+  
+  // Analyze content fingerprint
+  const fingerprint = analyzeContentFingerprint(allHooks);
 
   let context = `
 
@@ -1140,14 +1698,130 @@ Questi contenuti sono GIÀ stati creati. Le nuove idee DEVONO essere COMPLETAMEN
     context += "\n";
   }
 
+  // ============================================================
+  // NEW: Pattern Analysis & Variation Fingerprint
+  // ============================================================
+  if (fingerprint.totalHooks >= 3) {
+    context += `
+═══════════════════════════════════════════════════════════
+🔬 ANALISI PATTERN CONTENUTI PRECEDENTI (${fingerprint.totalHooks} hook analizzati)
+═══════════════════════════════════════════════════════════
+
+`;
+    
+    // Show top 5 most used patterns
+    const topPatterns = fingerprint.patterns.filter(p => p.count > 0).slice(0, 5);
+    if (topPatterns.length > 0) {
+      context += `📊 PATTERN PIÙ UTILIZZATI:\n`;
+      for (const p of topPatterns) {
+        const bar = "█".repeat(Math.min(10, Math.round(p.percentage / 10))) + "░".repeat(10 - Math.min(10, Math.round(p.percentage / 10)));
+        context += `   ${bar} ${p.percentage}% - ${getPatternDescription(p.pattern)} (${p.count}x)\n`;
+      }
+      context += "\n";
+    }
+    
+    // Show top angles used
+    const topAngles = fingerprint.angles.filter(a => a.count > 0).slice(0, 4);
+    if (topAngles.length > 0) {
+      context += `🎯 ANGOLI/PROSPETTIVE PIÙ USATI:\n`;
+      for (const a of topAngles) {
+        context += `   • ${getAngleDescription(a.angle)} (${a.percentage}%)\n`;
+      }
+      context += "\n";
+    }
+
+    // ============================================================
+    // Variation Fingerprint - What to avoid and prefer
+    // ============================================================
+    context += `
+═══════════════════════════════════════════════════════════
+🎲 FINGERPRINT VARIAZIONE - ISTRUZIONI SPECIFICHE
+═══════════════════════════════════════════════════════════
+
+`;
+
+    // Overused patterns warning
+    if (fingerprint.overusedPatterns.length > 0) {
+      context += `⛔ PATTERN SOVRA-UTILIZZATI (EVITA!):\n`;
+      for (const pattern of fingerprint.overusedPatterns) {
+        const patternData = fingerprint.patterns.find(p => p.pattern === pattern);
+        context += `   ❌ ${getPatternDescription(pattern).toUpperCase()} - Usato nel ${patternData?.percentage}% dei contenuti\n`;
+        if (patternData?.examples && patternData.examples.length > 0) {
+          context += `      Esempi già usati: "${patternData.examples[0]}"\n`;
+        }
+      }
+      context += "\n";
+    }
+
+    // Underused patterns suggestion
+    if (fingerprint.underusedPatterns.length > 0) {
+      context += `✅ PATTERN SOTTO-UTILIZZATI (USA QUESTI!):\n`;
+      for (const pattern of fingerprint.underusedPatterns.slice(0, 4)) {
+        context += `   ✓ ${getPatternDescription(pattern)} - Quasi mai usato, PERFETTO per varietà!\n`;
+      }
+      context += "\n";
+    }
+
+    // Angle recommendations
+    if (fingerprint.overusedAngles.length > 0 || fingerprint.underusedAngles.length > 0) {
+      context += `🎭 RACCOMANDAZIONI ANGOLI/PROSPETTIVE:\n`;
+      
+      if (fingerprint.overusedAngles.length > 0) {
+        for (const angle of fingerprint.overusedAngles) {
+          context += `   ❌ EVITA: ${getAngleDescription(angle)} (troppo usato)\n`;
+        }
+      }
+      
+      if (fingerprint.underusedAngles.length > 0) {
+        for (const angle of fingerprint.underusedAngles.slice(0, 3)) {
+          context += `   ✓ PROVA: ${getAngleDescription(angle)} (raramente usato)\n`;
+        }
+      }
+      context += "\n";
+    }
+
+    // Generate specific actionable instructions based on analysis
+    context += `
+💡 ISTRUZIONI SPECIFICHE PER QUESTA GENERAZIONE:
+`;
+    
+    // Pattern-specific instructions
+    if (fingerprint.patterns[0]?.pattern === "domanda" && fingerprint.patterns[0]?.percentage > 40) {
+      context += `   → Gli ultimi hook usavano principalmente DOMANDE - USA affermazioni audaci, statistiche o storie!\n`;
+    }
+    if (fingerprint.patterns.find(p => p.pattern === "problema")?.percentage ?? 0 > 35) {
+      context += `   → Molti hook parlano di ERRORI/PROBLEMI - PROVA hook di curiosità, social proof o lista!\n`;
+    }
+    if (fingerprint.patterns.find(p => p.pattern === "statistica")?.percentage ?? 0 > 30) {
+      context += `   → Troppi hook con NUMERI - USA storytelling, provocazioni o confessioni personali!\n`;
+    }
+    
+    // Angle-specific instructions  
+    if ((fingerprint.angles.find(a => a.angle === "prima_persona")?.percentage ?? 0) > 50) {
+      context += `   → Predomina la PRIMA PERSONA - PASSA a terza persona (parla dei tuoi clienti)!\n`;
+    }
+    if ((fingerprint.angles.find(a => a.angle === "leva_paura")?.percentage ?? 0) > 40) {
+      context += `   → Troppa LEVA PAURA - USA leva desiderio, aspirazione e risultati positivi!\n`;
+    }
+    if ((fingerprint.angles.find(a => a.angle === "educativo")?.percentage ?? 0) > 45) {
+      context += `   → Troppo contenuto EDUCATIVO - PROVA storie personali, provocazioni o social proof!\n`;
+    }
+
+    context += "\n";
+  }
+
   // Regole anti-ripetizione (come Email Nurturing 365)
   context += `
-⛔ REGOLE ANTI-RIPETIZIONE OBBLIGATORIE:
+═══════════════════════════════════════════════════════════
+⛔ REGOLE ANTI-RIPETIZIONE OBBLIGATORIE
+═══════════════════════════════════════════════════════════
+
 1. TITOLI COMPLETAMENTE DIVERSI - NON usare parole chiave già presenti nei titoli sopra
 2. HOOK DIVERSI - Nessun hook simile a quelli già usati (cambia struttura, domande, affermazioni)
 3. ANGOLI NUOVI - Affronta l'argomento da prospettive NON ancora trattate
 4. STRUTTURE VARIATE - Se le idee precedenti usano domande, usa affermazioni e viceversa
 5. METAFORE ORIGINALI - NON riutilizzare analogie/esempi già presenti
+6. PATTERN ROTATION - Alterna tra i pattern elencati sopra per massima varietà
 
 🎯 OBIETTIVO: Ogni nuova idea deve sembrare FRESCA e ORIGINALE, come se fosse la prima volta che ne parli.
 `;
@@ -1192,6 +1866,43 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   const { ideas: previousIdeas, posts: previousPosts } = await fetchPreviousContent(consultantId);
   const antiRepetitionContext = buildAntiRepetitionContext(previousIdeas, previousPosts);
   console.log(`[CONTENT-AI] Anti-ripetizione: ${previousIdeas.length} idee + ${previousPosts.length} post caricati`);
+  
+  // Fetch topic details if topicId is provided
+  let topicContext = "";
+  let fetchedTopicId: string | undefined;
+  if (params.topicId) {
+    try {
+      const [topic] = await db
+        .select()
+        .from(contentTopics)
+        .where(eq(contentTopics.id, params.topicId))
+        .limit(1);
+      
+      if (topic) {
+        fetchedTopicId = topic.id;
+        const keywordsStr = topic.keywords && topic.keywords.length > 0 
+          ? topic.keywords.join(", ") 
+          : "Non specificate";
+        
+        topicContext = `
+
+🎯 ARGOMENTO SPECIFICO DA SVILUPPARE:
+- Nome: ${topic.name}
+- Categoria: ${topic.pillar || "Non specificata"}
+- Descrizione: ${topic.description || "Non specificata"}
+- Keywords: ${keywordsStr}
+- Note: ${topic.notes || "Nessuna"}
+
+IMPORTANTE: Sviluppa il contenuto ESCLUSIVAMENTE su questo argomento specifico. Ogni idea generata deve essere focalizzata su "${topic.name}" e seguire le indicazioni del topic.`;
+        
+        console.log(`[CONTENT-AI] Topic selezionato: "${topic.name}" (ID: ${topic.id})`);
+      } else {
+        console.log(`[CONTENT-AI] Topic con ID ${params.topicId} non trovato`);
+      }
+    } catch (error) {
+      console.error(`[CONTENT-AI] Errore nel recupero del topic:`, error);
+    }
+  }
   
   const assets = await getBrandAssets(consultantId);
   const brandContext = buildCompleteBrandContext(assets);
@@ -1356,6 +2067,10 @@ ${style.instructions}
     // Target with 10% safety margin - AI aims for this, validation uses real limit
     const targetCharLimit = Math.floor(effectiveCharLimit * 0.90);
     
+    // Get dynamic section instructions for variety in AI output
+    const sectionVariants = getRandomSectionInstructions();
+    console.log(`[CONTENT-AI VARIANTS] Using dynamic section variants:`, Object.keys(sectionVariants).map(k => `${k}: "${sectionVariants[k].substring(0, 40)}..."`).join(", "));
+    
     // Calculate character ranges based on copyType and charLimit (for display only, no strict minimum)
     const minChars = isLongCopy ? Math.floor(targetCharLimit * 0.5) : 100; // Soft minimum, much lower
     const maxChars = targetCharLimit; // Use target, not full limit
@@ -1492,7 +2207,8 @@ IMPORTANTE per fullScript (video):
     if (isVideo && isLongCopy) {
       // Use targetCharLimit (90% margin) for AI guidance
       const aiLimit = targetCharLimit;
-      const hookMax = Math.floor(aiLimit * 0.10);
+      // Hook is capped at MAX_HOOK_CHARS (125) for Meta Ads visibility
+      const hookMax = Math.min(MAX_HOOK_CHARS, Math.floor(aiLimit * 0.10));
       const chiCosaComeMax = Math.floor(aiLimit * 0.15);
       const erroreMax = Math.floor(aiLimit * 0.25);
       const soluzioneMax = Math.floor(aiLimit * 0.25);
@@ -1504,14 +2220,14 @@ IMPORTANTE per fullScript (video):
 {
   "type": "video_script",
   "copyVariant": "long",
-  "hook": "~${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante.",
-  "chiCosaCome": "~${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento.",
-  "errore": "~${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo senza saperlo.",
-  "soluzione": "~${soluzioneMax} caratteri. La tua soluzione unica al problema - cosa offri e perché funziona.",
-  "riprovaSociale": "~${riprovaSocialeMax} caratteri. Testimonianze, risultati concreti, numeri specifici.",
-  "cta": "~${ctaMax} caratteri. Call to action finale chiara e urgente.",
+  "hook": "MASSIMO ${MAX_HOOK_CHARS} caratteri (limite Meta Ads). ${sectionVariants.hook}",
+  "chiCosaCome": "~${chiCosaComeMax} caratteri. ${sectionVariants.chiCosaCome}",
+  "errore": "~${erroreMax} caratteri. ${sectionVariants.errore}",
+  "soluzione": "~${soluzioneMax} caratteri. ${sectionVariants.soluzione}",
+  "riprovaSociale": "~${riprovaSocialeMax} caratteri. ${sectionVariants.riprovaSociale}",
+  "cta": "~${ctaMax} caratteri. ${sectionVariants.cta}",
   "captionCopy": "Il copy COMPLETO. Punta a circa ${aiLimit} caratteri.",
-  "fullScript": "Lo script completo parlato fluido. USA [PAUSA] per pause drammatiche.",
+  "fullScript": "${sectionVariants.fullScript}",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
 
@@ -1529,11 +2245,11 @@ IMPORTANTE per fullScript:
 {
   "type": "video_script",
   "copyVariant": "short",
-  "hook": "La prima frase d'impatto (50-100 caratteri)",
-  "body": "Il corpo del messaggio conciso (100-200 caratteri)",
-  "cta": "Call to action finale (50-80 caratteri)",
+  "hook": "MASSIMO ${MAX_HOOK_CHARS} caratteri (limite Meta Ads). ${sectionVariants.hook}",
+  "body": "${sectionVariants.body} (100-200 caratteri)",
+  "cta": "${sectionVariants.cta} (50-80 caratteri)",
   "captionCopy": "Il copy COMPLETO. Punta a circa ${targetCharLimit} caratteri.",
-  "fullScript": "Lo script parlato fluido. USA [PAUSA] per pause drammatiche.",
+  "fullScript": "${sectionVariants.fullScript}",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
 
@@ -1548,7 +2264,8 @@ IMPORTANTE per fullScript:
     } else if (isLongCopy) {
       // Use targetCharLimit (90% margin) for AI guidance
       const aiLimit = targetCharLimit;
-      const hookMax = Math.floor(aiLimit * 0.10);
+      // Hook is capped at MAX_HOOK_CHARS (125) for Meta Ads visibility
+      const hookMax = Math.min(MAX_HOOK_CHARS, Math.floor(aiLimit * 0.10));
       const chiCosaComeMax = Math.floor(aiLimit * 0.15);
       const erroreMax = Math.floor(aiLimit * 0.25);
       const soluzioneMax = Math.floor(aiLimit * 0.25);
@@ -1559,12 +2276,12 @@ IMPORTANTE per fullScript:
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "copy_long",
-  "hook": "~${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria o scioccante.",
-  "chiCosaCome": "~${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME].",
-  "errore": "~${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo.",
-  "soluzione": "~${soluzioneMax} caratteri. La tua soluzione unica al problema.",
-  "riprovaSociale": "~${riprovaSocialeMax} caratteri. Testimonianze e risultati concreti.",
-  "cta": "~${ctaMax} caratteri. Call to action finale chiara e urgente.",
+  "hook": "MASSIMO ${MAX_HOOK_CHARS} caratteri (limite Meta Ads). ${sectionVariants.hook}",
+  "chiCosaCome": "~${chiCosaComeMax} caratteri. ${sectionVariants.chiCosaCome}",
+  "errore": "~${erroreMax} caratteri. ${sectionVariants.errore}",
+  "soluzione": "~${soluzioneMax} caratteri. ${sectionVariants.soluzione}",
+  "riprovaSociale": "~${riprovaSocialeMax} caratteri. ${sectionVariants.riprovaSociale}",
+  "cta": "~${ctaMax} caratteri. ${sectionVariants.cta}",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
 
@@ -1577,9 +2294,9 @@ ${styleInstructions}`;
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "copy_short",
-  "hook": "La prima frase d'impatto (50-80 caratteri)",
-  "body": "Il corpo del messaggio conciso (80-150 caratteri)",
-  "cta": "Call to action finale (40-70 caratteri)",
+  "hook": "MASSIMO ${MAX_HOOK_CHARS} caratteri (limite Meta Ads). ${sectionVariants.hook}",
+  "body": "${sectionVariants.body} (80-150 caratteri)",
+  "cta": "${sectionVariants.cta} (40-70 caratteri)",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
 
@@ -1591,6 +2308,9 @@ ${styleInstructions}`;
   };
 
   const structuredContentInstructions = getStructuredContentInstructions();
+  
+  // Generate random hook pattern and angle for variety
+  const { hookPattern, angle, promptSection: hookPatternAndAngleSection } = buildHookPatternAndAnglePrompt();
 
   // DEBUG: Log the parameters and generated instructions
   console.log(`[CONTENT-AI DEBUG] ========================================`);
@@ -1604,6 +2324,8 @@ ${styleInstructions}`;
   console.log(`[CONTENT-AI DEBUG]   targetPlatform: "${targetPlatform || 'none'}"`);
   console.log(`[CONTENT-AI DEBUG]   writingStyle: "${writingStyle}"`);
   console.log(`[CONTENT-AI DEBUG]   customWritingInstructions: "${customWritingInstructions ? 'provided' : 'none'}"`);
+  console.log(`[CONTENT-AI DEBUG]   hookPattern: "${hookPattern.name}" (${hookPattern.pattern})`);
+  console.log(`[CONTENT-AI DEBUG]   angle: leva=${angle.angle.levaEmotiva}, approccio=${angle.angle.approccio}, prospettiva=${angle.angle.prospettiva}, stile=${angle.angle.stileNarrativo}`);
   console.log(`[CONTENT-AI DEBUG] ----------------------------------------`);
   console.log(`[CONTENT-AI DEBUG] Structured Content Instructions (full, ${structuredContentInstructions.length} chars):`);
   console.log(`[CONTENT-AI DEBUG] ${structuredContentInstructions}`);
@@ -1618,9 +2340,10 @@ CONTESTO:
 - Tipo Media: ${mediaType}
 - Tipo Copy: ${copyType}
 ${additionalContext ? `- Contesto aggiuntivo: ${additionalContext}` : ''}
-${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}
+${brandContext}${brandVoiceContext}${kbContext}${platformSchemaContext}${topicContext}
 ${antiRepetitionContext}
 ${writingStyleSection}
+${hookPatternAndAngleSection}
 
 🎯 LIVELLO DI CONSAPEVOLEZZA DEL PUBBLICO: ${awarenessInfo.name}
 STRATEGIA CONSAPEVOLEZZA: ${awarenessInfo.strategy}
@@ -1643,7 +2366,7 @@ Per ogni idea, fornisci TUTTI questi elementi:
 2. description: Descrizione breve del contenuto (2-3 frasi)
 3. aiScore: Punteggio di efficacia stimata (1-100)
 4. aiReasoning: Motivazione del punteggio
-5. suggestedHook: Un hook che cattura l'attenzione
+5. suggestedHook: MASSIMO ${MAX_HOOK_CHARS} caratteri! Hook con pattern "${hookPattern.name}" che cattura l'attenzione
 6. suggestedCta: Call to action suggerita
 7. mediaType: "${mediaType}"
 8. copyType: "${copyType}"
@@ -1957,6 +2680,7 @@ RISPONDI SOLO con un JSON valido nel formato:
     return {
       ideas: finalIdeas,
       modelUsed: model,
+      ...(fetchedTopicId && { topicId: fetchedTopicId }),
     };
   } catch (error: any) {
     console.error("[CONTENT-AI] Error generating ideas:", error);
@@ -2001,7 +2725,7 @@ ${keywords?.length ? `KEYWORDS DA INCLUDERE: ${keywords.join(', ')}` : ''}
 ${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}
 
 FRAMEWORK PERSUASIVO (6 STEP):
-1. HOOK - Prima riga che cattura attenzione (pattern interrupt, curiosità, provocazione, domanda, statistica scioccante)
+1. HOOK - MASSIMO 125 caratteri! Prima riga che cattura attenzione (pattern interrupt, curiosità, provocazione, domanda, statistica scioccante)
 2. TARGET - "Aiuto [CHI] a [FARE COSA] [COME]" - Identifica il pubblico e il beneficio chiaro
 3. PROBLEM - Il problema/pain point che il tuo target sta vivendo (rendi reale e specifico)
 4. SOLUTION - La tua soluzione/offerta - cosa offri e perché funziona
@@ -2139,7 +2863,7 @@ ${maxLength ? `LUNGHEZZA MASSIMA: ${maxLength} caratteri` : ''}`;
       return `${baseContext}
 
 Genera 3 VARIAZIONI di CAPTION BREVI per social media. Ogni variazione deve avere solo:
-- hook: Una frase d'impatto breve e incisiva (domanda provocatoria o affermazione forte)
+- hook: MASSIMO 125 caratteri! Una frase d'impatto breve e incisiva (domanda provocatoria o affermazione forte)
 - cta: Chiamata all'azione chiara e diretta
 
 Le variazioni devono essere significativamente diverse tra loro.
@@ -2158,7 +2882,7 @@ RISPONDI SOLO con un JSON valido:
 
 Genera 3 VARIAZIONI di INSERZIONI COMPLETE usando il FRAMEWORK PERSUASIVO a 6 STEP:
 
-1. HOOK - Domanda provocatoria o frase d'impatto che cattura subito l'attenzione
+1. HOOK - MASSIMO 125 caratteri! Domanda provocatoria o frase d'impatto che cattura subito l'attenzione
 2. CHI-COSA-COME - Presentazione personale con autorità: "Ciao, sono [Nome]. Se frequenti [contesto], ci siamo già visti a [evento]. Aiuto [chi] a [cosa] attraverso [metodo unico]"
 3. ERRORE - L'errore SPECIFICO che fanno le persone: "L'errore più grande? Considerare X come Y..." (sii specifico e concreto)
 4. SOLUZIONE - Il metodo unico con nome proprio: "Il mio metodo [Nome] non è [cosa comune], è [cosa unica che lo differenzia]"
@@ -2189,7 +2913,7 @@ RISPONDI SOLO con un JSON valido:
 
 Genera 3 VARIAZIONI di SCRIPT VIDEO con timing precisi. Ogni variazione deve seguire questa struttura temporale:
 
-- 00-05s: HOOK - Frase d'impatto che ferma lo scroll
+- 00-05s: HOOK - MASSIMO 125 caratteri! Frase d'impatto che ferma lo scroll
 - 05-20s: CHI-COSA-COME - Presentazione con autorità
 - 20-35s: ERRORE - L'errore specifico che fa il target
 - 35-50s: SOLUZIONE + RIPROVA SOCIALE - Metodo unico + storie concrete
