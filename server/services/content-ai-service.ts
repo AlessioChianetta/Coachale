@@ -23,7 +23,7 @@ export interface GenerateIdeasParams {
   awarenessLevel?: AwarenessLevel;
   sophisticationLevel?: SophisticationLevel;
   targetPlatform?: "instagram" | "x" | "linkedin";
-  postCategory?: "ads" | "valore" | "altri";
+  postCategory?: "ads" | "valore" | "formazione" | "altri";
   postSchema?: string;
   schemaStructure?: string;
   schemaLabel?: string;
