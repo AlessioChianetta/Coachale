@@ -3,6 +3,7 @@ import { eq, and, gte, lt } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { generateContentIdeas } from "./content-ai-service";
 import { analyzeAndGenerateImage, AdvisageSettings } from "./advisage-server-service";
+import { PublerService } from "./publer-service";
 import { Response } from "express";
 
 export interface AutopilotConfig {
@@ -10,9 +11,9 @@ export interface AutopilotConfig {
   startDate: string;  // YYYY-MM-DD
   endDate: string;    // YYYY-MM-DD
   platforms: {
-    instagram?: { enabled: boolean; postsPerDay: number };
-    x?: { enabled: boolean; postsPerDay: number };
-    linkedin?: { enabled: boolean; postsPerDay: number };
+    instagram?: { enabled: boolean; postsPerDay: number; publerAccountId?: string };
+    x?: { enabled: boolean; postsPerDay: number; publerAccountId?: string };
+    linkedin?: { enabled: boolean; postsPerDay: number; publerAccountId?: string };
   };
   postSchema?: string;
   schemaStructure?: string;
@@ -54,11 +55,15 @@ const PLATFORM_WRITING_STYLES: Record<string, string> = {
   linkedin: "default",
 };
 
+// Character limits with 10% safety margin to ensure content fits
 const PLATFORM_CHAR_LIMITS: Record<string, number> = {
-  instagram: 2200,
-  x: 280,
-  linkedin: 3000,
+  instagram: 1980,  // 2200 * 0.9
+  x: 252,           // 280 * 0.9
+  linkedin: 2700,   // 3000 * 0.9
 };
+
+// X Premium character limit with 10% safety margin
+const X_PREMIUM_CHAR_LIMIT = 3600; // 4000 * 0.9
 
 const PLATFORM_DB_MAP: Record<string, "instagram" | "facebook" | "linkedin" | "twitter" | "tiktok" | "youtube"> = {
   instagram: "instagram",
@@ -135,6 +140,14 @@ export async function generateAutopilotBatch(
   // Batch tracking variables
   let batchId: string | null = null;
   let imagesGenerated = 0;
+  
+  // Track generated posts for autoPublish
+  const generatedPosts: Array<{
+    id: string;
+    platform: string;
+    scheduledAt: Date;
+    imageUrl?: string;
+  }> = [];
   
   try {
     // Step 1: Create batch record if reviewMode or autoGenerateImages is enabled
@@ -224,8 +237,8 @@ export async function generateAutopilotBatch(
         const writingStyle = passedWritingStyle || scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
         const times = passedOptimalTimes || scheduleForPlatform.times || OPTIMAL_TIMES[platform] || ["09:00", "18:00"];
         const charLimit = platform === "x" && brandAssets?.xPremiumSubscription 
-          ? 4000 
-          : (PLATFORM_CHAR_LIMITS[platform] || 2200);
+          ? X_PREMIUM_CHAR_LIMIT 
+          : (PLATFORM_CHAR_LIMITS[platform] || 1980);
         
         // Fetch ALL existing SCHEDULED posts for this day/platform to check which time slots are occupied
         // Only count posts with status "scheduled" - not drafts, published, or cancelled
@@ -463,6 +476,19 @@ export async function generateAutopilotBatch(
                       .where(eq(schema.contentPosts.id, insertedPost.id));
                   }
                 }
+                
+                // Track post for autoPublish - get current image URL from DB
+                const [currentPost] = await db.select({ imageUrl: schema.contentPosts.imageUrl })
+                  .from(schema.contentPosts)
+                  .where(eq(schema.contentPosts.id, insertedPost.id))
+                  .limit(1);
+                
+                generatedPosts.push({
+                  id: insertedPost.id,
+                  platform: platform,
+                  scheduledAt: new Date(`${date}T${time}:00`),
+                  imageUrl: currentPost?.imageUrl || undefined,
+                });
               }
               
               generated++;
@@ -494,6 +520,154 @@ export async function generateAutopilotBatch(
         .where(eq(schema.autopilotBatches.id, batchId));
       
       console.log(`[AUTOPILOT] Batch ${batchId} completed: ${generated} posts, ${imagesGenerated} images, status=${batchStatus}`);
+    }
+    
+    // Step 4: AutoPublish flow - if autoPublish is enabled and not in review mode
+    let publishedCount = 0;
+    let publishErrors: string[] = [];
+    
+    if (config.autoPublish && !config.reviewMode && generatedPosts.length > 0) {
+      console.log(`[AUTOPILOT] Starting autoPublish for ${generatedPosts.length} posts...`);
+      
+      const publerService = new PublerService();
+      
+      // Group posts by platform to batch publish
+      for (const post of generatedPosts) {
+        const platformConfig = platforms[post.platform as keyof typeof platforms];
+        const publerAccountId = platformConfig?.publerAccountId;
+        
+        if (!publerAccountId) {
+          console.log(`[AUTOPILOT] Skipping autoPublish for post ${post.id} - no publerAccountId configured for ${post.platform}`);
+          continue;
+        }
+        
+        try {
+          console.log(`[AUTOPILOT] Publishing post ${post.id} to Publer account ${publerAccountId}...`);
+          
+          // Get full post content
+          const [fullPost] = await db.select()
+            .from(schema.contentPosts)
+            .where(eq(schema.contentPosts.id, post.id))
+            .limit(1);
+          
+          if (!fullPost) {
+            console.error(`[AUTOPILOT] Post ${post.id} not found for publishing`);
+            continue;
+          }
+          
+          // Upload media if available
+          let mediaIds: string[] = [];
+          if (fullPost.imageUrl) {
+            try {
+              // If imageUrl is a local path, we need to upload it
+              // For now, check if it's already a Publer media ID or needs upload
+              if (!fullPost.imageUrl.startsWith('http')) {
+                console.log(`[AUTOPILOT] Uploading image for post ${post.id}...`);
+                // Read image file and upload to Publer
+                const fs = await import('fs/promises');
+                const path = await import('path');
+                const imagePath = path.join(process.cwd(), fullPost.imageUrl);
+                const imageBuffer = await fs.readFile(imagePath);
+                const mediaResult = await publerService.uploadMedia(
+                  consultantId,
+                  imageBuffer,
+                  `autopilot_${post.id}.png`,
+                  'image/png'
+                );
+                mediaIds = [mediaResult.id];
+              }
+            } catch (uploadError: any) {
+              console.error(`[AUTOPILOT] Failed to upload image for post ${post.id}:`, uploadError.message);
+              // Continue without image - use placeholder for Instagram
+              if (post.platform === 'instagram') {
+                try {
+                  const placeholderResult = await publerService.uploadPlaceholderImage(consultantId);
+                  mediaIds = [placeholderResult.id];
+                } catch (placeholderError: any) {
+                  console.error(`[AUTOPILOT] Failed to upload placeholder:`, placeholderError.message);
+                }
+              }
+            }
+          } else if (post.platform === 'instagram') {
+            // Instagram requires media - upload placeholder
+            try {
+              console.log(`[AUTOPILOT] No image for Instagram post ${post.id}, uploading placeholder...`);
+              const placeholderResult = await publerService.uploadPlaceholderImage(consultantId);
+              mediaIds = [placeholderResult.id];
+            } catch (placeholderError: any) {
+              console.error(`[AUTOPILOT] Failed to upload placeholder for Instagram:`, placeholderError.message);
+              publishErrors.push(`Post ${post.id}: Instagram requires image but placeholder upload failed`);
+              continue;
+            }
+          }
+          
+          // Schedule with Publer
+          const result = await publerService.schedulePost(consultantId, {
+            accountIds: [publerAccountId],
+            text: fullPost.fullCopy || fullPost.hook || fullPost.title || '',
+            state: 'scheduled',
+            scheduledAt: post.scheduledAt,
+            mediaIds: mediaIds.length > 0 ? mediaIds : undefined,
+            mediaType: 'image',
+          });
+          
+          if (result.success) {
+            // Update post with Publer info
+            await db.update(schema.contentPosts)
+              .set({
+                publerPostId: result.postIds?.[0] || result.jobId,
+                publerStatus: 'scheduled',
+                publerScheduledAt: post.scheduledAt,
+                publerMediaIds: mediaIds as any,
+                status: 'scheduled',
+              })
+              .where(eq(schema.contentPosts.id, post.id));
+            
+            publishedCount++;
+            console.log(`[AUTOPILOT] Successfully scheduled post ${post.id} to Publer (job: ${result.jobId})`);
+          } else {
+            // Update post with error
+            const errorMsg = result.errors?.join(', ') || 'Unknown error';
+            await db.update(schema.contentPosts)
+              .set({
+                publerStatus: 'failed',
+                publerError: errorMsg,
+              })
+              .where(eq(schema.contentPosts.id, post.id));
+            
+            publishErrors.push(`Post ${post.id}: ${errorMsg}`);
+            console.error(`[AUTOPILOT] Failed to schedule post ${post.id}:`, errorMsg);
+          }
+        } catch (publishError: any) {
+          console.error(`[AUTOPILOT] Exception publishing post ${post.id}:`, publishError.message);
+          publishErrors.push(`Post ${post.id}: ${publishError.message}`);
+          
+          await db.update(schema.contentPosts)
+            .set({
+              publerStatus: 'failed',
+              publerError: publishError.message,
+            })
+            .where(eq(schema.contentPosts.id, post.id));
+        }
+      }
+      
+      console.log(`[AUTOPILOT] AutoPublish completed: ${publishedCount}/${generatedPosts.length} posts scheduled, ${publishErrors.length} errors`);
+      
+      // Update batch with publish results
+      if (batchId) {
+        await db.update(schema.autopilotBatches)
+          .set({
+            status: publishErrors.length === 0 ? "completed" : "completed_with_errors",
+            publishedPosts: publishedCount,
+            failedPosts: publishErrors.length,
+            lastError: publishErrors.length > 0 ? publishErrors.join('; ') : null,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.autopilotBatches.id, batchId));
+      }
+      
+      // Add publish errors to main errors array
+      errors.push(...publishErrors);
     }
     
     sendProgress({
