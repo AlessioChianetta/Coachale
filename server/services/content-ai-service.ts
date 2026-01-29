@@ -57,6 +57,7 @@ export interface StructuredCopyShort {
   hook: string;
   body: string;
   cta: string;
+  captionCopy?: string; // AI-generated complete copy
   hashtags?: string[];
   imageDescription?: string;
   imageOverlayText?: string;
@@ -70,6 +71,7 @@ export interface StructuredCopyLong {
   soluzione: string;
   riprovaSociale: string;
   cta: string;
+  captionCopy?: string; // AI-generated complete copy
   hashtags?: string[];
   imageDescription?: string;
   imageOverlayText?: string;
@@ -442,6 +444,68 @@ function getSectionGuideline(fieldName: string, sectionLabel: string): { instruc
 }
 
 export { SECTION_GUIDELINES, getSectionGuideline };
+
+/**
+ * AI Compression - Shortens content that exceeds character limits while preserving meaning
+ * @param content The original content to compress
+ * @param targetLimit The target character limit
+ * @param currentLength Current content length
+ * @param consultantId The consultant ID for AI provider lookup
+ * @returns Compressed content or original if compression fails
+ */
+async function compressContentWithAI(
+  content: string,
+  targetLimit: number,
+  currentLength: number,
+  consultantId: string
+): Promise<{ compressed: string; success: boolean }> {
+  try {
+    const reductionPercent = Math.ceil(((currentLength - targetLimit) / currentLength) * 100);
+    
+    console.log(`[CONTENT-AI COMPRESS] Starting compression: ${currentLength} → ${targetLimit} chars (reduce by ${reductionPercent}%)`);
+    
+    const compressPrompt = `Riduci questo testo a MASSIMO ${targetLimit} caratteri (attualmente ${currentLength}, riduzione necessaria: ${reductionPercent}%).
+
+REGOLE FONDAMENTALI:
+- Mantieni il SIGNIFICATO e l'IMPATTO del messaggio
+- Mantieni la STRUTTURA (hook → corpo → CTA)
+- NON aggiungere nuove informazioni
+- NON cambiare il tono o lo stile
+- Rimuovi ripetizioni, frasi ridondanti, parole superflue
+- Accorcia le frasi senza perdere chiarezza
+
+TESTO DA COMPRIMERE:
+${content}
+
+RISPONDI SOLO con il testo compresso, nessuna spiegazione.`;
+
+    const { model, generateContent } = await getAIProvider(consultantId, "content-compress");
+    
+    const result = await generateContent({
+      contents: [{ role: "user", parts: [{ text: compressPrompt }] }],
+      generationConfig: {
+        temperature: 0.3, // Low temperature for consistent output
+        maxOutputTokens: Math.ceil(targetLimit / 3),
+      },
+    });
+
+    const response = result.response;
+    const compressedText = response.text().trim();
+    
+    console.log(`[CONTENT-AI COMPRESS] Result: ${compressedText.length} chars (target: ${targetLimit})`);
+    
+    if (compressedText.length <= targetLimit) {
+      console.log(`[CONTENT-AI COMPRESS] ✅ Success! Compressed from ${currentLength} to ${compressedText.length} chars`);
+      return { compressed: compressedText, success: true };
+    } else {
+      console.log(`[CONTENT-AI COMPRESS] ⚠️ Still over limit: ${compressedText.length}/${targetLimit}`);
+      return { compressed: compressedText, success: false };
+    }
+  } catch (error) {
+    console.error("[CONTENT-AI COMPRESS] Error:", error);
+    return { compressed: content, success: false };
+  }
+}
 
 export interface ContentIdea {
   title: string;
@@ -1289,9 +1353,12 @@ ${style.instructions}
     const isLongCopy = copyType === "long";
     const isVideo = mediaType === "video";
     
-    // Calculate character ranges based on copyType and charLimit
-    const minChars = isLongCopy ? Math.min(1500, Math.floor(effectiveCharLimit * 0.7)) : 200;
-    const maxChars = isLongCopy ? Math.min(3000, effectiveCharLimit) : Math.min(500, effectiveCharLimit);
+    // Target with 10% safety margin - AI aims for this, validation uses real limit
+    const targetCharLimit = Math.floor(effectiveCharLimit * 0.90);
+    
+    // Calculate character ranges based on copyType and charLimit (for display only, no strict minimum)
+    const minChars = isLongCopy ? Math.floor(targetCharLimit * 0.5) : 100; // Soft minimum, much lower
+    const maxChars = targetCharLimit; // Use target, not full limit
     
     // Writing style instructions based on selected style - SIMPLIFIED for natural flow
     const writingStyleInstructions: Record<string, string> = {
@@ -1379,13 +1446,8 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       const videoFields = isVideo ? `,
   "fullScript": "Script parlato fluido. USA [PAUSA] per pause drammatiche."` : "";
       
-      // Limiti copy in base al tipo - caller already passes safe limit with margin
-      const maxTotal = effectiveCharLimit;
-      // Minimo: 70% del massimo per copy lungo, 50% per copy corto (ma mai più del massimo)
-      const minTotal = Math.min(
-        isLongCopy ? Math.floor(effectiveCharLimit * 0.7) : Math.floor(effectiveCharLimit * 0.5),
-        effectiveCharLimit - 50 // Lascia sempre almeno 50 caratteri di margine
-      );
+      // Use targetCharLimit (90% margin) for AI instructions, effectiveCharLimit for validation
+      const aiTargetLimit = targetCharLimit;
       
       return `
 📋 SCHEMA: "${schemaLabel || 'Schema personalizzato'}"
@@ -1406,13 +1468,9 @@ ${dynamicFields},
 
 ${styleInstructions}
 
-⛔⛔⛔ LIMITE CARATTERI - REGOLA ASSOLUTA ⛔⛔⛔
-Il campo "captionCopy" DEVE essere:
-- MINIMO ${minTotal} caratteri
-- MASSIMO ${maxTotal} caratteri (LIMITE PIATTAFORMA ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
-
-🚨 NON SUPERARE MAI ${maxTotal} CARATTERI TOTALI 🚨
-Distribuisci il contenuto tra le ${numSections} sezioni come preferisci, ma il TOTALE deve stare sotto ${maxTotal}.
+📏 LUNGHEZZA TARGET: circa ${aiTargetLimit} caratteri
+- Per copy ${isLongCopy ? 'LUNGO' : 'CORTO'}: punta a ${aiTargetLimit} caratteri per "captionCopy"
+- Non superare MAI ${effectiveCharLimit} caratteri (limite ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
 ${isVideo ? `
 IMPORTANTE per fullScript (video):
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
@@ -1432,87 +1490,86 @@ IMPORTANTE per fullScript (video):
     console.log(`[CONTENT-AI ORIGINALE DEBUG] ========================================`);
     
     if (isVideo && isLongCopy) {
-      // Use effectiveCharLimit directly - caller already passes safe limit with margin
-      const safeLimit = effectiveCharLimit;
-      const hookMax = Math.floor(safeLimit * 0.10);
-      const chiCosaComeMax = Math.floor(safeLimit * 0.15);
-      const erroreMax = Math.floor(safeLimit * 0.25);
-      const soluzioneMax = Math.floor(safeLimit * 0.25);
-      const riprovaSocialeMax = Math.floor(safeLimit * 0.15);
-      const ctaMax = Math.floor(safeLimit * 0.10);
+      // Use targetCharLimit (90% margin) for AI guidance
+      const aiLimit = targetCharLimit;
+      const hookMax = Math.floor(aiLimit * 0.10);
+      const chiCosaComeMax = Math.floor(aiLimit * 0.15);
+      const erroreMax = Math.floor(aiLimit * 0.25);
+      const soluzioneMax = Math.floor(aiLimit * 0.25);
+      const riprovaSocialeMax = Math.floor(aiLimit * 0.15);
+      const ctaMax = Math.floor(aiLimit * 0.10);
       
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "video_script",
   "copyVariant": "long",
-  "hook": "MAX ${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
-  "chiCosaCome": "MAX ${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
-  "errore": "MAX ${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
-  "soluzione": "MAX ${soluzioneMax} caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
-  "riprovaSociale": "MAX ${riprovaSocialeMax} caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
-  "cta": "MAX ${ctaMax} caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
-  "captionCopy": "Il copy COMPLETO che concatena tutte le sezioni sopra in un unico testo formattato per Instagram. DEVE essere ${minChars}-${maxChars} caratteri.",
-  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause. Esempio: 'Il tuo telefono... [PAUSA] ...è diventato una catena.'",
+  "hook": "~${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante.",
+  "chiCosaCome": "~${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento.",
+  "errore": "~${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo senza saperlo.",
+  "soluzione": "~${soluzioneMax} caratteri. La tua soluzione unica al problema - cosa offri e perché funziona.",
+  "riprovaSociale": "~${riprovaSocialeMax} caratteri. Testimonianze, risultati concreti, numeri specifici.",
+  "cta": "~${ctaMax} caratteri. Call to action finale chiara e urgente.",
+  "captionCopy": "Il copy COMPLETO. Punta a circa ${aiLimit} caratteri.",
+  "fullScript": "Lo script completo parlato fluido. USA [PAUSA] per pause drammatiche.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
 
-⛔ LIMITE PIATTAFORMA: ${effectiveCharLimit} caratteri
-⚠️ SOMMA TUTTE LE SEZIONI (escluso captionCopy) DEVE ESSERE < ${safeLimit} caratteri
-📊 CONTA I CARATTERI DI OGNI SEZIONE PRIMA DI RISPONDERE
+📏 LUNGHEZZA TARGET: circa ${aiLimit} caratteri totali
+- Non superare MAI ${effectiveCharLimit} caratteri (limite piattaforma)
 
 ${styleInstructions}
 
 IMPORTANTE per fullScript:
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
-- Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
-- Usa '...' per micro-pause di respiro`;
+- Inserisci [PAUSA] dove vuoi pause drammatiche`;
     } else if (isVideo && !isLongCopy) {
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "video_script",
   "copyVariant": "short",
-  "hook": "La prima frase d'impatto che cattura attenzione (50-100 caratteri)",
-  "body": "Il corpo del messaggio - conciso, dritto al punto (100-300 caratteri)",
-  "cta": "Call to action finale (50-100 caratteri)",
-  "captionCopy": "Il copy COMPLETO che concatena hook+body+cta in un unico testo. DEVE essere ${minChars}-${maxChars} caratteri.",
-  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche. Usa '...' per micro-pause.",
+  "hook": "La prima frase d'impatto (50-100 caratteri)",
+  "body": "Il corpo del messaggio conciso (100-200 caratteri)",
+  "cta": "Call to action finale (50-80 caratteri)",
+  "captionCopy": "Il copy COMPLETO. Punta a circa ${targetCharLimit} caratteri.",
+  "fullScript": "Lo script parlato fluido. USA [PAUSA] per pause drammatiche.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]
 }
+
+📏 LUNGHEZZA TARGET: circa ${targetCharLimit} caratteri
+- Non superare MAI ${effectiveCharLimit} caratteri (limite piattaforma)
 
 ${styleInstructions}
 
 IMPORTANTE per fullScript:
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
-- Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
-- Usa '...' per micro-pause di respiro`;
+- Inserisci [PAUSA] dove vuoi pause drammatiche`;
     } else if (isLongCopy) {
-      // Use effectiveCharLimit directly - caller already passes safe limit with margin
-      const safeLimit = effectiveCharLimit;
-      const hookMax = Math.floor(safeLimit * 0.10);
-      const chiCosaComeMax = Math.floor(safeLimit * 0.15);
-      const erroreMax = Math.floor(safeLimit * 0.25);
-      const soluzioneMax = Math.floor(safeLimit * 0.25);
-      const riprovaSocialeMax = Math.floor(safeLimit * 0.15);
-      const ctaMax = Math.floor(safeLimit * 0.10);
+      // Use targetCharLimit (90% margin) for AI guidance
+      const aiLimit = targetCharLimit;
+      const hookMax = Math.floor(aiLimit * 0.10);
+      const chiCosaComeMax = Math.floor(aiLimit * 0.15);
+      const erroreMax = Math.floor(aiLimit * 0.25);
+      const soluzioneMax = Math.floor(aiLimit * 0.25);
+      const riprovaSocialeMax = Math.floor(aiLimit * 0.15);
+      const ctaMax = Math.floor(aiLimit * 0.10);
       
       return `
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "copy_long",
-  "hook": "MAX ${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria, curiosa, o scioccante. Deve creare tensione emotiva immediata.",
-  "chiCosaCome": "MAX ${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME] - il tuo posizionamento con storytelling. Racconta brevemente chi sei e cosa fai in modo narrativo.",
-  "errore": "MAX ${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo senza saperlo. Sviluppa il problema con empatia, fai sentire al lettore che lo capisci.",
-  "soluzione": "MAX ${soluzioneMax} caratteri. La tua soluzione unica al problema - cosa offri e perché funziona. Descrivi i benefici concreti e il risultato trasformativo.",
-  "riprovaSociale": "MAX ${riprovaSocialeMax} caratteri. Testimonianze, risultati concreti, numeri specifici che provano il valore. Usa storie brevi di clienti reali o dati d'impatto.",
-  "cta": "MAX ${ctaMax} caratteri. Call to action finale chiara e urgente. Crea scarsità o urgenza e indica l'azione esatta da compiere.",
+  "hook": "~${hookMax} caratteri. La prima frase che ferma lo scroll - provocatoria o scioccante.",
+  "chiCosaCome": "~${chiCosaComeMax} caratteri. Aiuto [CHI] a [FARE COSA] attraverso [COME].",
+  "errore": "~${erroreMax} caratteri. L'errore comune che il tuo target sta commettendo.",
+  "soluzione": "~${soluzioneMax} caratteri. La tua soluzione unica al problema.",
+  "riprovaSociale": "~${riprovaSocialeMax} caratteri. Testimonianze e risultati concreti.",
+  "cta": "~${ctaMax} caratteri. Call to action finale chiara e urgente.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
 
-⛔ LIMITE PIATTAFORMA: ${effectiveCharLimit} caratteri
-⚠️ SOMMA TUTTE LE SEZIONI DEVE ESSERE < ${safeLimit} caratteri
-📊 CONTA I CARATTERI DI OGNI SEZIONE PRIMA DI RISPONDERE
+📏 LUNGHEZZA TARGET: circa ${aiLimit} caratteri totali (somma sezioni)
+- Non superare MAI ${effectiveCharLimit} caratteri (limite piattaforma)
 
 ${styleInstructions}`;
     } else {
@@ -1520,11 +1577,14 @@ ${styleInstructions}`;
 **structuredContent** (OBBLIGATORIO - oggetto JSON):
 {
   "type": "copy_short",
-  "hook": "La prima frase d'impatto che cattura attenzione (50-100 caratteri)",
-  "body": "Il corpo del messaggio - conciso, dritto al punto (100-300 caratteri)",
-  "cta": "Call to action finale (50-100 caratteri)",
+  "hook": "La prima frase d'impatto (50-80 caratteri)",
+  "body": "Il corpo del messaggio conciso (80-150 caratteri)",
+  "cta": "Call to action finale (40-70 caratteri)",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}
 }
+
+📏 LUNGHEZZA TARGET: circa ${targetCharLimit} caratteri totali
+- Non superare MAI ${effectiveCharLimit} caratteri (limite piattaforma)
 
 ${styleInstructions}`;
     }
@@ -1840,12 +1900,62 @@ RISPONDI SOLO con un JSON valido nel formato:
         imageDescription: idea.imageDescription || imageDescription,
         imageOverlayText: idea.imageOverlayText || imageOverlayText,
         copyContent: finalCopyContent,
+        structuredContent: sc,
         ...(lengthWarning && { lengthWarning }),
       };
     });
     
+    // POST-PROCESSING: Compress ideas that exceed character limit
+    const finalIdeas: ContentIdea[] = [];
+    
+    for (const idea of enrichedIdeas) {
+      // Calculate current copy length
+      const currentContent = idea.copyContent || "";
+      const currentLength = currentContent.length;
+      
+      // Check if compression is needed
+      if (charLimit && currentLength > charLimit && currentContent) {
+        console.log(`[CONTENT-AI COMPRESS] Idea "${idea.title}" exceeds limit: ${currentLength}/${charLimit}`);
+        
+        const { compressed, success } = await compressContentWithAI(
+          currentContent,
+          charLimit,
+          currentLength,
+          consultantId
+        );
+        
+        if (success) {
+          // Recompute length warning with new compressed length
+          const newLengthWarning = validateAndEnrichCopyLength(
+            idea.copyType || "long", 
+            compressed.length, 
+            charLimit
+          );
+          
+          // Update structuredContent.captionCopy only if it exists
+          let updatedSc = idea.structuredContent;
+          if (updatedSc && 'captionCopy' in updatedSc) {
+            updatedSc = { ...updatedSc, captionCopy: compressed };
+          }
+          
+          console.log(`[CONTENT-AI COMPRESS] ✅ Compressed "${idea.title}": ${currentLength} → ${compressed.length} chars`);
+          
+          finalIdeas.push({
+            ...idea,
+            copyContent: compressed,
+            structuredContent: updatedSc,
+            lengthWarning: newLengthWarning || undefined,
+          });
+          continue;
+        }
+      }
+      
+      // No compression needed or failed - add as-is
+      finalIdeas.push(idea);
+    }
+    
     return {
-      ideas: enrichedIdeas,
+      ideas: finalIdeas,
       modelUsed: model,
     };
   } catch (error: any) {
