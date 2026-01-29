@@ -249,7 +249,9 @@ export async function generateAutopilotBatch(
             const currentContentType = contentTypes[contentTypeIndex % contentTypes.length];
             contentTypeIndex++;
             
-            const effectiveMediaType = passedMediaType || "photo";
+            // Mappa "image" → "photo" per allineare con generateContentIdeas che accetta solo "photo" | "video"
+            const normalizedMediaType = passedMediaType === "image" ? "photo" : passedMediaType;
+            const effectiveMediaType = normalizedMediaType || "photo";
             const effectiveCopyType = passedCopyType || (platform === "x" ? "short" : "long");
             
             // DEBUG: Log tutti i parametri passati a generateContentIdeas
