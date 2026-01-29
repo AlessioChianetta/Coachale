@@ -1337,46 +1337,13 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       const schemaParts = schemaStructure.split("|").map(s => s.trim());
       const numSections = schemaParts.length;
       
-      // DEBUG: Log calcolo limiti per schema dinamico
+      // DEBUG: Log schema dinamico - STRATEGIA SEMPLIFICATA (solo limite totale)
       console.log(`[CONTENT-AI SCHEMA DEBUG] ========================================`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG] Schema dinamico rilevato!`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG] Schema dinamico - SOLO LIMITE TOTALE`);
       console.log(`[CONTENT-AI SCHEMA DEBUG]   schemaStructure: "${schemaStructure}"`);
       console.log(`[CONTENT-AI SCHEMA DEBUG]   numSections: ${numSections}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   charLimit (input): ${charLimit}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   effectiveCharLimit: ${effectiveCharLimit}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   isLongCopy: ${isLongCopy}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   minChars: ${minChars}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   maxChars: ${maxChars}`);
-      
-      // Calculate per-section character requirements to guarantee total minimum
-      // For long copy: distribute minChars across sections, ensuring sum >= minChars
-      // For short copy: distribute based on minChars (200) to maxChars (500)
-      const guaranteedMinPerSection = Math.ceil(minChars / numSections);
-      const targetMaxPerSection = Math.ceil(maxChars / numSections);
-      
-      // PRIMA calcola il max per sezione basato sul limite caratteri (priorità assoluta)
-      const rawMaxPerSection = isLongCopy 
-        ? Math.floor(maxChars * 0.85 / numSections) // 85% del limite diviso per sezioni = margine 15% sicurezza
-        : Math.min(200, Math.ceil(maxChars / numSections)); // Proportional for short
-      
-      // POI calcola il min per sezione, ma SENZA MAI superare il max
-      const rawMinPerSection = isLongCopy 
-        ? Math.max(100, guaranteedMinPerSection) // Almeno 100 chars per sezione per long copy
-        : Math.max(40, Math.floor(minChars / numSections)); // Proportional for short
-      
-      // GARANZIA CRITICA: minPerSection NON PUÒ MAI essere > maxPerSection
-      // Se ci sono troppe sezioni, riduciamo il minimo per rispettare il limite totale
-      const maxPerSection = rawMaxPerSection;
-      const minPerSection = Math.min(rawMinPerSection, Math.floor(rawMaxPerSection * 0.7)); // Min = max 70% del max
-      
-      // Calculate what the guaranteed total would be
-      const guaranteedTotal = minPerSection * numSections;
-      
-      // DEBUG: Log calcolo finale per sezione
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   minPerSection: ${minPerSection}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   maxPerSection: ${maxPerSection}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   guaranteedTotal: ${guaranteedTotal}`);
-      console.log(`[CONTENT-AI SCHEMA DEBUG]   maxTotal (numSections × maxPerSection): ${numSections * maxPerSection}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   charLimit: ${effectiveCharLimit}`);
+      console.log(`[CONTENT-AI SCHEMA DEBUG]   copyType: ${copyType}`);
       console.log(`[CONTENT-AI SCHEMA DEBUG] ========================================`);
       
       // Create field names from schema parts - ENSURE UNIQUE NAMES
@@ -1388,7 +1355,6 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
           .replace(/_+/g, '_')
           .replace(/^_|_$/g, '') || `section_${idx + 1}`;
         
-        // Se il nome è già stato usato, aggiungi un suffisso numerico
         if (usedNames[baseName] !== undefined) {
           usedNames[baseName]++;
           baseName = `${baseName}_${usedNames[baseName]}`;
@@ -1398,95 +1364,55 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
         return baseName;
       });
       
-      // Create detailed instructions for each section using SECTION_GUIDELINES
+      // Istruzioni SEMPLICI per ogni sezione - NO limiti per sezione
       const sectionInstructions = schemaParts.map((part, idx) => {
         const fieldName = fieldNames[idx];
         const guideline = getSectionGuideline(fieldName, part);
-        
-        // Quando il limite per sezione è stretto (< 200), non incoraggiare storytelling lungo
-        const isCompactSection = maxPerSection < 200;
-        const styleNote = isLongCopy 
-          ? (isCompactSection 
-              ? "Conciso ma completo, rispetta RIGOROSAMENTE il limite caratteri" // NO storytelling per sezioni compatte
-              : (guideline.style === "narrative" 
-                  ? "Sviluppa con storytelling, dettagli concreti, esempi reali"
-                  : guideline.style === "list"
-                    ? "Usa elenco puntato chiaro e specifico"
-                    : "Breve ma incisivo, ogni parola conta"))
-          : "Conciso e diretto, massima densità informativa";
-        
-        return `**${idx + 1}. Campo "${fieldName}" (sezione: ${part})** [MAX ${maxPerSection} caratteri]
-   - ${guideline.instruction}
-   - ${styleNote}
-   - ⛔ NON superare ${maxPerSection} caratteri per questa sezione`;
-      }).join("\n\n");
+        return `**${idx + 1}. ${fieldName}** (${part}): ${guideline.instruction}`;
+      }).join("\n");
       
-      // Simple JSON structure with placeholder descriptions
+      // Simple JSON structure
       const dynamicFields = fieldNames.map((fieldName, idx) => {
-        return `  "${fieldName}": "SCRIVI QUI il contenuto per: ${schemaParts[idx]}"`;
+        return `  "${fieldName}": "Contenuto per: ${schemaParts[idx]}"`;
       }).join(",\n");
       
       const videoFields = isVideo ? `,
-  "fullScript": "Lo script completo parlato fluido da registrare. USA [PAUSA] per indicare pause drammatiche."` : "";
+  "fullScript": "Script parlato fluido. USA [PAUSA] per pause drammatiche."` : "";
       
-      // Length enforcement block - focus on TOTAL with per-section limits
-      // Se il maxTotal teorico è inferiore a minChars, adatta minChars al 70% del maxTotal
-      const maxTotalTheoretical = numSections * maxPerSection;
-      const effectiveMinChars = maxTotalTheoretical < minChars 
-        ? Math.floor(maxTotalTheoretical * 0.7) 
-        : minChars;
-      
-      const lengthEnforcement = isLongCopy ? `
-⚠️⚠️⚠️ LIMITE CARATTERI OBBLIGATORIO - PRIORITÀ ASSOLUTA ⚠️⚠️⚠️
-
-🎯 LIMITE MASSIMO TOTALE: ${maxChars} caratteri (limite piattaforma ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
-📐 LIMITE PER SEZIONE: ${maxPerSection} caratteri MAX ciascuna
-
-⛔⛔⛔ IL SUPERAMENTO DEL LIMITE È IL PEGGIOR ERRORE POSSIBILE ⛔⛔⛔
-
-REGOLA MATEMATICA INVIOLABILE:
-- ${numSections} sezioni × max ${maxPerSection} caratteri = max ${maxTotalTheoretical} caratteri totali
-- Ogni sezione DEVE stare sotto ${maxPerSection} caratteri
-- Il totale captionCopy DEVE stare tra ${effectiveMinChars}-${maxChars} caratteri
-
-📊 VERIFICA: Conta i caratteri di OGNI sezione PRIMA di rispondere.
-Se una sezione supera ${maxPerSection} caratteri → RISCRIVILA più corta.` : "";
+      // Limiti copy in base al tipo
+      const minTotal = isLongCopy ? 1200 : 150;
+      const maxTotal = effectiveCharLimit;
       
       return `
-🚨🚨🚨 REGOLA ASSOLUTA: SEGUI LO SCHEMA ESATTAMENTE 🚨🚨🚨
+📋 SCHEMA: "${schemaLabel || 'Schema personalizzato'}"
+📐 STRUTTURA: ${schemaParts.join(" → ")}
 
-📋 SCHEMA SELEZIONATO: "${schemaLabel || 'Schema personalizzato'}"
-📐 STRUTTURA OBBLIGATORIA: ${schemaParts.map((p, i) => `${i + 1}. ${p}`).join(" → ")}
-
-⚠️ DEVI seguire questa struttura A PENNELLO:
-- OGNI sezione dello schema DEVE essere presente nel tuo contenuto
-- L'ORDINE delle sezioni DEVE essere esattamente quello indicato
-- NON saltare sezioni, NON invertire l'ordine, NON aggiungere sezioni extra
-- Il contenuto di captionCopy DEVE seguire questa sequenza: ${schemaParts.join(" → ")}
-
-**ISTRUZIONI DETTAGLIATE PER OGNI SEZIONE:**
-
+SEZIONI DA COMPILARE:
 ${sectionInstructions}
 
-**structuredContent** (OBBLIGATORIO - oggetto JSON):
+**structuredContent** (JSON):
 {
   "type": "${isVideo ? 'video_script' : (isLongCopy ? 'copy_long' : 'copy_short')}",
   "copyVariant": "${copyType}",
   "schemaUsed": "${postSchema}",
 ${dynamicFields},
-  "captionCopy": "CONCATENA tutte le sezioni sopra in un unico testo formattato. DEVE essere ${minChars}-${maxChars} caratteri TOTALI.",
+  "captionCopy": "Testo completo che unisce tutte le sezioni sopra",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"]${imageFields}${videoFields}
 }
 
 ${styleInstructions}
-${lengthEnforcement}
 
-LIMITE CARATTERI PIATTAFORMA: ${effectiveCharLimit} caratteri MAX
+⛔⛔⛔ LIMITE CARATTERI - REGOLA ASSOLUTA ⛔⛔⛔
+Il campo "captionCopy" DEVE essere:
+- MINIMO ${minTotal} caratteri
+- MASSIMO ${maxTotal} caratteri (LIMITE PIATTAFORMA ${targetPlatform?.toUpperCase() || 'INSTAGRAM'})
+
+🚨 NON SUPERARE MAI ${maxTotal} CARATTERI TOTALI 🚨
+Distribuisci il contenuto tra le ${numSections} sezioni come preferisci, ma il TOTALE deve stare sotto ${maxTotal}.
 ${isVideo ? `
 IMPORTANTE per fullScript (video):
 - Scritto per essere DETTO A VOCE, frasi corte e incisive
-- Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
-- Usa '...' per micro-pause di respiro` : ""}`;
+- Inserisci [PAUSA] dove vuoi pause drammatiche` : ""}`;
     }
     
     // Fallback to default structure when no schemaStructure is provided (schema "originale")
