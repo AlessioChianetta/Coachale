@@ -42,6 +42,14 @@ Key enhancements include:
 - Content Studio Platform-Specific Schema Selection with 40+ templates, character limit enforcement, AI shortening, and 5 selectable writing styles.
 - Content Autopilot System for automated content scheduling with platform-specific frequency, content theme rotation, and full AdVisage AI integration for image generation and publishing.
 - AdVisage AI Visual Concept Generator integrated into Content Studio for generating visual concepts, image prompts, and social captions from ad copy.
+- Content Variety System to prevent repetitive AI-generated ads:
+  - Hook max 125 characters (Meta Ads visibility constraint)
+  - 10 hook pattern rotation (domanda, statistica, storia, controintuitivo, problema, curiosità, social proof, us-vs-them, urgenza, provocazione)
+  - 4-dimension angle rotation (paura/desiderio, logico/emotivo, 1a/3a persona, diretto/storytelling)
+  - Dynamic section instructions with 3-5 variants per section
+  - Enhanced anti-repetition with pattern detection, fingerprint analysis, and recommendations
+  - Content Topics system with pillar organization and usage tracking
+  - AI compression for content exceeding platform limits (90% target, 0.3 temperature for consistency)
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
