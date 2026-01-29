@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2 } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
 import it from "date-fns/locale/it";
@@ -1451,6 +1452,37 @@ export default function ConsultantAppointments() {
   console.log("Clients loading:", clientsLoading);
   console.log("Clients error:", clientsError);
 
+  // State for tracking selected client's monthly consultation limit
+  const [selectedClientLimitInfo, setSelectedClientLimitInfo] = useState<{
+    clientId: string;
+    month: number;
+    year: number;
+    totalCount: number;
+    limit: number | null;
+    remaining: number | null;
+    isLimitReached: boolean;
+  } | null>(null);
+
+  // Handler for client selection that also fetches limit info
+  const handleClientChange = async (value: string, fieldOnChange: (value: string) => void) => {
+    fieldOnChange(value);
+    setSelectedClientLimitInfo(null);
+    
+    if (value) {
+      try {
+        const response = await fetch(`/api/consultations/client/${value}/monthly-count`, {
+          headers: getAuthHeaders(),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSelectedClientLimitInfo(data);
+        }
+      } catch (error) {
+        console.error("Error fetching client monthly limit:", error);
+      }
+    }
+  };
+
   // Form per modificare appuntamenti
   const updateForm = useForm<UpdateAppointmentForm>({
     resolver: zodResolver(updateAppointmentSchema),
@@ -1892,7 +1924,7 @@ export default function ConsultantAppointments() {
                               <User className="w-4 h-4" />
                               Cliente
                             </FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={(value) => handleClientChange(value, field.onChange)} value={field.value}>
                               <FormControl>
                                 <SelectTrigger 
                                   className="h-12 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 bg-slate-50 dark:bg-slate-800"
@@ -1939,6 +1971,25 @@ export default function ConsultantAppointments() {
                               </SelectContent>
                             </Select>
                             <FormMessage />
+                            
+                            {/* Monthly consultation limit warning/info */}
+                            {selectedClientLimitInfo && selectedClientLimitInfo.limit !== null && (
+                              selectedClientLimitInfo.isLimitReached ? (
+                                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl mt-2">
+                                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                    Limite mensile raggiunto ({selectedClientLimitInfo.totalCount}/{selectedClientLimitInfo.limit} consulenze)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl mt-2">
+                                  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                    Consulenze: {selectedClientLimitInfo.totalCount}/{selectedClientLimitInfo.limit} usate ({selectedClientLimitInfo.remaining} disponibili)
+                                  </span>
+                                </div>
+                              )
+                            )}
                           </FormItem>
                         )}
                       />
@@ -2084,24 +2135,37 @@ export default function ConsultantAppointments() {
                         >
                           Annulla
                         </Button>
-                        <Button
-                          type="submit"
-                          disabled={createMutation.isPending}
-                          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 font-semibold"
-                          data-testid="button-submit"
-                        >
-                          {createMutation.isPending ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                              Creazione...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              Crea Appuntamento
-                            </>
-                          )}
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  type="submit"
+                                  disabled={createMutation.isPending || (selectedClientLimitInfo?.isLimitReached ?? false)}
+                                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                  data-testid="button-submit"
+                                >
+                                  {createMutation.isPending ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                                      Creazione...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-4 h-4 mr-2" />
+                                      Crea Appuntamento
+                                    </>
+                                  )}
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {selectedClientLimitInfo?.isLimitReached && (
+                              <TooltipContent side="top" className="bg-amber-600 text-white border-amber-600">
+                                <p>Il cliente ha raggiunto il limite mensile di consulenze</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </form>
                   </Form>

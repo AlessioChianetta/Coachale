@@ -3435,6 +3435,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         consultantId: req.user!.id,
       });
 
+      // Check monthly consultation limit before creating
+      if (validatedData.clientId) {
+        const clientUser = await storage.getUser(validatedData.clientId);
+        if (clientUser && clientUser.monthlyConsultationLimit !== null) {
+          // Get the scheduled date to determine which month to count
+          const scheduledDate = new Date(validatedData.scheduledAt);
+          const targetMonth = scheduledDate.getMonth() + 1;
+          const targetYear = scheduledDate.getFullYear();
+          
+          const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
+          const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+          
+          // Count existing consultations for this client in that month
+          const existingCount = await db
+            .select({ count: sql<number>`COUNT(*)::int` })
+            .from(schema.consultations)
+            .where(
+              and(
+                eq(schema.consultations.clientId, validatedData.clientId),
+                eq(schema.consultations.consultantId, req.user!.id),
+                gte(schema.consultations.scheduledAt, startOfMonth),
+                lte(schema.consultations.scheduledAt, endOfMonth),
+                or(
+                  eq(schema.consultations.status, 'scheduled'),
+                  eq(schema.consultations.status, 'completed')
+                )
+              )
+            );
+          
+          const currentCount = existingCount[0]?.count || 0;
+          if (currentCount >= clientUser.monthlyConsultationLimit) {
+            return res.status(403).json({ 
+              message: `Monthly consultation limit reached (${clientUser.monthlyConsultationLimit} per month)`,
+              code: 'LIMIT_REACHED',
+              currentCount,
+              limit: clientUser.monthlyConsultationLimit
+            });
+          }
+        }
+      }
+
       const consultation = await storage.createConsultation(validatedData);
       res.status(201).json(consultation);
     } catch (error: any) {

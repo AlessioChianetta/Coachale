@@ -446,6 +446,14 @@ ${userContext.consultations ? `
 📞 CONSULENZE - STORICO COMPLETO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+${userContext.consultations.monthlyLimit ? `
+⚡ LIMITE CONSULENZE MENSILE
+- Limite: ${userContext.consultations.monthlyLimit.limit} consulenze/mese
+- Utilizzate: ${userContext.consultations.monthlyLimit.used}/${userContext.consultations.monthlyLimit.limit}
+- Disponibili: ${userContext.consultations.monthlyLimit.remaining}
+- ${userContext.consultations.monthlyLimit.isLimitReached ? '🚫 LIMITE RAGGIUNTO - Non è possibile prenotare nuove consulenze per questo mese' : '✅ Il cliente può ancora prenotare consulenze'}
+` : '- Nessun limite mensile impostato (consulenze illimitate)'}
+
 ${userContext.consultations.upcoming && userContext.consultations.upcoming.length > 0 ? `
 🔜 CONSULENZE IN PROGRAMMA (${userContext.consultations.upcoming.length})
 ${userContext.consultations.upcoming.map(c => {

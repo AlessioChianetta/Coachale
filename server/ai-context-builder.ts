@@ -292,6 +292,14 @@ export interface UserContext {
       transcript: string | null;
       summaryEmail: string | null;
     }>;
+    monthlyLimit: {
+      limit: number;
+      used: number;
+      remaining: number;
+      isLimitReached: boolean;
+      month: number;
+      year: number;
+    } | null;
   };
   consultationTasks: Array<{
     id: string;
@@ -519,7 +527,7 @@ export async function buildUserContext(
     ongoingCalendarEvents,
     recentCalendarEvents,
   ] = await Promise.all([
-    // User info - SEMPRE (include consultantId for consultant lookup)
+    // User info - SEMPRE (include consultantId for consultant lookup and monthlyConsultationLimit)
     db
       .select({
         id: users.id,
@@ -529,6 +537,7 @@ export async function buildUserContext(
         level: users.level,
         enrolledAt: users.enrolledAt,
         consultantId: users.consultantId,
+        monthlyConsultationLimit: users.monthlyConsultationLimit,
       })
       .from(users)
       .where(eq(users.id, clientId))
@@ -903,6 +912,32 @@ export async function buildUserContext(
       notes: c.notes,
       consultantType: c.consultantType,
     }));
+
+  // ========================================
+  // MONTHLY CONSULTATION LIMIT INFO
+  // ========================================
+  const clientUserData = userResult[0];
+  const monthlyConsultationLimit = clientUserData?.monthlyConsultationLimit ?? null;
+  
+  // Calculate current month consultation count (scheduled + completed only)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  
+  const monthlyConsultationCount = allConsultations.filter((c: any) => {
+    const scheduledAt = new Date(c.scheduledAt);
+    return (c.status === 'scheduled' || c.status === 'completed') &&
+           scheduledAt >= startOfMonth &&
+           scheduledAt <= endOfMonth;
+  }).length;
+
+  const monthlyLimitInfo = monthlyConsultationLimit !== null ? {
+    limit: monthlyConsultationLimit,
+    used: monthlyConsultationCount,
+    remaining: Math.max(0, monthlyConsultationLimit - monthlyConsultationCount),
+    isLimitReached: monthlyConsultationCount >= monthlyConsultationLimit,
+    month: now.getMonth() + 1,
+    year: now.getFullYear()
+  } : null;
 
   // ========================================
   // PHASE 2: Optimize University (eliminate N+1)
@@ -1781,6 +1816,7 @@ export async function buildUserContext(
     consultations: {
       upcoming: upcomingConsultations,
       recent: recentConsultations,
+      monthlyLimit: monthlyLimitInfo,
     },
     consultationTasks: allConsultationTasks.map((t: any) => ({
       id: t.id,

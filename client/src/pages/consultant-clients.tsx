@@ -76,7 +76,8 @@ export default function ConsultantClientsPage() {
     email: '',
     phoneNumber: '',
     username: '',
-    geminiApiKeys: [] as string[]
+    geminiApiKeys: [] as string[],
+    monthlyConsultationLimit: null as number | null
   });
   
   // Pagination state
@@ -239,7 +240,8 @@ export default function ConsultantClientsPage() {
       email: client.email || '',
       phoneNumber: client.phoneNumber || '',
       username: client.username || '',
-      geminiApiKeys: client.geminiApiKeys || []
+      geminiApiKeys: client.geminiApiKeys || [],
+      monthlyConsultationLimit: client.monthlyConsultationLimit ?? null
     });
   };
 
@@ -727,6 +729,9 @@ export default function ConsultantClientsPage() {
                               <SortIcon column="progress" />
                             </div>
                           </th>
+                          <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                            Limite/mese
+                          </th>
                           <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
                             Azioni
                           </th>
@@ -798,6 +803,11 @@ export default function ConsultantClientsPage() {
                                 </div>
                                 <span className="text-xs font-semibold text-slate-700 w-8 text-right">{client._completionRate}%</span>
                               </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-center hidden lg:table-cell">
+                              <span className={`text-xs font-medium ${client.monthlyConsultationLimit ? 'text-amber-600' : 'text-slate-400'}`}>
+                                {client.monthlyConsultationLimit ? `${client.monthlyConsultationLimit}/mese` : 'Illimitato'}
+                              </span>
                             </td>
                             <td className="px-3 py-2.5">
                               <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1190,6 +1200,32 @@ export default function ConsultantClientsPage() {
                 className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="username"
               />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="monthlyLimit" className="text-right text-sm font-medium">
+                <div className="flex flex-col">
+                  <span>Limite/mese</span>
+                  <span className="text-xs text-slate-400 font-normal">consulenze</span>
+                </div>
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Input
+                  id="monthlyLimit"
+                  type="number"
+                  min="0"
+                  value={editForm.monthlyConsultationLimit ?? ''}
+                  onChange={(e) => setEditForm(prev => ({
+                    ...prev, 
+                    monthlyConsultationLimit: e.target.value === '' ? null : parseInt(e.target.value)
+                  }))}
+                  className="w-24 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                  placeholder="0"
+                />
+                <span className="text-xs text-slate-500">
+                  {editForm.monthlyConsultationLimit === null ? 'Illimitato' : `Max ${editForm.monthlyConsultationLimit}/mese`}
+                </span>
+              </div>
             </div>
             
             <div className="space-y-4 col-span-full">
