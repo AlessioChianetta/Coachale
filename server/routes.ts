@@ -3272,7 +3272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/users/:id", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const { phone_number, gemini_api_keys, firstName, lastName, email, username, phoneNumber: existingPhoneNumber, isActive, ...otherUpdates } = req.body;
+      const { phone_number, gemini_api_keys, firstName, lastName, email, username, phoneNumber: existingPhoneNumber, isActive, monthlyConsultationLimit, ...otherUpdates } = req.body;
       
       // Map snake_case to camelCase for database
       const updates: any = {};
@@ -3283,6 +3283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (phone_number !== undefined) updates.phoneNumber = phone_number;
       if (gemini_api_keys !== undefined) updates.geminiApiKeys = gemini_api_keys;
       if (isActive !== undefined) updates.isActive = isActive;
+      if (monthlyConsultationLimit !== undefined) updates.monthlyConsultationLimit = monthlyConsultationLimit;
 
       // Check if user is updating their own profile or consultant updating client
       const targetUser = await storage.getUser(id);
@@ -3455,6 +3456,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const consultations = await storage.getConsultationsByConsultant(req.user!.id);
       res.json(consultations);
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get monthly consultation count for a specific client
+  app.get("/api/consultations/client/:clientId/monthly-count", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { clientId } = req.params;
+      const { month, year } = req.query;
+      
+      // Verify consultant owns this client (check both users table AND user_role_profiles for multi-profile system)
+      const targetUser = await storage.getUser(clientId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Check ownership via users table (consultantId match)
+      const ownsViaUsersTable = targetUser.consultantId === req.user!.id;
+      
+      // Check ownership via user_role_profiles (multi-profile system)
+      const targetProfiles = await storage.getUserRoleProfiles(clientId);
+      const ownsViaProfile = targetProfiles.some(p => p.role === 'client' && p.consultantId === req.user!.id);
+      
+      if (!ownsViaUsersTable && !ownsViaProfile) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Use current month/year if not specified
+      const targetDate = new Date();
+      const targetMonth = month ? parseInt(month as string) : targetDate.getMonth() + 1;
+      const targetYear = year ? parseInt(year as string) : targetDate.getFullYear();
+      
+      // Calculate start and end of month
+      const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
+      const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+      
+      // Count only from 'consultations' table (the authoritative source for formal consultations)
+      // This avoids double-counting with appointmentBookings which may convert to consultations
+      const consultationsCount = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(schema.consultations)
+        .where(
+          and(
+            eq(schema.consultations.clientId, clientId),
+            eq(schema.consultations.consultantId, req.user!.id),
+            gte(schema.consultations.scheduledAt, startOfMonth),
+            lte(schema.consultations.scheduledAt, endOfMonth),
+            or(
+              eq(schema.consultations.status, 'scheduled'),
+              eq(schema.consultations.status, 'completed')
+            )
+          )
+        );
+      
+      const totalCount = consultationsCount[0]?.count || 0;
+      
+      res.json({
+        clientId,
+        month: targetMonth,
+        year: targetYear,
+        totalCount,
+        limit: targetUser.monthlyConsultationLimit,
+        remaining: targetUser.monthlyConsultationLimit 
+          ? Math.max(0, targetUser.monthlyConsultationLimit - totalCount) 
+          : null, // null means unlimited
+        isLimitReached: targetUser.monthlyConsultationLimit 
+          ? totalCount >= targetUser.monthlyConsultationLimit 
+          : false
+      });
+    } catch (error: any) {
+      console.error('[MONTHLY-COUNT] Error:', error);
       res.status(500).json({ message: error.message });
     }
   });
