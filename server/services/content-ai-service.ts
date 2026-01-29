@@ -1625,17 +1625,72 @@ RISPONDI SOLO con un JSON valido nel formato:
     const parsed = parseJsonResponse<{ ideas: ContentIdea[] }>(responseText, { ideas: [] });
     
     if (!parsed.ideas || parsed.ideas.length === 0) {
+      // Try to extract useful content from the raw response text instead of using placeholder
+      // This happens when JSON parsing fails but the AI generated valid content
+      console.log("[CONTENT-AI FALLBACK] JSON parsing failed, attempting to extract content from raw response");
+      
+      // Try to extract title from the response
+      const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
+      const extractedTitle = titleMatch ? titleMatch[1] : "Contenuto di valore per il tuo pubblico";
+      
+      // Try to extract description
+      const descMatch = responseText.match(/"description"\s*:\s*"([^"]+)"/);
+      const extractedDesc = descMatch ? descMatch[1] : `Un contenuto che parla al tuo target di ${targetAudience} nel settore ${niche}`;
+      
+      // Try to extract hook
+      const hookMatch = responseText.match(/"(?:suggestedHook|hook)"\s*:\s*"([^"]+)"/);
+      const extractedHook = hookMatch ? hookMatch[1] : "Scopri come...";
+      
+      // Try to extract CTA
+      const ctaMatch = responseText.match(/"(?:suggestedCta|cta)"\s*:\s*"([^"]+)"/);
+      const extractedCta = ctaMatch ? ctaMatch[1] : "Scopri di più nel link in bio";
+      
+      // Try to extract any long text content - look for chiCosaCome, errore, soluzione, riprovaSociale
+      const contentParts: string[] = [];
+      const contentPatterns = [
+        /"hook"\s*:\s*"([^"]{50,})"/,
+        /"chiCosaCome"\s*:\s*"([^"]{50,})"/,
+        /"errore"\s*:\s*"([^"]{50,})"/,
+        /"soluzione"\s*:\s*"([^"]{50,})"/,
+        /"riprovaSociale"\s*:\s*"([^"]{50,})"/,
+        /"cta"\s*:\s*"([^"]{20,})"/,
+        /"captionCopy"\s*:\s*"([^"]{100,})"/,
+        /"body"\s*:\s*"([^"]{50,})"/,
+      ];
+      
+      for (const pattern of contentPatterns) {
+        const match = responseText.match(pattern);
+        if (match && match[1]) {
+          // Unescape the content
+          const unescaped = match[1]
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\');
+          contentParts.push(unescaped);
+        }
+      }
+      
+      let extractedCopyContent = "";
+      if (contentParts.length > 0) {
+        extractedCopyContent = contentParts.join("\n\n");
+        console.log(`[CONTENT-AI FALLBACK] Extracted ${contentParts.length} content sections, total ${extractedCopyContent.length} chars`);
+      } else {
+        // Absolute fallback - but mark it so we know it failed
+        extractedCopyContent = "Contenuto di esempio per il tuo pubblico.";
+        console.log("[CONTENT-AI FALLBACK] No content sections found, using placeholder");
+      }
+      
       return {
         ideas: [{
-          title: "Contenuto di valore per il tuo pubblico",
-          description: `Un contenuto che parla al tuo target di ${targetAudience} nel settore ${niche}`,
+          title: extractedTitle,
+          description: extractedDesc,
           aiScore: 70,
-          aiReasoning: "Idea generica di fallback",
-          suggestedHook: "Scopri come...",
-          suggestedCta: "Scopri di più nel link in bio",
+          aiReasoning: "Idea estratta da risposta non-JSON",
+          suggestedHook: extractedHook,
+          suggestedCta: extractedCta,
           mediaType,
           copyType,
-          copyContent: "Contenuto di esempio per il tuo pubblico.",
+          copyContent: extractedCopyContent,
         }],
         modelUsed: model,
       };

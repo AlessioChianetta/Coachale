@@ -1705,8 +1705,8 @@ export default function ContentStudioIdeas() {
             setAutopilotGeneratedPosts(data.generatedPostsDetails);
           }
           
-          // Check completion status
-          if (data.status === "awaiting_review" || data.status === "completed" || data.status === "published") {
+          // Check completion status - include "approved" which is set when batch completes successfully
+          if (data.status === "awaiting_review" || data.status === "completed" || data.status === "published" || data.status === "approved") {
             toast({
               title: "Autopilot completato!",
               description: `${data.generatedPosts} post generati con successo`,
