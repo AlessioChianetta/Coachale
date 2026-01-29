@@ -1432,8 +1432,8 @@ IMPORTANTE per fullScript (video):
     console.log(`[CONTENT-AI ORIGINALE DEBUG] ========================================`);
     
     if (isVideo && isLongCopy) {
-      // Calcola range dinamici basati su charLimit con margine 15%
-      const safeLimit = Math.floor(effectiveCharLimit * 0.85);
+      // Use effectiveCharLimit directly - caller already passes safe limit with margin
+      const safeLimit = effectiveCharLimit;
       const hookMax = Math.floor(safeLimit * 0.10);
       const chiCosaComeMax = Math.floor(safeLimit * 0.15);
       const erroreMax = Math.floor(safeLimit * 0.25);
@@ -1488,8 +1488,8 @@ IMPORTANTE per fullScript:
 - Inserisci [PAUSA] dove vuoi pause drammatiche (1-2 secondi)
 - Usa '...' per micro-pause di respiro`;
     } else if (isLongCopy) {
-      // Calcola range dinamici basati su charLimit con margine 15%
-      const safeLimit = Math.floor(effectiveCharLimit * 0.85);
+      // Use effectiveCharLimit directly - caller already passes safe limit with margin
+      const safeLimit = effectiveCharLimit;
       const hookMax = Math.floor(safeLimit * 0.10);
       const chiCosaComeMax = Math.floor(safeLimit * 0.15);
       const erroreMax = Math.floor(safeLimit * 0.25);
@@ -1511,7 +1511,7 @@ IMPORTANTE per fullScript:
 }
 
 ⛔ LIMITE PIATTAFORMA: ${effectiveCharLimit} caratteri
-⚠️ SOMMA TUTTE LE SEZIONI DEVE ESSERE < ${safeLimit} caratteri (margine sicurezza 15%)
+⚠️ SOMMA TUTTE LE SEZIONI DEVE ESSERE < ${safeLimit} caratteri
 📊 CONTA I CARATTERI DI OGNI SEZIONE PRIMA DI RISPONDERE
 
 ${styleInstructions}`;

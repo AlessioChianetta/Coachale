@@ -1,0 +1,137 @@
+1) resolvedFullCopy: usa captionCopy come prima scelta (Autopilot)
+
+In /mnt/data/content-autopilot-service.ts sostituisci entrambi i punti dove costruisci resolvedFullCopy (nel loop retry e prima dell’insert DB).
+
+Patch (riga ~357 + riga ~392)
+const sc = idea.structuredContent as any;
+
+const resolvedFullCopy =
+  sc?.captionCopy ||            // ✅ quello generato dall’AI service
+  sc?.fullCopy ||               // (retro-compat)
+  idea.copyContent ||           // fallback già “enriched” dall’AI service
+  "";
+
+
+Così rendi esplicito che la fonte canonica è captionCopy.
+
+2) Publer: pubblica sempre fullCopy (ok), ma assicurati che fullCopy = captionCopy
+
+Il tuo publish su Publer è giusto:
+
+text: fullPost.fullCopy || fullPost.hook || fullPost.title || '',
+
+
+Il problema è a monte: stai salvando fullCopy da structuredContent.fullCopy (che non esiste), quindi “per caso” ti salva idea.copyContent.
+
+Con la patch sopra, fullCopy nel DB diventa davvero captionCopy, quindi Publer pubblica il testo giusto.
+
+3) Doppio margine 10%: elimina il secondo 0.90 nell’AI service
+
+In /mnt/data/content-ai-service.ts (sezione schema dinamico, dove hai maxTotal = effectiveCharLimit * 0.90), cambialo così:
+
+Patch (riga ~1383)
+// PRIMA
+// const maxTotal = Math.floor(effectiveCharLimit * 0.90);
+
+// DOPO: charLimit è già “hard” (es. 2700)
+const maxTotal = effectiveCharLimit;
+
+
+E lascia pure il minTotal basato su maxTotal (va bene).
+
+Nota: hai anche altri “safeLimit” tipo * 0.85 nel ramo “originale”. Se tu passi SEMPRE un limite già safe (es. 2700), ti consiglio di renderli “hard” anche lì (stesso principio): safeLimit = effectiveCharLimit.
+
+4) Retry inutile: aggiungi feedback numerico al prompt (Autopilot)
+
+In content-autopilot-service.ts, dentro il loop retry, invece di richiamare generateContentIdeas identico, appendi un’istruzione solo dal retry 2 in poi.
+
+Esempio minimo (subito prima della call a generateContentIdeas):
+
+const retryHint =
+  retry === 0
+    ? ""
+    : `\n\n⚠️ Il tentativo precedente era troppo lungo.
+RISCRIVI mantenendo la stessa idea ma con MASSIMO ${charLimit} caratteri nel captionCopy.
+Se superi ${charLimit}, la risposta verrà scartata.\n`;
+
+const mergedCustomInstructions =
+  (customInstructions && customInstructions !== "none" ? customInstructions : "") + retryHint;
+
+
+Poi nella call:
+
+customWritingInstructions: mergedCustomInstructions || undefined,
+
+
+Questo cambia davvero la dinamica del retry.
+
+5) Guardrail finale: enforcement “hard” (AI service) — così pubblichi sempre
+
+Questa è la parte che ti mette al sicuro al 100%: anche se il modello sfora, tu rientri sempre.
+
+In /mnt/data/content-ai-service.ts, dopo che hai finalCopyContent, applica truncation intelligente.
+
+A) Aggiungi una helper (in fondo al file o sopra)
+function truncateSmart(text: string, limit: number): string {
+  if (!text) return "";
+  if (text.length <= limit) return text;
+
+  const hard = Math.max(0, limit - 1); // spazio per ellissi
+  let slice = text.slice(0, hard);
+
+  // prova a tagliare su un confine “naturale”
+  const cutPoints = [
+    slice.lastIndexOf("\n\n"),
+    slice.lastIndexOf("\n"),
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("? "),
+  ].filter(i => i > Math.max(0, hard - 250)); // cerca un buon cut vicino alla fine
+
+  const best = cutPoints.length ? Math.max(...cutPoints) : -1;
+  if (best > 50) slice = slice.slice(0, best + 1);
+
+  return slice.trimEnd() + "…";
+}
+
+B) Usa l’enforcement dentro enrichedIdeas.map(...)
+
+Subito dopo:
+
+const finalCopyContent = idea.copyContent || copyContent;
+
+
+aggiungi:
+
+let enforcedCopy = finalCopyContent || "";
+if (charLimit && enforcedCopy.length > charLimit) {
+  enforcedCopy = truncateSmart(enforcedCopy, charLimit);
+
+  // se esiste structuredContent, allinealo
+  if (sc && typeof sc === "object") {
+    sc.captionCopy = enforcedCopy;
+  }
+
+  copyLength = enforcedCopy.length;
+}
+
+
+E nel return finale usa copyContent: enforcedCopy invece di finalCopyContent.
+
+Perché Gemini sfora “anche se glielo dici” (il motivo reale)
+
+I modelli non contano caratteri in modo affidabile mentre generano.
+
+Se nel prompt hai numeri incoerenti (2700 vs 2430) peggiori ancora.
+
+Se il sistema accetta comunque l’output, il modello non “paga” alcun costo per sforare.
+
+Con:
+
+un solo limite hard
+
+retry con feedback
+
+enforcement finale
+
+…il problema sparisce.

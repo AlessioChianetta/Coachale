@@ -379,7 +379,7 @@ export async function generateAutopilotBatch(
               if (result.ideas && result.ideas.length > 0) {
                 const idea = result.ideas[0];
                 const sc = idea.structuredContent as any;
-                const resolvedFullCopy = sc?.captionCopy || idea.copyContent || "";
+                const resolvedFullCopy = sc?.captionCopy || sc?.fullCopy || idea.copyContent || "";
                 previousLength = resolvedFullCopy.length;
                 
                 // Check if content exceeds character limit (use real platform limits)
@@ -409,7 +409,7 @@ export async function generateAutopilotBatch(
                                 effectiveMediaType === "carousel" ? "carosello" : "foto";
               
               const sc = idea.structuredContent as any;
-              let resolvedFullCopy = sc?.captionCopy || idea.copyContent || "";
+              let resolvedFullCopy = sc?.captionCopy || sc?.fullCopy || idea.copyContent || "";
               
               // Apply intelligent truncation if content still exceeds limit after all retries
               if (resolvedFullCopy.length > charLimitReal) {
