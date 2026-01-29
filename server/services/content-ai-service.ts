@@ -1379,9 +1379,9 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       const videoFields = isVideo ? `,
   "fullScript": "Script parlato fluido. USA [PAUSA] per pause drammatiche."` : "";
       
-      // Limiti copy in base al tipo
+      // Limiti copy in base al tipo - con margine sicurezza 5%
       const minTotal = isLongCopy ? 1200 : 150;
-      const maxTotal = effectiveCharLimit;
+      const maxTotal = Math.floor(effectiveCharLimit * 0.95); // 5% margine sicurezza
       
       return `
 📋 SCHEMA: "${schemaLabel || 'Schema personalizzato'}"
