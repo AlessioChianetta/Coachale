@@ -99,7 +99,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
-import AutopilotPanel from "@/components/content-studio/AutopilotPanel";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -600,7 +599,12 @@ export default function ContentStudioIdeas() {
 
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [templateName, setTemplateName] = useState("");
-  const [showAutopilotDialog, setShowAutopilotDialog] = useState(false);
+  const [showAutopilotSection, setShowAutopilotSection] = useState(false);
+  const [autopilotStartDate, setAutopilotStartDate] = useState("");
+  const [autopilotEndDate, setAutopilotEndDate] = useState("");
+  const [autopilotPostsPerDay, setAutopilotPostsPerDay] = useState(2);
+  const [isAutopilotGenerating, setIsAutopilotGenerating] = useState(false);
+  const [autopilotProgress, setAutopilotProgress] = useState<{total: number; completed: number} | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1286,6 +1290,111 @@ export default function ContentStudioIdeas() {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleAutopilotGenerate = async () => {
+    if (!autopilotStartDate || !autopilotEndDate) return;
+    
+    setIsAutopilotGenerating(true);
+    setAutopilotProgress(null);
+    
+    try {
+      const platformInfo = TARGET_PLATFORMS.find(p => p.value === targetPlatform);
+      const charLimit = platformInfo?.charLimit || 2200;
+      
+      const kbContentParts: string[] = [];
+      if (useKnowledgeBase && tempFiles.filter(f => f.status === "success").length > 0) {
+        for (const file of tempFiles.filter(f => f.status === "success")) {
+          if (file.content) {
+            kbContentParts.push(`## ${file.title}\n\n${file.content}`);
+          }
+        }
+      }
+      const kbContent = kbContentParts.join("\n\n---\n\n");
+      
+      const selectedSchema = availableSchemas.find(s => s.value === postSchema);
+      
+      const response = await fetch("/api/content/autopilot/generate", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          startDate: autopilotStartDate,
+          endDate: autopilotEndDate,
+          platforms: {
+            [targetPlatform]: {
+              enabled: true,
+              postsPerDay: autopilotPostsPerDay,
+            },
+          },
+          niche: brandVoiceData.niche || topic || "",
+          targetAudience: brandVoiceData.targetAudience || targetAudience || "",
+          objective: objective,
+          mediaType: mediaType,
+          copyType: copyType,
+          targetPlatform: targetPlatform,
+          postCategory: postCategory,
+          postSchema: postSchema,
+          schemaStructure: selectedSchema?.structure,
+          schemaLabel: selectedSchema?.label,
+          writingStyle: writingStyle,
+          customInstructions: customWritingInstructions,
+          charLimit: charLimit,
+          awarenessLevel: awarenessLevel,
+          sophisticationLevel: sophisticationLevel,
+          brandVoiceData: useBrandVoice ? brandVoiceData : undefined,
+          kbContent: kbContent || undefined,
+          ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to start autopilot");
+      }
+      
+      const reader = response.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.total && data.completed !== undefined) {
+                  setAutopilotProgress({ total: data.total, completed: data.completed });
+                }
+                if (data.status === "completed") {
+                  toast({
+                    title: "Autopilot completato!",
+                    description: `${data.completed} post generati con successo`,
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+                }
+              } catch (e) {
+                // Ignore JSON parse errors for partial chunks
+              }
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Autopilot error:", error);
+      toast({
+        title: "Errore Autopilot",
+        description: error.message || "Errore durante la generazione",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutopilotGenerating(false);
     }
   };
 
@@ -2042,14 +2151,15 @@ export default function ContentStudioIdeas() {
                     </Button>
                     
                     <Button
-                      onClick={() => setShowAutopilotDialog(true)}
+                      onClick={() => setShowAutopilotSection(!showAutopilotSection)}
                       disabled={!objective || !useBrandVoice || Object.keys(brandVoiceData).length === 0 || !targetPlatform}
                       variant="outline"
                       size="lg"
-                      className="flex-1 sm:flex-none border-orange-300 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950"
+                      className={`flex-1 sm:flex-none border-orange-300 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950 ${showAutopilotSection ? 'bg-orange-50 dark:bg-orange-950' : ''}`}
                     >
                       <Rocket className="h-5 w-5 mr-2 text-orange-500" />
                       Autopilot
+                      {showAutopilotSection ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
                     </Button>
                     
                     <div className="flex gap-2">
@@ -2085,6 +2195,86 @@ export default function ContentStudioIdeas() {
                   </div>
                 </CardContent>
               </Card>
+
+              {showAutopilotSection && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-6 p-6 border border-orange-200 dark:border-orange-800 rounded-xl bg-orange-50/50 dark:bg-orange-950/20"
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <Rocket className="h-5 w-5 text-orange-500" />
+                    <h3 className="font-semibold text-lg">Content Autopilot</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Genera contenuti automaticamente per più giorni usando le impostazioni sopra.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <Label>Data Inizio</Label>
+                      <Input 
+                        type="date" 
+                        value={autopilotStartDate} 
+                        onChange={(e) => setAutopilotStartDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div>
+                      <Label>Data Fine</Label>
+                      <Input 
+                        type="date" 
+                        value={autopilotEndDate} 
+                        onChange={(e) => setAutopilotEndDate(e.target.value)}
+                        min={autopilotStartDate || new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div>
+                      <Label>Post al Giorno</Label>
+                      <Select value={String(autopilotPostsPerDay)} onValueChange={(v) => setAutopilotPostsPerDay(Number(v))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <Button 
+                      onClick={handleAutopilotGenerate}
+                      disabled={!autopilotStartDate || !autopilotEndDate || isAutopilotGenerating}
+                      className="bg-orange-500 hover:bg-orange-600"
+                    >
+                      {isAutopilotGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generazione in corso...
+                        </>
+                      ) : (
+                        <>
+                          <Rocket className="h-4 w-4 mr-2" />
+                          Avvia Autopilot
+                        </>
+                      )}
+                    </Button>
+                    
+                    {autopilotProgress && (
+                      <div className="flex-1">
+                        <Progress value={(autopilotProgress.completed / autopilotProgress.total) * 100} />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {autopilotProgress.completed}/{autopilotProgress.total} post generati
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             <div>
@@ -3053,24 +3243,6 @@ export default function ContentStudioIdeas() {
         </DialogContent>
       </Dialog>
 
-      {/* Autopilot Dialog */}
-      <Dialog open={showAutopilotDialog} onOpenChange={setShowAutopilotDialog}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto scale-[0.95] origin-center">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-orange-500" />
-              Content Autopilot
-            </DialogTitle>
-          </DialogHeader>
-          <AutopilotPanel
-            targetPlatform={targetPlatform as "instagram" | "x" | "linkedin"}
-            postCategory={postCategory}
-            postSchema={postSchema}
-            writingStyle={writingStyle}
-            customInstructions={customWritingInstructions}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

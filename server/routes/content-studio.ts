@@ -3019,6 +3019,13 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       copyType,
       awarenessLevel,
       sophisticationLevel,
+      // New parameters from unified form
+      niche,
+      targetAudience,
+      objective,
+      brandVoiceData,
+      kbContent,
+      charLimit,
     } = req.body;
     
     let resolvedPlatforms = platforms;
@@ -3063,6 +3070,13 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       copyType,
       awarenessLevel,
       sophisticationLevel,
+      // New unified form parameters
+      niche,
+      targetAudience,
+      objective,
+      brandVoiceData,
+      kbContent,
+      charLimit,
     };
     
     const result = await generateAutopilotBatch(config, res);

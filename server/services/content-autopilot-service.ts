@@ -31,6 +31,14 @@ export interface AutopilotConfig {
   awarenessLevel?: string;
   sophisticationLevel?: string;
   
+  // Parameters from manual generation form (unified with generateContentIdeas)
+  niche?: string;
+  targetAudience?: string;
+  objective?: string;
+  brandVoiceData?: any;
+  kbContent?: string;
+  charLimit?: number;
+  
   // New flags for image generation and publishing
   autoGenerateImages?: boolean;
   autoPublish?: boolean;
@@ -184,24 +192,36 @@ export async function generateAutopilotBatch(
       .where(eq(schema.brandAssets.consultantId, consultantId))
       .limit(1);
     
-    // Carica Content Studio Config per Brand Voice Data
-    const [contentStudioConfig] = await db.select()
-      .from(schema.contentStudioConfig)
-      .where(eq(schema.contentStudioConfig.consultantId, consultantId))
-      .limit(1);
+    // Use parameters passed from form, or fallback to Content Studio Config
+    let brandVoiceData = config.brandVoiceData;
+    let brandVoiceEnabled = !!brandVoiceData && Object.keys(brandVoiceData).length > 0;
     
-    const brandVoiceData = contentStudioConfig?.brandVoiceData || {};
-    const brandVoiceEnabled = contentStudioConfig?.brandVoiceEnabled || false;
+    // If no brandVoiceData passed, load from Content Studio Config
+    if (!brandVoiceData) {
+      const [contentStudioConfig] = await db.select()
+        .from(schema.contentStudioConfig)
+        .where(eq(schema.contentStudioConfig.consultantId, consultantId))
+        .limit(1);
+      
+      brandVoiceData = contentStudioConfig?.brandVoiceData || {};
+      brandVoiceEnabled = contentStudioConfig?.brandVoiceEnabled || false;
+    }
     
-    // Estrai niche e targetAudience da Brand Voice
-    const niche = (brandVoiceData as any)?.businessDescription || 
+    // Use passed parameters with fallback to Brand Voice data
+    const niche = config.niche || 
+                  (brandVoiceData as any)?.businessDescription || 
                   (brandVoiceData as any)?.whatWeDo || 
                   (brandAssets?.chiSono ? "consulenza e formazione" : "content marketing");
-    const targetAudience = (brandVoiceData as any)?.whoWeHelp || 
+    const targetAudience = config.targetAudience || 
+                           (brandVoiceData as any)?.whoWeHelp || 
                            (brandAssets?.noteForAi ? "il mio pubblico target" : "pubblico target");
-    const objective = (brandVoiceData as any)?.usp ? "leads" : "engagement";
+    const objective = config.objective || 
+                      ((brandVoiceData as any)?.usp ? "leads" : "engagement");
     
-    console.log(`[AUTOPILOT] Brand Voice loaded: enabled=${brandVoiceEnabled}, hasData=${Object.keys(brandVoiceData).length > 0}, niche="${niche.substring(0, 50)}...", target="${targetAudience.substring(0, 50)}..."`);
+    // Use passed kbContent if available
+    const kbContent = config.kbContent;
+    
+    console.log(`[AUTOPILOT] Parameters: niche="${(niche || "").substring(0, 50)}...", target="${(targetAudience || "").substring(0, 50)}...", objective="${objective}", hasKbContent=${!!kbContent}, brandVoiceEnabled=${brandVoiceEnabled}`);
     
     const postingSchedule = (brandAssets?.postingSchedule as any) || {};
     
@@ -358,6 +378,7 @@ export async function generateAutopilotBatch(
                 postCategory: postCategory,
                 customWritingInstructions: retryFeedback || undefined,
                 brandVoiceData: brandVoiceEnabled ? brandVoiceData as any : undefined,
+                kbContent: kbContent || undefined,
               });
               
               if (result.ideas && result.ideas.length > 0) {
