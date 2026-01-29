@@ -12,7 +12,7 @@ import {
   insertContentTemplateSchema,
   insertContentFolderSchema
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, isNull, isNotNull, asc, inArray, or, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, lt, isNull, isNotNull, asc, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSuperAdminGeminiKeys, getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 import { ensureGeminiFileValid } from "../services/gemini-file-manager";

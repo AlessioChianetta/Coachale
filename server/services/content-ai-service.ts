@@ -1817,7 +1817,7 @@ export async function generatePostCopy(params: GeneratePostCopyParams): Promise<
   const platformGuidelines: Record<Platform, string> = {
     instagram: "Usa emoji moderati, hashtag (max 10), formato verticale. Max 2200 caratteri ma primo paragrafo cruciale.",
     facebook: "Testo più lungo accettato, meno hashtag, incoraggia commenti e condivisioni.",
-    linkedin: "Tono professionale, focus su valore business, usa bullet points, no emoji eccessivi.",
+    linkedin: "Max 3000 caratteri. Tono professionale, focus su valore business, usa bullet points, no emoji eccessivi.",
     tiktok: "Ultra breve, diretto, trendy, usa riferimenti pop culture, hashtag trending.",
     youtube: "Descrizione SEO-friendly, timestamps, link, CTA per subscribe e like.",
     twitter: xGuideline,
@@ -2268,7 +2268,7 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
   const platformGuidelines: Record<Platform, string> = {
     instagram: "Usa emoji moderati, hashtag (max 10), formato verticale. Max 2200 caratteri ma primo paragrafo cruciale.",
     facebook: "Testo più lungo accettato, meno hashtag, incoraggia commenti e condivisioni.",
-    linkedin: "Tono professionale, focus su valore business, usa bullet points, no emoji eccessivi.",
+    linkedin: "Max 3000 caratteri. Tono professionale, focus su valore business, usa bullet points, no emoji eccessivi.",
     tiktok: "Ultra breve, diretto, trendy, usa riferimenti pop culture, hashtag trending.",
     youtube: "Descrizione SEO-friendly, timestamps, link, CTA per subscribe e like.",
     twitter: xGuideline,

@@ -55,15 +55,21 @@ const PLATFORM_WRITING_STYLES: Record<string, string> = {
   linkedin: "default",
 };
 
-// Character limits with 10% safety margin to ensure content fits
-const PLATFORM_CHAR_LIMITS: Record<string, number> = {
-  instagram: 1980,  // 2200 * 0.9
-  x: 252,           // 280 * 0.9
-  linkedin: 2700,   // 3000 * 0.9
+// Limits to pass to AI prompt (with 10% safety margin to "trick" AI into shorter content)
+const PLATFORM_CHAR_LIMITS_FOR_AI: Record<string, number> = {
+  instagram: 1980,  // Real: 2200
+  linkedin: 2700,   // Real: 3000
+  x: 252,           // Real: 280
 };
+const X_PREMIUM_CHAR_LIMIT_FOR_AI = 3600; // Real: 4000
 
-// X Premium character limit with 10% safety margin
-const X_PREMIUM_CHAR_LIMIT = 3600; // 4000 * 0.9
+// Real limits for accepting content (actual platform limits)
+const PLATFORM_CHAR_LIMITS_REAL: Record<string, number> = {
+  instagram: 2200,
+  linkedin: 3000,
+  x: 280,
+};
+const X_PREMIUM_CHAR_LIMIT_REAL = 4000;
 
 const PLATFORM_DB_MAP: Record<string, "instagram" | "facebook" | "linkedin" | "twitter" | "tiktok" | "youtube"> = {
   instagram: "instagram",
@@ -236,9 +242,14 @@ export async function generateAutopilotBatch(
         const scheduleForPlatform = postingSchedule[platform] || {};
         const writingStyle = passedWritingStyle || scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
         const times = passedOptimalTimes || scheduleForPlatform.times || OPTIMAL_TIMES[platform] || ["09:00", "18:00"];
-        const charLimit = platform === "x" && brandAssets?.xPremiumSubscription 
-          ? X_PREMIUM_CHAR_LIMIT 
-          : (PLATFORM_CHAR_LIMITS[platform] || 1980);
+        // Char limit for AI prompt (with safety margin to encourage shorter content)
+        const charLimitForAI = platform === "x" && brandAssets?.xPremiumSubscription 
+          ? X_PREMIUM_CHAR_LIMIT_FOR_AI 
+          : (PLATFORM_CHAR_LIMITS_FOR_AI[platform] || 1980);
+        // Real char limit for accepting content (actual platform limits)
+        const charLimitReal = platform === "x" && brandAssets?.xPremiumSubscription 
+          ? X_PREMIUM_CHAR_LIMIT_REAL 
+          : (PLATFORM_CHAR_LIMITS_REAL[platform] || 2200);
         
         // Fetch ALL existing SCHEDULED posts for this day/platform to check which time slots are occupied
         // Only count posts with status "scheduled" - not drafts, published, or cancelled
@@ -306,7 +317,7 @@ export async function generateAutopilotBatch(
             console.log(`[AUTOPILOT DEBUG] ========================================`);
             console.log(`[AUTOPILOT DEBUG] Calling generateContentIdeas with:`);
             console.log(`[AUTOPILOT DEBUG]   platform: "${platform}"`);
-            console.log(`[AUTOPILOT DEBUG]   charLimit: ${charLimit}`);
+            console.log(`[AUTOPILOT DEBUG]   charLimitForAI: ${charLimitForAI}, charLimitReal: ${charLimitReal}`);
             console.log(`[AUTOPILOT DEBUG]   copyType: "${effectiveCopyType}"`);
             console.log(`[AUTOPILOT DEBUG]   mediaType: "${effectiveMediaType}"`);
             console.log(`[AUTOPILOT DEBUG]   postSchema: "${postSchema || 'UNDEFINED'}"`);
@@ -330,7 +341,7 @@ export async function generateAutopilotBatch(
                 copyType: effectiveCopyType,
                 targetPlatform: platform as "instagram" | "x" | "linkedin",
                 writingStyle,
-                charLimit,
+                charLimit: charLimitForAI,
                 awarenessLevel: (passedAwarenessLevel || "problem_aware") as any,
                 sophisticationLevel: (passedSophisticationLevel || "level_3") as any,
                 postSchema: postSchema,
@@ -345,14 +356,14 @@ export async function generateAutopilotBatch(
                 const idea = result.ideas[0];
                 const resolvedFullCopy = (idea.structuredContent as any)?.fullCopy || idea.copyContent || "";
                 
-                // Check if content exceeds character limit
-                if (resolvedFullCopy.length <= charLimit) {
+                // Check if content exceeds character limit (use real platform limits)
+                if (resolvedFullCopy.length <= charLimitReal) {
                   validIdea = idea;
                   charLimitRetries = retry;
-                  console.log(`[AUTOPILOT] Content within char limit on attempt ${retry + 1}: ${resolvedFullCopy.length}/${charLimit}`);
+                  console.log(`[AUTOPILOT] Content within char limit on attempt ${retry + 1}: ${resolvedFullCopy.length}/${charLimitReal}`);
                   break;
                 } else {
-                  console.log(`[AUTOPILOT] Content exceeds char limit (${resolvedFullCopy.length}/${charLimit}), retry ${retry + 1}/${MAX_CHAR_LIMIT_RETRIES}`);
+                  console.log(`[AUTOPILOT] Content exceeds char limit (${resolvedFullCopy.length}/${charLimitReal}), retry ${retry + 1}/${MAX_CHAR_LIMIT_RETRIES}`);
                   charLimitRetries = retry + 1;
                   
                   // On last retry, accept the content anyway but log warning
