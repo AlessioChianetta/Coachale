@@ -510,9 +510,75 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
       });
     }
     
-    // FIRST: Check if there are already scheduled/pending logs (pending sends)
-    // Include "scheduled" and "pending" statuses as they represent future sends
+    // FIRST: Check the pre-planned calendar (weekly_checkin_schedule) for next planned entry
+    // This is the source of truth for scheduled times from the 4-week calendar system
     const now = new Date();
+    const ROME_TZ = "Europe/Rome";
+    const todayDate = format(toZonedTime(now, ROME_TZ), 'yyyy-MM-dd');
+    
+    const [nextPlannedEntry] = await db
+      .select({
+        id: schema.weeklyCheckinSchedule.id,
+        scheduledDate: schema.weeklyCheckinSchedule.scheduledDate,
+        scheduledHour: schema.weeklyCheckinSchedule.scheduledHour,
+        scheduledMinute: schema.weeklyCheckinSchedule.scheduledMinute,
+        templateName: schema.weeklyCheckinSchedule.templateName,
+        clientId: schema.weeklyCheckinSchedule.clientId,
+        clientName: schema.users.firstName,
+        status: schema.weeklyCheckinSchedule.status,
+      })
+      .from(schema.weeklyCheckinSchedule)
+      .leftJoin(schema.users, eq(schema.weeklyCheckinSchedule.clientId, schema.users.id))
+      .where(
+        and(
+          eq(schema.weeklyCheckinSchedule.consultantId, consultantId),
+          eq(schema.weeklyCheckinSchedule.status, 'planned'),
+          sql`${schema.weeklyCheckinSchedule.scheduledDate} >= ${todayDate}`
+        )
+      )
+      .orderBy(
+        asc(schema.weeklyCheckinSchedule.scheduledDate),
+        asc(schema.weeklyCheckinSchedule.scheduledHour),
+        asc(schema.weeklyCheckinSchedule.scheduledMinute)
+      )
+      .limit(1);
+    
+    if (nextPlannedEntry) {
+      // Build the scheduled datetime from date + hour + minute
+      const scheduledDateTime = fromZonedTime(
+        new Date(
+          new Date(nextPlannedEntry.scheduledDate).getFullYear(),
+          new Date(nextPlannedEntry.scheduledDate).getMonth(),
+          new Date(nextPlannedEntry.scheduledDate).getDate(),
+          nextPlannedEntry.scheduledHour,
+          nextPlannedEntry.scheduledMinute,
+          0
+        ),
+        ROME_TZ
+      );
+      
+      // Only return if the scheduled time is in the future
+      if (scheduledDateTime > now) {
+        return res.json({
+          isEnabled: true,
+          nextSendAt: scheduledDateTime.toISOString(),
+          selectedTemplate: {
+            id: null,
+            name: nextPlannedEntry.templateName || "Template programmato",
+            bodyText: null,
+          },
+          templateCount: 1,
+          message: null,
+          isFromScheduledLog: true,
+          isFromCalendar: true,
+          isEstimate: false,
+          clientName: nextPlannedEntry.clientName || null,
+        });
+      }
+    }
+    
+    // SECOND: Check if there are already scheduled/pending logs (pending sends in execution)
+    // Include "scheduled" and "pending" statuses as they represent future sends
     const [nextScheduledLog] = await db
       .select({
         scheduledFor: schema.weeklyCheckinLogs.scheduledFor,
@@ -546,19 +612,19 @@ router.get("/next-send", authenticateToken, requireRole("consultant"), async (re
         templateCount: 1,
         message: null,
         isFromScheduledLog: true,
+        isFromCalendar: false,
         isEstimate: false,
         clientName: nextScheduledLog.clientName || null,
       });
     }
     
-    // No pending scheduled logs - calculate ESTIMATED next scheduling run
+    // No pending scheduled logs or calendar entries - calculate ESTIMATED next scheduling run
     // Note: This is an estimate based on config, actual send depends on scheduler execution
     
     // Check if scheduler ran today (helps determine accuracy of estimate)
-    const ROME_TZ = "Europe/Rome";
+    // Note: ROME_TZ already declared above
     const SCHEDULER_HOUR = 8; // Cron runs at 08:00
-    const nowUtcEarly = new Date();
-    const nowRomeEarly = toZonedTime(nowUtcEarly, ROME_TZ);
+    const nowRomeEarly = toZonedTime(now, ROME_TZ);
     const lastRunAt = config.lastRunAt;
     let schedulerRanToday = false;
     
