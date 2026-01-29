@@ -647,6 +647,8 @@ export default function ContentStudioIdeas() {
   // Track if Brand Assets have been loaded to autopilot
   const [brandAssetsLoadedForAutopilot, setBrandAssetsLoadedForAutopilot] = useState(false);
   const [expandedAutopilotPlatforms, setExpandedAutopilotPlatforms] = useState<Set<string>>(new Set(["instagram"]));
+  const [autopilotIncludeWeekends, setAutopilotIncludeWeekends] = useState(false);
+  const [autopilotIncludeHolidays, setAutopilotIncludeHolidays] = useState(false);
 
   const toggleAutopilotPlatformExpanded = (platform: string) => {
     setExpandedAutopilotPlatforms(prev => {
@@ -678,6 +680,19 @@ export default function ContentStudioIdeas() {
     return day === 0 || day === 6;
   };
 
+  // Helper: check if date is Italian holiday
+  const isItalianHoliday = (dateStr: string): boolean => {
+    const italianHolidays: Record<string, string[]> = {
+      "2024": ["01-01", "01-06", "04-01", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"],
+      "2025": ["01-01", "01-06", "04-21", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"],
+      "2026": ["01-01", "01-06", "04-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"],
+      "2027": ["01-01", "01-06", "03-29", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"],
+    };
+    const [year, month, day] = dateStr.split("-");
+    const monthDay = `${month}-${day}`;
+    return italianHolidays[year]?.includes(monthDay) || false;
+  };
+
   // Helper: format date to Italian format (es. "29 Gen")
   const formatDateItalian = (dateStr: string): string => {
     const date = new Date(dateStr);
@@ -692,7 +707,7 @@ export default function ContentStudioIdeas() {
     return weekdays[date.getDay()];
   };
 
-  // Helper: generate dates array between start and end (excluding weekends)
+  // Helper: generate dates array between start and end (optionally excluding weekends/holidays)
   const getWorkingDates = (startDate: string, endDate: string): string[] => {
     if (!startDate || !endDate) return [];
     const dates: string[] = [];
@@ -700,7 +715,9 @@ export default function ContentStudioIdeas() {
     const end = new Date(endDate);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().split("T")[0];
-      if (!isWeekend(dateStr)) {
+      const skipWeekend = !autopilotIncludeWeekends && isWeekend(dateStr);
+      const skipHoliday = !autopilotIncludeHolidays && isItalianHoliday(dateStr);
+      if (!skipWeekend && !skipHoliday) {
         dates.push(dateStr);
       }
     }
@@ -855,7 +872,7 @@ export default function ContentStudioIdeas() {
       });
       return newConfig;
     });
-  }, [autopilotStartDate, autopilotEndDate, autopilotPlatforms]);
+  }, [autopilotStartDate, autopilotEndDate, autopilotPlatforms, autopilotIncludeWeekends, autopilotIncludeHolidays]);
 
   // Query to check existing posts for conflict detection
   const { data: existingPostsForDateRange } = useQuery({
@@ -2522,6 +2539,29 @@ export default function ContentStudioIdeas() {
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap gap-4 mb-6 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="include-weekends"
+                        checked={autopilotIncludeWeekends}
+                        onCheckedChange={setAutopilotIncludeWeekends}
+                      />
+                      <Label htmlFor="include-weekends" className="text-sm cursor-pointer">
+                        Includi Weekend
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="include-holidays"
+                        checked={autopilotIncludeHolidays}
+                        onCheckedChange={setAutopilotIncludeHolidays}
+                      />
+                      <Label htmlFor="include-holidays" className="text-sm cursor-pointer">
+                        Includi Festività
+                      </Label>
+                    </div>
+                  </div>
+
                   <div className="mb-6">
                     <Label className="text-base font-medium mb-3 block">Piattaforme</Label>
                     <div className="space-y-4">
@@ -2757,7 +2797,10 @@ export default function ContentStudioIdeas() {
                           <Calendar className="h-5 w-5 text-orange-500" />
                           <Label className="text-base font-medium">Configurazione per Giorno</Label>
                           <Badge variant="outline" className="ml-2">
-                            {Object.keys(autopilotPerDayConfig).length} giorni (esclusi weekend)
+                            {Object.keys(autopilotPerDayConfig).length} giorni
+                            {!autopilotIncludeWeekends && !autopilotIncludeHolidays && " (esclusi weekend e festività)"}
+                            {!autopilotIncludeWeekends && autopilotIncludeHolidays && " (esclusi weekend)"}
+                            {autopilotIncludeWeekends && !autopilotIncludeHolidays && " (escluse festività)"}
                           </Badge>
                         </div>
                         <Button
