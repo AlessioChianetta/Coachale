@@ -1327,14 +1327,20 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       const guaranteedMinPerSection = Math.ceil(minChars / numSections);
       const targetMaxPerSection = Math.ceil(maxChars / numSections);
       
-      // For long copy: each section must contribute enough to reach 1500+ total
-      // For short copy: align with overall 200-500 target
-      const minPerSection = isLongCopy 
-        ? Math.max(250, guaranteedMinPerSection) // At least 250 chars per section for long copy
-        : Math.max(40, Math.floor(minChars / numSections)); // Proportional for short
-      const maxPerSection = isLongCopy 
+      // PRIMA calcola il max per sezione basato sul limite caratteri (priorità assoluta)
+      const rawMaxPerSection = isLongCopy 
         ? Math.floor(maxChars * 0.85 / numSections) // 85% del limite diviso per sezioni = margine 15% sicurezza
         : Math.min(200, Math.ceil(maxChars / numSections)); // Proportional for short
+      
+      // POI calcola il min per sezione, ma SENZA MAI superare il max
+      const rawMinPerSection = isLongCopy 
+        ? Math.max(100, guaranteedMinPerSection) // Almeno 100 chars per sezione per long copy
+        : Math.max(40, Math.floor(minChars / numSections)); // Proportional for short
+      
+      // GARANZIA CRITICA: minPerSection NON PUÒ MAI essere > maxPerSection
+      // Se ci sono troppe sezioni, riduciamo il minimo per rispettare il limite totale
+      const maxPerSection = rawMaxPerSection;
+      const minPerSection = Math.min(rawMinPerSection, Math.floor(rawMaxPerSection * 0.7)); // Min = max 70% del max
       
       // Calculate what the guaranteed total would be
       const guaranteedTotal = minPerSection * numSections;
