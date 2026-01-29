@@ -2293,6 +2293,17 @@ export default function ContentStudioIdeas() {
                                 Per generare contenuti di qualità, configura prima il tuo Brand Voice con informazioni su chi sei, cosa fai e il tuo stile comunicativo.
                               </p>
                               <div className="flex flex-wrap gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    loadAvailableAgents();
+                                    setShowImportAgentDialog(true);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                  Importa da Agente
+                                </button>
                                 <a 
                                   href="/consultant/content-studio/brand"
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
