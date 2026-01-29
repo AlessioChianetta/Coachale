@@ -40,6 +40,22 @@ export interface AutopilotConfig {
 
 const MAX_CHAR_LIMIT_RETRIES = 3;
 
+function truncateToLimit(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const truncated = text.substring(0, limit - 3);
+  const lastPeriod = Math.max(
+    truncated.lastIndexOf('. '),
+    truncated.lastIndexOf('.\n'),
+    truncated.lastIndexOf('! '),
+    truncated.lastIndexOf('? ')
+  );
+  if (lastPeriod > limit * 0.7) {
+    return truncated.substring(0, lastPeriod + 1) + '...';
+  }
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > limit * 0.8 ? truncated.substring(0, lastSpace) : truncated) + '...';
+}
+
 export interface AutopilotProgress {
   total: number;
   completed: number;
@@ -329,8 +345,16 @@ export async function generateAutopilotBatch(
             // Retry loop for character limit
             let validIdea: any = null;
             let charLimitRetries = 0;
+            let previousLength = 0;
             
             for (let retry = 0; retry < MAX_CHAR_LIMIT_RETRIES; retry++) {
+              // Build retry feedback for customWritingInstructions
+              let retryFeedback = customInstructions || "";
+              if (retry > 0 && previousLength > 0) {
+                const feedbackMsg = `\n\n⚠️ Il tentativo precedente era ${previousLength} caratteri. Riscrivi con MASSIMO ${charLimitReal} caratteri. Se superi, la risposta verrà scartata.`;
+                retryFeedback = retryFeedback ? retryFeedback + feedbackMsg : feedbackMsg;
+              }
+              
               const result = await generateContentIdeas({
                 consultantId,
                 niche,
@@ -348,13 +372,15 @@ export async function generateAutopilotBatch(
                 schemaStructure: schemaStructure,
                 schemaLabel: schemaLabel,
                 postCategory: postCategory,
-                customWritingInstructions: customInstructions,
+                customWritingInstructions: retryFeedback || undefined,
                 brandVoiceData: brandVoiceEnabled ? brandVoiceData as any : undefined,
               });
               
               if (result.ideas && result.ideas.length > 0) {
                 const idea = result.ideas[0];
-                const resolvedFullCopy = (idea.structuredContent as any)?.fullCopy || idea.copyContent || "";
+                const sc = idea.structuredContent as any;
+                const resolvedFullCopy = sc?.captionCopy || idea.copyContent || "";
+                previousLength = resolvedFullCopy.length;
                 
                 // Check if content exceeds character limit (use real platform limits)
                 if (resolvedFullCopy.length <= charLimitReal) {
@@ -366,9 +392,9 @@ export async function generateAutopilotBatch(
                   console.log(`[AUTOPILOT] Content exceeds char limit (${resolvedFullCopy.length}/${charLimitReal}), retry ${retry + 1}/${MAX_CHAR_LIMIT_RETRIES}`);
                   charLimitRetries = retry + 1;
                   
-                  // On last retry, accept the content anyway but log warning
+                  // On last retry, accept the content but apply intelligent truncation
                   if (retry === MAX_CHAR_LIMIT_RETRIES - 1) {
-                    console.log(`[AUTOPILOT] Max retries reached, accepting content as-is`);
+                    console.log(`[AUTOPILOT] Max retries reached, applying intelligent truncation`);
                     validIdea = idea;
                   }
                 }
@@ -382,8 +408,17 @@ export async function generateAutopilotBatch(
                                 effectiveMediaType === "video" ? "video" : 
                                 effectiveMediaType === "carousel" ? "carosello" : "foto";
               
-              const resolvedFullCopy = (idea.structuredContent as any)?.fullCopy || idea.copyContent || "";
-              console.log(`[AUTOPILOT DEBUG] Creating post "${idea.title}": fullCopy source=${(idea.structuredContent as any)?.fullCopy ? 'structuredContent' : idea.copyContent ? 'copyContent' : 'empty'}, length=${resolvedFullCopy.length}`);
+              const sc = idea.structuredContent as any;
+              let resolvedFullCopy = sc?.captionCopy || idea.copyContent || "";
+              
+              // Apply intelligent truncation if content still exceeds limit after all retries
+              if (resolvedFullCopy.length > charLimitReal) {
+                const originalLength = resolvedFullCopy.length;
+                resolvedFullCopy = truncateToLimit(resolvedFullCopy, charLimitReal);
+                console.log(`[AUTOPILOT] Applied intelligent truncation: ${originalLength} → ${resolvedFullCopy.length} chars (limit: ${charLimitReal})`);
+              }
+              
+              console.log(`[AUTOPILOT DEBUG] Creating post "${idea.title}": captionCopy source=${sc?.captionCopy ? 'structuredContent' : idea.copyContent ? 'copyContent' : 'empty'}, length=${resolvedFullCopy.length}`);
               
               // Determine initial status based on reviewMode
               const postStatus = config.reviewMode ? "draft" : "scheduled";

@@ -1,0 +1,140 @@
+Ragionato per 1m 47s
+
+Sì — qui non è “Gemini che fa il furbo”, è proprio come hai costruito la pipeline che lo rende molto probabile.
+
+Dai log e dai file che mi hai caricato, ci sono 3 cause principali.
+
+1) Stai applicando il “margine di sicurezza” due volte (e crei confusione nel prompt)
+
+Nel tuo content-autopilot-service.ts hai:
+
+// linkedin: 2700,   // 3000 * 0.9
+const PLATFORM_CHAR_LIMITS = { linkedin: 2700, ... }
+
+
+Quindi passi a generateContentIdeas charLimit = 2700.
+
+Poi, dentro content-ai-service.ts, quando c’è schemaStructure (cioè lo scenario del tuo log), fai:
+
+const maxTotal = Math.floor(effectiveCharLimit * 0.90);
+
+
+Quindi 2700 * 0.90 = 2430.
+
+Ed ecco perché nel prompt generato vedi:
+
+“charLimit: 2700”
+
+ma dentro le istruzioni: “MAX 2430” (perché lo ricalcoli)
+
+Questa incoerenza riduce l’affidabilità: il modello non “capisce” qual è il limite vero (e spesso ignora del tutto i vincoli di conteggio).
+
+✅ Fix consigliato: scegli un solo posto dove applichi il margine.
+
+O lo fai in Autopilot (2700) e in AI service NON fai più 0.90.
+
+Oppure passi 3000 e fai il margine solo nell’AI service.
+
+2) Il retry dell’Autopilot non “corregge” nulla: rigenera uguale
+
+Nel tuo content-autopilot-service.ts il loop fa semplicemente:
+
+genera
+
+controlla lunghezza
+
+se troppo lungo → “retry”
+
+ma NON gli dici “riscrivi più corto”, né gli passi il testo da accorciare.
+
+Quindi è normalissimo che fallisca 3 volte: stai chiedendo lo stesso lavoro con lo stesso prompt (cambierà qualcosa casualmente, ma non abbastanza).
+
+✅ Fix: al retry devi fare una di queste due strade:
+
+Compression step: prendi il testo troppo lungo e chiedi “accorcialo a X caratteri”.
+
+Retry con vincolo esplicito: passi un contesto aggiuntivo tipo “Il tentativo precedente era 3480, ora massimo 2700. Se sfori, la risposta verrà scartata.”
+
+3) Non hai nessuna “enforcement” finale: se sfora… lo accetti
+
+In content-ai-service.ts calcoli lengthWarning, logghi, ma non tagli e non riscrivi.
+
+Quindi a valle ti ritrovi con contenuti non pubblicabili.
+
+✅ Fix: devi mettere un blocco “hard guarantee”:
+
+se supera il limite → prova 1–2 volte a farlo riscrivere più corto
+
+se ancora supera → fallback di truncation intelligente (taglio a fine frase + ellissi)
+
+Patch minima che risolve davvero (senza stravolgere tutto)
+A) Non applicare il 0.90 dentro content-ai-service.ts quando charLimit è già “safe”
+
+In content-ai-service.ts (ramo if (schemaStructure)) cambia:
+
+const maxTotal = Math.floor(effectiveCharLimit * 0.90);
+
+
+in:
+
+const maxTotal = effectiveCharLimit; // il chiamante passa già il limite finale
+
+
+e ricalcola minTotal di conseguenza.
+
+B) In Autopilot prendi captionCopy (non fullCopy, che non esiste)
+
+Nel tuo content-autopilot-service.ts hai:
+
+const resolvedFullCopy = (idea.structuredContent as any)?.fullCopy || idea.copyContent || "";
+
+
+Ma in content-ai-service.ts il campo “buono” è captionCopy dentro structuredContent.
+
+Quindi metti:
+
+const sc = idea.structuredContent as any;
+const resolvedFullCopy = sc?.captionCopy || idea.copyContent || "";
+
+C) Retry utile: “shorten” invece di “rigenera”
+
+Sul retry, invece di richiamare generateContentIdeas uguale, fai almeno:
+
+aggiungi additionalContext (o customWritingInstructions) con feedback numerico
+
+Esempio (minimalista):
+
+const extra = retry === 0 ? "" : `
+⚠️ Il tentativo precedente era ${resolvedFullCopy.length} caratteri.
+Riscrivi mantenendo la stessa idea ma con MASSIMO ${charLimit} caratteri.
+Se superi ${charLimit}, la risposta verrà scartata.
+`;
+
+// poi passi additionalContext: (additionalContext || "") + extra
+
+
+Ancora meglio: fai un endpoint/funzione “shorten” separata.
+
+Soluzione “definitiva” (robusta): enforcement nel service AI
+
+La cosa più solida è: garantisci dentro generateContentIdeas che copyContent rientri sempre.
+
+Schema:
+
+Generi
+
+Se copyContent.length > charLimit:
+
+chiami lo stesso modello con prompt “accorcia a N caratteri”
+
+Se ancora sfora:
+
+truncation intelligente a fine frase.
+
+Questo ti evita di spargere logiche in Autopilot, Studio, ecc.
+
+Nota importante: .length in JS e LinkedIn/emoji
+
+string.length conta code unit, quindi alcune emoji valgono 2. LinkedIn spesso le “vede” come 1.
+Questo di solito crea piccoli scarti, ma qui non è il problema (sei +700/+1500 fuori).
+Per precisione puoi usare Intl.Segmenter (grapheme count) se vuoi essere chirurgico.
