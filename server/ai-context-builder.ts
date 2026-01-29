@@ -731,7 +731,6 @@ export async function buildUserContext(
         id: users.id,
         firstName: users.firstName,
         lastName: users.lastName,
-        businessName: users.businessName,
       })
       .from(users)
       .where(eq(users.id, user.consultantId))
@@ -741,7 +740,7 @@ export async function buildUserContext(
       consultantInfo = {
         id: consultant.id,
         name: `${consultant.firstName || ''} ${consultant.lastName || ''}`.trim(),
-        businessName: consultant.businessName || null,
+        businessName: null, // businessName is not in users table
       };
     }
   }
