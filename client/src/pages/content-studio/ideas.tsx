@@ -618,8 +618,7 @@ export default function ContentStudioIdeas() {
   }
 
   // Per-day configuration for autopilot
-  interface DayConfig {
-    date: string;
+  interface PlatformDayConfig {
     postCategory: "ads" | "valore" | "formazione" | "altri";
     postSchema: string;
     mediaType: "photo" | "video" | "carousel" | "text";
@@ -627,6 +626,9 @@ export default function ContentStudioIdeas() {
     writingStyle: string;
     hasExistingPosts?: number;
   }
+
+  // Structure: autopilotPerDayConfig[date][platform] = PlatformDayConfig
+  type PerDayConfigType = Record<string, Record<string, PlatformDayConfig>>;
 
   const [autopilotPlatforms, setAutopilotPlatforms] = useState<Record<string, AutopilotPlatformConfig>>({
     instagram: { enabled: true, postsPerDay: 2, postCategory: "ads", postSchema: "originale", mediaType: "photo", copyType: "long", writingStyle: "default" },
@@ -638,7 +640,7 @@ export default function ContentStudioIdeas() {
   const [autopilotReviewMode, setAutopilotReviewMode] = useState(false);
   
   // Per-day configuration state (keyed by date YYYY-MM-DD)
-  const [autopilotPerDayConfig, setAutopilotPerDayConfig] = useState<Record<string, DayConfig>>({});
+  const [autopilotPerDayConfig, setAutopilotPerDayConfig] = useState<PerDayConfigType>({});
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [showPerDayConfig, setShowPerDayConfig] = useState(false);
   
@@ -718,25 +720,27 @@ export default function ContentStudioIdeas() {
     });
   };
 
-  // Update per-day config
-  const updateDayConfig = (date: string, updates: Partial<DayConfig>) => {
+  // Update per-day, per-platform config
+  const updateDayConfig = (date: string, platform: string, updates: Partial<PlatformDayConfig>) => {
     setAutopilotPerDayConfig(prev => ({
       ...prev,
-      [date]: { ...prev[date], ...updates }
+      [date]: {
+        ...prev[date],
+        [platform]: { ...prev[date]?.[platform], ...updates }
+      }
     }));
   };
 
-  // Get default config from the first enabled platform
-  const getDefaultDayConfig = (): Omit<DayConfig, 'date'> => {
-    const enabledPlatform = Object.entries(autopilotPlatforms).find(([_, config]) => config.enabled);
-    if (enabledPlatform) {
-      const [_, config] = enabledPlatform;
+  // Get default config for a specific platform
+  const getDefaultPlatformDayConfig = (platform: string): PlatformDayConfig => {
+    const platformConfig = autopilotPlatforms[platform];
+    if (platformConfig) {
       return {
-        postCategory: config.postCategory,
-        postSchema: config.postSchema,
-        mediaType: config.mediaType,
-        copyType: config.copyType,
-        writingStyle: config.writingStyle,
+        postCategory: platformConfig.postCategory,
+        postSchema: platformConfig.postSchema,
+        mediaType: platformConfig.mediaType,
+        copyType: platformConfig.copyType,
+        writingStyle: platformConfig.writingStyle,
       };
     }
     return {
@@ -833,19 +837,21 @@ export default function ContentStudioIdeas() {
     }
     
     const workingDates = getWorkingDates(autopilotStartDate, autopilotEndDate);
-    const defaultConfig = getDefaultDayConfig();
+    const enabledPlatforms = Object.entries(autopilotPlatforms)
+      .filter(([_, config]) => config.enabled)
+      .map(([platform]) => platform);
     
     setAutopilotPerDayConfig(prev => {
-      const newConfig: Record<string, DayConfig> = {};
+      const newConfig: PerDayConfigType = {};
       workingDates.forEach(date => {
-        if (prev[date]) {
-          newConfig[date] = prev[date];
-        } else {
-          newConfig[date] = {
-            date,
-            ...defaultConfig,
-          };
-        }
+        newConfig[date] = {};
+        enabledPlatforms.forEach(platform => {
+          if (prev[date]?.[platform]) {
+            newConfig[date][platform] = prev[date][platform];
+          } else {
+            newConfig[date][platform] = getDefaultPlatformDayConfig(platform);
+          }
+        });
       });
       return newConfig;
     });
@@ -865,25 +871,33 @@ export default function ContentStudioIdeas() {
     enabled: !!autopilotStartDate && !!autopilotEndDate,
   });
 
-  // Update per-day config with existing post counts
+  // Update per-day config with existing post counts (by platform)
   useEffect(() => {
     if (!existingPostsForDateRange?.data) return;
     
-    const postCountByDate: Record<string, number> = {};
+    // Count posts by date AND platform
+    const postCountByDatePlatform: Record<string, Record<string, number>> = {};
     existingPostsForDateRange.data.forEach((post: any) => {
-      if (post.scheduledAt) {
+      if (post.scheduledAt && post.platform) {
         const dateStr = new Date(post.scheduledAt).toISOString().split("T")[0];
-        postCountByDate[dateStr] = (postCountByDate[dateStr] || 0) + 1;
+        // Map DB platform names to frontend names
+        const platformMap: Record<string, string> = { twitter: "x", instagram: "instagram", linkedin: "linkedin" };
+        const platform = platformMap[post.platform] || post.platform;
+        if (!postCountByDatePlatform[dateStr]) postCountByDatePlatform[dateStr] = {};
+        postCountByDatePlatform[dateStr][platform] = (postCountByDatePlatform[dateStr][platform] || 0) + 1;
       }
     });
     
     setAutopilotPerDayConfig(prev => {
-      const updated = { ...prev };
-      Object.keys(updated).forEach(date => {
-        updated[date] = {
-          ...updated[date],
-          hasExistingPosts: postCountByDate[date] || 0,
-        };
+      const updated: PerDayConfigType = {};
+      Object.entries(prev).forEach(([date, platforms]) => {
+        updated[date] = {};
+        Object.entries(platforms).forEach(([platform, config]) => {
+          updated[date][platform] = {
+            ...config,
+            hasExistingPosts: postCountByDatePlatform[date]?.[platform] || 0,
+          };
+        });
       });
       return updated;
     });
@@ -2761,23 +2775,19 @@ export default function ContentStudioIdeas() {
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="max-h-80 overflow-y-auto space-y-2 pr-2"
+                          className="max-h-96 overflow-y-auto space-y-3 pr-2"
                         >
                           {Object.entries(autopilotPerDayConfig)
                             .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([date, config], index) => {
+                            .map(([date, platforms], dayIndex) => {
                               const isExpanded = expandedDays.has(date);
-                              const hasConflict = (config.hasExistingPosts || 0) > 0;
-                              const availableSchemas = getAutopilotPlatformSchemas("instagram", config.postCategory);
+                              const totalConflicts = Object.values(platforms).reduce((sum, p) => sum + (p.hasExistingPosts || 0), 0);
+                              const enabledPlatformsList = Object.keys(platforms);
                               
                               return (
                                 <div 
                                   key={date}
-                                  className={`border rounded-lg transition-all ${
-                                    hasConflict 
-                                      ? "border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-950/20"
-                                      : "border-orange-100 dark:border-orange-900 bg-white dark:bg-gray-900"
-                                  }`}
+                                  className="border rounded-lg border-orange-100 dark:border-orange-900 bg-white dark:bg-gray-900"
                                 >
                                   <div 
                                     className="flex items-center justify-between p-3 cursor-pointer"
@@ -2785,23 +2795,32 @@ export default function ContentStudioIdeas() {
                                   >
                                     <div className="flex items-center gap-3">
                                       <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center text-sm font-medium text-orange-600 dark:text-orange-400">
-                                        {index + 1}
+                                        {dayIndex + 1}
                                       </div>
                                       <div>
                                         <span className="font-medium">{getWeekdayItalian(date)}</span>
                                         <span className="text-muted-foreground ml-2">{formatDateItalian(date)}</span>
                                       </div>
-                                      {hasConflict && (
+                                      <div className="flex items-center gap-1">
+                                        {enabledPlatformsList.map(platform => {
+                                          const platformInfo = TARGET_PLATFORMS.find(p => p.value === platform);
+                                          if (!platformInfo) return null;
+                                          const PlatformIcon = platformInfo.icon;
+                                          return (
+                                            <div key={platform} className={`p-1 rounded ${platformInfo.color}`}>
+                                              <PlatformIcon className="h-3 w-3 text-white" />
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      {totalConflicts > 0 && (
                                         <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900 dark:text-amber-300 dark:border-amber-700">
                                           <AlertCircle className="h-3 w-3 mr-1" />
-                                          {config.hasExistingPosts} post esistenti
+                                          {totalConflicts} post esistenti
                                         </Badge>
                                       )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs text-muted-foreground hidden sm:block">
-                                        {POST_CATEGORIES.find(c => c.value === config.postCategory)?.label}
-                                      </span>
                                       {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                     </div>
                                   </div>
@@ -2811,108 +2830,143 @@ export default function ContentStudioIdeas() {
                                       initial={{ opacity: 0, height: 0 }}
                                       animate={{ opacity: 1, height: "auto" }}
                                       exit={{ opacity: 0, height: 0 }}
-                                      className="px-3 pb-3 border-t border-orange-100 dark:border-orange-900 pt-3"
+                                      className="px-3 pb-3 border-t border-orange-100 dark:border-orange-900 pt-3 space-y-3"
                                     >
-                                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                                        <div>
-                                          <Label className="text-xs">Categoria</Label>
-                                          <Select 
-                                            value={config.postCategory} 
-                                            onValueChange={(v: "ads" | "valore" | "formazione" | "altri") => {
-                                              updateDayConfig(date, { 
-                                                postCategory: v,
-                                                postSchema: "originale"
-                                              });
-                                            }}
-                                          >
-                                            <SelectTrigger className="mt-1 h-8">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {POST_CATEGORIES.map((cat) => (
-                                                <SelectItem key={cat.value} value={cat.value}>
-                                                  <div className="flex items-center gap-2">
-                                                    <cat.icon className="h-3 w-3" />
-                                                    {cat.label}
-                                                  </div>
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
+                                      {Object.entries(platforms).map(([platform, config]) => {
+                                        const platformInfo = TARGET_PLATFORMS.find(p => p.value === platform);
+                                        if (!platformInfo) return null;
+                                        const PlatformIcon = platformInfo.icon;
+                                        const postsPerDay = autopilotPlatforms[platform]?.postsPerDay || 1;
+                                        const availableSchemas = getAutopilotPlatformSchemas(platform, config.postCategory);
+                                        const hasConflict = (config.hasExistingPosts || 0) > 0;
                                         
-                                        <div>
-                                          <Label className="text-xs">Schema</Label>
-                                          <Select 
-                                            value={config.postSchema} 
-                                            onValueChange={(v) => updateDayConfig(date, { postSchema: v })}
+                                        return (
+                                          <div 
+                                            key={platform}
+                                            className={`p-3 rounded-lg border ${
+                                              hasConflict
+                                                ? "border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20"
+                                                : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+                                            }`}
                                           >
-                                            <SelectTrigger className="mt-1 h-8">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {availableSchemas.map((schema) => (
-                                                <SelectItem key={schema.value} value={schema.value}>
-                                                  {schema.label}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                        
-                                        <div>
-                                          <Label className="text-xs">Media</Label>
-                                          <Select 
-                                            value={config.mediaType} 
-                                            onValueChange={(v: "photo" | "video" | "carousel" | "text") => updateDayConfig(date, { mediaType: v })}
-                                          >
-                                            <SelectTrigger className="mt-1 h-8">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="photo"><Camera className="h-3 w-3 inline mr-1" />Foto</SelectItem>
-                                              <SelectItem value="video"><Video className="h-3 w-3 inline mr-1" />Video</SelectItem>
-                                              <SelectItem value="carousel"><Palette className="h-3 w-3 inline mr-1" />Carousel</SelectItem>
-                                              <SelectItem value="text"><Type className="h-3 w-3 inline mr-1" />Testo</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                        
-                                        <div>
-                                          <Label className="text-xs">Copy</Label>
-                                          <Select 
-                                            value={config.copyType} 
-                                            onValueChange={(v: "short" | "long") => updateDayConfig(date, { copyType: v })}
-                                          >
-                                            <SelectTrigger className="mt-1 h-8">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="short"><Scissors className="h-3 w-3 inline mr-1" />Corto</SelectItem>
-                                              <SelectItem value="long"><AlignLeft className="h-3 w-3 inline mr-1" />Lungo</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                        
-                                        <div>
-                                          <Label className="text-xs">Stile</Label>
-                                          <Select 
-                                            value={config.writingStyle} 
-                                            onValueChange={(v) => updateDayConfig(date, { writingStyle: v })}
-                                          >
-                                            <SelectTrigger className="mt-1 h-8">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {WRITING_STYLES.map((style) => (
-                                                <SelectItem key={style.value} value={style.value}>
-                                                  {style.icon} {style.label}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                      </div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <div className={`p-1.5 rounded ${platformInfo.color}`}>
+                                                <PlatformIcon className="h-3.5 w-3.5 text-white" />
+                                              </div>
+                                              <span className="font-medium text-sm">{platformInfo.label}</span>
+                                              <Badge variant="secondary" className="text-xs">
+                                                {postsPerDay} post/giorno
+                                              </Badge>
+                                              {hasConflict && (
+                                                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300">
+                                                  {config.hasExistingPosts} esistenti
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                                              <div>
+                                                <Label className="text-xs">Categoria</Label>
+                                                <Select 
+                                                  value={config.postCategory} 
+                                                  onValueChange={(v: "ads" | "valore" | "formazione" | "altri") => {
+                                                    updateDayConfig(date, platform, { 
+                                                      postCategory: v,
+                                                      postSchema: "originale"
+                                                    });
+                                                  }}
+                                                >
+                                                  <SelectTrigger className="mt-1 h-7 text-xs">
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {POST_CATEGORIES.map((cat) => (
+                                                      <SelectItem key={cat.value} value={cat.value}>
+                                                        <div className="flex items-center gap-1">
+                                                          <cat.icon className="h-3 w-3" />
+                                                          {cat.label}
+                                                        </div>
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+                                              
+                                              <div>
+                                                <Label className="text-xs">Schema</Label>
+                                                <Select 
+                                                  value={config.postSchema} 
+                                                  onValueChange={(v) => updateDayConfig(date, platform, { postSchema: v })}
+                                                >
+                                                  <SelectTrigger className="mt-1 h-7 text-xs">
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {availableSchemas.map((schema) => (
+                                                      <SelectItem key={schema.value} value={schema.value}>
+                                                        {schema.label}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+                                              
+                                              <div>
+                                                <Label className="text-xs">Media</Label>
+                                                <Select 
+                                                  value={config.mediaType} 
+                                                  onValueChange={(v: "photo" | "video" | "carousel" | "text") => updateDayConfig(date, platform, { mediaType: v })}
+                                                >
+                                                  <SelectTrigger className="mt-1 h-7 text-xs">
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="photo">Foto</SelectItem>
+                                                    <SelectItem value="video">Video</SelectItem>
+                                                    <SelectItem value="carousel">Carousel</SelectItem>
+                                                    <SelectItem value="text">Testo</SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+                                              
+                                              <div>
+                                                <Label className="text-xs">Copy</Label>
+                                                <Select 
+                                                  value={config.copyType} 
+                                                  onValueChange={(v: "short" | "long") => updateDayConfig(date, platform, { copyType: v })}
+                                                >
+                                                  <SelectTrigger className="mt-1 h-7 text-xs">
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="short">Corto</SelectItem>
+                                                    <SelectItem value="long">Lungo</SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+                                              
+                                              <div>
+                                                <Label className="text-xs">Stile</Label>
+                                                <Select 
+                                                  value={config.writingStyle} 
+                                                  onValueChange={(v) => updateDayConfig(date, platform, { writingStyle: v })}
+                                                >
+                                                  <SelectTrigger className="mt-1 h-7 text-xs">
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {WRITING_STYLES.map((style) => (
+                                                      <SelectItem key={style.value} value={style.value}>
+                                                        {style.icon} {style.label}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </motion.div>
                                   )}
                                 </div>
