@@ -444,7 +444,60 @@ function getSectionGuideline(fieldName: string, sectionLabel: string): { instruc
   };
 }
 
-export { SECTION_GUIDELINES, getSectionGuideline };
+/**
+ * Get a RANDOM section guideline from SECTION_INSTRUCTION_VARIANTS.
+ * Falls back to static SECTION_GUIDELINES if no variant exists.
+ * Used for custom schemas to add variety to AI-generated content.
+ */
+function getRandomSectionGuideline(fieldName: string, sectionLabel: string): { instruction: string; style: string } {
+  const normalizedField = fieldName.toLowerCase().replace(/[_\d]+/g, '_').replace(/^_|_$/g, '');
+  const normalizedLabel = sectionLabel.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  
+  const searchTerms = [
+    fieldName,
+    normalizedField,
+    normalizedLabel,
+    ...normalizedField.split('_').filter(s => s.length > 2),
+    ...normalizedLabel.split('_').filter(s => s.length > 2)
+  ];
+  
+  // Try exact match first in SECTION_INSTRUCTION_VARIANTS
+  for (const term of searchTerms) {
+    if (SECTION_INSTRUCTION_VARIANTS[term] && SECTION_INSTRUCTION_VARIANTS[term].length > 0) {
+      const variants = SECTION_INSTRUCTION_VARIANTS[term];
+      const randomVariant = variants[Math.floor(Math.random() * variants.length)];
+      return {
+        instruction: randomVariant,
+        style: "Mantieni coerenza con il resto"
+      };
+    }
+  }
+  
+  // Try partial match in SECTION_INSTRUCTION_VARIANTS keys
+  for (const key of Object.keys(SECTION_INSTRUCTION_VARIANTS)) {
+    for (const term of searchTerms) {
+      if (key.toLowerCase().includes(term.toLowerCase()) || term.toLowerCase().includes(key.toLowerCase())) {
+        const variants = SECTION_INSTRUCTION_VARIANTS[key];
+        if (variants && variants.length > 0) {
+          const randomVariant = variants[Math.floor(Math.random() * variants.length)];
+          return {
+            instruction: randomVariant,
+            style: "Mantieni coerenza con il resto"
+          };
+        }
+      }
+    }
+  }
+  
+  // Fallback to static SECTION_GUIDELINES
+  return getSectionGuideline(fieldName, sectionLabel);
+}
+
+export { SECTION_GUIDELINES, getSectionGuideline, getRandomSectionGuideline };
 
 /**
  * Dynamic Section Instruction Variants
@@ -2959,7 +3012,7 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       // Istruzioni SEMPLICI per ogni sezione - NO limiti per sezione
       const sectionInstructions = schemaParts.map((part, idx) => {
         const fieldName = fieldNames[idx];
-        const guideline = getSectionGuideline(fieldName, part);
+        const guideline = getRandomSectionGuideline(fieldName, part);
         return `**${idx + 1}. ${fieldName}** (${part}): ${guideline.instruction}`;
       }).join("\n");
       
