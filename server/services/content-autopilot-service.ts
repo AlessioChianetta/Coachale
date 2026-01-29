@@ -77,6 +77,9 @@ export interface AutopilotConfig {
   autoPublish?: boolean;
   reviewMode?: boolean;
   advisageSettings?: AdvisageSettings;
+  
+  // If batch already created by endpoint, use this ID
+  existingBatchId?: string;
 }
 
 const MAX_CHAR_LIMIT_RETRIES = 3;
@@ -180,15 +183,21 @@ export async function generateAutopilotBatch(
   let generated = 0;
   let contentTypeIndex = 0;
   
-  const sendProgress = (progress: AutopilotProgress) => {
-    if (res && !res.writableEnded) {
-      res.write(`data: ${JSON.stringify(progress)}\n\n`);
-    }
-  };
-  
   // Batch tracking variables
   let batchId: string | null = null;
   let imagesGenerated = 0;
+  
+  // Track generated posts details for polling UI
+  const generatedPostsDetails: Array<{
+    id: string;
+    title: string;
+    platform: string;
+    date: string;
+    charCount: number;
+    charLimit: number;
+    retries: number;
+    imageGenerated: boolean;
+  }> = [];
   
   // Track generated posts for autoPublish
   const generatedPosts: Array<{
@@ -198,9 +207,39 @@ export async function generateAutopilotBatch(
     imageUrl?: string;
   }> = [];
   
+  const sendProgress = async (progress: AutopilotProgress) => {
+    // Always write to SSE if available (for backwards compatibility)
+    if (res && !res.writableEnded) {
+      res.write(`data: ${JSON.stringify(progress)}\n\n`);
+    }
+    
+    // Also update database for polling
+    if (batchId) {
+      try {
+        await db.update(schema.autopilotBatches)
+          .set({
+            generatedPosts: progress.completed,
+            totalPosts: progress.total,
+            currentDayIndex: progress.currentDayIndex || 0,
+            totalDays: progress.totalDays || 0,
+            processingDate: progress.currentDate || null,
+            processingPlatform: progress.currentPlatform || null,
+            generatedPostsDetails: generatedPostsDetails,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.autopilotBatches.id, batchId));
+      } catch (dbErr) {
+        console.error("[AUTOPILOT] Failed to update batch progress:", dbErr);
+      }
+    }
+  };
+  
   try {
-    // Step 1: Create batch record if reviewMode or autoGenerateImages is enabled
-    if (config.reviewMode || config.autoGenerateImages) {
+    // Step 1: Use existing batch if provided, otherwise create new one
+    if (config.existingBatchId) {
+      batchId = config.existingBatchId;
+      console.log(`[AUTOPILOT] Using existing batch ${batchId}`);
+    } else if (config.reviewMode || config.autoGenerateImages) {
       const [batch] = await db.insert(schema.autopilotBatches).values({
         consultantId,
         config: config as any,
@@ -373,7 +412,7 @@ export async function generateAutopilotBatch(
         // Limit postsPerDay to available slots
         const effectivePostsPerDay = Math.min(postsPerDay, availableTimeSlots.length);
         
-        sendProgress({
+        await sendProgress({
           total: totalPosts,
           completed: generated,
           currentDate: date,
@@ -613,8 +652,20 @@ export async function generateAutopilotBatch(
               generated++;
               console.log(`[AUTOPILOT] Generated post ${generated}/${totalPosts} for ${platform} on ${date} (theme: ${currentContentType}, retries: ${charLimitRetries})`);
               
+              // Add to generatedPostsDetails for polling UI
+              generatedPostsDetails.push({
+                id: insertedPost?.id || "",
+                title: idea.title,
+                platform: platform,
+                date: date,
+                charCount: resolvedFullCopy.length,
+                charLimit: charLimitReal,
+                retries: charLimitRetries,
+                imageGenerated: config.autoGenerateImages && currentPost?.imageUrl ? true : false,
+              });
+              
               // Send detailed progress event for this post
-              sendProgress({
+              await sendProgress({
                 total: totalPosts,
                 completed: generated,
                 currentDate: date,
@@ -811,7 +862,7 @@ export async function generateAutopilotBatch(
       errors.push(...publishErrors);
     }
     
-    sendProgress({
+    await sendProgress({
       total: totalPosts,
       completed: generated,
       currentDate: endDate,
@@ -837,7 +888,7 @@ export async function generateAutopilotBatch(
         .where(eq(schema.autopilotBatches.id, batchId));
     }
     
-    sendProgress({
+    await sendProgress({
       total: 0,
       completed: 0,
       currentDate: "",

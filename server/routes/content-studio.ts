@@ -3051,12 +3051,6 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       return res.status(400).json({ error: "Missing required fields: startDate, endDate, platforms or targetPlatforms" });
     }
     
-    // Setup SSE
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.flushHeaders();
-    
     const config: AutopilotConfig = {
       consultantId: user.id,
       startDate,
@@ -3092,18 +3086,91 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       advisageSettings,
     };
     
-    const result = await generateAutopilotBatch(config, res);
+    // Create batch record first and return batchId immediately
+    const [batch] = await db.insert(schema.autopilotBatches).values({
+      consultantId: user.id,
+      config: config as any,
+      autoGenerateImages: autoGenerateImages || false,
+      autoPublish: autoPublish || false,
+      reviewMode: reviewMode || false,
+      advisageSettings: advisageSettings || { mood: 'professional', stylePreference: 'realistic' },
+      status: "generating",
+      totalPosts: 0,
+      generatedPosts: 0,
+      imagesGenerated: 0,
+      generatedPostsDetails: [],
+    }).returning({ id: schema.autopilotBatches.id });
     
-    res.write(`data: ${JSON.stringify({ type: "complete", ...result })}\n\n`);
-    res.end();
+    const batchId = batch?.id;
+    
+    if (!batchId) {
+      return res.status(500).json({ error: "Failed to create batch" });
+    }
+    
+    // Return batchId immediately, run generation in background
+    res.json({ success: true, batchId });
+    
+    // Run generation in background (fire-and-forget)
+    setImmediate(async () => {
+      try {
+        // Pass batchId so service uses existing batch instead of creating new one
+        await generateAutopilotBatch({ ...config, existingBatchId: batchId }, null);
+      } catch (error: any) {
+        console.error("[AUTOPILOT BACKGROUND] Error:", error.message);
+        // Update batch status to failed
+        await db.update(schema.autopilotBatches)
+          .set({ status: "failed", lastError: error.message, updatedAt: new Date() })
+          .where(eq(schema.autopilotBatches.id, batchId));
+      }
+    });
   } catch (error: any) {
     console.error("[AUTOPILOT ENDPOINT] Error:", error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message });
-    } else {
-      res.write(`data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`);
-      res.end();
     }
+  }
+});
+
+// GET batch status for polling
+router.get("/autopilot/batch/:batchId/status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { batchId } = req.params;
+    
+    const [batch] = await db.select()
+      .from(schema.autopilotBatches)
+      .where(and(
+        eq(schema.autopilotBatches.id, batchId),
+        eq(schema.autopilotBatches.consultantId, user.id)
+      ))
+      .limit(1);
+    
+    if (!batch) {
+      return res.status(404).json({ error: "Batch not found" });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: batch.id,
+        status: batch.status,
+        totalPosts: batch.totalPosts,
+        generatedPosts: batch.generatedPosts,
+        imagesGenerated: batch.imagesGenerated,
+        totalDays: batch.totalDays,
+        currentDayIndex: batch.currentDayIndex,
+        processingDate: batch.processingDate,
+        processingPlatform: batch.processingPlatform,
+        generatedPostsDetails: batch.generatedPostsDetails || [],
+        lastError: batch.lastError,
+        completedAt: batch.completedAt,
+      }
+    });
+  } catch (error: any) {
+    console.error("[AUTOPILOT STATUS] Error:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 

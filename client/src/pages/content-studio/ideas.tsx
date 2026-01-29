@@ -1670,47 +1670,78 @@ export default function ContentStudioIdeas() {
         throw new Error(errorData.error || "Failed to start autopilot");
       }
       
-      const reader = response.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      const { batchId } = await response.json();
+      
+      if (!batchId) {
+        throw new Error("No batch ID returned");
+      }
+      
+      // Polling loop - check status every 2 seconds
+      const pollStatus = async (): Promise<boolean> => {
+        try {
+          const statusRes = await fetch(`/api/content/autopilot/batch/${batchId}/status`, {
+            headers: getAuthHeaders(),
+          });
           
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.total && data.completed !== undefined) {
-                  setAutopilotProgress({ 
-                    total: data.total, 
-                    completed: data.completed,
-                    currentDate: data.currentDate,
-                    currentPlatform: data.currentPlatform,
-                    currentDayIndex: data.currentDayIndex,
-                    totalDays: data.totalDays,
-                  });
-                  
-                  // Collect generated post details
-                  if (data.postGenerated) {
-                    setAutopilotGeneratedPosts(prev => [...prev, data.postGenerated]);
-                  }
-                }
-                if (data.status === "completed") {
-                  toast({
-                    title: "Autopilot completato!",
-                    description: `${data.completed} post generati con successo`,
-                  });
-                  queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
-                }
-              } catch (e) {
-                // Ignore JSON parse errors for partial chunks
-              }
-            }
+          if (!statusRes.ok) {
+            console.error("Polling error:", statusRes.status);
+            return false;
           }
+          
+          const { data } = await statusRes.json();
+          
+          // Update progress
+          setAutopilotProgress({
+            total: data.totalPosts || 0,
+            completed: data.generatedPosts || 0,
+            currentDate: data.processingDate || "",
+            currentPlatform: data.processingPlatform || "",
+            currentDayIndex: data.currentDayIndex || 0,
+            totalDays: data.totalDays || 0,
+          });
+          
+          // Update generated posts details
+          if (data.generatedPostsDetails && data.generatedPostsDetails.length > 0) {
+            setAutopilotGeneratedPosts(data.generatedPostsDetails);
+          }
+          
+          // Check completion status
+          if (data.status === "awaiting_review" || data.status === "completed" || data.status === "published") {
+            toast({
+              title: "Autopilot completato!",
+              description: `${data.generatedPosts} post generati con successo`,
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/content/posts"] });
+            return true; // Stop polling
+          }
+          
+          if (data.status === "failed") {
+            throw new Error(data.lastError || "Generation failed");
+          }
+          
+          return false; // Continue polling
+        } catch (err) {
+          console.error("Polling error:", err);
+          return false;
         }
+      };
+      
+      // Poll every 2 seconds until complete
+      let attempts = 0;
+      const maxAttempts = 300; // 10 minutes max
+      while (attempts < maxAttempts) {
+        const done = await pollStatus();
+        if (done) break;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        attempts++;
+      }
+      
+      if (attempts >= maxAttempts) {
+        toast({
+          title: "Timeout",
+          description: "La generazione sta impiegando troppo tempo. Controlla i post generati.",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error("Autopilot error:", error);

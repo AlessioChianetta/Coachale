@@ -8474,6 +8474,24 @@ export const autopilotBatches = pgTable("autopilot_batches", {
   publishedPosts: integer("published_posts").default(0),
   failedPosts: integer("failed_posts").default(0),
   
+  // Dettagli post generati per polling UI
+  generatedPostsDetails: jsonb("generated_posts_details").$type<Array<{
+    id: string;
+    title: string;
+    platform: string;
+    date: string;
+    charCount: number;
+    charLimit: number;
+    retries: number;
+    imageGenerated: boolean;
+  }>>().default(sql`'[]'::jsonb`),
+  
+  // Giorno/piattaforma corrente per UI
+  processingDate: varchar("processing_date", { length: 20 }),
+  processingPlatform: varchar("processing_platform", { length: 20 }),
+  currentDayIndex: integer("current_day_index").default(0),
+  totalDays: integer("total_days").default(0),
+  
   // Error tracking
   lastError: text("last_error"),
   
