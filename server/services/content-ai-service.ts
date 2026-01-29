@@ -1095,6 +1095,33 @@ export async function generateContentIdeas(params: GenerateIdeasParams): Promise
   const { consultantId, niche, targetAudience, objective, additionalContext, count = 3, mediaType = "photo", copyType = "short", awarenessLevel = "problem_aware", sophisticationLevel = "level_3" } = params;
   const { targetPlatform, postCategory, postSchema, schemaStructure, schemaLabel, charLimit, writingStyle = "default", customWritingInstructions } = params;
   
+  // ==================== DEBUG COMPLETO - INIZIO ====================
+  console.log(`\n[CONTENT-AI] ╔══════════════════════════════════════════════════════════════╗`);
+  console.log(`[CONTENT-AI] ║         generateContentIdeas CALLED - FULL PARAMS            ║`);
+  console.log(`[CONTENT-AI] ╠══════════════════════════════════════════════════════════════╣`);
+  console.log(`[CONTENT-AI] ║ consultantId: ${consultantId}`);
+  console.log(`[CONTENT-AI] ║ count: ${count}`);
+  console.log(`[CONTENT-AI] ╠═══════════ PARAMETRI CRITICI ═══════════════════════════════╣`);
+  console.log(`[CONTENT-AI] ║ mediaType: "${mediaType}" (default: "photo")`);
+  console.log(`[CONTENT-AI] ║ copyType: "${copyType}" (default: "short")`);
+  console.log(`[CONTENT-AI] ║ targetPlatform: "${targetPlatform}"`);
+  console.log(`[CONTENT-AI] ║ charLimit: ${charLimit}`);
+  console.log(`[CONTENT-AI] ║ writingStyle: "${writingStyle}"`);
+  console.log(`[CONTENT-AI] ╠═══════════ SCHEMA ══════════════════════════════════════════╣`);
+  console.log(`[CONTENT-AI] ║ postCategory: "${postCategory}"`);
+  console.log(`[CONTENT-AI] ║ postSchema: "${postSchema}"`);
+  console.log(`[CONTENT-AI] ║ schemaLabel: "${schemaLabel}"`);
+  console.log(`[CONTENT-AI] ║ schemaStructure: ${schemaStructure ? `"${schemaStructure.substring(0, 100)}..."` : "undefined"}`);
+  console.log(`[CONTENT-AI] ╠═══════════ AWARENESS & SOPHISTICATION ══════════════════════╣`);
+  console.log(`[CONTENT-AI] ║ awarenessLevel: "${awarenessLevel}"`);
+  console.log(`[CONTENT-AI] ║ sophisticationLevel: "${sophisticationLevel}"`);
+  console.log(`[CONTENT-AI] ╠═══════════ CUSTOM ══════════════════════════════════════════╣`);
+  console.log(`[CONTENT-AI] ║ customWritingInstructions: ${customWritingInstructions ? `"${customWritingInstructions.substring(0, 50)}..."` : "undefined"}`);
+  console.log(`[CONTENT-AI] ║ brandVoiceData: ${params.brandVoiceData ? "PRESENT" : "undefined"}`);
+  console.log(`[CONTENT-AI] ║ kbContent: ${params.kbContent ? `${params.kbContent.length} chars` : "undefined"}`);
+  console.log(`[CONTENT-AI] ╚══════════════════════════════════════════════════════════════╝\n`);
+  // ==================== DEBUG COMPLETO - FINE ====================
+  
   await rateLimitCheck(consultantId);
   
   // SISTEMA ANTI-RIPETIZIONE: Recupera contenuti precedenti
@@ -1786,15 +1813,37 @@ RISPONDI SOLO con un JSON valido nel formato:
       const effectiveCopyType = (idea.copyType || copyType) as "short" | "long";
       const lengthWarning = validateAndEnrichCopyLength(effectiveCopyType, copyLength, charLimit);
       
-      // DEBUG: Log dettagliato lunghezza contenuto generato
-      console.log(`[CONTENT-AI RESULT DEBUG] ========================================`);
-      console.log(`[CONTENT-AI RESULT DEBUG] Idea: "${idea.title}"`);
-      console.log(`[CONTENT-AI RESULT DEBUG]   copyLength: ${copyLength}`);
-      console.log(`[CONTENT-AI RESULT DEBUG]   charLimit: ${charLimit || 'UNDEFINED'}`);
-      console.log(`[CONTENT-AI RESULT DEBUG]   copyType: ${effectiveCopyType}`);
-      console.log(`[CONTENT-AI RESULT DEBUG]   SUPERA LIMITE: ${charLimit && copyLength > charLimit ? `SI! (${copyLength}/${charLimit})` : 'NO'}`);
-      console.log(`[CONTENT-AI RESULT DEBUG]   lengthWarning: ${lengthWarning || 'none'}`);
-      console.log(`[CONTENT-AI RESULT DEBUG] ========================================`);
+      // ==================== DEBUG RISULTATO DETTAGLIATO ====================
+      console.log(`\n[CONTENT-AI RESULT] ╔══════════════════════════════════════════════════════════════╗`);
+      console.log(`[CONTENT-AI RESULT] ║           RISULTATO GENERAZIONE CONTENUTO                    ║`);
+      console.log(`[CONTENT-AI RESULT] ╠══════════════════════════════════════════════════════════════╣`);
+      console.log(`[CONTENT-AI RESULT] ║ Idea: "${idea.title}"`);
+      console.log(`[CONTENT-AI RESULT] ║ structuredContent.type: "${sc?.type || 'UNDEFINED'}"`);
+      console.log(`[CONTENT-AI RESULT] ╠═══════════ LUNGHEZZA ═══════════════════════════════════════╣`);
+      console.log(`[CONTENT-AI RESULT] ║ copyLength TOTALE: ${copyLength} caratteri`);
+      console.log(`[CONTENT-AI RESULT] ║ charLimit: ${charLimit || 'UNDEFINED'}`);
+      console.log(`[CONTENT-AI RESULT] ║ copyType: ${effectiveCopyType}`);
+      console.log(`[CONTENT-AI RESULT] ║ ⚠️  SUPERA LIMITE: ${charLimit && copyLength > charLimit ? `❌ SI! (${copyLength}/${charLimit} = +${copyLength - charLimit} eccedenti)` : '✅ NO'}`);
+      console.log(`[CONTENT-AI RESULT] ║ lengthWarning: ${lengthWarning || 'none'}`);
+      
+      // LOG DETTAGLIATO PER OGNI SEZIONE dello structuredContent
+      if (sc && typeof sc === 'object') {
+        console.log(`[CONTENT-AI RESULT] ╠═══════════ SEZIONI SINGOLE ═════════════════════════════════╣`);
+        const excludedFields = ['type', 'copyVariant', 'schemaUsed', 'hashtags'];
+        let totalFromSections = 0;
+        for (const [key, value] of Object.entries(sc)) {
+          if (!excludedFields.includes(key) && typeof value === 'string') {
+            const len = value.length;
+            totalFromSections += len;
+            const warning = len > 300 ? ' ⚠️ LUNGA!' : (len > 200 ? ' ⚡' : '');
+            console.log(`[CONTENT-AI RESULT] ║   ${key}: ${len} chars${warning}`);
+          }
+        }
+        console.log(`[CONTENT-AI RESULT] ║   ─────────────────────────────────────────`);
+        console.log(`[CONTENT-AI RESULT] ║   TOTALE SEZIONI: ${totalFromSections} chars`);
+      }
+      console.log(`[CONTENT-AI RESULT] ╚══════════════════════════════════════════════════════════════╝\n`);
+      // ==================== FINE DEBUG RISULTATO ====================
       
       console.log(`[CONTENT-AI] Enriching idea "${idea.title}": mediaType=${idea.mediaType || mediaType}, structuredType=${sc?.type}, hasVideoScript=${!!videoScript}, hasImageDesc=${!!imageDescription}, hasCopyContent=${!!finalCopyContent}, copyLength=${copyLength}, lengthWarning=${lengthWarning || 'none'}`);
       
