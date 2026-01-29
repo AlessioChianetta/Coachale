@@ -511,6 +511,816 @@ const SECTION_INSTRUCTION_VARIANTS: Record<string, string[]> = {
     "Il copione video naturale, come parleresti a un amico. Includi [PAUSA] per enfasi.",
     "Script conversazionale per video - ritmo naturale con [PAUSA] nei momenti chiave.",
     "Testo parlato coinvolgente con transizioni fluide. [PAUSA] dove serve impatto."
+  ],
+  // === ADS-RELATED SECTIONS ===
+  pain: [
+    "Il dolore specifico che il target vive ogni giorno - frustrazioni, ansie, problemi reali.",
+    "Descrivi il problema emotivo del target con dettagli vividi: cosa lo tiene sveglio la notte?",
+    "Il pain point principale espresso come lo direbbe il cliente stesso.",
+    "La frustrazione quotidiana raccontata con empatia - il lettore deve pensare 'Parla di me!'",
+    "Il problema che brucia: descrivilo con parole che il target usa davvero."
+  ],
+  pain1: [
+    "Primo pain point specifico - il problema più immediato e tangibile.",
+    "La prima frustrazione concreta: cosa non funziona nella situazione attuale?",
+    "Pain point #1: il disagio più evidente che il target riconosce subito.",
+    "Il primo problema da affrontare - quello che il cliente ammette facilmente."
+  ],
+  pain2: [
+    "Secondo pain point - il problema nascosto sotto la superficie.",
+    "La frustrazione che emerge dopo: cosa peggiora se non agisci?",
+    "Pain point #2: l'ostacolo meno ovvio ma altrettanto doloroso.",
+    "Il secondo livello di dolore - quello che il target scopre solo riflettendo."
+  ],
+  pain3: [
+    "Terzo pain point - la conseguenza a lungo termine del problema.",
+    "Il dolore futuro: cosa succederà se non risolvi adesso?",
+    "Pain point #3: l'impatto profondo sulla vita/business del target.",
+    "La terza frustrazione - quella che tocca valori più profondi."
+  ],
+  benefit: [
+    "Il beneficio concreto e misurabile che il cliente ottiene.",
+    "Vantaggio tangibile: cosa cambia nella vita/business dopo la trasformazione?",
+    "Il risultato specifico che il target desidera ardentemente.",
+    "Beneficio chiaro espresso in termini che il cliente può visualizzare.",
+    "Il guadagno reale: tempo risparmiato, soldi guadagnati, stress eliminato."
+  ],
+  benefit1: [
+    "Primo beneficio principale - il risultato più desiderato.",
+    "Vantaggio #1: la trasformazione più immediata e visibile.",
+    "Il beneficio primario che giustifica l'investimento.",
+    "Prima promessa di valore: cosa ottieni subito?"
+  ],
+  benefit2: [
+    "Secondo beneficio - il valore aggiunto che sorprende.",
+    "Vantaggio #2: quello che non ti aspettavi di ottenere.",
+    "Il beneficio secondario che aumenta il valore percepito.",
+    "Secondo risultato positivo: cosa migliora oltre al problema principale?"
+  ],
+  benefit3: [
+    "Terzo beneficio - l'impatto a lungo termine.",
+    "Vantaggio #3: come cambia la tua vita/business nel tempo.",
+    "Il beneficio duraturo che continua a dare valore.",
+    "Terza trasformazione: il cambiamento profondo e permanente."
+  ],
+  obiezione: [
+    "L'obiezione più comune che il target ha in mente prima di agire.",
+    "Il dubbio principale che blocca la decisione - formulalo come lo penserebbe lui.",
+    "La resistenza tipica del mercato: 'Sì, ma...' - qual è il 'ma' più frequente?",
+    "L'obiezione silenziosa che il potenziale cliente non dice ma pensa.",
+    "Il freno mentale che impedisce di passare all'azione."
+  ],
+  confutazione: [
+    "Smonta l'obiezione con logica, prove ed esempi concreti.",
+    "La risposta che dissolve il dubbio - argomentazione + evidenza.",
+    "Come ribattere all'obiezione in modo convincente senza essere aggressivo.",
+    "Confutazione elegante: perché quel dubbio non regge alla prova dei fatti.",
+    "Demolisci l'obiezione con casi reali, numeri o ragionamento inattaccabile."
+  ],
+  offerta: [
+    "Presenta la tua offerta in modo chiaro: cosa è incluso, cosa ottiene il cliente.",
+    "La proposta di valore completa: servizio/prodotto + benefici + unicità.",
+    "Descrivi l'offerta come un'opportunità imperdibile, non come una vendita.",
+    "Cosa offri esattamente: componenti, bonus, supporto - tutto ciò che riceve.",
+    "L'offerta irresistibile: valore percepito superiore al prezzo richiesto."
+  ],
+  urgenza: [
+    "Crea urgenza legittima: perché agire ORA e non domani?",
+    "Scarsità reale: posti limitati, deadline, bonus temporanei.",
+    "Il motivo per cui rimandare costa caro - urgenza basata su fatti.",
+    "Pressione temporale credibile: cosa perdi se aspetti?",
+    "Urgenza senza manipolazione: la ragione vera per cui il tempo conta."
+  ],
+  promessa: [
+    "La promessa chiara e specifica che fai al lettore.",
+    "Cosa garantisci: il risultato concreto che può aspettarsi.",
+    "La tua promessa in una frase: trasformazione + tempistica + condizioni.",
+    "Impegno diretto: 'Se fai X, otterrai Y' - sii specifico.",
+    "La promessa che differenzia la tua offerta da tutte le altre."
+  ],
+  prova: [
+    "Prove concrete che supportano le tue affermazioni: numeri, dati, risultati.",
+    "Evidenze verificabili: case study, screenshot, testimonianze reali.",
+    "I numeri che parlano: statistiche, percentuali, risultati misurabili.",
+    "Prove inconfutabili: fatti che il lettore può verificare.",
+    "Credibilità attraverso i dati: cosa dimostrano i risultati ottenuti?"
+  ],
+  dimostrazione: [
+    "Mostra che funziona: esempio pratico, demo, prima/dopo visibile.",
+    "Dimostrazione tangibile del risultato: come appare la trasformazione?",
+    "Prova visiva o narrativa: racconta/mostra un caso specifico.",
+    "Il 'vedere per credere': esempio concreto che elimina ogni dubbio.",
+    "Demo del metodo: un assaggio di come funziona nella pratica."
+  ],
+  miniDimostrazione: [
+    "Mini-demo veloce: un esempio rapido che prova il concetto.",
+    "Dimostrazione lampo: in 30 secondi mostra che funziona.",
+    "Piccola prova immediata: il 'quick win' che convince.",
+    "Assaggio del risultato: un micro-esempio che vale mille parole."
+  ],
+  nuovoModo: [
+    "L'approccio alternativo che cambia le regole del gioco.",
+    "Il nuovo metodo che rende obsoleti i vecchi sistemi.",
+    "Perché il tuo modo è diverso: cosa fai che gli altri non fanno?",
+    "L'innovazione nel tuo approccio: il 'segreto' che fa la differenza.",
+    "Il paradigma nuovo: dimentica quello che sapevi, ecco come funziona davvero."
+  ],
+  nuovo_modo: [
+    "La via alternativa che porta risultati dove i metodi tradizionali falliscono.",
+    "Nuovo approccio: perché le soluzioni comuni non funzionano e questa sì.",
+    "Il metodo controintuitivo che produce risultati superiori.",
+    "L'innovazione che semplifica: meno sforzo, più risultati."
+  ],
+  provaSociale: [
+    "Social proof: testimonianze, numeri di clienti, riconoscimenti.",
+    "Prova sociale potente: cosa dicono gli altri che hanno già provato?",
+    "La voce dei clienti: feedback reali che costruiscono fiducia.",
+    "Numeri che parlano: quanti clienti, quali risultati, che feedback.",
+    "Credibilità attraverso gli altri: chi ti ha già scelto e perché."
+  ],
+  prova_sociale: [
+    "Testimonianze e risultati di chi ha già fatto il passo.",
+    "Social proof concreto: nomi, numeri, storie verificabili.",
+    "La prova che viene dagli altri: recensioni, case study, endorsement.",
+    "Fiducia attraverso la community: cosa dice chi è già dentro."
+  ],
+  prima: [
+    "La situazione PRIMA della trasformazione: problemi, frustrazioni, limiti.",
+    "Come era la vita/business prima: dipingi il quadro negativo con empatia.",
+    "Lo stato attuale del target: cosa non funziona, cosa manca, cosa fa male.",
+    "Il 'prima' vivido: dettagli specifici della situazione problematica.",
+    "Punto di partenza: dove si trova chi non ha ancora la soluzione."
+  ],
+  dopo: [
+    "La situazione DOPO la trasformazione: risultati, emozioni, nuova realtà.",
+    "Come sarà la vita/business dopo: dipingi il quadro positivo con dettagli.",
+    "Lo stato futuro desiderato: cosa funziona, cosa hai ottenuto, come ti senti.",
+    "Il 'dopo' irresistibile: la visione che il target vuole realizzare.",
+    "Punto di arrivo: dove arriva chi implementa la soluzione."
+  ],
+  ponte: [
+    "Il ponte tra PRIMA e DOPO: il processo, il metodo, i passi.",
+    "Come si passa da A a B: spiega la trasformazione in modo credibile.",
+    "Il percorso che collega problema e soluzione: cosa succede nel mezzo?",
+    "La strada da percorrere: step, fasi, tappe del cambiamento.",
+    "Il meccanismo che rende possibile la trasformazione."
+  ],
+  vincolo: [
+    "Il limite o la condizione dell'offerta: cosa la rende esclusiva.",
+    "Vincolo reale: perché non tutti possono accedere o perché è limitata.",
+    "La condizione che filtra: per chi è e per chi NON è questa offerta.",
+    "Limite di disponibilità: tempo, quantità, requisiti di accesso.",
+    "Il vincolo che aumenta il valore: scarsità legittima e motivata."
+  ],
+  // === VALORE (VALUE CONTENT) SECTIONS ===
+  mito: [
+    "La credenza comune nel settore che in realtà è completamente falsa.",
+    "Il mito diffuso che tutti credono vero ma che limita i risultati.",
+    "La convinzione popolare che devi sfatare - quella che tiene il target bloccato.",
+    "L'idea sbagliata che circola nel mercato e che i tuoi clienti credono vera.",
+    "La falsità accettata da tutti: cosa crede il target che invece è sbagliato?"
+  ],
+  percheFalso: [
+    "Spiega con logica e prove perché questa credenza è sbagliata.",
+    "Demolisci il mito con fatti concreti: dati, esempi, ragionamento.",
+    "Perché il mito non regge: la verità che emerge quando analizzi bene.",
+    "L'argomentazione che smonta la falsità - evidenze e logica.",
+    "La confutazione definitiva: ecco perché quel mito è sbagliato."
+  ],
+  perche_falso: [
+    "Argomenta perché la credenza comune è errata con prove concrete.",
+    "La spiegazione razionale che dimostra l'errore del pensiero comune.",
+    "Fatti e logica che smontano il mito - perché la verità è diversa.",
+    "L'evidenza che contraddice la credenza popolare."
+  ],
+  regolaVera: [
+    "La verità che sostituisce il mito: la regola che funziona davvero.",
+    "Cosa è vero invece: la nuova credenza da adottare.",
+    "La regola corretta da seguire una volta capito l'errore.",
+    "Il principio vero che porta risultati - l'opposto del mito.",
+    "La verità funzionale: cosa fare invece di seguire il mito."
+  ],
+  regola_vera: [
+    "Il principio corretto che rimpiazza la falsità comune.",
+    "La nuova verità da interiorizzare: cosa funziona davvero.",
+    "Regola sostitutiva: il modo giusto di vedere le cose.",
+    "La credenza aggiornata basata su fatti e risultati reali."
+  ],
+  comeApplicarla: [
+    "Come mettere in pratica questa regola nella vita quotidiana.",
+    "Passi concreti per applicare il principio: cosa fare domani.",
+    "L'implementazione pratica: trasforma la teoria in azione.",
+    "Come usare questa verità per ottenere risultati tangibili.",
+    "Applicazione immediata: i primi passi per mettere in pratica."
+  ],
+  come_applicarla: [
+    "Istruzioni pratiche per implementare la regola vera.",
+    "Da teoria a pratica: come tradurre il principio in azioni.",
+    "Il percorso di applicazione: step concreti per iniziare.",
+    "Come integrare questa verità nel tuo processo quotidiano."
+  ],
+  cosaAnalizziamo: [
+    "Presenta cosa stai analizzando e perché è rilevante per il target.",
+    "L'oggetto dell'analisi: cosa esaminiamo e cosa cercheremo.",
+    "Introduzione all'analisi: il soggetto e il motivo dell'esame.",
+    "Cosa mettiamo sotto la lente: contesto e obiettivo dell'analisi.",
+    "Il focus dell'analisi: cosa guarderemo e perché è interessante."
+  ],
+  cosa_analizziamo: [
+    "L'argomento dell'analisi presentato con contesto chiaro.",
+    "Cosa stiamo per esaminare: soggetto e aspettative.",
+    "Introduzione chiara: ecco cosa analizzeremo insieme.",
+    "Il punto focale: cosa osserveremo e quali insight cercheremo."
+  ],
+  coseFatteBene: [
+    "I punti di forza emersi dall'analisi - cosa funziona bene.",
+    "Aspetti positivi: cosa è stato fatto correttamente e perché.",
+    "Le cose giuste: elementi da mantenere e replicare.",
+    "Punti di merito: cosa funziona e merita riconoscimento.",
+    "I successi identificati: cosa vale la pena celebrare."
+  ],
+  cose_fatte_bene: [
+    "Gli elementi positivi dell'analisi con specifiche.",
+    "Cosa funziona: i punti di forza da preservare.",
+    "Le best practice identificate: cosa continuare a fare.",
+    "Aspetti vincenti: le decisioni corrette emerse."
+  ],
+  puntiFoRti: [
+    "I punti di forza principali emersi dall'esame.",
+    "Elementi di eccellenza: cosa distingue in positivo.",
+    "Le qualità evidenti: punti che creano vantaggio.",
+    "Aree di forza: dove si eccelle e perché conta."
+  ],
+  punti_forti: [
+    "Le caratteristiche positive identificate nell'analisi.",
+    "Dove si eccelle: i punti di forza concreti.",
+    "Elementi distintivi positivi: cosa funziona bene.",
+    "I vantaggi emersi: qualità e competenze forti."
+  ],
+  daMigliorare: [
+    "Le aree che necessitano attenzione e miglioramento.",
+    "Punti deboli identificati: cosa correggere e come.",
+    "Opportunità di miglioramento: dove intervenire per crescere.",
+    "Aspetti da ottimizzare: le aree che frenano i risultati.",
+    "Criticità emerse: cosa richiede intervento prioritario."
+  ],
+  da_migliorare: [
+    "Le debolezze emerse con suggerimenti pratici.",
+    "Aree di intervento: cosa cambiare per migliorare.",
+    "Punti critici: dove concentrare gli sforzi di ottimizzazione.",
+    "Margini di miglioramento: le opportunità di crescita."
+  ],
+  template: [
+    "Un template pronto all'uso che il lettore può copiare e adattare.",
+    "Modello replicabile: la struttura da seguire passo dopo passo.",
+    "Il format da usare: copia, personalizza, applica.",
+    "Template pratico: la formula pronta per essere utilizzata.",
+    "Schema operativo: il modello che semplifica l'esecuzione."
+  ],
+  checklist: [
+    "Lista di controllo completa: tutti i punti da verificare.",
+    "Checklist operativa: spunta ogni elemento prima di procedere.",
+    "Verifica sequenziale: i passaggi da controllare uno per uno.",
+    "Lista di verifica pratica: assicurati di non dimenticare nulla.",
+    "Elenco di controllo: i checkpoint essenziali del processo."
+  ],
+  step: [
+    "Descrivi questo passaggio in modo chiaro e actionable.",
+    "Il passo da compiere: cosa fare e perché è importante.",
+    "Istruzione specifica: l'azione concreta di questo step.",
+    "Passaggio operativo: cosa eseguire e come farlo bene.",
+    "Fase del processo: l'azione da completare prima di proseguire."
+  ],
+  step1: [
+    "Il primo passo fondamentale: da dove iniziare.",
+    "Step iniziale: l'azione che avvia tutto il processo.",
+    "Primo passaggio: cosa fare per partire nel modo giusto.",
+    "L'inizio del percorso: il primo step essenziale."
+  ],
+  step2: [
+    "Il secondo passaggio: cosa fare dopo aver completato il primo.",
+    "Step successivo: la naturale prosecuzione del processo.",
+    "Secondo passo: l'azione che costruisce sul precedente.",
+    "Fase 2: cosa eseguire per continuare l'avanzamento."
+  ],
+  step3: [
+    "Il terzo passaggio: il momento centrale del processo.",
+    "Step intermedio: l'azione che porta verso il risultato.",
+    "Terzo passo: cosa fare per consolidare il progresso.",
+    "Fase 3: la tappa che connette inizio e conclusione."
+  ],
+  step4: [
+    "Il quarto passaggio: ci avviciniamo alla conclusione.",
+    "Step avanzato: l'azione che perfeziona il lavoro.",
+    "Quarto passo: cosa fare per completare quasi tutto.",
+    "Fase 4: il passaggio che prepara al finale."
+  ],
+  step5: [
+    "L'ultimo passaggio: come concludere il processo.",
+    "Step finale: l'azione che chiude il cerchio.",
+    "Quinto passo: cosa fare per completare tutto.",
+    "Fase conclusiva: il passaggio che sigilla il risultato."
+  ],
+  casoReale: [
+    "Un caso studio concreto: cliente, problema, soluzione, risultato.",
+    "Storia vera di trasformazione: da dove è partito e dove è arrivato.",
+    "Esempio reale: come ha funzionato nella pratica con risultati misurabili.",
+    "Case study specifico: i dettagli di un successo documentato.",
+    "Testimonianza concreta: la storia completa di un cliente reale."
+  ],
+  caso_reale: [
+    "Un esempio documentato con dati e risultati verificabili.",
+    "La storia di un cliente: problema, processo, trasformazione.",
+    "Case study dettagliato: cosa è successo e cosa ha funzionato.",
+    "Caso pratico: la dimostrazione reale del metodo in azione."
+  ],
+  lezione: [
+    "L'insight chiave appreso: la verità emersa dall'esperienza.",
+    "La lezione fondamentale: cosa abbiamo imparato da questa situazione.",
+    "L'apprendimento più importante: il takeaway da portare via.",
+    "Insight memorabile: la lezione che cambia il modo di vedere le cose.",
+    "La morale della storia: cosa insegna questa esperienza."
+  ],
+  principio: [
+    "Un principio universale che si applica sempre in questo contesto.",
+    "La verità fondamentale: il principio che guida le decisioni corrette.",
+    "Regola generale: il principio da tenere sempre a mente.",
+    "Fondamento invariabile: ciò che rimane vero in ogni situazione.",
+    "Il principio cardine: la base su cui costruire tutto il resto."
+  ],
+  regola: [
+    "Una regola chiara e memorabile che il lettore può applicare subito.",
+    "La formula da ricordare: semplice, diretta, efficace.",
+    "Regola pratica: il principio operativo da seguire.",
+    "La regola d'oro: cosa fare sempre in questa situazione.",
+    "Linea guida essenziale: la regola che non tradisce mai."
+  ],
+  contesto: [
+    "Il background necessario per comprendere il resto del contenuto.",
+    "Contesto essenziale: le informazioni preliminari per capire.",
+    "Lo scenario di partenza: situazione, condizioni, elementi chiave.",
+    "Il quadro generale: cosa devi sapere prima di andare avanti.",
+    "Premesse importanti: il contesto che rende tutto più chiaro."
+  ],
+  // === FORMAZIONE (EDUCATIONAL CONTENT) SECTIONS ===
+  obiettivo: [
+    "L'obiettivo da raggiungere: cosa imparerai e cosa sarai in grado di fare.",
+    "Il traguardo formativo: la competenza specifica che acquisirai.",
+    "Cosa otterrai: l'abilità concreta che porterai a casa.",
+    "L'obiettivo di apprendimento: perché questo modulo è fondamentale.",
+    "Il risultato atteso: cosa saprai fare alla fine di questa lezione."
+  ],
+  concettoChiave: [
+    "Il concetto centrale da interiorizzare: l'idea fondamentale che cambia tutto.",
+    "La nozione chiave: il pilastro su cui costruire la tua competenza.",
+    "L'idea portante: il concetto che devi padroneggiare per avanzare.",
+    "Il punto focale: ciò che distingue chi capisce da chi no."
+  ],
+  concetto_chiave: [
+    "Il concetto fondamentale da comprendere prima di tutto il resto.",
+    "L'idea centrale: la base teorica essenziale per applicare correttamente.",
+    "La nozione cardine: il mattone su cui costruire tutto il resto.",
+    "Il concetto principale: ciò che devi assolutamente interiorizzare."
+  ],
+  percheImportante: [
+    "Perché è importante: le conseguenze di capire (o non capire) questo concetto.",
+    "L'importanza pratica: come questo concetto impatta i tuoi risultati.",
+    "Il motivo per cui conta: cosa cambia quando padroneggi questo argomento.",
+    "Perché devi saperlo: i rischi di ignorare questo aspetto."
+  ],
+  perche_importante: [
+    "Ecco perché questo argomento è cruciale per il tuo percorso.",
+    "L'importanza reale: come si riflette sulla tua pratica quotidiana.",
+    "Il valore di questo concetto: cosa ti permette di fare diversamente.",
+    "Perché non puoi ignorarlo: le implicazioni pratiche immediate."
+  ],
+  esempio: [
+    "Un esempio pratico che rende tangibile il concetto appena spiegato.",
+    "Caso concreto: ecco come si applica nella vita reale.",
+    "Esempio pratico: vediamo il concetto in azione.",
+    "Illustrazione pratica: un caso specifico che chiarisce tutto.",
+    "Applicazione reale: come funziona nel mondo vero."
+  ],
+  esempio1: [
+    "Primo esempio pratico: un caso concreto per iniziare a capire.",
+    "Esempio iniziale: la situazione più semplice per familiarizzare.",
+    "Caso base: l'applicazione più immediata del concetto.",
+    "Primo scenario: vediamo come funziona in pratica."
+  ],
+  esempio2: [
+    "Secondo esempio: un caso leggermente più complesso.",
+    "Variante pratica: un altro scenario per consolidare la comprensione.",
+    "Esempio avanzato: applicazione in una situazione diversa.",
+    "Caso alternativo: altra modalità di utilizzo del concetto."
+  ],
+  comeApplicarlo: [
+    "Come applicare questo concetto: i passi concreti da seguire.",
+    "Istruzioni pratiche: ecco come mettere in pratica quanto appreso.",
+    "Applicazione step-by-step: dalla teoria all'azione.",
+    "Come usarlo: traduzione pratica del concetto in azioni.",
+    "Guida all'applicazione: cosa fare per implementarlo subito."
+  ],
+  come_applicarlo: [
+    "I passaggi per applicare il concetto nella tua realtà.",
+    "Dalla teoria alla pratica: ecco come procedere.",
+    "Implementazione pratica: le azioni concrete da compiere.",
+    "Come tradurre in pratica: istruzioni operative."
+  ],
+  erroreComune: [
+    "L'errore frequente da evitare: cosa sbagliano quasi tutti.",
+    "Trappola comune: l'errore in cui cadono i principianti.",
+    "Errore tipico: cosa NON fare quando applichi questo concetto.",
+    "Lo sbaglio da evitare: perché molti falliscono e come evitarlo."
+  ],
+  errore_comune: [
+    "L'errore più diffuso: cosa porta fuori strada chi inizia.",
+    "Trappola classica: l'inganno in cui cadono molti.",
+    "Sbaglio frequente: cosa evitare per non compromettere i risultati.",
+    "L'errore da non commettere: impara dagli sbagli altrui."
+  ],
+  modulo: [
+    "Questo modulo formativo copre: contenuto e obiettivi specifici.",
+    "Panoramica del modulo: cosa affronteremo e perché è importante.",
+    "Contenuto formativo: gli argomenti che esploreremo insieme.",
+    "Focus del modulo: le competenze che svilupperai qui."
+  ],
+  modulo1: [
+    "Modulo 1 - Le basi: fondamenta essenziali per iniziare.",
+    "Primo modulo: i concetti introduttivi indispensabili.",
+    "Modulo iniziale: le nozioni di base da padroneggiare.",
+    "Fondamenti: il punto di partenza del tuo percorso formativo."
+  ],
+  modulo2: [
+    "Modulo 2 - Approfondimento: costruiamo sulle basi acquisite.",
+    "Secondo modulo: portiamo le competenze a un livello superiore.",
+    "Modulo intermedio: dalla teoria alla pratica avanzata.",
+    "Sviluppo: evoluzione delle competenze del modulo precedente."
+  ],
+  modulo3: [
+    "Modulo 3 - Padronanza: integrazione e applicazione avanzata.",
+    "Terzo modulo: verso la maestria completa.",
+    "Modulo avanzato: affiniamo le competenze acquisite.",
+    "Completamento: le ultime nozioni per la padronanza totale."
+  ],
+  cosaImparerai: [
+    "Cosa imparerai: le competenze specifiche che acquisirai.",
+    "Alla fine saprai: le abilità concrete che porterai via.",
+    "Obiettivi di apprendimento: cosa sarai in grado di fare.",
+    "Competenze in uscita: il valore che otterrai da questo percorso.",
+    "I tuoi takeaway: cosa cambierà nel tuo modo di lavorare."
+  ],
+  cosa_imparerai: [
+    "Le competenze che svilupperai seguendo questo percorso.",
+    "Cosa porterai a casa: abilità pratiche e conoscenze teoriche.",
+    "Il tuo apprendimento: cosa saprai e saprai fare alla fine.",
+    "Risultati formativi: le capacità che acquisirai."
+  ],
+  materiali: [
+    "Materiali necessari: cosa ti serve per seguire questa lezione.",
+    "Strumenti e risorse: prepara questi materiali prima di iniziare.",
+    "Cosa ti serve: l'elenco dei materiali per l'esercitazione pratica.",
+    "Attrezzatura richiesta: assicurati di avere tutto a disposizione.",
+    "Preparazione: i materiali da avere pronti."
+  ],
+  istruzioni: [
+    "Istruzioni per l'esercizio: segui questi passaggi con attenzione.",
+    "Come procedere: le indicazioni step-by-step per l'esercitazione.",
+    "Guida pratica: istruzioni dettagliate per completare l'attività.",
+    "Passaggi operativi: cosa fare e in che ordine.",
+    "Procedura: le istruzioni da seguire passo dopo passo."
+  ],
+  erroriDaEvitare: [
+    "Errori da evitare: le trappole in cui non devi cadere.",
+    "Cosa NON fare: gli sbagli più comuni e come prevenirli.",
+    "Attenzione a: gli errori che compromettono il risultato.",
+    "Evita questi errori: impara dalle esperienze di chi ti ha preceduto."
+  ],
+  errori_da_evitare: [
+    "Gli sbagli più frequenti: cosa evitare assolutamente.",
+    "Errori tipici da non commettere durante l'esercizio.",
+    "Le trappole comuni: riconoscile ed evitale.",
+    "Cosa può andare storto: i rischi da tenere d'occhio."
+  ],
+  risultatoAtteso: [
+    "Il risultato atteso: cosa dovresti ottenere seguendo correttamente.",
+    "Cosa aspettarsi: il risultato finale se esegui bene.",
+    "Output previsto: ecco come dovrebbe apparire il risultato.",
+    "Traguardo: il risultato concreto che stai cercando di raggiungere."
+  ],
+  risultato_atteso: [
+    "Il risultato finale che otterrai applicando correttamente.",
+    "Cosa dovresti vedere/ottenere alla fine dell'esercizio.",
+    "L'esito atteso: il parametro per verificare se hai fatto bene.",
+    "Risultato target: il benchmark di successo."
+  ],
+  perChiE: [
+    "Per chi è questo contenuto: il profilo ideale di chi ne beneficerà.",
+    "Questo percorso è per te se: caratteristiche del partecipante ideale.",
+    "A chi è rivolto: le persone che trarranno massimo valore.",
+    "Destinatari ideali: chi dovrebbe seguire questo contenuto."
+  ],
+  per_chi_e: [
+    "Per chi è pensato questo modulo: il target ideale.",
+    "Questo contenuto è perfetto per chi: prerequisiti e caratteristiche.",
+    "A chi si rivolge: i profili che ne beneficeranno di più.",
+    "Partecipanti ideali: chi otterrà i migliori risultati."
+  ],
+  perChi: [
+    "Questo è per: il tipo di persona che trarrà maggior beneficio.",
+    "Ideale per chi: caratteristiche e situazioni del partecipante.",
+    "Rivolto a: le persone che si riconosceranno in questo contenuto.",
+    "Target: chi dovrebbe assolutamente seguire questo percorso."
+  ],
+  domanda: [
+    "Domanda di verifica: testa la tua comprensione del concetto.",
+    "Quiz: rispondi per verificare se hai capito correttamente.",
+    "Verifica: mettiti alla prova con questa domanda.",
+    "Test di comprensione: dimostra di aver interiorizzato il concetto."
+  ],
+  domanda1: [
+    "Prima domanda: iniziamo a verificare la comprensione.",
+    "Domanda 1: il primo test delle tue conoscenze.",
+    "Quesito iniziale: rispondi per verificare le basi.",
+    "Prima verifica: hai capito il concetto fondamentale?"
+  ],
+  domanda2: [
+    "Seconda domanda: approfondiamo la verifica.",
+    "Domanda 2: test su un aspetto più specifico.",
+    "Quesito intermedio: quanto hai compreso?",
+    "Seconda verifica: consolidiamo la comprensione."
+  ],
+  domanda3: [
+    "Terza domanda: verifica finale della comprensione.",
+    "Domanda 3: l'ultimo test prima di proseguire.",
+    "Quesito avanzato: applica quanto hai appreso.",
+    "Verifica finale: sei pronto per il prossimo modulo?"
+  ],
+  risposte: [
+    "Risposte al quiz: verifica se hai risposto correttamente.",
+    "Soluzioni: ecco le risposte corrette alle domande.",
+    "Risposte corrette: confronta con le tue risposte.",
+    "Chiave di correzione: le risposte esatte e la loro spiegazione."
+  ],
+  spiegazione: [
+    "Spiegazione delle risposte: perché queste sono le risposte corrette.",
+    "Il ragionamento: come si arriva alla risposta giusta.",
+    "Perché è corretto: la logica dietro ogni risposta.",
+    "Approfondimento: la spiegazione dettagliata di ogni soluzione.",
+    "Chiarimento: cosa rende corretta o sbagliata ogni opzione."
+  ],
+  takeaway: [
+    "Il punto chiave da ricordare: la lezione più importante.",
+    "Takeaway principale: cosa portare via da questa sezione.",
+    "Da ricordare: il concetto essenziale da non dimenticare.",
+    "Il messaggio chiave: l'idea centrale da interiorizzare.",
+    "Punto focale: ciò che devi assolutamente ricordare."
+  ],
+  // === STORYTELLING SECTIONS ===
+  situazione: [
+    "Il contesto iniziale della storia: dove, quando, chi è coinvolto.",
+    "Lo scenario di partenza: la situazione che ha dato origine a tutto.",
+    "Il punto di partenza narrativo: come inizia questa storia.",
+    "La cornice iniziale: l'ambiente e le circostanze che fanno da sfondo.",
+    "L'inizio della storia: presenta il quadro iniziale con dettagli vividi."
+  ],
+  tensione: [
+    "Il momento di tensione: la sfida che ha messo tutto in discussione.",
+    "Il punto critico: quando la situazione si è fatta difficile.",
+    "La crisi che ha cambiato le carte in tavola: cosa è andato storto.",
+    "Il momento di svolta negativo: l'ostacolo che sembrava insormontabile.",
+    "La tensione narrativa: il conflitto che tiene il lettore incollato."
+  ],
+  decisione: [
+    "La scelta cruciale: il bivio che ha determinato tutto il resto.",
+    "Il momento della decisione: cosa hai scelto e perché.",
+    "La svolta decisiva: l'azione che ha cambiato il corso degli eventi.",
+    "Il punto di non ritorno: la decisione coraggiosa che hai preso.",
+    "La scelta fondamentale: cosa ti ha portato a decidere così."
+  ],
+  risultato: [
+    "Il risultato ottenuto: numeri, fatti, trasformazioni concrete.",
+    "L'esito finale: cosa è successo dopo aver agito.",
+    "Il risultato tangibile: la prova che il metodo funziona.",
+    "La conseguenza positiva: il cambiamento misurabile ottenuto.",
+    "Il traguardo raggiunto: i benefici concreti della decisione."
+  ],
+  ostacolo: [
+    "L'ostacolo incontrato: cosa ha reso difficile il percorso.",
+    "La sfida da superare: il problema che sembrava bloccare tutto.",
+    "L'impedimento principale: cosa si frapponeva tra te e l'obiettivo.",
+    "La barriera da abbattere: l'ostacolo che hai dovuto affrontare.",
+    "Il problema critico: la difficoltà che ha messo alla prova tutto."
+  ],
+  puntoPartenza: [
+    "La situazione iniziale del cliente: da dove è partito.",
+    "Il punto di partenza: le condizioni prima della trasformazione.",
+    "Lo stato iniziale: problemi, frustrazioni, limiti di partenza.",
+    "Da dove siamo partiti: la fotografia della situazione precedente."
+  ],
+  punto_di_partenza: [
+    "Il punto di partenza del percorso: la situazione originale.",
+    "La condizione iniziale: cosa c'era prima del cambiamento.",
+    "Lo scenario precedente: i problemi e le sfide di partenza.",
+    "La situazione di base: dove tutto ha avuto inizio."
+  ],
+  azioni: [
+    "Le azioni intraprese: cosa è stato fatto concretamente.",
+    "I passi compiuti: le mosse strategiche che hanno fatto la differenza.",
+    "Le attività svolte: cosa abbiamo implementato passo dopo passo.",
+    "Le azioni chiave: le decisioni operative messe in pratica.",
+    "Gli interventi realizzati: cosa è stato fatto per ottenere il risultato."
+  ],
+  cosaOdiavo: [
+    "Cosa odiavo prima: le frustrazioni quotidiane che mi consumavano.",
+    "Quello che non sopportavo più: il problema che mi tormentava.",
+    "La cosa più frustrante: ciò che mi spingeva a cercare una soluzione.",
+    "Cosa mi faceva impazzire: la situazione insostenibile di prima."
+  ],
+  cosa_odiavo: [
+    "Cosa mi frustrava profondamente: il problema che volevo eliminare.",
+    "La mia fonte di stress: ciò che rendeva tutto difficile.",
+    "Quello che non funzionava: la situazione che doveva cambiare.",
+    "Il disagio principale: cosa mi spingeva a cercare alternative."
+  ],
+  cosaCambiato: [
+    "Cosa è cambiato: la trasformazione concreta avvenuta.",
+    "Il cambiamento realizzato: prima vs dopo in modo tangibile.",
+    "La differenza fondamentale: cosa è diverso adesso.",
+    "La trasformazione ottenuta: il nuovo stato raggiunto."
+  ],
+  cosa_ho_cambiato: [
+    "Cosa ho modificato: le azioni specifiche che hanno fatto la differenza.",
+    "I cambiamenti implementati: cosa ho fatto diversamente.",
+    "Le modifiche chiave: cosa ho cambiato nel mio approccio.",
+    "La svolta nel metodo: cosa ho iniziato a fare in modo nuovo."
+  ],
+  comeFarlo: [
+    "Come replicare il risultato: i passi da seguire per ottenere lo stesso.",
+    "Come puoi farlo anche tu: la guida pratica per applicarlo.",
+    "Il metodo per ottenerlo: le istruzioni concrete da seguire.",
+    "Come arrivarci: la strada pratica verso lo stesso risultato."
+  ],
+  come_farlo: [
+    "Come mettere in pratica: le azioni specifiche da compiere.",
+    "Il percorso da seguire: come replicare questo successo.",
+    "Le istruzioni operative: cosa fare per ottenere lo stesso.",
+    "I passi pratici: come procedere concretamente."
+  ],
+  chiSono: [
+    "Chi sono e perché puoi fidarti: la mia storia in breve.",
+    "La mia presentazione: chi sono, cosa faccio, perché sono credibile.",
+    "Il mio background: esperienza e risultati che mi qualificano.",
+    "La mia storia: da dove vengo e cosa ho costruito."
+  ],
+  chi_sono: [
+    "Chi sono: la mia identità professionale e il mio percorso.",
+    "La mia presentazione personale: esperienza e credibilità.",
+    "Il mio profilo: chi sono e perché posso aiutarti.",
+    "La mia storia in sintesi: da dove vengo e dove ti porto."
+  ],
+  cosaHoImparato: [
+    "La lezione che ho appreso: l'insight più importante.",
+    "Cosa ho capito: la verità emersa dall'esperienza.",
+    "L'apprendimento chiave: cosa so adesso che prima ignoravo.",
+    "La scoperta fondamentale: ciò che ha cambiato la mia prospettiva."
+  ],
+  cosa_ho_imparato: [
+    "Cosa mi ha insegnato questa esperienza: la lezione principale.",
+    "L'insight emerso: la comprensione che ha cambiato tutto.",
+    "La lezione appresa: cosa porto via da questa situazione.",
+    "Quello che ho capito: la verità che adesso è chiara."
+  ],
+  miniStoria: [
+    "Una mini-storia esemplificativa: il racconto breve che illustra il concetto.",
+    "Un esempio narrativo: la storia che rende tutto più chiaro.",
+    "Una breve storia reale: l'aneddoto che dimostra il punto.",
+    "Il racconto che spiega: una storia concisa ma potente."
+  ],
+  mini_storia: [
+    "Una piccola storia che chiarisce: l'esempio narrativo del concetto.",
+    "Il micro-racconto illustrativo: una storia breve ma efficace.",
+    "L'aneddoto esplicativo: la storia che fa capire meglio.",
+    "Una storia in miniatura: il racconto che rende tangibile l'idea."
+  ],
+  // === ENGAGEMENT SECTIONS ===
+  hotTake: [
+    "L'opinione controversa: il punto di vista che divide le opinioni.",
+    "La provocazione: l'affermazione che fa discutere.",
+    "Il pensiero controcorrente: la tesi che sfida il senso comune.",
+    "La posizione audace: l'idea che non tutti condivideranno.",
+    "L'hot take: l'opinione forte che scatena reazioni."
+  ],
+  hot_take: [
+    "Un'opinione che fa discutere: la posizione che polarizza.",
+    "La tesi provocatoria: l'affermazione che non lascia indifferenti.",
+    "Il punto di vista controverso: quello che molti pensano ma pochi dicono.",
+    "L'opinione scomoda: la verità che disturba qualcuno."
+  ],
+  opinione: [
+    "Il mio punto di vista deciso: cosa penso davvero su questo tema.",
+    "La mia posizione netta: l'opinione che difendo con convinzione.",
+    "Quello che credo fermamente: il mio pensiero senza mezzi termini.",
+    "La mia visione: come vedo le cose e perché.",
+    "Il mio parere forte: l'opinione che mi distingue."
+  ],
+  claim: [
+    "L'affermazione audace: la tesi forte che sostengo.",
+    "La dichiarazione coraggiosa: il claim che sfida lo status quo.",
+    "L'affermazione potente: la verità che proclamo.",
+    "Il mio claim: la posizione netta che prendo.",
+    "La tesi principale: l'idea centrale che difendo."
+  ],
+  motivo: [
+    "L'argomento a supporto: perché questa affermazione è vera.",
+    "Il motivo fondamentale: la ragione principale dietro la tesi.",
+    "L'argomentazione chiave: il ragionamento che sostiene tutto.",
+    "La prova logica: perché questo è vero e verificabile."
+  ],
+  motivo1: [
+    "Primo motivo: la ragione principale che supporta la tesi.",
+    "Argomento #1: il primo pilastro della mia argomentazione.",
+    "La prima ragione: perché questo è vero - parte 1.",
+    "Il motivo iniziale: la base del ragionamento."
+  ],
+  motivo2: [
+    "Secondo motivo: un'altra ragione che rafforza la tesi.",
+    "Argomento #2: il secondo pilastro dell'argomentazione.",
+    "La seconda ragione: un altro elemento a supporto.",
+    "Ulteriore motivazione: cosa rinforza ancora il punto."
+  ],
+  perche: [
+    "La motivazione profonda: perché questo è importante.",
+    "La spiegazione: il ragionamento dietro l'affermazione.",
+    "Il perché fondamentale: la ragione che sta alla base.",
+    "La motivazione: cosa giustifica questa posizione.",
+    "Il senso profondo: perché tutto questo conta."
+  ],
+  domandaFinale: [
+    "La domanda che fa riflettere: l'interrogativo che resta in mente.",
+    "La domanda per te: cosa ne pensi? Come la vedi?",
+    "L'invito alla riflessione: la domanda che stimola il dialogo.",
+    "La questione aperta: la domanda che invita alla risposta."
+  ],
+  domanda_finale: [
+    "La domanda conclusiva: l'interrogativo che chiude e apre.",
+    "La domanda per il lettore: cosa farai con questa informazione?",
+    "L'ultima domanda: la riflessione finale da condividere.",
+    "La domanda che chiude: l'invito al commento e alla discussione."
+  ],
+  recap: [
+    "Riepilogo dei punti chiave: le idee principali in sintesi.",
+    "In sintesi: i concetti fondamentali riassunti.",
+    "I takeaway principali: cosa ricordare di questo contenuto.",
+    "Ricapitolando: le lezioni più importanti in breve.",
+    "Il riassunto finale: i punti salienti da portare via."
+  ],
+  ctaSoft: [
+    "Una CTA morbida: invita a salvare, commentare o condividere.",
+    "L'invito gentile: cosa puoi fare se questo ti è stato utile.",
+    "CTA leggera: il passo successivo senza pressione.",
+    "L'azione suggerita: cosa fare se vuoi approfondire."
+  ],
+  cta_soft: [
+    "Invito discreto all'azione: se ti è piaciuto, ecco cosa puoi fare.",
+    "CTA non invasiva: il modo gentile per restare in contatto.",
+    "L'azione facile: un piccolo gesto se hai apprezzato.",
+    "Suggerimento finale: cosa fare per non perderti i prossimi."
+  ],
+  prossimaMossa: [
+    "Il prossimo step: cosa farai dopo aver letto questo?",
+    "La mossa successiva: l'azione che ti consiglio di compiere.",
+    "Il passo immediato: cosa puoi fare già da oggi.",
+    "L'azione seguente: il primo passo verso il cambiamento."
+  ],
+  prossima_mossa: [
+    "Cosa fare adesso: il prossimo passo concreto.",
+    "L'azione da compiere: il movimento che ti porta avanti.",
+    "Il passo da fare: cosa implementare subito.",
+    "La mossa strategica: l'azione che fa la differenza."
+  ],
+  cosaStaiFacendo: [
+    "Cosa sto facendo in questo momento: l'attività in corso.",
+    "Il mio lavoro attuale: su cosa sto lavorando adesso.",
+    "L'attività del momento: cosa mi impegna in questo periodo.",
+    "Cosa sto costruendo: il progetto su cui sono concentrato."
+  ],
+  cosa_stai_facendo: [
+    "L'attività in corso: cosa occupa il mio tempo adesso.",
+    "Su cosa sto lavorando: il focus del momento.",
+    "Il mio impegno attuale: cosa sto creando o sviluppando.",
+    "L'attività corrente: il lavoro che mi coinvolge ora."
+  ],
+  cosaHaiFatto: [
+    "Cosa ho fatto di recente: l'attività o risultato appena completato.",
+    "L'azione compiuta: cosa ho realizzato ultimamente.",
+    "Il risultato recente: cosa ho ottenuto in questo periodo.",
+    "L'ultimo traguardo: cosa ho portato a termine di recente."
+  ],
+  cosa_hai_fatto: [
+    "L'attività recente: cosa ho completato ultimamente.",
+    "Il lavoro svolto: cosa ho realizzato nel periodo recente.",
+    "L'azione portata a termine: cosa ho fatto e quali risultati.",
+    "Il progresso fatto: cosa ho costruito o raggiunto di recente."
   ]
 };
 
