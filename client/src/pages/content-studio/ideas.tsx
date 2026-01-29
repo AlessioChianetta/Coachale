@@ -606,6 +606,50 @@ export default function ContentStudioIdeas() {
   const [isAutopilotGenerating, setIsAutopilotGenerating] = useState(false);
   const [autopilotProgress, setAutopilotProgress] = useState<{total: number; completed: number} | null>(null);
 
+  // Multi-platform autopilot config
+  interface AutopilotPlatformConfig {
+    enabled: boolean;
+    postsPerDay: number;
+    postCategory: "ads" | "valore" | "formazione" | "altri";
+    postSchema: string;
+    mediaType: "photo" | "video" | "carousel" | "text";
+    copyType: "short" | "long";
+    writingStyle: string;
+  }
+
+  const [autopilotPlatforms, setAutopilotPlatforms] = useState<Record<string, AutopilotPlatformConfig>>({
+    instagram: { enabled: true, postsPerDay: 2, postCategory: "ads", postSchema: "originale", mediaType: "photo", copyType: "long", writingStyle: "default" },
+    x: { enabled: false, postsPerDay: 1, postCategory: "ads", postSchema: "originale", mediaType: "text", copyType: "short", writingStyle: "default" },
+    linkedin: { enabled: false, postsPerDay: 1, postCategory: "valore", postSchema: "originale", mediaType: "photo", copyType: "long", writingStyle: "default" },
+  });
+  const [autopilotGenerateImages, setAutopilotGenerateImages] = useState(false);
+  const [autopilotPublishToPubler, setAutopilotPublishToPubler] = useState(false);
+  const [autopilotReviewMode, setAutopilotReviewMode] = useState(false);
+  const [expandedAutopilotPlatforms, setExpandedAutopilotPlatforms] = useState<Set<string>>(new Set(["instagram"]));
+
+  const toggleAutopilotPlatformExpanded = (platform: string) => {
+    setExpandedAutopilotPlatforms(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(platform)) {
+        newSet.delete(platform);
+      } else {
+        newSet.add(platform);
+      }
+      return newSet;
+    });
+  };
+
+  const updateAutopilotPlatform = (platform: string, updates: Partial<AutopilotPlatformConfig>) => {
+    setAutopilotPlatforms(prev => ({
+      ...prev,
+      [platform]: { ...prev[platform], ...updates }
+    }));
+  };
+
+  const getAutopilotPlatformSchemas = (platform: string, category: string) => {
+    return POST_SCHEMAS[platform]?.[category] || [];
+  };
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -1296,13 +1340,20 @@ export default function ContentStudioIdeas() {
   const handleAutopilotGenerate = async () => {
     if (!autopilotStartDate || !autopilotEndDate) return;
     
+    const enabledPlatforms = Object.entries(autopilotPlatforms).filter(([_, config]) => config.enabled);
+    if (enabledPlatforms.length === 0) {
+      toast({
+        title: "Nessuna piattaforma selezionata",
+        description: "Abilita almeno una piattaforma per avviare l'autopilot.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsAutopilotGenerating(true);
     setAutopilotProgress(null);
     
     try {
-      const platformInfo = TARGET_PLATFORMS.find(p => p.value === targetPlatform);
-      const charLimit = platformInfo?.charLimit || 2200;
-      
       const kbContentParts: string[] = [];
       if (useKnowledgeBase && tempFiles.filter(f => f.status === "success").length > 0) {
         for (const file of tempFiles.filter(f => f.status === "success")) {
@@ -1313,7 +1364,28 @@ export default function ContentStudioIdeas() {
       }
       const kbContent = kbContentParts.join("\n\n---\n\n");
       
-      const selectedSchema = availableSchemas.find(s => s.value === postSchema);
+      const platformsPayload = Object.fromEntries(
+        enabledPlatforms.map(([platform, config]) => {
+          const platformSchemas = POST_SCHEMAS[platform as keyof typeof POST_SCHEMAS]?.[config.postCategory] || [];
+          const selectedSchema = platformSchemas.find(s => s.value === config.postSchema);
+          const platformInfo = TARGET_PLATFORMS.find(p => p.value === platform);
+          return [
+            platform,
+            {
+              enabled: true,
+              postsPerDay: config.postsPerDay,
+              postCategory: config.postCategory,
+              postSchema: config.postSchema,
+              schemaStructure: selectedSchema?.structure,
+              schemaLabel: selectedSchema?.label,
+              mediaType: config.mediaType,
+              copyType: config.copyType,
+              writingStyle: config.writingStyle,
+              charLimit: platformInfo?.charLimit || 2200,
+            }
+          ];
+        })
+      );
       
       const response = await fetch("/api/content/autopilot/generate", {
         method: "POST",
@@ -1324,29 +1396,17 @@ export default function ContentStudioIdeas() {
         body: JSON.stringify({
           startDate: autopilotStartDate,
           endDate: autopilotEndDate,
-          platforms: {
-            [targetPlatform]: {
-              enabled: true,
-              postsPerDay: autopilotPostsPerDay,
-            },
-          },
+          platforms: platformsPayload,
           niche: brandVoiceData.niche || topic || "",
           targetAudience: brandVoiceData.targetAudience || targetAudience || "",
           objective: objective,
-          mediaType: mediaType,
-          copyType: copyType,
-          targetPlatform: targetPlatform,
-          postCategory: postCategory,
-          postSchema: postSchema,
-          schemaStructure: selectedSchema?.structure,
-          schemaLabel: selectedSchema?.label,
-          writingStyle: writingStyle,
-          customInstructions: customWritingInstructions,
-          charLimit: charLimit,
           awarenessLevel: awarenessLevel,
           sophisticationLevel: sophisticationLevel,
           brandVoiceData: useBrandVoice ? brandVoiceData : undefined,
           kbContent: kbContent || undefined,
+          autoGenerateImages: autopilotGenerateImages,
+          autoPublish: autopilotPublishToPubler,
+          reviewMode: autopilotReviewMode,
           ...(useKnowledgeBase && selectedKbDocIds.length > 0 && { kbDocumentIds: selectedKbDocIds }),
         }),
       });
@@ -2205,13 +2265,13 @@ export default function ContentStudioIdeas() {
                 >
                   <div className="flex items-center gap-2 mb-4">
                     <Rocket className="h-5 w-5 text-orange-500" />
-                    <h3 className="font-semibold text-lg">Content Autopilot</h3>
+                    <h3 className="font-semibold text-lg">Content Autopilot Multi-Piattaforma</h3>
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Genera contenuti automaticamente per più giorni usando le impostazioni sopra.
+                    Genera contenuti automaticamente per più giorni e piattaforme. Configura ogni piattaforma con impostazioni specifiche.
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
                       <Label>Data Inizio</Label>
                       <Input 
@@ -2230,25 +2290,280 @@ export default function ContentStudioIdeas() {
                         min={autopilotStartDate || new Date().toISOString().split('T')[0]}
                       />
                     </div>
-                    <div>
-                      <Label>Post al Giorno</Label>
-                      <Select value={String(autopilotPostsPerDay)} onValueChange={(v) => setAutopilotPostsPerDay(Number(v))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  </div>
+
+                  <div className="mb-6">
+                    <Label className="text-base font-medium mb-3 block">Piattaforme</Label>
+                    <div className="space-y-4">
+                      {TARGET_PLATFORMS.map((platform) => {
+                        const config = autopilotPlatforms[platform.value];
+                        const isEnabled = config?.enabled || false;
+                        const isExpanded = expandedAutopilotPlatforms.has(platform.value);
+                        const PlatformIcon = platform.icon;
+                        const availablePlatformSchemas = getAutopilotPlatformSchemas(platform.value, config?.postCategory || "ads");
+
+                        return (
+                          <div 
+                            key={platform.value}
+                            className={`border rounded-lg transition-all ${
+                              isEnabled 
+                                ? "border-orange-300 dark:border-orange-700 bg-white dark:bg-gray-900" 
+                                : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+                            }`}
+                          >
+                            <div 
+                              className="flex items-center justify-between p-4 cursor-pointer"
+                              onClick={() => isEnabled && toggleAutopilotPlatformExpanded(platform.value)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${platform.color}`}>
+                                  <PlatformIcon className="h-4 w-4 text-white" />
+                                </div>
+                                <div>
+                                  <span className="font-medium">{platform.label}</span>
+                                  {isEnabled && config && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {config.postsPerDay} post/giorno • {POST_CATEGORIES.find(c => c.value === config.postCategory)?.label}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {isEnabled && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleAutopilotPlatformExpanded(platform.value);
+                                    }}
+                                  >
+                                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                  </Button>
+                                )}
+                                <Switch
+                                  checked={isEnabled}
+                                  onCheckedChange={(checked) => {
+                                    updateAutopilotPlatform(platform.value, { enabled: checked });
+                                    if (checked) {
+                                      setExpandedAutopilotPlatforms(prev => new Set([...prev, platform.value]));
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                            </div>
+
+                            {isEnabled && isExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="px-4 pb-4 border-t border-orange-100 dark:border-orange-900 pt-4"
+                              >
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  <div>
+                                    <Label className="text-xs">Post al Giorno</Label>
+                                    <Select 
+                                      value={String(config.postsPerDay)} 
+                                      onValueChange={(v) => updateAutopilotPlatform(platform.value, { postsPerDay: Number(v) })}
+                                    >
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {[1, 2, 3, 4, 5].map(n => (
+                                          <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs">Categoria</Label>
+                                    <Select 
+                                      value={config.postCategory} 
+                                      onValueChange={(v: "ads" | "valore" | "formazione" | "altri") => {
+                                        updateAutopilotPlatform(platform.value, { 
+                                          postCategory: v,
+                                          postSchema: "originale"
+                                        });
+                                      }}
+                                    >
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {POST_CATEGORIES.map((cat) => (
+                                          <SelectItem key={cat.value} value={cat.value}>
+                                            <div className="flex items-center gap-2">
+                                              <cat.icon className="h-3 w-3" />
+                                              {cat.label}
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs">Schema Post</Label>
+                                    <Select 
+                                      value={config.postSchema} 
+                                      onValueChange={(v) => updateAutopilotPlatform(platform.value, { postSchema: v })}
+                                    >
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {availablePlatformSchemas.map((schema) => (
+                                          <SelectItem key={schema.value} value={schema.value}>
+                                            {schema.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs">Tipo Media</Label>
+                                    <Select 
+                                      value={config.mediaType} 
+                                      onValueChange={(v: "photo" | "video" | "carousel" | "text") => updateAutopilotPlatform(platform.value, { mediaType: v })}
+                                    >
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="photo">
+                                          <div className="flex items-center gap-2">
+                                            <Camera className="h-3 w-3" />
+                                            Foto
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="video">
+                                          <div className="flex items-center gap-2">
+                                            <Video className="h-3 w-3" />
+                                            Video
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="carousel">
+                                          <div className="flex items-center gap-2">
+                                            <Palette className="h-3 w-3" />
+                                            Carousel
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="text">
+                                          <div className="flex items-center gap-2">
+                                            <Type className="h-3 w-3" />
+                                            Solo Testo
+                                          </div>
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs">Lunghezza Copy</Label>
+                                    <Select 
+                                      value={config.copyType} 
+                                      onValueChange={(v: "short" | "long") => updateAutopilotPlatform(platform.value, { copyType: v })}
+                                    >
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="short">
+                                          <div className="flex items-center gap-2">
+                                            <Scissors className="h-3 w-3" />
+                                            Corto
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="long">
+                                          <div className="flex items-center gap-2">
+                                            <AlignLeft className="h-3 w-3" />
+                                            Lungo
+                                          </div>
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-xs">Stile Scrittura</Label>
+                                    <Select 
+                                      value={config.writingStyle} 
+                                      onValueChange={(v) => updateAutopilotPlatform(platform.value, { writingStyle: v })}
+                                    >
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {WRITING_STYLES.map((style) => (
+                                          <SelectItem key={style.value} value={style.value}>
+                                            <div className="flex items-center gap-2">
+                                              <span>{style.icon}</span>
+                                              {style.label}
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
+                  </div>
+
+                  <div className="border-t border-orange-200 dark:border-orange-800 pt-4 mb-6">
+                    <Label className="text-base font-medium mb-3 block">Opzioni Avanzate</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border border-orange-100 dark:border-orange-900">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4 text-orange-500" />
+                          <Label className="text-sm font-normal cursor-pointer">Genera Immagini AI</Label>
+                        </div>
+                        <Switch
+                          checked={autopilotGenerateImages}
+                          onCheckedChange={setAutopilotGenerateImages}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border border-orange-100 dark:border-orange-900">
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="h-4 w-4 text-orange-500" />
+                          <Label className="text-sm font-normal cursor-pointer">Pubblica su Publer</Label>
+                        </div>
+                        <Switch
+                          checked={autopilotPublishToPubler}
+                          onCheckedChange={setAutopilotPublishToPubler}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border border-orange-100 dark:border-orange-900">
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-orange-500" />
+                          <Label className="text-sm font-normal cursor-pointer">Modalità Review</Label>
+                        </div>
+                        <Switch
+                          checked={autopilotReviewMode}
+                          onCheckedChange={setAutopilotReviewMode}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {autopilotReviewMode 
+                        ? "I contenuti saranno generati in bozza per la tua revisione." 
+                        : "I contenuti saranno generati e pronti per la pubblicazione."}
+                    </p>
                   </div>
                   
                   <div className="flex items-center gap-4">
                     <Button 
                       onClick={handleAutopilotGenerate}
-                      disabled={!autopilotStartDate || !autopilotEndDate || isAutopilotGenerating}
+                      disabled={!autopilotStartDate || !autopilotEndDate || isAutopilotGenerating || Object.values(autopilotPlatforms).filter(p => p.enabled).length === 0}
                       className="bg-orange-500 hover:bg-orange-600"
                     >
                       {isAutopilotGenerating ? (
@@ -2259,7 +2574,7 @@ export default function ContentStudioIdeas() {
                       ) : (
                         <>
                           <Rocket className="h-4 w-4 mr-2" />
-                          Avvia Autopilot
+                          Avvia Autopilot ({Object.values(autopilotPlatforms).filter(p => p.enabled).length} piattaforme)
                         </>
                       )}
                     </Button>

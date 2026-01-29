@@ -6,15 +6,32 @@ import { analyzeAndGenerateImage, AdvisageSettings } from "./advisage-server-ser
 import { PublerService } from "./publer-service";
 import { Response } from "express";
 
+// Per-platform configuration (each platform can have its own settings)
+export interface PlatformConfig {
+  enabled: boolean;
+  postsPerDay: number;
+  publerAccountId?: string;
+  // Per-platform content settings
+  postCategory?: "ads" | "valore" | "formazione" | "altri";
+  postSchema?: string;
+  schemaStructure?: string;
+  schemaLabel?: string;
+  mediaType?: "photo" | "video" | "carousel" | "text";
+  copyType?: "short" | "long";
+  writingStyle?: string;
+  charLimit?: number;
+}
+
 export interface AutopilotConfig {
   consultantId: string;
   startDate: string;  // YYYY-MM-DD
   endDate: string;    // YYYY-MM-DD
   platforms: {
-    instagram?: { enabled: boolean; postsPerDay: number; publerAccountId?: string };
-    x?: { enabled: boolean; postsPerDay: number; publerAccountId?: string };
-    linkedin?: { enabled: boolean; postsPerDay: number; publerAccountId?: string };
+    instagram?: PlatformConfig;
+    x?: PlatformConfig;
+    linkedin?: PlatformConfig;
   };
+  // Global fallback values (used when platform-specific values are not set)
   postSchema?: string;
   schemaStructure?: string;
   schemaLabel?: string;
@@ -39,7 +56,7 @@ export interface AutopilotConfig {
   kbContent?: string;
   charLimit?: number;
   
-  // New flags for image generation and publishing
+  // Flags for image generation and publishing
   autoGenerateImages?: boolean;
   autoPublish?: boolean;
   reviewMode?: boolean;
@@ -258,18 +275,36 @@ export async function generateAutopilotBatch(
         const postsPerDay = platformSettings.postsPerDay;
         const dbPlatform = PLATFORM_DB_MAP[platform] || "instagram";
         
+        // ===== USE PER-PLATFORM CONFIG with global fallback =====
+        // Priority: platformSettings value > global config value > default
+        const platformWritingStyle = platformSettings.writingStyle || passedWritingStyle;
+        const platformPostCategory = platformSettings.postCategory || postCategory || "ads";
+        const platformPostSchema = platformSettings.postSchema || postSchema;
+        const platformSchemaStructure = platformSettings.schemaStructure || schemaStructure;
+        const platformSchemaLabel = platformSettings.schemaLabel || schemaLabel;
+        const platformMediaType = platformSettings.mediaType || passedMediaType;
+        const platformCopyType = platformSettings.copyType || passedCopyType;
+        const platformCharLimit = platformSettings.charLimit;
+        
         // Get schedule times for this platform
         const scheduleForPlatform = postingSchedule[platform] || {};
-        const writingStyle = passedWritingStyle || scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
+        const writingStyle = platformWritingStyle || scheduleForPlatform.writingStyle || PLATFORM_WRITING_STYLES[platform] || "default";
         const times = passedOptimalTimes || scheduleForPlatform.times || OPTIMAL_TIMES[platform] || ["09:00", "18:00"];
+        
         // Char limit for AI prompt (with safety margin to encourage shorter content)
-        const charLimitForAI = platform === "x" && brandAssets?.xPremiumSubscription 
-          ? X_PREMIUM_CHAR_LIMIT_FOR_AI 
-          : (PLATFORM_CHAR_LIMITS_FOR_AI[platform] || 1980);
-        // Real char limit for accepting content (actual platform limits)
-        const charLimitReal = platform === "x" && brandAssets?.xPremiumSubscription 
-          ? X_PREMIUM_CHAR_LIMIT_REAL 
-          : (PLATFORM_CHAR_LIMITS_REAL[platform] || 2200);
+        // If per-platform charLimit passed, calculate AI limit as 90% of it
+        let charLimitForAI: number;
+        let charLimitReal: number;
+        if (platformCharLimit) {
+          charLimitReal = platformCharLimit;
+          charLimitForAI = Math.floor(platformCharLimit * 0.9);
+        } else if (platform === "x" && brandAssets?.xPremiumSubscription) {
+          charLimitForAI = X_PREMIUM_CHAR_LIMIT_FOR_AI;
+          charLimitReal = X_PREMIUM_CHAR_LIMIT_REAL;
+        } else {
+          charLimitForAI = PLATFORM_CHAR_LIMITS_FOR_AI[platform] || 1980;
+          charLimitReal = PLATFORM_CHAR_LIMITS_REAL[platform] || 2200;
+        }
         
         // Fetch ALL existing SCHEDULED posts for this day/platform to check which time slots are occupied
         // Only count posts with status "scheduled" - not drafts, published, or cancelled
@@ -328,21 +363,28 @@ export async function generateAutopilotBatch(
             const currentContentType = contentTypes[contentTypeIndex % contentTypes.length];
             contentTypeIndex++;
             
-            // Mappa "image" → "photo" per allineare con generateContentIdeas che accetta solo "photo" | "video"
-            const normalizedMediaType = passedMediaType === "image" ? "photo" : passedMediaType;
-            const effectiveMediaType = normalizedMediaType || "photo";
-            const effectiveCopyType = passedCopyType || (platform === "x" ? "short" : "long");
+            // Mappa mediaType per allineare con generateContentIdeas che accetta solo "photo" | "video"
+            // "carousel" e "text" non sono supportati da AI, mappiamo a "photo"
+            const originalMediaType = platformMediaType || "photo";
+            let aiMediaType: "photo" | "video" = "photo";
+            if (originalMediaType === "video") {
+              aiMediaType = "video";
+            } else {
+              // "photo", "carousel", "text", "image" → "photo" per AI
+              aiMediaType = "photo";
+            }
+            const effectiveCopyType = (platformCopyType || (platform === "x" ? "short" : "long")) as "short" | "long";
             
-            // DEBUG: Log tutti i parametri passati a generateContentIdeas
+            // DEBUG: Log tutti i parametri passati a generateContentIdeas (using per-platform values)
             console.log(`[AUTOPILOT DEBUG] ========================================`);
-            console.log(`[AUTOPILOT DEBUG] Calling generateContentIdeas with:`);
-            console.log(`[AUTOPILOT DEBUG]   platform: "${platform}"`);
+            console.log(`[AUTOPILOT DEBUG] Calling generateContentIdeas for ${platform}:`);
             console.log(`[AUTOPILOT DEBUG]   charLimitForAI: ${charLimitForAI}, charLimitReal: ${charLimitReal}`);
-            console.log(`[AUTOPILOT DEBUG]   copyType: "${effectiveCopyType}"`);
-            console.log(`[AUTOPILOT DEBUG]   mediaType: "${effectiveMediaType}"`);
-            console.log(`[AUTOPILOT DEBUG]   postSchema: "${postSchema || 'UNDEFINED'}"`);
-            console.log(`[AUTOPILOT DEBUG]   schemaStructure: "${schemaStructure || 'UNDEFINED'}"`);
-            console.log(`[AUTOPILOT DEBUG]   schemaLabel: "${schemaLabel || 'UNDEFINED'}"`);
+            console.log(`[AUTOPILOT DEBUG]   copyType: "${effectiveCopyType}" (platform: ${platformCopyType})`);
+            console.log(`[AUTOPILOT DEBUG]   mediaType: "${aiMediaType}" (original: ${originalMediaType}, platform: ${platformMediaType})`);
+            console.log(`[AUTOPILOT DEBUG]   postSchema: "${platformPostSchema || 'UNDEFINED'}"`);
+            console.log(`[AUTOPILOT DEBUG]   schemaStructure: "${platformSchemaStructure || 'UNDEFINED'}"`);
+            console.log(`[AUTOPILOT DEBUG]   schemaLabel: "${platformSchemaLabel || 'UNDEFINED'}"`);
+            console.log(`[AUTOPILOT DEBUG]   postCategory: "${platformPostCategory}"`);
             console.log(`[AUTOPILOT DEBUG]   writingStyle: "${writingStyle}"`);
             console.log(`[AUTOPILOT DEBUG] ========================================`);
             
@@ -365,17 +407,17 @@ export async function generateAutopilotBatch(
                 targetAudience,
                 objective,
                 count: 1,
-                mediaType: effectiveMediaType,
+                mediaType: aiMediaType,
                 copyType: effectiveCopyType,
                 targetPlatform: platform as "instagram" | "x" | "linkedin",
                 writingStyle,
                 charLimit: charLimitForAI,
                 awarenessLevel: (passedAwarenessLevel || "problem_aware") as any,
                 sophisticationLevel: (passedSophisticationLevel || "level_3") as any,
-                postSchema: postSchema,
-                schemaStructure: schemaStructure,
-                schemaLabel: schemaLabel,
-                postCategory: postCategory,
+                postSchema: platformPostSchema,
+                schemaStructure: platformSchemaStructure,
+                schemaLabel: platformSchemaLabel,
+                postCategory: platformPostCategory,
                 customWritingInstructions: retryFeedback || undefined,
                 brandVoiceData: brandVoiceEnabled ? brandVoiceData as any : undefined,
                 kbContent: kbContent || undefined,
@@ -409,9 +451,11 @@ export async function generateAutopilotBatch(
             if (validIdea) {
               const idea = validIdea;
               
-              const dbMediaType = effectiveMediaType === "image" ? "foto" : 
-                                effectiveMediaType === "video" ? "video" : 
-                                effectiveMediaType === "carousel" ? "carosello" : "foto";
+              // Usa originalMediaType per il database (mantiene carousel, text, etc.)
+              const dbMediaType = originalMediaType === "image" ? "foto" : 
+                                originalMediaType === "video" ? "video" : 
+                                originalMediaType === "carousel" ? "carosello" : 
+                                originalMediaType === "text" ? "testo" : "foto";
               
               const sc = idea.structuredContent as any;
               const resolvedFullCopy = sc?.captionCopy || sc?.fullCopy || idea.copyContent || "";
