@@ -8419,15 +8419,77 @@ export const contentPosts = pgTable("content_posts", {
   contentTheme: varchar("content_theme", { length: 50 }).$type<"educativo" | "promozionale" | "storytelling" | "behind-the-scenes">(),
   generatedBy: varchar("generated_by", { length: 50 }).$type<"manual" | "autopilot">(),
   
+  // Autopilot Batch Integration
+  autopilotBatchId: varchar("autopilot_batch_id"),
+  imageGenerationStatus: varchar("image_generation_status", { length: 50 }).default("pending").$type<"pending" | "generating" | "completed" | "failed" | "skipped">(),
+  imageGenerationError: text("image_generation_error"),
+  imageGeneratedAt: timestamp("image_generated_at"),
+  reviewStatus: varchar("review_status", { length: 50 }).default("pending").$type<"pending" | "approved" | "rejected">(),
+  reviewedAt: timestamp("reviewed_at"),
+  charLimitRetries: integer("char_limit_retries").default(0),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
   consultantIdx: index("idx_content_posts_consultant").on(table.consultantId),
   scheduledIdx: index("idx_content_posts_scheduled").on(table.scheduledAt),
+  batchIdx: index("idx_content_posts_batch").on(table.autopilotBatchId),
 }));
 
 export type ContentPost = typeof contentPosts.$inferSelect;
 export type InsertContentPost = typeof contentPosts.$inferInsert;
+
+// ============================================================
+// AUTOPILOT BATCHES - Track batch generation with review mode
+// ============================================================
+
+export const autopilotBatches = pgTable("autopilot_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }),
+  
+  // Configurazione batch
+  config: jsonb("config").notNull().default(sql`'{}'::jsonb`),
+  
+  // Flags
+  autoGenerateImages: boolean("auto_generate_images").default(false),
+  autoPublish: boolean("auto_publish").default(false),
+  reviewMode: boolean("review_mode").default(true),
+  
+  // Settings AdVisage
+  advisageSettings: jsonb("advisage_settings").$type<{
+    mood?: string;
+    stylePreference?: string;
+    brandColor?: string;
+    brandFont?: string;
+  }>().default(sql`'{}'::jsonb`),
+  
+  // Stato batch
+  status: varchar("status", { length: 50 }).default("pending").$type<"pending" | "generating" | "awaiting_review" | "approved" | "publishing" | "published" | "cancelled" | "failed">(),
+  
+  // Progresso
+  totalPosts: integer("total_posts").default(0),
+  generatedPosts: integer("generated_posts").default(0),
+  imagesGenerated: integer("images_generated").default(0),
+  approvedPosts: integer("approved_posts").default(0),
+  publishedPosts: integer("published_posts").default(0),
+  failedPosts: integer("failed_posts").default(0),
+  
+  // Error tracking
+  lastError: text("last_error"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+  completedAt: timestamp("completed_at"),
+  approvedAt: timestamp("approved_at"),
+  publishedAt: timestamp("published_at"),
+}, (table) => ({
+  consultantIdx: index("idx_autopilot_batches_consultant").on(table.consultantId),
+  statusIdx: index("idx_autopilot_batches_status").on(table.status),
+}));
+
+export type AutopilotBatch = typeof autopilotBatches.$inferSelect;
+export type InsertAutopilotBatch = typeof autopilotBatches.$inferInsert;
 
 // Ad Campaigns - Full marketing campaigns with 6-step structure
 export const adCampaigns = pgTable("ad_campaigns", {
