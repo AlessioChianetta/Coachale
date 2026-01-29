@@ -1,0 +1,148 @@
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
+🔓 [Semaphore] Released slot (0/3 in use)
+[SUGGEST-LEVELS] Model: gemini-3-flash-preview
+[SUGGEST-LEVELS] Response length: 591 chars
+[SUGGEST-LEVELS] AI Response (full): "{\n  \"awarenessLevel\": \"problem_aware\",\n  \"awarenessReason\": \"Il target vive quotidianamente il disagio delle contratture e la frustrazione del limite fisico, ma non conosce ancora un percorso specifico per risolvere definitivamente queste problematiche senza incappare in infortuni.\",\n  \"sophisticationLevel\": \"level_3\",\n  \"sophisticationReason\": \"Il mercato del benessere sportivo è saturo di soluzioni generiche (massaggi, stretching classico), rendendo necessario l'inserimento di un meccanismo unico e differenziante come la 'Tecnica Flow & Ricalibrazione' per catturare l'attenzione.\"\n}"
+[SUGGEST-LEVELS] Parsed result: {
+  awarenessLevel: 'problem_aware',
+  awarenessReason: 'Il target vive quotidianamente il disagio delle contratture e la frustrazione del limite fisico, ma non conosce ancora un percorso specifico per risolvere definitivamente queste problematiche senza incappare in infortuni.',
+  sophisticationLevel: 'level_3',
+  sophisticationReason: "Il mercato del benessere sportivo è saturo di soluzioni generiche (massaggi, stretching classico), rendendo necessario l'inserimento di un meccanismo unico e differenziante come la 'Tecnica Flow & Ricalibrazione' per catturare l'attenzione."
+}
+6:23:42 PM [express] POST /api/content/ai/suggest-levels 200 in 7139ms :: {"awarenessLevel":"problem…
+🤖 [CONTENT-AI] Generating ideas for consultant 7e40b56c-2cc8-4515-b843-dc105e478f38 (mediaType: photo, copyType: long)
+
+[CONTENT-AI] ╔══════════════════════════════════════════════════════════════╗
+[CONTENT-AI] ║         generateContentIdeas CALLED - FULL PARAMS            ║
+[CONTENT-AI] ╠══════════════════════════════════════════════════════════════╣
+[CONTENT-AI] ║ consultantId: 7e40b56c-2cc8-4515-b843-dc105e478f38
+[CONTENT-AI] ║ count: 3
+[CONTENT-AI] ╠═══════════ PARAMETRI CRITICI ═══════════════════════════════╣
+[CONTENT-AI] ║ mediaType: "photo" (default: "photo")
+[CONTENT-AI] ║ copyType: "long" (default: "short")
+[CONTENT-AI] ║ targetPlatform: "instagram"
+[CONTENT-AI] ║ charLimit: 2200
+[CONTENT-AI] ║ writingStyle: "default"
+[CONTENT-AI] ╠═══════════ SCHEMA ══════════════════════════════════════════╣
+[CONTENT-AI] ║ postCategory: "ads"
+[CONTENT-AI] ║ postSchema: "originale"
+[CONTENT-AI] ║ schemaLabel: "Originale (Universale)"
+[CONTENT-AI] ║ schemaStructure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA..."
+[CONTENT-AI] ╠═══════════ AWARENESS & SOPHISTICATION ══════════════════════╣
+[CONTENT-AI] ║ awarenessLevel: "problem_aware"
+[CONTENT-AI] ║ sophisticationLevel: "level_3"
+[CONTENT-AI] ╠═══════════ CUSTOM ══════════════════════════════════════════╣
+[CONTENT-AI] ║ customWritingInstructions: undefined
+[CONTENT-AI] ║ brandVoiceData: PRESENT
+[CONTENT-AI] ║ kbContent: undefined
+[CONTENT-AI] ╚══════════════════════════════════════════════════════════════╝
+
+[CONTENT-AI] Anti-ripetizione: 0 idee + 0 post caricati
+[CONTENT-AI SCHEMA DEBUG] ========================================
+[CONTENT-AI SCHEMA DEBUG] Schema dinamico - SOLO LIMITE TOTALE
+[CONTENT-AI SCHEMA DEBUG]   schemaStructure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA"
+[CONTENT-AI SCHEMA DEBUG]   numSections: 6
+[CONTENT-AI SCHEMA DEBUG]   charLimit: 2200
+[CONTENT-AI SCHEMA DEBUG]   copyType: long
+[CONTENT-AI SCHEMA DEBUG] ========================================
+[CONTENT-AI DEBUG] ========================================
+[CONTENT-AI DEBUG] Generation Parameters:
+[CONTENT-AI DEBUG]   copyType: "long"
+[CONTENT-AI DEBUG]   mediaType: "photo"
+[CONTENT-AI DEBUG]   charLimit: 2200
+[CONTENT-AI DEBUG]   postSchema: "originale"
+[CONTENT-AI DEBUG]   schemaLabel: "Originale (Universale)"
+[CONTENT-AI DEBUG]   schemaStructure: "Hook|Chi-Cosa-Come|Errore|Soluzione|Riprova Sociale|CTA"
+[CONTENT-AI DEBUG]   targetPlatform: "instagram"
+[CONTENT-AI DEBUG]   writingStyle: "default"
+[CONTENT-AI DEBUG]   customWritingInstructions: "none"
+[CONTENT-AI DEBUG] ----------------------------------------
+[CONTENT-AI DEBUG] Structured Content Instructions (full, 2235 chars):
+[CONTENT-AI DEBUG] 
+📋 SCHEMA: "Originale (Universale)"
+📐 STRUTTURA: Hook → Chi-Cosa-Come → Errore → Soluzione → Riprova Sociale → CTA
+
+SEZIONI DA COMPILARE:
+**1. hook** (Hook): Cattura l'attenzione nei primi 3 secondi. Usa domanda provocatoria, statistica sorprendente, o affermazione controintuitiva. Deve fermare lo scroll.
+**2. chicosacome** (Chi-Cosa-Come): Sviluppa questa sezione in modo chiaro, coinvolgente e rilevante per il target.
+**3. errore** (Errore): Mostra l'errore comune che il target commette senza saperlo. Usa 'Molti pensano che... ma in realtà...'
+**4. soluzione** (Soluzione): Spiega come si risolve il problema. Rendi il processo credibile, semplice e raggiungibile.
+**5. riprova_sociale** (Riprova Sociale): Inserisci prove di credibilità: numeri di clienti, risultati ottenuti, testimonianze.
+**6. cta** (CTA): Invito all'azione chiaro e diretto. Dì esattamente cosa fare e cosa succede dopo.
+
+**structuredContent** (JSON):
+{
+  "type": "copy_long",
+  "copyVariant": "long",
+  "schemaUsed": "originale",
+  "hook": "Contenuto per: Hook",
+  "chicosacome": "Contenuto per: Chi-Cosa-Come",
+  "errore": "Contenuto per: Errore",
+  "soluzione": "Contenuto per: Soluzione",
+  "riprova_sociale": "Contenuto per: Riprova Sociale",
+  "cta": "Contenuto per: CTA",
+  "captionCopy": "Testo completo che unisce tutte le sezioni sopra",
+  "hashtags": ["hashtag1", "hashtag2", "hashtag3"],
+  "imageDescription": "Descrizione visiva dettagliata dell'immagine: soggetto, sfondo, colori, mood, stile fotografico",
+  "imageOverlayText": "Testo breve e d'impatto da sovrapporre all'immagine (max 10 parole)"
+}
+
+STILE COPY LUNGO:
+- Ogni sezione deve essere sviluppata in modo narrativo e approfondito
+- Il copy TOTALE deve essere tra 1500-2200 caratteri
+- Separa i pensieri all'interno di ogni blocco con righe vuote
+
+STILE PREDEFINITO:
+- Scrivi in modo naturale e scorrevole
+- Tono professionale ma accessibile
+- Emoji solo dove aggiungono valore
+
+⛔⛔⛔ LIMITE CARATTERI - REGOLA ASSOLUTA ⛔⛔⛔
+Il campo "captionCopy" DEVE essere:
+- MINIMO 1540 caratteri
+- MASSIMO 2200 caratteri (LIMITE PIATTAFORMA INSTAGRAM)
+
+🚨 NON SUPERARE MAI 2200 CARATTERI TOTALI 🚨
+Distribuisci il contenuto tra le 6 sezioni come preferisci, ma il TOTALE deve stare sotto 2200.
+
+[CONTENT-AI DEBUG] ========================================
+🔍 Finding AI provider for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (consultant: content-ideas)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, checking their consultant content-ideas's settings
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
+[PUBLER POLLING] Running scheduled post status sync...
+[PUBLER SYNC] Synced 2 consultants, updated 0 posts
+[PUBLER POLLING] Sync complete: 2 consultants, 0 posts updated
+🔓 [Semaphore] Released slot (0/3 in use)
+
+[CONTENT-AI RESULT] ╔══════════════════════════════════════════════════════════════╗
+[CONTENT-AI RESULT] ║           RISULTATO GENERAZIONE CONTENUTO                    ║
+[CONTENT-AI RESULT] ╠══════════════════════════════════════════════════════════════╣
+[CONTENT-AI RESULT] ║ Idea: "Perché i tuoi muscoli sono bloccati nonostante il riposo?"
+[CONTENT-AI RESULT] ║ structuredContent.type: "copy_long"
+[CONTENT-AI RESULT] ╠═══════════ LUNGHEZZA ═══════════════════════════════════════╣
+[CONTENT-AI RESULT] ║ copyLength TOTALE: 2564 caratteri
+[CONTENT-AI RESULT] ║ charLimit: 2200
+[CONTENT-AI RESULT] ║ copyType: long
+[CONTENT-AI RESULT] ║ ⚠️  SUPERA LIMITE: ❌ SI! (2564/2200 = +364 eccedenti)
+[CONTENT-AI RESULT] ║ lengthWarning: Copy troppo lungo (max 2200 caratteri)
+[CONTENT-AI RESULT] ╠═══════════ SEZIONI SINGOLE ═════════════════════════════════╣
+[CONTENT-AI RESULT] ║   hook: 394 chars ⚠️ LUNGA!
+[CONTENT-AI RESULT] ║   chicosacome: 547 chars ⚠️ LUNGA!
+[CONTENT-AI RESULT] ║   errore: 462 chars ⚠️ LUNGA!
+[CONTENT-AI RESULT] ║   soluzione: 569 chars ⚠️ LUNGA!
+[CONTENT-AI RESULT] ║   riprova_sociale: 325 chars ⚠️ LUNGA!
+[CONTENT-AI RESULT] ║   cta: 257 chars ⚡
+[CONTENT-AI RESULT] ║   captionCopy: 2564 chars ⚠️ LUNGA!
+[CONTENT-AI RESULT] ║   imageDescription: 393 chars ⚠️ LUNGA!
+[CONTENT-AI RESULT] ║   imageOverlayText: 49 chars
+[CONTENT-AI RESULT] ║   ─────────────────────────────────────────
+[CONTENT-AI RESULT] ║   TOTALE SEZIONI: 5560 chars
+[CONTENT-AI RESULT] ╚══════════════════════════════════════════════════════════════╝
+
+[CONTENT-AI] Enriching idea "Perché i tuoi muscoli sono bloccati nonostante il riposo?": mediaType=photo, structuredType=copy_long, hasVideoScript=false, hasImageDesc=true, hasCopyContent=true, copyLength=2564, lengthWarning=Copy troppo lungo (max 2200 caratteri)
