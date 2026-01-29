@@ -917,216 +917,216 @@ const SECTION_INSTRUCTION_VARIANTS: Record<string, string[]> = {
   ],
   // === FORMAZIONE (EDUCATIONAL CONTENT) SECTIONS ===
   obiettivo: [
-    "L'obiettivo da raggiungere: cosa imparerai e cosa sarai in grado di fare.",
-    "Il traguardo formativo: la competenza specifica che acquisirai.",
-    "Cosa otterrai: l'abilità concreta che porterai a casa.",
-    "L'obiettivo di apprendimento: perché questo modulo è fondamentale.",
-    "Il risultato atteso: cosa saprai fare alla fine di questa lezione."
+    "Obiettivo didattico: comprendere il principio fondamentale e saperlo riconoscere nella pratica.",
+    "Questa sezione spiega un concetto essenziale che costituisce la base teorica dell'argomento.",
+    "Al termine della lettura, il concetto sarà chiaro e applicabile in contesti reali.",
+    "L'obiettivo è trasmettere una conoscenza che rimane valida indipendentemente dal contesto specifico.",
+    "Focus dell'apprendimento: acquisire una comprensione profonda del principio trattato."
   ],
   concettoChiave: [
-    "Il concetto centrale da interiorizzare: l'idea fondamentale che cambia tutto.",
-    "La nozione chiave: il pilastro su cui costruire la tua competenza.",
-    "L'idea portante: il concetto che devi padroneggiare per avanzare.",
-    "Il punto focale: ciò che distingue chi capisce da chi no."
+    "Questo concetto spiega il meccanismo fondamentale alla base dell'argomento trattato.",
+    "Il principio centrale: l'idea teorica che governa questo fenomeno.",
+    "La nozione fondamentale che permette di comprendere tutti gli aspetti correlati.",
+    "Il concetto cardine su cui si basa l'intera comprensione dell'argomento."
   ],
   concetto_chiave: [
-    "Il concetto fondamentale da comprendere prima di tutto il resto.",
-    "L'idea centrale: la base teorica essenziale per applicare correttamente.",
-    "La nozione cardine: il mattone su cui costruire tutto il resto.",
-    "Il concetto principale: ciò che devi assolutamente interiorizzare."
+    "Il principio teorico essenziale: ciò che rende comprensibile l'intero argomento.",
+    "Questa è la nozione base da cui derivano tutte le applicazioni pratiche.",
+    "Il fondamento concettuale: l'idea che spiega perché le cose funzionano così.",
+    "La definizione chiave: il concetto senza il quale il resto non ha senso."
   ],
   percheImportante: [
-    "Perché è importante: le conseguenze di capire (o non capire) questo concetto.",
-    "L'importanza pratica: come questo concetto impatta i tuoi risultati.",
-    "Il motivo per cui conta: cosa cambia quando padroneggi questo argomento.",
-    "Perché devi saperlo: i rischi di ignorare questo aspetto."
+    "Questo argomento è rilevante perché influenza direttamente la qualità dei risultati ottenibili.",
+    "L'importanza di questo concetto: spiega fenomeni che altrimenti sembrerebbero casuali.",
+    "Capire questo principio permette di evitare errori comuni e prendere decisioni più informate.",
+    "La rilevanza pratica: questo concetto ha applicazioni concrete in molteplici situazioni."
   ],
   perche_importante: [
-    "Ecco perché questo argomento è cruciale per il tuo percorso.",
-    "L'importanza reale: come si riflette sulla tua pratica quotidiana.",
-    "Il valore di questo concetto: cosa ti permette di fare diversamente.",
-    "Perché non puoi ignorarlo: le implicazioni pratiche immediate."
+    "Questo principio è importante perché costituisce la base di molte decisioni pratiche.",
+    "Comprendere questo concetto aiuta a interpretare correttamente situazioni complesse.",
+    "La conoscenza di questo argomento previene errori che derivano da incomprensioni comuni.",
+    "L'utilità di questo concetto: fornisce un framework per analizzare situazioni simili."
   ],
   esempio: [
-    "Un esempio pratico che rende tangibile il concetto appena spiegato.",
-    "Caso concreto: ecco come si applica nella vita reale.",
-    "Esempio pratico: vediamo il concetto in azione.",
-    "Illustrazione pratica: un caso specifico che chiarisce tutto.",
-    "Applicazione reale: come funziona nel mondo vero."
+    "Esempio pratico: ecco come si manifesta questo principio in una situazione reale.",
+    "Per illustrare il concetto, consideriamo questo caso concreto.",
+    "Un'applicazione pratica che rende visibile il principio appena descritto.",
+    "Scenario esemplificativo: come il concetto si traduce nella pratica.",
+    "Per capire meglio, osserviamo questo esempio tratto dalla realtà."
   ],
   esempio1: [
-    "Primo esempio pratico: un caso concreto per iniziare a capire.",
-    "Esempio iniziale: la situazione più semplice per familiarizzare.",
-    "Caso base: l'applicazione più immediata del concetto.",
-    "Primo scenario: vediamo come funziona in pratica."
+    "Primo esempio: un caso semplice che illustra il principio base.",
+    "Per iniziare, consideriamo questa situazione elementare.",
+    "Esempio introduttivo: il concetto nella sua forma più immediata.",
+    "Caso base: come appare il principio in una situazione semplice."
   ],
   esempio2: [
-    "Secondo esempio: un caso leggermente più complesso.",
-    "Variante pratica: un altro scenario per consolidare la comprensione.",
-    "Esempio avanzato: applicazione in una situazione diversa.",
-    "Caso alternativo: altra modalità di utilizzo del concetto."
+    "Secondo esempio: lo stesso principio in un contesto leggermente diverso.",
+    "Un'altra applicazione: il concetto si manifesta anche in questa situazione.",
+    "Variante pratica: stesso principio, contesto differente.",
+    "Per consolidare, ecco un altro caso in cui il principio è visibile."
   ],
   comeApplicarlo: [
-    "Come applicare questo concetto: i passi concreti da seguire.",
-    "Istruzioni pratiche: ecco come mettere in pratica quanto appreso.",
-    "Applicazione step-by-step: dalla teoria all'azione.",
-    "Come usarlo: traduzione pratica del concetto in azioni.",
-    "Guida all'applicazione: cosa fare per implementarlo subito."
+    "Per applicare questa conoscenza, seguire questi passaggi fondamentali.",
+    "Traduzione pratica: ecco come mettere in pratica il principio appreso.",
+    "Passaggi per l'applicazione: dalla comprensione teorica all'uso concreto.",
+    "Come utilizzare questa conoscenza: le fasi operative essenziali.",
+    "Guida all'applicazione pratica del concetto appena illustrato."
   ],
   come_applicarlo: [
-    "I passaggi per applicare il concetto nella tua realtà.",
-    "Dalla teoria alla pratica: ecco come procedere.",
-    "Implementazione pratica: le azioni concrete da compiere.",
-    "Come tradurre in pratica: istruzioni operative."
+    "I passaggi per tradurre la teoria in pratica.",
+    "Come procedere: le azioni concrete per applicare il principio.",
+    "Istruzioni operative: dalla conoscenza all'implementazione.",
+    "Per mettere in pratica questo concetto, considerare questi step."
   ],
   erroreComune: [
-    "L'errore frequente da evitare: cosa sbagliano quasi tutti.",
-    "Trappola comune: l'errore in cui cadono i principianti.",
-    "Errore tipico: cosa NON fare quando applichi questo concetto.",
-    "Lo sbaglio da evitare: perché molti falliscono e come evitarlo."
+    "Un errore frequente è confondere questo principio con concetti simili ma diversi.",
+    "Attenzione: molti commettono l'errore di applicare questo concetto in modo troppo rigido.",
+    "Errore tipico: sottovalutare l'importanza del contesto nell'applicazione.",
+    "Una trappola comune è pensare che questo principio sia universale senza eccezioni."
   ],
   errore_comune: [
-    "L'errore più diffuso: cosa porta fuori strada chi inizia.",
-    "Trappola classica: l'inganno in cui cadono molti.",
-    "Sbaglio frequente: cosa evitare per non compromettere i risultati.",
-    "L'errore da non commettere: impara dagli sbagli altrui."
+    "L'errore più diffuso riguarda l'applicazione meccanica senza considerare le variabili.",
+    "Un malinteso frequente: credere che il principio funzioni sempre allo stesso modo.",
+    "Attenzione a non confondere questo concetto con altri apparentemente simili.",
+    "Errore ricorrente: ignorare le condizioni necessarie per l'applicazione corretta."
   ],
   modulo: [
-    "Questo modulo formativo copre: contenuto e obiettivi specifici.",
-    "Panoramica del modulo: cosa affronteremo e perché è importante.",
-    "Contenuto formativo: gli argomenti che esploreremo insieme.",
-    "Focus del modulo: le competenze che svilupperai qui."
+    "Questo modulo tratta: i concetti fondamentali e le loro applicazioni pratiche.",
+    "Contenuto della sezione: principi teorici ed esempi illustrativi.",
+    "In questo modulo vengono esplorati i fondamenti dell'argomento.",
+    "Focus tematico: gli elementi essenziali per comprendere l'argomento."
   ],
   modulo1: [
-    "Modulo 1 - Le basi: fondamenta essenziali per iniziare.",
-    "Primo modulo: i concetti introduttivi indispensabili.",
-    "Modulo iniziale: le nozioni di base da padroneggiare.",
-    "Fondamenti: il punto di partenza del tuo percorso formativo."
+    "Modulo 1 - Fondamenti: i concetti base necessari per la comprensione.",
+    "Primo modulo: introduzione ai principi teorici essenziali.",
+    "Base teorica: le nozioni fondamentali da cui partire.",
+    "Fondamenti: i concetti introduttivi che costituiscono le basi."
   ],
   modulo2: [
-    "Modulo 2 - Approfondimento: costruiamo sulle basi acquisite.",
-    "Secondo modulo: portiamo le competenze a un livello superiore.",
-    "Modulo intermedio: dalla teoria alla pratica avanzata.",
-    "Sviluppo: evoluzione delle competenze del modulo precedente."
+    "Modulo 2 - Approfondimento: espansione dei concetti introdotti.",
+    "Secondo modulo: esplorazione più dettagliata dei principi.",
+    "Sviluppo tematico: ampliamento della comprensione teorica.",
+    "Approfondimento: connessioni tra i concetti e casi più complessi."
   ],
   modulo3: [
-    "Modulo 3 - Padronanza: integrazione e applicazione avanzata.",
-    "Terzo modulo: verso la maestria completa.",
-    "Modulo avanzato: affiniamo le competenze acquisite.",
-    "Completamento: le ultime nozioni per la padronanza totale."
+    "Modulo 3 - Applicazioni avanzate: casi complessi e integrazioni.",
+    "Terzo modulo: sintesi dei concetti e applicazioni sofisticate.",
+    "Livello avanzato: integrazione dei principi in scenari articolati.",
+    "Completamento: le nozioni che permettono una padronanza completa dell'argomento."
   ],
   cosaImparerai: [
-    "Cosa imparerai: le competenze specifiche che acquisirai.",
-    "Alla fine saprai: le abilità concrete che porterai via.",
-    "Obiettivi di apprendimento: cosa sarai in grado di fare.",
-    "Competenze in uscita: il valore che otterrai da questo percorso.",
-    "I tuoi takeaway: cosa cambierà nel tuo modo di lavorare."
+    "Questa sezione trasmette: conoscenze teoriche e capacità di applicazione pratica.",
+    "Al termine, il concetto sarà chiaro nella teoria e riconoscibile nella pratica.",
+    "Conoscenze trattate: principi fondamentali e metodi di applicazione.",
+    "Gli argomenti coperti includono: definizioni, esempi e modalità d'uso.",
+    "Contenuto formativo: teoria, esempi illustrativi e indicazioni pratiche."
   ],
   cosa_imparerai: [
-    "Le competenze che svilupperai seguendo questo percorso.",
-    "Cosa porterai a casa: abilità pratiche e conoscenze teoriche.",
-    "Il tuo apprendimento: cosa saprai e saprai fare alla fine.",
-    "Risultati formativi: le capacità che acquisirai."
+    "Questa sezione copre: concetti teorici e loro traduzione operativa.",
+    "Argomenti trattati: principi base, esempi e applicazioni concrete.",
+    "La comprensione acquisita permetterà di riconoscere e applicare il principio.",
+    "Contenuti: fondamenti teorici accompagnati da casi esemplificativi."
   ],
   materiali: [
-    "Materiali necessari: cosa ti serve per seguire questa lezione.",
-    "Strumenti e risorse: prepara questi materiali prima di iniziare.",
-    "Cosa ti serve: l'elenco dei materiali per l'esercitazione pratica.",
-    "Attrezzatura richiesta: assicurati di avere tutto a disposizione.",
-    "Preparazione: i materiali da avere pronti."
+    "Materiali utili: risorse consigliate per approfondire l'argomento.",
+    "Strumenti e risorse: elementi che facilitano la comprensione pratica.",
+    "Risorse suggerite: materiali di supporto per l'approfondimento.",
+    "Per la pratica, possono essere utili i seguenti strumenti.",
+    "Risorse complementari: materiali consigliati per l'esercitazione."
   ],
   istruzioni: [
-    "Istruzioni per l'esercizio: segui questi passaggi con attenzione.",
-    "Come procedere: le indicazioni step-by-step per l'esercitazione.",
-    "Guida pratica: istruzioni dettagliate per completare l'attività.",
-    "Passaggi operativi: cosa fare e in che ordine.",
-    "Procedura: le istruzioni da seguire passo dopo passo."
+    "Istruzioni: i passaggi da seguire per completare l'esercitazione.",
+    "Come procedere: indicazioni passo-passo per l'attività pratica.",
+    "Guida operativa: sequenza di azioni per l'esercizio.",
+    "Passaggi: le fasi da seguire nell'ordine indicato.",
+    "Procedura: le istruzioni dettagliate per l'attività."
   ],
   erroriDaEvitare: [
-    "Errori da evitare: le trappole in cui non devi cadere.",
-    "Cosa NON fare: gli sbagli più comuni e come prevenirli.",
-    "Attenzione a: gli errori che compromettono il risultato.",
-    "Evita questi errori: impara dalle esperienze di chi ti ha preceduto."
+    "Errori da evitare: gli sbagli più comuni nell'applicazione del concetto.",
+    "Attenzione: questi sono gli errori tipici che compromettono i risultati.",
+    "Trappole frequenti: situazioni in cui è facile sbagliare.",
+    "Per ottenere risultati corretti, evitare questi errori ricorrenti."
   ],
   errori_da_evitare: [
-    "Gli sbagli più frequenti: cosa evitare assolutamente.",
-    "Errori tipici da non commettere durante l'esercizio.",
-    "Le trappole comuni: riconoscile ed evitale.",
-    "Cosa può andare storto: i rischi da tenere d'occhio."
+    "Gli sbagli più frequenti riguardano l'applicazione senza verificare le condizioni.",
+    "Errori tipici: incomprensioni che portano a risultati non corretti.",
+    "Attenzione a queste trappole comuni nell'applicazione pratica.",
+    "Criticità da evitare: gli errori che invalidano il processo."
   ],
   risultatoAtteso: [
-    "Il risultato atteso: cosa dovresti ottenere seguendo correttamente.",
-    "Cosa aspettarsi: il risultato finale se esegui bene.",
-    "Output previsto: ecco come dovrebbe apparire il risultato.",
-    "Traguardo: il risultato concreto che stai cercando di raggiungere."
+    "Risultato atteso: ecco cosa si ottiene applicando correttamente il principio.",
+    "Esito previsto: il risultato che indica un'applicazione corretta.",
+    "Se il procedimento è corretto, il risultato dovrebbe apparire così.",
+    "Parametro di verifica: questo è l'esito che conferma la corretta esecuzione."
   ],
   risultato_atteso: [
-    "Il risultato finale che otterrai applicando correttamente.",
-    "Cosa dovresti vedere/ottenere alla fine dell'esercizio.",
-    "L'esito atteso: il parametro per verificare se hai fatto bene.",
-    "Risultato target: il benchmark di successo."
+    "Il risultato corretto indica che il principio è stato applicato propriamente.",
+    "Esito di riferimento: ciò che dovrebbe emergere dall'applicazione.",
+    "Benchmark: il risultato che indica successo nell'esecuzione.",
+    "Verifica: questo è l'esito che conferma la comprensione del concetto."
   ],
   perChiE: [
-    "Per chi è questo contenuto: il profilo ideale di chi ne beneficerà.",
-    "Questo percorso è per te se: caratteristiche del partecipante ideale.",
-    "A chi è rivolto: le persone che trarranno massimo valore.",
-    "Destinatari ideali: chi dovrebbe seguire questo contenuto."
+    "Questa conoscenza è utile a chi lavora con questi argomenti o contesti.",
+    "Rilevante per: professionisti e studenti che si occupano di questo ambito.",
+    "Questa sezione è particolarmente utile per chi desidera approfondire l'argomento.",
+    "Chi beneficia di questa conoscenza: chiunque operi in contesti dove il principio è applicabile."
   ],
   per_chi_e: [
-    "Per chi è pensato questo modulo: il target ideale.",
-    "Questo contenuto è perfetto per chi: prerequisiti e caratteristiche.",
-    "A chi si rivolge: i profili che ne beneficeranno di più.",
-    "Partecipanti ideali: chi otterrà i migliori risultati."
+    "Utile per chi vuole comprendere a fondo questo argomento.",
+    "Questa sezione è pensata per chi ha bisogno di basi solide sull'argomento.",
+    "Rilevante per: chi si occupa professionalmente o accademicamente di questi temi.",
+    "Indicato per chi desidera una comprensione approfondita del principio."
   ],
   perChi: [
-    "Questo è per: il tipo di persona che trarrà maggior beneficio.",
-    "Ideale per chi: caratteristiche e situazioni del partecipante.",
-    "Rivolto a: le persone che si riconosceranno in questo contenuto.",
-    "Target: chi dovrebbe assolutamente seguire questo percorso."
+    "Questa conoscenza è rilevante per chi opera in ambiti dove il principio si applica.",
+    "Utile per chiunque voglia comprendere meglio l'argomento trattato.",
+    "Indicato per chi cerca una comprensione solida dei fondamenti.",
+    "Rilevante per professionisti, studenti e appassionati dell'argomento."
   ],
   domanda: [
-    "Domanda di verifica: testa la tua comprensione del concetto.",
-    "Quiz: rispondi per verificare se hai capito correttamente.",
-    "Verifica: mettiti alla prova con questa domanda.",
-    "Test di comprensione: dimostra di aver interiorizzato il concetto."
+    "Domanda di riflessione: come si applica questo concetto nel caso descritto?",
+    "Quesito: quale principio spiega il fenomeno presentato?",
+    "Per verificare la comprensione: in quale situazione si applica questo concetto?",
+    "Riflessione: come si manifesterebbe questo principio in un contesto diverso?"
   ],
   domanda1: [
-    "Prima domanda: iniziamo a verificare la comprensione.",
-    "Domanda 1: il primo test delle tue conoscenze.",
-    "Quesito iniziale: rispondi per verificare le basi.",
-    "Prima verifica: hai capito il concetto fondamentale?"
+    "Prima domanda: qual è il principio fondamentale trattato?",
+    "Quesito 1: come si definisce il concetto chiave di questa sezione?",
+    "Per iniziare: quale elemento distingue questo concetto da altri simili?",
+    "Domanda introduttiva: qual è la caratteristica principale del principio?"
   ],
   domanda2: [
-    "Seconda domanda: approfondiamo la verifica.",
-    "Domanda 2: test su un aspetto più specifico.",
-    "Quesito intermedio: quanto hai compreso?",
-    "Seconda verifica: consolidiamo la comprensione."
+    "Seconda domanda: come si applica il principio nell'esempio presentato?",
+    "Quesito 2: quale condizione è necessaria per l'applicazione corretta?",
+    "Per approfondire: in che modo il contesto influenza l'applicazione?",
+    "Domanda di analisi: quali variabili determinano l'esito?"
   ],
   domanda3: [
-    "Terza domanda: verifica finale della comprensione.",
-    "Domanda 3: l'ultimo test prima di proseguire.",
-    "Quesito avanzato: applica quanto hai appreso.",
-    "Verifica finale: sei pronto per il prossimo modulo?"
+    "Terza domanda: come si riconosce un'applicazione corretta del principio?",
+    "Quesito 3: quale errore comune è associato a questo concetto?",
+    "Per completare: come si integra questo principio con quelli precedenti?",
+    "Domanda conclusiva: quali sono le implicazioni pratiche del concetto?"
   ],
   risposte: [
-    "Risposte al quiz: verifica se hai risposto correttamente.",
-    "Soluzioni: ecco le risposte corrette alle domande.",
-    "Risposte corrette: confronta con le tue risposte.",
-    "Chiave di correzione: le risposte esatte e la loro spiegazione."
+    "Risposte: ecco le soluzioni corrette con le relative spiegazioni.",
+    "Soluzioni: le risposte e il ragionamento che le supporta.",
+    "Chiave di lettura: le risposte corrette e perché sono tali.",
+    "Verifica: confronta le tue risposte con queste soluzioni."
   ],
   spiegazione: [
-    "Spiegazione delle risposte: perché queste sono le risposte corrette.",
-    "Il ragionamento: come si arriva alla risposta giusta.",
-    "Perché è corretto: la logica dietro ogni risposta.",
-    "Approfondimento: la spiegazione dettagliata di ogni soluzione.",
-    "Chiarimento: cosa rende corretta o sbagliata ogni opzione."
+    "Spiegazione: il ragionamento che porta alla risposta corretta.",
+    "Perché questa è la risposta: la logica sottostante alla soluzione.",
+    "Il ragionamento: come si arriva alla conclusione corretta.",
+    "Analisi della risposta: i passaggi logici che la giustificano.",
+    "Chiarimento: cosa rende questa la risposta appropriata."
   ],
   takeaway: [
-    "Il punto chiave da ricordare: la lezione più importante.",
-    "Takeaway principale: cosa portare via da questa sezione.",
-    "Da ricordare: il concetto essenziale da non dimenticare.",
-    "Il messaggio chiave: l'idea centrale da interiorizzare.",
-    "Punto focale: ciò che devi assolutamente ricordare."
+    "Concetto chiave da ricordare: il principio fondamentale di questa sezione.",
+    "Sintesi: l'idea centrale che riassume l'intero argomento.",
+    "Il punto essenziale: ciò che rimane dopo aver compreso l'argomento.",
+    "Principio da ricordare: la nozione che sintetizza la sezione.",
+    "In sintesi: il concetto fondamentale da portare via."
   ],
   // === STORYTELLING SECTIONS ===
   situazione: [
@@ -2782,16 +2782,48 @@ IMPORTANTE: Sviluppa il contenuto ESCLUSIVAMENTE su questo argomento specifico. 
 
   // Build platform context (schema structure is now handled dynamically in getStructuredContentInstructions)
   let platformSchemaContext = "";
+  // Detect educational mode for formazione category
+  const isEducationalMode = postCategory === "formazione";
+  
   if (targetPlatform || postSchema) {
     const platformNames: Record<string, string> = { instagram: "Instagram", x: "X (Twitter)", linkedin: "LinkedIn" };
-    const categoryNames: Record<string, string> = { ads: "Inserzioni (Ads)", valore: "Post di Valore", altri: "Altri Post" };
+    const categoryNames: Record<string, string> = { ads: "Inserzioni (Ads)", valore: "Post di Valore", formazione: "Contenuto Formativo", altri: "Altri Post" };
+    
+    // Educational mode instructions - removes all sales language
+    const educationalModeInstructions = isEducationalMode ? `
+
+🎓 MODALITÀ EDUCATIVA ATTIVA - REGOLE FONDAMENTALI:
+⚠️ QUESTO È UN CONTENUTO FORMATIVO PURO - NON È UN POST DI VENDITA
+
+COSA FARE:
+- Insegna un concetto, una tecnica o un principio UNIVERSALE
+- Condividi conoscenza che il lettore può applicare SUBITO, indipendentemente da te
+- Spiega il "perché" dietro le cose, non solo il "cosa"
+- Usa esempi pratici e replicabili da chiunque
+- Offri valore GRATUITO senza aspettarti nulla in cambio
+- Tono da insegnante generoso che vuole davvero aiutare
+
+COSA NON FARE:
+- MAI menzionare "il mio metodo", "la mia tecnica", "il mio sistema"
+- MAI fare riferimento ai tuoi servizi, corsi o offerte
+- MAI usare linguaggio di vendita mascherato da educazione
+- MAI creare scarsità o urgenza ("solo per pochi", "prima che sia tardi")
+- MAI posizionarti come "l'unico che può aiutarti"
+- EVITA CTA commerciali - se serve una CTA, usa solo "Salva questo post" o "Condividi con chi ne ha bisogno"
+
+TONO CORRETTO:
+"Ecco come funziona..." invece di "Ecco come io faccio..."
+"Questo principio spiega..." invece di "Il mio metodo si basa su..."
+"Un errore comune è..." invece di "I miei clienti prima sbagliavano..."
+"Prova a fare così..." invece di "Contattami per sapere come..."
+` : "";
     
     platformSchemaContext = `
 
 📱 PIATTAFORMA TARGET: ${platformNames[targetPlatform || "instagram"] || targetPlatform}
 📝 TIPO POST: ${categoryNames[postCategory || "valore"] || postCategory}
 🔢 LIMITE CARATTERI: ${charLimit || 2200} caratteri MAX per il copy principale
-${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}`;
+${schemaLabel ? `📋 SCHEMA SELEZIONATO: ${schemaLabel}` : ""}${educationalModeInstructions}`;
   }
 
   // Generate writing style prompt section - prominently placed in main prompt
