@@ -157,6 +157,9 @@ export const users = pgTable("users", {
   mustChangePassword: boolean("must_change_password").default(false), // Force password change on first login (used by Stripe payment automations)
   tempPassword: text("temp_password"), // Temporary password for auto-created accounts (cleared when user changes password)
 
+  // Monthly consultation limit (for clients - controlled by consultant)
+  monthlyConsultationLimit: integer("monthly_consultation_limit"), // null = unlimited, number = max consultations per month
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
