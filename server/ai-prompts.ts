@@ -447,11 +447,13 @@ ${userContext.consultations ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${userContext.consultations.monthlyLimit ? `
-⚡ LIMITE CONSULENZE MENSILE
-- Limite: ${userContext.consultations.monthlyLimit.limit} consulenze/mese
-- Utilizzate: ${userContext.consultations.monthlyLimit.used}/${userContext.consultations.monthlyLimit.limit}
-- Disponibili: ${userContext.consultations.monthlyLimit.remaining}
-- ${userContext.consultations.monthlyLimit.isLimitReached ? '🚫 LIMITE RAGGIUNTO - Non è possibile prenotare nuove consulenze per questo mese' : '✅ Il cliente può ancora prenotare consulenze'}
+⚡ LIMITE CONSULENZE MENSILE (${new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric' })})
+- Limite massimo: ${userContext.consultations.monthlyLimit.limit} consulenze/mese
+- Consulenze COMPLETATE questo mese: ${userContext.consultations.monthlyLimit.completed}
+- Consulenze PRENOTATE (future) questo mese: ${userContext.consultations.monthlyLimit.scheduled}
+- TOTALE USATE (completate + prenotate): ${userContext.consultations.monthlyLimit.totalUsed}/${userContext.consultations.monthlyLimit.limit}
+- Ancora DISPONIBILI da prenotare: ${userContext.consultations.monthlyLimit.remaining}
+- ${userContext.consultations.monthlyLimit.isLimitReached ? '🚫 LIMITE RAGGIUNTO - Il cliente NON può prenotare nuove consulenze per questo mese (tutte le slot sono usate o già prenotate)' : '✅ Il cliente può ancora prenotare consulenze'}
 ` : '- Nessun limite mensile impostato (consulenze illimitate)'}
 
 ${userContext.consultations.upcoming && userContext.consultations.upcoming.length > 0 ? `

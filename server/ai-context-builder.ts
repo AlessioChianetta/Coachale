@@ -294,7 +294,9 @@ export interface UserContext {
     }>;
     monthlyLimit: {
       limit: number;
-      used: number;
+      completed: number;
+      scheduled: number;
+      totalUsed: number;
       remaining: number;
       isLimitReached: boolean;
       month: number;
@@ -923,18 +925,25 @@ export async function buildUserContext(
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   
-  const monthlyConsultationCount = allConsultations.filter((c: any) => {
+  // Get consultations for this month, separated by status
+  const thisMonthConsultations = allConsultations.filter((c: any) => {
     const scheduledAt = new Date(c.scheduledAt);
     return (c.status === 'scheduled' || c.status === 'completed') &&
            scheduledAt >= startOfMonth &&
            scheduledAt <= endOfMonth;
-  }).length;
+  });
+  
+  const completedThisMonth = thisMonthConsultations.filter((c: any) => c.status === 'completed').length;
+  const scheduledThisMonth = thisMonthConsultations.filter((c: any) => c.status === 'scheduled').length;
+  const totalUsedThisMonth = completedThisMonth + scheduledThisMonth;
 
   const monthlyLimitInfo = monthlyConsultationLimit !== null ? {
     limit: monthlyConsultationLimit,
-    used: monthlyConsultationCount,
-    remaining: Math.max(0, monthlyConsultationLimit - monthlyConsultationCount),
-    isLimitReached: monthlyConsultationCount >= monthlyConsultationLimit,
+    completed: completedThisMonth,
+    scheduled: scheduledThisMonth,
+    totalUsed: totalUsedThisMonth,
+    remaining: Math.max(0, monthlyConsultationLimit - totalUsedThisMonth),
+    isLimitReached: totalUsedThisMonth >= monthlyConsultationLimit,
     month: now.getMonth() + 1,
     year: now.getFullYear()
   } : null;
