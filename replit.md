@@ -46,7 +46,13 @@ Key enhancements include:
   - Hook max 125 characters (Meta Ads visibility constraint)
   - 10 hook pattern rotation (domanda, statistica, storia, controintuitivo, problema, curiosità, social proof, us-vs-them, urgenza, provocazione)
   - 4-dimension angle rotation (paura/desiderio, logico/emotivo, 1a/3a persona, diretto/storytelling)
-  - Dynamic section instructions with 3-5 variants per section
+  - 100+ dynamic section instruction variants (3-5 per section) covering all 48 schemas:
+    - ADS (24): pain, benefit, obiezione, confutazione, offerta, urgenza, promessa, prova, dimostrazione, nuovoModo, provaSociale, prima, dopo, ponte, vincolo
+    - VALORE (20+): mito, percheFalso, regolaVera, cosaAnalizziamo, coseFatteBene, daMigliorare, template, checklist, step1-5, casoReale, lezione, principio
+    - FORMAZIONE (34): obiettivo, concettoChiave, esempio, comeApplicarlo, erroreComune, modulo, cosaImparerai, materiali, istruzioni, domanda, risposte, spiegazione, takeaway
+    - STORYTELLING (13): situazione, tensione, decisione, risultato, ostacolo, puntoPartenza, azioni, cosaOdiavo, cosaCambiato, comeFarlo, chiSono, miniStoria
+    - ENGAGEMENT (11): hotTake, opinione, claim, motivo, perche, domandaFinale, recap, ctaSoft, prossimaMossa, cosaStaiFacendo
+  - getRandomSectionGuideline function with camelCase/snake_case normalization and fallback to static guidelines
   - Enhanced anti-repetition with pattern detection, fingerprint analysis, and recommendations
   - Content Topics system with pillar organization and usage tracking
   - AI compression for content exceeding platform limits (90% target, 0.3 temperature for consistency)
