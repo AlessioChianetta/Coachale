@@ -22,6 +22,19 @@ export interface PlatformConfig {
   charLimit?: number;
 }
 
+// Per-day configuration (allows overriding platform settings for specific days)
+export interface PerDayConfig {
+  date: string;
+  postCategory: "ads" | "valore" | "formazione" | "altri";
+  postSchema: string;
+  schemaStructure?: string;
+  schemaLabel?: string;
+  mediaType: "photo" | "video" | "carousel" | "text";
+  copyType: "short" | "long";
+  writingStyle: string;
+  hasExistingPosts?: number;
+}
+
 export interface AutopilotConfig {
   consultantId: string;
   startDate: string;  // YYYY-MM-DD
@@ -31,6 +44,9 @@ export interface AutopilotConfig {
     x?: PlatformConfig;
     linkedin?: PlatformConfig;
   };
+  // Per-day configuration (keyed by date YYYY-MM-DD, then by platform)
+  // Structure: perDayConfig[date][platform] = PerDayConfig
+  perDayConfig?: Record<string, Record<string, PerDayConfig>>;
   // Global fallback values (used when platform-specific values are not set)
   postSchema?: string;
   schemaStructure?: string;
@@ -70,6 +86,8 @@ export interface AutopilotProgress {
   completed: number;
   currentDate: string;
   currentPlatform: string;
+  currentDayIndex: number;
+  totalDays: number;
   status: "running" | "completed" | "error";
   error?: string;
 }
@@ -267,23 +285,29 @@ export async function generateAutopilotBatch(
     
     console.log(`[AUTOPILOT] Starting batch generation: ${totalPosts} posts, ${dates.length} days (filtered from ${allDates.length}), platforms: ${enabledPlatforms.join(", ")}`);
     
-    for (const date of dates) {
+    const totalDays = dates.length;
+    
+    for (let dayIndex = 0; dayIndex < dates.length; dayIndex++) {
+      const date = dates[dayIndex];
+      
       for (const platform of enabledPlatforms) {
+        // Get per-day, per-platform configuration if available
+        const dayConfig = config.perDayConfig?.[date]?.[platform];
         const platformSettings = platforms[platform as keyof typeof platforms];
         if (!platformSettings?.enabled) continue;
         
         const postsPerDay = platformSettings.postsPerDay;
         const dbPlatform = PLATFORM_DB_MAP[platform] || "instagram";
         
-        // ===== USE PER-PLATFORM CONFIG with global fallback =====
-        // Priority: platformSettings value > global config value > default
-        const platformWritingStyle = platformSettings.writingStyle || passedWritingStyle;
-        const platformPostCategory = platformSettings.postCategory || postCategory || "ads";
-        const platformPostSchema = platformSettings.postSchema || postSchema;
-        const platformSchemaStructure = platformSettings.schemaStructure || schemaStructure;
-        const platformSchemaLabel = platformSettings.schemaLabel || schemaLabel;
-        const platformMediaType = platformSettings.mediaType || passedMediaType;
-        const platformCopyType = platformSettings.copyType || passedCopyType;
+        // ===== USE PER-DAY CONFIG > PER-PLATFORM CONFIG > global fallback =====
+        // Priority: dayConfig value > platformSettings value > global config value > default
+        const platformWritingStyle = dayConfig?.writingStyle || platformSettings.writingStyle || passedWritingStyle;
+        const platformPostCategory = dayConfig?.postCategory || platformSettings.postCategory || postCategory || "ads";
+        const platformPostSchema = dayConfig?.postSchema || platformSettings.postSchema || postSchema;
+        const platformSchemaStructure = dayConfig?.schemaStructure || platformSettings.schemaStructure || schemaStructure;
+        const platformSchemaLabel = dayConfig?.schemaLabel || platformSettings.schemaLabel || schemaLabel;
+        const platformMediaType = dayConfig?.mediaType || platformSettings.mediaType || passedMediaType;
+        const platformCopyType = dayConfig?.copyType || platformSettings.copyType || passedCopyType;
         const platformCharLimit = platformSettings.charLimit;
         
         // Get schedule times for this platform
@@ -354,6 +378,8 @@ export async function generateAutopilotBatch(
           completed: generated,
           currentDate: date,
           currentPlatform: platform,
+          currentDayIndex: dayIndex + 1,
+          totalDays: totalDays,
           status: "running",
         });
         
@@ -768,6 +794,8 @@ export async function generateAutopilotBatch(
       completed: generated,
       currentDate: endDate,
       currentPlatform: "completed",
+      currentDayIndex: totalDays,
+      totalDays: totalDays,
       status: "completed",
     });
     
@@ -792,6 +820,8 @@ export async function generateAutopilotBatch(
       completed: 0,
       currentDate: "",
       currentPlatform: "",
+      currentDayIndex: 0,
+      totalDays: 0,
       status: "error",
       error: error.message,
     });

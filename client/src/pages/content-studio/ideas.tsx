@@ -604,7 +604,7 @@ export default function ContentStudioIdeas() {
   const [autopilotEndDate, setAutopilotEndDate] = useState("");
   const [autopilotPostsPerDay, setAutopilotPostsPerDay] = useState(2);
   const [isAutopilotGenerating, setIsAutopilotGenerating] = useState(false);
-  const [autopilotProgress, setAutopilotProgress] = useState<{total: number; completed: number} | null>(null);
+  const [autopilotProgress, setAutopilotProgress] = useState<{total: number; completed: number; currentDate?: string; currentPlatform?: string; currentDayIndex?: number; totalDays?: number} | null>(null);
 
   // Multi-platform autopilot config
   interface AutopilotPlatformConfig {
@@ -617,6 +617,17 @@ export default function ContentStudioIdeas() {
     writingStyle: string;
   }
 
+  // Per-day configuration for autopilot
+  interface DayConfig {
+    date: string;
+    postCategory: "ads" | "valore" | "formazione" | "altri";
+    postSchema: string;
+    mediaType: "photo" | "video" | "carousel" | "text";
+    copyType: "short" | "long";
+    writingStyle: string;
+    hasExistingPosts?: number;
+  }
+
   const [autopilotPlatforms, setAutopilotPlatforms] = useState<Record<string, AutopilotPlatformConfig>>({
     instagram: { enabled: true, postsPerDay: 2, postCategory: "ads", postSchema: "originale", mediaType: "photo", copyType: "long", writingStyle: "default" },
     x: { enabled: false, postsPerDay: 1, postCategory: "ads", postSchema: "originale", mediaType: "text", copyType: "short", writingStyle: "default" },
@@ -625,6 +636,14 @@ export default function ContentStudioIdeas() {
   const [autopilotGenerateImages, setAutopilotGenerateImages] = useState(false);
   const [autopilotPublishToPubler, setAutopilotPublishToPubler] = useState(false);
   const [autopilotReviewMode, setAutopilotReviewMode] = useState(false);
+  
+  // Per-day configuration state (keyed by date YYYY-MM-DD)
+  const [autopilotPerDayConfig, setAutopilotPerDayConfig] = useState<Record<string, DayConfig>>({});
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [showPerDayConfig, setShowPerDayConfig] = useState(false);
+  
+  // Track if Brand Assets have been loaded to autopilot
+  const [brandAssetsLoadedForAutopilot, setBrandAssetsLoadedForAutopilot] = useState(false);
   const [expandedAutopilotPlatforms, setExpandedAutopilotPlatforms] = useState<Set<string>>(new Set(["instagram"]));
 
   const toggleAutopilotPlatformExpanded = (platform: string) => {
@@ -648,6 +667,85 @@ export default function ContentStudioIdeas() {
 
   const getAutopilotPlatformSchemas = (platform: string, category: string) => {
     return POST_SCHEMAS[platform]?.[category] || [];
+  };
+
+  // Helper: check if date is weekend (Saturday=6, Sunday=0)
+  const isWeekend = (dateStr: string): boolean => {
+    const date = new Date(dateStr);
+    const day = date.getDay();
+    return day === 0 || day === 6;
+  };
+
+  // Helper: format date to Italian format (es. "29 Gen")
+  const formatDateItalian = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const months = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+    return `${date.getDate()} ${months[date.getMonth()]}`;
+  };
+
+  // Helper: get weekday name in Italian
+  const getWeekdayItalian = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const weekdays = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+    return weekdays[date.getDay()];
+  };
+
+  // Helper: generate dates array between start and end (excluding weekends)
+  const getWorkingDates = (startDate: string, endDate: string): string[] => {
+    if (!startDate || !endDate) return [];
+    const dates: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split("T")[0];
+      if (!isWeekend(dateStr)) {
+        dates.push(dateStr);
+      }
+    }
+    return dates;
+  };
+
+  // Toggle day expanded
+  const toggleDayExpanded = (date: string) => {
+    setExpandedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(date)) {
+        newSet.delete(date);
+      } else {
+        newSet.add(date);
+      }
+      return newSet;
+    });
+  };
+
+  // Update per-day config
+  const updateDayConfig = (date: string, updates: Partial<DayConfig>) => {
+    setAutopilotPerDayConfig(prev => ({
+      ...prev,
+      [date]: { ...prev[date], ...updates }
+    }));
+  };
+
+  // Get default config from the first enabled platform
+  const getDefaultDayConfig = (): Omit<DayConfig, 'date'> => {
+    const enabledPlatform = Object.entries(autopilotPlatforms).find(([_, config]) => config.enabled);
+    if (enabledPlatform) {
+      const [_, config] = enabledPlatform;
+      return {
+        postCategory: config.postCategory,
+        postSchema: config.postSchema,
+        mediaType: config.mediaType,
+        copyType: config.copyType,
+        writingStyle: config.writingStyle,
+      };
+    }
+    return {
+      postCategory: "ads",
+      postSchema: "originale",
+      mediaType: "photo",
+      copyType: "long",
+      writingStyle: "default",
+    };
   };
 
   const queryClient = useQueryClient();
@@ -699,6 +797,97 @@ export default function ContentStudioIdeas() {
     },
     linkedin: { post: 3000, article: 125000, description: "Post max 3.000 caratteri" },
   }), [xPremiumSubscription]);
+
+  // Sync autopilot platforms with Brand Assets posting schedule
+  useEffect(() => {
+    if (brandAssetsResponse?.data?.postingSchedule && !brandAssetsLoadedForAutopilot) {
+      const schedule = brandAssetsResponse.data.postingSchedule;
+      
+      setAutopilotPlatforms(prev => ({
+        instagram: {
+          ...prev.instagram,
+          postsPerDay: schedule.instagram?.times?.length || 2,
+          writingStyle: schedule.instagram?.writingStyle || prev.instagram.writingStyle,
+        },
+        x: {
+          ...prev.x,
+          postsPerDay: schedule.x?.times?.length || 1,
+          writingStyle: schedule.x?.writingStyle || prev.x.writingStyle,
+        },
+        linkedin: {
+          ...prev.linkedin,
+          postsPerDay: schedule.linkedin?.times?.length || 1,
+          writingStyle: schedule.linkedin?.writingStyle || prev.linkedin.writingStyle,
+        },
+      }));
+      
+      setBrandAssetsLoadedForAutopilot(true);
+    }
+  }, [brandAssetsResponse, brandAssetsLoadedForAutopilot]);
+
+  // Populate per-day configurations when date range changes
+  useEffect(() => {
+    if (!autopilotStartDate || !autopilotEndDate) {
+      setAutopilotPerDayConfig({});
+      return;
+    }
+    
+    const workingDates = getWorkingDates(autopilotStartDate, autopilotEndDate);
+    const defaultConfig = getDefaultDayConfig();
+    
+    setAutopilotPerDayConfig(prev => {
+      const newConfig: Record<string, DayConfig> = {};
+      workingDates.forEach(date => {
+        if (prev[date]) {
+          newConfig[date] = prev[date];
+        } else {
+          newConfig[date] = {
+            date,
+            ...defaultConfig,
+          };
+        }
+      });
+      return newConfig;
+    });
+  }, [autopilotStartDate, autopilotEndDate, autopilotPlatforms]);
+
+  // Query to check existing posts for conflict detection
+  const { data: existingPostsForDateRange } = useQuery({
+    queryKey: ["/api/content/posts", "date-range-check", autopilotStartDate, autopilotEndDate],
+    queryFn: async () => {
+      if (!autopilotStartDate || !autopilotEndDate) return { data: [] };
+      const response = await fetch(`/api/content/posts?startDate=${autopilotStartDate}&endDate=${autopilotEndDate}&status=scheduled`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { data: [] };
+      return response.json();
+    },
+    enabled: !!autopilotStartDate && !!autopilotEndDate,
+  });
+
+  // Update per-day config with existing post counts
+  useEffect(() => {
+    if (!existingPostsForDateRange?.data) return;
+    
+    const postCountByDate: Record<string, number> = {};
+    existingPostsForDateRange.data.forEach((post: any) => {
+      if (post.scheduledAt) {
+        const dateStr = new Date(post.scheduledAt).toISOString().split("T")[0];
+        postCountByDate[dateStr] = (postCountByDate[dateStr] || 0) + 1;
+      }
+    });
+    
+    setAutopilotPerDayConfig(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(date => {
+        updated[date] = {
+          ...updated[date],
+          hasExistingPosts: postCountByDate[date] || 0,
+        };
+      });
+      return updated;
+    });
+  }, [existingPostsForDateRange]);
 
   // State for saving brand voice
   const [isSavingBrandVoice, setIsSavingBrandVoice] = useState(false);
@@ -1387,6 +1576,24 @@ export default function ContentStudioIdeas() {
         })
       );
       
+      // Build per-day config payload with schema structures - now per platform
+      const perDayConfigPayload: Record<string, Record<string, any>> = {};
+      Object.entries(autopilotPerDayConfig).forEach(([date, dayConfig]) => {
+        perDayConfigPayload[date] = {};
+        
+        // For each enabled platform, build config with correct schema from that platform
+        enabledPlatforms.forEach(([platform, platformConfig]) => {
+          const platformSchemas = POST_SCHEMAS[platform as keyof typeof POST_SCHEMAS]?.[dayConfig.postCategory] || [];
+          const selectedSchema = platformSchemas.find(s => s.value === dayConfig.postSchema);
+          
+          perDayConfigPayload[date][platform] = {
+            ...dayConfig,
+            schemaStructure: selectedSchema?.structure,
+            schemaLabel: selectedSchema?.label,
+          };
+        });
+      });
+      
       const response = await fetch("/api/content/autopilot/generate", {
         method: "POST",
         headers: {
@@ -1397,6 +1604,8 @@ export default function ContentStudioIdeas() {
           startDate: autopilotStartDate,
           endDate: autopilotEndDate,
           platforms: platformsPayload,
+          perDayConfig: perDayConfigPayload,
+          excludeWeekends: true,
           niche: brandVoiceData.niche || topic || "",
           targetAudience: brandVoiceData.targetAudience || targetAudience || "",
           objective: objective,
@@ -1430,7 +1639,14 @@ export default function ContentStudioIdeas() {
               try {
                 const data = JSON.parse(line.slice(6));
                 if (data.total && data.completed !== undefined) {
-                  setAutopilotProgress({ total: data.total, completed: data.completed });
+                  setAutopilotProgress({ 
+                    total: data.total, 
+                    completed: data.completed,
+                    currentDate: data.currentDate,
+                    currentPlatform: data.currentPlatform,
+                    currentDayIndex: data.currentDayIndex,
+                    totalDays: data.totalDays,
+                  });
                 }
                 if (data.status === "completed") {
                   toast({
@@ -2519,6 +2735,194 @@ export default function ContentStudioIdeas() {
                     </div>
                   </div>
 
+                  {/* Per-day configuration section */}
+                  {autopilotStartDate && autopilotEndDate && Object.keys(autopilotPerDayConfig).length > 0 && (
+                    <div className="border-t border-orange-200 dark:border-orange-800 pt-4 mb-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-orange-500" />
+                          <Label className="text-base font-medium">Configurazione per Giorno</Label>
+                          <Badge variant="outline" className="ml-2">
+                            {Object.keys(autopilotPerDayConfig).length} giorni (esclusi weekend)
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowPerDayConfig(!showPerDayConfig)}
+                        >
+                          {showPerDayConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          {showPerDayConfig ? "Nascondi" : "Configura giorni"}
+                        </Button>
+                      </div>
+                      
+                      {showPerDayConfig && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="max-h-80 overflow-y-auto space-y-2 pr-2"
+                        >
+                          {Object.entries(autopilotPerDayConfig)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([date, config], index) => {
+                              const isExpanded = expandedDays.has(date);
+                              const hasConflict = (config.hasExistingPosts || 0) > 0;
+                              const availableSchemas = getAutopilotPlatformSchemas("instagram", config.postCategory);
+                              
+                              return (
+                                <div 
+                                  key={date}
+                                  className={`border rounded-lg transition-all ${
+                                    hasConflict 
+                                      ? "border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-950/20"
+                                      : "border-orange-100 dark:border-orange-900 bg-white dark:bg-gray-900"
+                                  }`}
+                                >
+                                  <div 
+                                    className="flex items-center justify-between p-3 cursor-pointer"
+                                    onClick={() => toggleDayExpanded(date)}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center text-sm font-medium text-orange-600 dark:text-orange-400">
+                                        {index + 1}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">{getWeekdayItalian(date)}</span>
+                                        <span className="text-muted-foreground ml-2">{formatDateItalian(date)}</span>
+                                      </div>
+                                      {hasConflict && (
+                                        <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900 dark:text-amber-300 dark:border-amber-700">
+                                          <AlertCircle className="h-3 w-3 mr-1" />
+                                          {config.hasExistingPosts} post esistenti
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground hidden sm:block">
+                                        {POST_CATEGORIES.find(c => c.value === config.postCategory)?.label}
+                                      </span>
+                                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                    </div>
+                                  </div>
+                                  
+                                  {isExpanded && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: "auto" }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      className="px-3 pb-3 border-t border-orange-100 dark:border-orange-900 pt-3"
+                                    >
+                                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                                        <div>
+                                          <Label className="text-xs">Categoria</Label>
+                                          <Select 
+                                            value={config.postCategory} 
+                                            onValueChange={(v: "ads" | "valore" | "formazione" | "altri") => {
+                                              updateDayConfig(date, { 
+                                                postCategory: v,
+                                                postSchema: "originale"
+                                              });
+                                            }}
+                                          >
+                                            <SelectTrigger className="mt-1 h-8">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {POST_CATEGORIES.map((cat) => (
+                                                <SelectItem key={cat.value} value={cat.value}>
+                                                  <div className="flex items-center gap-2">
+                                                    <cat.icon className="h-3 w-3" />
+                                                    {cat.label}
+                                                  </div>
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs">Schema</Label>
+                                          <Select 
+                                            value={config.postSchema} 
+                                            onValueChange={(v) => updateDayConfig(date, { postSchema: v })}
+                                          >
+                                            <SelectTrigger className="mt-1 h-8">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {availableSchemas.map((schema) => (
+                                                <SelectItem key={schema.value} value={schema.value}>
+                                                  {schema.label}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs">Media</Label>
+                                          <Select 
+                                            value={config.mediaType} 
+                                            onValueChange={(v: "photo" | "video" | "carousel" | "text") => updateDayConfig(date, { mediaType: v })}
+                                          >
+                                            <SelectTrigger className="mt-1 h-8">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="photo"><Camera className="h-3 w-3 inline mr-1" />Foto</SelectItem>
+                                              <SelectItem value="video"><Video className="h-3 w-3 inline mr-1" />Video</SelectItem>
+                                              <SelectItem value="carousel"><Palette className="h-3 w-3 inline mr-1" />Carousel</SelectItem>
+                                              <SelectItem value="text"><Type className="h-3 w-3 inline mr-1" />Testo</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs">Copy</Label>
+                                          <Select 
+                                            value={config.copyType} 
+                                            onValueChange={(v: "short" | "long") => updateDayConfig(date, { copyType: v })}
+                                          >
+                                            <SelectTrigger className="mt-1 h-8">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="short"><Scissors className="h-3 w-3 inline mr-1" />Corto</SelectItem>
+                                              <SelectItem value="long"><AlignLeft className="h-3 w-3 inline mr-1" />Lungo</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs">Stile</Label>
+                                          <Select 
+                                            value={config.writingStyle} 
+                                            onValueChange={(v) => updateDayConfig(date, { writingStyle: v })}
+                                          >
+                                            <SelectTrigger className="mt-1 h-8">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {WRITING_STYLES.map((style) => (
+                                                <SelectItem key={style.value} value={style.value}>
+                                                  {style.icon} {style.label}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </motion.div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="border-t border-orange-200 dark:border-orange-800 pt-4 mb-6">
                     <Label className="text-base font-medium mb-3 block">Opzioni Avanzate</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2539,7 +2943,12 @@ export default function ContentStudioIdeas() {
                         </div>
                         <Switch
                           checked={autopilotPublishToPubler}
-                          onCheckedChange={setAutopilotPublishToPubler}
+                          onCheckedChange={(checked) => {
+                            setAutopilotPublishToPubler(checked);
+                            if (checked) {
+                              setAutopilotReviewMode(false);
+                            }
+                          }}
                         />
                       </div>
                       <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg border border-orange-100 dark:border-orange-900">
@@ -2549,14 +2958,21 @@ export default function ContentStudioIdeas() {
                         </div>
                         <Switch
                           checked={autopilotReviewMode}
-                          onCheckedChange={setAutopilotReviewMode}
+                          onCheckedChange={(checked) => {
+                            setAutopilotReviewMode(checked);
+                            if (checked) {
+                              setAutopilotPublishToPubler(false);
+                            }
+                          }}
                         />
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                       {autopilotReviewMode 
                         ? "I contenuti saranno generati in bozza per la tua revisione." 
-                        : "I contenuti saranno generati e pronti per la pubblicazione."}
+                        : autopilotPublishToPubler
+                          ? "I contenuti saranno pubblicati automaticamente su Publer."
+                          : "I contenuti saranno generati e pronti per la pubblicazione."}
                     </p>
                   </div>
                   
@@ -2583,7 +2999,14 @@ export default function ContentStudioIdeas() {
                       <div className="flex-1">
                         <Progress value={(autopilotProgress.completed / autopilotProgress.total) * 100} />
                         <p className="text-xs text-muted-foreground mt-1">
-                          {autopilotProgress.completed}/{autopilotProgress.total} post generati
+                          {autopilotProgress.currentDate && autopilotProgress.totalDays ? (
+                            <>
+                              Generando giorno {autopilotProgress.currentDayIndex}/{autopilotProgress.totalDays}: {formatDateItalian(autopilotProgress.currentDate)}
+                              {autopilotProgress.currentPlatform && <span className="ml-2">({autopilotProgress.currentPlatform})</span>}
+                            </>
+                          ) : (
+                            <>{autopilotProgress.completed}/{autopilotProgress.total} post generati</>
+                          )}
                         </p>
                       </div>
                     )}

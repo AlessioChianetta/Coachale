@@ -3031,6 +3031,8 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       autoPublish,
       reviewMode,
       advisageSettings,
+      // Per-day configuration
+      perDayConfig,
     } = req.body;
     
     let resolvedPlatforms = platforms;
@@ -3060,6 +3062,7 @@ router.post("/autopilot/generate", authenticateToken, requireRole("consultant"),
       startDate,
       endDate,
       platforms: resolvedPlatforms,
+      perDayConfig,
       postSchema,
       schemaStructure,
       schemaLabel,
