@@ -1379,8 +1379,8 @@ ${writingStyleInstructions[writingStyle] || writingStyleInstructions.default}`;
       const videoFields = isVideo ? `,
   "fullScript": "Script parlato fluido. USA [PAUSA] per pause drammatiche."` : "";
       
-      // Limiti copy in base al tipo - con margine sicurezza 5%
-      const maxTotal = Math.floor(effectiveCharLimit * 0.95); // 5% margine sicurezza
+      // Limiti copy in base al tipo - con margine sicurezza 10%
+      const maxTotal = Math.floor(effectiveCharLimit * 0.90); // 10% margine sicurezza
       // Minimo: 70% del massimo per copy lungo, 50% per copy corto (ma mai più del massimo)
       const minTotal = Math.min(
         isLongCopy ? Math.floor(maxTotal * 0.7) : Math.floor(maxTotal * 0.5),
