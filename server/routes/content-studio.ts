@@ -3556,4 +3556,274 @@ router.post("/autopilot/batches/:batchId/publish", authenticateToken, requireRol
   }
 });
 
+// ============================================================
+// CONTENT TOPICS - Argomenti/Pillar per organizzare i contenuti
+// ============================================================
+
+// GET /api/content/topics - Get all topics for consultant
+router.get("/topics", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { pillar, active } = req.query;
+    
+    let query = db.select()
+      .from(schema.contentTopics)
+      .where(eq(schema.contentTopics.consultantId, consultantId))
+      .orderBy(desc(schema.contentTopics.updatedAt));
+    
+    const topics = await query;
+    
+    let filteredTopics = topics;
+    if (pillar && typeof pillar === 'string') {
+      filteredTopics = filteredTopics.filter(t => t.pillar === pillar);
+    }
+    if (active === 'true') {
+      filteredTopics = filteredTopics.filter(t => t.isActive);
+    }
+    
+    res.json({
+      success: true,
+      data: filteredTopics,
+      count: filteredTopics.length
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-TOPICS] Error fetching topics:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/content/topics - Create a new topic
+router.post("/topics", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { name, pillar, description, keywords, notes } = req.body;
+    
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ success: false, error: "Nome argomento richiesto" });
+    }
+    
+    const [newTopic] = await db.insert(schema.contentTopics)
+      .values({
+        consultantId,
+        name: name.trim(),
+        pillar: pillar || null,
+        description: description || null,
+        keywords: keywords || null,
+        notes: notes || null,
+      })
+      .returning();
+    
+    console.log(`[CONTENT-TOPICS] Created topic: ${newTopic.name} (${newTopic.id})`);
+    
+    res.status(201).json({
+      success: true,
+      data: newTopic
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-TOPICS] Error creating topic:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/content/topics/:id - Update a topic
+router.put("/topics/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const topicId = req.params.id;
+    const { name, pillar, description, keywords, notes, isActive } = req.body;
+    
+    const [existingTopic] = await db.select()
+      .from(schema.contentTopics)
+      .where(and(
+        eq(schema.contentTopics.id, topicId),
+        eq(schema.contentTopics.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!existingTopic) {
+      return res.status(404).json({ success: false, error: "Argomento non trovato" });
+    }
+    
+    const [updatedTopic] = await db.update(schema.contentTopics)
+      .set({
+        name: name !== undefined ? name.trim() : existingTopic.name,
+        pillar: pillar !== undefined ? pillar : existingTopic.pillar,
+        description: description !== undefined ? description : existingTopic.description,
+        keywords: keywords !== undefined ? keywords : existingTopic.keywords,
+        notes: notes !== undefined ? notes : existingTopic.notes,
+        isActive: isActive !== undefined ? isActive : existingTopic.isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentTopics.id, topicId))
+      .returning();
+    
+    res.json({
+      success: true,
+      data: updatedTopic
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-TOPICS] Error updating topic:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/content/topics/:id - Delete a topic
+router.delete("/topics/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const topicId = req.params.id;
+    
+    const [existingTopic] = await db.select()
+      .from(schema.contentTopics)
+      .where(and(
+        eq(schema.contentTopics.id, topicId),
+        eq(schema.contentTopics.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!existingTopic) {
+      return res.status(404).json({ success: false, error: "Argomento non trovato" });
+    }
+    
+    await db.delete(schema.contentTopics)
+      .where(eq(schema.contentTopics.id, topicId));
+    
+    console.log(`[CONTENT-TOPICS] Deleted topic: ${existingTopic.name} (${topicId})`);
+    
+    res.json({
+      success: true,
+      message: "Argomento eliminato"
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-TOPICS] Error deleting topic:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/content/topics/:id/mark-used - Mark topic as used (after content generation)
+router.post("/topics/:id/mark-used", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const topicId = req.params.id;
+    const { platform, postSchema } = req.body;
+    
+    const [existingTopic] = await db.select()
+      .from(schema.contentTopics)
+      .where(and(
+        eq(schema.contentTopics.id, topicId),
+        eq(schema.contentTopics.consultantId, consultantId)
+      ))
+      .limit(1);
+    
+    if (!existingTopic) {
+      return res.status(404).json({ success: false, error: "Argomento non trovato" });
+    }
+    
+    const platformsUsed = existingTopic.platformsUsed || [];
+    const schemasUsed = existingTopic.schemasUsed || [];
+    
+    if (platform && !platformsUsed.includes(platform)) {
+      platformsUsed.push(platform);
+    }
+    if (postSchema && !schemasUsed.includes(postSchema)) {
+      schemasUsed.push(postSchema);
+    }
+    
+    const [updatedTopic] = await db.update(schema.contentTopics)
+      .set({
+        lastUsedAt: new Date(),
+        timesUsed: (existingTopic.timesUsed || 0) + 1,
+        platformsUsed,
+        schemasUsed,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentTopics.id, topicId))
+      .returning();
+    
+    console.log(`[CONTENT-TOPICS] Marked topic as used: ${updatedTopic.name} (times: ${updatedTopic.timesUsed})`);
+    
+    res.json({
+      success: true,
+      data: updatedTopic
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-TOPICS] Error marking topic as used:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/content/topics/pillars - Get unique pillars for consultant
+router.get("/topics/pillars", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const topics = await db.select({ pillar: schema.contentTopics.pillar })
+      .from(schema.contentTopics)
+      .where(and(
+        eq(schema.contentTopics.consultantId, consultantId),
+        isNotNull(schema.contentTopics.pillar)
+      ));
+    
+    const uniquePillars = [...new Set(topics.map(t => t.pillar).filter(Boolean))] as string[];
+    
+    res.json({
+      success: true,
+      data: uniquePillars
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-TOPICS] Error fetching pillars:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/content/topics/suggest - AI suggests topics based on niche/business
+router.get("/topics/suggest", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { niche, count = 5 } = req.query;
+    
+    const [brandAsset] = await db.select()
+      .from(schema.brandAssets)
+      .where(eq(schema.brandAssets.consultantId, consultantId))
+      .limit(1);
+    
+    const businessContext = brandAsset?.nicheDescription || niche || "business generico";
+    
+    const { generateContent } = await getAIProvider(consultantId, "topic-suggest");
+    
+    const prompt = `Sei un esperto di content marketing. Genera ${count} argomenti/topic per creare contenuti social per un business nel settore: "${businessContext}".
+
+Per ogni argomento fornisci:
+- name: Nome breve dell'argomento (max 50 caratteri)
+- pillar: Categoria macro (es. "Educazione", "Behind the Scenes", "Vendita", "Engagement", "Authority")
+- description: Breve descrizione di cosa trattare (max 150 caratteri)
+- keywords: 3-5 parole chiave correlate
+
+Rispondi SOLO con un JSON array valido, senza spiegazioni:
+[{"name": "...", "pillar": "...", "description": "...", "keywords": ["...", "..."]}]`;
+
+    const result = await generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.8, maxOutputTokens: 2000 }
+    });
+    
+    const responseText = result.response.text().trim();
+    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+    
+    if (!jsonMatch) {
+      return res.status(500).json({ success: false, error: "Risposta AI non valida" });
+    }
+    
+    const suggestions = JSON.parse(jsonMatch[0]);
+    
+    res.json({
+      success: true,
+      data: suggestions
+    });
+  } catch (error: any) {
+    console.error("[CONTENT-TOPICS] Error suggesting topics:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

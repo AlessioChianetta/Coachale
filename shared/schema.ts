@@ -8264,6 +8264,7 @@ export const contentIdeas = pgTable("content_ideas", {
   schemaStructure: text("schema_structure"),
   writingStyle: varchar("writing_style", { length: 50 }).default("default").$type<"default" | "conversational" | "direct" | "persuasive" | "custom">(),
   customWritingInstructions: text("custom_writing_instructions"),
+  topicId: uuid("topic_id"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -8271,9 +8272,35 @@ export const contentIdeas = pgTable("content_ideas", {
   statusIdx: index("idx_content_ideas_status").on(table.status),
   developedIdx: index("idx_content_ideas_developed").on(table.developedPostId),
   platformIdx: index("idx_content_ideas_platform").on(table.targetPlatform),
+  topicIdx: index("idx_content_ideas_topic").on(table.topicId),
 }));
 
 export type AwarenessLevel = "unaware" | "problem_aware" | "solution_aware" | "product_aware" | "most_aware";
+
+// Content Topics - Argomenti/Pillar per organizzare i contenuti
+export const contentTopics = pgTable("content_topics", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  pillar: varchar("pillar", { length: 100 }),
+  description: text("description"),
+  keywords: text("keywords").array(),
+  lastUsedAt: timestamp("last_used_at"),
+  timesUsed: integer("times_used").default(0),
+  platformsUsed: text("platforms_used").array().default(sql`'{}'::text[]`),
+  schemasUsed: text("schemas_used").array().default(sql`'{}'::text[]`),
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_content_topics_consultant").on(table.consultantId),
+  pillarIdx: index("idx_content_topics_pillar").on(table.pillar),
+  lastUsedIdx: index("idx_content_topics_last_used").on(table.lastUsedAt),
+}));
+
+export type ContentTopic = typeof contentTopics.$inferSelect;
+export type InsertContentTopic = typeof contentTopics.$inferInsert;
 
 export interface StructuredCopyShort {
   type: "copy_short";
