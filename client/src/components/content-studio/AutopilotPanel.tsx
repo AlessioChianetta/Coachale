@@ -306,6 +306,10 @@ function AutopilotPanel({
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  
+  const [autoGenerateImages, setAutoGenerateImages] = useState(false);
+  const [autoPublish, setAutoPublish] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
 
   const { data: templates, isLoading: templatesLoading } = useQuery<Template[]>({
     queryKey: ["autopilot-templates"],
@@ -846,6 +850,9 @@ function AutopilotPanel({
             optimalTimes: configuredTimes,
             awarenessLevel: localAwarenessLevel,
             sophisticationLevel: localSophisticationLevel,
+            autoGenerateImages,
+            autoPublish,
+            reviewMode,
           }),
         });
 
@@ -1413,6 +1420,71 @@ function AutopilotPanel({
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Opzioni Avanzate - Image Generation & Publish */}
+          <div className="p-4 rounded-lg bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border border-purple-200 dark:border-purple-800 space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="font-medium text-sm text-purple-800 dark:text-purple-300">Opzioni Avanzate</span>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/60 dark:bg-gray-800/60 border border-purple-100 dark:border-purple-900">
+                <div className="flex items-center gap-2">
+                  <Image className="h-4 w-4 text-purple-500" />
+                  <div>
+                    <p className="text-sm font-medium">Genera Immagini AI</p>
+                    <p className="text-xs text-muted-foreground">AdVisage per ogni post</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={autoGenerateImages}
+                  onCheckedChange={setAutoGenerateImages}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/60 dark:bg-gray-800/60 border border-purple-100 dark:border-purple-900">
+                <div className="flex items-center gap-2">
+                  <Rocket className="h-4 w-4 text-blue-500" />
+                  <div>
+                    <p className="text-sm font-medium">Pubblica su Publer</p>
+                    <p className="text-xs text-muted-foreground">Automatico al termine</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={autoPublish}
+                  onCheckedChange={(checked) => {
+                    setAutoPublish(checked);
+                    if (checked) setReviewMode(false);
+                  }}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/60 dark:bg-gray-800/60 border border-purple-100 dark:border-purple-900">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-amber-500" />
+                  <div>
+                    <p className="text-sm font-medium">Modalità Review</p>
+                    <p className="text-xs text-muted-foreground">Approva prima di pubblicare</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={reviewMode}
+                  onCheckedChange={(checked) => {
+                    setReviewMode(checked);
+                    if (checked) setAutoPublish(false);
+                  }}
+                />
+              </div>
+            </div>
+            
+            {autoGenerateImages && (
+              <p className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1.5 mt-2">
+                <Sparkles className="h-3 w-3" />
+                L'AI genererà automaticamente un'immagine per ogni post usando AdVisage. Questo potrebbe richiedere più tempo.
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
