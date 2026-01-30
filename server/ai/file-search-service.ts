@@ -1709,23 +1709,25 @@ export class FileSearchService {
       return null;
     }
 
-    // Convert and validate store names for Google API (must start with "corpora/")
+    // Validate store names - must start with "fileSearchStores/" for Google File Search API
+    // Note: "corpora/" was the OLD Semantic Retriever API format, NOT File Search API
     const validStoreNames = storeNames
       .filter(name => name && typeof name === 'string')
       .map(name => {
-        // Convert fileSearchStores/ prefix to corpora/ (Google API format)
+        // Already in correct format (fileSearchStores/)
         if (name.startsWith('fileSearchStores/')) {
-          const converted = name.replace('fileSearchStores/', 'corpora/');
-          console.log(`🔄 [FileSearch] Converted store name: ${name} → ${converted}`);
-          return converted;
-        }
-        // Already in correct format
-        if (name.startsWith('corpora/')) {
+          console.log(`✅ [FileSearch] Store name valid: ${name}`);
           return name;
         }
-        // Invalid format - prefix with corpora/
-        console.warn(`⚠️ [FileSearch] Store name missing prefix, adding corpora/: ${name}`);
-        return `corpora/${name}`;
+        // Convert legacy corpora/ format to fileSearchStores/
+        if (name.startsWith('corpora/')) {
+          const converted = name.replace('corpora/', 'fileSearchStores/');
+          console.log(`🔄 [FileSearch] Converted legacy store name: ${name} → ${converted}`);
+          return converted;
+        }
+        // Missing prefix - add fileSearchStores/
+        console.warn(`⚠️ [FileSearch] Store name missing prefix, adding fileSearchStores/: ${name}`);
+        return `fileSearchStores/${name}`;
       });
 
     if (validStoreNames.length === 0) {
