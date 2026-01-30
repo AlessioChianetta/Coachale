@@ -2186,12 +2186,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Create tools based on intent
     // Gemini 3 Flash Preview does NOT support function calling with other tools (codeExecution, fileSearch)
     // So we use consultation tools ONLY when intent is "consultations", otherwise use other tools
-    const isConsultationQuery = intent === 'consultations' && 
-      (message.toLowerCase().includes('consult') || 
-       message.toLowerCase().includes('appuntament') ||
-       message.toLowerCase().includes('prenotat') ||
-       message.toLowerCase().includes('questo mese') ||
-       message.toLowerCase().includes('limite'));
+    const isConsultationQuery = intent === 'consultations';
     
     let clientTools: any[];
     if (isConsultationQuery) {
