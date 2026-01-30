@@ -76,14 +76,32 @@ export async function classifyConsultationIntent(
   try {
     const ai = new GoogleGenAI({ apiKey });
     
+    const requestContents = [
+      {
+        role: 'user',
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
+      {
+        role: 'model',
+        parts: [{ text: 'Understood. I will classify intents strictly and output JSON wrapped in <json></json> tags.' }]
+      },
+      {
+        role: 'user',
+        parts: [{ text: `Classify this message: "${message}"` }]
+      }
+    ];
+    
+    console.log(`\n${'─'.repeat(60)}`);
+    console.log(`🔍 [Intent:${traceId}] CLASSIFIER REQUEST`);
+    console.log(`${'─'.repeat(60)}`);
+    console.log(`   Model: gemini-2.5-flash-lite`);
+    console.log(`   Message: "${message.substring(0, 80)}${message.length > 80 ? '...' : ''}"`);
+    console.log(`   Contents structure: ${requestContents.length} turns`);
+    console.log(`${'─'.repeat(60)}`);
+    
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-lite',
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `${SYSTEM_PROMPT}\n\nMessage to classify: "${message}"` }]
-        }
-      ],
+      contents: requestContents,
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 200,
@@ -92,6 +110,20 @@ export async function classifyConsultationIntent(
 
     const text = response.response?.text() || '';
     const latencyMs = Date.now() - startTime;
+    
+    console.log(`\n${'─'.repeat(60)}`);
+    console.log(`📤 [Intent:${traceId}] CLASSIFIER RESPONSE`);
+    console.log(`${'─'.repeat(60)}`);
+    console.log(`   Latency: ${latencyMs}ms`);
+    console.log(`   Response length: ${text.length} chars`);
+    console.log(`   Raw response: "${text.substring(0, 200)}${text.length > 200 ? '...' : ''}"`);
+    console.log(`   Response object keys: ${Object.keys(response).join(', ')}`);
+    console.log(`   response.response exists: ${!!response.response}`);
+    if (response.response) {
+      console.log(`   response.response keys: ${Object.keys(response.response).join(', ')}`);
+    }
+    console.log(`${'─'.repeat(60)}`);
+    
     
     const jsonMatch = text.match(/<json>([\s\S]*?)<\/json>/);
     if (!jsonMatch) {
