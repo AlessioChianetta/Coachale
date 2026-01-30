@@ -2258,10 +2258,10 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
               name: (part as any).functionCall.name,
               args: (part as any).functionCall.args || {}
             };
-            // Capture thought_signature if present (required for Gemini 3)
-            thoughtSignature = (part as any).thought_signature || (part as any).thoughtSignature;
-            originalFunctionCallPart = part; // Keep the original part for the follow-up
-            console.log(`🔧 [CONSULTATION] thought_signature present: ${!!thoughtSignature}`);
+            // Capture thoughtSignature (camelCase per Gemini API docs)
+            thoughtSignature = (part as any).thoughtSignature || (part as any).thought_signature;
+            originalFunctionCallPart = part;
+            console.log(`🔧 [CONSULTATION] thoughtSignature present: ${!!thoughtSignature}`);
             break;
           }
         }
@@ -2298,24 +2298,23 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           console.log(`   Data: ${JSON.stringify(toolResult.result)}`);
           
           // Second call: Get natural language response with function result
-          // IMPORTANT: For Gemini 3, we must include the thought_signature in the functionCall part
-          const functionCallPart: any = {
-            functionCall: {
-              name: functionCall.name,
-              args: functionCall.args
-            }
-          };
+          // IMPORTANT: For Gemini 3, we must use the ORIGINAL part from the response
+          // The SDK validates thought_signature and won't accept reconstructed objects
           
-          // Add thought_signature if present (required for Gemini 3 function calling)
-          if (thoughtSignature) {
-            functionCallPart.thought_signature = thoughtSignature;
-            console.log(`🔧 [CONSULTATION] Including thought_signature in follow-up request`);
-            console.log(`🔧 [CONSULTATION] functionCallPart structure: ${JSON.stringify(functionCallPart)}`);
-          } else {
-            console.warn(`⚠️ [CONSULTATION] No thought_signature found - using dummy signature for Gemini 3`);
-            // Use dummy signature to skip validation (documented workaround)
-            functionCallPart.thought_signature = "context_engineering_is_the_way_to_go";
-          }
+          // Use the original parts from the response if available, otherwise reconstruct
+          // IMPORTANT: Use camelCase 'thoughtSignature' per Gemini API documentation
+          const modelParts = originalFunctionCallPart 
+            ? [originalFunctionCallPart]  // Use original part with thoughtSignature intact
+            : [{
+                functionCall: {
+                  name: functionCall.name,
+                  args: functionCall.args
+                },
+                thoughtSignature: thoughtSignature || "context_engineering_is_the_way_to_go"
+              }];
+          
+          console.log(`🔧 [CONSULTATION] Using original part: ${!!originalFunctionCallPart}`);
+          console.log(`🔧 [CONSULTATION] modelParts[0] keys: ${Object.keys(modelParts[0] || {}).join(', ')}`);
           
           const messagesWithFunction = [
             ...geminiMessages.map(msg => ({
@@ -2324,7 +2323,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             })),
             {
               role: "model" as const,
-              parts: [functionCallPart]
+              parts: modelParts
             },
             {
               role: "user" as const,
