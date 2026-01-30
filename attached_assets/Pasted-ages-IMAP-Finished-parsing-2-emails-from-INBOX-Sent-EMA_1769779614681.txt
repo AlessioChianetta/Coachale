@@ -1,0 +1,365 @@
+ages
+[IMAP] Finished parsing 2 emails from "INBOX.Sent"
+[EMAIL-HUB AUTO] Fetched 2 emails from INBOX.Sent (sent)
+📝 [User Preferences] Applying preferences - Style: eccentric, Length: balanced
+🧠 [Memory Context] Daily summaries: 3 days, 2302 chars, ~576 tokens
+🧠 [Conversation Memory] Loaded daily summaries for client: 7 conversations across multiple days
+🧠 [Conversation Memory] Loaded 5 recent detailed conversations for client
+[IMAP] Opened folder "INBOX.Drafts": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from INBOX.Drafts (drafts)
+
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Gemini key for File Search (1/1)
+🔄 Building context for client e9c37790-47ea-40cb-a93c-4242f3f07cdc (intent: consultations, sessionType: normal)
+[IMAP] Opened folder "INBOX.Trash": server reports 6 total messages
+[IMAP] Finished parsing 6 emails from "INBOX.Trash"
+[EMAIL-HUB AUTO] Fetched 6 emails from INBOX.Trash (trash)
+📚 Including ALL 0 exercises in context (no limits applied)
+📚 Prepared 0 exercise metadata (content will be loaded on-demand when asked)
+📊 [Monthly Consultation Limit] Client e9c37790:
+   - monthlyConsultationLimit from DB: 5
+   - thisMonthConsultations count: 0
+   - completedThisMonth: 0
+   - scheduledThisMonth: 0
+   - totalUsedThisMonth: 0
+   - monthlyLimitInfo: {"limit":5,"completed":0,"scheduled":0,"totalUsed":0,"remaining":5,"isLimitReached":false,"month":1,"year":2026}
+📚 Found 0 documents linked to exercises
+📚 Total library documents included in context: 0 (intent: consultations)
+📊 Momentum stats: 0 check-ins (0 productive, 0% rate), streak: 0 days
+📅 Calendar stats: 0 total upcoming (0 ongoing, 0 today, 0 this week)
+📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...
+📚 [Client Knowledge Base] Loaded 0 documents and 0 APIs for client e9c37790-47ea-40cb-a93c-4242f3f07cdc
+ℹ️ [Knowledge Base] No documents or API data uploaded yet
+💾 Stored fresh context in cache for client e9c37790-47ea-40cb-a93c-4242f3f07cdc (intent: consultations)
+⏱️  [TIMING] Context building: 1158ms
+⏱️  [TIMING] Exercise scraping: 1ms
+🔍 [KB Fallback Debug] Querying indexed docs for clientId: e9c37790-47ea-40cb-a93c-4242f3f07cdc, consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📚 [KB Fallback] 0 KB docs indexed, 0 will be in prompt
+📋 [buildSystemPrompt] monthlyLimit in userContext:
+   - consultations exists: true
+   - monthlyLimit exists: true
+   - monthlyLimit data: {"limit":5,"completed":0,"scheduled":0,"totalUsed":0,"remaining":5,"isLimitReached":false,"month":1,"year":2026}
+⏱️  [TIMING] Prompt building: 230ms
+
+📊 Token Usage Estimation (Intent: consultations):
+  - System Prompt: ~4,851 tokens
+  - 🧠 Conversation Memory: ~753 tokens (included in System Prompt)
+  - User Message: ~10 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~4,861 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~4,851 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (4,851 tokens):
+   👤 User Profile & Base: ~4,851 tokens
+   ℹ️  (Include: data/ora, profilo utente, istruzioni AI, metadata esercizi)
+
+🔍 VIA FILE SEARCH RAG (indicizzati, cercati su richiesta):
+   📚 Exercises: 192 tokens (3/1 documenti)
+   💬 Consultations: 14,648 tokens (2/50 documenti)
+
+   💰 TOTALE FILE SEARCH: 48,078 tokens (19 documenti indicizzati)
+
+⚠️  NON DISPONIBILI ALL'AI (non sincronizzati in File Search):
+   📖 Library: ~1,000 tokens (1 documenti)
+   💬 Consultations: ~14,400 tokens (48 documenti)
+   🎓 University: ~800 tokens (1 documenti)
+   💡 TIP: Sincronizza questi documenti in File Search per renderli disponibili all'AI
+
+══════════════════════════════════════════════════════════════════════
+
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-e9c377-0qubcpy51a0r
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-e9c377-0qubcpy51a0r
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client e9c37790 (19 documenti):
+      📧 Email Journey: 8
+      📄 exercise_external_doc: 6
+      🏋️ Esercizi: 3
+      💬 Consulenze: 2
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~14,919 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~19,770 a ~4,851 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CLIENT STREAMING]
+[AI] Provider: Google AI Studio, User-selected: YES
+
+────────────────────────────────────────────────────────────
+🔍 [Intent:c98d97cc] CLASSIFIER REQUEST
+────────────────────────────────────────────────────────────
+   Model: gemini-2.5-flash-lite
+   Message: "ciao! posso schedulare delle consulenze?"
+   Context: hasPendingBooking=false
+   Contents structure: 3 turns
+────────────────────────────────────────────────────────────
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+
+────────────────────────────────────────────────────────────
+📤 [Intent:c98d97cc] CLASSIFIER RESPONSE
+────────────────────────────────────────────────────────────
+   Latency: 586ms
+   Response length: 180 chars
+   Raw response: "<json>
+{
+  "intent": "booking_request",
+  "confidence": 0.9,
+  "reasoning": "The user is asking to schedule consultations, which is a request to book a new consultation."
+}
+</json>"
+   Response object keys: sdkHttpResponse, candidates, modelVersion, responseId, usageMetadata
+   Candidates count: 1
+   First candidate parts: 1
+────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────
+🎯 [Intent:c98d97cc] Classification Result
+────────────────────────────────────────────────────────────
+   Intent: booking_request
+   Confidence: 90% (high)
+   Latency: 586ms
+   Reasoning: The user is asking to schedule consultations, which is a request to book a new consultation.
+   User: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+────────────────────────────────────────────────────────────
+
+
+══════════════════════════════════════════════════════════════════════
+🎯 LLM INTENT CLASSIFIER [c98d97cc]
+══════════════════════════════════════════════════════════════════════
+   📋 Intent: booking_request
+   📊 Confidence: 90% (high)
+   💡 Reasoning: The user is asking to schedule consultations, which is a request to book a new consultation.
+   🔧 Use tools: YES
+   ❓ Ask clarification: NO
+   🔍 Trigger: regex match
+   🎫 Pending Token: none
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔧 FUNCTION CALLING MODE ACTIVE [CONSULTATION QUERY]
+══════════════════════════════════════════════════════════════════════
+   📋 Intent: booking_request
+   🛠️  Tools: getAvailableSlots, proposeBooking
+   ⚙️  Mode: AUTO (Gemini decides if tool needed)
+   ❌ codeExecution: DISABLED
+   ❌ fileSearch: DISABLED
+══════════════════════════════════════════════════════════════════════
+
+🔧 [CONSULTATION] Using non-streaming mode for function calling
+🔒 [Semaphore] Acquired slot (1/3 in use)
+[IMAP IDLE] Inbox opened for f5eaa99d-efc3-46d0-84fc-80ada80ed89c, last UID: 29
+[IMAP IDLE] Started IDLE for account f5eaa99d-efc3-46d0-84fc-80ada80ed89c
+[EMAIL-HUB AUTO] IDLE started for no-reply@alessiochianetta.it
+[IMAP] Opened folder "[Gmail]/Posta inviata": server reports 70 total messages
+[IMAP] Finished parsing 50 emails from "[Gmail]/Posta inviata"
+[EMAIL-HUB AUTO] Fetched 50 emails from [Gmail]/Posta inviata (sent)
+🔓 [Semaphore] Released slot (0/3 in use)
+🔧 [CONSULTATION] thoughtSignature present: true
+🔧 [CONSULTATION] Function call detected: getAvailableSlots
+   Args: {"startDate":"2026-01-30"}
+🔧 [CONSULTATION TOOL] Executing getAvailableSlots for client e9c37790
+   Args: {"startDate":"2026-01-30"}
+📅 [SLOTS] Loaded 63 events from Google Calendar
+🔧 [CONSULTATION] Tool result: success=true
+   Data: {"slots":[{"date":"2026-02-02","dayOfWeek":"lunedì","time":"09:00","dateFormatted":"lunedì 2 febbraio","duration":60},{"date":"2026-02-02","dayOfWeek":"lunedì","time":"10:00","dateFormatted":"lunedì 2 febbraio","duration":60},{"date":"2026-02-02","dayOfWeek":"lunedì","time":"15:00","dateFormatted":"lunedì 2 febbraio","duration":60},{"date":"2026-02-02","dayOfWeek":"lunedì","time":"16:00","dateFormatted":"lunedì 2 febbraio","duration":60},{"date":"2026-02-02","dayOfWeek":"lunedì","time":"17:00","dateFormatted":"lunedì 2 febbraio","duration":60},{"date":"2026-02-03","dayOfWeek":"martedì","time":"09:00","dateFormatted":"martedì 3 febbraio","duration":60},{"date":"2026-02-03","dayOfWeek":"martedì","time":"15:00","dateFormatted":"martedì 3 febbraio","duration":60},{"date":"2026-02-03","dayOfWeek":"martedì","time":"16:00","dateFormatted":"martedì 3 febbraio","duration":60},{"date":"2026-02-03","dayOfWeek":"martedì","time":"17:00","dateFormatted":"martedì 3 febbraio","duration":60},{"date":"2026-02-04","dayOfWeek":"mercoledì","time":"09:00","dateFormatted":"mercoledì 4 febbraio","duration":60},{"date":"2026-02-04","dayOfWeek":"mercoledì","time":"10:00","dateFormatted":"mercoledì 4 febbraio","duration":60},{"date":"2026-02-04","dayOfWeek":"mercoledì","time":"15:00","dateFormatted":"mercoledì 4 febbraio","duration":60},{"date":"2026-02-04","dayOfWeek":"mercoledì","time":"16:00","dateFormatted":"mercoledì 4 febbraio","duration":60},{"date":"2026-02-04","dayOfWeek":"mercoledì","time":"17:00","dateFormatted":"mercoledì 4 febbraio","duration":60},{"date":"2026-02-05","dayOfWeek":"giovedì","time":"09:00","dateFormatted":"giovedì 5 febbraio","duration":60},{"date":"2026-02-05","dayOfWeek":"giovedì","time":"10:00","dateFormatted":"giovedì 5 febbraio","duration":60},{"date":"2026-02-05","dayOfWeek":"giovedì","time":"15:00","dateFormatted":"giovedì 5 febbraio","duration":60},{"date":"2026-02-05","dayOfWeek":"giovedì","time":"16:00","dateFormatted":"giovedì 5 febbraio","duration":60},{"date":"2026-02-05","dayOfWeek":"giovedì","time":"17:00","dateFormatted":"giovedì 5 febbraio","duration":60},{"date":"2026-02-06","dayOfWeek":"venerdì","time":"09:00","dateFormatted":"venerdì 6 febbraio","duration":60}],"count":20,"duration":60,"calendarConnected":true,"message":"Ho trovato 20 slot disponibili (consulenze di 60 minuti). Ecco i primi:","next_action_hint":"Chiedi al cliente quale slot preferisce, poi usa proposeBooking"}
+🔧 [CONSULTATION] Using original part: true
+🔧 [CONSULTATION] modelParts[0] keys: functionCall, thoughtSignature
+🔒 [Semaphore] Acquired slot (1/3 in use)
+🔓 [Semaphore] Released slot (0/3 in use)
+🔧 [CONSULTATION] Final response: 900 chars
+⏱️  [TIMING] Gemini API call (with streaming): 7283ms
+
+⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CLIENT]
+✅ AI streaming completed for message e9652cf7-2222-43a3-8f84-d1e646a13cd8
+📊 [TITLE-GEN] Client conversation 299d2cc8-f708-41b3-96e7-ee93dce8ff12: 2 messages, current title: "ciao! posso schedulare delle consulenze?"
+
+📝 [TITLE-GEN] Generating title for client conversation 299d2cc8-f708-41b3-96e7-ee93dce8ff12...
+   📨 User message: "ciao! posso schedulare delle consulenze?"
+   🤖 AI response: "Ciao Alessio! Ma certo, la plancia di comando è pronta per tracciare nuove rotte nel tuo universo fo..."
+   ⚠️ [TITLE-GEN] Error generating title: Cannot find module '/home/runner/workspace/server/super-admin-gemini' imported from /home/runner/workspace/server/ai-service.ts
+
+──────────────────────────────────────────────────────────────────────
+🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]
+──────────────────────────────────────────────────────────────────────
+   📦 Stores attivi: 1
+   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili
+      nel response object. File Search è stato configurato come tool.
+   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.
+──────────────────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE TIMING BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [0ms → 1158ms] Context Building (1158ms)
+   [1158ms → 1159ms] Exercise Scraping (1ms)
+   [1159ms → 1389ms] Prompt Building (230ms)
+   [1389ms → 10222ms] Gemini API Call (7283ms)
+   ────────────────────────────────────────────────────────────────────
+   ⏱️  TOTAL: 10.22s (10222ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1:25:48 PM [express] POST /api/ai/chat 200 in 11132ms
+1:25:49 PM [express] GET /api/ai/conversations 200 in 338ms :: [{"id":"299d2cc8-f708-41b3-96e7-ee93d…
+1:25:49 PM [express] GET /api/ai/conversations/299d2cc8-f708-41b3-96e7-ee93dce8ff12 200 in 682ms :: …
+[IMAP] Opened folder "[Gmail]/Bozze": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Bozze (drafts)
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 54
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+1:25:57 PM [express] POST /api/activity/session/heartbeat 200 in 342ms :: {"success":true,"lastActiv…
+📝 [User Preferences] Applying preferences - Style: eccentric, Length: balanced
+🧠 [Memory Context] Daily summaries: 3 days, 2302 chars, ~576 tokens
+🧠 [Conversation Memory] Loaded daily summaries for client: 7 conversations across multiple days
+🧠 [Conversation Memory] Loaded 5 recent detailed conversations for client
+
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ Using SuperAdmin Gemini key for File Search (1/1)
+🔄 Building context for client e9c37790-47ea-40cb-a93c-4242f3f07cdc (intent: general, sessionType: normal)
+📚 Including ALL 3 exercises in context (no limits applied)
+📚 Prepared 3 exercise metadata (content will be loaded on-demand when asked)
+📊 [Monthly Consultation Limit] Client e9c37790:
+   - monthlyConsultationLimit from DB: 5
+   - thisMonthConsultations count: 0
+   - completedThisMonth: 0
+   - scheduledThisMonth: 0
+   - totalUsedThisMonth: 0
+   - monthlyLimitInfo: {"limit":5,"completed":0,"scheduled":0,"totalUsed":0,"remaining":5,"isLimitReached":false,"month":1,"year":2026}
+📚 Found 0 documents linked to exercises
+📚 Total library documents included in context: 0 (intent: general)
+📊 Momentum stats: 0 check-ins (0 productive, 0% rate), streak: 0 days
+📅 Calendar stats: 0 total upcoming (0 ongoing, 0 today, 0 this week)
+📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...
+📚 [Client Knowledge Base] Loaded 0 documents and 0 APIs for client e9c37790-47ea-40cb-a93c-4242f3f07cdc
+ℹ️ [Knowledge Base] No documents or API data uploaded yet
+💾 Stored fresh context in cache for client e9c37790-47ea-40cb-a93c-4242f3f07cdc (intent: general)
+⏱️  [TIMING] Context building: 1152ms
+🔍 [FileSearch] Exercises indexed check: 3/3 checked, using FileSearch: true
+⏱️  [TIMING] Exercise scraping: 338ms
+🔍 [KB Fallback Debug] Querying indexed docs for clientId: e9c37790-47ea-40cb-a93c-4242f3f07cdc, consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📚 [KB Fallback] 0 KB docs indexed, 0 will be in prompt
+📋 [buildSystemPrompt] monthlyLimit in userContext:
+   - consultations exists: true
+   - monthlyLimit exists: true
+   - monthlyLimit data: {"limit":5,"completed":0,"scheduled":0,"totalUsed":0,"remaining":5,"isLimitReached":false,"month":1,"year":2026}
+⏱️  [TIMING] Prompt building: 224ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~4,925 tokens
+  - 🧠 Conversation Memory: ~753 tokens (included in System Prompt)
+  - User Message: ~4 tokens
+  - Conversation History: ~199 tokens
+  - Total Estimated: ~5,128 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~4,925 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (4,925 tokens):
+   👤 User Profile & Base: ~4,925 tokens
+   ℹ️  (Include: data/ora, profilo utente, istruzioni AI, metadata esercizi)
+
+🔍 VIA FILE SEARCH RAG (indicizzati, cercati su richiesta):
+   📚 Exercises: 192 tokens (3/1 documenti)
+   💬 Consultations: 14,648 tokens (2/50 documenti)
+
+   💰 TOTALE FILE SEARCH: 48,078 tokens (19 documenti indicizzati)
+
+⚠️  NON DISPONIBILI ALL'AI (non sincronizzati in File Search):
+   📖 Library: ~1,000 tokens (1 documenti)
+   💬 Consultations: ~14,400 tokens (48 documenti)
+   🎓 University: ~800 tokens (1 documenti)
+   💡 TIP: Sincronizza questi documenti in File Search per renderli disponibili all'AI
+
+══════════════════════════════════════════════════════════════════════
+
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-e9c377-0qubcpy51a0r
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/private-store-client-e9c377-0qubcpy51a0r
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👥 Private Store - Client e9c37790 (19 documenti):
+      📧 Email Journey: 8
+      📄 exercise_external_doc: 6
+      🏋️ Esercizi: 3
+      💬 Consulenze: 2
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~15,267 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~20,192 a ~4,925 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CLIENT STREAMING]
+[AI] Provider: Google AI Studio, User-selected: YES
+🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=YES
+🔄 AI stream attempt 1/6...
+🔒 [Semaphore] Acquired slot (1/3 in use)
+🔓 [Semaphore] Released slot (0/3 in use)
+✅ AI streaming completed successfully on attempt 1
+⏱️  [TIMING] Gemini API call (with streaming): 2337ms
+
+⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CLIENT]
+✅ AI streaming completed for message efb2b069-6921-4ec7-b7d2-64cdf531e647
+📊 [TITLE-GEN] Client conversation 299d2cc8-f708-41b3-96e7-ee93dce8ff12: 4 messages, current title: "ciao! posso schedulare delle consulenze?"
+   ℹ️ [TITLE-GEN] Skipping - messageCount is 4, not 2
+
+──────────────────────────────────────────────────────────────────────
+🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]
+──────────────────────────────────────────────────────────────────────
+   📦 Stores attivi: 1
+   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili
+      nel response object. File Search è stato configurato come tool.
+   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.
+──────────────────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE TIMING BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [0ms → 1152ms] Context Building (1152ms)
+   [1152ms → 1490ms] Exercise Scraping (338ms)
+   [1490ms → 1714ms] Prompt Building (224ms)
+   [1714ms → 5623ms] Gemini API Call (2337ms)
+   ────────────────────────────────────────────────────────────────────
+   ⏱️  TOTAL: 5.62s (5623ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1:26:09 PM [express] POST /api/ai/chat 200 in 7269ms
+1:26:09 PM [express] GET /api/ai/conversations 200 in 338ms :: [{"id":"299d2cc8-f708-41b3-96e7-ee93d…
+1:26:24 PM [express] GET /api/ai/conversations/62fb5208-079c-4948-babd-b4f46d7f0a9d 200 in 1327ms ::…
+1:26:26 PM [express] GET /api/ai/conversations/299d2cc8-f708-41b3-96e7-ee93dce8ff12 200 in 770ms :: …
