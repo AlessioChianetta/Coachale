@@ -241,26 +241,42 @@ async function executeGetAvailableSlots(
   const maxDaysAhead = settings?.maxDaysAhead || 30;
   const timezone = settings?.timezone || "Europe/Rome";
   
-  // Parse appointmentAvailability from DB or use defaults (lun-ven 9-18)
-  type DayAvailability = { enabled: boolean; start: string; end: string };
+  // Parse appointmentAvailability from DB - supports both old format (start/end) and new format (slots array)
+  type TimeSlot = { start: string; end: string };
+  type DayAvailability = { enabled: boolean; slots: TimeSlot[] };
   const availabilityConfig: Record<string, DayAvailability> = {};
   
   if (settings?.appointmentAvailability && typeof settings.appointmentAvailability === 'object') {
     const rawConfig = settings.appointmentAvailability as Record<string, any>;
     for (const [dayId, config] of Object.entries(rawConfig)) {
       if (config && typeof config === 'object' && 'enabled' in config) {
-        availabilityConfig[dayId] = config as DayAvailability;
+        // Check if it's the new format with slots array
+        if ('slots' in config && Array.isArray(config.slots)) {
+          availabilityConfig[dayId] = config as DayAvailability;
+        } else if ('start' in config && 'end' in config) {
+          // Old format - convert to slots array
+          availabilityConfig[dayId] = {
+            enabled: config.enabled,
+            slots: [{ start: config.start, end: config.end }]
+          };
+        }
       }
     }
   }
   
-  // If no config, use defaults (Mon-Fri 9-18)
+  // If no config, use defaults (Mon-Fri with morning and afternoon slots)
   if (Object.keys(availabilityConfig).length === 0) {
     for (let d = 1; d <= 5; d++) {
-      availabilityConfig[d.toString()] = { enabled: true, start: "09:00", end: "18:00" };
+      availabilityConfig[d.toString()] = { 
+        enabled: true, 
+        slots: [
+          { start: "09:00", end: "13:00" },
+          { start: "15:00", end: "18:00" }
+        ]
+      };
     }
-    availabilityConfig["0"] = { enabled: false, start: "09:00", end: "18:00" };
-    availabilityConfig["6"] = { enabled: false, start: "09:00", end: "18:00" };
+    availabilityConfig["0"] = { enabled: false, slots: [{ start: "09:00", end: "18:00" }] };
+    availabilityConfig["6"] = { enabled: false, slots: [{ start: "09:00", end: "18:00" }] };
   }
 
   // Calculate date range
@@ -377,65 +393,71 @@ async function executeGetAvailableSlots(
     if (dayConfig?.enabled) {
       // Check if this day matches preferred day filter
       if (!args.preferredDayOfWeek || args.preferredDayOfWeek.toLowerCase() === dayName) {
-        // Parse day's available hours
-        const [startHour, startMin] = (dayConfig.start || "09:00").split(':').map(Number);
-        const [endHour, endMin] = (dayConfig.end || "18:00").split(':').map(Number);
-        
-        // Generate slots based on appointment duration
-        let slotStartHour = startHour;
-        let slotStartMin = startMin;
-        
-        // Apply preferred time range filter
-        if (args.preferredTimeRange) {
-          const range = workingHours[args.preferredTimeRange as keyof typeof workingHours];
-          if (range) {
-            slotStartHour = Math.max(slotStartHour, range.start);
+        // Iterate through all time slots for this day
+        for (const timeSlot of dayConfig.slots) {
+          // Parse slot's available hours
+          const [startHour, startMin] = (timeSlot.start || "09:00").split(':').map(Number);
+          const [endHour, endMin] = (timeSlot.end || "18:00").split(':').map(Number);
+          
+          // Generate slots based on appointment duration
+          let slotStartHour = startHour;
+          let slotStartMin = startMin;
+          
+          // Apply preferred time range filter
+          if (args.preferredTimeRange) {
+            const range = workingHours[args.preferredTimeRange as keyof typeof workingHours];
+            if (range) {
+              slotStartHour = Math.max(slotStartHour, range.start);
+            }
           }
-        }
 
-        while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
-          const slotStart = new Date(current);
-          slotStart.setHours(slotStartHour, slotStartMin, 0, 0);
-          
-          const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
-          
-          // Check slot ends within working hours
-          const slotEndHour = slotEnd.getHours();
-          const slotEndMin = slotEnd.getMinutes();
-          if (slotEndHour > endHour || (slotEndHour === endHour && slotEndMin > endMin)) {
-            break;
-          }
-          
-          // Check slot is in the future and respects minHoursNotice
-          if (slotStart > minStartTime) {
-            // Check against busy ranges (with buffer)
-            const bufferedStart = new Date(slotStart.getTime() - bufferBefore * 60 * 1000);
-            const bufferedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
+          while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
+            const slotStart = new Date(current);
+            slotStart.setHours(slotStartHour, slotStartMin, 0, 0);
             
-            if (!isSlotBusy(bufferedStart, bufferedEnd)) {
-              availableSlots.push({
-                date: slotStart.toISOString().slice(0, 10),
-                dayOfWeek: dayName,
-                time: `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`,
-                dateFormatted: slotStart.toLocaleDateString('it-IT', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long'
-                }),
-                duration: appointmentDuration
-              });
+            const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
+            
+            // Check slot ends within working hours for this time slot
+            const slotEndHour = slotEnd.getHours();
+            const slotEndMin = slotEnd.getMinutes();
+            if (slotEndHour > endHour || (slotEndHour === endHour && slotEndMin > endMin)) {
+              break;
+            }
+            
+            // Check slot is in the future and respects minHoursNotice
+            if (slotStart > minStartTime) {
+              // Check against busy ranges (with buffer)
+              const bufferedStart = new Date(slotStart.getTime() - bufferBefore * 60 * 1000);
+              const bufferedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
+              
+              if (!isSlotBusy(bufferedStart, bufferedEnd)) {
+                availableSlots.push({
+                  date: slotStart.toISOString().slice(0, 10),
+                  dayOfWeek: dayName,
+                  time: `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`,
+                  dateFormatted: slotStart.toLocaleDateString('it-IT', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                  }),
+                  duration: appointmentDuration
+                });
 
-              if (availableSlots.length >= 20) break;
+                if (availableSlots.length >= 20) break;
+              }
+            }
+            
+            // Move to next slot (every hour by default, or every 30 min for shorter appointments)
+            const slotIncrement = appointmentDuration <= 30 ? 30 : 60;
+            slotStartMin += slotIncrement;
+            if (slotStartMin >= 60) {
+              slotStartHour += Math.floor(slotStartMin / 60);
+              slotStartMin = slotStartMin % 60;
             }
           }
           
-          // Move to next slot (every hour by default, or every 30 min for shorter appointments)
-          const slotIncrement = appointmentDuration <= 30 ? 30 : 60;
-          slotStartMin += slotIncrement;
-          if (slotStartMin >= 60) {
-            slotStartHour += Math.floor(slotStartMin / 60);
-            slotStartMin = slotStartMin % 60;
-          }
+          // Stop if we have enough slots
+          if (availableSlots.length >= 20) break;
         }
       }
     }

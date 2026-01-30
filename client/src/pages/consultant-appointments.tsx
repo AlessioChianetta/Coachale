@@ -980,12 +980,10 @@ interface AvailabilitySettings {
   minHoursNotice: number;
   timezone: string;
   isActive: boolean;
-  appointmentAvailability: Record<string, { enabled: boolean; start: string; end: string }> | null;
-  morningSlotStart?: string;
-  morningSlotEnd?: string;
-  afternoonSlotStart?: string;
-  afternoonSlotEnd?: string;
+  appointmentAvailability: Record<string, { enabled: boolean; slots: Array<{ start: string; end: string }> }> | null;
 }
+
+type TimeSlot = { start: string; end: string };
 
 interface CalendarStatus {
   connected: boolean;
@@ -1027,23 +1025,36 @@ function ConsultantCalendarSettingsPanel() {
   // Initialize local settings when data loads
   React.useEffect(() => {
     if (availabilitySettings && !localSettings) {
-      const defaultAvailability: Record<string, { enabled: boolean; start: string; end: string }> = {};
+      const defaultAvailability: Record<string, { enabled: boolean; slots: TimeSlot[] }> = {};
       DAYS_OF_WEEK.forEach(day => {
         const existing = availabilitySettings.appointmentAvailability?.[day.id.toString()];
         if (existing) {
-          defaultAvailability[day.id.toString()] = existing;
+          // Handle backward compatibility: convert old format (start/end) to new format (slots array)
+          if ('slots' in existing && Array.isArray(existing.slots)) {
+            defaultAvailability[day.id.toString()] = existing;
+          } else if ('start' in existing && 'end' in existing) {
+            // Old format - convert to slots array
+            defaultAvailability[day.id.toString()] = {
+              enabled: existing.enabled,
+              slots: [{ start: (existing as any).start, end: (existing as any).end }]
+            };
+          } else {
+            defaultAvailability[day.id.toString()] = existing;
+          }
         } else {
-          // Default: weekdays enabled 09:00-18:00
+          // Default: weekdays enabled with morning (09:00-13:00) and afternoon (15:00-18:00) slots
           defaultAvailability[day.id.toString()] = {
             enabled: day.id >= 1 && day.id <= 5,
-            start: "09:00",
-            end: "18:00",
+            slots: [
+              { start: "09:00", end: "13:00" },
+              { start: "15:00", end: "18:00" }
+            ]
           };
         }
       });
       setLocalSettings({
         ...availabilitySettings,
-        appointmentAvailability: availabilitySettings.appointmentAvailability || defaultAvailability,
+        appointmentAvailability: defaultAvailability,
       });
     }
   }, [availabilitySettings, localSettings]);
@@ -1169,17 +1180,82 @@ function ConsultantCalendarSettingsPanel() {
     }
   };
 
-  // Update day availability
-  const updateDayAvailability = (dayId: number, field: "enabled" | "start" | "end", value: boolean | string) => {
+  // Update day enabled status
+  const updateDayEnabled = (dayId: number, enabled: boolean) => {
     if (!localSettings) return;
     const current = localSettings.appointmentAvailability || {};
+    const dayKey = dayId.toString();
+    const dayData = current[dayKey] || { enabled: false, slots: [{ start: "09:00", end: "18:00" }] };
     setLocalSettings({
       ...localSettings,
       appointmentAvailability: {
         ...current,
-        [dayId.toString()]: {
-          ...current[dayId.toString()],
-          [field]: value,
+        [dayKey]: {
+          ...dayData,
+          enabled,
+        },
+      },
+    });
+  };
+
+  // Update a specific slot time
+  const updateSlotTime = (dayId: number, slotIndex: number, field: "start" | "end", value: string) => {
+    if (!localSettings) return;
+    const current = localSettings.appointmentAvailability || {};
+    const dayKey = dayId.toString();
+    const dayData = current[dayKey] || { enabled: true, slots: [{ start: "09:00", end: "18:00" }] };
+    const newSlots = [...dayData.slots];
+    newSlots[slotIndex] = { ...newSlots[slotIndex], [field]: value };
+    setLocalSettings({
+      ...localSettings,
+      appointmentAvailability: {
+        ...current,
+        [dayKey]: {
+          ...dayData,
+          slots: newSlots,
+        },
+      },
+    });
+  };
+
+  // Add a new time slot to a day
+  const addTimeSlot = (dayId: number) => {
+    if (!localSettings) return;
+    const current = localSettings.appointmentAvailability || {};
+    const dayKey = dayId.toString();
+    const dayData = current[dayKey] || { enabled: true, slots: [] };
+    const lastSlot = dayData.slots[dayData.slots.length - 1];
+    // Default new slot starts 1 hour after last slot ends
+    const newStart = lastSlot ? lastSlot.end : "09:00";
+    const newEnd = lastSlot ? 
+      `${Math.min(parseInt(lastSlot.end.split(':')[0]) + 3, 20).toString().padStart(2, '0')}:00` 
+      : "12:00";
+    setLocalSettings({
+      ...localSettings,
+      appointmentAvailability: {
+        ...current,
+        [dayKey]: {
+          ...dayData,
+          slots: [...dayData.slots, { start: newStart, end: newEnd }],
+        },
+      },
+    });
+  };
+
+  // Remove a time slot from a day
+  const removeTimeSlot = (dayId: number, slotIndex: number) => {
+    if (!localSettings) return;
+    const current = localSettings.appointmentAvailability || {};
+    const dayKey = dayId.toString();
+    const dayData = current[dayKey];
+    if (!dayData || dayData.slots.length <= 1) return; // Keep at least one slot
+    setLocalSettings({
+      ...localSettings,
+      appointmentAvailability: {
+        ...current,
+        [dayKey]: {
+          ...dayData,
+          slots: dayData.slots.filter((_, i) => i !== slotIndex),
         },
       },
     });
@@ -1296,35 +1372,65 @@ function ConsultantCalendarSettingsPanel() {
         <CardContent className="p-6 space-y-6">
           {localSettings && (
             <>
-              {/* Days of week */}
+              {/* Days of week with multiple time slots */}
               <div>
                 <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Giorni disponibili</h4>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {DAYS_OF_WEEK.map((day) => {
                     const daySettings = localSettings.appointmentAvailability?.[day.id.toString()];
+                    const slots = daySettings?.slots || [{ start: "09:00", end: "18:00" }];
                     return (
-                      <div key={day.id} className="flex items-center gap-4">
-                        <Checkbox
-                          checked={daySettings?.enabled || false}
-                          onCheckedChange={(checked) => updateDayAvailability(day.id, "enabled", !!checked)}
-                          className="data-[state=checked]:bg-blue-600"
-                        />
-                        <span className="w-24 font-medium text-gray-700 dark:text-gray-300">{day.label}</span>
+                      <div key={day.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Checkbox
+                            checked={daySettings?.enabled || false}
+                            onCheckedChange={(checked) => updateDayEnabled(day.id, !!checked)}
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                          <span className="font-medium text-gray-700 dark:text-gray-300">{day.label}</span>
+                          {daySettings?.enabled && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => addTimeSlot(day.id)}
+                              className="ml-auto text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Plus className="w-4 h-4 mr-1" />
+                              Aggiungi fascia
+                            </Button>
+                          )}
+                        </div>
                         {daySettings?.enabled && (
-                          <div className="flex items-center gap-2 flex-1">
-                            <Input
-                              type="time"
-                              value={daySettings?.start || "09:00"}
-                              onChange={(e) => updateDayAvailability(day.id, "start", e.target.value)}
-                              className="w-28"
-                            />
-                            <span className="text-gray-500">-</span>
-                            <Input
-                              type="time"
-                              value={daySettings?.end || "18:00"}
-                              onChange={(e) => updateDayAvailability(day.id, "end", e.target.value)}
-                              className="w-28"
-                            />
+                          <div className="ml-7 space-y-2">
+                            {slots.map((slot, slotIndex) => (
+                              <div key={slotIndex} className="flex items-center gap-2">
+                                <Input
+                                  type="time"
+                                  value={slot.start}
+                                  onChange={(e) => updateSlotTime(day.id, slotIndex, "start", e.target.value)}
+                                  className="w-28"
+                                />
+                                <span className="text-gray-500">-</span>
+                                <Input
+                                  type="time"
+                                  value={slot.end}
+                                  onChange={(e) => updateSlotTime(day.id, slotIndex, "end", e.target.value)}
+                                  className="w-28"
+                                />
+                                {slots.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeTimeSlot(day.id, slotIndex)}
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 p-1"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
