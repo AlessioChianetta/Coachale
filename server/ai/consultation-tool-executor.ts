@@ -4,10 +4,11 @@
  */
 
 import { db } from "../db";
-import { consultations, users, consultantClients } from "@shared/schema";
+import { consultations, users, consultantClients, consultantAvailabilitySettings } from "@shared/schema";
 import { eq, and, gte, lte, sql, or, desc } from "drizzle-orm";
 import { ConsultationToolResult } from "./consultation-tools";
 import crypto from "crypto";
+import { getValidAccessToken, createGoogleCalendarEvent } from "../google-calendar-service";
 
 const pendingBookings = new Map<string, {
   clientId: string;
@@ -224,9 +225,55 @@ async function executeGetAvailableSlots(
   }
 ): Promise<ConsultationToolResult> {
   const now = new Date();
-  const startDate = args.startDate ? new Date(args.startDate) : now;
-  const endDate = args.endDate ? new Date(args.endDate) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  
+  // Load consultant availability settings from DB
+  const [settings] = await db
+    .select()
+    .from(consultantAvailabilitySettings)
+    .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+    .limit(1);
 
+  // Default config if not configured
+  const appointmentDuration = settings?.appointmentDuration || 60;
+  const bufferBefore = settings?.bufferBefore || 15;
+  const bufferAfter = settings?.bufferAfter || 15;
+  const minHoursNotice = settings?.minHoursNotice || 24;
+  const maxDaysAhead = settings?.maxDaysAhead || 30;
+  const timezone = settings?.timezone || "Europe/Rome";
+  
+  // Parse appointmentAvailability from DB or use defaults (lun-ven 9-18)
+  type DayAvailability = { enabled: boolean; start: string; end: string };
+  const availabilityConfig: Record<string, DayAvailability> = {};
+  
+  if (settings?.appointmentAvailability && typeof settings.appointmentAvailability === 'object') {
+    const rawConfig = settings.appointmentAvailability as Record<string, any>;
+    for (const [dayId, config] of Object.entries(rawConfig)) {
+      if (config && typeof config === 'object' && 'enabled' in config) {
+        availabilityConfig[dayId] = config as DayAvailability;
+      }
+    }
+  }
+  
+  // If no config, use defaults (Mon-Fri 9-18)
+  if (Object.keys(availabilityConfig).length === 0) {
+    for (let d = 1; d <= 5; d++) {
+      availabilityConfig[d.toString()] = { enabled: true, start: "09:00", end: "18:00" };
+    }
+    availabilityConfig["0"] = { enabled: false, start: "09:00", end: "18:00" };
+    availabilityConfig["6"] = { enabled: false, start: "09:00", end: "18:00" };
+  }
+
+  // Calculate date range
+  const minStartTime = new Date(now.getTime() + minHoursNotice * 60 * 60 * 1000);
+  const startDate = args.startDate ? new Date(args.startDate) : minStartTime;
+  const maxEndDate = new Date(now.getTime() + maxDaysAhead * 24 * 60 * 60 * 1000);
+  const endDate = args.endDate ? new Date(args.endDate) : maxEndDate;
+  
+  // Clamp dates
+  const effectiveStartDate = startDate < minStartTime ? minStartTime : startDate;
+  const effectiveEndDate = endDate > maxEndDate ? maxEndDate : endDate;
+
+  // Get existing consultations
   const existingConsultations = await db
     .select({
       scheduledAt: consultations.scheduledAt,
@@ -236,8 +283,8 @@ async function executeGetAvailableSlots(
     .where(
       and(
         eq(consultations.consultantId, consultantId),
-        gte(consultations.scheduledAt, startDate),
-        lte(consultations.scheduledAt, endDate),
+        gte(consultations.scheduledAt, effectiveStartDate),
+        lte(consultations.scheduledAt, effectiveEndDate),
         or(
           eq(consultations.status, "scheduled"),
           eq(consultations.status, "completed")
@@ -245,11 +292,62 @@ async function executeGetAvailableSlots(
       )
     );
 
-  const busySlots = new Set(
-    existingConsultations.map(c => 
-      new Date(c.scheduledAt).toISOString().slice(0, 16)
-    )
-  );
+  // Build busy time ranges from consultations (with buffers)
+  const busyRanges: Array<{ start: Date; end: Date }> = existingConsultations.map(c => {
+    const consultStart = new Date(c.scheduledAt);
+    const consultEnd = new Date(consultStart.getTime() + (c.duration || 60) * 60 * 1000);
+    return {
+      start: new Date(consultStart.getTime() - bufferBefore * 60 * 1000),
+      end: new Date(consultEnd.getTime() + bufferAfter * 60 * 1000)
+    };
+  });
+
+  // Try to get Google Calendar events if connected
+  let calendarBusy: Array<{ start: Date; end: Date }> = [];
+  try {
+    const accessToken = await getValidAccessToken(consultantId);
+    if (accessToken) {
+      const { google } = await import("googleapis");
+      const oauth2Client = new google.auth.OAuth2();
+      oauth2Client.setCredentials({ access_token: accessToken });
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+      
+      const calendarEvents = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: effectiveStartDate.toISOString(),
+        timeMax: effectiveEndDate.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      if (calendarEvents.data.items) {
+        for (const event of calendarEvents.data.items) {
+          if (event.start?.dateTime && event.end?.dateTime) {
+            calendarBusy.push({
+              start: new Date(event.start.dateTime),
+              end: new Date(event.end.dateTime)
+            });
+          }
+        }
+      }
+      console.log(`📅 [SLOTS] Loaded ${calendarBusy.length} events from Google Calendar`);
+    }
+  } catch (error) {
+    console.log(`⚠️ [SLOTS] Could not load Google Calendar (not connected or error):`, error);
+  }
+
+  // Merge all busy ranges
+  const allBusyRanges = [...busyRanges, ...calendarBusy];
+
+  // Helper to check if a slot conflicts with busy ranges
+  const isSlotBusy = (slotStart: Date, slotEnd: Date): boolean => {
+    for (const busy of allBusyRanges) {
+      if (slotStart < busy.end && slotEnd > busy.start) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   const workingHours = {
     mattina: { start: 9, end: 12 },
@@ -257,63 +355,86 @@ async function executeGetAvailableSlots(
     sera: { start: 18, end: 20 }
   };
 
-  const dayMap: Record<string, number> = {
-    "domenica": 0, "lunedì": 1, "martedì": 2, "mercoledì": 3,
-    "giovedì": 4, "venerdì": 5, "sabato": 6
-  };
+  const dayNames = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 
   const availableSlots: Array<{
     date: string;
     dayOfWeek: string;
     time: string;
     dateFormatted: string;
+    duration: number;
   }> = [];
 
-  const current = new Date(startDate);
+  const current = new Date(effectiveStartDate);
   current.setHours(0, 0, 0, 0);
 
-  while (current <= endDate && availableSlots.length < 20) {
+  while (current <= effectiveEndDate && availableSlots.length < 20) {
     const dayOfWeek = current.getDay();
-    
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      const dayNames = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
-      const dayName = dayNames[dayOfWeek];
+    const dayName = dayNames[dayOfWeek];
+    const dayConfig = availabilityConfig[dayOfWeek.toString()];
 
-      if (!args.preferredDayOfWeek || args.preferredDayOfWeek === dayName) {
-        let hoursToCheck: number[] = [];
+    // Only process enabled days
+    if (dayConfig?.enabled) {
+      // Check if this day matches preferred day filter
+      if (!args.preferredDayOfWeek || args.preferredDayOfWeek.toLowerCase() === dayName) {
+        // Parse day's available hours
+        const [startHour, startMin] = (dayConfig.start || "09:00").split(':').map(Number);
+        const [endHour, endMin] = (dayConfig.end || "18:00").split(':').map(Number);
         
+        // Generate slots based on appointment duration
+        let slotStartHour = startHour;
+        let slotStartMin = startMin;
+        
+        // Apply preferred time range filter
         if (args.preferredTimeRange) {
           const range = workingHours[args.preferredTimeRange as keyof typeof workingHours];
           if (range) {
-            for (let h = range.start; h < range.end; h++) {
-              hoursToCheck.push(h);
-            }
+            slotStartHour = Math.max(slotStartHour, range.start);
           }
-        } else {
-          hoursToCheck = [9, 10, 11, 14, 15, 16, 17];
         }
 
-        for (const hour of hoursToCheck) {
-          const slotDate = new Date(current);
-          slotDate.setHours(hour, 0, 0, 0);
-
-          if (slotDate > now) {
-            const slotKey = slotDate.toISOString().slice(0, 16);
+        while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
+          const slotStart = new Date(current);
+          slotStart.setHours(slotStartHour, slotStartMin, 0, 0);
+          
+          const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
+          
+          // Check slot ends within working hours
+          const slotEndHour = slotEnd.getHours();
+          const slotEndMin = slotEnd.getMinutes();
+          if (slotEndHour > endHour || (slotEndHour === endHour && slotEndMin > endMin)) {
+            break;
+          }
+          
+          // Check slot is in the future and respects minHoursNotice
+          if (slotStart > minStartTime) {
+            // Check against busy ranges (with buffer)
+            const bufferedStart = new Date(slotStart.getTime() - bufferBefore * 60 * 1000);
+            const bufferedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
             
-            if (!busySlots.has(slotKey)) {
+            if (!isSlotBusy(bufferedStart, bufferedEnd)) {
               availableSlots.push({
-                date: slotDate.toISOString().slice(0, 10),
+                date: slotStart.toISOString().slice(0, 10),
                 dayOfWeek: dayName,
-                time: `${hour.toString().padStart(2, '0')}:00`,
-                dateFormatted: slotDate.toLocaleDateString('it-IT', {
+                time: `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`,
+                dateFormatted: slotStart.toLocaleDateString('it-IT', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long'
-                })
+                }),
+                duration: appointmentDuration
               });
 
               if (availableSlots.length >= 20) break;
             }
+          }
+          
+          // Move to next slot (every hour by default, or every 30 min for shorter appointments)
+          const slotIncrement = appointmentDuration <= 30 ? 30 : 60;
+          slotStartMin += slotIncrement;
+          if (slotStartMin >= 60) {
+            slotStartHour += Math.floor(slotStartMin / 60);
+            slotStartMin = slotStartMin % 60;
           }
         }
       }
@@ -322,15 +443,22 @@ async function executeGetAvailableSlots(
     current.setDate(current.getDate() + 1);
   }
 
+  const calendarConnected = !!(settings?.googleRefreshToken);
+  
   return {
     toolName: "getAvailableSlots",
     args,
     result: {
       slots: availableSlots,
       count: availableSlots.length,
+      duration: appointmentDuration,
+      calendarConnected,
       message: availableSlots.length > 0
-        ? `Ho trovato ${availableSlots.length} slot disponibili. Ecco i primi:`
-        : "Non ho trovato slot disponibili nel periodo richiesto."
+        ? `Ho trovato ${availableSlots.length} slot disponibili (consulenze di ${appointmentDuration} minuti). Ecco i primi:`
+        : "Non ho trovato slot disponibili nel periodo richiesto.",
+      next_action_hint: availableSlots.length > 0 
+        ? "Chiedi al cliente quale slot preferisce, poi usa proposeBooking"
+        : "Prova a cercare in un periodo diverso o contatta il consulente"
     },
     success: true
   };
@@ -563,6 +691,98 @@ async function executeConfirmBooking(
 
   console.log(`✅ [CONSULTATION TOOL] Booking confirmed: ${newConsultation.id}`);
 
+  // Try to create Google Calendar event with Meet link
+  let googleMeetLink: string | undefined;
+  let googleEventId: string | undefined;
+  let calendarCreated = false;
+
+  try {
+    // Get consultant availability settings
+    const [settings] = await db
+      .select({
+        googleRefreshToken: consultantAvailabilitySettings.googleRefreshToken,
+        timezone: consultantAvailabilitySettings.timezone
+      })
+      .from(consultantAvailabilitySettings)
+      .where(eq(consultantAvailabilitySettings.consultantId, pendingBooking.consultantId))
+      .limit(1);
+
+    if (settings?.googleRefreshToken) {
+      // Get client and consultant info for the calendar event
+      const [clientInfo] = await db
+        .select({
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName
+        })
+        .from(users)
+        .where(eq(users.id, pendingBooking.clientId))
+        .limit(1);
+
+      const [consultantInfo] = await db
+        .select({
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName
+        })
+        .from(users)
+        .where(eq(users.id, pendingBooking.consultantId))
+        .limit(1);
+
+      const clientName = clientInfo ? `${clientInfo.firstName || ''} ${clientInfo.lastName || ''}`.trim() : 'Cliente';
+      const consultantName = consultantInfo ? `${consultantInfo.firstName || ''} ${consultantInfo.lastName || ''}`.trim() : 'Consulente';
+      const attendees = [clientInfo?.email, consultantInfo?.email].filter(Boolean) as string[];
+
+      console.log(`📅 [CONSULTATION TOOL] Creating Google Calendar event for consultation ${newConsultation.id}...`);
+
+      const calendarResult = await createGoogleCalendarEvent(
+        pendingBooking.consultantId,
+        {
+          summary: `Consulenza con ${clientName}`,
+          description: `Consulenza prenotata tramite AI Assistant.\n\nNote: ${pendingBooking.notes || 'Nessuna nota'}`,
+          startDate: pendingBooking.date,
+          startTime: pendingBooking.time,
+          duration: pendingBooking.duration,
+          timezone: settings.timezone || "Europe/Rome",
+          attendees
+        }
+      );
+
+      googleEventId = calendarResult.googleEventId;
+      googleMeetLink = calendarResult.googleMeetLink;
+      calendarCreated = true;
+
+      // Update consultation with Calendar info
+      await db
+        .update(consultations)
+        .set({
+          googleCalendarEventId: googleEventId,
+          googleMeetLink: googleMeetLink || null
+        })
+        .where(eq(consultations.id, newConsultation.id));
+
+      console.log(`✅ [CONSULTATION TOOL] Calendar event created with Meet link: ${googleMeetLink}`);
+    } else {
+      console.log(`⚠️ [CONSULTATION TOOL] Google Calendar not connected for consultant ${pendingBooking.consultantId}`);
+    }
+  } catch (calendarError: any) {
+    console.error(`❌ [CONSULTATION TOOL] Failed to create Calendar event:`, calendarError.message);
+    // Continue without Calendar - consultation is still created
+  }
+
+  const formattedDate = scheduledAt.toLocaleDateString('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  });
+
+  let message = `Perfetto! Ho confermato la tua consulenza per ${formattedDate} alle ${pendingBooking.time}.`;
+  if (googleMeetLink) {
+    message += ` Ti ho inviato l'invito al calendario con il link per la videochiamata.`;
+  } else {
+    message += ` Riceverai presto i dettagli per la videochiamata.`;
+  }
+
   return {
     toolName: "confirmBooking",
     args,
@@ -577,9 +797,12 @@ async function executeConfirmBooking(
           year: 'numeric'
         }),
         time: pendingBooking.time,
-        duration: pendingBooking.duration
+        duration: pendingBooking.duration,
+        googleMeetLink: googleMeetLink || null,
+        calendarEventCreated: calendarCreated
       },
-      message: `Perfetto! Ho confermato la tua consulenza per ${scheduledAt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} alle ${pendingBooking.time}. Riceverai una conferma.`
+      message,
+      next_action_hint: "La consulenza è confermata. L'utente riceverà email di conferma."
     },
     success: true
   };

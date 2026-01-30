@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2, Info } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2, Info, Settings, Link2, Unlink, RefreshCw, CalendarPlus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
@@ -958,6 +958,493 @@ interface EchoDraftEmail {
     priority: string;
     category: string;
   }>;
+}
+
+// Days of the week for availability configuration
+const DAYS_OF_WEEK = [
+  { id: 0, label: "Domenica", short: "Dom" },
+  { id: 1, label: "Lunedì", short: "Lun" },
+  { id: 2, label: "Martedì", short: "Mar" },
+  { id: 3, label: "Mercoledì", short: "Mer" },
+  { id: 4, label: "Giovedì", short: "Gio" },
+  { id: 5, label: "Venerdì", short: "Ven" },
+  { id: 6, label: "Sabato", short: "Sab" },
+];
+
+interface AvailabilitySettings {
+  exists: boolean;
+  appointmentDuration: number;
+  bufferBefore: number;
+  bufferAfter: number;
+  maxDaysAhead: number;
+  minHoursNotice: number;
+  timezone: string;
+  isActive: boolean;
+  appointmentAvailability: Record<string, { enabled: boolean; start: string; end: string }> | null;
+  morningSlotStart?: string;
+  morningSlotEnd?: string;
+  afternoonSlotStart?: string;
+  afternoonSlotEnd?: string;
+}
+
+interface CalendarStatus {
+  connected: boolean;
+  email?: string;
+  calendarId?: string;
+}
+
+function ConsultantCalendarSettingsPanel() {
+  const { toast } = useToast();
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [localSettings, setLocalSettings] = useState<AvailabilitySettings | null>(null);
+
+  // Query calendar connection status
+  const { data: calendarStatus, isLoading: calendarLoading, refetch: refetchCalendarStatus } = useQuery<CalendarStatus>({
+    queryKey: ["/api/consultant/calendar/status"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/calendar/status", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch calendar status");
+      return response.json();
+    },
+  });
+
+  // Query availability settings
+  const { data: availabilitySettings, isLoading: settingsLoading, refetch: refetchSettings } = useQuery<AvailabilitySettings>({
+    queryKey: ["/api/consultant/availability-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/availability-settings", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch availability settings");
+      return response.json();
+    },
+  });
+
+  // Initialize local settings when data loads
+  React.useEffect(() => {
+    if (availabilitySettings && !localSettings) {
+      const defaultAvailability: Record<string, { enabled: boolean; start: string; end: string }> = {};
+      DAYS_OF_WEEK.forEach(day => {
+        const existing = availabilitySettings.appointmentAvailability?.[day.id.toString()];
+        if (existing) {
+          defaultAvailability[day.id.toString()] = existing;
+        } else {
+          // Default: weekdays enabled 09:00-18:00
+          defaultAvailability[day.id.toString()] = {
+            enabled: day.id >= 1 && day.id <= 5,
+            start: "09:00",
+            end: "18:00",
+          };
+        }
+      });
+      setLocalSettings({
+        ...availabilitySettings,
+        appointmentAvailability: availabilitySettings.appointmentAvailability || defaultAvailability,
+      });
+    }
+  }, [availabilitySettings, localSettings]);
+
+  // Check for OAuth callback params
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("calendar_connected") === "true") {
+      toast({
+        title: "Calendario connesso",
+        description: `Google Calendar collegato con successo (${params.get("email") || ""})`,
+      });
+      refetchCalendarStatus();
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("calendar_error")) {
+      toast({
+        title: "Errore connessione",
+        description: params.get("calendar_error"),
+        variant: "destructive",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [toast, refetchCalendarStatus]);
+
+  // Connect calendar
+  const handleConnectCalendar = async () => {
+    setIsConnecting(true);
+    try {
+      const response = await fetch("/api/consultant/calendar/oauth/start", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error(data.message || "Errore avvio OAuth");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsConnecting(false);
+    }
+  };
+
+  // Disconnect calendar
+  const handleDisconnectCalendar = async () => {
+    try {
+      const response = await fetch("/api/consultant/calendar/disconnect", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        toast({ title: "Calendario scollegato" });
+        refetchCalendarStatus();
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Test calendar connection
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    try {
+      const response = await fetch("/api/consultant/calendar/test", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({
+          title: "Connessione verificata",
+          description: `Trovati ${data.eventsCount} eventi nei prossimi 7 giorni`,
+        });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      toast({ title: "Test fallito", description: error.message, variant: "destructive" });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // Save availability settings
+  const handleSaveSettings = async () => {
+    if (!localSettings) return;
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/consultant/availability-settings", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          appointmentDuration: localSettings.appointmentDuration,
+          bufferBefore: localSettings.bufferBefore,
+          bufferAfter: localSettings.bufferAfter,
+          maxDaysAhead: localSettings.maxDaysAhead,
+          minHoursNotice: localSettings.minHoursNotice,
+          timezone: localSettings.timezone,
+          isActive: localSettings.isActive,
+          appointmentAvailability: localSettings.appointmentAvailability,
+        }),
+      });
+      if (response.ok) {
+        toast({ title: "Impostazioni salvate" });
+        refetchSettings();
+      } else {
+        const data = await response.json();
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Update day availability
+  const updateDayAvailability = (dayId: number, field: "enabled" | "start" | "end", value: boolean | string) => {
+    if (!localSettings) return;
+    const current = localSettings.appointmentAvailability || {};
+    setLocalSettings({
+      ...localSettings,
+      appointmentAvailability: {
+        ...current,
+        [dayId.toString()]: {
+          ...current[dayId.toString()],
+          [field]: value,
+        },
+      },
+    });
+  };
+
+  if (calendarLoading || settingsLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Google Calendar Connection Card */}
+      <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-3xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white pb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl">
+              <CalendarPlus className="w-6 h-6" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Google Calendar</CardTitle>
+              <p className="text-emerald-100 text-sm">Connetti il tuo calendario per le prenotazioni AI</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {calendarStatus?.connected ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl border border-emerald-200 dark:border-emerald-700">
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+                <div className="flex-1">
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-200">Calendario Connesso</p>
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400">{calendarStatus.email}</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleTestConnection}
+                  disabled={isTesting}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {isTesting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Testa Connessione
+                </Button>
+                <Button
+                  onClick={handleDisconnectCalendar}
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                >
+                  <Unlink className="w-4 h-4 mr-2" />
+                  Scollega
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/30 rounded-xl border border-amber-200 dark:border-amber-700">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200">Calendario non connesso</p>
+                  <p className="text-sm text-amber-600 dark:text-amber-400">Connetti Google Calendar per abilitare le prenotazioni automatiche via AI</p>
+                </div>
+              </div>
+              
+              <Button
+                onClick={handleConnectCalendar}
+                disabled={isConnecting}
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+              >
+                {isConnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link2 className="w-4 h-4 mr-2" />}
+                Collega Google Calendar
+              </Button>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Come funziona:</h4>
+            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5" />
+                <span>L'AI verifica la tua disponibilità in tempo reale</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5" />
+                <span>Crea automaticamente eventi con link Google Meet</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5" />
+                <span>Invia inviti al cliente e a te</span>
+              </li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Availability Settings Card */}
+      <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-3xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white pb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Disponibilità</CardTitle>
+              <p className="text-blue-100 text-sm">Configura quando i clienti possono prenotare</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {localSettings && (
+            <>
+              {/* Days of week */}
+              <div>
+                <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Giorni disponibili</h4>
+                <div className="space-y-3">
+                  {DAYS_OF_WEEK.map((day) => {
+                    const daySettings = localSettings.appointmentAvailability?.[day.id.toString()];
+                    return (
+                      <div key={day.id} className="flex items-center gap-4">
+                        <Checkbox
+                          checked={daySettings?.enabled || false}
+                          onCheckedChange={(checked) => updateDayAvailability(day.id, "enabled", !!checked)}
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                        <span className="w-24 font-medium text-gray-700 dark:text-gray-300">{day.label}</span>
+                        {daySettings?.enabled && (
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              type="time"
+                              value={daySettings?.start || "09:00"}
+                              onChange={(e) => updateDayAvailability(day.id, "start", e.target.value)}
+                              className="w-28"
+                            />
+                            <span className="text-gray-500">-</span>
+                            <Input
+                              type="time"
+                              value={daySettings?.end || "18:00"}
+                              onChange={(e) => updateDayAvailability(day.id, "end", e.target.value)}
+                              className="w-28"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Duration and buffers */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Durata consulenza</label>
+                  <Select
+                    value={localSettings.appointmentDuration.toString()}
+                    onValueChange={(v) => setLocalSettings({ ...localSettings, appointmentDuration: parseInt(v) })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 minuti</SelectItem>
+                      <SelectItem value="45">45 minuti</SelectItem>
+                      <SelectItem value="60">60 minuti</SelectItem>
+                      <SelectItem value="90">90 minuti</SelectItem>
+                      <SelectItem value="120">2 ore</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Buffer prima</label>
+                  <Select
+                    value={localSettings.bufferBefore.toString()}
+                    onValueChange={(v) => setLocalSettings({ ...localSettings, bufferBefore: parseInt(v) })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Nessuno</SelectItem>
+                      <SelectItem value="5">5 minuti</SelectItem>
+                      <SelectItem value="10">10 minuti</SelectItem>
+                      <SelectItem value="15">15 minuti</SelectItem>
+                      <SelectItem value="30">30 minuti</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Buffer dopo</label>
+                  <Select
+                    value={localSettings.bufferAfter.toString()}
+                    onValueChange={(v) => setLocalSettings({ ...localSettings, bufferAfter: parseInt(v) })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Nessuno</SelectItem>
+                      <SelectItem value="5">5 minuti</SelectItem>
+                      <SelectItem value="10">10 minuti</SelectItem>
+                      <SelectItem value="15">15 minuti</SelectItem>
+                      <SelectItem value="30">30 minuti</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Preavviso minimo</label>
+                  <Select
+                    value={localSettings.minHoursNotice.toString()}
+                    onValueChange={(v) => setLocalSettings({ ...localSettings, minHoursNotice: parseInt(v) })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 ora</SelectItem>
+                      <SelectItem value="2">2 ore</SelectItem>
+                      <SelectItem value="4">4 ore</SelectItem>
+                      <SelectItem value="12">12 ore</SelectItem>
+                      <SelectItem value="24">24 ore</SelectItem>
+                      <SelectItem value="48">48 ore</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Max days ahead */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Prenotazione massimo anticipo</label>
+                <Select
+                  value={localSettings.maxDaysAhead.toString()}
+                  onValueChange={(v) => setLocalSettings({ ...localSettings, maxDaysAhead: parseInt(v) })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 giorni</SelectItem>
+                    <SelectItem value="14">14 giorni</SelectItem>
+                    <SelectItem value="30">30 giorni</SelectItem>
+                    <SelectItem value="60">60 giorni</SelectItem>
+                    <SelectItem value="90">90 giorni</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Save button */}
+              <Button
+                onClick={handleSaveSettings}
+                disabled={isSaving}
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Salva Impostazioni
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function EchoDashboardPanel() {
@@ -2943,7 +3430,7 @@ export default function ConsultantAppointments() {
           {/* Tabs Premium - Main navigation */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <TabsList className="grid w-full max-w-2xl grid-cols-4 p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-0">
+              <TabsList className="grid w-full max-w-3xl grid-cols-5 p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-0">
                 <TabsTrigger 
                   value="calendar" 
                   className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
@@ -2971,6 +3458,13 @@ export default function ConsultantAppointments() {
                 >
                   <Mail className="w-4 h-4" />
                   Echo
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="settings" 
+                  className="flex items-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+                >
+                  <Settings className="w-4 h-4" />
+                  Impostazioni
                 </TabsTrigger>
               </TabsList>
               
@@ -3496,6 +3990,11 @@ export default function ConsultantAppointments() {
                   <EchoDashboardPanel />
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Vista Settings - Calendar & Availability */}
+            <TabsContent value="settings" className="space-y-8">
+              <ConsultantCalendarSettingsPanel />
             </TabsContent>
           </Tabs>
         </div>
