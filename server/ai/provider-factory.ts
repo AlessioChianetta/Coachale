@@ -119,6 +119,21 @@ export async function getSuperAdminGeminiKeys(): Promise<{ keys: string[]; enabl
 }
 
 /**
+ * Get a Gemini API key for lightweight operations (like intent classification)
+ * Uses same priority: SuperAdmin > env fallback
+ * Does NOT require user context - for system-level operations
+ */
+export async function getGeminiApiKeyForClassifier(): Promise<string | null> {
+  const superAdminKeys = await getSuperAdminGeminiKeys();
+  if (superAdminKeys && superAdminKeys.keys.length > 0) {
+    const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+    return superAdminKeys.keys[index];
+  }
+  
+  return process.env.GEMINI_API_KEY || null;
+}
+
+/**
  * AI provider source (tier)
  */
 export type AiProviderSource = "superadmin" | "client" | "admin" | "google";

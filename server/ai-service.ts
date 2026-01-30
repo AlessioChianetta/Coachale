@@ -32,7 +32,7 @@ import {
   OperationAttemptContext,
   GeminiUsageMetadata,
 } from "./ai/retry-manager";
-import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch } from "./ai/provider-factory";
+import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch, getGeminiApiKeyForClassifier } from "./ai/provider-factory";
 import { fileSearchService } from "./ai/file-search-service";
 import { conversationContextBuilder } from "./services/conversation-memory";
 import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
@@ -2217,7 +2217,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     };
     
     if (shouldRunClassifier) {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = await getGeminiApiKeyForClassifier();
       if (apiKey) {
         consultationIntentClassification = await classifyConsultationIntent(message, apiKey, classifierContext);
         isConsultationQuery = shouldUseConsultationTools(consultationIntentClassification, classifierContext);
