@@ -1801,6 +1801,8 @@ export async function getSlotAvailabilityExplanation(
     .select({
       appointmentDate: appointmentBookings.appointmentDate,
       appointmentTime: appointmentBookings.appointmentTime,
+      googleEventId: appointmentBookings.googleEventId,
+      clientName: appointmentBookings.clientName,
     })
     .from(appointmentBookings)
     .where(
@@ -1833,7 +1835,9 @@ export async function getSlotAvailabilityExplanation(
   const busyRanges: BusyRange[] = existingBookings.map(b => {
     const start = localTimeToUtc(new Date(b.appointmentDate), b.appointmentTime, timezone);
     const end = new Date(start.getTime() + appointmentDuration * 60 * 1000);
-    return { start, end, summary: `Prenotazione DB ore ${b.appointmentTime}` };
+    const hasCalendar = b.googleEventId ? '✓ Calendar' : '⚠ NO Calendar';
+    const clientInfo = b.clientName ? ` - ${b.clientName}` : '';
+    return { start, end, summary: `Prenotazione ${b.appointmentTime}${clientInfo} [${hasCalendar}]` };
   });
 
   try {
