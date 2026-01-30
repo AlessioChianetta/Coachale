@@ -253,12 +253,9 @@ export function shouldUseConsultationTools(
     return false;
   }
 
-  if (classification.intent === 'booking_confirm') {
-    if (!context?.hasPendingBooking && !context?.pendingBookingToken) {
-      console.log(`🚫 [Intent:${classification.traceId}] booking_confirm blocked - no pending booking in context`);
-      return false;
-    }
-  }
+  // Note: booking_confirm without pending booking is allowed now
+  // getToolsForIntent will return proposeBooking tools instead of confirmBooking
+  // This handles cases like "alle 15" where user specifies a new slot
 
   if (classification.confidenceLevel === 'high') {
     return true;
@@ -289,8 +286,10 @@ export function getToolsForIntent(
       
     case 'booking_confirm':
       if (!context?.pendingBookingToken) {
-        console.log(`🚫 [Intent:${classification.traceId}] confirmBooking blocked - no pendingBookingToken`);
-        return [];
+        // No pending booking - user might be specifying a new time slot (e.g. "alle 15")
+        // Treat as booking request to allow proposeBooking
+        console.log(`📋 [Intent:${classification.traceId}] No pendingBookingToken - treating as slot selection`);
+        return ['getAvailableSlots', 'proposeBooking'];
       }
       return ['confirmBooking'];
       

@@ -303,6 +303,36 @@ async function executeGetAvailableSlots(
     };
   });
 
+  // Get pending bookings (slots awaiting confirmation) - exclude from available slots
+  // Filter by date range and not expired
+  const pendingBookingsData = await db
+    .select({
+      startAt: pendingBookings.startAt,
+      duration: pendingBookings.duration
+    })
+    .from(pendingBookings)
+    .where(
+      and(
+        eq(pendingBookings.consultantId, consultantId),
+        eq(pendingBookings.status, "awaiting_confirm"),
+        gte(pendingBookings.expiresAt, now),
+        gte(pendingBookings.startAt, effectiveStartDate),
+        lte(pendingBookings.startAt, effectiveEndDate)
+      )
+    );
+
+  // Add pending bookings to busy ranges
+  const pendingBusyRanges = pendingBookingsData.map(p => {
+    const pendingStart = new Date(p.startAt);
+    const pendingEnd = new Date(pendingStart.getTime() + (p.duration || 60) * 60 * 1000);
+    return {
+      start: new Date(pendingStart.getTime() - bufferBefore * 60 * 1000),
+      end: new Date(pendingEnd.getTime() + bufferAfter * 60 * 1000)
+    };
+  });
+  
+  console.log(`🔒 [SLOTS] Found ${pendingBookingsData.length} pending bookings to exclude`);
+
   // Try to get Google Calendar events if connected
   let calendarBusy: Array<{ start: Date; end: Date }> = [];
   try {
@@ -337,8 +367,8 @@ async function executeGetAvailableSlots(
     console.log(`⚠️ [SLOTS] Could not load Google Calendar (not connected or error):`, error);
   }
 
-  // Merge all busy ranges
-  const allBusyRanges = [...busyRanges, ...calendarBusy];
+  // Merge all busy ranges (consultations + pending bookings + calendar)
+  const allBusyRanges = [...busyRanges, ...pendingBusyRanges, ...calendarBusy];
 
   // Helper to check if a slot conflicts with busy ranges
   const isSlotBusy = (slotStart: Date, slotEnd: Date): boolean => {
