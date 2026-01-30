@@ -98,6 +98,13 @@ export type AiRetryEvent =
       provider: AiProviderMetadata;
       outcome: string;
       output: string;
+    }
+  | {
+      type: 'function_call';
+      conversationId: string;
+      provider: AiProviderMetadata;
+      functionName: string;
+      args: Record<string, any>;
     };
 
 /**
@@ -240,7 +247,7 @@ export async function retryWithBackoff<T>(
 }
 
 /**
- * Gemini chunk part with thinking and code execution support
+ * Gemini chunk part with thinking, code execution, and function calling support
  */
 export interface GeminiPart {
   text?: string;
@@ -252,6 +259,10 @@ export interface GeminiPart {
   codeExecutionResult?: {
     outcome: string;
     output: string;
+  };
+  functionCall?: {
+    name: string;
+    args: Record<string, any>;
   };
 }
 
@@ -389,6 +400,18 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
                 provider: context.provider,
                 outcome: part.codeExecutionResult.outcome,
                 output: part.codeExecutionResult.output,
+              };
+            }
+            // Handle Function Call: AI requesting to call a tool
+            else if (part.functionCall) {
+              console.log(`🔧 [FUNCTION CALL] AI calling function: ${part.functionCall.name}`);
+              console.log(`   Args: ${JSON.stringify(part.functionCall.args)}`);
+              yield {
+                type: 'function_call',
+                conversationId: context.conversationId,
+                provider: context.provider,
+                functionName: part.functionCall.name,
+                args: part.functionCall.args || {},
               };
             }
             // Handle text parts (thinking or regular content)

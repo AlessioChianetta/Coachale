@@ -36,6 +36,8 @@ import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch }
 import { fileSearchService } from "./ai/file-search-service";
 import { conversationContextBuilder } from "./services/conversation-memory";
 import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
+import { consultationTools, isConsultationTool } from "./ai/consultation-tools";
+import { executeConsultationTool } from "./ai/consultation-tool-executor";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -214,6 +216,17 @@ async function* streamWithRetriesAdapter(
           provider: event.provider,
           outcome: event.outcome,
           output: event.output,
+        };
+        break;
+
+      case 'function_call':
+        // Map function call event (AI requesting tool execution)
+        yield {
+          type: 'function_call',
+          conversationId: event.conversationId,
+          provider: event.provider,
+          functionName: event.functionName,
+          args: event.args,
         };
         break;
     }
@@ -723,7 +736,7 @@ export interface ChatResponse {
 }
 
 export interface ChatStreamChunk {
-  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat" | "thinking" | "code_execution" | "code_execution_result";
+  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat" | "thinking" | "code_execution" | "code_execution_result" | "function_call";
   conversationId: string;
   messageId?: string;
   content?: string;
@@ -745,6 +758,9 @@ export interface ChatStreamChunk {
   code?: string;
   outcome?: string;
   output?: string;
+  // Function Call fields
+  functionName?: string;
+  args?: Record<string, any>;
 }
 
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
@@ -2167,13 +2183,17 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`[AI] Using model: ${dynamicConfig.model} with thinking_level: ${dynamicConfig.thinkingLevel || 'N/A'} [CLIENT STREAMING]`);
     console.log(`[AI] Provider: ${providerMetadata.name}, User-selected: ${requestedModel ? 'YES' : 'NO'}`);
 
-    // Create stream factory function with FileSearch + Code Execution tools
+    // Create stream factory function with FileSearch + Code Execution + Consultation tools
     // Code Execution enables Gemini to write and run Python for precise calculations
-    const clientTools: any[] = [{ codeExecution: {} }];
+    // Consultation tools enable AI to query real consultation data
+    const clientTools: any[] = [
+      { codeExecution: {} },
+      { functionDeclarations: consultationTools }
+    ];
     if (fileSearchTool) {
       clientTools.push(fileSearchTool);
     }
-    console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
+    console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, consultationTools=YES (${consultationTools.length}), fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: dynamicConfig.model,
@@ -2195,6 +2215,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 
     // Stream with automatic retry and heartbeat using unified retry manager
     let clientUsageMetadata: GeminiUsageMetadata | undefined;
+    let pendingFunctionCall: { functionName: string; args: Record<string, any> } | null = null;
+    
     for await (const chunk of streamWithRetriesAdapter(makeStreamAttempt, conversation.id, providerMetadata)) {
       yield chunk;
       
@@ -2211,6 +2233,111 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       // Capture usageMetadata from complete event
       if (chunk.type === 'complete' && chunk.usageMetadata) {
         clientUsageMetadata = chunk.usageMetadata;
+      }
+      
+      // Track function calls for consultation tools
+      if (chunk.type === 'function_call' && chunk.functionName) {
+        console.log(`🔧 [CONSULTATION TOOL] Detected function call: ${chunk.functionName}`);
+        if (isConsultationTool(chunk.functionName)) {
+          pendingFunctionCall = {
+            functionName: chunk.functionName,
+            args: chunk.args || {}
+          };
+          console.log(`🔧 [CONSULTATION TOOL] Will execute: ${chunk.functionName} with args:`, JSON.stringify(chunk.args));
+        }
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FUNCTION CALL HANDLING - Execute consultation tool and get AI response
+    // ═══════════════════════════════════════════════════════════════════════
+    if (pendingFunctionCall) {
+      console.log(`🔧 [CONSULTATION TOOL] Executing tool: ${pendingFunctionCall.functionName}`);
+      
+      // Get consultant ID from user context
+      const consultantId = userContext.consultantId;
+      if (!consultantId) {
+        console.error(`🔧 [CONSULTATION TOOL] ERROR: No consultantId found in userContext`);
+      } else {
+        try {
+          // Execute the consultation tool
+          const toolResult = await executeConsultationTool(
+            pendingFunctionCall.functionName,
+            pendingFunctionCall.args,
+            clientId,
+            consultantId
+          );
+          
+          console.log(`🔧 [CONSULTATION TOOL] Tool result success: ${toolResult.success}`);
+          console.log(`🔧 [CONSULTATION TOOL] Tool result:`, JSON.stringify(toolResult.result));
+          
+          // Build conversation with function call and response
+          const messagesWithFunction = [
+            ...geminiMessages.map(msg => ({
+              role: msg.role === "assistant" ? "model" : "user",
+              parts: [{ text: msg.content }],
+            })),
+            {
+              role: "model" as const,
+              parts: [{
+                functionCall: {
+                  name: pendingFunctionCall.functionName,
+                  args: pendingFunctionCall.args
+                }
+              }]
+            },
+            {
+              role: "user" as const,
+              parts: [{
+                functionResponse: {
+                  name: pendingFunctionCall.functionName,
+                  response: toolResult.result
+                }
+              }]
+            }
+          ];
+          
+          console.log(`🔧 [CONSULTATION TOOL] Making follow-up AI call with function response`);
+          
+          // Make follow-up API call to get natural language response
+          const followUpResponse = await aiClient.generateContent({
+            model: dynamicConfig.model,
+            contents: messagesWithFunction,
+            generationConfig: {
+              systemInstruction: systemPrompt,
+            },
+            tools: clientTools,
+          });
+          
+          // Extract text from follow-up response
+          const followUpText = followUpResponse.response.text();
+          console.log(`🔧 [CONSULTATION TOOL] Follow-up response received (${followUpText.length} chars)`);
+          
+          // Replace accumulated message with the function call response
+          accumulatedMessage = followUpText;
+          
+          // Yield the response as delta chunks for the client
+          yield {
+            type: 'delta' as const,
+            conversationId: conversation.id,
+            provider: providerMetadata,
+            content: followUpText,
+          };
+          
+          yield {
+            type: 'complete' as const,
+            conversationId: conversation.id,
+            provider: providerMetadata,
+            content: followUpText,
+          };
+          
+        } catch (toolError: any) {
+          console.error(`🔧 [CONSULTATION TOOL] Error executing tool:`, toolError);
+          // Fallback: use original accumulated message or error message
+          if (!accumulatedMessage) {
+            accumulatedMessage = "Mi dispiace, si è verificato un errore nel recuperare i dati delle consulenze. Riprova più tardi.";
+          }
+        }
       }
     }
 
