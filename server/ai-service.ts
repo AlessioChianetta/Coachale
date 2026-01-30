@@ -2451,54 +2451,75 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           const allowedToolNames = toolsToUse.map(t => t.name);
           if (!allowedToolNames.includes(functionCall.name)) {
             console.log(`🚫 [CONSULTATION] BLOCKED: Function ${functionCall.name} not in allowed tools: [${allowedToolNames.join(', ')}]`);
-            console.log(`   This is likely a Gemini hallucination - rejecting and responding with error`);
+            console.log(`   This is likely a Gemini hallucination - retrying WITHOUT tools as fallback`);
             
-            // Format pending booking date safely
-            // Note: getPendingBookingState returns { token, startAt, consultantId, clientId }
-            let formattedDate = '';
-            let formattedTime = '';
-            if (pendingBooking?.startAt) {
-              try {
-                const startDate = new Date(pendingBooking.startAt);
-                if (!isNaN(startDate.getTime())) {
-                  formattedDate = startDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-                  formattedTime = startDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-                }
-              } catch (e) {
-                console.log(`   Error formatting date: ${e}`);
-              }
+            // FALLBACK: Retry without tools - let Gemini respond naturally using context in system prompt
+            try {
+              console.log(`🔄 [CONSULTATION] Fallback: Calling Gemini without tools...`);
+              const fallbackResponse = await aiClient.generateContent({
+                model: dynamicConfig.model,
+                contents: geminiMessages.map(msg => ({
+                  role: msg.role === "assistant" ? "model" : "user",
+                  parts: [{ text: msg.content }],
+                })),
+                generationConfig: {
+                  systemInstruction: systemPrompt,
+                },
+                // No tools - let Gemini respond naturally
+              });
+              
+              const fallbackText = fallbackResponse.response.text() || "Mi dispiace, non sono riuscito a elaborare la richiesta.";
+              console.log(`✅ [CONSULTATION] Fallback response: ${fallbackText.substring(0, 100)}...`);
+              
+              accumulatedMessage = fallbackText;
+              yield {
+                type: 'delta' as const,
+                conversationId: conversation.id,
+                provider: providerMetadata,
+                content: fallbackText,
+              };
+              
+              yield {
+                type: 'complete' as const,
+                conversationId: conversation.id,
+                provider: providerMetadata,
+              };
+              
+              // Save message to DB
+              await db.insert(aiMessages).values({
+                id: crypto.randomUUID(),
+                conversationId: conversation.id,
+                role: "assistant",
+                content: fallbackText,
+                createdAt: new Date(),
+              });
+              
+              return;
+            } catch (fallbackError) {
+              console.error(`🚫 [CONSULTATION] Fallback also failed:`, fallbackError);
+              // If fallback fails too, show generic error
+              const errorMessage = `Mi dispiace, c'è stato un problema. Riprova a dirmi cosa vorresti fare.`;
+              accumulatedMessage = errorMessage;
+              yield {
+                type: 'delta' as const,
+                conversationId: conversation.id,
+                provider: providerMetadata,
+                content: errorMessage,
+              };
+              yield {
+                type: 'complete' as const,
+                conversationId: conversation.id,
+                provider: providerMetadata,
+              };
+              await db.insert(aiMessages).values({
+                id: crypto.randomUUID(),
+                conversationId: conversation.id,
+                role: "assistant",
+                content: errorMessage,
+                createdAt: new Date(),
+              });
+              return;
             }
-            
-            // Respond with an error message instead of executing the unauthorized tool
-            const errorMessage = pendingBooking && formattedDate && formattedTime
-              ? `Per confermare la prenotazione del ${formattedDate} alle ${formattedTime}, dimmi semplicemente "sì, confermo" o "no, annulla".`
-              : `Mi dispiace, c'è stato un problema. Riprova a dirmi cosa vorresti fare.`;
-            
-            accumulatedMessage = errorMessage;
-            yield {
-              type: 'delta' as const,
-              conversationId: conversation.id,
-              provider: providerMetadata,
-              content: errorMessage,
-            };
-            
-            yield {
-              type: 'complete' as const,
-              conversationId: conversation.id,
-              provider: providerMetadata,
-            };
-            
-            // Skip the rest of the function call handling
-            // Save message to DB
-            await db.insert(aiMessages).values({
-              id: crypto.randomUUID(),
-              conversationId: conversation.id,
-              role: "assistant",
-              content: errorMessage,
-              createdAt: new Date(),
-            });
-            
-            return;
           }
           
           // Get consultant ID and execute tool
