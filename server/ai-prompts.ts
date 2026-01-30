@@ -447,20 +447,25 @@ ${userContext.consultations ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${userContext.consultations.monthlyLimit ? `
-⚡ LIMITE CONSULENZE MENSILE (${new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric' })})
-- Limite massimo: ${userContext.consultations.monthlyLimit.limit} consulenze/mese
-- Consulenze COMPLETATE questo mese: ${userContext.consultations.monthlyLimit.completed}
-- Consulenze PRENOTATE (future) questo mese: ${userContext.consultations.monthlyLimit.scheduled}
-- TOTALE USATE (completate + prenotate): ${userContext.consultations.monthlyLimit.totalUsed}/${userContext.consultations.monthlyLimit.limit}
-- Ancora DISPONIBILI da prenotare: ${userContext.consultations.monthlyLimit.remaining}
-- ${userContext.consultations.monthlyLimit.isLimitReached ? '🚫 LIMITE RAGGIUNTO - Il cliente NON può prenotare nuove consulenze per questo mese (tutte le slot sono usate o già prenotate)' : '✅ Il cliente può ancora prenotare consulenze'}
+╔══════════════════════════════════════════════════════════════════════╗
+║  🚨🚨🚨 DATI UFFICIALI CONSULENZE - GENNAIO 2026 🚨🚨🚨              ║
+║                                                                      ║
+║  QUESTI SONO I DATI REALI E AGGIORNATI IN TEMPO REALE:              ║
+║                                                                      ║
+║  ✅ Consulenze COMPLETATE questo mese: ${userContext.consultations.monthlyLimit.completed}                          ║
+║  📅 Consulenze PRENOTATE (future): ${userContext.consultations.monthlyLimit.scheduled}                              ║
+║  📊 TOTALE USATE: ${userContext.consultations.monthlyLimit.totalUsed}/${userContext.consultations.monthlyLimit.limit}                                              ║
+║  🔢 Limite mensile: ${userContext.consultations.monthlyLimit.limit} consulenze/mese                             ║
+║  📉 Ancora disponibili: ${userContext.consultations.monthlyLimit.remaining}                                        ║
+║  ${userContext.consultations.monthlyLimit.isLimitReached ? '🚫 LIMITE RAGGIUNTO!' : '✅ Slot ancora disponibili'}                                           ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-🔴 REGOLA CRITICA - CONTEGGIO CONSULENZE MENSILI:
-Quando l'utente chiede "quante consulenze ho fatto questo mese?" o domande simili sul conteggio mensile,
-USA ESCLUSIVAMENTE i dati della sezione "LIMITE CONSULENZE MENSILE" qui sopra.
-NON cercare nei documenti File Search per rispondere a questa domanda.
-I numeri mostrati sopra (completate, prenotate, totale usate) sono i dati UFFICIALI e AGGIORNATI in tempo reale.
-Rispondi con questi numeri esatti, non con approssimazioni o ricerche nei documenti.
+⛔⛔⛔ ISTRUZIONE OBBLIGATORIA ⛔⛔⛔
+Quando l'utente chiede "quante consulenze ho fatto questo mese?" o domande simili:
+1. RISPONDI SOLO con i numeri nel box sopra: ${userContext.consultations.monthlyLimit.completed} completate, ${userContext.consultations.monthlyLimit.scheduled} prenotate = ${userContext.consultations.monthlyLimit.totalUsed} totali
+2. NON USARE File Search per questa domanda - i documenti potrebbero essere incompleti
+3. IGNORA qualsiasi informazione trovata nei documenti indicizzati per i conteggi mensili
+4. USA SOLO i dati strutturati qui sopra che sono aggiornati in tempo reale dal database
 ` : '- Nessun limite mensile impostato (consulenze illimitate)'}
 
 ${userContext.consultations.upcoming && userContext.consultations.upcoming.length > 0 ? `
