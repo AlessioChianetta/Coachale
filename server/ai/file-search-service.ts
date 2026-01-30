@@ -1709,18 +1709,24 @@ export class FileSearchService {
       return null;
     }
 
-    // Filter out invalid store names (must start with "corpora/" for Google API)
-    const validStoreNames = storeNames.filter(name => {
-      if (!name || typeof name !== 'string') {
-        console.warn(`⚠️ [FileSearch] Filtering out invalid store name: ${name}`);
-        return false;
-      }
-      if (!name.startsWith('corpora/')) {
-        console.warn(`⚠️ [FileSearch] Filtering out store name with invalid format: ${name}`);
-        return false;
-      }
-      return true;
-    });
+    // Convert and validate store names for Google API (must start with "corpora/")
+    const validStoreNames = storeNames
+      .filter(name => name && typeof name === 'string')
+      .map(name => {
+        // Convert fileSearchStores/ prefix to corpora/ (Google API format)
+        if (name.startsWith('fileSearchStores/')) {
+          const converted = name.replace('fileSearchStores/', 'corpora/');
+          console.log(`🔄 [FileSearch] Converted store name: ${name} → ${converted}`);
+          return converted;
+        }
+        // Already in correct format
+        if (name.startsWith('corpora/')) {
+          return name;
+        }
+        // Invalid format - prefix with corpora/
+        console.warn(`⚠️ [FileSearch] Store name missing prefix, adding corpora/: ${name}`);
+        return `corpora/${name}`;
+      });
 
     if (validStoreNames.length === 0) {
       console.warn(`⚠️ [FileSearch] No valid store names remaining after filtering`);
