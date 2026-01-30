@@ -16095,6 +16095,332 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CONSULTANT CALENDAR APIs (for AI Assistant booking flow)
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  // GET /api/consultant/calendar/status - Check if consultant has calendar connected
+  app.get("/api/consultant/calendar/status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const [settings] = await db
+        .select({
+          googleRefreshToken: schema.consultantAvailabilitySettings.googleRefreshToken,
+          googleCalendarEmail: schema.consultantAvailabilitySettings.googleCalendarEmail,
+          googleCalendarId: schema.consultantAvailabilitySettings.googleCalendarId,
+        })
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      if (!settings || !settings.googleRefreshToken) {
+        return res.json({ connected: false });
+      }
+
+      res.json({
+        connected: true,
+        email: settings.googleCalendarEmail,
+        calendarId: settings.googleCalendarId || 'primary'
+      });
+    } catch (error: any) {
+      console.error("❌ Error checking consultant calendar status:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/consultant/calendar/oauth/start - Start OAuth flow for consultant
+  app.post("/api/consultant/calendar/oauth/start", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const { getAuthorizationUrl, buildBaseUrlFromRequest } = await import("./google-calendar-service");
+      const redirectBaseUrl = buildBaseUrlFromRequest(req);
+      const authUrl = await getAuthorizationUrl(consultantId, redirectBaseUrl);
+
+      if (!authUrl) {
+        return res.status(500).json({ 
+          message: "Credenziali OAuth globali non configurate. Contatta il SuperAdmin." 
+        });
+      }
+
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("❌ Error starting consultant calendar OAuth:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/consultant/calendar/oauth/callback - OAuth callback for consultant
+  app.get("/api/consultant/calendar/oauth/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+
+      if (!code || !state) {
+        return res.redirect("/consultant/appointments?calendar_error=missing_params");
+      }
+
+      const consultantId = state as string;
+      const { exchangeCodeForTokens, buildBaseUrlFromRequest } = await import("./google-calendar-service");
+      const { google } = await import("googleapis");
+      const redirectBaseUrl = buildBaseUrlFromRequest(req);
+
+      const tokens = await exchangeCodeForTokens(code as string, consultantId, redirectBaseUrl);
+
+      // Get user email from Google
+      const oauth2 = google.oauth2({ version: 'v2', auth: new google.auth.OAuth2() });
+      const oauth2Client = new google.auth.OAuth2();
+      oauth2Client.setCredentials({ access_token: tokens.accessToken });
+      const userInfo = await google.oauth2({ version: 'v2', auth: oauth2Client }).userinfo.get();
+      const email = userInfo.data.email;
+
+      // Save tokens to consultant_availability_settings
+      const [existing] = await db
+        .select({ id: schema.consultantAvailabilitySettings.id })
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(schema.consultantAvailabilitySettings)
+          .set({
+            googleRefreshToken: tokens.refreshToken,
+            googleAccessToken: tokens.accessToken,
+            googleTokenExpiresAt: tokens.expiresAt,
+            googleCalendarEmail: email,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId));
+      } else {
+        await db.insert(schema.consultantAvailabilitySettings).values({
+          consultantId,
+          googleRefreshToken: tokens.refreshToken,
+          googleAccessToken: tokens.accessToken,
+          googleTokenExpiresAt: tokens.expiresAt,
+          googleCalendarEmail: email,
+          appointmentDuration: 60,
+          bufferBefore: 15,
+          bufferAfter: 15,
+          morningSlotStart: "09:00",
+          morningSlotEnd: "12:00",
+          afternoonSlotStart: "14:00",
+          afternoonSlotEnd: "18:00",
+          maxDaysAhead: 30,
+          minHoursNotice: 24,
+          timezone: "Europe/Rome",
+          isActive: true,
+        });
+      }
+
+      console.log(`✅ Consultant ${consultantId} calendar connected successfully, email: ${email}`);
+      res.redirect(`/consultant/appointments?calendar_connected=true&email=${encodeURIComponent(email || '')}`);
+    } catch (error: any) {
+      console.error("❌ Error in consultant calendar OAuth callback:", error);
+      res.redirect(`/consultant/appointments?calendar_error=${encodeURIComponent(error.message)}`);
+    }
+  });
+
+  // POST /api/consultant/calendar/disconnect - Disconnect calendar from consultant
+  app.post("/api/consultant/calendar/disconnect", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      await db
+        .update(schema.consultantAvailabilitySettings)
+        .set({
+          googleRefreshToken: null,
+          googleAccessToken: null,
+          googleTokenExpiresAt: null,
+          googleCalendarEmail: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId));
+
+      console.log(`✅ Calendar disconnected for consultant ${consultantId}`);
+      res.json({ success: true, message: "Calendario Google scollegato con successo" });
+    } catch (error: any) {
+      console.error("❌ Error disconnecting consultant calendar:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/consultant/calendar/test - Test consultant calendar connection
+  app.post("/api/consultant/calendar/test", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const { getValidAccessToken } = await import("./google-calendar-service");
+      const accessToken = await getValidAccessToken(consultantId);
+
+      if (!accessToken) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Calendario non connesso o token scaduto" 
+        });
+      }
+
+      const { google } = await import("googleapis");
+      const oauth2Client = new google.auth.OAuth2();
+      oauth2Client.setCredentials({ access_token: accessToken });
+
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+      const now = new Date();
+      const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const events = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: now.toISOString(),
+        timeMax: weekLater.toISOString(),
+        maxResults: 5,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      const [settings] = await db
+        .select({ googleCalendarEmail: schema.consultantAvailabilitySettings.googleCalendarEmail })
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      console.log(`✅ Consultant ${consultantId} calendar test successful - ${events.data.items?.length || 0} events found`);
+      
+      res.json({ 
+        success: true, 
+        message: "Connessione al calendario verificata con successo",
+        eventsCount: events.data.items?.length || 0,
+        calendarEmail: settings?.googleCalendarEmail
+      });
+    } catch (error: any) {
+      console.error("❌ Error testing consultant calendar:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || "Errore durante il test della connessione" 
+      });
+    }
+  });
+
+  // GET /api/consultant/availability-settings - Get consultant availability settings
+  app.get("/api/consultant/availability-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const [settings] = await db
+        .select()
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      if (!settings) {
+        return res.json({
+          exists: false,
+          appointmentDuration: 60,
+          bufferBefore: 15,
+          bufferAfter: 15,
+          maxDaysAhead: 30,
+          minHoursNotice: 24,
+          timezone: "Europe/Rome",
+          isActive: false,
+          appointmentAvailability: null,
+        });
+      }
+
+      res.json({
+        exists: true,
+        appointmentDuration: settings.appointmentDuration,
+        bufferBefore: settings.bufferBefore,
+        bufferAfter: settings.bufferAfter,
+        maxDaysAhead: settings.maxDaysAhead,
+        minHoursNotice: settings.minHoursNotice,
+        timezone: settings.timezone,
+        isActive: settings.isActive,
+        appointmentAvailability: settings.appointmentAvailability,
+        morningSlotStart: settings.morningSlotStart,
+        morningSlotEnd: settings.morningSlotEnd,
+        afternoonSlotStart: settings.afternoonSlotStart,
+        afternoonSlotEnd: settings.afternoonSlotEnd,
+      });
+    } catch (error: any) {
+      console.error("❌ Error getting consultant availability settings:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PUT /api/consultant/availability-settings - Update consultant availability settings
+  app.put("/api/consultant/availability-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const {
+        appointmentDuration,
+        bufferBefore,
+        bufferAfter,
+        maxDaysAhead,
+        minHoursNotice,
+        timezone,
+        isActive,
+        appointmentAvailability,
+        morningSlotStart,
+        morningSlotEnd,
+        afternoonSlotStart,
+        afternoonSlotEnd,
+      } = req.body;
+
+      const [existing] = await db
+        .select({ id: schema.consultantAvailabilitySettings.id })
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      const updateData: any = { updatedAt: new Date() };
+      if (appointmentDuration !== undefined) updateData.appointmentDuration = appointmentDuration;
+      if (bufferBefore !== undefined) updateData.bufferBefore = bufferBefore;
+      if (bufferAfter !== undefined) updateData.bufferAfter = bufferAfter;
+      if (maxDaysAhead !== undefined) updateData.maxDaysAhead = maxDaysAhead;
+      if (minHoursNotice !== undefined) updateData.minHoursNotice = minHoursNotice;
+      if (timezone !== undefined) updateData.timezone = timezone;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (appointmentAvailability !== undefined) updateData.appointmentAvailability = appointmentAvailability;
+      if (morningSlotStart !== undefined) updateData.morningSlotStart = morningSlotStart;
+      if (morningSlotEnd !== undefined) updateData.morningSlotEnd = morningSlotEnd;
+      if (afternoonSlotStart !== undefined) updateData.afternoonSlotStart = afternoonSlotStart;
+      if (afternoonSlotEnd !== undefined) updateData.afternoonSlotEnd = afternoonSlotEnd;
+
+      if (existing) {
+        await db
+          .update(schema.consultantAvailabilitySettings)
+          .set(updateData)
+          .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId));
+      } else {
+        await db.insert(schema.consultantAvailabilitySettings).values({
+          consultantId,
+          appointmentDuration: appointmentDuration || 60,
+          bufferBefore: bufferBefore || 15,
+          bufferAfter: bufferAfter || 15,
+          morningSlotStart: morningSlotStart || "09:00",
+          morningSlotEnd: morningSlotEnd || "12:00",
+          afternoonSlotStart: afternoonSlotStart || "14:00",
+          afternoonSlotEnd: afternoonSlotEnd || "18:00",
+          maxDaysAhead: maxDaysAhead || 30,
+          minHoursNotice: minHoursNotice || 24,
+          timezone: timezone || "Europe/Rome",
+          isActive: isActive ?? true,
+          appointmentAvailability: appointmentAvailability || null,
+        });
+      }
+
+      console.log(`✅ Consultant ${consultantId} availability settings updated`);
+      res.json({ success: true, message: "Impostazioni aggiornate con successo" });
+    } catch (error: any) {
+      console.error("❌ Error updating consultant availability settings:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // END CONSULTANT CALENDAR APIs
+  // ═══════════════════════════════════════════════════════════════════════════════
+
   // POST /api/whatsapp/test-credentials - Test Twilio credentials validity
   // ✅ PROTECTED: Only authenticated consultants can test their own credentials
   app.post("/api/whatsapp/test-credentials", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
