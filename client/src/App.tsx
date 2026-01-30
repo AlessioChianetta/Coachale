@@ -135,6 +135,7 @@ const BronzeAuth = lazy(() => import("@/pages/bronze-auth"));
 const SelectAgent = lazy(() => import("@/pages/select-agent"));
 const PublicReferralLanding = lazy(() => import("@/pages/public-referral-landing"));
 const PublicOptinLanding = lazy(() => import("@/pages/public-optin-landing"));
+const PublicBooking = lazy(() => import("@/pages/public-booking"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
@@ -190,6 +191,9 @@ function Router() {
 
           {/* Public Optin Landing - no auth required */}
           <Route path="/optin/:consultantId" component={PublicOptinLanding} />
+
+          {/* Public Booking Page - no auth required (Calendly-style) */}
+          <Route path="/prenota/:slug" component={PublicBooking} />
 
           {/* Public Consultation Invite Lobby - no auth required */}
           <Route path="/invite/:token" component={ConsultationInviteLobby} />

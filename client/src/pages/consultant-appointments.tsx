@@ -996,7 +996,10 @@ function ConsultantCalendarSettingsPanel() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingBookingPage, setIsSavingBookingPage] = useState(false);
   const [localSettings, setLocalSettings] = useState<AvailabilitySettings | null>(null);
+  const [bookingPageTitle, setBookingPageTitle] = useState("");
+  const [bookingPageDescription, setBookingPageDescription] = useState("");
 
   // Query calendar connection status
   const { data: calendarStatus, isLoading: calendarLoading, refetch: refetchCalendarStatus } = useQuery<CalendarStatus>({
@@ -1021,6 +1024,31 @@ function ConsultantCalendarSettingsPanel() {
       return response.json();
     },
   });
+
+  // Query booking page settings
+  const { data: bookingPageSettings, isLoading: bookingPageLoading, refetch: refetchBookingPage } = useQuery<{
+    bookingSlug: string | null;
+    bookingPageEnabled: boolean;
+    bookingPageTitle: string | null;
+    bookingPageDescription: string | null;
+  }>({
+    queryKey: ["/api/consultant/booking-page"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/booking-page", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch booking page settings");
+      return response.json();
+    },
+  });
+
+  // Initialize booking page settings
+  React.useEffect(() => {
+    if (bookingPageSettings) {
+      setBookingPageTitle(bookingPageSettings.bookingPageTitle || "");
+      setBookingPageDescription(bookingPageSettings.bookingPageDescription || "");
+    }
+  }, [bookingPageSettings]);
 
   // Initialize local settings when data loads
   React.useEffect(() => {
@@ -1177,6 +1205,64 @@ function ConsultantCalendarSettingsPanel() {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Toggle booking page enabled/disabled
+  const handleToggleBookingPage = async (enabled: boolean) => {
+    setIsSavingBookingPage(true);
+    try {
+      const response = await fetch("/api/consultant/booking-page", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingPageEnabled: enabled,
+          generateSlug: true,
+        }),
+      });
+      if (response.ok) {
+        toast({ title: enabled ? "Pagina pubblica attivata" : "Pagina pubblica disattivata" });
+        refetchBookingPage();
+      } else {
+        const data = await response.json();
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSavingBookingPage(false);
+    }
+  };
+
+  // Save booking page settings
+  const handleSaveBookingPageSettings = async () => {
+    setIsSavingBookingPage(true);
+    try {
+      const response = await fetch("/api/consultant/booking-page", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingPageTitle,
+          bookingPageDescription,
+        }),
+      });
+      if (response.ok) {
+        toast({ title: "Impostazioni pagina salvate" });
+        refetchBookingPage();
+      } else {
+        const data = await response.json();
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSavingBookingPage(false);
     }
   };
 
@@ -1545,6 +1631,144 @@ function ConsultantCalendarSettingsPanel() {
                 {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Salva Impostazioni
               </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Public Booking Page Card */}
+      <Card className="bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-3xl overflow-hidden lg:col-span-2">
+        <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white pb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl">
+              <Link2 className="w-6 h-6" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Pagina Prenotazione Pubblica</CardTitle>
+              <p className="text-purple-100 text-sm">Link diretto per i clienti (stile Calendly)</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {bookingPageLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+          ) : (
+            <>
+              {/* Enable/Disable Toggle */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-gray-200">Attiva pagina pubblica</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Permetti ai clienti di prenotare direttamente</p>
+                </div>
+                <Button
+                  onClick={() => handleToggleBookingPage(!bookingPageSettings?.bookingPageEnabled)}
+                  disabled={isSavingBookingPage}
+                  variant={bookingPageSettings?.bookingPageEnabled ? "default" : "outline"}
+                  className={bookingPageSettings?.bookingPageEnabled 
+                    ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600" 
+                    : ""
+                  }
+                >
+                  {isSavingBookingPage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : bookingPageSettings?.bookingPageEnabled ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Attiva
+                    </>
+                  ) : (
+                    "Attiva"
+                  )}
+                </Button>
+              </div>
+
+              {/* Booking Link */}
+              {bookingPageSettings?.bookingSlug && bookingPageSettings?.bookingPageEnabled && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700">
+                    <div className="flex-1">
+                      <p className="font-semibold text-purple-800 dark:text-purple-200">Il tuo link di prenotazione:</p>
+                      <p className="text-sm text-purple-600 dark:text-purple-400 break-all">
+                        {window.location.origin}/prenota/{bookingPageSettings.bookingSlug}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/prenota/${bookingPageSettings.bookingSlug}`);
+                        toast({ title: "Link copiato!" });
+                      }}
+                      className="shrink-0"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Copia
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/prenota/${bookingPageSettings.bookingSlug}`, '_blank')}
+                      className="shrink-0"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Anteprima
+                    </Button>
+                  </div>
+
+                  {/* Page Title & Description */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Titolo pagina (opzionale)</label>
+                      <Input
+                        value={bookingPageTitle}
+                        onChange={(e) => setBookingPageTitle(e.target.value)}
+                        placeholder="Prenota una consulenza"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Descrizione (opzionale)</label>
+                      <Input
+                        value={bookingPageDescription}
+                        onChange={(e) => setBookingPageDescription(e.target.value)}
+                        placeholder="Seleziona data e ora..."
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleSaveBookingPageSettings}
+                    disabled={isSavingBookingPage}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {isSavingBookingPage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Salva Titolo e Descrizione
+                  </Button>
+                </div>
+              )}
+
+              {/* How it works */}
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Come funziona:</h4>
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5" />
+                    <span>I clienti vedono la tua disponibilità e prenotano direttamente</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5" />
+                    <span>Se hai Google Calendar connesso, viene creato l'evento automaticamente</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-purple-500 mt-0.5" />
+                    <span>Condividi il link via email, WhatsApp, social media</span>
+                  </li>
+                </ul>
+              </div>
             </>
           )}
         </CardContent>

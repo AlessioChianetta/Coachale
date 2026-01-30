@@ -91,6 +91,7 @@ import salesAgentKnowledgeRouter from "./routes/client/sales-agent-knowledge";
 import publicSalesAgentRouter from "./routes/public/sales-agent";
 import publicConsultationInvitesRouter from "./routes/public/consultation-invites";
 import publicVideoMeetingRouter from "./routes/public/video-meeting";
+import publicBookingRouter from "./routes/public-booking";
 import trainingAssistantRouter from "./routes/training-assistant";
 import salesScriptsRouter from "./routes/sales-scripts";
 import scriptBuilderRouter from "./routes/script-builder";
@@ -12546,6 +12547,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Public Video Meeting routes (unauthenticated access for guests joining meetings)
   app.use("/api/public/meeting", publicVideoMeetingRouter);
 
+  // Public Booking routes (Calendly-style booking page)
+  app.use("/api/public/booking", publicBookingRouter);
+
   // External API Lead Import routes
   app.use("/api/external-api", externalApiRouter);
 
@@ -16413,6 +16417,110 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       res.json({ success: true, message: "Impostazioni aggiornate con successo" });
     } catch (error: any) {
       console.error("❌ Error updating consultant availability settings:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/consultant/booking-page - Get public booking page settings
+  app.get("/api/consultant/booking-page", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const [settings] = await db
+        .select({
+          bookingSlug: schema.consultantAvailabilitySettings.bookingSlug,
+          bookingPageEnabled: schema.consultantAvailabilitySettings.bookingPageEnabled,
+          bookingPageTitle: schema.consultantAvailabilitySettings.bookingPageTitle,
+          bookingPageDescription: schema.consultantAvailabilitySettings.bookingPageDescription,
+        })
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      res.json({
+        bookingSlug: settings?.bookingSlug || null,
+        bookingPageEnabled: settings?.bookingPageEnabled || false,
+        bookingPageTitle: settings?.bookingPageTitle || null,
+        bookingPageDescription: settings?.bookingPageDescription || null,
+      });
+    } catch (error: any) {
+      console.error("❌ Error fetching booking page settings:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PUT /api/consultant/booking-page - Update public booking page settings
+  app.put("/api/consultant/booking-page", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { bookingPageEnabled, bookingPageTitle, bookingPageDescription, generateSlug } = req.body;
+
+      const [existing] = await db
+        .select({ id: schema.consultantAvailabilitySettings.id, bookingSlug: schema.consultantAvailabilitySettings.bookingSlug })
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      const updateData: any = { updatedAt: new Date() };
+      if (bookingPageEnabled !== undefined) updateData.bookingPageEnabled = bookingPageEnabled;
+      if (bookingPageTitle !== undefined) updateData.bookingPageTitle = bookingPageTitle;
+      if (bookingPageDescription !== undefined) updateData.bookingPageDescription = bookingPageDescription;
+
+      if (generateSlug && !existing?.bookingSlug) {
+        const [user] = await db
+          .select({ firstName: schema.users.firstName, lastName: schema.users.lastName })
+          .from(schema.users)
+          .where(eq(schema.users.id, consultantId))
+          .limit(1);
+
+        if (user) {
+          const { generateBookingSlug } = await import("./booking/booking-service");
+          updateData.bookingSlug = await generateBookingSlug(user.firstName || "consulente", user.lastName || "user", consultantId);
+        }
+      }
+
+      if (existing) {
+        await db
+          .update(schema.consultantAvailabilitySettings)
+          .set(updateData)
+          .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId));
+      } else {
+        const [user] = await db
+          .select({ firstName: schema.users.firstName, lastName: schema.users.lastName })
+          .from(schema.users)
+          .where(eq(schema.users.id, consultantId))
+          .limit(1);
+
+        const { generateBookingSlug } = await import("./booking/booking-service");
+        const slug = await generateBookingSlug(user?.firstName || "consulente", user?.lastName || "user", consultantId);
+
+        await db.insert(schema.consultantAvailabilitySettings).values({
+          consultantId,
+          bookingSlug: slug,
+          bookingPageEnabled: bookingPageEnabled || false,
+          bookingPageTitle: bookingPageTitle || null,
+          bookingPageDescription: bookingPageDescription || null,
+        });
+      }
+
+      const [updated] = await db
+        .select({
+          bookingSlug: schema.consultantAvailabilitySettings.bookingSlug,
+          bookingPageEnabled: schema.consultantAvailabilitySettings.bookingPageEnabled,
+        })
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      console.log(`✅ Consultant ${consultantId} booking page settings updated`);
+      res.json({ 
+        success: true, 
+        message: "Impostazioni pagina di prenotazione aggiornate",
+        bookingSlug: updated?.bookingSlug,
+        bookingPageEnabled: updated?.bookingPageEnabled,
+      });
+    } catch (error: any) {
+      console.error("❌ Error updating booking page settings:", error);
       res.status(500).json({ message: error.message });
     }
   });

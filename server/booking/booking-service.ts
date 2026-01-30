@@ -1405,3 +1405,338 @@ export async function sendBookingNotification(
     return { success: false, error: error.message };
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUBLIC BOOKING PAGE FUNCTIONS
+// Functions shared between AI booking and public Calendly-style booking page
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type TimeSlot = { start: string; end: string };
+type DayAvailability = { enabled: boolean; slots: TimeSlot[] };
+
+export interface PublicAvailableSlot {
+  date: string;
+  dayOfWeek: string;
+  time: string;
+  dateFormatted: string;
+  duration: number;
+}
+
+export interface PublicBookingParams {
+  consultantId: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone?: string;
+  scheduledAt: Date;
+  duration: number;
+  notes?: string;
+}
+
+export interface PublicBookingResult {
+  success: boolean;
+  bookingId?: string;
+  googleMeetLink?: string;
+  error?: string;
+}
+
+export async function getConsultantBySlug(slug: string) {
+  const [settings] = await db
+    .select({
+      consultantId: consultantAvailabilitySettings.consultantId,
+      bookingSlug: consultantAvailabilitySettings.bookingSlug,
+      bookingPageEnabled: consultantAvailabilitySettings.bookingPageEnabled,
+      bookingPageTitle: consultantAvailabilitySettings.bookingPageTitle,
+      bookingPageDescription: consultantAvailabilitySettings.bookingPageDescription,
+      appointmentDuration: consultantAvailabilitySettings.appointmentDuration,
+      appointmentAvailability: consultantAvailabilitySettings.appointmentAvailability,
+      bufferBefore: consultantAvailabilitySettings.bufferBefore,
+      bufferAfter: consultantAvailabilitySettings.bufferAfter,
+      minHoursNotice: consultantAvailabilitySettings.minHoursNotice,
+      maxDaysAhead: consultantAvailabilitySettings.maxDaysAhead,
+      timezone: consultantAvailabilitySettings.timezone,
+      googleRefreshToken: consultantAvailabilitySettings.googleRefreshToken,
+    })
+    .from(consultantAvailabilitySettings)
+    .where(eq(consultantAvailabilitySettings.bookingSlug, slug))
+    .limit(1);
+
+  if (!settings) return null;
+
+  const [consultant] = await db
+    .select({ firstName: users.firstName, lastName: users.lastName, avatar: users.avatar })
+    .from(users)
+    .where(eq(users.id, settings.consultantId))
+    .limit(1);
+
+  return {
+    ...settings,
+    consultantName: consultant ? `${consultant.firstName} ${consultant.lastName}` : 'Consulente',
+    consultantAvatar: consultant?.avatar,
+  };
+}
+
+export async function getPublicAvailableSlots(
+  consultantId: string,
+  startDate?: Date,
+  endDate?: Date,
+  limit = 30
+): Promise<PublicAvailableSlot[]> {
+  const [settings] = await db
+    .select()
+    .from(consultantAvailabilitySettings)
+    .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+    .limit(1);
+
+  if (!settings) {
+    console.log(`[PUBLIC BOOKING] No settings found for consultant ${consultantId}`);
+    return [];
+  }
+
+  const now = new Date();
+  const appointmentDuration = settings.appointmentDuration || 60;
+  const bufferBefore = settings.bufferBefore || 15;
+  const bufferAfter = settings.bufferAfter || 15;
+  const minHoursNotice = settings.minHoursNotice || 24;
+  const maxDaysAhead = settings.maxDaysAhead || 30;
+
+  const availabilityConfig: Record<string, DayAvailability> = {};
+  
+  if (settings.appointmentAvailability && typeof settings.appointmentAvailability === 'object') {
+    const rawConfig = settings.appointmentAvailability as Record<string, any>;
+    for (const [dayId, config] of Object.entries(rawConfig)) {
+      if (config && typeof config === 'object' && 'enabled' in config) {
+        if ('slots' in config && Array.isArray(config.slots)) {
+          availabilityConfig[dayId] = config as DayAvailability;
+        } else if ('start' in config && 'end' in config) {
+          availabilityConfig[dayId] = {
+            enabled: config.enabled,
+            slots: [{ start: config.start, end: config.end }]
+          };
+        }
+      }
+    }
+  }
+  
+  if (Object.keys(availabilityConfig).length === 0) {
+    for (let d = 1; d <= 5; d++) {
+      availabilityConfig[d.toString()] = { 
+        enabled: true, 
+        slots: [
+          { start: "09:00", end: "13:00" },
+          { start: "15:00", end: "18:00" }
+        ]
+      };
+    }
+    availabilityConfig["0"] = { enabled: false, slots: [{ start: "09:00", end: "18:00" }] };
+    availabilityConfig["6"] = { enabled: false, slots: [{ start: "09:00", end: "18:00" }] };
+  }
+
+  const minStartTime = new Date(now.getTime() + minHoursNotice * 60 * 60 * 1000);
+  const effectiveStartDate = startDate && startDate > minStartTime ? startDate : minStartTime;
+  const maxEndDate = new Date(now.getTime() + maxDaysAhead * 24 * 60 * 60 * 1000);
+  const effectiveEndDate = endDate && endDate < maxEndDate ? endDate : maxEndDate;
+
+  const existingBookings = await db
+    .select({
+      appointmentDate: appointmentBookings.appointmentDate,
+      appointmentTime: appointmentBookings.appointmentTime,
+    })
+    .from(appointmentBookings)
+    .where(
+      and(
+        eq(appointmentBookings.consultantId, consultantId),
+        or(
+          eq(appointmentBookings.status, "confirmed"),
+          eq(appointmentBookings.status, "pending")
+        )
+      )
+    );
+
+  const busyRanges: Array<{ start: Date; end: Date }> = existingBookings.map(b => {
+    const [hour, min] = b.appointmentTime.split(':').map(Number);
+    const start = new Date(b.appointmentDate);
+    start.setHours(hour, min, 0, 0);
+    const end = new Date(start.getTime() + appointmentDuration * 60 * 1000);
+    return { start, end };
+  });
+
+  const isSlotBusy = (slotStart: Date, slotEnd: Date): boolean => {
+    for (const busy of busyRanges) {
+      if (slotStart < busy.end && slotEnd > busy.start) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const dayNames = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
+  const availableSlots: PublicAvailableSlot[] = [];
+
+  const current = new Date(effectiveStartDate);
+  current.setHours(0, 0, 0, 0);
+
+  while (current <= effectiveEndDate && availableSlots.length < limit) {
+    const dayOfWeek = current.getDay();
+    const dayName = dayNames[dayOfWeek];
+    const dayConfig = availabilityConfig[dayOfWeek.toString()];
+
+    if (dayConfig?.enabled) {
+      for (const timeSlot of dayConfig.slots) {
+        const [startHour, startMin] = (timeSlot.start || "09:00").split(':').map(Number);
+        const [endHour, endMin] = (timeSlot.end || "18:00").split(':').map(Number);
+        
+        let slotStartHour = startHour;
+        let slotStartMin = startMin;
+
+        while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
+          const slotStart = new Date(current);
+          slotStart.setHours(slotStartHour, slotStartMin, 0, 0);
+          
+          const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
+          
+          const slotEndHour = slotEnd.getHours();
+          const slotEndMin = slotEnd.getMinutes();
+          if (slotEndHour > endHour || (slotEndHour === endHour && slotEndMin > endMin)) {
+            break;
+          }
+          
+          if (slotStart > minStartTime) {
+            const bufferedStart = new Date(slotStart.getTime() - bufferBefore * 60 * 1000);
+            const bufferedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
+            
+            if (!isSlotBusy(bufferedStart, bufferedEnd)) {
+              availableSlots.push({
+                date: slotStart.toISOString().slice(0, 10),
+                dayOfWeek: dayName,
+                time: `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`,
+                dateFormatted: slotStart.toLocaleDateString('it-IT', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long'
+                }),
+                duration: appointmentDuration
+              });
+
+              if (availableSlots.length >= limit) break;
+            }
+          }
+          
+          const slotIncrement = appointmentDuration <= 30 ? 30 : 60;
+          slotStartMin += slotIncrement;
+          if (slotStartMin >= 60) {
+            slotStartHour += Math.floor(slotStartMin / 60);
+            slotStartMin = slotStartMin % 60;
+          }
+        }
+        
+        if (availableSlots.length >= limit) break;
+      }
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return availableSlots;
+}
+
+export async function createPublicBooking(params: PublicBookingParams): Promise<PublicBookingResult> {
+  const { consultantId, clientName, clientEmail, clientPhone, scheduledAt, duration, notes } = params;
+
+  try {
+    const [booking] = await db
+      .insert(appointmentBookings)
+      .values({
+        consultantId,
+        clientName,
+        clientEmail,
+        clientPhone: clientPhone || null,
+        appointmentDate: scheduledAt.toISOString().slice(0, 10),
+        appointmentTime: `${scheduledAt.getHours().toString().padStart(2, '0')}:${scheduledAt.getMinutes().toString().padStart(2, '0')}`,
+        status: 'confirmed',
+        notes: notes || `Prenotazione dalla pagina pubblica`,
+        source: 'public_page',
+      })
+      .returning({ id: appointmentBookings.id });
+
+    let googleMeetLink: string | undefined;
+
+    const [settings] = await db
+      .select({ googleRefreshToken: consultantAvailabilitySettings.googleRefreshToken })
+      .from(consultantAvailabilitySettings)
+      .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+      .limit(1);
+
+    if (settings?.googleRefreshToken) {
+      try {
+        const endTime = new Date(scheduledAt.getTime() + duration * 60 * 1000);
+        const calendarResult = await createGoogleCalendarEvent(consultantId, {
+          summary: `Consulenza con ${clientName}`,
+          description: `Email: ${clientEmail}${clientPhone ? `\nTelefono: ${clientPhone}` : ''}${notes ? `\n\nNote: ${notes}` : ''}`,
+          startTime: scheduledAt.toISOString(),
+          endTime: endTime.toISOString(),
+          attendees: [{ email: clientEmail }],
+        });
+
+        if (calendarResult?.eventId) {
+          googleMeetLink = calendarResult.meetLink;
+          await db
+            .update(appointmentBookings)
+            .set({
+              googleEventId: calendarResult.eventId,
+              googleMeetLink: calendarResult.meetLink,
+            })
+            .where(eq(appointmentBookings.id, booking.id));
+        }
+      } catch (calendarError) {
+        console.log(`[PUBLIC BOOKING] Calendar event creation failed but booking saved: ${calendarError}`);
+      }
+    }
+
+    return {
+      success: true,
+      bookingId: booking.id,
+      googleMeetLink,
+    };
+  } catch (error: any) {
+    console.error(`[PUBLIC BOOKING] Failed to create booking: ${error.message}`);
+    return {
+      success: false,
+      error: error.message || 'Errore durante la prenotazione',
+    };
+  }
+}
+
+export async function generateBookingSlug(firstName: string, lastName: string, consultantId: string): Promise<string> {
+  const baseSlug = `${firstName}-${lastName}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const [existing] = await db
+      .select({ id: consultantAvailabilitySettings.id })
+      .from(consultantAvailabilitySettings)
+      .where(
+        and(
+          eq(consultantAvailabilitySettings.bookingSlug, slug),
+          sql`${consultantAvailabilitySettings.consultantId} != ${consultantId}`
+        )
+      )
+      .limit(1);
+
+    if (!existing) {
+      break;
+    }
+    
+    counter++;
+    slug = `${baseSlug}-${counter}`;
+  }
+
+  return slug;
+}

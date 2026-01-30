@@ -3189,6 +3189,13 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   minHoursNotice: integer("min_hours_notice").default(24).notNull(),
   timezone: text("timezone").default("Europe/Rome").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  
+  // Public booking page slug (e.g., /prenota/mario-rossi)
+  bookingSlug: text("booking_slug").unique(),
+  bookingPageEnabled: boolean("booking_page_enabled").default(false).notNull(),
+  bookingPageTitle: text("booking_page_title"),
+  bookingPageDescription: text("booking_page_description"),
+  
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
