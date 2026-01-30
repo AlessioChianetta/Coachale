@@ -3942,7 +3942,11 @@ export default function ConsultantAppointments() {
                               <div className="flex items-start justify-between mb-3">
                                 <div>
                                   <p className="font-semibold text-slate-800 dark:text-slate-200">
-                                    {appointment.client.firstName} {appointment.client.lastName}
+                                    {appointment.client 
+                                      ? `${appointment.client.firstName} ${appointment.client.lastName}`
+                                      : appointment.summary || 'Evento Google Calendar'}
+                                    {appointment.source === 'google' && <span className="ml-2">📅</span>}
+                                    {appointment.source === 'synced' && <span className="ml-2">🔗</span>}
                                   </p>
                                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 mt-1">
                                     <Clock className="w-4 h-4" />
@@ -4163,7 +4167,11 @@ export default function ConsultantAppointments() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200 truncate">
-                                  {appointment.client.firstName} {appointment.client.lastName}
+                                  {appointment.client 
+                                    ? `${appointment.client.firstName} ${appointment.client.lastName}`
+                                    : appointment.summary || 'Evento Google Calendar'}
+                                  {appointment.source === 'google' && <span className="ml-2 text-sm">📅</span>}
+                                  {appointment.source === 'synced' && <span className="ml-2 text-sm">🔗</span>}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1 text-sm text-slate-600 dark:text-slate-400">
                                   <Calendar className="w-4 h-4" />
