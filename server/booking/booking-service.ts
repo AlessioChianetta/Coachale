@@ -1498,7 +1498,7 @@ export async function getPublicAvailableSlots(
   const bufferAfter = settings.bufferAfter || 15;
   const minHoursNotice = settings.minHoursNotice || 24;
   const maxDaysAhead = settings.maxDaysAhead || 30;
-
+  
   const availabilityConfig: Record<string, DayAvailability> = {};
   
   if (settings.appointmentAvailability && typeof settings.appointmentAvailability === 'object') {
@@ -1506,11 +1506,28 @@ export async function getPublicAvailableSlots(
     for (const [dayId, config] of Object.entries(rawConfig)) {
       if (config && typeof config === 'object' && 'enabled' in config) {
         if ('slots' in config && Array.isArray(config.slots)) {
+          // New format with slots array
           availabilityConfig[dayId] = config as DayAvailability;
         } else if ('start' in config && 'end' in config) {
+          // Legacy format with single start/end
           availabilityConfig[dayId] = {
             enabled: config.enabled,
             slots: [{ start: config.start, end: config.end }]
+          };
+        } else if (config.enabled) {
+          // Only enabled flag without slots - use default slots
+          availabilityConfig[dayId] = {
+            enabled: true,
+            slots: [
+              { start: "09:00", end: "13:00" },
+              { start: "15:00", end: "18:00" }
+            ]
+          };
+        } else {
+          // Disabled day
+          availabilityConfig[dayId] = {
+            enabled: false,
+            slots: [{ start: "09:00", end: "18:00" }]
           };
         }
       }
