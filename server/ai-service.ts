@@ -2327,11 +2327,12 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       // DIRECT CONFIRMATION BYPASS: Skip Gemini when we have all data for confirmation
       // This prevents Gemini hallucinations (calling proposeBooking instead of confirmBooking)
       // ═══════════════════════════════════════════════════════════════════════
-      if (consultationIntentClassification?.intent === 'booking_confirm' && pendingBooking?.confirmationToken) {
+      // Note: getPendingBookingState returns { token, startAt, consultantId, clientId }
+      if (consultationIntentClassification?.intent === 'booking_confirm' && pendingBooking?.token) {
         console.log(`\n${'═'.repeat(70)}`);
         console.log(`🚀 [DIRECT CONFIRM] Bypassing Gemini - executing confirmBooking directly`);
-        console.log(`   Token: ${pendingBooking.confirmationToken.substring(0, 8)}...`);
-        console.log(`   Pending booking: ${new Date(pendingBooking.startTime).toISOString()}`);
+        console.log(`   Token: ${pendingBooking.token.substring(0, 8)}...`);
+        console.log(`   Pending booking: ${new Date(pendingBooking.startAt).toISOString()}`);
         console.log(`${'═'.repeat(70)}\n`);
         
         try {
@@ -2343,7 +2344,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           // Execute confirmBooking directly
           const toolResult = await executeConsultationTool(
             'confirmBooking',
-            { confirmationToken: pendingBooking.confirmationToken },
+            { confirmationToken: pendingBooking.token },
             clientId,
             consultantId,
             conversation.id
@@ -2453,11 +2454,12 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             console.log(`   This is likely a Gemini hallucination - rejecting and responding with error`);
             
             // Format pending booking date safely
+            // Note: getPendingBookingState returns { token, startAt, consultantId, clientId }
             let formattedDate = '';
             let formattedTime = '';
-            if (pendingBooking?.startTime) {
+            if (pendingBooking?.startAt) {
               try {
-                const startDate = new Date(pendingBooking.startTime);
+                const startDate = new Date(pendingBooking.startAt);
                 if (!isNaN(startDate.getTime())) {
                   formattedDate = startDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
                   formattedTime = startDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
