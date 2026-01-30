@@ -93,7 +93,11 @@ export async function classifyConsultationIntent(
       },
       {
         role: 'user',
-        parts: [{ text: `Classify this message: "${message}"` }]
+        parts: [{ 
+          text: context?.hasPendingBooking 
+            ? `Context: hasPendingBooking=true (there is an active booking proposal waiting for confirmation)\nClassify this message: "${message}"`
+            : `Classify this message: "${message}"` 
+        }]
       }
     ];
     
@@ -102,6 +106,7 @@ export async function classifyConsultationIntent(
     console.log(`${'─'.repeat(60)}`);
     console.log(`   Model: gemini-2.5-flash-lite`);
     console.log(`   Message: "${message.substring(0, 80)}${message.length > 80 ? '...' : ''}"`);
+    console.log(`   Context: hasPendingBooking=${context?.hasPendingBooking || false}`);
     console.log(`   Contents structure: ${requestContents.length} turns`);
     console.log(`${'─'.repeat(60)}`);
     

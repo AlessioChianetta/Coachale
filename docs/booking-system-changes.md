@@ -135,3 +135,35 @@ Eseguire ogni 2 minuti.
 - `start_at` sempre in UTC (TIMESTAMPTZ)
 - `expires_at` = created_at + 10 minuti
 - `confirmBooking` verifica anche `expires_at > NOW()` indipendentemente dal cron
+
+---
+
+## Modifiche Codice Completate
+
+### File Modificati:
+
+1. **shared/schema.ts**
+   - Aggiunto schema Drizzle `pendingBookings`
+
+2. **server/ai/consultation-tool-executor.ts**
+   - Rimossa Map in memoria
+   - `proposeBooking`: INSERT su DB con verifica slot
+   - `confirmBooking`: UPDATE atomico + INSERT consultation + idempotenza
+
+3. **server/booking/booking-service.ts**
+   - Aggiunta funzione `getPendingBookingState()`
+
+4. **server/ai-service.ts**
+   - Import `getPendingBookingState`
+   - Chiamata prima del classifier
+   - Popolato `hasPendingBooking` e `pendingBookingToken`
+   - Sticky tool mode quando pending booking esiste
+
+5. **server/ai/consultation-intent-classifier.ts**
+   - Aggiunto context `hasPendingBooking` nel prompt
+
+6. **server/cron/pending-booking-expiry.ts** (NUOVO)
+   - Cron job per expirare pending ogni 2 minuti
+
+7. **server/index.ts**
+   - Avvio del pending booking expiry scheduler

@@ -38,6 +38,7 @@ import { conversationContextBuilder } from "./services/conversation-memory";
 import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
 import { consultationTools, isConsultationTool } from "./ai/consultation-tools";
 import { executeConsultationTool } from "./ai/consultation-tool-executor";
+import { getPendingBookingState } from "./booking/booking-service";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -2201,19 +2202,23 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     let clarificationNeeded = false;
     let clarificationPrompt: string | null = null;
     
+    // Check if there's a pending booking for this conversation (DB-backed state)
+    const pendingBooking = await getPendingBookingState(conversationId, null);
+    
     // Run LLM classifier if:
-    // 1. Regex detected consultation/appointment intent
-    // 2. Message contains potential consultation-related keywords (fallback for regex misses)
+    // 1. There's a pending booking (STICKY: always run classifier when in booking flow)
+    // 2. Regex detected consultation/appointment intent
+    // 3. Message contains potential consultation-related keywords (fallback for regex misses)
     const msgLower = message.toLowerCase();
-    const potentialConsultationKeywords = /incontri|call|slot|appuntament|prenotare|disponibil|limite|quant[io].*mese|fatto.*mese|sessioni|conferm/i;
-    const shouldRunClassifier = intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
+    const potentialConsultationKeywords = /incontri|call|slot|appuntament|prenotare|disponibil|limite|quant[io].*mese|fatto.*mese|sessioni|conferm|^ok$|va bene|perfetto|^si$|^sì$/i;
+    const shouldRunClassifier = !!pendingBooking || intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
     
     // Build classifier context for memory safety
     const classifierContext: ClassifierContext = {
       userId: userContext.client?.id || userContext.consultant?.id,
       sessionId: conversationId,
-      pendingBookingToken: undefined, // TODO: retrieve from conversation memory
-      hasPendingBooking: false // TODO: check from recent messages
+      pendingBookingToken: pendingBooking?.token,
+      hasPendingBooking: !!pendingBooking
     };
     
     if (shouldRunClassifier) {
@@ -2232,9 +2237,22 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         console.log(`   💡 Reasoning: ${consultationIntentClassification.reasoning || 'N/A'}`);
         console.log(`   🔧 Use tools: ${isConsultationQuery ? 'YES' : 'NO'}`);
         console.log(`   ❓ Ask clarification: ${clarificationNeeded ? `YES → "${clarificationPrompt}"` : 'NO'}`);
-        console.log(`   🔍 Trigger: ${intent === 'consultations' || intent === 'appointment_request' ? 'regex match' : 'fallback keywords'}`);
+        console.log(`   🔍 Trigger: ${pendingBooking ? 'PENDING BOOKING (sticky)' : intent === 'consultations' || intent === 'appointment_request' ? 'regex match' : 'fallback keywords'}`);
+        console.log(`   🎫 Pending Token: ${pendingBooking?.token || 'none'}`);
         console.log(`${'═'.repeat(70)}\n`);
       }
+    }
+    
+    // STICKY TOOL MODE: If there's a pending booking, ALWAYS enable consultation tools
+    // This prevents the AI from "drifting" out of the booking flow when user says "ok/sì/va bene"
+    if (classifierContext.hasPendingBooking && !isConsultationQuery) {
+      isConsultationQuery = true;
+      console.log(`\n${'═'.repeat(70)}`);
+      console.log(`🎯 STICKY TOOL MODE ACTIVATED`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📋 Reason: Pending booking exists (token: ${pendingBooking?.token?.slice(0, 8)}...)`);
+      console.log(`   🔧 Force tools: YES (overriding classifier decision)`);
+      console.log(`${'═'.repeat(70)}\n`);
     }
     
     let clientTools: any[];

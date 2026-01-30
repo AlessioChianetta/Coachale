@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState, consultantWhatsappConfig, whatsappTemplateVersions, whatsappTemplateVariables, whatsappVariableCatalog } from "../../shared/schema";
+import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState, consultantWhatsappConfig, whatsappTemplateVersions, whatsappTemplateVariables, whatsappVariableCatalog, pendingBookings } from "../../shared/schema";
 import { eq, and, or, isNull, sql, desc } from "drizzle-orm";
 import { createGoogleCalendarEvent } from "../google-calendar-service";
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
@@ -1756,4 +1756,50 @@ export async function generateBookingSlug(firstName: string, lastName: string, c
   }
 
   return slug;
+}
+
+/**
+ * Get pending booking state for a conversation.
+ * Used by AI service to determine if there's an active booking flow.
+ */
+export async function getPendingBookingState(
+  conversationId: string | null,
+  publicConversationId: string | null
+): Promise<{ token: string; startAt: Date; consultantId: string; clientId: string } | null> {
+  if (!conversationId && !publicConversationId) return null;
+
+  const now = new Date();
+  const conditions = [];
+  
+  if (conversationId) {
+    conditions.push(eq(pendingBookings.conversationId, conversationId));
+  }
+  if (publicConversationId) {
+    conditions.push(eq(pendingBookings.publicConversationId, publicConversationId));
+  }
+
+  const [row] = await db
+    .select({
+      token: pendingBookings.token,
+      startAt: pendingBookings.startAt,
+      consultantId: pendingBookings.consultantId,
+      clientId: pendingBookings.clientId
+    })
+    .from(pendingBookings)
+    .where(
+      and(
+        or(...conditions),
+        eq(pendingBookings.status, "awaiting_confirm"),
+        sql`${pendingBookings.expiresAt} > ${now.toISOString()}`
+      )
+    )
+    .orderBy(desc(pendingBookings.createdAt))
+    .limit(1);
+
+  return row ? {
+    token: row.token,
+    startAt: row.startAt,
+    consultantId: row.consultantId,
+    clientId: row.clientId
+  } : null;
 }

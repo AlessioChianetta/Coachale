@@ -26,6 +26,7 @@ import { startWeeklyCheckinScheduler } from "./cron/weekly-checkin-scheduler";
 import { startChannelRenewalScheduler } from "./cron/drive-channel-renewal";
 import { startDrivePendingSyncScheduler } from "./cron/drive-pending-sync";
 import { initDatasetSyncScheduler } from "./cron/dataset-sync-scheduler";
+import { startPendingBookingExpiryScheduler } from "./cron/pending-booking-expiry";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -408,6 +409,11 @@ app.use((req, res, next) => {
   } else {
     log("📧 Nurturing scheduler is disabled (set NURTURING_SCHEDULER_ENABLED=true to enable)");
   }
+
+  // Start pending booking expiry scheduler (always enabled, required for booking system)
+  log("🎫 Starting pending booking expiry scheduler...");
+  startPendingBookingExpiryScheduler();
+  log("✅ Pending booking expiry scheduler started (every 2 minutes)");
 
   // Setup Instagram Window Cleanup Scheduler
   const instagramCleanupEnabled = schedulersMasterEnabled && process.env.INSTAGRAM_CLEANUP_ENABLED !== "false";
