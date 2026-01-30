@@ -441,15 +441,6 @@ ${userContext.calendar.events.slice(0, 5).map(e =>
 ).join('\n')}
 ` : ''}
 
-${(() => {
-  // DEBUG: Log monthlyLimit in prompt construction
-  console.log(`📋 [AI Prompt] Building consultations section:`);
-  console.log(`   - monthlyLimit exists: ${!!userContext.consultations?.monthlyLimit}`);
-  if (userContext.consultations?.monthlyLimit) {
-    console.log(`   - monthlyLimit data: ${JSON.stringify(userContext.consultations.monthlyLimit)}`);
-  }
-  return '';
-})()}
 ${userContext.consultations ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 CONSULENZE - STORICO COMPLETO
@@ -564,6 +555,14 @@ export function buildSystemPrompt(
   pageContext?: PageContext,
   options?: { hasFileSearch?: boolean; indexedKnowledgeDocIds?: Set<string> }
 ): string {
+  // DEBUG: Log what userContext.consultations contains
+  console.log(`📋 [buildSystemPrompt] monthlyLimit in userContext:`);
+  console.log(`   - consultations exists: ${!!userContext.consultations}`);
+  console.log(`   - monthlyLimit exists: ${!!userContext.consultations?.monthlyLimit}`);
+  if (userContext.consultations?.monthlyLimit) {
+    console.log(`   - monthlyLimit data: ${JSON.stringify(userContext.consultations.monthlyLimit)}`);
+  }
+  
   const hasFileSearch = options?.hasFileSearch ?? false;
   const indexedKnowledgeDocIds = options?.indexedKnowledgeDocIds ?? new Set<string>();
   const relevantDocs = hasFileSearch ? [] : (userContext.library?.documents ?? []);
