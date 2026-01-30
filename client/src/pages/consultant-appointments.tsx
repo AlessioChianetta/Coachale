@@ -216,59 +216,71 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
                     const emailIndicator = getEmailStatusIndicator(apt);
                     const source = apt.source || 'local';
                     
-                    // Determine colors based on source and status
+                    // Determine vivid colors based on source and status (Google Calendar style)
                     const getAppointmentClasses = () => {
                       if (source === 'google') {
-                        // Google Calendar only - purple/violet style
-                        return 'bg-violet-100 text-violet-700 border border-violet-200';
+                        return 'bg-violet-500 text-white';
                       }
                       if (source === 'synced') {
-                        // Synced (local + Google match) - teal style with sync indicator
-                        return apt.status === 'completed'
-                          ? 'bg-teal-100 text-teal-700 border border-teal-200'
-                          : 'bg-teal-50 text-teal-600 border border-teal-200';
+                        return 'bg-teal-500 text-white';
                       }
-                      // Local only - original style
                       if (apt.status === 'completed') {
-                        return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+                        return 'bg-emerald-500 text-white';
                       } else if (apt.status === 'cancelled') {
-                        return 'bg-rose-100 text-rose-700 border border-rose-200';
+                        return 'bg-gray-400 text-white';
                       }
-                      return 'bg-blue-100 text-blue-700 border border-blue-200';
+                      return 'bg-blue-500 text-white';
                     };
                     
                     // Get source indicator
                     const getSourceIndicator = () => {
-                      if (source === 'google') return '📅'; // Google Calendar icon
-                      if (source === 'synced') return '🔗'; // Sync icon
-                      return null; // Local only - no extra indicator
+                      if (source === 'google') return '📅';
+                      if (source === 'synced') return '🔗';
+                      return null;
+                    };
+                    
+                    // Get display name (client name or event summary)
+                    const getDisplayName = () => {
+                      if (apt.client) {
+                        return `${apt.client.firstName || ''} ${apt.client.lastName || ''}`.trim().split(' ')[0];
+                      }
+                      if (apt.googleEventSummary) {
+                        return apt.googleEventSummary.substring(0, 10);
+                      }
+                      if (apt.summary) {
+                        return apt.summary.substring(0, 10);
+                      }
+                      return '';
                     };
                     
                     const sourceIndicator = getSourceIndicator();
+                    const displayName = getDisplayName();
+                    const timeStr = format(new Date(apt.scheduledAt), "HH:mm");
                     const tooltipText = source === 'google' 
                       ? `Google Calendar: ${apt.googleEventSummary || apt.notes}`
                       : source === 'synced'
                       ? `Sincronizzato con Google Calendar${emailIndicator ? ` - ${emailIndicator.label}` : ''}`
-                      : emailIndicator?.label;
+                      : `${apt.client?.firstName} ${apt.client?.lastName}${emailIndicator ? ` - ${emailIndicator.label}` : ''}`;
                     
                     return (
                       <div
                         key={`${apt.id}-${idx}`}
-                        className={`text-xs px-2 py-1 rounded-full text-center truncate font-medium shadow-sm flex items-center justify-center gap-1 ${getAppointmentClasses()}`}
+                        className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium shadow-sm flex items-center gap-1 ${getAppointmentClasses()}`}
                         title={tooltipText}
                       >
                         {sourceIndicator && (
-                          <span className="text-[10px]">{sourceIndicator}</span>
+                          <span className="text-[9px] flex-shrink-0">{sourceIndicator}</span>
                         )}
-                        {format(new Date(apt.scheduledAt), "HH:mm")}
+                        <span className="truncate font-bold">{displayName || timeStr}</span>
+                        {displayName && <span className="opacity-80 flex-shrink-0">{timeStr}</span>}
                         {emailIndicator && source !== 'google' && (
-                          <span className="text-[10px] ml-0.5">{emailIndicator.dot}</span>
+                          <span className="text-[9px] flex-shrink-0">{emailIndicator.dot}</span>
                         )}
                       </div>
                     );
                   })}
                   {dayAppointments.length > 2 && (
-                    <div className="text-xs text-center font-medium bg-slate-100 text-slate-600 rounded-full py-1">
+                    <div className="text-[10px] text-center font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md py-0.5">
                       +{dayAppointments.length - 2} altri
                     </div>
                   )}
@@ -318,27 +330,27 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
           <div className="text-center text-sm text-slate-600 dark:text-slate-400 space-y-2">
             <div className="font-semibold mb-2">LEGENDA APPUNTAMENTI</div>
             <div className="flex flex-wrap justify-center gap-4">
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-3 h-3 bg-blue-100 border border-blue-200 rounded-full"></span>
-                Locale
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 bg-blue-500 rounded"></span>
+                Programmato
               </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-3 h-3 bg-violet-100 border border-violet-200 rounded-full"></span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 bg-violet-500 rounded"></span>
                 📅 Google Calendar
               </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-3 h-3 bg-teal-100 border border-teal-200 rounded-full"></span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 bg-teal-500 rounded"></span>
                 🔗 Sincronizzato
               </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-3 h-3 bg-emerald-100 border border-emerald-200 rounded-full"></span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 bg-emerald-500 rounded"></span>
                 Completato
               </span>
             </div>
             <div className="flex flex-wrap justify-center gap-4 pt-1">
-              <span>🟢 Email Inviata</span>
+              <span>✅ Email Inviata</span>
               <span>🟡 Bozza</span>
-              <span>🔴 Email Mancante</span>
+              <span>❌ Email Mancante</span>
             </div>
           </div>
         </div>
@@ -347,33 +359,55 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
   );
 }
 
-// Helper function for getting appointment color based on status and email
-function getAppointmentColorClasses(appointment: any): { bg: string; border: string; text: string } {
-  if (appointment.status === 'completed') {
-    if (appointment.summaryEmailStatus === 'sent' || appointment.summaryEmailStatus === 'approved') {
-      return { 
-        bg: 'bg-emerald-100 dark:bg-emerald-900/40', 
-        border: 'border-l-4 border-l-emerald-500', 
-        text: 'text-emerald-800 dark:text-emerald-200' 
-      };
-    } else if (appointment.summaryEmailStatus === 'draft') {
-      return { 
-        bg: 'bg-amber-100 dark:bg-amber-900/40', 
-        border: 'border-l-4 border-l-amber-500', 
-        text: 'text-amber-800 dark:text-amber-200' 
-      };
-    } else {
-      return { 
-        bg: 'bg-rose-100 dark:bg-rose-900/40', 
-        border: 'border-l-4 border-l-rose-500', 
-        text: 'text-rose-800 dark:text-rose-200' 
-      };
-    }
+// Helper function for getting Google Calendar-like vivid colors
+function getAppointmentColorClasses(appointment: any): { bg: string; border: string; text: string; solid: string } {
+  const source = appointment.source || 'local';
+  
+  // Google Calendar events - purple/violet
+  if (source === 'google') {
+    return { 
+      bg: 'bg-violet-600', 
+      border: 'border-l-4 border-l-violet-800', 
+      text: 'text-white',
+      solid: 'violet'
+    };
   }
+  
+  // Synced events (local + Google match) - teal
+  if (source === 'synced') {
+    return { 
+      bg: 'bg-teal-500', 
+      border: 'border-l-4 border-l-teal-700', 
+      text: 'text-white',
+      solid: 'teal'
+    };
+  }
+  
+  // Local appointments
+  if (appointment.status === 'completed') {
+    return { 
+      bg: 'bg-emerald-500', 
+      border: 'border-l-4 border-l-emerald-700', 
+      text: 'text-white',
+      solid: 'emerald'
+    };
+  }
+  
+  if (appointment.status === 'cancelled') {
+    return { 
+      bg: 'bg-gray-400', 
+      border: 'border-l-4 border-l-gray-600', 
+      text: 'text-white',
+      solid: 'gray'
+    };
+  }
+  
+  // Local scheduled - blue (primary)
   return { 
-    bg: 'bg-blue-100 dark:bg-blue-900/40', 
-    border: 'border-l-4 border-l-blue-500', 
-    text: 'text-blue-800 dark:text-blue-200' 
+    bg: 'bg-blue-500', 
+    border: 'border-l-4 border-l-blue-700', 
+    text: 'text-white',
+    solid: 'blue'
   };
 }
 
@@ -419,7 +453,10 @@ function WeeklyCalendarView({
     onAppointmentSelect(null);
   };
 
-  const timeSlots = Array.from({ length: 13 }, (_, index) => index + 8); // 08:00 - 20:00
+  const HOUR_HEIGHT = 60; // 60px per hour slot for better visibility
+  const START_HOUR = 8; // Calendar starts at 8:00
+  const END_HOUR = 20; // Calendar ends at 20:00
+  const timeSlots = Array.from({ length: END_HOUR - START_HOUR }, (_, index) => index + START_HOUR);
 
   const dayLabels = ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"];
 
@@ -436,11 +473,94 @@ function WeeklyCalendarView({
     }
   };
 
+  // Calculate event position and height based on time and duration
+  const getEventPosition = (appointment: any) => {
+    const startDate = new Date(appointment.scheduledAt);
+    const startHour = startDate.getHours();
+    const startMinutes = startDate.getMinutes();
+    const duration = appointment.duration || 60;
+    
+    // Calculate top position from 8:00 AM start
+    const minutesFromStart = (startHour - START_HOUR) * 60 + startMinutes;
+    const top = (minutesFromStart / 60) * HOUR_HEIGHT;
+    
+    // Calculate height based on duration
+    const height = (duration / 60) * HOUR_HEIGHT;
+    
+    return { top, height };
+  };
+
+  // Handle overlapping events - group events that overlap
+  const getOverlappingGroups = (dayAppointments: any[]) => {
+    if (dayAppointments.length === 0) return [];
+    
+    const sorted = [...dayAppointments].sort((a, b) => 
+      new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+    );
+    
+    const groups: any[][] = [];
+    let currentGroup: any[] = [];
+    
+    for (const apt of sorted) {
+      const aptStart = new Date(apt.scheduledAt).getTime();
+      const aptEnd = aptStart + (apt.duration || 60) * 60000;
+      
+      if (currentGroup.length === 0) {
+        currentGroup.push(apt);
+      } else {
+        // Check if overlaps with any event in current group
+        const overlaps = currentGroup.some(groupApt => {
+          const groupStart = new Date(groupApt.scheduledAt).getTime();
+          const groupEnd = groupStart + (groupApt.duration || 60) * 60000;
+          return aptStart < groupEnd && aptEnd > groupStart;
+        });
+        
+        if (overlaps) {
+          currentGroup.push(apt);
+        } else {
+          groups.push(currentGroup);
+          currentGroup = [apt];
+        }
+      }
+    }
+    
+    if (currentGroup.length > 0) {
+      groups.push(currentGroup);
+    }
+    
+    return groups;
+  };
+
+  // Get source indicator for appointment
+  const getSourceIndicator = (apt: any) => {
+    const source = apt.source || 'local';
+    if (source === 'google') return '📅';
+    if (source === 'synced') return '🔗';
+    return null;
+  };
+
+  // Get display name for appointment (client name or summary for Google events)
+  const getDisplayName = (apt: any): string => {
+    if (apt.client) {
+      return `${apt.client.firstName || ''} ${apt.client.lastName || ''}`.trim();
+    }
+    if (apt.googleEventSummary) {
+      return apt.googleEventSummary;
+    }
+    if (apt.summary) {
+      return apt.summary;
+    }
+    if (apt.notes) {
+      return apt.notes.substring(0, 30);
+    }
+    return 'Appuntamento';
+  };
+
   return (
-    <div className="flex gap-6 h-[750px]">
+    <div className="flex gap-6 h-[800px]">
       {/* Main Calendar Grid */}
-      <Card className="flex-1 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 border-0 shadow-2xl overflow-hidden">
-        <CardHeader className="pb-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white">
+      <Card className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
+        <CardHeader className="pb-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -476,101 +596,160 @@ function WeeklyCalendarView({
         <CardContent className="p-0 overflow-hidden h-[calc(100%-100px)]">
           <div className="flex flex-col h-full">
             {/* Header giorni */}
-            <div className="grid grid-cols-8 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-100 to-blue-50 dark:from-slate-800 dark:to-blue-900 sticky top-0 z-10">
-              <div className="p-3 text-center font-bold text-slate-600 dark:text-slate-300 bg-slate-200 dark:bg-slate-800 text-sm">
-                Orario
+            <div className="grid grid-cols-8 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 sticky top-0 z-20">
+              <div className="p-3 text-center font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 text-xs uppercase tracking-wide">
+                
               </div>
-              {weekDays.map((day, idx) => (
-                <div key={day.toISOString()} className={`p-3 text-center border-l border-slate-200 dark:border-slate-700 ${isSameDay(day, new Date()) ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`}>
-                  <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                    {dayLabels[idx]}
+              {weekDays.map((day, idx) => {
+                const isToday = isSameDay(day, new Date());
+                return (
+                  <div key={day.toISOString()} className={`p-3 text-center border-l border-slate-100 dark:border-slate-700 ${isToday ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`}>
+                    <div className={`font-medium text-xs uppercase tracking-wide ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {dayLabels[idx]}
+                    </div>
+                    <div className={`text-lg font-bold mt-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                      {format(day, "d")}
+                    </div>
+                    {isToday && (
+                      <div className="w-8 h-1 bg-blue-500 rounded-full mx-auto mt-1"></div>
+                    )}
                   </div>
-                  <div className={`text-xs ${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400'}`}>
-                    {format(day, "dd/MM")}
-                  </div>
-                  {isSameDay(day, new Date()) && (
-                    <div className="w-2 h-2 bg-red-500 rounded-full mx-auto mt-1"></div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Griglia orari - 08:00 to 20:00 */}
+            {/* Google Calendar-style grid with day columns */}
             <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-8">
-                {timeSlots.map((hour) => (
-                  <React.Fragment key={hour}>
-                    <div className="p-2 text-center text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-[50px] flex items-center justify-center">
-                      <span className="font-bold">{hour.toString().padStart(2, '0')}:00</span>
+              <div className="grid grid-cols-8 min-h-full">
+                {/* Time column */}
+                <div className="bg-slate-50 dark:bg-slate-800">
+                  {timeSlots.map((hour) => (
+                    <div 
+                      key={hour} 
+                      className="text-right pr-2 text-xs text-slate-400 dark:text-slate-500 font-medium"
+                      style={{ height: `${HOUR_HEIGHT}px` }}
+                    >
+                      <span className="-mt-2 block">{hour.toString().padStart(2, '0')}:00</span>
                     </div>
-                    {weekDays.map((day) => {
-                      const dayAppointments = getAppointmentsForDay(day);
-                      const hourAppointments = dayAppointments.filter(apt => {
-                        const aptHour = new Date(apt.scheduledAt).getHours();
-                        return aptHour === hour;
-                      });
+                  ))}
+                </div>
 
-                      return (
-                        <div 
-                          key={`${day.toISOString()}-${hour}`}
-                          className="relative h-[50px] border-b border-l border-slate-200 dark:border-slate-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors duration-150 group"
+                {/* Day columns with events */}
+                {weekDays.map((day) => {
+                  const isToday = isSameDay(day, new Date());
+                  const dayAppointments = getAppointmentsForDay(day);
+                  const totalMinutes = (END_HOUR - START_HOUR) * 60;
+                  const gridHeight = (END_HOUR - START_HOUR) * HOUR_HEIGHT;
+
+                  return (
+                    <div 
+                      key={day.toISOString()}
+                      className={`relative border-l border-slate-100 dark:border-slate-700 ${isToday ? 'bg-blue-50/30 dark:bg-blue-900/10' : 'bg-white dark:bg-slate-900'}`}
+                      style={{ height: `${gridHeight}px` }}
+                    >
+                      {/* Hour grid lines */}
+                      {timeSlots.map((hour) => (
+                        <div
+                          key={`grid-${hour}`}
+                          className="absolute left-0 right-0 border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer group"
+                          style={{ 
+                            top: `${(hour - START_HOUR) * HOUR_HEIGHT}px`,
+                            height: `${HOUR_HEIGHT}px`
+                          }}
                           onClick={() => {
                             const clickedDate = new Date(day);
                             clickedDate.setHours(hour, 0, 0, 0);
                             onDateClick(clickedDate);
                           }}
                         >
-                          {/* Indicatore orario corrente */}
-                          {isSameDay(day, new Date()) && new Date().getHours() === hour && (
-                            <div 
-                              className="absolute left-0 right-0 border-t-2 border-red-500 z-20"
-                              style={{
-                                top: `${(new Date().getMinutes() / 60) * 100}%`
-                              }}
-                            >
-                              <div className="w-2 h-2 bg-red-500 rounded-full -mt-1 -ml-1"></div>
-                            </div>
-                          )}
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Plus className="w-4 h-4 text-blue-400" />
+                          </div>
+                        </div>
+                      ))}
 
-                          {/* Appuntamenti */}
-                          {hourAppointments.map((appointment) => {
+                      {/* Current time indicator - more visible red line */}
+                      {isToday && (
+                        <div 
+                          className="absolute left-0 right-0 z-30 pointer-events-none"
+                          style={{
+                            top: `${((new Date().getHours() - START_HOUR) * 60 + new Date().getMinutes()) / 60 * HOUR_HEIGHT}px`
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-red-500 rounded-full -ml-1.5 shadow-md"></div>
+                            <div className="flex-1 h-0.5 bg-red-500 shadow-sm"></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Events positioned absolutely based on time and duration */}
+                      {(() => {
+                        const groups = getOverlappingGroups(dayAppointments);
+                        const elements: JSX.Element[] = [];
+                        
+                        groups.forEach((group) => {
+                          const groupWidth = 100 / group.length;
+                          
+                          group.forEach((appointment, idx) => {
+                            const { top, height } = getEventPosition(appointment);
                             const colors = getAppointmentColorClasses(appointment);
                             const emailStatus = getEmailStatusDisplay(appointment);
                             const isSelected = selectedAppointment?.id === appointment.id;
+                            const displayName = getDisplayName(appointment);
+                            const sourceIndicator = getSourceIndicator(appointment);
+                            const startTime = format(new Date(appointment.scheduledAt), "HH:mm");
+                            const endTime = format(new Date(new Date(appointment.scheduledAt).getTime() + (appointment.duration || 60) * 60000), "HH:mm");
                             
-                            return (
-                              <div
-                                key={appointment.id}
-                                className={`absolute inset-x-0.5 top-0.5 bottom-0.5 ${colors.bg} ${colors.border} ${colors.text} text-xs p-1 rounded shadow-sm z-10 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onAppointmentSelect(appointment);
-                                }}
-                              >
-                                <div className="font-semibold truncate text-[10px] leading-tight">
-                                  {appointment.client?.firstName} {appointment.client?.lastName}
+                            // Only render if within visible range
+                            if (top >= 0 && top < (END_HOUR - START_HOUR) * HOUR_HEIGHT) {
+                              elements.push(
+                                <div
+                                  key={appointment.id}
+                                  className={`absolute ${colors.bg} ${colors.text} rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden z-10 ${isSelected ? 'ring-2 ring-offset-1 ring-indigo-400 z-20' : ''}`}
+                                  style={{
+                                    top: `${top}px`,
+                                    height: `${Math.max(height - 2, 20)}px`,
+                                    left: group.length > 1 ? `${idx * groupWidth}%` : '2px',
+                                    right: group.length > 1 ? `${100 - (idx + 1) * groupWidth}%` : '2px',
+                                    minHeight: '24px'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAppointmentSelect(appointment);
+                                  }}
+                                >
+                                  <div className="p-1.5 h-full flex flex-col">
+                                    {/* Title row with source indicator */}
+                                    <div className="flex items-center gap-1">
+                                      {sourceIndicator && (
+                                        <span className="text-xs flex-shrink-0">{sourceIndicator}</span>
+                                      )}
+                                      <span className="font-bold text-xs truncate leading-tight">
+                                        {displayName}
+                                      </span>
+                                      {emailStatus.icon && (
+                                        <span className="text-[10px] flex-shrink-0 ml-auto">{emailStatus.icon}</span>
+                                      )}
+                                    </div>
+                                    {/* Time row - only show if enough height */}
+                                    {height >= 40 && (
+                                      <div className="text-[10px] opacity-90 mt-0.5">
+                                        {startTime} - {endTime}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="text-[9px] opacity-80 flex items-center gap-1">
-                                  {format(new Date(appointment.scheduledAt), "HH:mm")}
-                                  {emailStatus.icon && (
-                                    <span className="text-[8px]">{emailStatus.icon}</span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Indicatore hover per nuovo appuntamento */}
-                          {hourAppointments.length === 0 && (
-                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                              <Plus className="w-4 h-4 text-blue-500" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
+                              );
+                            }
+                          });
+                        });
+                        
+                        return elements;
+                      })()}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
