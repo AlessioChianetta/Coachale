@@ -441,6 +441,15 @@ ${userContext.calendar.events.slice(0, 5).map(e =>
 ).join('\n')}
 ` : ''}
 
+${(() => {
+  // DEBUG: Log monthlyLimit in prompt construction
+  console.log(`📋 [AI Prompt] Building consultations section:`);
+  console.log(`   - monthlyLimit exists: ${!!userContext.consultations?.monthlyLimit}`);
+  if (userContext.consultations?.monthlyLimit) {
+    console.log(`   - monthlyLimit data: ${JSON.stringify(userContext.consultations.monthlyLimit)}`);
+  }
+  return '';
+})()}
 ${userContext.consultations ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 CONSULENZE - STORICO COMPLETO
