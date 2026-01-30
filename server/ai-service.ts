@@ -2323,6 +2323,73 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         provider: providerMetadata,
       };
       
+      // ═══════════════════════════════════════════════════════════════════════
+      // DIRECT CONFIRMATION BYPASS: Skip Gemini when we have all data for confirmation
+      // This prevents Gemini hallucinations (calling proposeBooking instead of confirmBooking)
+      // ═══════════════════════════════════════════════════════════════════════
+      if (consultationIntentClassification?.intent === 'booking_confirm' && pendingBooking?.confirmationToken) {
+        console.log(`\n${'═'.repeat(70)}`);
+        console.log(`🚀 [DIRECT CONFIRM] Bypassing Gemini - executing confirmBooking directly`);
+        console.log(`   Token: ${pendingBooking.confirmationToken.substring(0, 8)}...`);
+        console.log(`   Pending booking: ${new Date(pendingBooking.startTime).toISOString()}`);
+        console.log(`${'═'.repeat(70)}\n`);
+        
+        try {
+          const consultantId = userContext.consultant?.id;
+          if (!consultantId) {
+            throw new Error('No consultantId found');
+          }
+          
+          // Execute confirmBooking directly
+          const toolResult = await executeConsultationTool(
+            'confirmBooking',
+            { confirmationToken: pendingBooking.confirmationToken },
+            clientId,
+            consultantId,
+            conversation.id
+          );
+          
+          console.log(`🔧 [DIRECT CONFIRM] Tool result: success=${toolResult.success}`);
+          
+          // Generate friendly response
+          let responseMessage: string;
+          if (toolResult.success && toolResult.result) {
+            const result = toolResult.result as any;
+            responseMessage = result.message || `Perfetto! La tua consulenza è stata confermata per ${result.booking?.date || 'la data richiesta'} alle ${result.booking?.time || 'l\'orario richiesto'}. Riceverai una conferma via email con il link per il meeting.`;
+          } else {
+            responseMessage = toolResult.error || 'Si è verificato un problema durante la conferma. Riprova.';
+          }
+          
+          accumulatedMessage = responseMessage;
+          yield {
+            type: 'delta' as const,
+            conversationId: conversation.id,
+            provider: providerMetadata,
+            content: responseMessage,
+          };
+          
+          yield {
+            type: 'complete' as const,
+            conversationId: conversation.id,
+            provider: providerMetadata,
+          };
+          
+          // Save to DB
+          await db.insert(aiMessages).values({
+            id: crypto.randomUUID(),
+            conversationId: conversation.id,
+            role: "assistant",
+            content: responseMessage,
+            createdAt: new Date(),
+          });
+          
+          return;
+        } catch (directConfirmError) {
+          console.error(`🔧 [DIRECT CONFIRM] Error:`, directConfirmError);
+          // Fall through to normal Gemini flow as fallback
+        }
+      }
+      
       try {
         // First call: Get function call from AI
         const initialResponse = await aiClient.generateContent({
@@ -2385,9 +2452,24 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             console.log(`🚫 [CONSULTATION] BLOCKED: Function ${functionCall.name} not in allowed tools: [${allowedToolNames.join(', ')}]`);
             console.log(`   This is likely a Gemini hallucination - rejecting and responding with error`);
             
+            // Format pending booking date safely
+            let formattedDate = '';
+            let formattedTime = '';
+            if (pendingBooking?.startTime) {
+              try {
+                const startDate = new Date(pendingBooking.startTime);
+                if (!isNaN(startDate.getTime())) {
+                  formattedDate = startDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+                  formattedTime = startDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                }
+              } catch (e) {
+                console.log(`   Error formatting date: ${e}`);
+              }
+            }
+            
             // Respond with an error message instead of executing the unauthorized tool
-            const errorMessage = pendingBooking 
-              ? `Per confermare la prenotazione del ${new Date(pendingBooking.startTime).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} alle ${new Date(pendingBooking.startTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}, dimmi semplicemente "sì, confermo" o "no, annulla".`
+            const errorMessage = pendingBooking && formattedDate && formattedTime
+              ? `Per confermare la prenotazione del ${formattedDate} alle ${formattedTime}, dimmi semplicemente "sì, confermo" o "no, annulla".`
               : `Mi dispiace, c'è stato un problema. Riprova a dirmi cosa vorresti fare.`;
             
             accumulatedMessage = errorMessage;
