@@ -214,20 +214,54 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
                 <div className="flex-1 space-y-1">
                   {dayAppointments.slice(0, 2).map((apt, idx) => {
                     const emailIndicator = getEmailStatusIndicator(apt);
+                    const source = apt.source || 'local';
+                    
+                    // Determine colors based on source and status
+                    const getAppointmentClasses = () => {
+                      if (source === 'google') {
+                        // Google Calendar only - purple/violet style
+                        return 'bg-violet-100 text-violet-700 border border-violet-200';
+                      }
+                      if (source === 'synced') {
+                        // Synced (local + Google match) - teal style with sync indicator
+                        return apt.status === 'completed'
+                          ? 'bg-teal-100 text-teal-700 border border-teal-200'
+                          : 'bg-teal-50 text-teal-600 border border-teal-200';
+                      }
+                      // Local only - original style
+                      if (apt.status === 'completed') {
+                        return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+                      } else if (apt.status === 'cancelled') {
+                        return 'bg-rose-100 text-rose-700 border border-rose-200';
+                      }
+                      return 'bg-blue-100 text-blue-700 border border-blue-200';
+                    };
+                    
+                    // Get source indicator
+                    const getSourceIndicator = () => {
+                      if (source === 'google') return '📅'; // Google Calendar icon
+                      if (source === 'synced') return '🔗'; // Sync icon
+                      return null; // Local only - no extra indicator
+                    };
+                    
+                    const sourceIndicator = getSourceIndicator();
+                    const tooltipText = source === 'google' 
+                      ? `Google Calendar: ${apt.googleEventSummary || apt.notes}`
+                      : source === 'synced'
+                      ? `Sincronizzato con Google Calendar${emailIndicator ? ` - ${emailIndicator.label}` : ''}`
+                      : emailIndicator?.label;
+                    
                     return (
                       <div
                         key={`${apt.id}-${idx}`}
-                        className={`text-xs px-2 py-1 rounded-full text-center truncate font-medium shadow-sm flex items-center justify-center gap-1 ${
-                          apt.status === 'completed' 
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                            : apt.status === 'cancelled'
-                            ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                            : 'bg-blue-100 text-blue-700 border border-blue-200'
-                        }`}
-                        title={emailIndicator ? emailIndicator.label : undefined}
+                        className={`text-xs px-2 py-1 rounded-full text-center truncate font-medium shadow-sm flex items-center justify-center gap-1 ${getAppointmentClasses()}`}
+                        title={tooltipText}
                       >
+                        {sourceIndicator && (
+                          <span className="text-[10px]">{sourceIndicator}</span>
+                        )}
                         {format(new Date(apt.scheduledAt), "HH:mm")}
-                        {emailIndicator && (
+                        {emailIndicator && source !== 'google' && (
                           <span className="text-[10px] ml-0.5">{emailIndicator.dot}</span>
                         )}
                       </div>
@@ -280,8 +314,33 @@ function PremiumCalendarView({ appointments, onDateClick, selectedDate }: {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 text-center text-sm text-slate-600 dark:text-slate-400">
-          <span className="font-semibold">LEGENDA:</span> 🟢 Inviata/Approvata  🟡 Bozza  🔴 Mancante  🔵 Programmata
+        <div className="mt-4 p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="text-center text-sm text-slate-600 dark:text-slate-400 space-y-2">
+            <div className="font-semibold mb-2">LEGENDA APPUNTAMENTI</div>
+            <div className="flex flex-wrap justify-center gap-4">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-3 h-3 bg-blue-100 border border-blue-200 rounded-full"></span>
+                Locale
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-3 h-3 bg-violet-100 border border-violet-200 rounded-full"></span>
+                📅 Google Calendar
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-3 h-3 bg-teal-100 border border-teal-200 rounded-full"></span>
+                🔗 Sincronizzato
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-3 h-3 bg-emerald-100 border border-emerald-200 rounded-full"></span>
+                Completato
+              </span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4 pt-1">
+              <span>🟢 Email Inviata</span>
+              <span>🟡 Bozza</span>
+              <span>🔴 Email Mancante</span>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -2233,11 +2292,29 @@ export default function ConsultantAppointments() {
   }, []);
 
 
-  // Query per ottenere consultazioni del consulente
-  const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ["/api/consultations/consultant"],
+  // Query per ottenere consultazioni del consulente (merged con Google Calendar)
+  const { data: mergedData, isLoading } = useQuery({
+    queryKey: ["/api/consultations/consultant/merged"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultations/consultant/merged", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        // Fallback to regular endpoint if merged fails
+        const fallbackResponse = await fetch("/api/consultations/consultant", {
+          headers: getAuthHeaders(),
+        });
+        if (!fallbackResponse.ok) throw new Error("Failed to fetch consultations");
+        const consultations = await fallbackResponse.json();
+        return { appointments: consultations.map((c: any) => ({ ...c, source: 'local' })), googleCalendarConnected: false };
+      }
+      return response.json();
+    },
     retry: 1,
   });
+  
+  const appointments = mergedData?.appointments || [];
+  const googleCalendarConnected = mergedData?.googleCalendarConnected || false;
 
   // Query per ottenere lista clienti
   const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useQuery({
@@ -2321,7 +2398,7 @@ export default function ConsultantAppointments() {
       return apiRequest("POST", "/api/consultations", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant/merged"] });
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({
         title: "🎉 Fantastico!",
@@ -2345,7 +2422,7 @@ export default function ConsultantAppointments() {
       return apiRequest("PUT", `/api/consultations/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant/merged"] });
       toast({
         title: "✨ Perfetto!",
         description: "Appuntamento aggiornato con successo",
@@ -2367,7 +2444,7 @@ export default function ConsultantAppointments() {
       return apiRequest("DELETE", `/api/consultations/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant/merged"] });
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
       toast({
         title: "🗑️ Rimosso!",
@@ -2438,7 +2515,7 @@ export default function ConsultantAppointments() {
       return { success: true, consultationId: id };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant/merged"] });
       queryClient.invalidateQueries({ queryKey: ["/api/consultation-tasks"] });
       toast({
         title: "✅ Consulenza Completata!",
@@ -2478,7 +2555,7 @@ export default function ConsultantAppointments() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant/merged"] });
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/email-drafts"] });
       toast({
         title: "✅ Bozza email generata!",

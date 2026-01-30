@@ -3502,6 +3502,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get merged consultations with Google Calendar events
+  app.get("/api/consultations/consultant/merged", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { startDate, endDate } = req.query;
+      
+      // Get local consultations
+      const localConsultations = await storage.getConsultationsByConsultant(consultantId);
+      
+      // Add source field to local consultations
+      const consultationsWithSource = localConsultations.map((c: any) => ({
+        ...c,
+        source: 'local' as const,
+      }));
+      
+      // Check if Google Calendar is connected
+      const isCalendarConnected = await googleCalendarService.isGoogleCalendarConnected(consultantId);
+      
+      if (!isCalendarConnected) {
+        // Return only local consultations if calendar not connected
+        return res.json({
+          appointments: consultationsWithSource,
+          googleCalendarConnected: false,
+        });
+      }
+      
+      // Determine date range - use query params or default to a wide range
+      const start = startDate 
+        ? new Date(startDate as string) 
+        : new Date(new Date().setMonth(new Date().getMonth() - 3)); // 3 months ago
+      const end = endDate 
+        ? new Date(endDate as string) 
+        : new Date(new Date().setMonth(new Date().getMonth() + 6)); // 6 months from now
+      
+      // Fetch Google Calendar events
+      let googleEvents: Array<{ start: Date; end: Date; summary: string; status: string }> = [];
+      try {
+        googleEvents = await googleCalendarService.listEvents(consultantId, start, end);
+      } catch (error) {
+        console.error('[MERGED CALENDAR] Error fetching Google Calendar events:', error);
+        // Continue with local only if Google Calendar fails
+      }
+      
+      // Convert Google events to appointment-like format
+      const googleEventsFormatted = googleEvents.map((event, index) => ({
+        id: `google-${event.start.getTime()}-${index}`,
+        scheduledAt: event.start.toISOString(),
+        duration: Math.round((event.end.getTime() - event.start.getTime()) / 60000),
+        notes: event.summary,
+        status: 'scheduled',
+        source: 'google' as const,
+        googleEventSummary: event.summary,
+        googleEventStart: event.start.toISOString(),
+        googleEventEnd: event.end.toISOString(),
+      }));
+      
+      // Merge and detect duplicates (within 5 minute tolerance)
+      const TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes
+      const mergedAppointments: any[] = [];
+      const matchedGoogleEventIndices = new Set<number>();
+      
+      for (const localApt of consultationsWithSource) {
+        const localTime = new Date(localApt.scheduledAt).getTime();
+        
+        // Find matching Google event
+        const matchIndex = googleEventsFormatted.findIndex((ge, idx) => {
+          if (matchedGoogleEventIndices.has(idx)) return false;
+          const googleTime = new Date(ge.scheduledAt).getTime();
+          return Math.abs(localTime - googleTime) <= TOLERANCE_MS;
+        });
+        
+        if (matchIndex !== -1) {
+          // Matched - mark as synced
+          matchedGoogleEventIndices.add(matchIndex);
+          mergedAppointments.push({
+            ...localApt,
+            source: 'synced' as const,
+            googleEventSummary: googleEventsFormatted[matchIndex].googleEventSummary,
+          });
+        } else {
+          // Local only
+          mergedAppointments.push(localApt);
+        }
+      }
+      
+      // Add unmatched Google events
+      for (let i = 0; i < googleEventsFormatted.length; i++) {
+        if (!matchedGoogleEventIndices.has(i)) {
+          mergedAppointments.push(googleEventsFormatted[i]);
+        }
+      }
+      
+      // Sort by scheduledAt
+      mergedAppointments.sort((a, b) => 
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+      );
+      
+      res.json({
+        appointments: mergedAppointments,
+        googleCalendarConnected: true,
+        googleEventsCount: googleEvents.length,
+      });
+    } catch (error: any) {
+      console.error('[MERGED CALENDAR] Error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Get monthly consultation count for a specific client
   app.get("/api/consultations/client/:clientId/monthly-count", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
