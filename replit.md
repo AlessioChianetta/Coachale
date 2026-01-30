@@ -43,6 +43,14 @@ Key enhancements include:
 - Content Studio Platform-Specific Schema Selection with 40+ templates, character limit enforcement, AI shortening, and 5 selectable writing styles.
 - Content Autopilot System for automated content scheduling with platform-specific frequency, content theme rotation, and full AdVisage AI integration for image generation and publishing.
 - AdVisage AI Visual Concept Generator integrated into Content Studio for generating visual concepts, image prompts, and social captions from ad copy.
+- AI-Powered Consultation Booking System with autonomous booking flow:
+  - Google Calendar OAuth integration for consultants (connect/disconnect/status)
+  - Configurable availability settings (weekdays, time ranges, appointment duration, buffer before/after, min notice hours, max days ahead)
+  - `consultantAvailabilitySettings` table stores Google tokens and availability config
+  - getAvailableSlots reads DB config, applies buffer logic, queries Google Calendar for busy times, respects minHoursNotice/maxDaysAhead
+  - confirmBooking creates DB consultation record, then creates Google Calendar event with Meet link, stores googleCalendarEventId/googleMeetLink
+  - Graceful fallback: if Calendar fails, booking still completes without Meet link
+  - 3-step booking flow: getAvailableSlots → proposeBooking (with token) → confirmBooking (creates event)
 - Content Variety System to prevent repetitive AI-generated ads:
   - Hook max 125 characters (Meta Ads visibility constraint)
   - 10 hook pattern rotation (domanda, statistica, storia, controintuitivo, problema, curiosità, social proof, us-vs-them, urgenza, provocazione)
