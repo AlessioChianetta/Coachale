@@ -519,6 +519,13 @@ ${userContext.consultations.recent.map(c => {
 - Le trascrizioni Fathom contengono discussioni REALI parola per parola
 - Usa ENTRAMBI per il contesto completo
 - Quando chiede "cosa abbiamo discusso?" → consulta riepiloghi e trascrizioni
+
+🔴 REGOLA CRITICA - CONTEGGIO CONSULENZE MENSILI:
+Quando l'utente chiede "quante consulenze ho fatto questo mese?" o domande simili sul conteggio mensile,
+USA ESCLUSIVAMENTE i dati della sezione "LIMITE CONSULENZE MENSILE" qui sopra.
+NON cercare nei documenti File Search per rispondere a questa domanda.
+I numeri mostrati sopra (completate, prenotate, totale usate) sono i dati UFFICIALI e AGGIORNATI in tempo reale.
+Rispondi con questi numeri esatti, non con approssimazioni o ricerche nei documenti.
 ` : 'Nessuna consulenza recente.'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

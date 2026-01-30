@@ -926,10 +926,7 @@ router.get('/clients', authenticateToken, requireRole('consultant'), async (req:
         isActive: users.isActive,
       })
       .from(users)
-      .where(and(
-        eq(users.consultantId, consultantId),
-        eq(users.role, 'client')
-      ));
+      .where(eq(users.consultantId, consultantId));
     
     res.json(clients);
   } catch (error: any) {
@@ -958,8 +955,7 @@ router.patch('/clients/:clientId', authenticateToken, requireRole('consultant'),
       .from(users)
       .where(and(
         eq(users.id, clientId),
-        eq(users.consultantId, consultantId),
-        eq(users.role, 'client')
+        eq(users.consultantId, consultantId)
       ))
       .limit(1);
     
@@ -1020,10 +1016,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         email: users.email 
       })
       .from(users)
-      .where(and(
-        eq(users.consultantId, consultantId),
-        eq(users.role, 'client')
-      ));
+      .where(eq(users.consultantId, consultantId));
     
     const clientIds = allClients.map(c => c.id);
     
@@ -2033,10 +2026,10 @@ router.post('/reset-stores', authenticateToken, requireRole('consultant'), async
     
     // Get all client stores for this consultant
     if (type === 'clients' || type === 'all') {
-      // Get all clients of this consultant
+      // Get all clients of this consultant (includes consultant-clients)
       const clients = await db.select({ id: users.id })
         .from(users)
-        .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+        .where(eq(users.consultantId, consultantId));
       
       const clientIds = clients.map(c => c.id);
       
@@ -2156,10 +2149,10 @@ router.post('/reset-and-resync', authenticateToken, requireRole('consultant'), a
         .where(eq(fileSearchStores.id, consultantStore.id));
     }
     
-    // Reset all client stores
+    // Reset all client stores (includes consultant-clients)
     const clients = await db.select({ id: users.id })
       .from(users)
-      .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+      .where(eq(users.consultantId, consultantId));
     
     const clientIds = clients.map(c => c.id);
     
@@ -2167,7 +2160,7 @@ router.post('/reset-and-resync', authenticateToken, requireRole('consultant'), a
       const clientStores = await db.query.fileSearchStores.findMany({
         where: and(
           inArray(fileSearchStores.ownerId, clientIds),
-          eq(fileSearchStores.ownerType, 'client'),
+          eq(fileSearchStores.ownerType, 'client')
         ),
       });
       
