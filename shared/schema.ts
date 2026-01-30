@@ -3238,10 +3238,11 @@ export const consultantCalendarSync = pgTable("consultant_calendar_sync", {
 export const appointmentBookings = pgTable("appointment_bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "set null" }), // Links to existing client if email matches
   conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }),
   publicConversationId: varchar("public_conversation_id"), // For public link bookings (references whatsappAgentConsultantConversations)
   instagramConversationId: varchar("instagram_conversation_id"), // For Instagram DM bookings
-  source: text("source").$type<"whatsapp" | "public_link" | "instagram">().default("whatsapp").notNull(), // Booking source
+  source: text("source").$type<"whatsapp" | "public_link" | "instagram" | "public_page">().default("whatsapp").notNull(), // Booking source
   instagramUserId: text("instagram_user_id"), // Instagram user ID (IGSID) for cross-channel booking detection
   clientPhone: text("client_phone"), // Nullable for public link/Instagram bookings
   clientName: text("client_name"),

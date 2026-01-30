@@ -1676,17 +1676,43 @@ export async function createPublicBooking(params: PublicBookingParams): Promise<
   const { consultantId, clientName, clientEmail, clientPhone, scheduledAt, duration, notes } = params;
 
   try {
+    // Check if email matches an existing client of this consultant
+    let matchedClientId: string | null = null;
+    if (clientEmail) {
+      const [existingClient] = await db
+        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(
+          and(
+            eq(users.email, clientEmail.toLowerCase().trim()),
+            eq(users.consultantId, consultantId),
+            eq(users.role, 'client')
+          )
+        )
+        .limit(1);
+      
+      if (existingClient) {
+        matchedClientId = existingClient.id;
+        console.log(`[PUBLIC BOOKING] Matched existing client: ${existingClient.firstName} ${existingClient.lastName} (${matchedClientId})`);
+      } else {
+        console.log(`[PUBLIC BOOKING] No existing client found for email ${clientEmail} - booking as prospect`);
+      }
+    }
+
     const [booking] = await db
       .insert(appointmentBookings)
       .values({
         consultantId,
+        clientId: matchedClientId, // Link to existing client if found
         clientName,
         clientEmail,
         clientPhone: clientPhone || null,
         appointmentDate: scheduledAt.toISOString().slice(0, 10),
         appointmentTime: `${scheduledAt.getHours().toString().padStart(2, '0')}:${scheduledAt.getMinutes().toString().padStart(2, '0')}`,
         status: 'confirmed',
-        notes: notes || `Prenotazione dalla pagina pubblica`,
+        notes: matchedClientId 
+          ? notes || `Prenotazione dalla pagina pubblica (cliente esistente)`
+          : notes || `Prenotazione dalla pagina pubblica (prospect)`,
         source: 'public_page',
       })
       .returning({ id: appointmentBookings.id });
