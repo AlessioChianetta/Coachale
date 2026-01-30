@@ -167,3 +167,35 @@ Eseguire ogni 2 minuti.
 
 7. **server/index.ts**
    - Avvio del pending booking expiry scheduler
+
+8. **server/booking/booking-flow-service.ts** (NUOVO)
+   - Gestione stato flow: `awaiting_slot_selection`, `awaiting_confirm`
+   - Funzioni: `setBookingFlowState()`, `getBookingFlowState()`, `clearBookingFlowState()`
+   - TTL 15 minuti per auto-expiry
+
+9. **shared/schema.ts** - aiConversations
+   - Aggiunte colonne: `activeFlow`, `flowStage`, `flowExpiresAt`
+
+---
+
+## Bug Fix Implementati (2026-01-30)
+
+### 1. conversationId mancante in pending_bookings
+- **Problema**: `proposeBooking` non salvava `conversationId` → `getPendingBookingState()` tornava sempre null
+- **Fix**: Passato `conversationId` a `executeConsultationTool()` e salvato nell'INSERT
+
+### 2. Mancanza stato tra "slot mostrati" e "pending booking"
+- **Problema**: Dopo `getAvailableSlots`, l'utente rispondeva "ok" ma il classifier usciva dal booking flow
+- **Fix**: Aggiunto stato `awaiting_slot_selection` in `aiConversations` + `booking-flow-service.ts`
+
+### 3. Regex troppo rigida
+- **Problema**: `^ok$` non matchava "ok grazie", "sì va bene"
+- **Fix**: Rimossi anchor, usato word boundaries `\b(ok|si|sì|...)\b`
+
+### 4. Fallback tool pericoloso
+- **Problema**: Se `filteredTools.length === 0`, esponeva tutti i tool
+- **Fix**: Fallback solo a `getAvailableSlots` (tool read-only sicuro)
+
+### 5. booking_confirm senza pending
+- **Problema**: Se classifier rilevava `booking_confirm` ma non c'era pending, usciva dal flow
+- **Fix**: Se `flowStage === 'awaiting_slot_selection'`, chiede slot invece di uscire

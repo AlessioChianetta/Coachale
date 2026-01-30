@@ -2107,6 +2107,10 @@ export const aiConversations = pgTable("ai_conversations", {
   title: text("title"), // Auto-generated or user-defined
   summary: text("summary"), // AI-generated summary of conversation for memory system
   isActive: boolean("is_active").default(true).notNull(),
+  // Booking flow state tracking
+  activeFlow: text("active_flow").$type<"consultations_booking" | null>(),
+  flowStage: text("flow_stage").$type<"awaiting_slot_selection" | "awaiting_confirm" | null>(),
+  flowExpiresAt: timestamp("flow_expires_at", { withTimezone: true }),
   lastMessageAt: timestamp("last_message_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

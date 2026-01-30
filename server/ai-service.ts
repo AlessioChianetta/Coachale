@@ -39,6 +39,7 @@ import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboardi
 import { consultationTools, isConsultationTool } from "./ai/consultation-tools";
 import { executeConsultationTool } from "./ai/consultation-tool-executor";
 import { getPendingBookingState } from "./booking/booking-service";
+import { getBookingFlowState } from "./booking/booking-flow-service";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -2205,21 +2206,33 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Check if there's a pending booking for this conversation (DB-backed state)
     const pendingBooking = await getPendingBookingState(conversationId, null);
     
+    // Check booking flow state (tracks: awaiting_slot_selection, awaiting_confirm)
+    const bookingFlowState = await getBookingFlowState(conversationId);
+    const isInBookingFlow = bookingFlowState.isActive || !!pendingBooking;
+    
     // Run LLM classifier if:
-    // 1. There's a pending booking (STICKY: always run classifier when in booking flow)
+    // 1. There's a pending booking OR active booking flow (STICKY: stay in booking flow)
     // 2. Regex detected consultation/appointment intent
     // 3. Message contains potential consultation-related keywords (fallback for regex misses)
     const msgLower = message.toLowerCase();
-    const potentialConsultationKeywords = /incontri|call|slot|appuntament|prenotare|disponibil|limite|quant[io].*mese|fatto.*mese|sessioni|conferm|^ok$|va bene|perfetto|^si$|^sì$/i;
-    const shouldRunClassifier = !!pendingBooking || intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
+    // Fixed regex: removed anchors ^$ to match "ok grazie", "sì va bene", etc.
+    const potentialConsultationKeywords = /\b(incontri|call|slot|appuntament|prenotare|disponibil|limite|sessioni|conferm|ok|si|sì|perfetto|va bene|procedi|prenota)\b/i;
+    const shouldRunClassifier = isInBookingFlow || intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
     
-    // Build classifier context for memory safety
+    // Build classifier context for memory safety (include flow state info)
     const classifierContext: ClassifierContext = {
       userId: userContext.client?.id || userContext.consultant?.id,
       sessionId: conversationId,
       pendingBookingToken: pendingBooking?.token,
-      hasPendingBooking: !!pendingBooking
+      hasPendingBooking: !!pendingBooking || bookingFlowState.isActive // Include flow state
     };
+    
+    if (isInBookingFlow) {
+      console.log(`📋 [BOOKING FLOW] Active flow detected:`);
+      console.log(`   flowStage: ${bookingFlowState.flowStage || 'none'}`);
+      console.log(`   pendingBooking: ${pendingBooking ? 'yes' : 'no'}`);
+      console.log(`   expiresAt: ${bookingFlowState.flowExpiresAt?.toISOString() || 'N/A'}`);
+    }
     
     if (shouldRunClassifier) {
       const apiKey = await getGeminiApiKeyForClassifier();
@@ -2243,16 +2256,23 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       }
     }
     
-    // STICKY TOOL MODE: If there's a pending booking, ALWAYS enable consultation tools
+    // STICKY TOOL MODE: If there's a pending booking OR active booking flow, ALWAYS enable consultation tools
     // This prevents the AI from "drifting" out of the booking flow when user says "ok/sì/va bene"
-    if (classifierContext.hasPendingBooking && !isConsultationQuery) {
+    if (isInBookingFlow && !isConsultationQuery) {
       isConsultationQuery = true;
       console.log(`\n${'═'.repeat(70)}`);
       console.log(`🎯 STICKY TOOL MODE ACTIVATED`);
       console.log(`${'═'.repeat(70)}`);
-      console.log(`   📋 Reason: Pending booking exists (token: ${pendingBooking?.token?.slice(0, 8)}...)`);
+      console.log(`   📋 Reason: ${pendingBooking ? `Pending booking (token: ${pendingBooking?.token?.slice(0, 8)}...)` : `Active flow: ${bookingFlowState.flowStage}`}`);
       console.log(`   🔧 Force tools: YES (overriding classifier decision)`);
       console.log(`${'═'.repeat(70)}\n`);
+    }
+    
+    // Handle booking_confirm without pending: stay in flow and ask for slot
+    if (consultationIntentClassification?.intent === 'booking_confirm' && !pendingBooking && bookingFlowState.flowStage === 'awaiting_slot_selection') {
+      console.log(`📋 [BOOKING FLOW] User confirmed but no pending booking - asking for slot selection`);
+      clarificationNeeded = true;
+      clarificationPrompt = "Perfetto! Quale slot preferisci? Dimmi giorno e ora (es: 'giovedì 5 febbraio alle 09:00').";
     }
     
     let clientTools: any[];
@@ -2261,13 +2281,18 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       // Get only the tools needed for this specific intent (with context for memory safety)
       const allowedTools = getToolsForIntent(consultationIntentClassification, classifierContext);
       const filteredTools = consultationTools.filter(t => allowedTools.includes(t.name));
-      clientTools = [{ functionDeclarations: filteredTools.length > 0 ? filteredTools : consultationTools }];
+      
+      // SAFE FALLBACK: If no specific tools allowed, only expose safe read-only tool (getAvailableSlots)
+      // This prevents accidentally exposing all tools including confirmBooking
+      const safeDefaultTools = consultationTools.filter(t => t.name === 'getAvailableSlots');
+      const toolsToUse = filteredTools.length > 0 ? filteredTools : safeDefaultTools;
+      clientTools = [{ functionDeclarations: toolsToUse }];
       
       console.log(`\n${'═'.repeat(70)}`);
       console.log(`🔧 FUNCTION CALLING MODE ACTIVE [CONSULTATION QUERY]`);
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📋 Intent: ${consultationIntentClassification.intent}`);
-      console.log(`   🛠️  Tools: ${filteredTools.map(t => t.name).join(', ') || consultationTools.map(t => t.name).join(', ')}`);
+      console.log(`   🛠️  Tools: ${toolsToUse.map(t => t.name).join(', ')}`);
       console.log(`   ⚙️  Mode: AUTO (Gemini decides if tool needed)`);
       console.log(`   ❌ codeExecution: DISABLED`);
       console.log(`   ❌ fileSearch: DISABLED`);
@@ -2362,7 +2387,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             functionCall.name,
             functionCall.args,
             clientId,
-            consultantId
+            consultantId,
+            conversationId
           );
           
           console.log(`🔧 [CONSULTATION] Tool result: success=${toolResult.success}`);
@@ -2513,7 +2539,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             (pendingFunctionCall as any).functionName,
             (pendingFunctionCall as any).args,
             clientId,
-            consultantId
+            consultantId,
+            conversationId
           );
           
           console.log(`🔧 [CONSULTATION TOOL] Tool result success: ${toolResult.success}`);

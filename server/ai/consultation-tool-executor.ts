@@ -9,26 +9,29 @@ import { eq, and, gte, lte, sql, or, desc, isNull } from "drizzle-orm";
 import { ConsultationToolResult } from "./consultation-tools";
 import crypto from "crypto";
 import { getValidAccessToken, createGoogleCalendarEvent } from "../google-calendar-service";
+import { setBookingFlowState, clearBookingFlowState } from "../booking/booking-flow-service";
 
 export async function executeConsultationTool(
   toolName: string,
   args: Record<string, any>,
   clientId: string,
-  consultantId: string
+  consultantId: string,
+  conversationId?: string | null
 ): Promise<ConsultationToolResult> {
   console.log(`🔧 [CONSULTATION TOOL] Executing ${toolName} for client ${clientId.slice(0, 8)}`);
   console.log(`   Args:`, JSON.stringify(args));
+  console.log(`   ConversationId: ${conversationId || 'none'}`);
 
   try {
     switch (toolName) {
       case "getConsultationStatus":
         return await executeGetConsultationStatus(clientId, consultantId, args);
       case "getAvailableSlots":
-        return await executeGetAvailableSlots(clientId, consultantId, args);
+        return await executeGetAvailableSlots(clientId, consultantId, args, conversationId);
       case "proposeBooking":
-        return await executeProposeBooking(clientId, consultantId, args);
+        return await executeProposeBooking(clientId, consultantId, args, conversationId);
       case "confirmBooking":
-        return await executeConfirmBooking(clientId, args);
+        return await executeConfirmBooking(clientId, args, conversationId);
       default:
         return {
           toolName,
@@ -203,7 +206,8 @@ async function executeGetAvailableSlots(
     endDate?: string; 
     preferredDayOfWeek?: string;
     preferredTimeRange?: string;
-  }
+  },
+  conversationId?: string | null
 ): Promise<ConsultationToolResult> {
   const now = new Date();
   
@@ -448,6 +452,11 @@ async function executeGetAvailableSlots(
 
   const calendarConnected = !!(settings?.googleRefreshToken);
   
+  // Set flow state to awaiting_slot_selection if slots are found
+  if (availableSlots.length > 0 && conversationId) {
+    await setBookingFlowState(conversationId, "awaiting_slot_selection");
+  }
+  
   return {
     toolName: "getAvailableSlots",
     args,
@@ -470,7 +479,8 @@ async function executeGetAvailableSlots(
 async function executeProposeBooking(
   clientId: string,
   consultantId: string,
-  args: { date: string; time: string; duration?: number; notes?: string }
+  args: { date: string; time: string; duration?: number; notes?: string },
+  conversationId?: string | null
 ): Promise<ConsultationToolResult> {
   // Guardrail: validate required parameters
   if (!args.date) {
@@ -619,9 +629,17 @@ async function executeProposeBooking(
     startAt: proposedDateTime,
     duration: args.duration || 60,
     status: "awaiting_confirm",
+    conversationId: conversationId ?? null,
     notes: args.notes,
     expiresAt,
   });
+  
+  console.log(`🎫 [PENDING BOOKING] Created pending booking with token ${confirmationToken.slice(0, 8)}... for conversation ${conversationId || 'unknown'}`);
+
+  // Set flow state to awaiting_confirm
+  if (conversationId) {
+    await setBookingFlowState(conversationId, "awaiting_confirm");
+  }
 
   return {
     toolName: "proposeBooking",
@@ -648,10 +666,14 @@ async function executeProposeBooking(
 
 async function executeConfirmBooking(
   clientId: string,
-  args: { confirmationToken?: string; conversationId?: string }
+  args: { confirmationToken?: string; conversationId?: string },
+  serverConversationId?: string | null
 ): Promise<ConsultationToolResult> {
+  // Use server-side conversationId as fallback if not in args
+  const effectiveConversationId = args.conversationId || serverConversationId;
+  
   // Guardrail: validate that at least one identifier is provided
-  if (!args.confirmationToken && !args.conversationId) {
+  if (!args.confirmationToken && !effectiveConversationId) {
     return {
       toolName: "confirmBooking",
       args,
@@ -675,15 +697,16 @@ async function executeConfirmBooking(
       .where(eq(pendingBookings.token, args.confirmationToken))
       .limit(1);
     pendingBooking = booking;
-  } else if (args.conversationId) {
+  } else if (effectiveConversationId) {
+    console.log(`🔍 [CONFIRM BOOKING] Looking up by conversationId: ${effectiveConversationId}`);
     const [booking] = await db
       .select()
       .from(pendingBookings)
       .where(
         and(
           or(
-            eq(pendingBookings.conversationId, args.conversationId),
-            eq(pendingBookings.publicConversationId, args.conversationId)
+            eq(pendingBookings.conversationId, effectiveConversationId),
+            eq(pendingBookings.publicConversationId, effectiveConversationId)
           ),
           eq(pendingBookings.status, "awaiting_confirm"),
           sql`${pendingBookings.expiresAt} > NOW()`
@@ -692,6 +715,7 @@ async function executeConfirmBooking(
       .orderBy(desc(pendingBookings.createdAt))
       .limit(1);
     pendingBooking = booking;
+    console.log(`🔍 [CONFIRM BOOKING] Found booking by conversationId: ${booking ? 'yes' : 'no'}`);
   }
 
   if (!pendingBooking) {
@@ -940,6 +964,11 @@ async function executeConfirmBooking(
     message += ` Ti ho inviato l'invito al calendario con il link per la videochiamata.`;
   } else {
     message += ` Riceverai presto i dettagli per la videochiamata.`;
+  }
+
+  // Clear booking flow state after successful confirmation
+  if (serverConversationId) {
+    await clearBookingFlowState(serverConversationId);
   }
 
   return {
