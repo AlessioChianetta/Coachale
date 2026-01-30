@@ -103,6 +103,7 @@ import clientKnowledgeDocumentsRouter from "./routes/client/client-knowledge-doc
 import clientKnowledgeApisRouter from "./routes/client/client-knowledge-apis";
 import googleDriveRouter from "./routes/google-drive";
 import googleDriveWebhookRouter from "./routes/google-drive-webhook";
+import googleCalendarWebhookRouter from "./routes/google-calendar-webhook";
 import clientGoogleDriveRouter from "./routes/client/client-google-drive";
 import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
@@ -12699,6 +12700,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.use("/api", googleDriveWebhookRouter);
   app.use("/api", clientGoogleDriveRouter);
 
+  // Google Calendar Webhook routes (real-time sync)
+  app.use("/api", googleCalendarWebhookRouter);
+
   // Super Admin routes
   app.use("/api", adminRouter);
 
@@ -16649,6 +16653,39 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     } catch (error: any) {
       console.error("❌ Error fetching slot availability explanation:", error);
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/consultant/calendar-sync/enable - Enable real-time calendar sync via webhook
+  app.post("/api/consultant/calendar-sync/enable", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+      const host = req.get('host');
+      const webhookUrl = `${protocol}://${host}/api/google-calendar/webhook`;
+      
+      const { registerCalendarWatch } = await import("./google-calendar-service");
+      const { registerChannel } = await import("./routes/google-calendar-webhook");
+      
+      const result = await registerCalendarWatch(consultantId, webhookUrl);
+      
+      if (result) {
+        await registerChannel(consultantId, result.channelId, result.resourceId, result.expiration);
+        res.json({
+          success: true,
+          message: "Sincronizzazione in tempo reale attivata",
+          channelId: result.channelId,
+          expiresAt: result.expiration.toISOString(),
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: "Impossibile attivare la sincronizzazione. Verifica che Google Calendar sia connesso.",
+        });
+      }
+    } catch (error: any) {
+      console.error("❌ Error enabling calendar sync:", error);
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 

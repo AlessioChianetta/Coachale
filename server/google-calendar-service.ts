@@ -1614,3 +1614,73 @@ export async function getGoogleUserInfo(consultantId: string): Promise<{ email: 
     return null;
   }
 }
+
+/**
+ * Register a watch channel for Google Calendar push notifications
+ * This allows real-time sync when events are created, modified, or deleted
+ */
+export async function registerCalendarWatch(
+  consultantId: string,
+  webhookUrl: string
+): Promise<{ channelId: string; resourceId: string; expiration: Date } | null> {
+  try {
+    const calendar = await getCalendarClient(consultantId);
+    const calendarId = await getPrimaryCalendarId(consultantId);
+    
+    if (!calendarId) {
+      console.log(`⚠️ [CALENDAR WATCH] No calendar ID found for consultant ${consultantId}`);
+      return null;
+    }
+    
+    const channelId = `cal-${consultantId}-${Date.now()}`;
+    
+    const response = await calendar.events.watch({
+      calendarId,
+      requestBody: {
+        id: channelId,
+        type: 'web_hook',
+        address: webhookUrl,
+        expiration: String(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      }
+    });
+    
+    const resourceId = response.data.resourceId!;
+    const expiration = new Date(parseInt(response.data.expiration!, 10));
+    
+    console.log(`✅ [CALENDAR WATCH] Registered watch for consultant ${consultantId}`);
+    console.log(`   Channel ID: ${channelId}`);
+    console.log(`   Resource ID: ${resourceId}`);
+    console.log(`   Expires: ${expiration.toISOString()}`);
+    
+    return { channelId, resourceId, expiration };
+  } catch (error: any) {
+    console.error(`❌ [CALENDAR WATCH] Error registering watch for consultant ${consultantId}:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Stop a calendar watch channel
+ */
+export async function stopCalendarWatch(
+  consultantId: string,
+  channelId: string,
+  resourceId: string
+): Promise<boolean> {
+  try {
+    const calendar = await getCalendarClient(consultantId);
+    
+    await calendar.channels.stop({
+      requestBody: {
+        id: channelId,
+        resourceId: resourceId
+      }
+    });
+    
+    console.log(`✅ [CALENDAR WATCH] Stopped watch channel ${channelId}`);
+    return true;
+  } catch (error: any) {
+    console.error(`❌ [CALENDAR WATCH] Error stopping watch:`, error.message);
+    return false;
+  }
+}

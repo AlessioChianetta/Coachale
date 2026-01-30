@@ -3217,6 +3217,11 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   bookingPageTitle: text("booking_page_title"),
   bookingPageDescription: text("booking_page_description"),
   
+  // Webhook channel for real-time calendar sync (persisted across server restarts)
+  webhookChannelId: varchar("webhook_channel_id"),
+  webhookResourceId: varchar("webhook_resource_id"),
+  webhookExpiration: timestamp("webhook_expiration"),
+
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
