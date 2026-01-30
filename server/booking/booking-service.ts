@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState, consultantWhatsappConfig, whatsappTemplateVersions, whatsappTemplateVariables, whatsappVariableCatalog, pendingBookings } from "../../shared/schema";
-import { eq, and, or, isNull, sql, desc } from "drizzle-orm";
-import { createGoogleCalendarEvent, listEvents } from "../google-calendar-service";
+import { eq, and, or, isNull, sql, desc, gte, isNotNull } from "drizzle-orm";
+import { createGoogleCalendarEvent, listEvents, checkGoogleCalendarEventExists } from "../google-calendar-service";
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
 import { sendEmail } from "../services/email-scheduler";
 import twilio from "twilio";
@@ -2134,4 +2134,87 @@ export async function getPendingBookingState(
     consultantId: row.consultantId,
     clientId: row.clientId
   } : null;
+}
+
+/**
+ * Sync bookings with Google Calendar - cancels DB bookings if Calendar event was deleted
+ * Only checks bookings from 2026-01-01 onwards (to preserve historical data)
+ * Only checks bookings that have a googleEventId (manual entries without Calendar are ignored)
+ */
+export async function syncBookingsWithGoogleCalendar(): Promise<{ checked: number; cancelled: number; errors: number }> {
+  const cutoffDate = new Date('2026-01-01');
+  let checked = 0;
+  let cancelled = 0;
+  let errors = 0;
+
+  try {
+    const bookingsToCheck = await db
+      .select({
+        id: appointmentBookings.id,
+        consultantId: appointmentBookings.consultantId,
+        googleEventId: appointmentBookings.googleEventId,
+        appointmentDate: appointmentBookings.appointmentDate,
+        appointmentTime: appointmentBookings.appointmentTime,
+        clientName: appointmentBookings.clientName,
+      })
+      .from(appointmentBookings)
+      .where(
+        and(
+          isNotNull(appointmentBookings.googleEventId),
+          gte(appointmentBookings.appointmentDate, cutoffDate),
+          or(
+            eq(appointmentBookings.status, "confirmed"),
+            eq(appointmentBookings.status, "pending")
+          )
+        )
+      );
+
+    console.log(`[CALENDAR SYNC] Checking ${bookingsToCheck.length} bookings with Google Calendar events`);
+
+    const consultantGroups = new Map<string, typeof bookingsToCheck>();
+    for (const booking of bookingsToCheck) {
+      if (!consultantGroups.has(booking.consultantId)) {
+        consultantGroups.set(booking.consultantId, []);
+      }
+      consultantGroups.get(booking.consultantId)!.push(booking);
+    }
+
+    for (const [consultantId, bookings] of consultantGroups) {
+      for (const booking of bookings) {
+        try {
+          checked++;
+          const result = await checkGoogleCalendarEventExists(consultantId, booking.googleEventId!);
+          
+          if (result.skipCheck) {
+            continue;
+          }
+          
+          if (!result.exists) {
+            console.log(`[CALENDAR SYNC] Event deleted from Calendar - cancelling booking ${booking.id} (${booking.clientName} - ${booking.appointmentDate} ${booking.appointmentTime})`);
+            
+            await db
+              .update(appointmentBookings)
+              .set({
+                status: 'cancelled',
+                cancellationReason: 'Evento cancellato da Google Calendar',
+                cancelledAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(appointmentBookings.id, booking.id));
+            
+            cancelled++;
+          }
+        } catch (error) {
+          console.error(`[CALENDAR SYNC] Error checking booking ${booking.id}:`, error);
+          errors++;
+        }
+      }
+    }
+
+    console.log(`[CALENDAR SYNC] Complete: checked=${checked}, cancelled=${cancelled}, errors=${errors}`);
+    return { checked, cancelled, errors };
+  } catch (error) {
+    console.error('[CALENDAR SYNC] Fatal error:', error);
+    return { checked, cancelled, errors: errors + 1 };
+  }
 }
