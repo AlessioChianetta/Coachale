@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtractionState, consultantWhatsappConfig, whatsappTemplateVersions, whatsappTemplateVariables, whatsappVariableCatalog, pendingBookings } from "../../shared/schema";
 import { eq, and, or, isNull, sql, desc } from "drizzle-orm";
-import { createGoogleCalendarEvent } from "../google-calendar-service";
+import { createGoogleCalendarEvent, listEvents } from "../google-calendar-service";
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
 import { sendEmail } from "../services/email-scheduler";
 import twilio from "twilio";
@@ -1479,7 +1479,7 @@ export async function getPublicAvailableSlots(
   consultantId: string,
   startDate?: Date,
   endDate?: Date,
-  limit = 30
+  limit = 500
 ): Promise<PublicAvailableSlot[]> {
   const [settings] = await db
     .select()
@@ -1576,6 +1576,22 @@ export async function getPublicAvailableSlots(
     const end = new Date(start.getTime() + appointmentDuration * 60 * 1000);
     return { start, end };
   });
+
+  // Integrate Google Calendar events as busy times
+  try {
+    const calendarEvents = await listEvents(consultantId, effectiveStartDate, effectiveEndDate);
+    console.log(`[PUBLIC BOOKING] Loaded ${calendarEvents.length} events from Google Calendar for busy times`);
+    
+    for (const event of calendarEvents) {
+      busyRanges.push({
+        start: event.start,
+        end: event.end
+      });
+    }
+  } catch (error) {
+    console.log(`[PUBLIC BOOKING] Could not load Google Calendar events:`, error);
+    // Continue without calendar events - still show slots based on DB bookings
+  }
 
   const isSlotBusy = (slotStart: Date, slotEnd: Date): boolean => {
     for (const busy of busyRanges) {
