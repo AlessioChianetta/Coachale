@@ -2377,6 +2377,44 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           console.log(`🔧 [CONSULTATION] Function call detected: ${functionCall.name}`);
           console.log(`   Args: ${JSON.stringify(functionCall.args)}`);
           
+          // SECURITY: Validate that the function call is in the allowed tools list
+          const allowedToolNames = toolsToUse.map(t => t.name);
+          if (!allowedToolNames.includes(functionCall.name)) {
+            console.log(`🚫 [CONSULTATION] BLOCKED: Function ${functionCall.name} not in allowed tools: [${allowedToolNames.join(', ')}]`);
+            console.log(`   This is likely a Gemini hallucination - rejecting and responding with error`);
+            
+            // Respond with an error message instead of executing the unauthorized tool
+            const errorMessage = pendingBooking 
+              ? `Per confermare la prenotazione del ${new Date(pendingBooking.startTime).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} alle ${new Date(pendingBooking.startTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}, dimmi semplicemente "sì, confermo" o "no, annulla".`
+              : `Mi dispiace, c'è stato un problema. Riprova a dirmi cosa vorresti fare.`;
+            
+            accumulatedMessage = errorMessage;
+            yield {
+              type: 'delta' as const,
+              conversationId: conversation.id,
+              provider: providerMetadata,
+              content: errorMessage,
+            };
+            
+            yield {
+              type: 'complete' as const,
+              conversationId: conversation.id,
+              provider: providerMetadata,
+            };
+            
+            // Skip the rest of the function call handling
+            // Save message to DB
+            await db.insert(aiMessages).values({
+              id: crypto.randomUUID(),
+              conversationId: conversation.id,
+              role: "assistant",
+              content: errorMessage,
+              createdAt: new Date(),
+            });
+            
+            return;
+          }
+          
           // Get consultant ID and execute tool
           const consultantId = userContext.consultant?.id;
           if (!consultantId) {
