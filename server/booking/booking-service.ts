@@ -1498,6 +1498,7 @@ export async function getPublicAvailableSlots(
   const bufferAfter = settings.bufferAfter || 15;
   const minHoursNotice = settings.minHoursNotice || 24;
   const maxDaysAhead = settings.maxDaysAhead || 30;
+  const timezone = settings.timezone || 'Europe/Rome';
   
   const availabilityConfig: Record<string, DayAvailability> = {};
   
@@ -1569,10 +1570,28 @@ export async function getPublicAvailableSlots(
       )
     );
 
+  // Helper to convert consultant's local time to UTC
+  const localTimeToUtc = (date: Date, timeStr: string, tz: string): Date => {
+    const [hour, min] = timeStr.split(':').map(Number);
+    const dateStr = date.toISOString().slice(0, 10);
+    const localStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`;
+    const localDate = new Date(localStr);
+    
+    // Calculate offset for the specific timezone
+    try {
+      const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: tz }));
+      const offsetMinutes = (utcDate.getTime() - tzDate.getTime()) / (60 * 1000);
+      return new Date(localDate.getTime() + offsetMinutes * 60 * 1000);
+    } catch {
+      // Default to Europe/Rome winter time (UTC+1)
+      return new Date(localDate.getTime() - 60 * 60 * 1000);
+    }
+  };
+
   const busyRanges: Array<{ start: Date; end: Date }> = existingBookings.map(b => {
-    const [hour, min] = b.appointmentTime.split(':').map(Number);
-    const start = new Date(b.appointmentDate);
-    start.setHours(hour, min, 0, 0);
+    // Convert booking time from consultant's timezone to UTC
+    const start = localTimeToUtc(new Date(b.appointmentDate), b.appointmentTime, timezone);
     const end = new Date(start.getTime() + appointmentDuration * 60 * 1000);
     return { start, end };
   });
@@ -1580,8 +1599,6 @@ export async function getPublicAvailableSlots(
   // Integrate Google Calendar events as busy times
   try {
     const calendarEvents = await listEvents(consultantId, effectiveStartDate, effectiveEndDate);
-    console.log(`[PUBLIC BOOKING] Loaded ${calendarEvents.length} events from Google Calendar for busy times`);
-    
     for (const event of calendarEvents) {
       busyRanges.push({
         start: event.start,
@@ -1607,6 +1624,18 @@ export async function getPublicAvailableSlots(
 
   const current = new Date(effectiveStartDate);
   current.setHours(0, 0, 0, 0);
+  
+  // Calculate timezone offset for consultant's timezone
+  // This converts local times (e.g., 09:00 Europe/Rome) to UTC for comparison
+  const getTimezoneOffset = (date: Date, tz: string): number => {
+    try {
+      const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+      return (utcDate.getTime() - tzDate.getTime()) / (60 * 1000); // offset in minutes
+    } catch {
+      return -60; // Default to Europe/Rome winter time (UTC+1 = -60 minutes)
+    }
+  };
 
   while (current <= effectiveEndDate && availableSlots.length < limit) {
     const dayOfWeek = current.getDay();
@@ -1622,8 +1651,16 @@ export async function getPublicAvailableSlots(
         let slotStartMin = startMin;
 
         while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
-          const slotStart = new Date(current);
-          slotStart.setHours(slotStartHour, slotStartMin, 0, 0);
+          // Create slot time in consultant's timezone by adjusting for offset
+          const dateStr = current.toISOString().slice(0, 10); // YYYY-MM-DD
+          const timeStr = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}:00`;
+          
+          // Parse as local time in consultant's timezone
+          const localSlotStart = new Date(`${dateStr}T${timeStr}`);
+          const tzOffset = getTimezoneOffset(localSlotStart, timezone);
+          
+          // Convert to UTC for comparison with Google Calendar events (which are in UTC)
+          const slotStart = new Date(localSlotStart.getTime() + tzOffset * 60 * 1000);
           
           const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
           

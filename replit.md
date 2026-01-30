@@ -48,9 +48,12 @@ Key enhancements include:
   - Configurable availability settings (weekdays, time ranges, appointment duration, buffer before/after, min notice hours, max days ahead)
   - `consultantAvailabilitySettings` table stores Google tokens and availability config
   - getAvailableSlots reads DB config, applies buffer logic, queries Google Calendar for busy times, respects minHoursNotice/maxDaysAhead
+  - Timezone-aware slot calculation: converts consultant's local times (e.g., Europe/Rome) to UTC for accurate comparison with Google Calendar events
+  - `localTimeToUtc` helper function handles DST-aware timezone conversion using `toLocaleString` with timezone parameter
   - confirmBooking creates DB consultation record, then creates Google Calendar event with Meet link, stores googleCalendarEventId/googleMeetLink
   - Graceful fallback: if Calendar fails, booking still completes without Meet link
   - 3-step booking flow: getAvailableSlots → proposeBooking (with token) → confirmBooking (creates event)
+  - Client recognition: matches booking email with existing clients to link `client_id`
 - Content Variety System to prevent repetitive AI-generated ads:
   - Hook max 125 characters (Meta Ads visibility constraint)
   - 10 hook pattern rotation (domanda, statistica, storia, controintuitivo, problema, curiosità, social proof, us-vs-them, urgenza, provocazione)
