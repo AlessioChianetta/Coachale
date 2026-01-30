@@ -18,7 +18,7 @@ AI is deeply integrated, offering:
 - Automated weekly client check-ins via WhatsApp with AI-personalized messages.
 - AI tools for generating courses, pathways, and multi-language exercises.
 - A ChatGPT-style AI Assistant with dynamic model selection, reasoning visualization, conversation memory, and a hybrid AI context system, with token optimization through intent detection, conditional queries, caching, and RAG.
-- Consultation Function Calling System with LLM Intent Classifier (Gemini 2.5 Flash Lite), AUTO tool mode for intelligent tool usage, comprehensive guardrails (parameter validation with error_code/suggestion responses), and semantic tool output (next_action_hint, unit fields).
+- Consultation Function Calling System with LLM Intent Classifier (Gemini 2.5 Flash Lite), AUTO tool mode for intelligent tool usage, comprehensive guardrails (parameter validation with error_code/suggestion responses), and semantic tool output (next_action_hint, unit fields). Features 3-tier confidence gating (high≥80% auto, medium 50-79% clarify, low<50% ignore), memory safety with context validation (pendingBookingToken checks), trace ID logging for debugging, and robust JSON parsing with `<json>` tag delimiters.
 
 A multi-tier subscription system manages AI agent subscriptions, consultant licenses, revenue sharing, and AI credits, integrating Stripe for payments.
 

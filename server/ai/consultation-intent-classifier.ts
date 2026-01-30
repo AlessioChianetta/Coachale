@@ -1,46 +1,64 @@
 import { GoogleGenAI } from "@google/genai";
+import { randomUUID } from "crypto";
 
 export type ConsultationIntent = 
-  | 'consultations_status'    // Quante consulenze ho fatto?
-  | 'booking_request'         // Voglio prenotare una consulenza
-  | 'availability_check'      // Quando sei disponibile?
-  | 'booking_confirm'         // Confermo la prenotazione
-  | 'booking_cancel'          // Annulla la prenotazione
-  | 'informational'           // Cos'è una consulenza? (no tool needed)
-  | 'other';                  // Non riguarda consulenze
+  | 'consultations_status'
+  | 'booking_request'
+  | 'availability_check'
+  | 'booking_confirm'
+  | 'booking_cancel'
+  | 'informational'
+  | 'other';
+
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 export interface IntentClassification {
   intent: ConsultationIntent;
   confidence: number;
+  confidenceLevel: ConfidenceLevel;
   reasoning?: string;
+  traceId: string;
 }
 
-const INTENT_CLASSIFICATION_PROMPT = `You are an intent classifier for a consultation booking system.
+export interface ClassifierContext {
+  userId?: string;
+  sessionId?: string;
+  pendingBookingToken?: string;
+  hasPendingBooking?: boolean;
+}
 
-Classify the user message into ONE of these intents:
+const SYSTEM_PROMPT = `You are a STRICT intent classifier for a consultation booking system.
 
-1. consultations_status - User asks about their consultation count, history, limits, or usage
-   Examples: "quante consulenze ho fatto?", "ho raggiunto il limite?", "quanti incontri ho completato?"
+RULES:
+- Output MUST be valid JSON wrapped in <json></json> tags
+- Do NOT add ANY text outside the JSON tags
+- Choose ONE intent only
+- If uncertain, return "other" with confidence < 0.5
+
+INTENTS:
+
+1. consultations_status - User asks about consultation count, history, limits, usage
+   Examples: "quante consulenze ho fatto?", "ho raggiunto il limite?", "quanti incontri?"
 
 2. booking_request - User wants to book/schedule a new consultation
-   Examples: "voglio prenotare", "posso fissare un appuntamento?", "prenota una consulenza"
+   Examples: "voglio prenotare", "posso fissare un appuntamento?"
 
 3. availability_check - User asks about available time slots
-   Examples: "quando sei disponibile?", "quali slot hai liberi?", "che orari hai?"
+   Examples: "quando sei disponibile?", "quali slot hai liberi?"
 
-4. booking_confirm - User confirms a proposed booking
+4. booking_confirm - User confirms a proposed booking (REQUIRES pending booking context)
    Examples: "confermo", "va bene quell'orario", "sì prenota"
 
 5. booking_cancel - User wants to cancel a booking
-   Examples: "annulla", "disdici l'appuntamento", "cancella la prenotazione"
+   Examples: "annulla", "disdici l'appuntamento"
 
-6. informational - User asks general questions about consultations (no database lookup needed)
-   Examples: "cos'è una consulenza?", "come funziona?", "quanto dura una sessione?"
+6. informational - General questions about consultations (no DB lookup needed)
+   Examples: "cos'è una consulenza?", "come funziona?"
 
-7. other - Message is not about consultations at all
-   Examples: "che tempo fa?", "parlami degli esercizi", "come stai?"
+7. other - Message is not about consultations
+   Examples: "che tempo fa?", "parlami degli esercizi"
 
-Respond with JSON only:
+OUTPUT FORMAT (wrap in <json></json>):
 {
   "intent": "<intent_name>",
   "confidence": <0.0-1.0>,
@@ -49,8 +67,12 @@ Respond with JSON only:
 
 export async function classifyConsultationIntent(
   message: string,
-  apiKey: string
+  apiKey: string,
+  context?: ClassifierContext
 ): Promise<IntentClassification> {
+  const traceId = randomUUID().slice(0, 8);
+  const startTime = Date.now();
+  
   try {
     const ai = new GoogleGenAI({ apiKey });
     
@@ -59,7 +81,15 @@ export async function classifyConsultationIntent(
       contents: [
         {
           role: 'user',
-          parts: [{ text: `${INTENT_CLASSIFICATION_PROMPT}\n\nUser message: "${message}"` }]
+          parts: [{ text: SYSTEM_PROMPT }]
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Understood. I will classify intents strictly and output JSON wrapped in <json></json> tags.' }]
+        },
+        {
+          role: 'user',
+          parts: [{ text: `Classify this message: "${message}"` }]
         }
       ],
       generationConfig: {
@@ -69,35 +99,100 @@ export async function classifyConsultationIntent(
     });
 
     const text = response.response?.text() || '';
+    const latencyMs = Date.now() - startTime;
     
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/<json>([\s\S]*?)<\/json>/);
     if (!jsonMatch) {
-      console.warn(`⚠️ [Intent Classifier] Could not parse JSON from response: ${text}`);
-      return { intent: 'other', confidence: 0.5 };
+      const fallbackMatch = text.match(/\{[\s\S]*?\}/);
+      if (!fallbackMatch) {
+        console.warn(`⚠️ [Intent:${traceId}] No JSON found in response: ${text.substring(0, 100)}`);
+        return createResult('other', 0.5, 'Parse error - no JSON block', traceId);
+      }
+      console.warn(`⚠️ [Intent:${traceId}] Using fallback regex (no <json> tags)`);
+      return parseAndValidate(fallbackMatch[0], traceId, latencyMs, context);
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as IntentClassification;
-    
-    if (!parsed.intent || typeof parsed.confidence !== 'number') {
-      console.warn(`⚠️ [Intent Classifier] Invalid response structure: ${JSON.stringify(parsed)}`);
-      return { intent: 'other', confidence: 0.5 };
-    }
-
-    console.log(`🎯 [Intent Classifier] "${message.substring(0, 50)}..." → ${parsed.intent} (${(parsed.confidence * 100).toFixed(0)}%)`);
-    if (parsed.reasoning) {
-      console.log(`   Reasoning: ${parsed.reasoning}`);
-    }
-
-    return parsed;
+    return parseAndValidate(jsonMatch[1], traceId, latencyMs, context);
 
   } catch (error) {
-    console.error(`❌ [Intent Classifier] Error:`, error);
-    return { intent: 'other', confidence: 0.5 };
+    console.error(`❌ [Intent:${traceId}] Classification error:`, error);
+    return createResult('other', 0.5, `Error: ${error}`, traceId);
   }
 }
 
-export function shouldUseConsultationTools(classification: IntentClassification): boolean {
-  const toolIntents: ConsultationIntent[] = [
+function parseAndValidate(
+  jsonStr: string, 
+  traceId: string, 
+  latencyMs: number,
+  context?: ClassifierContext
+): IntentClassification {
+  try {
+    const parsed = JSON.parse(jsonStr.trim());
+    
+    if (!parsed.intent || typeof parsed.confidence !== 'number') {
+      console.warn(`⚠️ [Intent:${traceId}] Invalid structure: ${jsonStr}`);
+      return createResult('other', 0.5, 'Invalid response structure', traceId);
+    }
+
+    const confidenceLevel = getConfidenceLevel(parsed.confidence);
+    
+    console.log(`\n${'─'.repeat(60)}`);
+    console.log(`🎯 [Intent:${traceId}] Classification Result`);
+    console.log(`${'─'.repeat(60)}`);
+    console.log(`   Intent: ${parsed.intent}`);
+    console.log(`   Confidence: ${(parsed.confidence * 100).toFixed(0)}% (${confidenceLevel})`);
+    console.log(`   Latency: ${latencyMs}ms`);
+    if (parsed.reasoning) {
+      console.log(`   Reasoning: ${parsed.reasoning}`);
+    }
+    if (context?.userId) {
+      console.log(`   User: ${context.userId}`);
+    }
+    if (context?.sessionId) {
+      console.log(`   Session: ${context.sessionId}`);
+    }
+    console.log(`${'─'.repeat(60)}\n`);
+
+    return {
+      intent: parsed.intent as ConsultationIntent,
+      confidence: parsed.confidence,
+      confidenceLevel,
+      reasoning: parsed.reasoning,
+      traceId
+    };
+
+  } catch (e) {
+    console.warn(`⚠️ [Intent:${traceId}] JSON parse error: ${e}`);
+    return createResult('other', 0.5, 'JSON parse error', traceId);
+  }
+}
+
+function createResult(
+  intent: ConsultationIntent, 
+  confidence: number, 
+  reasoning: string,
+  traceId: string
+): IntentClassification {
+  return {
+    intent,
+    confidence,
+    confidenceLevel: getConfidenceLevel(confidence),
+    reasoning,
+    traceId
+  };
+}
+
+function getConfidenceLevel(confidence: number): ConfidenceLevel {
+  if (confidence >= 0.8) return 'high';
+  if (confidence >= 0.5) return 'medium';
+  return 'low';
+}
+
+export function shouldUseConsultationTools(
+  classification: IntentClassification,
+  context?: ClassifierContext
+): boolean {
+  const actionableIntents: ConsultationIntent[] = [
     'consultations_status',
     'booking_request', 
     'availability_check',
@@ -105,22 +200,80 @@ export function shouldUseConsultationTools(classification: IntentClassification)
     'booking_cancel'
   ];
   
-  return toolIntents.includes(classification.intent) && classification.confidence >= 0.7;
+  if (!actionableIntents.includes(classification.intent)) {
+    return false;
+  }
+
+  if (classification.intent === 'booking_confirm') {
+    if (!context?.hasPendingBooking && !context?.pendingBookingToken) {
+      console.log(`🚫 [Intent:${classification.traceId}] booking_confirm blocked - no pending booking in context`);
+      return false;
+    }
+  }
+
+  if (classification.confidenceLevel === 'high') {
+    return true;
+  }
+  
+  if (classification.confidenceLevel === 'medium') {
+    console.log(`⚠️ [Intent:${classification.traceId}] Medium confidence (${(classification.confidence * 100).toFixed(0)}%) - should ask clarification`);
+    return true;
+  }
+  
+  console.log(`🚫 [Intent:${classification.traceId}] Low confidence - ignoring tools`);
+  return false;
 }
 
-export function getToolsForIntent(classification: IntentClassification): string[] {
+export function getToolsForIntent(
+  classification: IntentClassification,
+  context?: ClassifierContext
+): string[] {
   switch (classification.intent) {
     case 'consultations_status':
-      return ['getConsultationStatus'];
+      return ['getClientConsultationStatus'];
+      
     case 'availability_check':
       return ['getAvailableSlots'];
+      
     case 'booking_request':
       return ['getAvailableSlots', 'proposeBooking'];
+      
     case 'booking_confirm':
+      if (!context?.pendingBookingToken) {
+        console.log(`🚫 [Intent:${classification.traceId}] confirmBooking blocked - no pendingBookingToken`);
+        return [];
+      }
       return ['confirmBooking'];
+      
     case 'booking_cancel':
       return ['cancelBooking'];
+      
     default:
       return [];
+  }
+}
+
+export function shouldAskClarification(classification: IntentClassification): boolean {
+  return classification.confidenceLevel === 'medium';
+}
+
+export function getClarificationPrompt(classification: IntentClassification): string | null {
+  if (classification.confidenceLevel !== 'medium') {
+    return null;
+  }
+  
+  switch (classification.intent) {
+    case 'booking_request':
+      return 'Vuoi prenotare una consulenza?';
+    case 'availability_check':
+      return 'Vuoi vedere gli slot disponibili per una consulenza?';
+    case 'consultations_status':
+      return 'Vuoi sapere quante consulenze hai fatto questo mese?';
+    case 'booking_confirm':
+      return 'Vuoi confermare la prenotazione proposta?';
+    case 'booking_cancel':
+      return 'Vuoi annullare una prenotazione esistente?';
+    default:
+      return null;
   }
 }
