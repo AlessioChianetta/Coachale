@@ -2242,6 +2242,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     let pendingFunctionCall: { functionName: string; args: Record<string, any> } | null = null;
     
     for await (const chunk of streamWithRetriesAdapter(makeStreamAttempt, conversation.id, providerMetadata)) {
+      // DEBUG: Log all chunk types when in function calling mode
+      if (isConsultationQuery) {
+        console.log(`📦 [STREAM CHUNK] type=${chunk.type}, hasContent=${!!(chunk as any).content}, hasFunctionName=${!!(chunk as any).functionName}`);
+      }
+      
       yield chunk;
       
       // Accumulate delta content for DB storage
@@ -2260,16 +2265,21 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       }
       
       // Track function calls for consultation tools
-      if (chunk.type === 'function_call' && chunk.functionName) {
-        console.log(`🔧 [CONSULTATION TOOL] Detected function call: ${chunk.functionName}`);
-        if (isConsultationTool(chunk.functionName)) {
+      if (chunk.type === 'function_call') {
+        console.log(`🔧 [CONSULTATION TOOL] Detected function_call chunk:`, JSON.stringify(chunk));
+        if ((chunk as any).functionName && isConsultationTool((chunk as any).functionName)) {
           pendingFunctionCall = {
-            functionName: chunk.functionName,
-            args: chunk.args || {}
+            functionName: (chunk as any).functionName,
+            args: (chunk as any).args || {}
           };
-          console.log(`🔧 [CONSULTATION TOOL] Will execute: ${chunk.functionName} with args:`, JSON.stringify(chunk.args));
+          console.log(`🔧 [CONSULTATION TOOL] Will execute: ${pendingFunctionCall.functionName} with args:`, JSON.stringify(pendingFunctionCall.args));
         }
       }
+    }
+    
+    // DEBUG: Log after streaming loop
+    if (isConsultationQuery) {
+      console.log(`📦 [STREAM COMPLETE] pendingFunctionCall:`, pendingFunctionCall ? JSON.stringify(pendingFunctionCall) : 'null');
     }
 
     // ═══════════════════════════════════════════════════════════════════════
