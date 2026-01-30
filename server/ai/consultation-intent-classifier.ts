@@ -108,8 +108,20 @@ export async function classifyConsultationIntent(
       }
     });
 
-    const text = response.response?.text() || '';
     const latencyMs = Date.now() - startTime;
+    
+    // Handle different SDK response structures
+    let text = '';
+    if (response.response?.text) {
+      // Standard SDK structure
+      text = response.response.text() || '';
+    } else if (response.candidates && response.candidates[0]?.content?.parts) {
+      // Direct candidates structure (some SDK versions)
+      text = response.candidates[0].content.parts.map((p: any) => p.text || '').join('');
+    } else if ((response as any).text) {
+      // Direct text property
+      text = (response as any).text() || '';
+    }
     
     console.log(`\n${'─'.repeat(60)}`);
     console.log(`📤 [Intent:${traceId}] CLASSIFIER RESPONSE`);
@@ -118,9 +130,11 @@ export async function classifyConsultationIntent(
     console.log(`   Response length: ${text.length} chars`);
     console.log(`   Raw response: "${text.substring(0, 200)}${text.length > 200 ? '...' : ''}"`);
     console.log(`   Response object keys: ${Object.keys(response).join(', ')}`);
-    console.log(`   response.response exists: ${!!response.response}`);
-    if (response.response) {
-      console.log(`   response.response keys: ${Object.keys(response.response).join(', ')}`);
+    if (response.candidates) {
+      console.log(`   Candidates count: ${response.candidates.length}`);
+      if (response.candidates[0]?.content?.parts) {
+        console.log(`   First candidate parts: ${response.candidates[0].content.parts.length}`);
+      }
     }
     console.log(`${'─'.repeat(60)}`);
     
