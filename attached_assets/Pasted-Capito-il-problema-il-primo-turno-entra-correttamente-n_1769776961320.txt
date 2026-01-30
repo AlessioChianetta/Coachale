@@ -1,0 +1,130 @@
+Capito il problema: il primo turno entra correttamente nel “booking mode”, mostra gli slot, poi tu rispondi con qualcosa tipo “ok / va bene / sì” e il secondo turno non viene più considerato “consultation query”, quindi non abiliti i tool e Gemini “esce dal flow”.
+
+Nel tuo ai-service.ts lo vedo chiaramente:
+
+Il classifier LLM viene chiamato solo se:
+
+intent === 'consultations' || intent === 'appointment_request' oppure
+
+potentialConsultationKeywords.test(msgLower)
+
+La tua regex fallback contiene conferm ma non contiene ok, va bene, si/sì, perfetto, ecc.
+
+E soprattutto: classifierContext ha TODO su pendingBookingToken e hasPendingBooking, quindi anche se il classifier capisce “booking_confirm”, poi blocchi tool use per mancanza di contesto.
+
+Risultato: al turno “ok” → shouldRunClassifier spesso è false → isConsultationQuery=false → niente tool → il modello risponde libero e “drifta”.
+
+Fix “production” (quello che ti serve davvero)
+Obiettivo
+
+Quando un booking è in corso, il sistema deve essere stateful: il secondo turno non deve dipendere da keyword.
+
+Tu hai già una tabella perfetta per farlo: bookingExtractionState (in booking-service.ts) con completedAt + expiresAt.
+
+Cosa fare
+
+Leggi se c’è uno stato booking attivo per quella conversationId
+
+Se sì:
+
+shouldRunClassifier = true (sempre, anche se il messaggio è “ok”)
+
+classifierContext.hasPendingBooking = true
+
+classifierContext.pendingBookingToken = <id dello stato> (o altro token che usi)
+
+isConsultationQuery = true anche se il classifier è incerto → così i tool restano disponibili
+
+Patch minimale (con codice)
+A) Esponi una funzione “check pending booking” (in booking-service.ts)
+
+Aggiungi una export piccola (riusa la stessa logica che già usi in loadExtractionState):
+
+// booking-service.ts
+export async function getPendingBookingState(
+  conversationId: string | null,
+  publicConversationId: string | null
+): Promise<{ token: string } | null> {
+  if (!conversationId && !publicConversationId) return null;
+
+  const now = new Date();
+  const conditions = [];
+  if (conversationId) conditions.push(eq(bookingExtractionState.conversationId, conversationId));
+  if (publicConversationId) conditions.push(eq(bookingExtractionState.publicConversationId, publicConversationId));
+
+  const [row] = await db
+    .select({ id: bookingExtractionState.id })
+    .from(bookingExtractionState)
+    .where(and(
+      or(...conditions),
+      isNull(bookingExtractionState.completedAt),
+      sql`${bookingExtractionState.expiresAt} > ${now.toISOString()}`
+    ))
+    .limit(1);
+
+  return row ? { token: String(row.id) } : null;
+}
+
+B) Usa quello stato in ai-service.ts dove hai i TODO
+
+Nel blocco che hai già:
+
+// ai-service.ts
+import { getPendingBookingState } from "./booking/booking-service";
+
+// prima di classifierContext
+const pending = await getPendingBookingState(conversationId, null);
+
+const classifierContext: ClassifierContext = {
+  userId: userContext.client?.id || userContext.consultant?.id,
+  sessionId: conversationId,
+  pendingBookingToken: pending?.token,
+  hasPendingBooking: !!pending
+};
+
+// IMPORTANTISSIMO: se c'è pending booking, classifier sempre
+const shouldRunClassifier =
+  !!pending ||
+  intent === 'consultations' ||
+  intent === 'appointment_request' ||
+  potentialConsultationKeywords.test(msgLower);
+
+C) Sticky tool mode quando pending booking
+
+Subito dopo la classification:
+
+// anche se confidence è bassa o intent è "other", se hai pending booking NON mollare i tool
+if (classifierContext.hasPendingBooking) {
+  isConsultationQuery = true;
+}
+
+
+Questo da solo risolve il tuo bug “esce dal tool”.
+
+Fix “tappabuchi” (ma utile): aggiorna anche la regex fallback
+
+Non deve essere la base, ma aiuta.
+
+const potentialConsultationKeywords =
+  /incontri|call|slot|appuntament|prenotare|disponibil|limite|quant[io].*mese|fatto.*mese|sessioni|conferm|^ok$|va bene|perfetto|^si$|^sì$/i;
+
+Miglioria extra che ti evita future rotture
+Passa anche il contesto al classifier nel prompt
+
+Ora consultation-intent-classifier.ts accetta context ma non lo usa nel prompt.
+Se l’utente scrive “ok”, senza contesto è ambigua. Con contesto hasPendingBooking=true diventa “booking_confirm”.
+
+Nel classifyConsultationIntent, inserisci una riga prima della classificazione:
+
+{
+  role: 'user',
+  parts: [{ text: `Context: hasPendingBooking=${context?.hasPendingBooking ? 'true' : 'false'}.` }]
+},
+
+Perché questo è il fix giusto
+
+Non dipendi da keyword nel follow-up (che in chat reali sono spesso “ok / sì / va bene”)
+
+Non perdi il “filo” tra un turno e l’altro
+
+Abiliti confirmBooking solo quando hai un pending state (sicuro)
