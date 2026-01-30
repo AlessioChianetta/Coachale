@@ -74,6 +74,36 @@ async function executeGetConsultationStatus(
   args: { month?: number; year?: number }
 ): Promise<ConsultationToolResult> {
   const now = new Date();
+  
+  // Guardrail: validate month/year if provided
+  if (args.month !== undefined && (args.month < 1 || args.month > 12)) {
+    return {
+      toolName: "getConsultationStatus",
+      args,
+      result: { 
+        error_code: "INVALID_MONTH",
+        message: "Il mese deve essere un numero tra 1 e 12",
+        suggestion: "Specifica un mese valido (es: 1 per gennaio, 12 per dicembre)"
+      },
+      success: false,
+      error: "Mese non valido"
+    };
+  }
+  
+  if (args.year !== undefined && (args.year < 2020 || args.year > 2030)) {
+    return {
+      toolName: "getConsultationStatus",
+      args,
+      result: { 
+        error_code: "INVALID_YEAR",
+        message: "L'anno deve essere compreso tra 2020 e 2030",
+        suggestion: "Specifica un anno valido"
+      },
+      success: false,
+      error: "Anno non valido"
+    };
+  }
+  
   const month = args.month || (now.getMonth() + 1);
   const year = args.year || now.getFullYear();
 
@@ -163,10 +193,17 @@ async function executeGetConsultationStatus(
     },
     summary: monthlyLimit
       ? `Hai effettuato ${completedCount} consulenze e ne hai ${scheduledCount} prenotate, per un totale di ${totalUsed}/${monthlyLimit} questo mese. ${isLimitReached ? 'Hai raggiunto il limite mensile.' : `Ti restano ${remaining} consulenze disponibili.`}`
-      : `Hai effettuato ${completedCount} consulenze e ne hai ${scheduledCount} prenotate questo mese. Non hai un limite mensile impostato.`
+      : `Hai effettuato ${completedCount} consulenze e ne hai ${scheduledCount} prenotate questo mese. Non hai un limite mensile impostato.`,
+    unit: "sessions",
+    next_action_hint: isLimitReached 
+      ? "limit_reached_no_booking" 
+      : remaining && remaining > 0 
+        ? "offer_booking" 
+        : "no_action"
   };
 
   console.log(`✅ [CONSULTATION TOOL] getConsultationStatus result:`, JSON.stringify(result.counts));
+  console.log(`   next_action_hint: ${result.next_action_hint}`);
 
   return {
     toolName: "getConsultationStatus",
@@ -304,6 +341,51 @@ async function executeProposeBooking(
   consultantId: string,
   args: { date: string; time: string; duration?: number; notes?: string }
 ): Promise<ConsultationToolResult> {
+  // Guardrail: validate required parameters
+  if (!args.date) {
+    return {
+      toolName: "proposeBooking",
+      args,
+      result: { 
+        error_code: "MISSING_DATE",
+        message: "Data obbligatoria non fornita",
+        suggestion: "Chiedi all'utente quale data preferisce per la consulenza"
+      },
+      success: false,
+      error: "Data non specificata"
+    };
+  }
+  
+  if (!args.time) {
+    return {
+      toolName: "proposeBooking",
+      args,
+      result: { 
+        error_code: "MISSING_TIME",
+        message: "Orario obbligatorio non fornito",
+        suggestion: "Chiedi all'utente quale orario preferisce per la consulenza"
+      },
+      success: false,
+      error: "Orario non specificato"
+    };
+  }
+  
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(args.date)) {
+    return {
+      toolName: "proposeBooking",
+      args,
+      result: { 
+        error_code: "INVALID_DATE_FORMAT",
+        message: "Formato data non valido",
+        suggestion: "La data deve essere nel formato YYYY-MM-DD (es: 2026-02-15)"
+      },
+      success: false,
+      error: "Formato data non valido"
+    };
+  }
+  
   const [clientData] = await db
     .select({ monthlyLimit: users.monthlyConsultationLimit })
     .from(users)
@@ -409,6 +491,21 @@ async function executeConfirmBooking(
   clientId: string,
   args: { confirmationToken: string }
 ): Promise<ConsultationToolResult> {
+  // Guardrail: validate required token
+  if (!args.confirmationToken) {
+    return {
+      toolName: "confirmBooking",
+      args,
+      result: { 
+        error_code: "MISSING_TOKEN",
+        message: "Token di conferma obbligatorio non fornito",
+        suggestion: "Prima devi proporre una prenotazione con proposeBooking per ottenere un token"
+      },
+      success: false,
+      error: "Token non specificato"
+    };
+  }
+  
   const pendingBooking = pendingBookings.get(args.confirmationToken);
 
   if (!pendingBooking) {

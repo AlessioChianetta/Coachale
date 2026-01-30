@@ -2185,19 +2185,51 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 
     // Create tools based on intent
     // Gemini 3 Flash Preview does NOT support function calling with other tools (codeExecution, fileSearch)
-    // So we use consultation tools ONLY when intent is "consultations", otherwise use other tools
-    const isConsultationQuery = intent === 'consultations';
+    // Use LLM Intent Classifier for consultation queries (more robust than regex)
+    const { classifyConsultationIntent, shouldUseConsultationTools, getToolsForIntent } = await import('./ai/consultation-intent-classifier');
+    
+    let isConsultationQuery = false;
+    let consultationIntentClassification: { intent: string; confidence: number; reasoning?: string } | null = null;
+    
+    // Run LLM classifier if:
+    // 1. Regex detected consultation/appointment intent
+    // 2. Message contains potential consultation-related keywords (fallback for regex misses)
+    const msgLower = message.toLowerCase();
+    const potentialConsultationKeywords = /incontri|call|slot|appuntament|prenotare|disponibil|limite|quant[io].*mese|fatto.*mese|sessioni/i;
+    const shouldRunClassifier = intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
+    
+    if (shouldRunClassifier) {
+      const apiKey = geminiApiKey;
+      if (apiKey) {
+        consultationIntentClassification = await classifyConsultationIntent(message, apiKey);
+        isConsultationQuery = shouldUseConsultationTools(consultationIntentClassification);
+        
+        console.log(`\n${'═'.repeat(70)}`);
+        console.log(`🎯 LLM INTENT CLASSIFIER RESULT`);
+        console.log(`${'═'.repeat(70)}`);
+        console.log(`   📋 Intent: ${consultationIntentClassification.intent}`);
+        console.log(`   📊 Confidence: ${(consultationIntentClassification.confidence * 100).toFixed(0)}%`);
+        console.log(`   💡 Reasoning: ${consultationIntentClassification.reasoning || 'N/A'}`);
+        console.log(`   🔧 Use tools: ${isConsultationQuery ? 'YES' : 'NO (confidence < 70% or informational)'}`);
+        console.log(`   🔍 Trigger: ${intent === 'consultations' || intent === 'appointment_request' ? 'regex match' : 'fallback keywords'}`);
+        console.log(`${'═'.repeat(70)}\n`);
+      }
+    }
     
     let clientTools: any[];
-    if (isConsultationQuery) {
+    if (isConsultationQuery && consultationIntentClassification) {
       // Use ONLY consultation tools for consultation queries (no codeExecution, no fileSearch)
-      clientTools = [{ functionDeclarations: consultationTools }];
+      // Get only the tools needed for this specific intent
+      const allowedTools = getToolsForIntent(consultationIntentClassification);
+      const filteredTools = consultationTools.filter(t => allowedTools.includes(t.name));
+      clientTools = [{ functionDeclarations: filteredTools.length > 0 ? filteredTools : consultationTools }];
+      
       console.log(`\n${'═'.repeat(70)}`);
       console.log(`🔧 FUNCTION CALLING MODE ACTIVE [CONSULTATION QUERY]`);
       console.log(`${'═'.repeat(70)}`);
-      console.log(`   📋 Intent: ${intent}`);
-      console.log(`   🛠️  Tools: ${consultationTools.map(t => t.name).join(', ')}`);
-      console.log(`   ⚙️  Mode: ANY (forced function calling)`);
+      console.log(`   📋 Intent: ${consultationIntentClassification.intent}`);
+      console.log(`   🛠️  Tools: ${filteredTools.map(t => t.name).join(', ') || consultationTools.map(t => t.name).join(', ')}`);
+      console.log(`   ⚙️  Mode: AUTO (Gemini decides if tool needed)`);
       console.log(`   ❌ codeExecution: DISABLED`);
       console.log(`   ❌ fileSearch: DISABLED`);
       console.log(`${'═'.repeat(70)}\n`);
@@ -2239,8 +2271,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           tools: clientTools,
           toolConfig: {
             functionCallingConfig: {
-              mode: 'ANY' as const,
-              allowedFunctionNames: consultationTools.map(t => t.name)
+              mode: 'AUTO' as const,
             }
           },
         });
@@ -2267,8 +2298,9 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         }
         
         if (!functionCall) {
-          console.error(`🔧 [CONSULTATION] No function call in response despite mode=ANY`);
-          // Fallback: return text response if any
+          // With AUTO mode, Gemini may decide to respond directly without calling a tool
+          // This is expected behavior for informational queries
+          console.log(`🔧 [CONSULTATION] No function call - Gemini responded directly (AUTO mode)`);
           const textContent = initialResponse.response.text() || "Mi dispiace, non sono riuscito a elaborare la richiesta.";
           accumulatedMessage = textContent;
           yield {

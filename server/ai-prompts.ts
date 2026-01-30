@@ -1075,6 +1075,13 @@ ${userContext.consultations.recent.map(c => {
 - Usa ENTRAMBI per comprendere il contesto completo: i riepiloghi per le azioni e decisioni, le trascrizioni per i dettagli
 - Quando l'utente chiede "cosa abbiamo discusso?" o "quali azioni devo fare?", consulta i RIEPILOGHI EMAIL
 - I riepiloghi email sono stati generati dall'AI analizzando le trascrizioni, quindi sono già organizzati e strutturati
+
+🔧 REGOLE PER TOOL DI CONSULENZA:
+- Se hai accesso a tool per consulenze (getConsultationStatus, getAvailableSlots, etc.), USALI per dati in tempo reale
+- Se mancano informazioni necessarie (mese, anno, data), CHIEDI CHIARIMENTI invece di inventare parametri
+- Se il tool restituisce "next_action_hint": "offer_booking", proponi la prenotazione di una nuova consulenza
+- Se il tool restituisce "next_action_hint": "limit_reached_no_booking", informa che il limite è stato raggiunto
+- Per domande generali sulle consulenze ("cos'è una consulenza?"), rispondi direttamente SENZA chiamare tool
 ` : hasFileSearch && userContext.consultations.recent.length > 0 ? `
 📞 CONSULENZE VIA FILE SEARCH (RAG)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
