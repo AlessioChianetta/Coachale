@@ -4,30 +4,11 @@
  */
 
 import { db } from "../db";
-import { consultations, users, consultantClients, consultantAvailabilitySettings } from "@shared/schema";
-import { eq, and, gte, lte, sql, or, desc } from "drizzle-orm";
+import { consultations, users, consultantClients, consultantAvailabilitySettings, pendingBookings } from "@shared/schema";
+import { eq, and, gte, lte, sql, or, desc, isNull } from "drizzle-orm";
 import { ConsultationToolResult } from "./consultation-tools";
 import crypto from "crypto";
 import { getValidAccessToken, createGoogleCalendarEvent } from "../google-calendar-service";
-
-const pendingBookings = new Map<string, {
-  clientId: string;
-  consultantId: string;
-  date: string;
-  time: string;
-  duration: number;
-  notes?: string;
-  expiresAt: Date;
-}>();
-
-setInterval(() => {
-  const now = new Date();
-  for (const [token, booking] of pendingBookings.entries()) {
-    if (booking.expiresAt < now) {
-      pendingBookings.delete(token);
-    }
-  }
-}, 60000);
 
 export async function executeConsultationTool(
   toolName: string,
@@ -603,15 +584,43 @@ async function executeProposeBooking(
     };
   }
 
+  // Check for existing pending booking on same slot
+  const existingPending = await db
+    .select({ token: pendingBookings.token })
+    .from(pendingBookings)
+    .where(
+      and(
+        eq(pendingBookings.consultantId, consultantId),
+        eq(pendingBookings.startAt, proposedDateTime),
+        eq(pendingBookings.status, "awaiting_confirm")
+      )
+    );
+
+  if (existingPending.length > 0) {
+    return {
+      toolName: "proposeBooking",
+      args,
+      result: {
+        canBook: false,
+        reason: "Questo slot ha già una prenotazione in attesa di conferma. Riprova tra qualche minuto o scegli un altro orario."
+      },
+      success: true
+    };
+  }
+
+  // Generate token and insert into pending_bookings table
   const confirmationToken = crypto.randomBytes(16).toString('hex');
-  pendingBookings.set(confirmationToken, {
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  await db.insert(pendingBookings).values({
+    token: confirmationToken,
     clientId,
     consultantId,
-    date: args.date,
-    time: args.time,
+    startAt: proposedDateTime,
     duration: args.duration || 60,
+    status: "awaiting_confirm",
     notes: args.notes,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+    expiresAt,
   });
 
   return {
@@ -639,10 +648,10 @@ async function executeProposeBooking(
 
 async function executeConfirmBooking(
   clientId: string,
-  args: { confirmationToken: string }
+  args: { confirmationToken?: string; conversationId?: string }
 ): Promise<ConsultationToolResult> {
-  // Guardrail: validate required token
-  if (!args.confirmationToken) {
+  // Guardrail: validate that at least one identifier is provided
+  if (!args.confirmationToken && !args.conversationId) {
     return {
       toolName: "confirmBooking",
       args,
@@ -656,7 +665,34 @@ async function executeConfirmBooking(
     };
   }
   
-  const pendingBooking = pendingBookings.get(args.confirmationToken);
+  // Query pending booking from database
+  let pendingBooking;
+
+  if (args.confirmationToken) {
+    const [booking] = await db
+      .select()
+      .from(pendingBookings)
+      .where(eq(pendingBookings.token, args.confirmationToken))
+      .limit(1);
+    pendingBooking = booking;
+  } else if (args.conversationId) {
+    const [booking] = await db
+      .select()
+      .from(pendingBookings)
+      .where(
+        and(
+          or(
+            eq(pendingBookings.conversationId, args.conversationId),
+            eq(pendingBookings.publicConversationId, args.conversationId)
+          ),
+          eq(pendingBookings.status, "awaiting_confirm"),
+          sql`${pendingBookings.expiresAt} > NOW()`
+        )
+      )
+      .orderBy(desc(pendingBookings.createdAt))
+      .limit(1);
+    pendingBooking = booking;
+  }
 
   if (!pendingBooking) {
     return {
@@ -668,6 +704,47 @@ async function executeConfirmBooking(
       },
       success: true
     };
+  }
+
+  // Handle idempotency - check if already confirmed with consultationId
+  if (pendingBooking.status === "confirmed" && pendingBooking.consultationId) {
+    const [existingConsultation] = await db
+      .select()
+      .from(consultations)
+      .where(eq(consultations.id, pendingBooking.consultationId));
+
+    if (existingConsultation) {
+      const timeStr = new Date(pendingBooking.startAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      const formattedDate = new Date(pendingBooking.startAt).toLocaleDateString('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      });
+
+      return {
+        toolName: "confirmBooking",
+        args,
+        result: {
+          success: true,
+          consultation: {
+            id: existingConsultation.id,
+            date: new Date(pendingBooking.startAt).toLocaleDateString('it-IT', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            }),
+            time: timeStr,
+            duration: pendingBooking.duration,
+            googleMeetLink: existingConsultation.googleMeetLink || null,
+            calendarEventCreated: !!existingConsultation.googleCalendarEventId
+          },
+          message: `La consulenza è già confermata per ${formattedDate} alle ${timeStr}.`,
+          next_action_hint: "La consulenza è già confermata."
+        },
+        success: true
+      };
+    }
   }
 
   if (pendingBooking.clientId !== clientId) {
@@ -682,8 +759,11 @@ async function executeConfirmBooking(
     };
   }
 
+  // Check expiry and mark as expired in DB if needed
   if (pendingBooking.expiresAt < new Date()) {
-    pendingBookings.delete(args.confirmationToken);
+    await db.update(pendingBookings)
+      .set({ status: "expired" })
+      .where(eq(pendingBookings.token, pendingBooking.token));
     return {
       toolName: "confirmBooking",
       args,
@@ -695,21 +775,79 @@ async function executeConfirmBooking(
     };
   }
 
-  const scheduledAt = new Date(`${pendingBooking.date}T${pendingBooking.time}:00`);
-
-  const [newConsultation] = await db
-    .insert(consultations)
-    .values({
-      consultantId: pendingBooking.consultantId,
-      clientId: pendingBooking.clientId,
-      scheduledAt,
-      duration: pendingBooking.duration,
-      notes: pendingBooking.notes || "Prenotata tramite AI Assistant",
-      status: "scheduled"
+  // Atomic UPDATE for confirming (returns affected rows)
+  const updateResult = await db
+    .update(pendingBookings)
+    .set({
+      status: "confirmed",
+      confirmedAt: new Date()
     })
+    .where(
+      and(
+        eq(pendingBookings.token, pendingBooking.token),
+        eq(pendingBookings.status, "awaiting_confirm"),
+        sql`${pendingBookings.expiresAt} > NOW()`
+      )
+    )
     .returning();
 
-  pendingBookings.delete(args.confirmationToken);
+  if (updateResult.length === 0) {
+    return {
+      toolName: "confirmBooking",
+      args,
+      result: {
+        success: false,
+        reason: "La prenotazione è già stata confermata o è scaduta. Richiedi una nuova proposta se necessario."
+      },
+      success: true
+    };
+  }
+
+  const scheduledAt = new Date(pendingBooking.startAt);
+  const timeStr = scheduledAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = scheduledAt.toISOString().split('T')[0];
+
+  // Insert consultation with unique constraint handling
+  let newConsultation;
+  try {
+    const [consultation] = await db
+      .insert(consultations)
+      .values({
+        consultantId: pendingBooking.consultantId,
+        clientId: pendingBooking.clientId,
+        scheduledAt,
+        duration: pendingBooking.duration,
+        notes: pendingBooking.notes || "Prenotata tramite AI Assistant",
+        status: "scheduled"
+      })
+      .returning();
+    newConsultation = consultation;
+
+    // Save consultationId for idempotency
+    await db.update(pendingBookings)
+      .set({ consultationId: newConsultation.id })
+      .where(eq(pendingBookings.token, pendingBooking.token));
+
+  } catch (error: any) {
+    if (error.code === '23505') {
+      // Unique constraint violation - slot already taken
+      await db.update(pendingBookings)
+        .set({ status: "cancelled" })
+        .where(eq(pendingBookings.token, pendingBooking.token));
+      return {
+        toolName: "confirmBooking",
+        args,
+        result: {
+          error_code: "SLOT_TAKEN",
+          message: "Lo slot è stato appena prenotato da un altro utente",
+          suggestion: "Scegli un altro orario disponibile"
+        },
+        success: false,
+        error: "Slot già occupato"
+      };
+    }
+    throw error;
+  }
 
   console.log(`✅ [CONSULTATION TOOL] Booking confirmed: ${newConsultation.id}`);
 
@@ -752,7 +890,6 @@ async function executeConfirmBooking(
         .limit(1);
 
       const clientName = clientInfo ? `${clientInfo.firstName || ''} ${clientInfo.lastName || ''}`.trim() : 'Cliente';
-      const consultantName = consultantInfo ? `${consultantInfo.firstName || ''} ${consultantInfo.lastName || ''}`.trim() : 'Consulente';
       const attendees = [clientInfo?.email, consultantInfo?.email].filter(Boolean) as string[];
 
       console.log(`📅 [CONSULTATION TOOL] Creating Google Calendar event for consultation ${newConsultation.id}...`);
@@ -762,8 +899,8 @@ async function executeConfirmBooking(
         {
           summary: `Consulenza con ${clientName}`,
           description: `Consulenza prenotata tramite AI Assistant.\n\nNote: ${pendingBooking.notes || 'Nessuna nota'}`,
-          startDate: pendingBooking.date,
-          startTime: pendingBooking.time,
+          startDate: dateStr,
+          startTime: timeStr,
           duration: pendingBooking.duration,
           timezone: settings.timezone || "Europe/Rome",
           attendees
@@ -798,7 +935,7 @@ async function executeConfirmBooking(
     month: 'long'
   });
 
-  let message = `Perfetto! Ho confermato la tua consulenza per ${formattedDate} alle ${pendingBooking.time}.`;
+  let message = `Perfetto! Ho confermato la tua consulenza per ${formattedDate} alle ${timeStr}.`;
   if (googleMeetLink) {
     message += ` Ti ho inviato l'invito al calendario con il link per la videochiamata.`;
   } else {
@@ -818,7 +955,7 @@ async function executeConfirmBooking(
           month: 'long',
           year: 'numeric'
         }),
-        time: pendingBooking.time,
+        time: timeStr,
         duration: pendingBooking.duration,
         googleMeetLink: googleMeetLink || null,
         calendarEventCreated: calendarCreated

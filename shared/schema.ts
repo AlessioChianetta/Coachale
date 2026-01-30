@@ -274,6 +274,22 @@ export const consultations = pgTable("consultations", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const pendingBookings = pgTable("pending_bookings", {
+  token: varchar("token", { length: 32 }).primaryKey(),
+  clientId: varchar("client_id").references(() => users.id).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id).notNull(),
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+  duration: integer("duration").notNull().default(60),
+  status: text("status").notNull().$type<"awaiting_confirm" | "confirmed" | "expired" | "cancelled">().default("awaiting_confirm"),
+  conversationId: varchar("conversation_id"),
+  publicConversationId: varchar("public_conversation_id"),
+  notes: text("notes"),
+  consultationId: varchar("consultation_id").references(() => consultations.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+});
+
 export const goals = pgTable("goals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id).notNull(),
