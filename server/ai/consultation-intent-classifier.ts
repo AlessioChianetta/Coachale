@@ -40,14 +40,17 @@ INTENTS:
 1. consultations_status - User asks about consultation count, history, limits, usage
    Examples: "quante consulenze ho fatto?", "ho raggiunto il limite?", "quanti incontri?"
 
-2. booking_request - User wants to book/schedule a new consultation
-   Examples: "voglio prenotare", "posso fissare un appuntamento?"
+2. booking_request - User wants to book/schedule a new consultation OR selects a specific date/time slot
+   INCLUDES: any message mentioning day + time for booking (slot selection is a booking request!)
+   Examples: "voglio prenotare", "posso fissare un appuntamento?", "giovedi 5 alle 9", "lunedi alle 15", 
+   "martedì 3 febbraio alle 10:00", "va bene giovedi 5 alle 9?", "preferirei venerdi pomeriggio alle 16"
 
-3. availability_check - User asks about available time slots
+3. availability_check - User asks about available time slots (without specifying one)
    Examples: "quando sei disponibile?", "quali slot hai liberi?"
 
-4. booking_confirm - User confirms a proposed booking (REQUIRES pending booking context)
-   Examples: "confermo", "va bene quell'orario", "sì prenota"
+4. booking_confirm - User confirms a PREVIOUSLY proposed booking (REQUIRES pending booking context)
+   Examples: "confermo", "va bene", "sì prenota", "ok"
+   NOTE: If user specifies a new date/time, that's booking_request, NOT booking_confirm
 
 5. booking_cancel - User wants to cancel a booking
    Examples: "annulla", "disdici l'appuntamento"
@@ -57,6 +60,9 @@ INTENTS:
 
 7. other - Message is not about consultations
    Examples: "che tempo fa?", "parlami degli esercizi"
+
+IMPORTANT: If the message contains a day name (lunedi, martedi, etc.) AND a time (09:00, alle 9, pomeriggio), 
+classify as booking_request with high confidence. This is a slot selection.
 
 OUTPUT FORMAT (wrap in <json></json>):
 {

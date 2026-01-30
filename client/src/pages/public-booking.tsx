@@ -145,16 +145,17 @@ export default function PublicBooking() {
     },
   });
 
+  // Backend returns only available slots, no need to filter by .available
   const availableDates = slotsData?.slots
-    .filter(slot => slot.available)
     .reduce((dates, slot) => {
       if (!dates.includes(slot.date)) dates.push(slot.date);
       return dates;
     }, [] as string[]) || [];
 
+  // Backend returns only available slots, no need to filter by .available
   const timeSlotsForSelectedDate = selectedDate
     ? slotsData?.slots.filter(
-        slot => slot.date === format(selectedDate, 'yyyy-MM-dd') && slot.available
+        slot => slot.date === format(selectedDate, 'yyyy-MM-dd')
       ) || []
     : [];
 

@@ -560,81 +560,76 @@ function WeeklyCalendarView({
     <div className="flex gap-4 h-[calc(100vh-200px)] min-h-[700px]">
       {/* Main Calendar Grid - Google Calendar style fullscreen */}
       <Card className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
-        <CardHeader className="pb-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white">
+        {/* Compact header like Google Calendar */}
+        <CardHeader className="py-2 px-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Calendar className="w-6 h-6" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold uppercase tracking-wide">
-                  Settimana {format(weekStart, "d", { locale: it })}-{format(weekEnd, "d MMMM yyyy", { locale: it }).toUpperCase()}
-                </CardTitle>
-                <p className="text-blue-100 text-sm">Vista settimanale • Orario 00:00-24:00</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base font-semibold text-slate-700 dark:text-slate-200">
+                {format(weekStart, "d", { locale: it })} - {format(weekEnd, "d MMM yyyy", { locale: it })}
+              </CardTitle>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm" 
                 onClick={prevWeek}
-                className="border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+                className="h-8 w-8 p-0"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm" 
                 onClick={nextWeek}
-                className="border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+                className="h-8 w-8 p-0"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 overflow-hidden h-[calc(100%-100px)]">
+        <CardContent className="p-0 overflow-hidden h-[calc(100%-56px)]">
           <div className="flex flex-col h-full">
-            {/* Header giorni */}
-            <div className="grid grid-cols-8 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 sticky top-0 z-20">
-              <div className="p-3 text-center font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 text-xs uppercase tracking-wide">
-                
+            {/* Compact day header like Google Calendar */}
+            <div className="flex border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 sticky top-0 z-20">
+              {/* Narrow time column spacer */}
+              <div className="w-12 shrink-0"></div>
+              {/* Day columns */}
+              <div className="flex-1 grid grid-cols-7">
+                {weekDays.map((day, idx) => {
+                  const isToday = isSameDay(day, new Date());
+                  return (
+                    <div key={day.toISOString()} className={`py-1.5 text-center border-l border-slate-100 dark:border-slate-700 ${isToday ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                      <div className={`text-[10px] uppercase font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                        {dayLabels[idx]}
+                      </div>
+                      <div className={`text-sm font-semibold ${isToday ? 'bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center mx-auto' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {format(day, "d")}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {weekDays.map((day, idx) => {
-                const isToday = isSameDay(day, new Date());
-                return (
-                  <div key={day.toISOString()} className={`p-3 text-center border-l border-slate-100 dark:border-slate-700 ${isToday ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`}>
-                    <div className={`font-medium text-xs uppercase tracking-wide ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                      {dayLabels[idx]}
-                    </div>
-                    <div className={`text-lg font-bold mt-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                      {format(day, "d")}
-                    </div>
-                    {isToday && (
-                      <div className="w-8 h-1 bg-blue-500 rounded-full mx-auto mt-1"></div>
-                    )}
-                  </div>
-                );
-              })}
             </div>
 
             {/* Google Calendar-style grid with day columns */}
             <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-8 min-h-full">
-                {/* Time column */}
-                <div className="bg-slate-50 dark:bg-slate-800">
+              <div className="flex min-h-full">
+                {/* Narrow time column like Google Calendar */}
+                <div className="w-12 shrink-0 bg-white dark:bg-slate-800">
                   {timeSlots.map((hour) => (
                     <div 
                       key={hour} 
-                      className="text-right pr-2 text-xs text-slate-400 dark:text-slate-500 font-medium"
+                      className="text-right pr-2 text-[10px] text-slate-400 dark:text-slate-500 font-medium relative"
                       style={{ height: `${HOUR_HEIGHT}px` }}
                     >
-                      <span className="-mt-2 block">{hour.toString().padStart(2, '0')}:00</span>
+                      <span className="absolute -top-2 right-2">{hour.toString().padStart(2, '0')}:00</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Day columns with events */}
+                {/* Day columns with events - flex container for equal width */}
+                <div className="flex-1 grid grid-cols-7">
                 {weekDays.map((day) => {
                   const isToday = isSameDay(day, new Date());
                   const dayAppointments = getAppointmentsForDay(day);
