@@ -2245,10 +2245,12 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           },
         });
         
-        // Extract function call from response
+        // Extract function call from response (including thought_signature for Gemini 3)
         const candidate = initialResponse.response.candidates?.[0];
         const parts = candidate?.content?.parts || [];
         let functionCall: { name: string; args: Record<string, any> } | null = null;
+        let thoughtSignature: string | undefined = undefined;
+        let originalFunctionCallPart: any = null;
         
         for (const part of parts) {
           if ((part as any).functionCall) {
@@ -2256,6 +2258,10 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
               name: (part as any).functionCall.name,
               args: (part as any).functionCall.args || {}
             };
+            // Capture thought_signature if present (required for Gemini 3)
+            thoughtSignature = (part as any).thought_signature || (part as any).thoughtSignature;
+            originalFunctionCallPart = part; // Keep the original part for the follow-up
+            console.log(`🔧 [CONSULTATION] thought_signature present: ${!!thoughtSignature}`);
             break;
           }
         }
@@ -2292,6 +2298,20 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           console.log(`   Data: ${JSON.stringify(toolResult.result)}`);
           
           // Second call: Get natural language response with function result
+          // IMPORTANT: For Gemini 3, we must include the thought_signature in the functionCall part
+          const functionCallPart: any = {
+            functionCall: {
+              name: functionCall.name,
+              args: functionCall.args
+            }
+          };
+          
+          // Add thought_signature if present (required for Gemini 3 function calling)
+          if (thoughtSignature) {
+            functionCallPart.thought_signature = thoughtSignature;
+            console.log(`🔧 [CONSULTATION] Including thought_signature in follow-up request`);
+          }
+          
           const messagesWithFunction = [
             ...geminiMessages.map(msg => ({
               role: msg.role === "assistant" ? "model" : "user",
@@ -2299,12 +2319,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             })),
             {
               role: "model" as const,
-              parts: [{
-                functionCall: {
-                  name: functionCall.name,
-                  args: functionCall.args
-                }
-              }]
+              parts: [functionCallPart]
             },
             {
               role: "user" as const,
