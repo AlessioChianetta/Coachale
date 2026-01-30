@@ -81,15 +81,7 @@ export async function classifyConsultationIntent(
       contents: [
         {
           role: 'user',
-          parts: [{ text: SYSTEM_PROMPT }]
-        },
-        {
-          role: 'model',
-          parts: [{ text: 'Understood. I will classify intents strictly and output JSON wrapped in <json></json> tags.' }]
-        },
-        {
-          role: 'user',
-          parts: [{ text: `Classify this message: "${message}"` }]
+          parts: [{ text: `${SYSTEM_PROMPT}\n\nMessage to classify: "${message}"` }]
         }
       ],
       generationConfig: {
