@@ -1701,13 +1701,25 @@ export async function createPublicBooking(params: PublicBookingParams): Promise<
 
     if (settings?.googleRefreshToken) {
       try {
-        const endTime = new Date(scheduledAt.getTime() + duration * 60 * 1000);
+        // Get timezone from settings
+        const [availSettings] = await db
+          .select({ timezone: consultantAvailabilitySettings.timezone })
+          .from(consultantAvailabilitySettings)
+          .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+          .limit(1);
+        
+        const timezone = availSettings?.timezone || 'Europe/Rome';
+        const startDate = scheduledAt.toISOString().slice(0, 10); // YYYY-MM-DD
+        const startTime = `${scheduledAt.getHours().toString().padStart(2, '0')}:${scheduledAt.getMinutes().toString().padStart(2, '0')}`; // HH:MM
+        
         const calendarResult = await createGoogleCalendarEvent(consultantId, {
           summary: `Consulenza con ${clientName}`,
           description: `Email: ${clientEmail}${clientPhone ? `\nTelefono: ${clientPhone}` : ''}${notes ? `\n\nNote: ${notes}` : ''}`,
-          startTime: scheduledAt.toISOString(),
-          endTime: endTime.toISOString(),
-          attendees: [{ email: clientEmail }],
+          startDate,
+          startTime,
+          duration,
+          timezone,
+          attendees: [clientEmail],
         });
 
         if (calendarResult?.eventId) {
