@@ -2217,7 +2217,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     };
     
     if (shouldRunClassifier) {
-      const apiKey = geminiApiKey;
+      const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey) {
         consultationIntentClassification = await classifyConsultationIntent(message, apiKey, classifierContext);
         isConsultationQuery = shouldUseConsultationTools(consultationIntentClassification, classifierContext);
