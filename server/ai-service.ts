@@ -2183,15 +2183,30 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`[AI] Using model: ${dynamicConfig.model} with thinking_level: ${dynamicConfig.thinkingLevel || 'N/A'} [CLIENT STREAMING]`);
     console.log(`[AI] Provider: ${providerMetadata.name}, User-selected: ${requestedModel ? 'YES' : 'NO'}`);
 
-    // Create stream factory function with FileSearch + Code Execution tools
-    // Code Execution enables Gemini to write and run Python for precise calculations
-    // NOTE: Function calling is NOT supported with Gemini 3 Flash Preview when combined with other tools
-    // Instead, consultation data is injected directly into the user message below
-    const clientTools: any[] = [{ codeExecution: {} }];
-    if (fileSearchTool) {
-      clientTools.push(fileSearchTool);
+    // Create tools based on intent
+    // Gemini 3 Flash Preview does NOT support function calling with other tools (codeExecution, fileSearch)
+    // So we use consultation tools ONLY when intent is "consultations", otherwise use other tools
+    const isConsultationQuery = intent === 'consultations' && 
+      (message.toLowerCase().includes('consult') || 
+       message.toLowerCase().includes('appuntament') ||
+       message.toLowerCase().includes('prenotat') ||
+       message.toLowerCase().includes('questo mese') ||
+       message.toLowerCase().includes('limite'));
+    
+    let clientTools: any[];
+    if (isConsultationQuery) {
+      // Use ONLY consultation tools for consultation queries (no codeExecution, no fileSearch)
+      clientTools = [{ functionDeclarations: consultationTools }];
+      console.log(`🛠️  [TOOLS] Client chat: consultationTools=YES (${consultationTools.length} tools), codeExecution=NO, fileSearch=NO`);
+      console.log(`   📋 Consultation query detected - using function calling for accurate data`);
+    } else {
+      // Use standard tools for all other queries
+      clientTools = [{ codeExecution: {} }];
+      if (fileSearchTool) {
+        clientTools.push(fileSearchTool);
+      }
+      console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     }
-    console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: dynamicConfig.model,
