@@ -25,15 +25,26 @@ export interface ClassifierContext {
   sessionId?: string;
   pendingBookingToken?: string;
   hasPendingBooking?: boolean;
+  recentMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 const SYSTEM_PROMPT = `You are a STRICT intent classifier for a consultation booking system.
+
+CRITICAL: You will receive RECENT CONVERSATION HISTORY before the current message.
+USE THE CONTEXT to understand what the user REALLY wants. Follow-up messages must be interpreted in context.
 
 RULES:
 - Output MUST be valid JSON wrapped in <json></json> tags
 - Do NOT add ANY text outside the JSON tags
 - Choose ONE intent only
-- If uncertain, return "other" with confidence < 0.5
+- ANALYZE THE FULL CONVERSATION before deciding
+- If the previous message was about booking/scheduling and current message is a confirmation or insistence, classify accordingly
+
+CONTEXT REASONING:
+- If user previously asked to book/schedule and now says "sì", "certo", "puoi farlo", "fallo", "procedi" → booking_request
+- If user previously asked to cancel and now insists → booking_cancel  
+- If user previously asked about availability and now specifies a preference → booking_request
+- If user says the AI CAN do something after AI said it cannot → maintain the original intent from context
 
 INTENTS:
 
@@ -41,9 +52,12 @@ INTENTS:
    Examples: "quante consulenze ho fatto?", "ho raggiunto il limite?", "quanti incontri?"
 
 2. booking_request - User wants to book/schedule a new consultation OR selects a specific date/time slot
-   INCLUDES: any message mentioning day + time for booking (slot selection is a booking request!)
+   INCLUDES: 
+   - Any message mentioning day + time for booking (slot selection is a booking request!)
+   - Follow-up confirmations after a booking request: "sì fallo", "certo che puoi", "procedi", "ok schedula"
    Examples: "voglio prenotare", "posso fissare un appuntamento?", "giovedi 5 alle 9", "lunedi alle 15", 
-   "martedì 3 febbraio alle 10:00", "va bene giovedi 5 alle 9?", "preferirei venerdi pomeriggio alle 16"
+   "martedì 3 febbraio alle 10:00", "va bene giovedi 5 alle 9?", "preferirei venerdi pomeriggio alle 16",
+   "me ne scheduli una per giorno 10", "sì che puoi farlo"
 
 3. availability_check - User asks about available time slots (without specifying one)
    Examples: "quando sei disponibile?", "quali slot hai liberi?"
@@ -53,13 +67,15 @@ INTENTS:
    NOTE: If user specifies a new date/time, that's booking_request, NOT booking_confirm
 
 5. booking_cancel - User wants to cancel a booking
-   Examples: "annulla", "disdici l'appuntamento"
+   Examples: "annulla", "disdici l'appuntamento", "cancella la consulenza", "rimuovi l'appuntamento"
+   INCLUDES: Follow-up insistence after a cancel request
 
 6. informational - General questions about consultations (no DB lookup needed)
    Examples: "cos'è una consulenza?", "come funziona?"
 
-7. other - Message is not about consultations
+7. other - Message is CLEARLY not about consultations AND no relevant context exists
    Examples: "che tempo fa?", "parlami degli esercizi"
+   WARNING: Do NOT use "other" if recent context was about consultations!
 
 IMPORTANT: If the message contains a day name (lunedi, martedi, etc.) AND a time (09:00, alle 9, pomeriggio), 
 classify as booking_request with high confidence. This is a slot selection.
@@ -68,7 +84,7 @@ OUTPUT FORMAT (wrap in <json></json>):
 {
   "intent": "<intent_name>",
   "confidence": <0.0-1.0>,
-  "reasoning": "<brief explanation>"
+  "reasoning": "<detailed explanation of WHY you chose this intent, including analysis of conversation context>"
 }`;
 
 export async function classifyConsultationIntent(
@@ -82,6 +98,26 @@ export async function classifyConsultationIntent(
   try {
     const ai = new GoogleGenAI({ apiKey });
     
+    // Build conversation context string from recent messages - NO TRUNCATION
+    let conversationContextStr = '';
+    if (context?.recentMessages && context.recentMessages.length > 0) {
+      conversationContextStr = '\n\n=== RECENT CONVERSATION (analyze for context) ===\n';
+      for (const msg of context.recentMessages) {
+        const roleLabel = msg.role === 'user' ? 'USER' : 'ASSISTANT';
+        // FULL content - no truncation for accurate context analysis
+        conversationContextStr += `${roleLabel}: ${msg.content}\n`;
+      }
+      conversationContextStr += '=== END CONVERSATION ===\n\n';
+    }
+    
+    // Build the classification request with full context
+    let classificationRequest = '';
+    if (context?.hasPendingBooking) {
+      classificationRequest += 'CONTEXT FLAG: hasPendingBooking=true (there is an active booking proposal waiting for confirmation)\n';
+    }
+    classificationRequest += conversationContextStr;
+    classificationRequest += `NOW CLASSIFY THIS NEW MESSAGE: "${message}"`;
+    
     const requestContents = [
       {
         role: 'user',
@@ -89,26 +125,34 @@ export async function classifyConsultationIntent(
       },
       {
         role: 'model',
-        parts: [{ text: 'Understood. I will classify intents strictly and output JSON wrapped in <json></json> tags.' }]
+        parts: [{ text: 'Understood. I will analyze the conversation context and classify the intent, providing detailed reasoning.' }]
       },
       {
         role: 'user',
-        parts: [{ 
-          text: context?.hasPendingBooking 
-            ? `Context: hasPendingBooking=true (there is an active booking proposal waiting for confirmation)\nClassify this message: "${message}"`
-            : `Classify this message: "${message}"` 
-        }]
+        parts: [{ text: classificationRequest }]
       }
     ];
     
-    console.log(`\n${'─'.repeat(60)}`);
-    console.log(`🔍 [Intent:${traceId}] CLASSIFIER REQUEST`);
-    console.log(`${'─'.repeat(60)}`);
+    // FULL LOGGING - no truncation
+    console.log(`\n${'═'.repeat(80)}`);
+    console.log(`🔍 [Intent:${traceId}] CLASSIFIER REQUEST - FULL CONTEXT`);
+    console.log(`${'═'.repeat(80)}`);
     console.log(`   Model: gemini-2.5-flash-lite`);
-    console.log(`   Message: "${message.substring(0, 80)}${message.length > 80 ? '...' : ''}"`);
-    console.log(`   Context: hasPendingBooking=${context?.hasPendingBooking || false}`);
-    console.log(`   Contents structure: ${requestContents.length} turns`);
-    console.log(`${'─'.repeat(60)}`);
+    console.log(`   Current Message: "${message}"`);
+    console.log(`   hasPendingBooking: ${context?.hasPendingBooking || false}`);
+    console.log(`   Recent Messages Count: ${context?.recentMessages?.length || 0}`);
+    if (context?.recentMessages && context.recentMessages.length > 0) {
+      console.log(`   ${'─'.repeat(60)}`);
+      console.log(`   📜 CONVERSATION HISTORY SENT TO CLASSIFIER (FULL - NO TRUNCATION):`);
+      for (let i = 0; i < context.recentMessages.length; i++) {
+        const msg = context.recentMessages[i];
+        const roleEmoji = msg.role === 'user' ? '👤' : '🤖';
+        // FULL content logged - no truncation
+        console.log(`   ${roleEmoji} [${i + 1}] ${msg.role.toUpperCase()}: ${msg.content}`);
+      }
+      console.log(`   ${'─'.repeat(60)}`);
+    }
+    console.log(`${'═'.repeat(80)}`);
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-lite',
@@ -134,20 +178,17 @@ export async function classifyConsultationIntent(
       text = (response as any).text() || '';
     }
     
-    console.log(`\n${'─'.repeat(60)}`);
-    console.log(`📤 [Intent:${traceId}] CLASSIFIER RESPONSE`);
-    console.log(`${'─'.repeat(60)}`);
+    // FULL RESPONSE LOGGING - no truncation
+    console.log(`\n${'═'.repeat(80)}`);
+    console.log(`📤 [Intent:${traceId}] CLASSIFIER RESPONSE - FULL`);
+    console.log(`${'═'.repeat(80)}`);
     console.log(`   Latency: ${latencyMs}ms`);
     console.log(`   Response length: ${text.length} chars`);
-    console.log(`   Raw response: "${text.substring(0, 200)}${text.length > 200 ? '...' : ''}"`);
-    console.log(`   Response object keys: ${Object.keys(response).join(', ')}`);
-    if (response.candidates) {
-      console.log(`   Candidates count: ${response.candidates.length}`);
-      if (response.candidates[0]?.content?.parts) {
-        console.log(`   First candidate parts: ${response.candidates[0].content.parts.length}`);
-      }
-    }
-    console.log(`${'─'.repeat(60)}`);
+    console.log(`   ${'─'.repeat(60)}`);
+    console.log(`   📝 FULL RAW RESPONSE:`);
+    console.log(`   ${text}`);
+    console.log(`   ${'─'.repeat(60)}`);
+    console.log(`${'═'.repeat(80)}`);
     
     
     const jsonMatch = text.match(/<json>([\s\S]*?)<\/json>/);

@@ -8,7 +8,7 @@ import { consultations, users, consultantClients, consultantAvailabilitySettings
 import { eq, and, gte, lte, sql, or, desc, isNull } from "drizzle-orm";
 import { ConsultationToolResult } from "./consultation-tools";
 import crypto from "crypto";
-import { getValidAccessToken, createGoogleCalendarEvent } from "../google-calendar-service";
+import { getValidAccessToken, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from "../google-calendar-service";
 import { setBookingFlowState, clearBookingFlowState } from "../booking/booking-flow-service";
 
 export async function executeConsultationTool(
@@ -32,6 +32,8 @@ export async function executeConsultationTool(
         return await executeProposeBooking(clientId, consultantId, args, conversationId);
       case "confirmBooking":
         return await executeConfirmBooking(clientId, args, conversationId);
+      case "cancelBooking":
+        return await executeCancelBooking(clientId, consultantId, args, conversationId);
       default:
         return {
           toolName,
@@ -1023,6 +1025,175 @@ async function executeConfirmBooking(
       },
       message,
       next_action_hint: "La consulenza è confermata. L'utente riceverà email di conferma."
+    },
+    success: true
+  };
+}
+
+async function executeCancelBooking(
+  clientId: string,
+  consultantId: string,
+  args: { date?: string; consultationId?: string },
+  conversationId?: string | null
+): Promise<ConsultationToolResult> {
+  console.log(`🗑️ [CANCEL BOOKING] Looking for consultation to cancel for client ${clientId.slice(0, 8)}`);
+  console.log(`   Args: date=${args.date}, consultationId=${args.consultationId}, conversationId=${conversationId || 'none'}`);
+
+  // Validate that at least one identifier is provided
+  if (!args.date && !args.consultationId) {
+    return {
+      toolName: "cancelBooking",
+      args,
+      result: {
+        error_code: "MISSING_IDENTIFIER",
+        message: "Devi specificare una data o un ID della consulenza da cancellare",
+        suggestion: "Chiedi al cliente quale consulenza vuole cancellare (data o riferimento)"
+      },
+      success: false,
+      error: "Nessun identificatore fornito"
+    };
+  }
+
+  // Find the consultation
+  let consultation;
+
+  if (args.consultationId) {
+    // Search by ID
+    const [found] = await db
+      .select()
+      .from(consultations)
+      .where(
+        and(
+          eq(consultations.id, args.consultationId),
+          eq(consultations.clientId, clientId)
+        )
+      )
+      .limit(1);
+    consultation = found;
+  } else if (args.date) {
+    // Search by date - find consultations for the given date
+    const targetDate = new Date(args.date);
+    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0);
+    const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
+
+    const [found] = await db
+      .select()
+      .from(consultations)
+      .where(
+        and(
+          eq(consultations.clientId, clientId),
+          gte(consultations.scheduledAt, startOfDay),
+          lte(consultations.scheduledAt, endOfDay),
+          or(
+            eq(consultations.status, "scheduled"),
+            eq(consultations.status, "pending")
+          )
+        )
+      )
+      .orderBy(consultations.scheduledAt)
+      .limit(1);
+    consultation = found;
+  }
+
+  if (!consultation) {
+    return {
+      toolName: "cancelBooking",
+      args,
+      result: {
+        cancelled: false,
+        reason: args.date 
+          ? `Non ho trovato nessuna consulenza prenotata per il ${new Date(args.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}.`
+          : "Non ho trovato la consulenza specificata.",
+        suggestion: "Usa getConsultationStatus per vedere le consulenze prenotate"
+      },
+      success: true
+    };
+  }
+
+  // Check if the consultation can be cancelled (only scheduled or pending)
+  if (consultation.status !== "scheduled" && consultation.status !== "pending") {
+    return {
+      toolName: "cancelBooking",
+      args,
+      result: {
+        cancelled: false,
+        reason: `La consulenza è in stato "${consultation.status}" e non può essere cancellata.`,
+        consultationStatus: consultation.status
+      },
+      success: true
+    };
+  }
+
+  // Check if the consultation belongs to the right consultant
+  if (consultation.consultantId !== consultantId) {
+    return {
+      toolName: "cancelBooking",
+      args,
+      result: {
+        cancelled: false,
+        reason: "Questa consulenza non appartiene al tuo consulente."
+      },
+      success: true
+    };
+  }
+
+  const scheduledAt = new Date(consultation.scheduledAt);
+  const formattedDate = scheduledAt.toLocaleDateString('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  });
+  const timeStr = scheduledAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  // Update the consultation status to 'cancelled'
+  await db
+    .update(consultations)
+    .set({
+      status: "cancelled",
+      updatedAt: new Date()
+    })
+    .where(eq(consultations.id, consultation.id));
+
+  console.log(`✅ [CANCEL BOOKING] Consultation ${consultation.id} cancelled`);
+
+  // Clear booking flow state if conversationId exists
+  if (conversationId) {
+    try {
+      await clearBookingFlowState(conversationId);
+      console.log(`🧹 [CANCEL BOOKING] Cleared booking flow state for conversation ${conversationId.slice(0, 8)}`);
+    } catch (flowError) {
+      console.warn(`⚠️ [CANCEL BOOKING] Failed to clear flow state:`, flowError);
+    }
+  }
+
+  // Try to delete Google Calendar event if it exists
+  let calendarEventDeleted = false;
+  if (consultation.googleCalendarEventId) {
+    try {
+      console.log(`📅 [CANCEL BOOKING] Deleting Google Calendar event ${consultation.googleCalendarEventId}...`);
+      await deleteGoogleCalendarEvent(consultantId, consultation.googleCalendarEventId);
+      calendarEventDeleted = true;
+      console.log(`✅ [CANCEL BOOKING] Google Calendar event deleted`);
+    } catch (calendarError: any) {
+      console.error(`❌ [CANCEL BOOKING] Failed to delete Calendar event:`, calendarError.message);
+      // Continue even if calendar deletion fails - the consultation is cancelled
+    }
+  }
+
+  return {
+    toolName: "cancelBooking",
+    args,
+    result: {
+      cancelled: true,
+      consultation: {
+        id: consultation.id,
+        date: formattedDate,
+        time: timeStr,
+        duration: consultation.duration
+      },
+      calendarEventDeleted,
+      message: `Ho cancellato la consulenza del ${formattedDate} alle ${timeStr}.${calendarEventDeleted ? ' L\'evento è stato rimosso anche dal calendario.' : ''}`,
+      next_action_hint: "offer_rebooking"
     },
     success: true
   };

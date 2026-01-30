@@ -133,6 +133,30 @@ Richiede il token di conferma ottenuto da proposeBooking.`,
       },
       required: ["confirmationToken"]
     }
+  },
+  {
+    name: "cancelBooking",
+    description: `Cancella una prenotazione esistente del cliente.
+Usa questo tool quando il cliente chiede di:
+- "Cancella l'appuntamento di giorno X"
+- "Annulla la mia prenotazione"
+- "Non posso più venire, cancella"
+Il tool cercherà la prenotazione per la data specificata e la cancellerà.`,
+    parameters: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "Data della consulenza da cancellare (formato YYYY-MM-DD)",
+          format: "date"
+        },
+        consultationId: {
+          type: "string",
+          description: "ID della consulenza da cancellare (opzionale se si specifica la data)"
+        }
+      },
+      required: []
+    }
   }
 ];
 

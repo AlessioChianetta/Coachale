@@ -2219,12 +2219,17 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     const potentialConsultationKeywords = /\b(incontri|call|slot|appuntament|prenotare|disponibil|limite|sessioni|conferm|ok|si|sì|perfetto|va bene|procedi|prenota)\b/i;
     const shouldRunClassifier = isInBookingFlow || intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
     
-    // Build classifier context for memory safety (include flow state info)
+    // Build classifier context for memory safety (include flow state info + conversation history)
     const classifierContext: ClassifierContext = {
       userId: userContext.client?.id || userContext.consultant?.id,
       sessionId: conversationId,
       pendingBookingToken: pendingBooking?.token,
-      hasPendingBooking: !!pendingBooking || bookingFlowState.isActive // Include flow state
+      hasPendingBooking: !!pendingBooking || bookingFlowState.isActive, // Include flow state
+      // Pass last 6 messages for context-aware intent classification
+      recentMessages: conversationHistory.slice(-6).map(m => ({ 
+        role: m.role as 'user' | 'assistant', 
+        content: m.content 
+      }))
     };
     
     if (isInBookingFlow) {
