@@ -2183,17 +2183,15 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`[AI] Using model: ${dynamicConfig.model} with thinking_level: ${dynamicConfig.thinkingLevel || 'N/A'} [CLIENT STREAMING]`);
     console.log(`[AI] Provider: ${providerMetadata.name}, User-selected: ${requestedModel ? 'YES' : 'NO'}`);
 
-    // Create stream factory function with FileSearch + Code Execution + Consultation tools
+    // Create stream factory function with FileSearch + Code Execution tools
     // Code Execution enables Gemini to write and run Python for precise calculations
-    // Consultation tools enable AI to query real consultation data
-    const clientTools: any[] = [
-      { codeExecution: {} },
-      { functionDeclarations: consultationTools }
-    ];
+    // NOTE: Function calling is NOT supported with Gemini 3 Flash Preview when combined with other tools
+    // Instead, consultation data is injected directly into the user message below
+    const clientTools: any[] = [{ codeExecution: {} }];
     if (fileSearchTool) {
       clientTools.push(fileSearchTool);
     }
-    console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, consultationTools=YES (${consultationTools.length}), fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
+    console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: dynamicConfig.model,
