@@ -2276,9 +2276,9 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           console.log(`   Args: ${JSON.stringify(functionCall.args)}`);
           
           // Get consultant ID and execute tool
-          const consultantId = userContext.consultantId;
+          const consultantId = userContext.consultant?.id;
           if (!consultantId) {
-            throw new Error('No consultantId found in userContext');
+            throw new Error('No consultantId found in userContext.consultant');
           }
           
           const toolResult = await executeConsultationTool(

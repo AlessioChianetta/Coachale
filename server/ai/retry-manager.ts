@@ -363,21 +363,6 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
 
       // Stream chunks to client
       for await (const chunk of streamResponse) {
-        // DEBUG: Log raw chunk structure to understand what Gemini is returning
-        const chunkKeys = Object.keys(chunk || {});
-        const hasCandidates = !!(chunk as any).candidates;
-        const candidateContent = (chunk as any).candidates?.[0]?.content;
-        const partsDebug = candidateContent?.parts;
-        if (partsDebug && partsDebug.length > 0) {
-          for (const p of partsDebug) {
-            const partKeys = Object.keys(p || {});
-            console.log(`📋 [CHUNK DEBUG] Part keys: ${partKeys.join(', ')}, hasFunctionCall: ${!!p.functionCall}`);
-            if (p.functionCall) {
-              console.log(`📋 [CHUNK DEBUG] functionCall found: name=${p.functionCall.name}, args=${JSON.stringify(p.functionCall.args)}`);
-            }
-          }
-        }
-        
         // Priority 1: Check for direct thinking field (Google AI Studio SDK thoughtSummary)
         const directThinking = chunk.thinking;
         if (directThinking) {
