@@ -1010,6 +1010,7 @@ export async function listEvents(
     }
 
     console.log(`📅 Fetching events from calendar: ${calendarId}`);
+    console.log(`📅 [LIST EVENTS] Date range: ${startDate.toISOString()} → ${endDate.toISOString()}`);
 
     const response = await calendar.events.list({
       calendarId,
@@ -1017,11 +1018,29 @@ export async function listEvents(
       timeMax: endDate.toISOString(),
       singleEvents: true,
       orderBy: 'startTime',
+      maxResults: 2500, // Increase max results to ensure we get all events
     });
 
     const events = response.data.items || [];
     
-    return events
+    // Detailed logging for debugging
+    console.log(`📅 [LIST EVENTS] Total events from Google: ${events.length}`);
+    
+    const cancelledEvents = events.filter(e => e.status === 'cancelled');
+    const transparentEvents = events.filter(e => e.transparency === 'transparent' && e.status !== 'cancelled');
+    
+    console.log(`📅 [LIST EVENTS] Cancelled events (filtered out): ${cancelledEvents.length}`);
+    console.log(`📅 [LIST EVENTS] Transparent/Free events (filtered out): ${transparentEvents.length}`);
+    
+    // Log first few transparent events to understand why they're being filtered
+    if (transparentEvents.length > 0) {
+      console.log(`📅 [LIST EVENTS] Sample transparent events being filtered:`);
+      transparentEvents.slice(0, 5).forEach(e => {
+        console.log(`   - "${e.summary}" on ${e.start?.dateTime || e.start?.date}`);
+      });
+    }
+    
+    const filteredEvents = events
       .filter(event => event.status !== 'cancelled')
       .filter(event => event.transparency !== 'transparent')
       .map(event => ({
@@ -1031,6 +1050,16 @@ export async function listEvents(
         status: event.status || 'confirmed'
       }))
       .filter(event => !isNaN(event.start.getTime()) && !isNaN(event.end.getTime()));
+    
+    console.log(`📅 [LIST EVENTS] Final events after filtering: ${filteredEvents.length}`);
+    
+    if (filteredEvents.length > 0) {
+      const sortedByDate = [...filteredEvents].sort((a, b) => a.start.getTime() - b.start.getTime());
+      console.log(`📅 [LIST EVENTS] First event: ${sortedByDate[0].summary} on ${sortedByDate[0].start.toISOString()}`);
+      console.log(`📅 [LIST EVENTS] Last event: ${sortedByDate[sortedByDate.length - 1].summary} on ${sortedByDate[sortedByDate.length - 1].start.toISOString()}`);
+    }
+    
+    return filteredEvents;
   } catch (error: any) {
     console.error('❌ Error listing calendar events:', error.message);
     return [];
