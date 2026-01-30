@@ -1,0 +1,260 @@
+Valutazione rapida (onesta)
+Cose buone ✅
+
+Hai separato intent → tool → risposta
+
+Usi tool specifici (non mega-funzione)
+
+C’è round-trip con output strutturato
+
+Hai già orchestration a step
+
+Problemi strutturali ❌
+
+Regex intent detection = collo di bottiglia
+
+Forzare ANY mode è pericoloso
+
+Tools mescolano query + business logic
+
+Mancano guardrail semantici
+
+Flusso hard-coded
+
+Ora andiamo punto per punto.
+
+1️⃣ Il tuo detectIntent è il primo vero problema
+
+Regex keyword matching è:
+
+fragile linguistico
+
+non multilingua
+
+non semantico
+
+rompe con parafrasi
+
+Esempio che ti rompe:
+
+"quanti incontri ho già portato a termine questo mese?"
+
+Regex: ❌
+LLM intent classifier: ✅
+
+Soluzione corretta (Gemini-style)
+
+Non usare regex.
+Usa LLM intent classification leggera.
+
+Pattern corretto:
+User input
+   ↓
+LLM mini prompt:
+"Classifica intent tra: consultations_status, booking, availability, other"
+   ↓
+Ricevi intent strutturato JSON
+
+Output esempio:
+{
+  "intent": "consultations_status",
+  "confidence": 0.93
+}
+
+
+👉 Questo è lo standard interno Google.
+
+2️⃣ Forzare mode ANY = errore architetturale
+
+Tu stai dicendo:
+
+"Gemini DEVE chiamare un tool"
+
+Questo è pericoloso.
+
+Perché?
+
+Se l’utente chiede:
+
+"cos'è una consulenza?"
+
+Gemini chiamerà comunque un tool sbagliato.
+
+Pattern sano:
+
+Usa:
+
+AUTO mode
+
+Tool gating per intent
+
+Pseudologica:
+if intent == consultations_status:
+   enable tools A
+else:
+   disable tools
+
+
+MA lasci Gemini libero di:
+
+rispondere senza tool
+
+chiedere chiarimenti
+
+3️⃣ I tool che hai sono troppo “business-mixed”
+
+Attuali:
+
+getConsultationStatus
+
+getAvailableSlots
+
+proposeBooking
+
+confirmBooking
+
+Problema:
+
+Stai mescolando:
+
+read operations
+
+write operations
+
+state transitions
+
+Design più pulito (production)
+
+Separazione per tipo:
+
+READ
+get_consultation_stats
+get_calendar_availability
+
+WRITE
+create_booking_draft
+confirm_booking
+cancel_booking
+
+STATE SAFE
+validate_booking_request
+
+
+Questo riduce errori LLM.
+
+4️⃣ Output tool: sei quasi giusto ma manca struttura semantica
+
+Ora ritorni:
+
+{completed: 2, scheduled: 1, totalUsed: 3}
+
+
+Migliore versione:
+
+{
+  "status": "success",
+  "period": "2026-01",
+  "consultations": {
+    "completed": 2,
+    "scheduled": 1,
+    "total": 3
+  },
+  "unit": "sessions"
+}
+
+
+👉 Così Gemini:
+
+capisce contesto temporale
+
+può fare follow-up
+
+non inventa unità
+
+5️⃣ Il round-trip Gemini → tool → Gemini va bene
+
+Questo è corretto 👍
+Ma puoi migliorarlo:
+
+Aggiungi "next_action_hint"
+{
+  "status": "success",
+  "consultations": {...},
+  "next_action_hint": "offer_booking"
+}
+
+
+Ora Gemini sa:
+
+"Posso proporre nuova prenotazione?"
+
+6️⃣ Architettura target (come lo farei io)
+Nuovo flusso:
+Utente
+  ↓
+LLM intent classification (no tools)
+  ↓
+Router logico
+  ↓
+Attiva SOLO tool necessari
+  ↓
+Gemini AUTO tool use
+  ↓
+Tool returns structured result
+  ↓
+Gemini final response
+
+7️⃣ Bonus: come evitare ALLUCINAZIONI
+
+Aggiungi sempre nel system prompt:
+
+If data is missing, ask clarification before calling tools.
+
+E lato backend:
+
+rifiuta chiamate senza month/year
+
+ritorna error_code
+
+Versione "pro" del tuo caso specifico
+
+Utente:
+
+quante consulenze ho fatto questo mese?
+
+Step 1 — Intent classifier
+consultations_status
+
+Step 2 — Tool call
+get_consultation_stats {
+  "period": "current_month"
+}
+
+Step 3 — Tool response
+{
+  "status": "success",
+  "period": "2026-01",
+  "consultations": {
+    "completed": 2,
+    "scheduled": 1
+  }
+}
+
+Step 4 — Gemini response
+
+Questo mese hai completato 2 consulenze e ne hai 1 programmata. Vuoi prenotarne un’altra?
+
+Verdetto finale
+
+Il tuo sistema:
+
+👉 è funzionante
+👉 NON è scalabile
+👉 è fragile linguisticamente
+👉 è troppo hardcoded
+
+Ma:
+
+✔ struttura giusta
+✔ sei sulla strada corretta
+✔ bastano 2–3 refactor mirati
