@@ -2310,6 +2310,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           if (thoughtSignature) {
             functionCallPart.thought_signature = thoughtSignature;
             console.log(`🔧 [CONSULTATION] Including thought_signature in follow-up request`);
+            console.log(`🔧 [CONSULTATION] functionCallPart structure: ${JSON.stringify(functionCallPart)}`);
+          } else {
+            console.warn(`⚠️ [CONSULTATION] No thought_signature found - using dummy signature for Gemini 3`);
+            // Use dummy signature to skip validation (documented workaround)
+            functionCallPart.thought_signature = "context_engineering_is_the_way_to_go";
           }
           
           const messagesWithFunction = [
