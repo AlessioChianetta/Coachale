@@ -104,7 +104,10 @@ router.post("/:slug/book", async (req: Request, res: Response) => {
     );
     
     const isSlotAvailable = availableSlots.some(slot => {
-      const slotDate = new Date(slot.start);
+      // slot.date is "YYYY-MM-DD", slot.time is "HH:MM"
+      const [slotHour, slotMin] = slot.time.split(':').map(Number);
+      const slotDate = new Date(slot.date);
+      slotDate.setHours(slotHour, slotMin, 0, 0);
       return slotDate.getTime() === scheduledAt.getTime();
     });
     
