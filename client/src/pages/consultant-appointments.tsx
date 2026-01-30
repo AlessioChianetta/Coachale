@@ -454,8 +454,8 @@ function WeeklyCalendarView({
   };
 
   const HOUR_HEIGHT = 60; // 60px per hour slot for better visibility
-  const START_HOUR = 8; // Calendar starts at 8:00
-  const END_HOUR = 20; // Calendar ends at 20:00
+  const START_HOUR = 0; // Calendar starts at 00:00 (h24)
+  const END_HOUR = 24; // Calendar ends at 24:00 (h24)
   const timeSlots = Array.from({ length: END_HOUR - START_HOUR }, (_, index) => index + START_HOUR);
 
   const dayLabels = ["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"];
@@ -557,8 +557,8 @@ function WeeklyCalendarView({
   };
 
   return (
-    <div className="flex gap-6 h-[800px]">
-      {/* Main Calendar Grid */}
+    <div className="flex gap-4 h-[calc(100vh-200px)] min-h-[700px]">
+      {/* Main Calendar Grid - Google Calendar style fullscreen */}
       <Card className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden">
         <CardHeader className="pb-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white">
           <div className="flex items-center justify-between">
@@ -570,7 +570,7 @@ function WeeklyCalendarView({
                 <CardTitle className="text-xl font-bold uppercase tracking-wide">
                   Settimana {format(weekStart, "d", { locale: it })}-{format(weekEnd, "d MMMM yyyy", { locale: it }).toUpperCase()}
                 </CardTitle>
-                <p className="text-blue-100 text-sm">Vista settimanale • Orario 08:00-20:00</p>
+                <p className="text-blue-100 text-sm">Vista settimanale • Orario 00:00-24:00</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -756,8 +756,8 @@ function WeeklyCalendarView({
         </CardContent>
       </Card>
 
-      {/* Right Side Detail Panel */}
-      <Card className="w-80 bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-3xl overflow-hidden flex flex-col">
+      {/* Right Side Detail Panel - Compact */}
+      <Card className="w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl overflow-hidden flex flex-col flex-shrink-0">
         <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-xl">
