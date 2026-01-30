@@ -89,7 +89,10 @@ NON prenota direttamente - mostra un'anteprima al cliente che deve confermare.
 Usa questo tool quando il cliente indica una preferenza:
 - "Vorrei prenotare per giovedì alle 15"
 - "Mi va bene il primo slot disponibile"
-Restituisce i dettagli della prenotazione proposta e un token di conferma.`,
+
+IMPORTANTE: La conferma avviene SOLO via chat. Il cliente deve rispondere con "confermo", "sì", "ok" o simili.
+NON menzionare MAI pulsanti, bottoni o link di conferma - non esistono.
+Chiedi semplicemente al cliente di confermare rispondendo in chat.`,
     parameters: {
       type: "object",
       properties: {

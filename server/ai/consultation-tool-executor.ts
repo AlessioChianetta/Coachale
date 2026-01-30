@@ -687,7 +687,9 @@ async function executeProposeBooking(
         time: args.time,
         duration: args.duration || 60
       },
-      message: `Ho preparato la prenotazione per ${proposedDateTime.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} alle ${args.time}. Confermi?`,
+      message: `Ho preparato la prenotazione per ${proposedDateTime.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} alle ${args.time}. Rispondi "confermo" o "sì" per procedere.`,
+      confirmationMethod: "chat_reply",
+      instructions: "L'utente deve rispondere in chat per confermare (es. 'confermo', 'sì', 'ok'). NON menzionare pulsanti o link di conferma.",
       expiresIn: "10 minuti"
     },
     success: true
