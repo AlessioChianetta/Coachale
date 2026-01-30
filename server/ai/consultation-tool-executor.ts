@@ -654,6 +654,21 @@ async function executeProposeBooking(
   const confirmationToken = crypto.randomBytes(16).toString('hex');
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+  // Invalidate any previous pending bookings for this conversation to prevent "sticky tool mode"
+  // This happens when user changes their mind (e.g., "actually make it 10:00 instead of 09:00")
+  if (conversationId) {
+    const supersededCount = await db
+      .update(pendingBookings)
+      .set({ status: "superseded" })
+      .where(
+        and(
+          eq(pendingBookings.conversationId, conversationId),
+          eq(pendingBookings.status, "awaiting_confirm")
+        )
+      );
+    console.log(`🧹 [PENDING BOOKING] Superseded previous pending bookings for conversation ${conversationId.slice(0, 8)}...`);
+  }
+
   await db.insert(pendingBookings).values({
     token: confirmationToken,
     clientId,

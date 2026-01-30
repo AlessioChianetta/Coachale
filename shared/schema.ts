@@ -280,7 +280,7 @@ export const pendingBookings = pgTable("pending_bookings", {
   consultantId: varchar("consultant_id").references(() => users.id).notNull(),
   startAt: timestamp("start_at", { withTimezone: true }).notNull(),
   duration: integer("duration").notNull().default(60),
-  status: text("status").notNull().$type<"awaiting_confirm" | "confirmed" | "expired" | "cancelled">().default("awaiting_confirm"),
+  status: text("status").notNull().$type<"awaiting_confirm" | "confirmed" | "expired" | "cancelled" | "superseded">().default("awaiting_confirm"),
   conversationId: varchar("conversation_id"),
   publicConversationId: varchar("public_conversation_id"),
   notes: text("notes"),
