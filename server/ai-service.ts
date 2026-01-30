@@ -2276,6 +2276,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     
     let clientTools: any[];
+    let toolsToUse: typeof consultationTools = [];  // Moved outside for validation in function call handler
+    
     if (isConsultationQuery && consultationIntentClassification) {
       // Use ONLY consultation tools for consultation queries (no codeExecution, no fileSearch)
       // Get only the tools needed for this specific intent (with context for memory safety)
@@ -2285,7 +2287,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       // SAFE FALLBACK: If no specific tools allowed, only expose safe read-only tool (getAvailableSlots)
       // This prevents accidentally exposing all tools including confirmBooking
       const safeDefaultTools = consultationTools.filter(t => t.name === 'getAvailableSlots');
-      const toolsToUse = filteredTools.length > 0 ? filteredTools : safeDefaultTools;
+      toolsToUse = filteredTools.length > 0 ? filteredTools : safeDefaultTools;
       clientTools = [{ functionDeclarations: toolsToUse }];
       
       console.log(`\n${'═'.repeat(70)}`);
