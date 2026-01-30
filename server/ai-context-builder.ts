@@ -948,6 +948,15 @@ export async function buildUserContext(
     year: now.getFullYear()
   } : null;
 
+  // DEBUG: Log monthly consultation limit info
+  console.log(`📊 [Monthly Consultation Limit] Client ${clientId.substring(0, 8)}:`);
+  console.log(`   - monthlyConsultationLimit from DB: ${monthlyConsultationLimit}`);
+  console.log(`   - thisMonthConsultations count: ${thisMonthConsultations.length}`);
+  console.log(`   - completedThisMonth: ${completedThisMonth}`);
+  console.log(`   - scheduledThisMonth: ${scheduledThisMonth}`);
+  console.log(`   - totalUsedThisMonth: ${totalUsedThisMonth}`);
+  console.log(`   - monthlyLimitInfo:`, monthlyLimitInfo ? JSON.stringify(monthlyLimitInfo) : 'null');
+
   // ========================================
   // PHASE 2: Optimize University (eliminate N+1)
   // ========================================
