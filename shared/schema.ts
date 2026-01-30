@@ -3122,6 +3122,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
 
   // Google Calendar Integration
   googleCalendarId: text("google_calendar_id"),
+  googleCalendarEmail: text("google_calendar_email"),
   googleRefreshToken: text("google_refresh_token"),
   googleAccessToken: text("google_access_token"),
   googleTokenExpiresAt: timestamp("google_token_expires_at"),
