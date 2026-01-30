@@ -95,6 +95,25 @@ router.post("/:slug/book", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Non puoi prenotare nel passato" });
     }
     
+    // Verify the slot is actually available
+    const requestedDate = new Date(date);
+    const availableSlots = await getPublicAvailableSlots(
+      consultant.consultantId,
+      requestedDate,
+      new Date(requestedDate.getTime() + 24 * 60 * 60 * 1000)
+    );
+    
+    const isSlotAvailable = availableSlots.some(slot => {
+      const slotDate = new Date(slot.start);
+      return slotDate.getTime() === scheduledAt.getTime();
+    });
+    
+    if (!isSlotAvailable) {
+      return res.status(400).json({ 
+        error: "Questo orario non è più disponibile. Seleziona un altro slot." 
+      });
+    }
+    
     const result = await createPublicBooking({
       consultantId: consultant.consultantId,
       clientName,
