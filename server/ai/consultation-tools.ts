@@ -157,6 +157,43 @@ Il tool cercherà la prenotazione per la data specificata e la cancellerà.`,
       },
       required: []
     }
+  },
+  {
+    name: "rescheduleBooking",
+    description: `Riprogramma (sposta) una prenotazione esistente a un nuovo orario.
+IMPORTANTE: Usa questo tool INVECE di cancelBooking+proposeBooking quando il cliente vuole SPOSTARE un appuntamento.
+Usa questo tool quando il cliente dice:
+- "Non posso più venire alle 10, spostiamo alle 11?"
+- "Posso spostare l'appuntamento a un altro giorno?"
+- "Devo cambiare orario, è possibile?"
+- "Riprogramma la consulenza per..."
+
+Questo tool NON conta come nuova prenotazione - è una modifica dell'esistente.
+NON usa il limite mensile del cliente.`,
+    parameters: {
+      type: "object",
+      properties: {
+        originalDate: {
+          type: "string",
+          description: "Data originale della consulenza da spostare (formato YYYY-MM-DD)",
+          format: "date"
+        },
+        newDate: {
+          type: "string",
+          description: "Nuova data desiderata (formato YYYY-MM-DD)",
+          format: "date"
+        },
+        newTime: {
+          type: "string",
+          description: "Nuovo orario desiderato (formato HH:MM, es. '11:00')"
+        },
+        consultationId: {
+          type: "string",
+          description: "ID della consulenza da riprogrammare (opzionale se si specifica originalDate)"
+        }
+      },
+      required: ["newDate", "newTime"]
+    }
   }
 ];
 

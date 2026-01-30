@@ -34,6 +34,8 @@ export async function executeConsultationTool(
         return await executeConfirmBooking(clientId, args, conversationId);
       case "cancelBooking":
         return await executeCancelBooking(clientId, consultantId, args, conversationId);
+      case "rescheduleBooking":
+        return await executeRescheduleBooking(clientId, consultantId, args, conversationId);
       default:
         return {
           toolName,
@@ -1209,6 +1211,317 @@ async function executeCancelBooking(
       calendarEventDeleted,
       message: `Ho cancellato la consulenza del ${formattedDate} alle ${timeStr}.${calendarEventDeleted ? ' L\'evento è stato rimosso anche dal calendario.' : ''}`,
       next_action_hint: "offer_rebooking"
+    },
+    success: true
+  };
+}
+
+/**
+ * Reschedule an existing consultation to a new date/time
+ * This doesn't count against monthly limits - it's a modification, not a new booking
+ */
+async function executeRescheduleBooking(
+  clientId: string,
+  consultantId: string,
+  args: { originalDate?: string; newDate: string; newTime: string; consultationId?: string },
+  conversationId?: string | null
+): Promise<ConsultationToolResult> {
+  console.log(`📅 [RESCHEDULE BOOKING] Attempting to reschedule for client ${clientId.slice(0, 8)}`);
+  console.log(`   Args:`, JSON.stringify(args));
+
+  // Validate required parameters
+  if (!args.newDate || !args.newTime) {
+    return {
+      toolName: "rescheduleBooking",
+      args,
+      result: {
+        error_code: "MISSING_PARAMETERS",
+        message: "Data e ora del nuovo appuntamento sono obbligatorie",
+        suggestion: "Chiedi al cliente quale data e ora preferisce per spostare l'appuntamento"
+      },
+      success: false,
+      error: "Parametri mancanti"
+    };
+  }
+
+  // Find the existing consultation to reschedule
+  let consultation: any = null;
+
+  if (args.consultationId) {
+    // Direct lookup by ID
+    const [found] = await db
+      .select()
+      .from(consultations)
+      .where(
+        and(
+          eq(consultations.id, args.consultationId),
+          eq(consultations.clientId, clientId),
+          eq(consultations.status, "scheduled")
+        )
+      )
+      .limit(1);
+    consultation = found;
+  } else if (args.originalDate) {
+    // Find by original date
+    const startOfDay = new Date(args.originalDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(args.originalDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const [found] = await db
+      .select()
+      .from(consultations)
+      .where(
+        and(
+          eq(consultations.clientId, clientId),
+          eq(consultations.status, "scheduled"),
+          sql`${consultations.scheduledAt} >= ${startOfDay.toISOString()}`,
+          sql`${consultations.scheduledAt} <= ${endOfDay.toISOString()}`
+        )
+      )
+      .limit(1);
+    consultation = found;
+  } else {
+    // Find the most recent upcoming consultation for this client
+    const now = new Date();
+    const [found] = await db
+      .select()
+      .from(consultations)
+      .where(
+        and(
+          eq(consultations.clientId, clientId),
+          eq(consultations.status, "scheduled"),
+          sql`${consultations.scheduledAt} >= ${now.toISOString()}`
+        )
+      )
+      .orderBy(consultations.scheduledAt)
+      .limit(1);
+    consultation = found;
+  }
+
+  if (!consultation) {
+    return {
+      toolName: "rescheduleBooking",
+      args,
+      result: {
+        error_code: "CONSULTATION_NOT_FOUND",
+        message: "Non ho trovato nessuna consulenza da riprogrammare",
+        suggestion: args.originalDate 
+          ? `Non c'è nessuna consulenza programmata per ${args.originalDate}. Verifica la data corretta.`
+          : "Non hai consulenze programmate da spostare."
+      },
+      success: true
+    };
+  }
+
+  const originalScheduledAt = new Date(consultation.scheduledAt);
+  const originalFormattedDate = originalScheduledAt.toLocaleDateString('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  });
+  const originalTimeStr = originalScheduledAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  // Parse new date/time with proper timezone handling (Europe/Rome)
+  // Use the same timezone conversion as the booking flow
+  const localTimeToUtc = (date: Date, timeStr: string, tz: string): Date => {
+    const [hour, min] = timeStr.split(':').map(Number);
+    if (isNaN(hour) || isNaN(min)) {
+      throw new Error(`Invalid time format: ${timeStr}`);
+    }
+    const dateStr = date.toISOString().slice(0, 10);
+    const localStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`;
+    const localDate = new Date(localStr);
+    
+    try {
+      const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: tz }));
+      const offsetMinutes = (utcDate.getTime() - tzDate.getTime()) / (60 * 1000);
+      return new Date(localDate.getTime() + offsetMinutes * 60 * 1000);
+    } catch {
+      // Default to Europe/Rome winter time (UTC+1)
+      return new Date(localDate.getTime() - 60 * 60 * 1000);
+    }
+  };
+
+  // Validate time format
+  const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+  if (!timeRegex.test(args.newTime)) {
+    return {
+      toolName: "rescheduleBooking",
+      args,
+      result: {
+        error_code: "INVALID_TIME_FORMAT",
+        message: "Formato orario non valido. Usa HH:MM (es. 11:00)",
+        suggestion: "Specifica l'orario nel formato HH:MM"
+      },
+      success: true
+    };
+  }
+
+  const newDate = new Date(args.newDate);
+  const newScheduledAt = localTimeToUtc(newDate, args.newTime, 'Europe/Rome');
+
+  // Validate new time is in the future
+  const now = new Date();
+  if (newScheduledAt <= now) {
+    return {
+      toolName: "rescheduleBooking",
+      args,
+      result: {
+        error_code: "PAST_DATE",
+        message: "Non puoi riprogrammare una consulenza nel passato",
+        suggestion: "Scegli una data e ora futura"
+      },
+      success: true
+    };
+  }
+
+  // Check if new slot is available (no other consultations at the same time)
+  const slotStart = new Date(newScheduledAt);
+  const slotEnd = new Date(newScheduledAt);
+  slotEnd.setMinutes(slotEnd.getMinutes() + (consultation.duration || 60));
+
+  const conflictingConsultations = await db
+    .select()
+    .from(consultations)
+    .where(
+      and(
+        eq(consultations.consultantId, consultantId),
+        eq(consultations.status, "scheduled"),
+        // Exclude the current consultation being rescheduled
+        sql`${consultations.id} != ${consultation.id}`,
+        // Check for time overlap
+        sql`${consultations.scheduledAt} < ${slotEnd.toISOString()}`,
+        sql`${consultations.scheduledAt} + INTERVAL '1 minute' * ${consultation.duration || 60} > ${slotStart.toISOString()}`
+      )
+    );
+
+  if (conflictingConsultations.length > 0) {
+    return {
+      toolName: "rescheduleBooking",
+      args,
+      result: {
+        error_code: "SLOT_UNAVAILABLE",
+        message: "Lo slot richiesto non è disponibile",
+        suggestion: "Il consulente ha già un appuntamento in quel momento. Prova un altro orario."
+      },
+      success: true
+    };
+  }
+
+  // Update the consultation with new date/time
+  await db
+    .update(consultations)
+    .set({
+      scheduledAt: newScheduledAt,
+      updatedAt: new Date(),
+      notes: consultation.notes 
+        ? `${consultation.notes}\n[Riprogrammato da ${originalFormattedDate} ${originalTimeStr}]`
+        : `[Riprogrammato da ${originalFormattedDate} ${originalTimeStr}]`
+    })
+    .where(eq(consultations.id, consultation.id));
+
+  console.log(`✅ [RESCHEDULE BOOKING] Consultation ${consultation.id} rescheduled to ${newScheduledAt.toISOString()}`);
+
+  // Update Google Calendar event if it exists
+  let calendarUpdated = false;
+  if (consultation.googleCalendarEventId) {
+    try {
+      console.log(`📅 [RESCHEDULE BOOKING] Updating Google Calendar event ${consultation.googleCalendarEventId}...`);
+      
+      // Get valid access token
+      const accessToken = await getValidAccessToken(consultantId);
+      if (accessToken) {
+        // Fetch client info for the calendar event
+        const [client] = await db.select().from(users).where(eq(users.id, clientId)).limit(1);
+        const [consultant] = await db.select().from(users).where(eq(users.id, consultantId)).limit(1);
+        
+        const eventEndTime = new Date(newScheduledAt);
+        eventEndTime.setMinutes(eventEndTime.getMinutes() + (consultation.duration || 60));
+
+        // Update the calendar event using PATCH
+        const response = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events/${consultation.googleCalendarEventId}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              start: {
+                dateTime: newScheduledAt.toISOString(),
+                timeZone: 'Europe/Rome',
+              },
+              end: {
+                dateTime: eventEndTime.toISOString(),
+                timeZone: 'Europe/Rome',
+              },
+              summary: `Consulenza: ${client?.firstName || 'Cliente'} ${client?.lastName || ''} (riprogrammata)`,
+              description: `Consulenza riprogrammata per ${client?.firstName || 'Cliente'} ${client?.lastName || ''}.\n\nOriginariamente: ${originalFormattedDate} alle ${originalTimeStr}`,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          calendarUpdated = true;
+          console.log(`✅ [RESCHEDULE BOOKING] Google Calendar event updated`);
+        } else {
+          console.error(`❌ [RESCHEDULE BOOKING] Failed to update Calendar event:`, await response.text());
+        }
+      }
+    } catch (calendarError: any) {
+      console.error(`❌ [RESCHEDULE BOOKING] Failed to update Calendar event:`, calendarError.message);
+      // Continue even if calendar update fails - the consultation is rescheduled in DB
+    }
+  }
+
+  const newFormattedDate = newScheduledAt.toLocaleDateString('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  const newTimeStr = newScheduledAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  // Clear any pending booking flow state to prevent "sticky tool mode"
+  if (conversationId) {
+    try {
+      await clearBookingFlowState(conversationId);
+      console.log(`🧹 [RESCHEDULE BOOKING] Cleared booking flow state for conversation ${conversationId.slice(0, 8)}`);
+    } catch (flowError) {
+      console.warn(`⚠️ [RESCHEDULE BOOKING] Failed to clear flow state:`, flowError);
+    }
+  }
+
+  // Build appropriate message based on calendar update status
+  let message = `Ho spostato la consulenza dal ${originalFormattedDate} alle ${originalTimeStr} → ${newFormattedDate} alle ${newTimeStr}.`;
+  if (consultation.googleCalendarEventId) {
+    message += calendarUpdated 
+      ? ' Il calendario è stato aggiornato automaticamente.' 
+      : ' (Nota: non sono riuscito ad aggiornare il calendario Google, potrebbe essere necessario aggiornarlo manualmente.)';
+  }
+
+  return {
+    toolName: "rescheduleBooking",
+    args,
+    result: {
+      success: true,
+      rescheduled: true,
+      original: {
+        date: originalFormattedDate,
+        time: originalTimeStr
+      },
+      new: {
+        id: consultation.id,
+        date: newFormattedDate,
+        time: newTimeStr,
+        duration: consultation.duration || 60
+      },
+      calendarUpdated,
+      message,
+      next_action_hint: "confirm_reschedule"
     },
     success: true
   };

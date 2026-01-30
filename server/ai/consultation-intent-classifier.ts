@@ -7,6 +7,7 @@ export type ConsultationIntent =
   | 'availability_check'
   | 'booking_confirm'
   | 'booking_cancel'
+  | 'booking_reschedule'
   | 'informational'
   | 'other';
 
@@ -70,10 +71,16 @@ INTENTS:
    Examples: "annulla", "disdici l'appuntamento", "cancella la consulenza", "rimuovi l'appuntamento"
    INCLUDES: Follow-up insistence after a cancel request
 
-6. informational - General questions about consultations (no DB lookup needed)
+6. booking_reschedule - User wants to MOVE/CHANGE an existing booking to a different time (NOT cancel + new)
+   Examples: "non posso più venire alle 10, spostiamo alle 11?", "posso cambiare orario?", 
+   "devo spostare l'appuntamento", "possiamo riprogrammare?", "c'è posto alle 11 invece delle 10?"
+   KEY DIFFERENCE FROM booking_cancel: User still wants the consultation, just at a different time
+   KEY DIFFERENCE FROM booking_request: User already HAS a booking and wants to MODIFY it
+
+7. informational - General questions about consultations (no DB lookup needed)
    Examples: "cos'è una consulenza?", "come funziona?"
 
-7. other - Message is CLEARLY not about consultations AND no relevant context exists
+8. other - Message is CLEARLY not about consultations AND no relevant context exists
    Examples: "che tempo fa?", "parlami degli esercizi"
    WARNING: Do NOT use "other" if recent context was about consultations!
 
@@ -287,7 +294,8 @@ export function shouldUseConsultationTools(
     'booking_request', 
     'availability_check',
     'booking_confirm',
-    'booking_cancel'
+    'booking_cancel',
+    'booking_reschedule'
   ];
   
   if (!actionableIntents.includes(classification.intent)) {
@@ -317,7 +325,7 @@ export function getToolsForIntent(
 ): string[] {
   switch (classification.intent) {
     case 'consultations_status':
-      return ['getClientConsultationStatus'];
+      return ['getConsultationStatus'];
       
     case 'availability_check':
       return ['getAvailableSlots'];
@@ -336,6 +344,9 @@ export function getToolsForIntent(
       
     case 'booking_cancel':
       return ['cancelBooking'];
+      
+    case 'booking_reschedule':
+      return ['rescheduleBooking'];
       
     default:
       return [];
