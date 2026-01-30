@@ -2192,8 +2192,15 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     if (isConsultationQuery) {
       // Use ONLY consultation tools for consultation queries (no codeExecution, no fileSearch)
       clientTools = [{ functionDeclarations: consultationTools }];
-      console.log(`🛠️  [TOOLS] Client chat: consultationTools=YES (${consultationTools.length} tools), codeExecution=NO, fileSearch=NO`);
-      console.log(`   📋 Consultation query detected - using function calling for accurate data`);
+      console.log(`\n${'═'.repeat(70)}`);
+      console.log(`🔧 FUNCTION CALLING MODE ACTIVE [CONSULTATION QUERY]`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📋 Intent: ${intent}`);
+      console.log(`   🛠️  Tools: ${consultationTools.map(t => t.name).join(', ')}`);
+      console.log(`   ⚙️  Mode: ANY (forced function calling)`);
+      console.log(`   ❌ codeExecution: DISABLED`);
+      console.log(`   ❌ fileSearch: DISABLED`);
+      console.log(`${'═'.repeat(70)}\n`);
     } else {
       // Use standard tools for all other queries
       clientTools = [{ codeExecution: {} }];
@@ -2219,6 +2226,15 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         }),
       },
       tools: clientTools,
+      // Force function calling when consultation tools are active
+      ...(isConsultationQuery && {
+        toolConfig: {
+          functionCallingConfig: {
+            mode: 'ANY' as const,
+            allowedFunctionNames: consultationTools.map(t => t.name)
+          }
+        }
+      }),
     });
 
     // Stream with automatic retry and heartbeat using unified retry manager
