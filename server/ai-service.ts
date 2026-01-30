@@ -2210,83 +2210,207 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       console.log(`🛠️  [TOOLS] Client chat: codeExecution=YES, fileSearch=${fileSearchTool ? 'YES' : 'NO'}`);
     }
     
-    const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: dynamicConfig.model,
-      contents: geminiMessages.map(msg => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
-      generationConfig: {
-        systemInstruction: systemPrompt,
-        ...(dynamicConfig.useThinking && dynamicConfig.thinkingLevel && {
-          thinkingConfig: {
-            thinkingLevel: dynamicConfig.thinkingLevel,
-            includeThoughts: true
-          }
-        }),
-      },
-      tools: clientTools,
-      // Force function calling when consultation tools are active
-      ...(isConsultationQuery && {
-        toolConfig: {
-          functionCallingConfig: {
-            mode: 'ANY' as const,
-            allowedFunctionNames: consultationTools.map(t => t.name)
-          }
-        }
-      }),
-    });
-
-    // Stream with automatic retry and heartbeat using unified retry manager
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSULTATION QUERY: Use non-streaming generateContent (function calls not streamed)
+    // ═══════════════════════════════════════════════════════════════════════
     let clientUsageMetadata: GeminiUsageMetadata | undefined;
-    let pendingFunctionCall: { functionName: string; args: Record<string, any> } | null = null;
     
-    for await (const chunk of streamWithRetriesAdapter(makeStreamAttempt, conversation.id, providerMetadata)) {
-      // DEBUG: Log all chunk types when in function calling mode
-      if (isConsultationQuery) {
-        console.log(`📦 [STREAM CHUNK] type=${chunk.type}, hasContent=${!!(chunk as any).content}, hasFunctionName=${!!(chunk as any).functionName}`);
-      }
+    if (isConsultationQuery) {
+      console.log(`🔧 [CONSULTATION] Using non-streaming mode for function calling`);
       
-      yield chunk;
+      // Emit start event
+      yield {
+        type: 'start' as const,
+        conversationId: conversation.id,
+        provider: providerMetadata,
+      };
       
-      // Accumulate delta content for DB storage
-      if (chunk.type === 'delta' && chunk.content) {
-        accumulatedMessage += chunk.content;
-      }
-      
-      // Accumulate thinking content for DB storage
-      if (chunk.type === 'thinking' && chunk.content) {
-        accumulatedThinking += chunk.content;
-      }
-      
-      // Capture usageMetadata from complete event
-      if (chunk.type === 'complete' && chunk.usageMetadata) {
-        clientUsageMetadata = chunk.usageMetadata;
-      }
-      
-      // Track function calls for consultation tools
-      if (chunk.type === 'function_call') {
-        console.log(`🔧 [CONSULTATION TOOL] Detected function_call chunk:`, JSON.stringify(chunk));
-        if ((chunk as any).functionName && isConsultationTool((chunk as any).functionName)) {
-          pendingFunctionCall = {
-            functionName: (chunk as any).functionName,
-            args: (chunk as any).args || {}
+      try {
+        // First call: Get function call from AI
+        const initialResponse = await aiClient.generateContent({
+          model: dynamicConfig.model,
+          contents: geminiMessages.map(msg => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }],
+          })),
+          generationConfig: {
+            systemInstruction: systemPrompt,
+          },
+          tools: clientTools,
+          toolConfig: {
+            functionCallingConfig: {
+              mode: 'ANY' as const,
+              allowedFunctionNames: consultationTools.map(t => t.name)
+            }
+          },
+        });
+        
+        // Extract function call from response
+        const candidate = initialResponse.response.candidates?.[0];
+        const parts = candidate?.content?.parts || [];
+        let functionCall: { name: string; args: Record<string, any> } | null = null;
+        
+        for (const part of parts) {
+          if ((part as any).functionCall) {
+            functionCall = {
+              name: (part as any).functionCall.name,
+              args: (part as any).functionCall.args || {}
+            };
+            break;
+          }
+        }
+        
+        if (!functionCall) {
+          console.error(`🔧 [CONSULTATION] No function call in response despite mode=ANY`);
+          // Fallback: return text response if any
+          const textContent = initialResponse.response.text() || "Mi dispiace, non sono riuscito a elaborare la richiesta.";
+          accumulatedMessage = textContent;
+          yield {
+            type: 'delta' as const,
+            conversationId: conversation.id,
+            provider: providerMetadata,
+            content: textContent,
           };
-          console.log(`🔧 [CONSULTATION TOOL] Will execute: ${pendingFunctionCall.functionName} with args:`, JSON.stringify(pendingFunctionCall.args));
+        } else {
+          console.log(`🔧 [CONSULTATION] Function call detected: ${functionCall.name}`);
+          console.log(`   Args: ${JSON.stringify(functionCall.args)}`);
+          
+          // Get consultant ID and execute tool
+          const consultantId = userContext.consultantId;
+          if (!consultantId) {
+            throw new Error('No consultantId found in userContext');
+          }
+          
+          const toolResult = await executeConsultationTool(
+            functionCall.name,
+            functionCall.args,
+            clientId,
+            consultantId
+          );
+          
+          console.log(`🔧 [CONSULTATION] Tool result: success=${toolResult.success}`);
+          console.log(`   Data: ${JSON.stringify(toolResult.result)}`);
+          
+          // Second call: Get natural language response with function result
+          const messagesWithFunction = [
+            ...geminiMessages.map(msg => ({
+              role: msg.role === "assistant" ? "model" : "user",
+              parts: [{ text: msg.content }],
+            })),
+            {
+              role: "model" as const,
+              parts: [{
+                functionCall: {
+                  name: functionCall.name,
+                  args: functionCall.args
+                }
+              }]
+            },
+            {
+              role: "user" as const,
+              parts: [{
+                functionResponse: {
+                  name: functionCall.name,
+                  response: toolResult.result
+                }
+              }]
+            }
+          ];
+          
+          const followUpResponse = await aiClient.generateContent({
+            model: dynamicConfig.model,
+            contents: messagesWithFunction,
+            generationConfig: {
+              systemInstruction: systemPrompt,
+            },
+            tools: clientTools,
+          });
+          
+          const finalText = followUpResponse.response.text() || "";
+          console.log(`🔧 [CONSULTATION] Final response: ${finalText.length} chars`);
+          
+          accumulatedMessage = finalText;
+          yield {
+            type: 'delta' as const,
+            conversationId: conversation.id,
+            provider: providerMetadata,
+            content: finalText,
+          };
+        }
+        
+        // Complete event
+        yield {
+          type: 'complete' as const,
+          conversationId: conversation.id,
+          provider: providerMetadata,
+          content: accumulatedMessage,
+        };
+        
+      } catch (error: any) {
+        console.error(`🔧 [CONSULTATION] Error:`, error.message);
+        accumulatedMessage = "Mi dispiace, si è verificato un errore nel recuperare i dati delle consulenze.";
+        yield {
+          type: 'delta' as const,
+          conversationId: conversation.id,
+          provider: providerMetadata,
+          content: accumulatedMessage,
+        };
+        yield {
+          type: 'complete' as const,
+          conversationId: conversation.id,
+          provider: providerMetadata,
+          content: accumulatedMessage,
+        };
+      }
+    } else {
+      // ═══════════════════════════════════════════════════════════════════════
+      // STANDARD QUERY: Use streaming as normal
+      // ═══════════════════════════════════════════════════════════════════════
+      const makeStreamAttempt = () => aiClient.generateContentStream({
+        model: dynamicConfig.model,
+        contents: geminiMessages.map(msg => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        })),
+        generationConfig: {
+          systemInstruction: systemPrompt,
+          ...(dynamicConfig.useThinking && dynamicConfig.thinkingLevel && {
+            thinkingConfig: {
+              thinkingLevel: dynamicConfig.thinkingLevel,
+              includeThoughts: true
+            }
+          }),
+        },
+        tools: clientTools,
+      });
+
+      for await (const chunk of streamWithRetriesAdapter(makeStreamAttempt, conversation.id, providerMetadata)) {
+        yield chunk;
+        
+        // Accumulate delta content for DB storage
+        if (chunk.type === 'delta' && chunk.content) {
+          accumulatedMessage += chunk.content;
+        }
+        
+        // Accumulate thinking content for DB storage
+        if (chunk.type === 'thinking' && chunk.content) {
+          accumulatedThinking += chunk.content;
+        }
+        
+        // Capture usageMetadata from complete event
+        if (chunk.type === 'complete' && chunk.usageMetadata) {
+          clientUsageMetadata = chunk.usageMetadata;
         }
       }
     }
-    
-    // DEBUG: Log after streaming loop
-    if (isConsultationQuery) {
-      console.log(`📦 [STREAM COMPLETE] pendingFunctionCall:`, pendingFunctionCall ? JSON.stringify(pendingFunctionCall) : 'null');
-    }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FUNCTION CALL HANDLING - Execute consultation tool and get AI response
+    // LEGACY FUNCTION CALL HANDLING - Kept for reference but no longer used
     // ═══════════════════════════════════════════════════════════════════════
-    if (pendingFunctionCall) {
-      console.log(`🔧 [CONSULTATION TOOL] Executing tool: ${pendingFunctionCall.functionName}`);
+    const pendingFunctionCall: { functionName: string; args: Record<string, any> } | null = null;
+    if (false && pendingFunctionCall) {
+      // This block is now disabled - function calling is handled above for consultation queries
+      console.log(`🔧 [CONSULTATION TOOL] Executing tool: ${(pendingFunctionCall as any).functionName}`);
       
       // Get consultant ID from user context
       const consultantId = userContext.consultantId;
@@ -2296,8 +2420,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         try {
           // Execute the consultation tool
           const toolResult = await executeConsultationTool(
-            pendingFunctionCall.functionName,
-            pendingFunctionCall.args,
+            (pendingFunctionCall as any).functionName,
+            (pendingFunctionCall as any).args,
             clientId,
             consultantId
           );
