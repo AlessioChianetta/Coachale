@@ -1,0 +1,137 @@
+# Booking System Atomico - Modifiche Database e Codice
+
+## Data: 30 Gennaio 2026
+
+---
+
+## Fase 1: Schema Database
+
+### 1.1 Tabella `pending_bookings`
+
+```sql
+CREATE TABLE IF NOT EXISTS pending_bookings (
+  token VARCHAR(32) PRIMARY KEY,
+  client_id VARCHAR NOT NULL REFERENCES users(id),
+  consultant_id VARCHAR NOT NULL REFERENCES users(id),
+  start_at TIMESTAMPTZ NOT NULL,
+  duration INTEGER NOT NULL DEFAULT 60,
+  status VARCHAR(20) NOT NULL DEFAULT 'awaiting_confirm',
+  conversation_id VARCHAR,
+  public_conversation_id VARCHAR,
+  notes TEXT,
+  consultation_id VARCHAR REFERENCES consultations(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  confirmed_at TIMESTAMPTZ,
+  
+  CONSTRAINT pending_bookings_status_check 
+    CHECK (status IN ('awaiting_confirm', 'confirmed', 'expired', 'cancelled'))
+);
+```
+
+### 1.2 Indici
+
+```sql
+-- Indice per lookup hasPendingBooking (usato dal classifier)
+CREATE INDEX idx_pending_bookings_conversation_status 
+  ON pending_bookings(conversation_id, status);
+
+-- Indice per public conversation lookup
+CREATE INDEX idx_pending_bookings_public_conversation_status 
+  ON pending_bookings(public_conversation_id, status);
+
+-- Partial unique index: un solo hold per slot quando awaiting_confirm
+CREATE UNIQUE INDEX idx_pending_bookings_slot_hold 
+  ON pending_bookings(consultant_id, start_at) 
+  WHERE status = 'awaiting_confirm';
+```
+
+### 1.3 Unique Constraint su `consultations` (hard safety)
+
+```sql
+-- Previene double booking a livello finale
+CREATE UNIQUE INDEX idx_consultations_slot_unique 
+  ON consultations(consultant_id, scheduled_at);
+```
+
+---
+
+## Fase 2: Refactoring Tool Executor
+
+### 2.1 File: `server/ai/consultation-tool-executor.ts`
+
+**Modifiche:**
+- Rimuovere `pendingBookings: Map<string, ...>` (in memoria)
+- `proposeBooking`: INSERT su `pending_bookings` in transazione
+- `confirmBooking`: UPDATE atomico + INSERT `consultations`
+- Gestione `SLOT_TAKEN` con cleanup pending
+- Idempotenza: se già confirmed, ritorna stessa consultation
+- Fallback senza token: cerca per conversation_id
+
+### 2.2 Timezone handling
+
+- Parse `date` + `time` input come Europe/Rome
+- Converti a UTC per storage
+- Output: converti da UTC a Europe/Rome per display
+
+---
+
+## Fase 3: AI Service Integration
+
+### 3.1 File: `server/booking/booking-service.ts`
+
+**Nuova funzione:**
+```typescript
+export async function getPendingBookingState(
+  conversationId: string | null,
+  publicConversationId: string | null
+): Promise<{ token: string; startAt: Date } | null>
+```
+
+### 3.2 File: `server/ai-service.ts`
+
+**Modifiche:**
+- Chiamare `getPendingBookingState` prima del classifier
+- Popolare `hasPendingBooking` e `pendingBookingToken`
+- Sticky tool mode: se pending esiste, `isConsultationQuery = true` sempre
+
+### 3.3 File: `server/ai/consultation-intent-classifier.ts`
+
+**Modifiche:**
+- Aggiungere context nel prompt: `Context: hasPendingBooking=true`
+
+---
+
+## Fase 4: Cron Job
+
+### 4.1 Expiry automatico
+
+```sql
+UPDATE pending_bookings 
+SET status = 'expired' 
+WHERE status = 'awaiting_confirm' AND expires_at < NOW();
+```
+
+Eseguire ogni 2 minuti.
+
+---
+
+## Esecuzione SQL
+
+### Comandi eseguiti:
+
+1. ✅ CREATE TABLE pending_bookings - COMPLETATO
+2. ✅ CREATE INDEX idx_pending_bookings_conversation_status - COMPLETATO
+3. ✅ CREATE INDEX idx_pending_bookings_public_conversation_status - COMPLETATO
+4. ✅ CREATE UNIQUE INDEX idx_pending_bookings_slot_hold - COMPLETATO
+5. ✅ CREATE UNIQUE INDEX idx_consultations_slot_unique - COMPLETATO
+   - Nota: eliminati 2 duplicati esistenti su 2025-12-15 15:00:00 prima della creazione
+
+---
+
+## Note Implementazione
+
+- Token generato con `crypto.randomBytes(16).toString('hex')` PRIMA dell'INSERT
+- `start_at` sempre in UTC (TIMESTAMPTZ)
+- `expires_at` = created_at + 10 minuti
+- `confirmBooking` verifica anche `expires_at > NOW()` indipendentemente dal cron
