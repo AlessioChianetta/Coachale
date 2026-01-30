@@ -2003,10 +2003,175 @@ function ConsultantCalendarSettingsPanel() {
                   </li>
                 </ul>
               </div>
+
+              {/* Slot Test Section */}
+              <SlotTestPanel />
             </>
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+interface SlotExplanation {
+  time: string;
+  available: boolean;
+  reason?: string;
+  blockingEvent?: string;
+}
+
+interface DaySlotExplanation {
+  date: string;
+  dateFormatted: string;
+  dayOfWeek: string;
+  dayEnabled: boolean;
+  slots: SlotExplanation[];
+}
+
+function SlotTestPanel() {
+  const [showSlotTest, setShowSlotTest] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  });
+  
+  const { data: slotData, isLoading, refetch } = useQuery<{ days: DaySlotExplanation[] }>({
+    queryKey: ["/api/consultant/slot-test", selectedDate],
+    queryFn: async () => {
+      const endDate = new Date(selectedDate);
+      endDate.setDate(endDate.getDate() + 7);
+      const response = await fetch(
+        `/api/consultant/slot-test?startDate=${selectedDate}&endDate=${endDate.toISOString().slice(0, 10)}`,
+        { headers: getAuthHeaders() }
+      );
+      if (!response.ok) throw new Error("Failed to fetch slot test");
+      return response.json();
+    },
+    enabled: showSlotTest,
+  });
+
+  return (
+    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Activity className="w-5 h-5 text-purple-500" />
+          <h4 className="font-semibold text-gray-700 dark:text-gray-300">Test Disponibilità Slot</h4>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowSlotTest(!showSlotTest)}
+        >
+          {showSlotTest ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />}
+          {showSlotTest ? "Nascondi" : "Mostra Test"}
+        </Button>
+      </div>
+
+      {showSlotTest && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Data inizio:</label>
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-40"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+            </div>
+          ) : slotData?.days ? (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto">
+              {slotData.days.map((day) => (
+                <div key={day.date} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CalendarDays className="w-4 h-4 text-purple-500" />
+                    <span className="font-medium text-gray-800 dark:text-gray-200 capitalize">
+                      {day.dateFormatted}
+                    </span>
+                    {!day.dayEnabled && (
+                      <Badge variant="secondary" className="text-xs">
+                        Giorno non lavorativo
+                      </Badge>
+                    )}
+                  </div>
+
+                  {day.dayEnabled ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {day.slots.map((slot, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-2 rounded-lg text-sm ${
+                            slot.available
+                              ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700"
+                              : "bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {slot.available ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-red-600" />
+                            )}
+                            <span className={`font-medium ${slot.available ? "text-green-800 dark:text-green-300" : "text-red-800 dark:text-red-300"}`}>
+                              {slot.time}
+                            </span>
+                          </div>
+                          {!slot.available && (
+                            <div className="mt-1 text-xs text-red-600 dark:text-red-400">
+                              {slot.blockingEvent ? (
+                                <span title={slot.blockingEvent} className="truncate block">
+                                  {slot.blockingEvent.length > 30 ? slot.blockingEvent.slice(0, 30) + "..." : slot.blockingEvent}
+                                </span>
+                              ) : (
+                                <span>{slot.reason}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                      Nessuno slot disponibile - il giorno non è configurato come lavorativo
+                    </p>
+                  )}
+
+                  {day.dayEnabled && day.slots.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex gap-4 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Disponibili: {day.slots.filter(s => s.available).length}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <XCircle className="w-3 h-3 text-red-500" />
+                        Occupati: {day.slots.filter(s => !s.available).length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Nessun dato disponibile
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1709,6 +1709,243 @@ export async function getPublicAvailableSlots(
   return availableSlots;
 }
 
+export interface SlotExplanation {
+  time: string;
+  available: boolean;
+  reason?: string;
+  blockingEvent?: string;
+}
+
+export interface DaySlotExplanation {
+  date: string;
+  dateFormatted: string;
+  dayOfWeek: string;
+  dayEnabled: boolean;
+  slots: SlotExplanation[];
+}
+
+export async function getSlotAvailabilityExplanation(
+  consultantId: string,
+  startDate?: Date,
+  endDate?: Date
+): Promise<DaySlotExplanation[]> {
+  const [settings] = await db
+    .select()
+    .from(consultantAvailabilitySettings)
+    .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+    .limit(1);
+
+  if (!settings) {
+    return [];
+  }
+
+  const now = new Date();
+  const appointmentDuration = settings.appointmentDuration || 60;
+  const bufferBefore = settings.bufferBefore || 15;
+  const bufferAfter = settings.bufferAfter || 15;
+  const minHoursNotice = settings.minHoursNotice || 24;
+  const maxDaysAhead = settings.maxDaysAhead || 30;
+  const timezone = settings.timezone || 'Europe/Rome';
+  
+  const availabilityConfig: Record<string, DayAvailability> = {};
+  
+  if (settings.appointmentAvailability && typeof settings.appointmentAvailability === 'object') {
+    const rawConfig = settings.appointmentAvailability as Record<string, any>;
+    for (const [dayId, config] of Object.entries(rawConfig)) {
+      if (config && typeof config === 'object' && 'enabled' in config) {
+        if ('slots' in config && Array.isArray(config.slots)) {
+          availabilityConfig[dayId] = config as DayAvailability;
+        } else if ('start' in config && 'end' in config) {
+          availabilityConfig[dayId] = {
+            enabled: config.enabled,
+            slots: [{ start: config.start, end: config.end }]
+          };
+        } else if (config.enabled) {
+          availabilityConfig[dayId] = {
+            enabled: true,
+            slots: [
+              { start: "09:00", end: "13:00" },
+              { start: "15:00", end: "18:00" }
+            ]
+          };
+        } else {
+          availabilityConfig[dayId] = {
+            enabled: false,
+            slots: [{ start: "09:00", end: "18:00" }]
+          };
+        }
+      }
+    }
+  }
+  
+  if (Object.keys(availabilityConfig).length === 0) {
+    for (let d = 1; d <= 5; d++) {
+      availabilityConfig[d.toString()] = { 
+        enabled: true, 
+        slots: [
+          { start: "09:00", end: "13:00" },
+          { start: "15:00", end: "18:00" }
+        ]
+      };
+    }
+    availabilityConfig["0"] = { enabled: false, slots: [{ start: "09:00", end: "18:00" }] };
+    availabilityConfig["6"] = { enabled: false, slots: [{ start: "09:00", end: "18:00" }] };
+  }
+
+  const minStartTime = new Date(now.getTime() + minHoursNotice * 60 * 60 * 1000);
+  const effectiveStartDate = startDate && startDate > now ? startDate : now;
+  const maxEndDate = new Date(now.getTime() + maxDaysAhead * 24 * 60 * 60 * 1000);
+  const effectiveEndDate = endDate && endDate < maxEndDate ? endDate : maxEndDate;
+
+  const existingBookings = await db
+    .select({
+      appointmentDate: appointmentBookings.appointmentDate,
+      appointmentTime: appointmentBookings.appointmentTime,
+    })
+    .from(appointmentBookings)
+    .where(
+      and(
+        eq(appointmentBookings.consultantId, consultantId),
+        or(
+          eq(appointmentBookings.status, "confirmed"),
+          eq(appointmentBookings.status, "pending")
+        )
+      )
+    );
+
+  const localTimeToUtc = (date: Date, timeStr: string, tz: string): Date => {
+    const [hour, min] = timeStr.split(':').map(Number);
+    const dateStr = date.toISOString().slice(0, 10);
+    const localStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`;
+    const localDate = new Date(localStr);
+    
+    try {
+      const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: tz }));
+      const offsetMinutes = (utcDate.getTime() - tzDate.getTime()) / (60 * 1000);
+      return new Date(localDate.getTime() + offsetMinutes * 60 * 1000);
+    } catch {
+      return new Date(localDate.getTime() - 60 * 60 * 1000);
+    }
+  };
+
+  interface BusyRange { start: Date; end: Date; summary: string }
+  const busyRanges: BusyRange[] = existingBookings.map(b => {
+    const start = localTimeToUtc(new Date(b.appointmentDate), b.appointmentTime, timezone);
+    const end = new Date(start.getTime() + appointmentDuration * 60 * 1000);
+    return { start, end, summary: `Prenotazione DB ore ${b.appointmentTime}` };
+  });
+
+  try {
+    const calendarEvents = await listEvents(consultantId, effectiveStartDate, effectiveEndDate);
+    for (const event of calendarEvents) {
+      busyRanges.push({
+        start: event.start,
+        end: event.end,
+        summary: event.summary || 'Evento Google Calendar'
+      });
+    }
+  } catch (error) {
+    // Continue without calendar events
+  }
+
+  const findBlockingEvent = (slotStart: Date, slotEnd: Date): string | undefined => {
+    for (const busy of busyRanges) {
+      if (slotStart < busy.end && slotEnd > busy.start) {
+        const startTime = busy.start.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
+        const endTime = busy.end.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
+        return `${busy.summary} (${startTime}-${endTime})`;
+      }
+    }
+    return undefined;
+  };
+
+  const dayNames = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
+  const result: DaySlotExplanation[] = [];
+
+  const current = new Date(effectiveStartDate);
+  current.setHours(0, 0, 0, 0);
+
+  while (current <= effectiveEndDate) {
+    const dayOfWeek = current.getDay();
+    const dayName = dayNames[dayOfWeek];
+    const dayConfig = availabilityConfig[dayOfWeek.toString()];
+    
+    const dayExplanation: DaySlotExplanation = {
+      date: current.toISOString().slice(0, 10),
+      dateFormatted: current.toLocaleDateString('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      }),
+      dayOfWeek: dayName,
+      dayEnabled: dayConfig?.enabled || false,
+      slots: []
+    };
+
+    if (!dayConfig?.enabled) {
+      result.push(dayExplanation);
+      current.setDate(current.getDate() + 1);
+      continue;
+    }
+
+    for (const timeSlot of dayConfig.slots) {
+      const [startHour, startMin] = (timeSlot.start || "09:00").split(':').map(Number);
+      const [endHour, endMin] = (timeSlot.end || "18:00").split(':').map(Number);
+      
+      let slotStartHour = startHour;
+      let slotStartMin = startMin;
+
+      while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
+        const slotTimeDisplay = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`;
+        
+        const slotStart = localTimeToUtc(current, slotTimeDisplay, timezone);
+        const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
+        
+        const slotEndLocalHour = slotStartHour + Math.floor((slotStartMin + appointmentDuration) / 60);
+        const slotEndLocalMin = (slotStartMin + appointmentDuration) % 60;
+        if (slotEndLocalHour > endHour || (slotEndLocalHour === endHour && slotEndLocalMin > endMin)) {
+          break;
+        }
+
+        const slotExplanation: SlotExplanation = { time: slotTimeDisplay, available: true };
+
+        if (current > maxEndDate) {
+          slotExplanation.available = false;
+          slotExplanation.reason = `Oltre il limite massimo (${maxDaysAhead} giorni)`;
+        } else if (slotStart <= minStartTime) {
+          slotExplanation.available = false;
+          slotExplanation.reason = `Troppo presto (minimo ${minHoursNotice}h di preavviso)`;
+        } else {
+          const bufferedStart = new Date(slotStart.getTime() - bufferBefore * 60 * 1000);
+          const bufferedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
+          
+          const blockingEvent = findBlockingEvent(bufferedStart, bufferedEnd);
+          if (blockingEvent) {
+            slotExplanation.available = false;
+            slotExplanation.reason = 'Conflitto con altro evento';
+            slotExplanation.blockingEvent = blockingEvent;
+          }
+        }
+
+        dayExplanation.slots.push(slotExplanation);
+        
+        const slotIncrement = appointmentDuration <= 30 ? 30 : 60;
+        slotStartMin += slotIncrement;
+        if (slotStartMin >= 60) {
+          slotStartHour += Math.floor(slotStartMin / 60);
+          slotStartMin = slotStartMin % 60;
+        }
+      }
+    }
+
+    result.push(dayExplanation);
+    current.setDate(current.getDate() + 1);
+  }
+
+  return result;
+}
+
 export async function createPublicBooking(params: PublicBookingParams): Promise<PublicBookingResult> {
   const { consultantId, clientName, clientEmail, clientPhone, scheduledAt, duration, notes } = params;
 

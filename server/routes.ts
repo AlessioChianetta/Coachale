@@ -16633,6 +16633,25 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // GET /api/consultant/slot-test - Test slot availability with explanations
+  app.get("/api/consultant/slot-test", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { startDate, endDate } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const { getSlotAvailabilityExplanation } = await import("./booking/booking-service");
+      const explanation = await getSlotAvailabilityExplanation(consultantId, start, end);
+      
+      res.json({ days: explanation });
+    } catch (error: any) {
+      console.error("❌ Error fetching slot availability explanation:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ═══════════════════════════════════════════════════════════════════════════════
   // END CONSULTANT CALENDAR APIs
   // ═══════════════════════════════════════════════════════════════════════════════
