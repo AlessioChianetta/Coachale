@@ -2388,7 +2388,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             functionCall.args,
             clientId,
             consultantId,
-            conversationId
+            conversation.id  // Use conversation.id (not conversationId from request which may be undefined for new conversations)
           );
           
           console.log(`🔧 [CONSULTATION] Tool result: success=${toolResult.success}`);

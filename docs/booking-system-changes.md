@@ -199,3 +199,8 @@ Eseguire ogni 2 minuti.
 ### 5. booking_confirm senza pending
 - **Problema**: Se classifier rilevava `booking_confirm` ma non c'era pending, usciva dal flow
 - **Fix**: Se `flowStage === 'awaiting_slot_selection'`, chiede slot invece di uscire
+
+### 6. conversationId sbagliato passato a executeConsultationTool
+- **Problema**: Veniva usato `conversationId` dalla request (undefined per nuove conversazioni) invece di `conversation.id`
+- **Fix**: Cambiato a `conversation.id` che è l'ID reale della conversazione creata/trovata
+- **Risultato**: Ora `setBookingFlowState` riceve l'ID corretto e lo stato `awaiting_slot_selection` viene salvato
