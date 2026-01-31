@@ -94,8 +94,14 @@ INTENTS:
    Examples: "che tempo fa?", "parlami degli esercizi"
    WARNING: Do NOT use "other" if recent context was about consultations!
 
-IMPORTANT: If the message contains a day name (lunedi, martedi, etc.) AND a time (09:00, alle 9, pomeriggio), 
-classify as booking_request with high confidence. This is a slot selection.
+IMPORTANT SLOT SELECTION RULES:
+- If the message contains a day name (lunedi, martedi, etc.) AND a time (09:00, alle 9, pomeriggio):
+  - Check conversation history for RESCHEDULE CONTEXT: keywords like "modificare", "spostare", "riprogrammare", 
+    "cambiare orario", "non posso esserci" followed by "spostarlo"/"modificarlo"
+  - If RESCHEDULE CONTEXT exists → classify as booking_reschedule (user is selecting new slot for existing booking)
+  - If NO reschedule context → classify as booking_request (user is booking new consultation)
+- CRITICAL: When user was asked "vuoi annullarlo o spostarlo?" and answered "spostarlo/modificarlo", 
+  ALL subsequent slot selections are booking_reschedule until the reschedule is complete!
 
 OUTPUT FORMAT (wrap in <json></json>):
 {
@@ -356,7 +362,8 @@ export function getToolsForIntent(
       return ['cancelBooking'];
       
     case 'booking_reschedule':
-      return ['rescheduleBooking'];
+      // Include getAvailableSlots so AI can show available slots before rescheduling
+      return ['getAvailableSlots', 'rescheduleBooking'];
     
     case 'booking_impediment':
       // No tools - AI should ask clarification (cancel or reschedule?)
