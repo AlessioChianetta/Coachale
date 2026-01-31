@@ -1,6 +1,6 @@
 import { db } from '../db';
-import { users, clients, voiceNumbers } from '@shared/schema';
-import { eq, and, or, ilike } from 'drizzle-orm';
+import { users, voiceNumbers } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 import { buildUserContext } from '../ai-context-builder';
 
 interface CallerInfo {
@@ -31,31 +31,31 @@ export class VoiceCallerLookup {
       return null;
     }
 
-    const consultantId = voiceNumber.consultantId;
+    const consultantId = voiceNumber.consultantId || '';
 
     const user = await this.findUserByPhone(normalizedPhone);
     
     if (user) {
       console.log(`[CallerLookup] Found registered user: ${user.id} (${user.name})`);
       
-      const client = await this.findClientByUserId(user.id, consultantId);
+      const isClient = user.role === 'client' && user.consultantId === consultantId;
       
       const callerInfo: CallerInfo = {
         userId: user.id,
-        clientId: client?.id.toString() || null,
+        clientId: isClient ? user.id : null,
         consultantId,
         name: user.name || 'Cliente',
         email: user.email,
         phoneNumber: normalizedPhone,
         isRecognized: true,
-        isClient: !!client,
+        isClient,
       };
 
       let userContext = null;
-      if (client) {
+      if (isClient) {
         try {
-          userContext = await buildUserContext(client.id.toString(), consultantId);
-          console.log(`[CallerLookup] Built full context for client ${client.id}`);
+          userContext = await buildUserContext(user.id, consultantId);
+          console.log(`[CallerLookup] Built full context for client ${user.id}`);
         } catch (error) {
           console.error(`[CallerLookup] Error building context:`, error);
         }
@@ -83,7 +83,7 @@ export class VoiceCallerLookup {
       isClient: false,
     };
 
-    const greeting = voiceNumber.welcomeMessage || 
+    const greeting = voiceNumber.greetingText || 
       'Buongiorno, sono Alessia, l\'assistente virtuale. Come posso aiutarti?';
 
     return {
@@ -163,26 +163,6 @@ export class VoiceCallerLookup {
     return [...new Set(variants)];
   }
 
-  private async findClientByUserId(userId: string, consultantId: string) {
-    try {
-      const result = await db
-        .select()
-        .from(clients)
-        .where(
-          and(
-            eq(clients.userId, userId),
-            eq(clients.consultantId, consultantId)
-          )
-        )
-        .limit(1);
-
-      return result[0] || null;
-    } catch (error) {
-      console.error('[CallerLookup] Error finding client:', error);
-      return null;
-    }
-  }
-
   private buildPersonalizedGreeting(callerInfo: CallerInfo, voiceNumber: any): string {
     const hour = new Date().getHours();
     let timeGreeting: string;
@@ -204,7 +184,7 @@ export class VoiceCallerLookup {
       return `${timeGreeting}! Sono Alessia. Vedo che hai già un account. Come posso esserti utile?`;
     }
 
-    return voiceNumber.welcomeMessage || 
+    return voiceNumber.greetingText || 
       `${timeGreeting}! Sono Alessia, l'assistente virtuale. Come posso aiutarti?`;
   }
 

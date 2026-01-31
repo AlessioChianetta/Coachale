@@ -3,6 +3,21 @@ import { buildSystemPrompt } from '../ai-prompts';
 import { EventEmitter } from 'events';
 import { voiceConfig } from './config';
 
+interface LiveServerMessage {
+  serverContent?: {
+    modelTurn?: {
+      parts?: Array<{
+        inlineData?: {
+          mimeType?: string;
+          data: string;
+        };
+        text?: string;
+      }>;
+    };
+    turnComplete?: boolean;
+  };
+}
+
 interface GeminiBridgeConfig {
   model: string;
   voiceId: string;

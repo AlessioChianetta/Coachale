@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial, uuid, decimal, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index, serial, uuid, decimal, numeric, time } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -9777,3 +9777,111 @@ export const twitterUsersCache = pgTable("twitter_users_cache", {
 
 export type TwitterUserCache = typeof twitterUsersCache.$inferSelect;
 export type InsertTwitterUserCache = typeof twitterUsersCache.$inferInsert;
+
+// ============================================================================
+// Voice Telephony System Tables (RDP: Alessia AI Phone)
+// ============================================================================
+
+// Voice Numbers - Consultant phone numbers for AI voice calls
+export const voiceNumbers = pgTable("voice_numbers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phoneNumber: varchar("phone_number", { length: 50 }).notNull(),
+  displayName: varchar("display_name", { length: 255 }),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "set null" }),
+  greetingText: text("greeting_text"),
+  aiMode: varchar("ai_mode", { length: 50 }).default("assistenza"),
+  fallbackNumber: varchar("fallback_number", { length: 50 }),
+  activeDays: jsonb("active_days").default(sql`'["mon","tue","wed","thu","fri"]'::jsonb`),
+  activeHoursStart: time("active_hours_start").default(sql`'09:00:00'::time`),
+  activeHoursEnd: time("active_hours_end").default(sql`'18:00:00'::time`),
+  timezone: varchar("timezone", { length: 100 }).default("Europe/Rome"),
+  outOfHoursAction: varchar("out_of_hours_action", { length: 50 }).default("voicemail"),
+  maxConcurrentCalls: integer("max_concurrent_calls").default(5),
+  maxCallDurationMinutes: integer("max_call_duration_minutes").default(30),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_voice_numbers_consultant").on(table.consultantId),
+  phoneIdx: index("idx_voice_numbers_phone").on(table.phoneNumber),
+}));
+
+export type VoiceNumber = typeof voiceNumbers.$inferSelect;
+export type InsertVoiceNumber = typeof voiceNumbers.$inferInsert;
+
+// Voice Calls - Call records with full metadata
+export const voiceCalls = pgTable("voice_calls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callerId: varchar("caller_id", { length: 50 }).notNull(),
+  calledNumber: varchar("called_number", { length: 50 }).notNull(),
+  clientId: varchar("client_id"),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "set null" }),
+  freeswitchUuid: varchar("freeswitch_uuid", { length: 100 }).notNull(),
+  freeswitchChannel: varchar("freeswitch_channel", { length: 255 }),
+  status: varchar("status", { length: 50 }).notNull().default("ringing"),
+  startedAt: timestamp("started_at").notNull().default(sql`now()`),
+  answeredAt: timestamp("answered_at"),
+  endedAt: timestamp("ended_at"),
+  durationSeconds: integer("duration_seconds"),
+  talkTimeSeconds: integer("talk_time_seconds"),
+  aiConversationId: varchar("ai_conversation_id"),
+  aiMode: varchar("ai_mode", { length: 50 }).default("assistenza"),
+  promptUsed: text("prompt_used"),
+  fullTranscript: text("full_transcript"),
+  transcriptChunks: jsonb("transcript_chunks"),
+  recordingUrl: text("recording_url"),
+  outcome: varchar("outcome", { length: 100 }),
+  transferTarget: varchar("transfer_target", { length: 50 }),
+  telephonyMinutes: decimal("telephony_minutes", { precision: 10, scale: 2 }),
+  aiTokensUsed: integer("ai_tokens_used"),
+  aiCostEstimate: decimal("ai_cost_estimate", { precision: 10, scale: 4 }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_voice_calls_consultant").on(table.consultantId),
+  callerIdx: index("idx_voice_calls_caller").on(table.callerId),
+  statusIdx: index("idx_voice_calls_status").on(table.status),
+  startedAtIdx: index("idx_voice_calls_started_at").on(table.startedAt),
+}));
+
+export type VoiceCall = typeof voiceCalls.$inferSelect;
+export type InsertVoiceCall = typeof voiceCalls.$inferInsert;
+
+// Voice Call Events - Event log for each call
+export const voiceCallEvents = pgTable("voice_call_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callId: varchar("call_id").references(() => voiceCalls.id, { onDelete: "cascade" }),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  eventData: jsonb("event_data"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  callIdIdx: index("idx_voice_call_events_call_id").on(table.callId),
+  eventTypeIdx: index("idx_voice_call_events_type").on(table.eventType),
+}));
+
+export type VoiceCallEvent = typeof voiceCallEvents.$inferSelect;
+export type InsertVoiceCallEvent = typeof voiceCallEvents.$inferInsert;
+
+// Voice Rate Limits - Per-caller rate limiting
+export const voiceRateLimits = pgTable("voice_rate_limits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callerId: varchar("caller_id", { length: 50 }).notNull(),
+  callsLastMinute: integer("calls_last_minute").default(0),
+  callsLastHour: integer("calls_last_hour").default(0),
+  callsToday: integer("calls_today").default(0),
+  totalMinutesToday: decimal("total_minutes_today", { precision: 10, scale: 2 }).default("0"),
+  lastCallAt: timestamp("last_call_at"),
+  firstCallToday: timestamp("first_call_today"),
+  isBlocked: boolean("is_blocked").default(false),
+  blockedReason: text("blocked_reason"),
+  blockedUntil: timestamp("blocked_until"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  callerIdIdx: index("idx_voice_rate_limits_caller").on(table.callerId),
+  blockedIdx: index("idx_voice_rate_limits_blocked").on(table.isBlocked),
+}));
+
+export type VoiceRateLimit = typeof voiceRateLimits.$inferSelect;
+export type InsertVoiceRateLimit = typeof voiceRateLimits.$inferInsert;

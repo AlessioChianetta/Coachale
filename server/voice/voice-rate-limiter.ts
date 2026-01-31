@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { voiceRateLimits } from '@shared/schema';
-import { eq, and, gt, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { voiceConfig } from './config';
 
 interface RateLimitConfig {
@@ -70,7 +70,7 @@ export class VoiceRateLimiter {
       };
     }
 
-    const stats = await this.getCallerStats(callerId, voiceNumberId);
+    const stats = await this.getCallerStats(callerId);
 
     if (stats.callsLastMinute >= this.config.maxCallsPerMinute) {
       return {
@@ -111,7 +111,7 @@ export class VoiceRateLimiter {
       };
     }
 
-    await this.recordCall(callerId, voiceNumberId);
+    await this.recordCall(callerId);
 
     return {
       allowed: true,
@@ -123,22 +123,12 @@ export class VoiceRateLimiter {
     };
   }
 
-  private async getCallerStats(callerId: string, voiceNumberId: string): Promise<CallerStats> {
-    const now = new Date();
-    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
+  private async getCallerStats(callerId: string): Promise<CallerStats> {
     try {
       const existing = await db
         .select()
         .from(voiceRateLimits)
-        .where(
-          and(
-            eq(voiceRateLimits.callerId, callerId),
-            eq(voiceRateLimits.voiceNumberId, voiceNumberId)
-          )
-        )
+        .where(eq(voiceRateLimits.callerId, callerId))
         .limit(1);
 
       if (existing.length === 0) {
@@ -151,28 +141,16 @@ export class VoiceRateLimiter {
       }
 
       const record = existing[0];
-      const windowStart = record.windowStart;
-
-      let callsMinute = 0;
-      let callsHour = 0;
-      let callsDay = 0;
-
-      if (windowStart > oneMinuteAgo) {
-        callsMinute = record.callsInWindow;
-      }
-
-      if (windowStart > oneHourAgo) {
-        callsHour = record.callsInWindow;
-      }
-
-      if (windowStart > oneDayAgo) {
-        callsDay = record.callsInWindow;
-      }
+      const now = new Date();
+      
+      const firstCallToday = record.firstCallToday;
+      const isNewDay = !firstCallToday || 
+        firstCallToday.toDateString() !== now.toDateString();
 
       return {
-        callsLastMinute: callsMinute,
-        callsLastHour: callsHour,
-        callsLastDay: callsDay,
+        callsLastMinute: isNewDay ? 0 : (record.callsLastMinute || 0),
+        callsLastHour: isNewDay ? 0 : (record.callsLastHour || 0),
+        callsLastDay: isNewDay ? 0 : (record.callsToday || 0),
         lastCallTime: record.lastCallAt,
       };
     } catch (error) {
@@ -186,49 +164,54 @@ export class VoiceRateLimiter {
     }
   }
 
-  private async recordCall(callerId: string, voiceNumberId: string): Promise<void> {
+  private async recordCall(callerId: string): Promise<void> {
     const now = new Date();
-    const windowDuration = 60 * 1000;
 
     try {
       const existing = await db
         .select()
         .from(voiceRateLimits)
-        .where(
-          and(
-            eq(voiceRateLimits.callerId, callerId),
-            eq(voiceRateLimits.voiceNumberId, voiceNumberId)
-          )
-        )
+        .where(eq(voiceRateLimits.callerId, callerId))
         .limit(1);
 
       if (existing.length === 0) {
         await db.insert(voiceRateLimits).values({
           callerId,
-          voiceNumberId,
-          windowStart: now,
-          callsInWindow: 1,
+          callsLastMinute: 1,
+          callsLastHour: 1,
+          callsToday: 1,
+          totalMinutesToday: "0",
           lastCallAt: now,
+          firstCallToday: now,
         });
       } else {
         const record = existing[0];
-        const windowStart = record.windowStart;
+        const firstCallToday = record.firstCallToday;
+        const isNewDay = !firstCallToday || 
+          firstCallToday.toDateString() !== now.toDateString();
 
-        if (now.getTime() - windowStart.getTime() > windowDuration) {
+        if (isNewDay) {
           await db
             .update(voiceRateLimits)
             .set({
-              windowStart: now,
-              callsInWindow: 1,
+              callsLastMinute: 1,
+              callsLastHour: 1,
+              callsToday: 1,
+              totalMinutesToday: "0",
               lastCallAt: now,
+              firstCallToday: now,
+              updatedAt: now,
             })
             .where(eq(voiceRateLimits.id, record.id));
         } else {
           await db
             .update(voiceRateLimits)
             .set({
-              callsInWindow: record.callsInWindow + 1,
+              callsLastMinute: (record.callsLastMinute || 0) + 1,
+              callsLastHour: (record.callsLastHour || 0) + 1,
+              callsToday: (record.callsToday || 0) + 1,
               lastCallAt: now,
+              updatedAt: now,
             })
             .where(eq(voiceRateLimits.id, record.id));
         }
@@ -242,23 +225,56 @@ export class VoiceRateLimiter {
     const until = new Date(Date.now() + durationMinutes * 60 * 1000);
     this.blockedCallers.set(callerId, { until, reason });
 
-    await db
-      .update(voiceRateLimits)
-      .set({ isBlocked: true })
-      .where(eq(voiceRateLimits.callerId, callerId));
+    try {
+      const existing = await db
+        .select()
+        .from(voiceRateLimits)
+        .where(eq(voiceRateLimits.callerId, callerId))
+        .limit(1);
 
-    console.log(`[RateLimiter] Blocked caller ${callerId} until ${until.toISOString()}: ${reason}`);
+      if (existing.length > 0) {
+        await db
+          .update(voiceRateLimits)
+          .set({ 
+            isBlocked: true,
+            blockedReason: reason,
+            blockedUntil: until,
+            updatedAt: new Date(),
+          })
+          .where(eq(voiceRateLimits.callerId, callerId));
+      } else {
+        await db.insert(voiceRateLimits).values({
+          callerId,
+          isBlocked: true,
+          blockedReason: reason,
+          blockedUntil: until,
+        });
+      }
+
+      console.log(`[RateLimiter] Blocked caller ${callerId} until ${until.toISOString()}: ${reason}`);
+    } catch (error) {
+      console.error('[RateLimiter] Error blocking caller:', error);
+    }
   }
 
   async unblockCaller(callerId: string): Promise<void> {
     this.blockedCallers.delete(callerId);
 
-    await db
-      .update(voiceRateLimits)
-      .set({ isBlocked: false })
-      .where(eq(voiceRateLimits.callerId, callerId));
+    try {
+      await db
+        .update(voiceRateLimits)
+        .set({ 
+          isBlocked: false,
+          blockedReason: null,
+          blockedUntil: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(voiceRateLimits.callerId, callerId));
 
-    console.log(`[RateLimiter] Unblocked caller ${callerId}`);
+      console.log(`[RateLimiter] Unblocked caller ${callerId}`);
+    } catch (error) {
+      console.error('[RateLimiter] Error unblocking caller:', error);
+    }
   }
 
   isBlocked(callerId: string): boolean {
@@ -283,7 +299,7 @@ export class VoiceRateLimiter {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     try {
-      const result = await db
+      await db
         .delete(voiceRateLimits)
         .where(
           and(

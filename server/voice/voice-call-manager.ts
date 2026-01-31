@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { db } from '../db';
-import { voiceCalls, voiceCallEvents } from '@shared/schema';
+import { voiceCalls, voiceCallEvents, voiceNumbers } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { eslClient } from './voice-esl-client';
 import { audioHandler } from './voice-audio-handler';
@@ -125,7 +125,7 @@ export class VoiceCallManager extends EventEmitter {
       callerId,
       calledNumber,
       voiceNumberId: voiceNumber.id,
-      consultantId: voiceNumber.consultantId,
+      consultantId: voiceNumber.consultantId || '',
       state: 'ringing',
       startTime: new Date(),
       answerTime: null,
@@ -319,8 +319,6 @@ export class VoiceCallManager extends EventEmitter {
   }
 
   private async findVoiceNumber(phoneNumber: string) {
-    const { voiceNumbers } = await import('@shared/schema');
-    
     const result = await db
       .select()
       .from(voiceNumbers)
@@ -335,10 +333,9 @@ export class VoiceCallManager extends EventEmitter {
       await db.insert(voiceCalls).values({
         id: call.id,
         consultantId: call.consultantId,
-        voiceNumberId: call.voiceNumberId,
         callerId: call.callerId,
         calledNumber: call.calledNumber,
-        direction: 'inbound',
+        freeswitchUuid: call.uuid,
         status: 'ringing',
         startedAt: call.startTime,
       });
@@ -360,18 +357,18 @@ export class VoiceCallManager extends EventEmitter {
           answeredAt: call.answerTime,
           endedAt: call.endTime,
           durationSeconds: duration,
-          endCause,
-          clientId: call.callerInfo?.clientId ? parseInt(call.callerInfo.clientId) : null,
-          callerRecognized: call.callerInfo?.isRecognized || false,
+          clientId: call.callerInfo?.clientId || null,
+          fullTranscript: call.transcript.join('\n'),
+          outcome: endCause,
         })
         .where(eq(voiceCalls.id, call.id));
 
       for (const event of call.events) {
         await db.insert(voiceCallEvents).values({
-          voiceCallId: call.id,
+          callId: call.id,
           eventType: event.type,
           eventData: event.data || {},
-          timestamp: event.timestamp,
+          createdAt: event.timestamp,
         });
       }
     } catch (error) {
