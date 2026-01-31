@@ -996,8 +996,6 @@ const AdVisagePage: React.FC = () => {
               
               const filteredPosts = existingPosts.filter((post: ContentPost) => {
                 if (post.status === 'published' || post.publerStatus === 'published') return false;
-                const hasMedia = post.publerMediaIds && Array.isArray(post.publerMediaIds) && post.publerMediaIds.length > 0;
-                if (hasMedia) return false;
                 return true;
               });
               
@@ -1006,7 +1004,7 @@ const AdVisagePage: React.FC = () => {
                   <div className="text-center py-8 text-muted-foreground">
                     <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p className="font-medium mb-1">Nessun post disponibile</p>
-                    <p className="text-xs">Tutti i post sono già pubblicati o hanno già delle immagini</p>
+                    <p className="text-xs">Tutti i post sono già pubblicati</p>
                   </div>
                 );
               }
@@ -1014,9 +1012,10 @@ const AdVisagePage: React.FC = () => {
               return (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs text-muted-foreground px-1 mb-3">
-                    <span>{filteredPosts.length} post disponibili per visual</span>
+                    <span>{filteredPosts.length} post disponibili</span>
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-amber-500"></span> Programmato
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Con immagine
+                      <span className="w-2 h-2 rounded-full bg-amber-500 ml-2"></span> Programmato
                       <span className="w-2 h-2 rounded-full bg-gray-400 ml-2"></span> Bozza
                     </span>
                   </div>
@@ -1032,6 +1031,7 @@ const AdVisagePage: React.FC = () => {
                     
                     const isAlreadyInQueue = postInputs.some(p => p.sourcePostId === post.id);
                     const isScheduled = post.status === 'scheduled';
+                    const hasExistingMedia = post.publerMediaIds && Array.isArray(post.publerMediaIds) && post.publerMediaIds.length > 0;
                     const charCount = fullCopy.length;
                     
                     return (
@@ -1051,7 +1051,10 @@ const AdVisagePage: React.FC = () => {
                           <div className={`p-2.5 rounded-lg ${platformColors[post.platform || 'instagram'] || 'bg-slate-100'}`}>
                             {getPlatformIcon(post.platform || 'instagram')}
                           </div>
-                          {isScheduled && (
+                          {hasExistingMedia && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" />
+                          )}
+                          {isScheduled && !hasExistingMedia && (
                             <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900" />
                           )}
                         </div>
@@ -1080,11 +1083,17 @@ const AdVisagePage: React.FC = () => {
                             <Badge variant={isScheduled ? 'default' : 'secondary'} className={`text-[10px] ${isScheduled ? 'bg-amber-500 hover:bg-amber-500' : ''}`}>
                               {isScheduled ? '📅 Programmato' : '📝 Bozza'}
                             </Badge>
+                            {hasExistingMedia && (
+                              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">
+                                <ImageIcon className="w-3 h-3 mr-1" />
+                                Ha immagine (sostituisce)
+                              </Badge>
+                            )}
                             <span className="text-[10px] text-muted-foreground ml-auto">
                               {charCount} caratteri
                             </span>
                             {isAlreadyInQueue && (
-                              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">
+                              <Badge className="text-[10px] bg-indigo-100 text-indigo-700 border-indigo-200">
                                 <Check className="w-3 h-3 mr-1" />
                                 In coda
                               </Badge>
