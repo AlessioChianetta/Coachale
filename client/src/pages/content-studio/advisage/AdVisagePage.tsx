@@ -269,22 +269,53 @@ const AdVisagePage: React.FC = () => {
     setIsProcessingBatch(true);
     setError(null);
     try {
+      // Analizza in parallelo con concorrenza limitata (max 3 alla volta per evitare rate limits)
+      const CONCURRENCY_LIMIT = 3;
       const results: AdAnalysis[] = [];
+      const errors: string[] = [];
+      
+      for (let i = 0; i < valid.length; i += CONCURRENCY_LIMIT) {
+        const batch = valid.slice(i, i + CONCURRENCY_LIMIT);
+        const batchResults = await Promise.allSettled(
+          batch.map(async (post) => {
+            const result = await analyzeAdText(post.text, post.platform, settings);
+            result.sourcePostId = post.sourcePostId;
+            result.sourcePostTitle = post.sourcePostTitle;
+            return result;
+          })
+        );
+        
+        batchResults.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            results.push(result.value);
+          } else {
+            errors.push(`Post "${batch[idx].sourcePostTitle || idx + 1}": ${result.reason?.message || 'Errore'}`);
+          }
+        });
+      }
+      
+      if (errors.length > 0 && results.length === 0) {
+        throw new Error(errors.join('; '));
+      }
+      
+      if (errors.length > 0) {
+        setError(`Alcuni post non analizzati: ${errors.join('; ')}`);
+      }
+      
+      // Costruisci i prompt dopo che le analisi sono complete
       const newPrompts = { ...customPrompts };
-      for (const post of valid) {
-        const result = await analyzeAdText(post.text, post.platform, settings);
-        // Mantiene il collegamento al post originale
-        result.sourcePostId = post.sourcePostId;
-        result.sourcePostTitle = post.sourcePostTitle;
-        results.push(result);
+      results.forEach(result => {
         result.concepts.forEach(c => {
           newPrompts[`${c.id}_text`] = c.promptWithText;
           newPrompts[`${c.id}_clean`] = c.promptClean;
         });
+      });
+      
+      if (results.length > 0) {
+        setBatchResults(results);
+        setCustomPrompts(newPrompts);
+        setActivePostId(results[0].id);
       }
-      setBatchResults(results);
-      setCustomPrompts(newPrompts);
-      setActivePostId(results[0].id);
     } catch (err: any) { 
       setError(err.message); 
     } finally { 
@@ -707,7 +738,7 @@ const AdVisagePage: React.FC = () => {
                         <CardTitle className="text-sm font-semibold">Coda Elaborata</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
-                        <ScrollArea className="max-h-[300px]">
+                        <ScrollArea className="max-h-[50vh] min-h-[200px] pr-2">
                           {batchResults.map(p => {
                             const firstConceptId = p.concepts[0].id;
                             const hasImage = generatedImages.some(img => img.conceptId === firstConceptId);
