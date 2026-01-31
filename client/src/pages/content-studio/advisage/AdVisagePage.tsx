@@ -315,13 +315,15 @@ const AdVisagePage: React.FC = () => {
     if (isBatchRendering || !batchResults.length) return;
     setIsBatchRendering(true);
     try {
-      for (const result of batchResults) {
-        const firstConcept = result.concepts[0];
-        const alreadyExists = generatedImages.some(img => img.conceptId === firstConcept.id);
-        if (!alreadyExists) {
-          await handleGenerateOne(firstConcept, 'text');
-        }
-      }
+      // Filtra i concept che non hanno già un'immagine generata
+      const conceptsToGenerate = batchResults
+        .map(result => result.concepts[0])
+        .filter(concept => !generatedImages.some(img => img.conceptId === concept.id));
+      
+      // Genera tutte le immagini in parallelo
+      await Promise.all(
+        conceptsToGenerate.map(concept => handleGenerateOne(concept, 'text'))
+      );
     } catch (err: any) {
       setError("Errore durante il rendering batch: " + err.message);
     } finally {

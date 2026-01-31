@@ -29,15 +29,15 @@ import { scheduleMessageProcessing } from "./message-processor";
 export function normalizePhoneNumber(phoneNumber: string): string {
   // Remove whatsapp: prefix
   let cleaned = phoneNumber.replace(/^whatsapp:/, "");
-  
+
   // Remove all punctuation and spaces
   cleaned = cleaned.replace(/[\s\-\.\(\)]/g, "");
-  
+
   // If it's the receptionist number, return as-is for exact matching
   if (cleaned === "+393500220129" || cleaned === "393500220129" || cleaned === "3500220129") {
     return "+393500220129";
   }
-  
+
   // Handle 0039 prefix (international format without +)
   if (cleaned.startsWith("0039")) {
     cleaned = "+39" + cleaned.substring(4);
@@ -54,7 +54,7 @@ export function normalizePhoneNumber(phoneNumber: string): string {
   else if (cleaned.startsWith("39") && /^393\d{8,9}$/.test(cleaned)) {
     cleaned = "+" + cleaned;
   }
-  
+
   return cleaned;
 }
 
@@ -67,18 +67,18 @@ export function normalizePhoneNumber(phoneNumber: string): string {
  */
 function detectMediaType(contentType: string | null | undefined): "text" | "audio" | "image" | "video" | "document" {
   if (!contentType) return "text";
-  
+
   const lower = contentType.toLowerCase();
-  
+
   // Detect audio (WhatsApp voice messages come as "audio/ogg")
   if (lower.startsWith("audio/")) return "audio";
-  
+
   // Detect images
   if (lower.startsWith("image/")) return "image";
-  
+
   // Detect videos
   if (lower.startsWith("video/")) return "video";
-  
+
   // Default to document for PDFs, documents, and unknown types
   return "document";
 }
@@ -94,7 +94,7 @@ async function handleStatusUpdate(webhookBody: TwilioWebhookBody): Promise<boole
   const errorMessage = webhookBody.ErrorMessage;
 
   console.log(`📊 [WEBHOOK STATUS] Received status update for ${messageSid}: ${messageStatus}`);
-  
+
   if (errorCode) {
     console.log(`   Error Code: ${errorCode}`);
     console.log(`   Error Message: ${errorMessage}`);
@@ -145,7 +145,7 @@ async function handleStatusUpdate(webhookBody: TwilioWebhookBody): Promise<boole
     console.error(`   Conversation ID: ${existingMessage.conversationId}`);
     console.error(`   Error Code: ${errorCode}`);
     console.error(`   Error Message: ${errorMessage}`);
-    
+
     if (errorCode === "63016") {
       console.error(`   🚨 TEMPLATE NOT APPROVED - This template has not been approved by WhatsApp`);
       console.error(`   📝 Action Required: Get template approved in Twilio Console before sending`);
@@ -198,14 +198,14 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
   // We also check if the message already exists in DB (outbound direction) as additional validation
   if (messageStatus) {
     const bodyIsEmpty = !messageText || messageText.trim() === "";
-    
+
     // Check if message exists in our DB (it would be an outbound message we sent)
     const [existingMsg] = await db
       .select()
       .from(whatsappMessages)
       .where(eq(whatsappMessages.twilioSid, messageSid))
       .limit(1);
-    
+
     // If body is empty OR message exists as outbound, treat as status update
     if (bodyIsEmpty || (existingMsg && existingMsg.direction === 'outbound')) {
       console.log(`🔔 [WEBHOOK] Detected status update (MessageStatus=${messageStatus}, bodyEmpty=${bodyIsEmpty}, existingOutbound=${!!existingMsg})`);
@@ -269,7 +269,7 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
   // This must happen BEFORE conversation lookup to set proper flags
   // ═══════════════════════════════════════════════════════════════════════════
   const proactiveMatch = await resolveProactiveLeadMatch(phoneNumber, config.consultantId, config.id);
-  
+
   // CRITICAL FIX: Only find existing conversation, don't create yet
   // This prevents ghost conversations when message is duplicate
   let conversation = await findConversation(phoneNumber, config.consultantId, config.id);
@@ -323,14 +323,15 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
         )
       )
       .returning({ id: scheduledFollowupMessages.id });
-    
+
     if (cancelledMessages.length > 0) {
       console.log(`🛑 [FOLLOWUP-CANCEL] Lead ha risposto! Cancellati ${cancelledMessages.length} messaggi programmati per conversazione ${conversation.id}`);
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // FASE 4: Reset intelligente contatori quando lead risponde
     // Questo azzera consecutiveNoReplyCount, rimuove dormienza/esclusione
+    // E resetta nextEvaluationAt per permettere rivalutazione immediata
     // ═══════════════════════════════════════════════════════════════════════════
     await db
       .update(conversationStates)
@@ -340,11 +341,12 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
         dormantUntil: null,
         permanentlyExcluded: false,
         dormantReason: null,
+        nextEvaluationAt: null, // CRITICAL: Reset per permettere rivalutazione nel prossimo ciclo (5 min)
         updatedAt: new Date(),
       })
       .where(eq(conversationStates.conversationId, conversation.id));
-    
-    console.log(`🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for ${conversation.id}`);
+
+    console.log(`🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false, nextEvaluationAt=null for ${conversation.id}`);
   }
 
   if (!conversation.aiEnabled) {
@@ -376,12 +378,12 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
     // Process media even when AI is disabled (for manual conversations)
     if (numMedia > 0 && webhookBody.MediaUrl0 && webhookBody.MediaContentType0) {
       console.log(`📸 Processing media for AI-disabled conversation: ${savedMessage.id}`);
-      
+
       // Import dynamically to avoid circular dependency
       const { handleIncomingMedia } = await import("./media-handler");
       const { whatsappGlobalApiKeys } = await import("../../shared/schema");
       const { asc } = await import("drizzle-orm");
-      
+
       // Get an API key for media processing (filtered by consultant)
       const [apiKey] = await db
         .select()
@@ -404,7 +406,7 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
           apiKey.apiKey,
           config.id
         );
-        
+
         // Update key usage stats
         await db
           .update(whatsappGlobalApiKeys)
@@ -449,7 +451,7 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
   });
 
   console.log(`📨 Message queued for processing: ${phoneNumber} (twilioSid: ${messageSid})`);
-  
+
   scheduleMessageProcessing(phoneNumber, config.consultantId);
 }
 
@@ -555,14 +557,14 @@ async function classifyParticipant(
       .select()
       .from(users)
       .where(eq(users.email, proactiveLeadEmail.toLowerCase()));
-    
+
     // Check if any user with this email is a client of this consultant
     const clientByEmail = usersWithEmail.find((u: any) => u.consultantId === consultantId);
     if (clientByEmail) {
       console.log(`👤 [PARTICIPANT] Recognized CLIENT by email: ${clientByEmail.firstName} ${clientByEmail.lastName} (role: ${clientByEmail.role})`);
       return { type: "client", userId: clientByEmail.id, userRole: clientByEmail.role };
     }
-    
+
     // Check if the agent owner is writing from a different phone
     const ownerByEmail = usersWithEmail.find((u: any) => u.role === "consultant" && u.id === consultantId);
     if (ownerByEmail) {
@@ -596,7 +598,7 @@ export async function findConversation(
   agentConfigId?: string
 ): Promise<typeof whatsappConversations.$inferSelect | null> {
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
-  
+
   let conversation: typeof whatsappConversations.$inferSelect | null = null;
 
   if (agentConfigId) {
@@ -639,16 +641,16 @@ export async function resolveProactiveLeadMatch(
   agentConfigId?: string
 ): Promise<{ isProactiveLead: boolean; proactiveLeadId: string | null; leadData: any | null }> {
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
-  
+
   // Remove + prefix for database comparison (proactiveLeads stores without +)
   const phoneWithoutPlus = normalizedPhone.replace(/^\+/, '');
-  
+
   console.log(`🔍 [PROACTIVE LEAD MATCH] Checking if phone belongs to proactive lead...`);
   console.log(`   📞 Normalized: ${normalizedPhone}`);
   console.log(`   📞 Without +: ${phoneWithoutPlus}`);
   console.log(`   👤 Consultant: ${consultantId}`);
   console.log(`   🤖 Agent: ${agentConfigId || 'any'}`);
-  
+
   // Query proactiveLeads table - try both with and without + prefix
   const leads = await db
     .select()
@@ -661,7 +663,7 @@ export async function resolveProactiveLeadMatch(
       )
     )
     .limit(1);
-  
+
   if (leads.length > 0) {
     const lead = leads[0];
     console.log(`✅ [PROACTIVE LEAD MATCH] FOUND! Lead ID: ${lead.id}`);
@@ -674,7 +676,7 @@ export async function resolveProactiveLeadMatch(
       leadData: lead
     };
   }
-  
+
   console.log(`ℹ️ [PROACTIVE LEAD MATCH] No proactive lead found for this phone number`);
   return {
     isProactiveLead: false,
@@ -703,7 +705,7 @@ export async function findOrCreateConversation(
   const stack = new Error().stack?.split('\n').slice(2, 6).join('\n') || 'N/A';
   console.log(stack);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  
+
   return await db.transaction(async (tx) => {
     let conversation: typeof whatsappConversations.$inferSelect | undefined;
 
@@ -738,12 +740,12 @@ export async function findOrCreateConversation(
 
     if (conversation) {
       console.log(`✅ [CONVERSATION FOUND] id=${conversation.id}, agentConfigId=${conversation.agentConfigId}, isLead=${conversation.isLead}, isProactiveLead=${conversation.isProactiveLead}`);
-      
+
       // Classify participant and update metadata if not already classified
       // FIX: Pass proactiveLeadEmail for email-based fallback lookup
       const participant = await classifyParticipant(normalizedPhone, consultantId, tx, proactiveLeadEmail);
       const currentMetadata = conversation.metadata || {};
-      
+
       if (!currentMetadata.participantType) {
         console.log(`🏷️  [METADATA] Adding participant classification: ${participant.type}`);
         await tx
@@ -757,7 +759,7 @@ export async function findOrCreateConversation(
             } as any,
           })
           .where(eq(whatsappConversations.id, conversation.id));
-        
+
         // Update local object
         conversation.metadata = {
           ...currentMetadata,
@@ -766,7 +768,7 @@ export async function findOrCreateConversation(
           participantRole: participant.userRole,
         } as any;
       }
-      
+
       if (isProactiveLead && (!conversation.isProactiveLead || conversation.proactiveLeadId !== proactiveLeadId)) {
         console.log(`🔄 [UPDATING PROACTIVE FLAGS] Marking existing conversation as proactive`);
         [conversation] = await tx
@@ -779,10 +781,10 @@ export async function findOrCreateConversation(
           .where(eq(whatsappConversations.id, conversation.id))
           .returning();
       }
-      
+
       if (conversation.testModeOverride) {
         console.log(`🧪 [TEST MODE] Override attivo: ${conversation.testModeOverride}`);
-        
+
         if (conversation.testModeOverride === "client" && conversation.testModeUserId) {
           conversation.isLead = false;
           conversation.userId = conversation.testModeUserId;
@@ -800,20 +802,20 @@ export async function findOrCreateConversation(
           console.log(`🧪 [TEST MODE] Simulando consulente`);
         }
       }
-      
+
       return conversation;
     }
 
     console.log(`\n🆕🆕🆕 [CONVERSATION CREATE] Creating NEW conversation at ${new Date().toISOString()} 🆕🆕🆕`);
-    
+
     // Classify participant for new conversation
     // FIX: Pass proactiveLeadEmail for email-based fallback lookup
     const participant = await classifyParticipant(normalizedPhone, consultantId, tx, proactiveLeadEmail);
-    
+
     // Determine userId and isLead based on participant type
     let userId = participant.userId;
     let isLead = false;
-    
+
     if (participant.type === "receptionist" || participant.type === "consultant") {
       // Receptionist and consultant are never leads
       isLead = false;
@@ -894,11 +896,11 @@ export async function findOrCreateConversation(
           )
         )
         .limit(1);
-      
+
       if (!conversation) {
         throw new Error(`Failed to find or create conversation for ${normalizedPhone}`);
       }
-      
+
       console.log(`✅ [CONVERSATION FOUND] id=${conversation.id} after race condition`);
     }
 
