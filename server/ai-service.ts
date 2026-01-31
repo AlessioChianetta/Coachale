@@ -2206,18 +2206,21 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Check if there's a pending booking for this conversation (DB-backed state)
     const pendingBooking = await getPendingBookingState(conversationId, null);
     
-    // Check booking flow state (tracks: awaiting_slot_selection, awaiting_confirm)
+    // Check booking flow state (tracks: awaiting_slot_selection, awaiting_confirm, post-booking context)
     const bookingFlowState = await getBookingFlowState(conversationId);
     const isInBookingFlow = bookingFlowState.isActive || !!pendingBooking;
+    const hasRecentConsultation = bookingFlowState.hasRecentConsultation;
     
     // Run LLM classifier if:
     // 1. There's a pending booking OR active booking flow (STICKY: stay in booking flow)
-    // 2. Regex detected consultation/appointment intent
-    // 3. Message contains potential consultation-related keywords (fallback for regex misses)
+    // 2. There's a recent consultation (post-booking context for modify/cancel)
+    // 3. Regex detected consultation/appointment intent
+    // 4. Message contains potential consultation-related keywords (fallback for regex misses)
     const msgLower = message.toLowerCase();
     // Fixed regex: removed anchors ^$ to match "ok grazie", "sì va bene", etc.
-    const potentialConsultationKeywords = /\b(incontri|call|slot|appuntament|prenotare|disponibil|limite|sessioni|conferm|ok|si|sì|perfetto|va bene|procedi|prenota)\b/i;
-    const shouldRunClassifier = isInBookingFlow || intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
+    // Added modify/cancel keywords for post-booking context
+    const potentialConsultationKeywords = /\b(incontri|call|slot|appuntament|prenotare|disponibil|limite|sessioni|conferm|ok|si|sì|perfetto|va bene|procedi|prenota|modifica|sposta|cambia|anticipa|posticipa|cancel|annulla|disdici)\b/i;
+    const shouldRunClassifier = isInBookingFlow || hasRecentConsultation || intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
     
     // Build classifier context for memory safety (include flow state info + conversation history)
     const classifierContext: ClassifierContext = {
@@ -2231,6 +2234,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         content: m.content 
       }))
     };
+    
+    // Log post-booking context if active
+    if (hasRecentConsultation) {
+      console.log(`📌 [POST-BOOKING CONTEXT] Active for modify/cancel:`);
+      console.log(`   lastConsultationId: ${bookingFlowState.lastConsultationId}`);
+      console.log(`   expiresAt: ${bookingFlowState.lastConsultationExpiresAt?.toISOString() || 'N/A'}`);
+    }
     
     if (isInBookingFlow) {
       console.log(`📋 [BOOKING FLOW] Active flow detected:`);
@@ -2283,6 +2293,14 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     let clientTools: any[];
     let toolsToUse: typeof consultationTools = [];  // Moved outside for validation in function call handler
     
+    // Determine if we need REQUIRED mode (force tool execution for mutating operations)
+    // Use REQUIRED when: intent is reschedule/cancel AND hasRecentConsultation (post-booking context)
+    const mutatingIntents = ['booking_reschedule', 'booking_cancel'];
+    const shouldForceToolExecution = hasRecentConsultation && 
+      consultationIntentClassification && 
+      mutatingIntents.includes(consultationIntentClassification.intent);
+    const toolMode: 'AUTO' | 'ANY' = shouldForceToolExecution ? 'ANY' : 'AUTO';
+    
     if (isConsultationQuery && consultationIntentClassification) {
       // Use ONLY consultation tools for consultation queries (no codeExecution, no fileSearch)
       // Get only the tools needed for this specific intent (with context for memory safety)
@@ -2300,7 +2318,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📋 Intent: ${consultationIntentClassification.intent}`);
       console.log(`   🛠️  Tools: ${toolsToUse.map(t => t.name).join(', ')}`);
-      console.log(`   ⚙️  Mode: AUTO (Gemini decides if tool needed)`);
+      console.log(`   ⚙️  Mode: ${toolMode}${shouldForceToolExecution ? ' (FORCED - post-booking context active)' : ' (Gemini decides if tool needed)'}`);
+      console.log(`   📌 Post-booking context: ${hasRecentConsultation ? `YES (${bookingFlowState.lastConsultationId})` : 'NO'}`);
       console.log(`   ❌ codeExecution: DISABLED`);
       console.log(`   ❌ fileSearch: DISABLED`);
       console.log(`${'═'.repeat(70)}\n`);
@@ -2410,7 +2429,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           tools: clientTools,
           toolConfig: {
             functionCallingConfig: {
-              mode: 'AUTO' as const,
+              mode: toolMode as const,
             }
           },
         });
@@ -2439,7 +2458,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         if (!functionCall) {
           // With AUTO mode, Gemini may decide to respond directly without calling a tool
           // This is expected behavior for informational queries
-          console.log(`🔧 [CONSULTATION] No function call - Gemini responded directly (AUTO mode)`);
+          // With ANY mode, this shouldn't happen (forced tool execution)
+          console.log(`🔧 [CONSULTATION] No function call - Gemini responded directly (${toolMode} mode)${shouldForceToolExecution ? ' [UNEXPECTED - ANY mode should force tool call]' : ''}`);
           const textContent = initialResponse.response.text() || "Mi dispiace, non sono riuscito a elaborare la richiesta.";
           accumulatedMessage = textContent;
           yield {

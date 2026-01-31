@@ -2111,6 +2111,9 @@ export const aiConversations = pgTable("ai_conversations", {
   activeFlow: text("active_flow").$type<"consultations_booking" | null>(),
   flowStage: text("flow_stage").$type<"awaiting_slot_selection" | "awaiting_confirm" | null>(),
   flowExpiresAt: timestamp("flow_expires_at", { withTimezone: true }),
+  // Post-booking context: tracks last confirmed consultation for modify/cancel operations
+  lastConsultationId: varchar("last_consultation_id"),
+  lastConsultationExpiresAt: timestamp("last_consultation_expires_at", { withTimezone: true }),
   lastMessageAt: timestamp("last_message_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

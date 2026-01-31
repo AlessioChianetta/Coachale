@@ -54,6 +54,13 @@ Key enhancements include:
   - Graceful fallback: if Calendar fails, booking still completes without Meet link
   - 3-step booking flow: getAvailableSlots → proposeBooking (with token) → confirmBooking (creates event)
   - Client recognition: matches booking email with existing clients to link `client_id`
+  - **Post-Booking Context System** (anti-hallucination architecture for modify/cancel):
+    - After confirmBooking: `setPostBookingContext(conversationId, consultationId)` with 30-min TTL stored in ai_conversations table
+    - `hasRecentConsultation` flag enables reschedule/cancel intent detection even outside active booking flows
+    - **Forced tool execution (ANY mode)**: when hasRecentConsultation=true AND intent is booking_reschedule/booking_cancel, toolConfig uses `mode: ANY` to force tool call (prevents AI from claiming actions without execution)
+    - After cancelBooking: `clearPostBookingContext()` - resets to normal AUTO mode
+    - After rescheduleBooking: `setPostBookingContext()` refresh - new 30-min window for further modifications
+    - `booking_impediment` intent for ambiguous statements ("non posso esserci") - AI asks clarification instead of assuming cancel
 - Content Variety System to prevent repetitive AI-generated ads:
   - Hook max 125 characters (Meta Ads visibility constraint)
   - 10 hook pattern rotation (domanda, statistica, storia, controintuitivo, problema, curiosità, social proof, us-vs-them, urgenza, provocazione)

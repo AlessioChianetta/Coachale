@@ -9,7 +9,7 @@ import { eq, and, gte, lte, sql, or, desc, isNull } from "drizzle-orm";
 import { ConsultationToolResult } from "./consultation-tools";
 import crypto from "crypto";
 import { getValidAccessToken, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from "../google-calendar-service";
-import { setBookingFlowState, clearBookingFlowState } from "../booking/booking-flow-service";
+import { setBookingFlowState, clearBookingFlowState, setPostBookingContext, clearPostBookingContext } from "../booking/booking-flow-service";
 
 export async function executeConsultationTool(
   toolName: string,
@@ -1017,9 +1017,10 @@ async function executeConfirmBooking(
     message += ` Riceverai presto i dettagli per la videochiamata.`;
   }
 
-  // Clear booking flow state after successful confirmation
+  // Set post-booking context: allows user to modify/cancel within 30 min window
   if (serverConversationId) {
-    await clearBookingFlowState(serverConversationId);
+    await setPostBookingContext(serverConversationId, newConsultation.id);
+    console.log(`📌 [CONSULTATION TOOL] Post-booking context set for consultation ${newConsultation.id}`);
   }
 
   return {
@@ -1173,13 +1174,14 @@ async function executeCancelBooking(
 
   console.log(`✅ [CANCEL BOOKING] Consultation ${consultation.id} cancelled`);
 
-  // Clear booking flow state if conversationId exists
+  // Clear booking flow state and post-booking context if conversationId exists
   if (conversationId) {
     try {
       await clearBookingFlowState(conversationId);
-      console.log(`🧹 [CANCEL BOOKING] Cleared booking flow state for conversation ${conversationId.slice(0, 8)}`);
+      await clearPostBookingContext(conversationId);
+      console.log(`🧹 [CANCEL BOOKING] Cleared booking flow state and post-booking context for conversation ${conversationId.slice(0, 8)}`);
     } catch (flowError) {
-      console.warn(`⚠️ [CANCEL BOOKING] Failed to clear flow state:`, flowError);
+      console.warn(`⚠️ [CANCEL BOOKING] Failed to clear flow/post-booking state:`, flowError);
     }
   }
 
@@ -1485,13 +1487,15 @@ async function executeRescheduleBooking(
   });
   const newTimeStr = newScheduledAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  // Clear any pending booking flow state to prevent "sticky tool mode"
+  // Clear booking flow state and refresh post-booking context (for further modify/cancel)
   if (conversationId) {
     try {
       await clearBookingFlowState(conversationId);
-      console.log(`🧹 [RESCHEDULE BOOKING] Cleared booking flow state for conversation ${conversationId.slice(0, 8)}`);
+      // Refresh post-booking context with same consultation ID (new 30-min window)
+      await setPostBookingContext(conversationId, consultation.id);
+      console.log(`🧹 [RESCHEDULE BOOKING] Cleared booking flow state and refreshed post-booking context for consultation ${consultation.id}`);
     } catch (flowError) {
-      console.warn(`⚠️ [RESCHEDULE BOOKING] Failed to clear flow state:`, flowError);
+      console.warn(`⚠️ [RESCHEDULE BOOKING] Failed to update flow/post-booking state:`, flowError);
     }
   }
 
