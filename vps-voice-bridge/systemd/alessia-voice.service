@@ -1,0 +1,48 @@
+[Unit]
+Description=Alessia Voice Bridge - FreeSWITCH to Gemini
+Documentation=https://github.com/your-repo/alessia-voice-bridge
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Directory di lavoro
+WorkingDirectory=/opt/alessia-voice
+
+# Comando di avvio
+# Per sviluppo: npx tsx src/index.ts
+# Per produzione: node dist/index.js
+ExecStart=/usr/bin/node dist/index.js
+
+# File di environment
+EnvironmentFile=/opt/alessia-voice/.env
+
+# Restart automatico
+Restart=always
+RestartSec=5
+
+# Limiti
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Logging su journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=alessia-voice
+
+# Sicurezza
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/alessia-voice
+
+# Limiti risorse
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

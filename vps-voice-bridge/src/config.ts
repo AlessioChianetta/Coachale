@@ -1,0 +1,82 @@
+import 'dotenv/config';
+
+export interface BridgeConfig {
+  ws: {
+    host: string;
+    port: number;
+    authToken: string | null;
+  };
+  gemini: {
+    apiKey: string;
+    model: string;
+    voiceId: string;
+  };
+  replit: {
+    apiUrl: string;
+    apiToken: string;
+  };
+  esl: {
+    host: string;
+    port: number;
+    password: string;
+  };
+  audio: {
+    sampleRateIn: number;
+    sampleRateOut: number;
+  };
+  session: {
+    timeoutMs: number;
+    maxConcurrent: number;
+  };
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
+}
+
+function getEnv(key: string, defaultValue?: string): string {
+  const value = process.env[key];
+  if (value === undefined) {
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
+}
+
+function getEnvOptional(key: string): string | null {
+  return process.env[key] || null;
+}
+
+export function loadConfig(): BridgeConfig {
+  return {
+    ws: {
+      host: getEnv('WS_HOST', '0.0.0.0'),
+      port: parseInt(getEnv('WS_PORT', '9090'), 10),
+      authToken: getEnvOptional('WS_AUTH_TOKEN'),
+    },
+    gemini: {
+      apiKey: getEnv('GEMINI_API_KEY'),
+      model: getEnv('GEMINI_MODEL', 'gemini-2.5-flash-native-audio-preview'),
+      voiceId: getEnv('GEMINI_VOICE_ID', 'Puck'),
+    },
+    replit: {
+      apiUrl: getEnv('REPLIT_API_URL', ''),
+      apiToken: getEnv('REPLIT_API_TOKEN', ''),
+    },
+    esl: {
+      host: getEnv('ESL_HOST', '127.0.0.1'),
+      port: parseInt(getEnv('ESL_PORT', '8021'), 10),
+      password: getEnv('ESL_PASSWORD', ''),
+    },
+    audio: {
+      sampleRateIn: parseInt(getEnv('AUDIO_SAMPLE_RATE_IN', '8000'), 10),
+      sampleRateOut: parseInt(getEnv('AUDIO_SAMPLE_RATE_OUT', '8000'), 10),
+    },
+    session: {
+      timeoutMs: parseInt(getEnv('SESSION_TIMEOUT_MS', '30000'), 10),
+      maxConcurrent: parseInt(getEnv('MAX_CONCURRENT_CALLS', '10'), 10),
+    },
+    logLevel: (getEnv('LOG_LEVEL', 'info') as BridgeConfig['logLevel']),
+  };
+}
+
+export const config = loadConfig();

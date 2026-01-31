@@ -1,0 +1,64 @@
+<!--
+  Dialplan Alessia AI Voice
+  
+  Copia questo file in: /opt/freeswitch/conf/dialplan/default/
+  Poi esegui: docker exec -it freeswitch fs_cli -x "reloadxml"
+  
+  Questo dialplan instrada le chiamate al numero 9999 verso il Voice Bridge.
+-->
+
+<include>
+  <extension name="alessia_ai_voice">
+    <condition field="destination_number" expression="^9999$">
+      <!-- Log chiamata -->
+      <action application="log" data="INFO [ALESSIA] Incoming call from ${caller_id_number} to AI Assistant"/>
+      
+      <!-- Rispondi alla chiamata -->
+      <action application="answer"/>
+      
+      <!-- Piccola pausa per stabilizzare -->
+      <action application="sleep" data="500"/>
+      
+      <!-- Riproduci beep di inizio (opzionale) -->
+      <!-- <action application="playback" data="tone_stream://%(200,0,800)"/> -->
+      
+      <!-- Abilita registrazione stereo (caller + AI separati) -->
+      <action application="set" data="RECORD_STEREO=true"/>
+      <action application="set" data="RECORD_SAMPLE_RATE=8000"/>
+      
+      <!-- Imposta codec per audio_stream -->
+      <action application="set" data="audio_stream_codec=PCMU"/>
+      
+      <!-- Connetti al Voice Bridge -->
+      <!-- NOTA: Usa 127.0.0.1 perché il bridge gira sullo stesso server -->
+      <action application="audio_stream" data="ws://127.0.0.1:9090"/>
+      
+      <!-- Mantieni la chiamata attiva fino a hangup -->
+      <action application="park"/>
+    </condition>
+  </extension>
+
+  <!-- 
+    Estensione alternativa per chiamate in uscita verso AI
+    Utile per test o per consultanti che vogliono parlare con Alessia
+  -->
+  <extension name="alessia_outbound_ai">
+    <condition field="destination_number" expression="^(alessia|AI|ai)$">
+      <action application="log" data="INFO [ALESSIA] Outbound AI call from ${caller_id_number}"/>
+      <action application="transfer" data="9999 XML default"/>
+    </condition>
+  </extension>
+
+  <!--
+    Estensione per test loopback
+    Usa: originate loopback/9999/default &park
+  -->
+  <extension name="alessia_test">
+    <condition field="destination_number" expression="^9998$">
+      <action application="log" data="INFO [ALESSIA] Test call initiated"/>
+      <action application="answer"/>
+      <action application="playback" data="ivr/ivr-welcome.wav"/>
+      <action application="transfer" data="9999 XML default"/>
+    </condition>
+  </extension>
+</include>
