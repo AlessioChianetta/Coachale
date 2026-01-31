@@ -1,0 +1,23 @@
+Error fetching activity log: TypeError: lastInboundMessages is not iterable
+    at <anonymous> (/home/runner/workspace/server/routes/followup-api.ts:1169:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+4:10:38 PM [express] GET /api/followup/activity-log 500 in 2463ms :: {"message":"lastInboundMessages…
+4:10:38 PM [express] GET /api/automation-rules 200 in 10ms
+4:10:38 PM [express] GET /api/campaigns 304 in 429ms :: {"success":true,"data":[{"id":"4f64c317-d090…
+4:10:38 PM [express] GET /api/auth/my-profiles 304 in 573ms :: {"profiles":[{"id":"5f4305c0-7b21-40e…
+4:10:38 PM [express] GET /api/proactive-leads 304 in 859ms :: {"success":true,"leads":[{"id":"cee899…
+📋 Loaded 6 cached approval statuses for agent Assistente Viaggio Spaziale
+✅ [APPROVAL FETCH] Template notifica_nuovo_appuntamento_v1 (HXb29f96ec32d055ff20d8938fa2b8fb5e): approved
+✅ [APPROVAL FETCH] Template riattivazione_receptionist (HXb4f83cb625a7faae80553c651b7dfbd9): approved
+✅ [APPROVAL FETCH] Template messaggio_di_apertura_ottimizzato_v3 (HX00792756424f77e1971ba80c3e09c189): approved
+4:10:39 PM [express] GET /api/whatsapp/templates 304 in 1911ms :: {"templates":[{"sid":"HXb29f96ec32…
+✅ Updated approval status cache for Assistente Viaggio Spaziale
+4:10:40 PM [express] GET /api/auth/my-profiles 304 in 573ms :: {"profiles":[{"id":"5f4305c0-7b21-40e…
+Error fetching activity log: TypeError: lastInboundMessages is not iterable
+    at <anonymous> (/home/runner/workspace/server/routes/followup-api.ts:1169:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+4:10:41 PM [express] GET /api/followup/activity-log 500 in 1432ms :: {"message":"lastInboundMessages…
+4:10:41 PM [express] GET /api/whatsapp/custom-templates 304 in 3852ms :: {"success":true,"data":[{"i…
+[IMAP] Opened folder "INBOX.Sent": server reports 2 total messages
+[IMAP] Finished parsing 2 emails from "INBOX.Sent"
+[EMAIL-HUB AUTO] Fetched 2 emails from INBOX.Sent (sent)

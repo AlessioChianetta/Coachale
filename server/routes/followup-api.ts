@@ -1151,7 +1151,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     const conversationIds = [...new Set(aiLogs.map(log => log.conversationId))];
     
     // Get last inbound message for all conversations in a single query using DISTINCT ON
-    const lastInboundMessages = conversationIds.length > 0 ? await db.execute<{
+    const lastInboundResult = conversationIds.length > 0 ? await db.execute<{
       conversation_id: string;
       created_at: Date;
     }>(sql`
@@ -1162,11 +1162,11 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       WHERE conversation_id IN (${sql.join(conversationIds.map(id => sql`${id}`), sql`, `)})
         AND sender = 'client'
       ORDER BY conversation_id, created_at DESC
-    `) : [];
+    `) : { rows: [] };
     
     // Build a map for fast lookup
     const lastInboundMap = new Map<string, Date>();
-    for (const msg of lastInboundMessages) {
+    for (const msg of lastInboundResult.rows) {
       lastInboundMap.set(msg.conversation_id, new Date(msg.created_at));
     }
     
