@@ -1,0 +1,110 @@
+Cosa sta dicendo (super semplice)
+
+FreeSWITCH riceve la chiamata.
+
+FreeSWITCH non parla direttamente con Gemini.
+
+FreeSWITCH manda l’audio a un “traduttore” (il Voice Bridge Node.js).
+
+Il bridge manda l’audio a Replit, che già sa parlare con Gemini Live (come nel browser).
+
+La risposta audio torna indietro: Gemini → Replit → Bridge → FreeSWITCH → Telefono.
+
+Quindi: stessa AI del browser, cambia solo il “microfono”: invece del browser, è il telefono.
+
+La cosa IMPORTANTISSIMA: 127.0.0.1 va bene solo se sono sulla stessa macchina
+
+Nel disegno:
+
+✅ ws://127.0.0.1:9090
+
+Va benissimo se il Voice Bridge gira sullo stesso VPS dove gira FreeSWITCH (nel tuo caso: sì).
+Quindi è corretto e consigliato per sicurezza.
+
+❌ Se provi a usare 127.0.0.1 “da fuori”
+
+Non funziona: 127.0.0.1 vuol dire “io stesso”, non “il server”.
+
+Tu hai detto: “voglio sia 127 che IP pubblico”
+
+Capito. Però qui serve chiarezza:
+
+La regola d’oro
+
+Il ponte FreeSWITCH → Bridge NON deve stare pubblico se puoi evitarlo.
+Perché se lo metti su IP pubblico, chiunque potrebbe provare a connettersi e “spararti” audio, consumarti risorse, o peggio.
+
+Se ti serve davvero collegarti da fuori (per test)
+
+Hai 3 modi “puliti”:
+
+SSH tunnel (consigliato per test)
+
+non apri porte pubbliche
+
+ti colleghi “come se fosse localhost”
+
+VPN (WireGuard/Tailscale)
+
+anche qui niente porte pubbliche
+
+tu sei “dentro la rete” e puoi usare IP privati
+
+Aprire 9090 su IP pubblico (sconsigliato)
+
+allora devi mettere wss (TLS) + autenticazione + IP allowlist
+
+altrimenti è un invito ai guai
+
+Quindi: sì puoi, ma non farlo “nudo”.
+
+Punto tecnico: mod_audio_stream vs ESL
+
+Quello che ti ha detto dopo il programmatore è giusto:
+
+application="socket" non è audio raw, è un protocollo tipo “comandi”.
+
+Per audio streaming, l’approccio più dritto è mod_audio_stream.
+
+Quindi nel dialplan la riga giusta non è socket 127.0.0.1:9090...
+ma qualcosa tipo:
+
+<action application="audio_stream" data="ws://127.0.0.1:9090"/>
+
+
+(La forma esatta del parametro può variare a seconda del modulo/versione e formato audio, ma il concetto è quello.)
+
+Allora “noi intanto che facciamo”?
+
+In pratica siete quasi arrivati. Manca solo questo “tubo” reale:
+
+1) Sul VPS: far girare il Bridge Node.js come servizio
+
+deve aprire un WebSocket server su 9090
+
+ricevere audio da FreeSWITCH (μ-law 8kHz o PCM, dipende config)
+
+convertire e inoltrare a Replit/Gemini
+
+ricevere l’audio di risposta e rimandarlo a FreeSWITCH
+
+2) Sul VPS: dialplan 9999 deve chiamare audio_stream, non “socket”
+
+Tu hai già creato la extension 9999 e stai facendo originate: perfetto.
+Ora va sostituito il blocco con audio_stream.
+
+3) Replit: deve esporre l’endpoint WS/HTTP che il bridge usa
+
+Da quello che mi hai incollato: già fatto.
+
+Cosa devi dire al programmatore (testo pronto)
+
+Ecco cosa gli scrivi:
+
+“Confermo architettura: FreeSWITCH → mod_audio_stream → WS bridge (VPS) → WSS Replit → Gemini e ritorno.”
+
+“Il WS tra FreeSWITCH e bridge resta su 127.0.0.1 (stesso VPS). Se serve accesso da remoto facciamo SSH tunnel o VPN, non apriamo 9090 pubblico senza WSS+auth.”
+
+“Il dialplan 9999 deve usare audio_stream e il bridge deve implementare voice-bridge-server.ts che ascolta su 9090 e gestisce sessioni + conversioni audio.”
+
+“ESL (8021) rimane solo per controllo/eventi, sempre localhost.”
