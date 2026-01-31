@@ -134,6 +134,7 @@ import publerRouter from "./routes/publer";
 import stripeAutomationsRouter, { handleStripeWebhook } from "./routes/stripe-automations-router";
 import clientDataRouter from "./routes/client-data-router";
 import datasetSyncRouter from "./routes/dataset-sync-router";
+import voiceRouter from "./routes/voice-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -12642,6 +12643,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // AI Consultations routes (requires authentication)
   app.use("/api/consultations/ai", aiConsultationsRouter);
+
+  // Voice Telephony routes (requires authentication)
+  app.use("/api/voice", voiceRouter);
 
   // Client Sales Agent Configuration routes (requires authentication)
   app.use("/api/client/sales-agent/config", salesAgentConfigRouter);

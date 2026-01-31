@@ -39,7 +39,7 @@
 | 6 | Gemini Bridge | voice-gemini-bridge.ts | ⏳ TODO | VPS reference code |
 | 7 | Call Manager | voice-call-manager.ts | ⏳ TODO | VPS reference code |
 | 8 | Health Check | voice-health.ts | ⏳ TODO | VPS reference code |
-| 9 | Voice Routes | voice-routes.ts | ⏳ TODO | API Replit |
+| 9 | Voice Routes | voice-routes.ts | ✅ DONE | API Replit |
 | 10 | Frontend Dashboard | VoiceCalls.tsx | ⏳ TODO | /consultant/voice-calls |
 | 11 | Frontend Settings | VoiceSettings.tsx | ⏳ TODO | /consultant/voice-settings |
 
