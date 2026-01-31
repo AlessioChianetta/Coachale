@@ -2101,18 +2101,6 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
       })
       .where(eq(whatsappConversations.id, conversation.id));
     console.log(`🔄 [STEP 9b] Updated conversation lastMessageAt (AI response)`);
-    
-    // CRITICAL FIX: Set nextEvaluationAt to 30 min in the future
-    // If lead doesn't respond, system will re-evaluate and potentially send a gentle reminder
-    const nextEvalTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-    await db
-      .update(conversationStates)
-      .set({
-        nextEvaluationAt: nextEvalTime,
-        updatedAt: new Date(),
-      })
-      .where(eq(conversationStates.conversationId, conversation.id));
-    console.log(`⏱️ [STEP 9c] Set nextEvaluationAt to ${nextEvalTime.toISOString()} (30 min) for quick follow-up if no reply`);
 
     // OBJECTION TRACKING DISABLED - Aligned with public share (Dec 2025)
 
@@ -5414,29 +5402,7 @@ Ti ho aggiornato l'invito via email. Continua così! 🚀"
 6. Tono umano, consulenziale, non robotico
 7. 2-3 righe per messaggio, come un vero chat su WhatsApp
 
-Sei un consulente esperto che aiuta attraverso l'ascolto attivo e domande intelligenti.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⏱️ TEMPO DI RIVALUTAZIONE (OBBLIGATORIO)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Alla fine della tua risposta, DEVI aggiungere un tag per decidere quando rivalutare la conversazione se il lead non risponde.
-
-FORMATO: [NEXT_EVAL:X] dove X è il numero di minuti
-
-LOGICA DI DECISIONE:
-- Lead ATTIVO nella conversazione (sta rispondendo velocemente) → 15-30 minuti
-- Lead ha fatto una domanda specifica (sta aspettando info) → 20-40 minuti  
-- È notte (22:00-08:00) e il lead sembra stanco → 600+ (domani mattina)
-- Lead ha appena confermato un appuntamento → 1440 (24 ore, reminder pre-call)
-- Lead sembra indeciso ma interessato → 60-120 minuti
-- Lead ha detto "ci penso" o simile → 180-360 minuti
-- Conversazione appena iniziata → 60 minuti
-
-ESEMPIO:
-"Perfetto! Ti va meglio mattina o pomeriggio? [NEXT_EVAL:20]"
-
-Il tag verrà rimosso prima dell'invio - il lead non lo vedrà.`;
+Sei un consulente esperto che aiuta attraverso l'ascolto attivo e domande intelligenti.`;
 
   return prompt;
 }
