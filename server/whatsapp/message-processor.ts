@@ -2101,6 +2101,18 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
       })
       .where(eq(whatsappConversations.id, conversation.id));
     console.log(`🔄 [STEP 9b] Updated conversation lastMessageAt (AI response)`);
+    
+    // CRITICAL FIX: Set nextEvaluationAt to 30 min in the future
+    // If lead doesn't respond, system will re-evaluate and potentially send a gentle reminder
+    const nextEvalTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    await db
+      .update(conversationStates)
+      .set({
+        nextEvaluationAt: nextEvalTime,
+        updatedAt: new Date(),
+      })
+      .where(eq(conversationStates.conversationId, conversation.id));
+    console.log(`⏱️ [STEP 9c] Set nextEvaluationAt to ${nextEvalTime.toISOString()} (30 min) for quick follow-up if no reply`);
 
     // OBJECTION TRACKING DISABLED - Aligned with public share (Dec 2025)
 
