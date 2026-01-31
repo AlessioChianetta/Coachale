@@ -2665,8 +2665,20 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
             tools: clientTools,
           });
           
-          const finalText = followUpResponse.response.text() || "";
+          let finalText = "";
+          try {
+            finalText = followUpResponse.response.text() || "";
+          } catch (textError: any) {
+            console.log(`🔧 [CONSULTATION] Warning extracting text: ${textError.message}`);
+          }
           console.log(`🔧 [CONSULTATION] Final response: ${finalText.length} chars`);
+          
+          // FALLBACK: If Gemini returned empty text (e.g., another function call instead of text),
+          // use the tool result message as the response
+          if (!finalText && toolResult.success && toolResult.result?.message) {
+            finalText = toolResult.result.message;
+            console.log(`🔧 [CONSULTATION] Using tool message as fallback: ${finalText.length} chars`);
+          }
           
           accumulatedMessage = finalText;
           yield {
