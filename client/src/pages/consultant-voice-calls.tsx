@@ -1,0 +1,405 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Phone,
+  PhoneIncoming,
+  PhoneOff,
+  PhoneMissed,
+  PhoneForwarded,
+  Clock,
+  User,
+  Search,
+  Loader2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
+  AlertCircle,
+  CheckCircle,
+  Settings,
+} from "lucide-react";
+import Navbar from "@/components/navbar";
+import Sidebar from "@/components/sidebar";
+import { getAuthHeaders } from "@/lib/auth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { formatDistanceToNow, format } from "date-fns";
+import { it } from "date-fns/locale";
+
+interface VoiceCall {
+  id: string;
+  caller_id: string;
+  called_number: string;
+  client_id: string | null;
+  client_name: string | null;
+  client_phone: string | null;
+  freeswitch_uuid: string;
+  status: string;
+  started_at: string;
+  answered_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  talk_time_seconds: number | null;
+  ai_mode: string | null;
+  outcome: string | null;
+  telephony_minutes: number | null;
+  ai_cost_estimate: number | null;
+}
+
+interface VoiceStats {
+  total_calls: string;
+  completed_calls: string;
+  failed_calls: string;
+  transferred_calls: string;
+  avg_duration_seconds: string;
+  total_minutes: string;
+  total_cost_estimate: string;
+  total_tokens_used: string;
+}
+
+interface HealthStatus {
+  overall: string;
+  components: {
+    database: { status: string };
+    esl: { status: string };
+    freeswitch: { status: string };
+    gemini: { status: string };
+  };
+}
+
+const STATUS_CONFIG: Record<string, { label: string; icon: typeof Phone; color: string }> = {
+  ringing: { label: "In Arrivo", icon: PhoneIncoming, color: "bg-yellow-500" },
+  answered: { label: "Connessa", icon: Phone, color: "bg-blue-500" },
+  talking: { label: "In Corso", icon: Phone, color: "bg-green-500" },
+  completed: { label: "Completata", icon: CheckCircle, color: "bg-green-600" },
+  failed: { label: "Fallita", icon: PhoneMissed, color: "bg-red-500" },
+  transferred: { label: "Trasferita", icon: PhoneForwarded, color: "bg-purple-500" },
+  ended: { label: "Terminata", icon: PhoneOff, color: "bg-gray-500" },
+};
+
+export default function ConsultantVoiceCallsPage() {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [period, setPeriod] = useState<string>("day");
+
+  const { toast } = useToast();
+
+  const { data: callsData, isLoading: loadingCalls, refetch: refetchCalls } = useQuery({
+    queryKey: ["/api/voice/calls", page, statusFilter, search],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const res = await fetch(`/api/voice/calls?${params}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento chiamate");
+      return res.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const { data: statsData, isLoading: loadingStats } = useQuery({
+    queryKey: ["/api/voice/stats", period],
+    queryFn: async () => {
+      const res = await fetch(`/api/voice/stats?period=${period}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento statistiche");
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: healthData } = useQuery({
+    queryKey: ["/api/voice/health"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/health", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento stato");
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const calls: VoiceCall[] = callsData?.calls || [];
+  const pagination = callsData?.pagination || { page: 1, totalPages: 1, total: 0 };
+  const stats: VoiceStats | undefined = statsData?.stats;
+  const activeCalls: number = statsData?.activeCalls || 0;
+  const health: HealthStatus | undefined = healthData;
+
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return "-";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const filteredCalls = search
+    ? calls.filter(
+        (c) =>
+          c.caller_id.includes(search) ||
+          c.client_name?.toLowerCase().includes(search.toLowerCase())
+      )
+    : calls;
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+      <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
+        <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <main className="flex-1 p-6 lg:px-8 overflow-auto">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h1 className="text-3xl font-bold flex items-center gap-2">
+                  <Phone className="h-8 w-8" />
+                  Chiamate Voice
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Monitora e gestisci le chiamate in tempo reale
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/consultant/voice-settings">
+                  <Button variant="outline">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Impostazioni
+                  </Button>
+                </Link>
+                <Button onClick={() => refetchCalls()} variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Aggiorna
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Chiamate Attive</p>
+                      <p className="text-3xl font-bold">{activeCalls}</p>
+                    </div>
+                    <div className={`p-3 rounded-full ${activeCalls > 0 ? "bg-green-100" : "bg-gray-100"}`}>
+                      <Phone className={`h-6 w-6 ${activeCalls > 0 ? "text-green-600" : "text-gray-400"}`} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Totale Oggi</p>
+                      <p className="text-3xl font-bold">{stats?.total_calls || 0}</p>
+                    </div>
+                    <div className="p-3 rounded-full bg-blue-100">
+                      <BarChart3 className="h-6 w-6 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Durata Media</p>
+                      <p className="text-3xl font-bold">
+                        {formatDuration(Math.round(parseFloat(stats?.avg_duration_seconds || "0")))}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-full bg-purple-100">
+                      <Clock className="h-6 w-6 text-purple-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Stato Sistema</p>
+                      <p className="text-lg font-medium mt-1">
+                        {health?.overall === "healthy" ? (
+                          <span className="flex items-center gap-1 text-green-600">
+                            <CheckCircle className="h-5 w-5" /> Online
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-yellow-600">
+                            <AlertCircle className="h-5 w-5" /> {health?.overall || "..."}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className={`p-3 rounded-full ${health?.overall === "healthy" ? "bg-green-100" : "bg-yellow-100"}`}>
+                      <Settings className={`h-6 w-6 ${health?.overall === "healthy" ? "text-green-600" : "text-yellow-600"}`} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <CardTitle>Storico Chiamate</CardTitle>
+                  <div className="flex gap-2 flex-wrap">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cerca numero o cliente..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9 w-[200px]"
+                      />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Stato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti</SelectItem>
+                        {Object.entries(STATUS_CONFIG).map(([value, config]) => (
+                          <SelectItem key={value} value={value}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingCalls ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : filteredCalls.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Phone className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium">Nessuna chiamata trovata</h3>
+                    <p className="text-muted-foreground">
+                      Le chiamate appariranno qui quando arriveranno
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Chiamante</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Stato</TableHead>
+                          <TableHead>Durata</TableHead>
+                          <TableHead>Esito</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCalls.map((call) => {
+                          const statusConfig = STATUS_CONFIG[call.status] || STATUS_CONFIG.ended;
+                          const StatusIcon = statusConfig.icon;
+                          return (
+                            <TableRow key={call.id}>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {format(new Date(call.started_at), "dd/MM HH:mm", { locale: it })}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(call.started_at), {
+                                    addSuffix: true,
+                                    locale: it,
+                                  })}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-mono">{call.caller_id}</TableCell>
+                              <TableCell>
+                                {call.client_name ? (
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    {call.client_name}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={statusConfig.color}>
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {statusConfig.label}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
+                              <TableCell>
+                                {call.outcome ? (
+                                  <Badge variant="outline">{call.outcome}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Link href={`/consultant/voice-calls/${call.id}`}>
+                                  <Button variant="ghost" size="sm">
+                                    Dettagli
+                                  </Button>
+                                </Link>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="text-sm text-muted-foreground">
+                        {pagination.total} chiamate totali
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page <= 1}
+                          onClick={() => setPage((p) => p - 1)}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="flex items-center px-2 text-sm">
+                          {page} / {pagination.totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page >= pagination.totalPages}
+                          onClick={() => setPage((p) => p + 1)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

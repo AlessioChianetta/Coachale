@@ -40,8 +40,9 @@
 | 7 | Call Manager | voice-call-manager.ts | ⏳ TODO | VPS reference code |
 | 8 | Health Check | voice-health.ts | ⏳ TODO | VPS reference code |
 | 9 | Voice Routes | voice-routes.ts | ✅ DONE | API Replit |
-| 10 | Frontend Dashboard | VoiceCalls.tsx | ⏳ TODO | /consultant/voice-calls |
-| 11 | Frontend Settings | VoiceSettings.tsx | ⏳ TODO | /consultant/voice-settings |
+| 10 | Frontend Dashboard | VoiceCalls.tsx | ✅ DONE | /consultant/voice-calls |
+| 11 | Frontend Settings | VoiceSettings.tsx | ✅ DONE | /consultant/voice-settings |
+| 12 | Frontend Detail | VoiceCallDetail.tsx | ✅ DONE | /consultant/voice-calls/:id |
 
 ---
 

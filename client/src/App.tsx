@@ -46,6 +46,9 @@ const ConsultantEmailLogs = lazy(() => import("@/pages/consultant-email-logs"));
 const ConsultantAiConfig = lazy(() => import("@/pages/consultant-ai-config"));
 const ConsultantAIAssistant = lazy(() => import("@/pages/consultant-ai-assistant"));
 const ConsultantAISettings = lazy(() => import("@/pages/consultant-ai-settings"));
+const ConsultantVoiceSettings = lazy(() => import("@/pages/consultant-voice-settings"));
+const ConsultantVoiceCalls = lazy(() => import("@/pages/consultant-voice-calls"));
+const ConsultantVoiceCallDetail = lazy(() => import("@/pages/consultant-voice-call-detail"));
 const ConsultantFileSearchAnalytics = lazy(() => import("@/pages/consultant-file-search-analytics"));
 const ConsultantApiKeysUnified = lazy(() => import("@/pages/consultant-api-keys-unified"));
 const ConsultantClientState = lazy(() => import("@/pages/consultant-client-state"));
@@ -455,6 +458,24 @@ function Router() {
           <Route path="/consultant/ai-settings">
             <AuthGuard requiredRole="consultant">
               <ConsultantAISettings />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/voice-settings">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantVoiceSettings />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/voice-calls">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantVoiceCalls />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/voice-calls/:id">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantVoiceCallDetail />
             </AuthGuard>
           </Route>
 

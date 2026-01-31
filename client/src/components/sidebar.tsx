@@ -44,6 +44,7 @@ import {
   FileSearch,
   Star,
   Gift,
+  Phone,
   // Content Studio icons
   Lightbulb,
   Palette,
@@ -136,6 +137,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target, color: "text-cyan-600", badge: "HUB" },
       { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: Settings, color: "text-slate-500" },
       { name: "Email Hub", href: "/consultant/email-hub", icon: Mail, color: "text-blue-500" },
+      { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone, color: "text-green-500", badge: "NEW" },
     ]
   },
   {
