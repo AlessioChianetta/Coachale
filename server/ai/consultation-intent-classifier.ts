@@ -8,6 +8,7 @@ export type ConsultationIntent =
   | 'booking_confirm'
   | 'booking_cancel'
   | 'booking_reschedule'
+  | 'booking_impediment'  // User signals they can't attend, but action unclear
   | 'informational'
   | 'other';
 
@@ -67,9 +68,11 @@ INTENTS:
    Examples: "confermo", "va bene", "sì prenota", "ok"
    NOTE: If user specifies a new date/time, that's booking_request, NOT booking_confirm
 
-5. booking_cancel - User wants to cancel a booking
-   Examples: "annulla", "disdici l'appuntamento", "cancella la consulenza", "rimuovi l'appuntamento"
+5. booking_cancel - User EXPLICITLY wants to cancel a booking (CLEAR intent to not have the consultation at all)
+   Examples: "annulla", "disdici l'appuntamento", "cancella la consulenza", "rimuovi l'appuntamento", 
+   "non voglio più la consulenza", "cancellala"
    INCLUDES: Follow-up insistence after a cancel request
+   WARNING: Do NOT use for ambiguous statements like "non posso esserci" - use booking_impediment instead
 
 6. booking_reschedule - User wants to MOVE/CHANGE an existing booking to a different time (NOT cancel + new)
    Examples: "non posso più venire alle 10, spostiamo alle 11?", "posso cambiare orario?", 
@@ -77,10 +80,17 @@ INTENTS:
    KEY DIFFERENCE FROM booking_cancel: User still wants the consultation, just at a different time
    KEY DIFFERENCE FROM booking_request: User already HAS a booking and wants to MODIFY it
 
-7. informational - General questions about consultations (no DB lookup needed)
+7. booking_impediment - User signals they CANNOT attend a scheduled consultation but does NOT specify action
+   Examples: "non posso esserci alla consulenza", "ho un imprevisto", "non riesco a venire", 
+   "ho un problema con l'appuntamento", "non ce la faccio per quella data"
+   USE THIS WHEN: User mentions inability to attend but does NOT explicitly say cancel or reschedule
+   THE AI SHOULD ASK: "Vuoi cancellare l'appuntamento o preferisci spostarlo a un altro giorno/orario?"
+   CRITICAL: This is for AMBIGUOUS situations - if user clearly says "annulla" or "sposta", use those intents
+
+8. informational - General questions about consultations (no DB lookup needed)
    Examples: "cos'è una consulenza?", "come funziona?"
 
-8. other - Message is CLEARLY not about consultations AND no relevant context exists
+9. other - Message is CLEARLY not about consultations AND no relevant context exists
    Examples: "che tempo fa?", "parlami degli esercizi"
    WARNING: Do NOT use "other" if recent context was about consultations!
 
@@ -347,6 +357,10 @@ export function getToolsForIntent(
       
     case 'booking_reschedule':
       return ['rescheduleBooking'];
+    
+    case 'booking_impediment':
+      // No tools - AI should ask clarification (cancel or reschedule?)
+      return [];
       
     default:
       return [];
