@@ -1147,24 +1147,35 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       ))
       .orderBy(desc(schema.followupAiEvaluationLog.createdAt));
 
-    // Enrich AI logs with 24h window info
-    const enrichedAiLogs = await Promise.all(aiLogs.map(async (log) => {
-      const lastLeadMsg = await db
-        .select({ createdAt: schema.whatsappMessages.createdAt })
-        .from(schema.whatsappMessages)
-        .where(
-          and(
-            eq(schema.whatsappMessages.conversationId, log.conversationId),
-            eq(schema.whatsappMessages.sender, 'client')
-          )
-        )
-        .orderBy(desc(schema.whatsappMessages.createdAt))
-        .limit(1);
-
-      const window24hExpiresAt = lastLeadMsg.length > 0 && lastLeadMsg[0].createdAt
-        ? new Date(new Date(lastLeadMsg[0].createdAt).getTime() + 24 * 60 * 60 * 1000)
+    // Enrich AI logs with 24h window info - OPTIMIZED: single batch query instead of N+1
+    const conversationIds = [...new Set(aiLogs.map(log => log.conversationId))];
+    
+    // Get last inbound message for all conversations in a single query using DISTINCT ON
+    const lastInboundMessages = conversationIds.length > 0 ? await db.execute<{
+      conversation_id: string;
+      created_at: Date;
+    }>(sql`
+      SELECT DISTINCT ON (conversation_id) 
+        conversation_id, 
+        created_at 
+      FROM whatsapp_messages 
+      WHERE conversation_id = ANY(${conversationIds}::uuid[])
+        AND sender = 'client'
+      ORDER BY conversation_id, created_at DESC
+    `) : [];
+    
+    // Build a map for fast lookup
+    const lastInboundMap = new Map<string, Date>();
+    for (const msg of lastInboundMessages) {
+      lastInboundMap.set(msg.conversation_id, new Date(msg.created_at));
+    }
+    
+    // Enrich logs synchronously using the map
+    const enrichedAiLogs = aiLogs.map((log) => {
+      const lastLeadMsgTime = lastInboundMap.get(log.conversationId);
+      const window24hExpiresAt = lastLeadMsgTime
+        ? new Date(lastLeadMsgTime.getTime() + 24 * 60 * 60 * 1000)
         : null;
-
       const canSendFreeform = window24hExpiresAt ? new Date() < window24hExpiresAt : false;
 
       return {
@@ -1172,7 +1183,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         window24hExpiresAt,
         canSendFreeform,
       };
-    }));
+    });
 
     // Get scheduled/sent messages with template info, temperature, and template approval status
     const scheduledMessages = await db
