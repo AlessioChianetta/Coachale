@@ -1,0 +1,497 @@
+Perfetto: Node backend + FreeSWITCH su Hostinger è un setup sensato. Ti do prima la guida “step 1, step 2…”, poi sotto la spiegazione punto-per-punto (con le scelte migliori per un MVP “assistenza” che funziona davvero).
+
+Presupposto: Hostinger deve essere VPS/Cloud (non hosting condiviso), perché FreeSWITCH richiede porte SIP/RTP aperte.
+
+Guida rapida a passi
+Step 1 — Compra il numero VoIP + SIP trunk
+
+Attiva un numero italiano (fisso) presso un provider VoIP (es. Messagenet o altro).
+
+Fatti dare:
+
+SIP server / registrar
+
+username / password
+
+eventuale IP whitelist o “registrazione” richiesta
+
+codec supportati (idealmente PCMU/8000)
+
+Step 2 — Prepara la VPS Hostinger
+
+Crea una VPS Linux (consiglio: Ubuntu 22.04).
+
+Assegna IP pubblico.
+
+Apri firewall/porte:
+
+SIP: 5060/udp (o 5080/udp se preferisci)
+
+RTP: 16384–32768/udp
+
+Event Socket (ESL): 8021/tcp (solo dal tuo IP)
+
+SSH: 22
+
+Step 3 — Installa FreeSWITCH
+
+Installa FreeSWITCH sulla VPS.
+
+Verifica che parta e che il profilo SIP sia attivo.
+
+Step 4 — Configura SIP trunk (provider → FreeSWITCH)
+
+Crea un gateway SIP verso il provider.
+
+Configura NAT e IP esterno corretti.
+
+Test: chiamata in ingresso che arriva a FreeSWITCH.
+
+Step 5 — Crea un “numero assistenza” nel dialplan
+
+Regola: quando arriva la chiamata al tuo DID, entra in un context tipo support.
+
+In support:
+
+rispondi
+
+riproduci un messaggio breve
+
+avvia il “bridge” verso Node (cattura audio + controllo chiamata)
+
+Step 6 — Collega Node a FreeSWITCH (controllo chiamata)
+
+Abilita Event Socket in FreeSWITCH.
+
+In Node usa una libreria ESL per:
+
+sapere quando entra una chiamata
+
+leggere Caller ID
+
+decidere quale “flow AI” usare
+
+riprodurre audio di risposta (TTS) nella chiamata
+
+Step 7 — Porta l’audio della chiamata a Node (ingresso verso AI)
+
+Per un MVP robusto e rapido:
+
+FreeSWITCH registra/cattura l’audio (mono 8k) a segmenti brevi (o con VAD).
+
+Node invia l’audio a Gemini (ASR o Live) e genera risposta audio.
+
+Node salva la risposta audio (wav 8k) e la fa riprodurre a FreeSWITCH (playback/broadcast).
+
+Step 8 — Fallback e sicurezza
+
+Se AI fallisce → trasferisci a numero umano o voicemail.
+
+Metti rate limit / antifrode:
+
+whitelist di paesi
+
+blocco anonimi
+
+limiti per minuto
+
+Step 9 — Test end-to-end
+
+Test inbound da cellulare.
+
+Test latenza, audio, occupato.
+
+Test seconda chiamata (con 1 canale).
+
+Analisi punto per punto (cosa fare e perché)
+1) Numero fisso vs mobile (per “assistenza” e costo minimo)
+
+Per l’Italia, il fisso VoIP è quasi sempre la scelta migliore:
+
+più economico
+
+più disponibile
+
+più semplice da attivare
+
+più semplice da collegare a SIP/FreeSWITCH
+
+Il mobile vero (3xx) spesso implica più burocrazia e disponibilità variabile. Per assistenza, un 02/06 va benissimo.
+
+2) Hostinger: cosa ti serve davvero
+
+Devi avere:
+
+VPS con IP pubblico statico
+
+possibilità di aprire porte UDP (RTP)
+
+CPU decente (anche 1–2 vCPU bastano per iniziare), RAM 2GB ok per MVP
+
+Se sei dietro NAT strano o firewall “aggressivo”, SIP/RTP diventano un incubo: VPS con IP pubblico pulito = vita facile.
+
+3) Porte e NAT (questa è la parte che rompe tutto se sbagli)
+
+Obbligatorio:
+
+SIP UDP 5060 (o 5080)
+
+RTP UDP range (es. 16384–32768)
+
+in FreeSWITCH devi impostare:
+
+external_sip_ip
+
+external_rtp_ip
+
+Se questi due sono errati, sentirai:
+
+audio solo da una parte
+
+chiamate che cadono
+
+silenzio dopo risposta
+
+4) Perché Event Socket (ESL) è fondamentale con Node
+
+Con ESL tu da Node puoi:
+
+intercettare eventi “CHANNEL_ANSWER”, “HANGUP”
+
+leggere Caller-Caller-ID-Number
+
+decidere “quale AI/prompt”
+
+comandare FreeSWITCH: uuid_broadcast, uuid_transfer, uuid_kill
+
+È il “telecom control plane” del tuo agente.
+
+5) Audio: il modo più rapido che funziona (MVP)
+
+Per andare live velocemente, ti consiglio non inseguire subito il full-duplex “parlarsi sopra in realtime”.
+La soluzione più veloce e stabile è turn-based:
+
+Utente parla
+
+Tu catturi 1–3 secondi (o fino a pausa)
+
+Node → Gemini → risposta audio
+
+FreeSWITCH riproduce la risposta
+
+Si ripete
+
+Per “assistenza” funziona benissimo, e ti evita settimane di debugging su streaming bidirezionale.
+
+Codec consigliato: PCMU (G.711 μ-law) 8k, perché è lo standard PSTN.
+
+6) Come riproduci la risposta AI nella chiamata
+
+Il pattern più semplice:
+
+Node genera WAV 8k mono
+
+Node lo mette su disco (o URL interno)
+
+Node invia comando ESL:
+
+uuid_broadcast <uuid> /path/risposta.wav aleg
+
+Questo è il “ponte” più rapido.
+
+7) Come catturi l’audio della chiamata
+
+Hai 2 strade MVP:
+
+A) Registrazione a chunk
+
+FreeSWITCH registra a file (rolling)
+
+Node legge file e invia a Gemini
+
+B) Media bug / fork verso Node
+
+Più avanzato (e dipende dal modulo scelto)
+
+Più veloce a regime, più complesso da settare bene
+
+Per partire: A) chunk (meno rogne). Poi evolvi a fork/stream.
+
+8) Roadmap “upgrade” (quando l’MVP gira)
+
+Quando tutto funziona:
+
+VAD migliore (inizio/fine parlato)
+
+Streaming più realtime (meno latenza)
+
+Multi-canale (più chiamate contemporanee)
+
+Multi-tenant (se lo rivendi)
+
+Checklist finale (se fai solo assistenza e vuoi andare live)
+
+ Numero fisso VoIP italiano con SIP trunk
+
+ VPS con IP pubblico
+
+ FreeSWITCH installato
+
+ SIP trunk registrato e inbound ok
+
+ ESL abilitato e protetto
+
+ Node ESL controller + generazione TTS
+
+ Playback della risposta nella chiamata
+
+ Fallback a umano/voicemail
+
+Dimmi solo 2 cose e ti faccio la guida “operativa” con config pronta
+
+Il tuo provider numero VoIP sarà Messagenet o un altro?
+
+Vuoi che l’AI risponda subito oppure dopo “Premi 1 per parlare con l’assistente”?
+
+Se mi rispondi, nel prossimo messaggio ti scrivo:
+
+porte esatte + firewall
+
+snippet di config FreeSWITCH (gateway + dialplan)
+
+skeleton Node (ESL + play audio)
+senza farti perdere tempo.
+
+ok, cosa deve fare il mio programmatore sul software e cosa devo fare io per il centralino così ci smistiamo i compiti
+
+
+Ottima domanda. Qui si gioca il successo del progetto: separate bene le responsabilità e vai veloce senza pestarti i piedi.
+
+Ti do la divisione reale da produzione, non teorica.
+
+🧠 TU (INFRA / CENTRALINO / TELEFONIA)
+
+Questa parte è telecom + infrastruttura. La devi guidare tu o il tuo sysadmin.
+
+1️⃣ Acquistare numero VoIP italiano
+
+Tu fai:
+
+scegli provider (es: Messagenet)
+
+acquisti numero assistenza
+
+ottieni:
+
+SIP server
+
+username
+
+password
+
+codec supportati
+
+Deliverable:
+✔ credenziali SIP
+✔ DID (numero)
+
+2️⃣ Preparare VPS Hostinger
+
+Tu fai:
+
+crei VPS Ubuntu 22.04
+
+assegni IP pubblico
+
+apri firewall:
+
+5060 UDP (SIP)
+16384–32768 UDP (RTP audio)
+8021 TCP (Event Socket)
+22 TCP (SSH)
+
+
+Deliverable:
+✔ IP pubblico
+✔ server raggiungibile
+✔ porte aperte
+
+3️⃣ Installare FreeSWITCH
+
+Tu fai:
+
+installi FreeSWITCH
+
+verifichi che:
+
+SIP profile attivo
+
+ESL attivo
+
+Deliverable:
+✔ FreeSWITCH running
+✔ console funzionante
+
+4️⃣ Collegare SIP provider → FreeSWITCH
+
+Tu configuri:
+
+gateway SIP
+
+inbound routing
+
+NAT
+
+Deliverable:
+✔ se chiami il numero → la chiamata arriva su FreeSWITCH
+(anche con solo “risponde e riattacca” all’inizio)
+
+5️⃣ Creare ingresso “AI”
+
+Tu configuri nel dialplan:
+
+context tipo: ai_support
+
+regola:
+
+quando arriva DID X → entra in ai_support
+
+
+Deliverable:
+✔ chiamata arriva nel flusso AI (anche senza AI collegata ancora)
+
+💻 PROGRAMMATORE (NODE + AI + LOGICA)
+
+Questa è la parte software product.
+
+1️⃣ Controller Event Socket (ESL)
+
+Deve creare un servizio Node che:
+
+si connette a FreeSWITCH su porta 8021
+
+ascolta eventi:
+
+chiamata entrante
+
+answer
+
+hangup
+
+Deliverable:
+✔ Node riceve eventi di chiamata
+✔ vede Caller ID e UUID chiamata
+
+2️⃣ Logica di routing AI
+
+Il dev costruisce:
+
+mapping:
+
+numero chiamante → profilo cliente
+orario → prompt diverso
+fallback → umano
+
+
+Deliverable:
+✔ decide quale AI usare
+✔ quale prompt caricare
+
+3️⃣ Gestione audio verso AI
+
+Il dev implementa:
+
+ricezione audio chiamata (file o stream)
+
+invio audio a Gemini Live
+
+ricezione risposta vocale
+
+salvataggio WAV 8k mono
+
+Deliverable:
+✔ funzione:
+
+input audio → output audio risposta.wav
+
+4️⃣ Playback verso FreeSWITCH
+
+Il dev invia comandi ESL:
+
+uuid_broadcast UUID risposta.wav aleg
+
+
+Deliverable:
+✔ la voce AI esce nella chiamata
+
+5️⃣ Gestione stato chiamata
+
+Il dev gestisce:
+
+quando utente parla
+
+quando AI parla
+
+timeout
+
+fine chiamata
+
+error handling
+
+Deliverable:
+✔ chiamata completa end-to-end
+
+6️⃣ Logging e Analytics
+
+Minimo indispensabile:
+
+numero chiamante
+
+durata
+
+esito
+
+trascrizione
+
+errori
+
+Deliverable:
+✔ log per debug e billing futuro
+
+🧩 Punto di contatto TRA VOI DUE
+
+Queste cose dovete coordinarle insieme:
+
+Oggetto	Chi decide
+Codec audio	TU (FS) + DEV (AI)
+Formato WAV	DEV
+Porta ESL	TU
+IP whitelist	TU
+Nome context dialplan	TU
+Comandi ESL	DEV
+Timeline realistica
+
+Con divisione corretta:
+
+Fase	Tempo
+Numero + VPS + FS	1 giorno
+SIP trunk funzionante	1 giorno
+Node ESL controller base	1 giorno
+AI voice loop MVP	1–2 giorni
+
+👉 In 3–4 giorni potete avere AI che risponde al telefono.
+
+Errori comuni da evitare
+
+❌ Dev che tocca SIP/NAT
+❌ Sysadmin che tocca Gemini API
+❌ Mischiare responsabilità
+❌ Fare streaming full realtime subito (MVP prima)
+
+Se vuoi lavorare in modo “professionale SaaS”
+
+Consiglio extra:
+
+TU: crea ambiente telecom stabile
+
+DEV: lavora solo su API AI + logica business
