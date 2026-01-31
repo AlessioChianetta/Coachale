@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Phone,
@@ -32,6 +40,9 @@ import {
   AlertCircle,
   CheckCircle,
   Settings,
+  Key,
+  Copy,
+  Check,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -98,8 +109,42 @@ export default function ConsultantVoiceCallsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<string>("day");
+  const [serviceToken, setServiceToken] = useState<string | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
 
   const { toast } = useToast();
+
+  const generateTokenMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/service-token", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ expiresIn: "30d" }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella generazione del token");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setServiceToken(data.token);
+      toast({ title: "Token generato", description: "Il token di servizio è pronto per essere copiato" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const copyToken = async () => {
+    if (serviceToken) {
+      await navigator.clipboard.writeText(serviceToken);
+      setTokenCopied(true);
+      toast({ title: "Copiato!", description: "Token copiato negli appunti" });
+      setTimeout(() => setTokenCopied(false), 2000);
+    }
+  };
 
   const { data: callsData, isLoading: loadingCalls, refetch: refetchCalls } = useQuery({
     queryKey: ["/api/voice/calls", page, statusFilter, search],
@@ -172,6 +217,85 @@ export default function ConsultantVoiceCallsPage() {
                 </p>
               </div>
               <div className="flex gap-2">
+                <Dialog open={tokenDialogOpen} onOpenChange={setTokenDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Key className="h-4 w-4 mr-2" />
+                      Token VPS
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Token di Servizio VPS</DialogTitle>
+                      <DialogDescription>
+                        Genera un token per connettere il VPS Voice Bridge a questa piattaforma.
+                        Il token scade dopo 30 giorni.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {!serviceToken ? (
+                        <Button
+                          onClick={() => generateTokenMutation.mutate()}
+                          disabled={generateTokenMutation.isPending}
+                          className="w-full"
+                        >
+                          {generateTokenMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Generazione...
+                            </>
+                          ) : (
+                            <>
+                              <Key className="h-4 w-4 mr-2" />
+                              Genera Token
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Token generato:</label>
+                            <div className="flex gap-2">
+                              <Input
+                                value={serviceToken}
+                                readOnly
+                                className="font-mono text-xs"
+                              />
+                              <Button onClick={copyToken} variant="outline" size="icon">
+                                {tokenCopied ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="bg-muted p-3 rounded-md text-sm space-y-2">
+                            <p className="font-medium">Configurazione VPS:</p>
+                            <p className="text-muted-foreground">
+                              Aggiungi questo token al file <code className="bg-background px-1 rounded">.env</code> del VPS:
+                            </p>
+                            <code className="block bg-background p-2 rounded text-xs break-all">
+                              REPLIT_API_TOKEN={serviceToken.substring(0, 20)}...
+                            </code>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setServiceToken(null);
+                              generateTokenMutation.mutate();
+                            }}
+                            disabled={generateTokenMutation.isPending}
+                            className="w-full"
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Rigenera Token
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
                 <Link href="/consultant/voice-settings">
                   <Button variant="outline">
                     <Settings className="h-4 w-4 mr-2" />
