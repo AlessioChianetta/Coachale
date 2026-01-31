@@ -2333,6 +2333,51 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     
     // ═══════════════════════════════════════════════════════════════════════
+    // CLARIFICATION BYPASS: Respond directly when clarification is needed (e.g., booking_impediment)
+    // This prevents AI from hallucinating actions when user intent is ambiguous
+    // ═══════════════════════════════════════════════════════════════════════
+    if (clarificationNeeded && clarificationPrompt) {
+      console.log(`\n${'═'.repeat(70)}`);
+      console.log(`❓ [CLARIFICATION BYPASS] Responding directly - no AI call`);
+      console.log(`   Intent: ${consultationIntentClassification?.intent}`);
+      console.log(`   Prompt: "${clarificationPrompt}"`);
+      console.log(`${'═'.repeat(70)}\n`);
+      
+      // Emit start event
+      yield {
+        type: 'start' as const,
+        conversationId: conversation.id,
+        provider: providerMetadata,
+      };
+      
+      accumulatedMessage = clarificationPrompt;
+      yield {
+        type: 'delta' as const,
+        conversationId: conversation.id,
+        provider: providerMetadata,
+        content: clarificationPrompt,
+      };
+      
+      yield {
+        type: 'complete' as const,
+        conversationId: conversation.id,
+        provider: providerMetadata,
+        fullMessage: clarificationPrompt,
+      };
+      
+      // Save AI response to conversation
+      await db.insert(aiMessages).values({
+        id: crypto.randomUUID(),
+        conversationId: conversation.id,
+        role: "assistant",
+        content: clarificationPrompt,
+        createdAt: new Date(),
+      });
+      
+      return; // Exit early - no AI call needed
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
     // CONSULTATION QUERY: Use non-streaming generateContent (function calls not streamed)
     // ═══════════════════════════════════════════════════════════════════════
     let clientUsageMetadata: GeminiUsageMetadata | undefined;

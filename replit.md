@@ -61,6 +61,8 @@ Key enhancements include:
     - After cancelBooking: `clearPostBookingContext()` - resets to normal AUTO mode
     - After rescheduleBooking: `setPostBookingContext()` refresh - new 30-min window for further modifications
     - `booking_impediment` intent for ambiguous statements ("non posso esserci") - AI asks clarification instead of assuming cancel
+    - CLARIFICATION BYPASS: when booking_impediment detected, system responds directly with clarification prompt (no AI call)
+    - Clarification prompt: "Capisco che non puoi più partecipare all'appuntamento. Vuoi annullarlo definitivamente o spostarlo a un'altra data?"
 - Content Variety System to prevent repetitive AI-generated ads:
   - Hook max 125 characters (Meta Ads visibility constraint)
   - 10 hook pattern rotation (domanda, statistica, storia, controintuitivo, problema, curiosità, social proof, us-vs-them, urgenza, provocazione)

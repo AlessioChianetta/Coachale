@@ -368,10 +368,19 @@ export function getToolsForIntent(
 }
 
 export function shouldAskClarification(classification: IntentClassification): boolean {
+  // booking_impediment ALWAYS requires clarification (by design - user didn't specify cancel or reschedule)
+  if (classification.intent === 'booking_impediment') {
+    return true;
+  }
   return classification.confidenceLevel === 'medium';
 }
 
 export function getClarificationPrompt(classification: IntentClassification): string | null {
+  // booking_impediment always needs clarification regardless of confidence
+  if (classification.intent === 'booking_impediment') {
+    return 'Capisco che non puoi più partecipare all\'appuntamento. Vuoi annullarlo definitivamente o spostarlo a un\'altra data?';
+  }
+  
   if (classification.confidenceLevel !== 'medium') {
     return null;
   }
