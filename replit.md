@@ -88,6 +88,12 @@ Key enhancements include:
   - Rate limiting: 3 calls/min, 10/hour, 30/day per caller, anonymous/premium prefix blocking
   - Architecture: API on Replit, voice processing on VPS for <100ms latency
   - Caller lookup uses buildUserContext() from ai-context-builder.ts for full personalization
+  - **Service Token Authentication**:
+    - POST /api/voice/service-token: generates JWT with type='phone_service' for VPS bridge (30d expiry)
+    - GET /api/voice/service-token/validate: validates token without authentication
+    - mode='phone_service' in WebSocket connection triggers caller ID lookup via getUserByPhoneNumber
+    - Phone number normalization: handles +, 00, parentheses, dashes, spaces for robust matching
+    - VPS bridge authenticates via token query param, passes callerId for caller recognition
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
