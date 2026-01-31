@@ -109,7 +109,43 @@ systemctl status alessia-voice
 
 ---
 
-## 5. Configura FreeSWITCH
+## 5. Verifica mod_audio_stream (IMPORTANTE)
+
+Prima di configurare il dialplan, verifica che mod_audio_stream sia installato e caricato:
+
+```bash
+# Verifica modulo caricato
+docker exec -it freeswitch fs_cli -H 127.0.0.1 -P 8021 -p '1NoxIsTheBest1!' -x "show modules like audio_stream"
+
+# Output atteso:
+# mod_audio_stream
+# 1 total.
+
+# Se non vedi nulla, il modulo non è caricato!
+```
+
+### Se mod_audio_stream non è presente:
+
+1. Verifica che sia compilato:
+```bash
+docker exec -it freeswitch ls -la /usr/local/freeswitch/mod/ | grep audio_stream
+```
+
+2. Carica manualmente:
+```bash
+docker exec -it freeswitch fs_cli -x "load mod_audio_stream"
+```
+
+3. Aggiungi al caricamento automatico in `modules.conf.xml`:
+```xml
+<load module="mod_audio_stream"/>
+```
+
+Per dettagli completi, vedi `freeswitch/modules-check.md`.
+
+---
+
+## 6. Configura FreeSWITCH Dialplan
 
 ```bash
 # Copia il dialplan
@@ -118,15 +154,13 @@ cp freeswitch/dialplan-9999.xml /opt/freeswitch/conf/dialplan/default/
 # Ricarica configurazione FreeSWITCH
 docker exec -it freeswitch fs_cli -H 127.0.0.1 -P 8021 -p '1NoxIsTheBest1!' -x "reloadxml"
 
-# Verifica che mod_audio_stream sia caricato
-docker exec -it freeswitch fs_cli -x "show modules" | grep audio_stream
+# Verifica dialplan caricato
+docker exec -it freeswitch fs_cli -x "show dialplan" | grep alessia
 ```
-
-Se mod_audio_stream non è presente, vedi `freeswitch/modules-check.md`.
 
 ---
 
-## 6. Configura Firewall
+## 7. Configura Firewall
 
 ### Opzione A: Apri porta solo per il tuo IP
 
@@ -149,7 +183,7 @@ FreeSWITCH usa `127.0.0.1` quindi non serve token.
 
 ---
 
-## 7. Test End-to-End
+## 8. Test End-to-End
 
 ### A. Verifica che il bridge sia attivo
 
@@ -202,7 +236,7 @@ journalctl -u alessia-voice -f
 
 ---
 
-## 8. Monitoraggio
+## 9. Monitoraggio
 
 ### Log in tempo reale
 
@@ -226,7 +260,7 @@ curl -s http://127.0.0.1:9090/health
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### Il bridge non si avvia
 
@@ -235,7 +269,7 @@ curl -s http://127.0.0.1:9090/health
 journalctl -u alessia-voice -n 50
 
 # Problemi comuni:
-# - GEMINI_API_KEY mancante
+# - REPLIT_API_TOKEN mancante o non valido
 # - Porta 9090 già in uso
 # - Permessi file .env
 ```
@@ -260,19 +294,20 @@ docker exec -it freeswitch fs_cli -x "show codec"
 journalctl -u alessia-voice | grep -i audio
 ```
 
-### Gemini non risponde
+### Replit WebSocket non risponde
 
 ```bash
-# Verifica API key
-curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"
+# Verifica connettività a Replit
+curl -s https://tuo-progetto.repl.co/health
 
-# Controlla log per errori Gemini
-journalctl -u alessia-voice | grep -i gemini
+# Controlla log per errori di connessione
+journalctl -u alessia-voice | grep -i replit
+journalctl -u alessia-voice | grep -i error
 ```
 
 ---
 
-## 10. Comandi Utili
+## 11. Comandi Utili
 
 ```bash
 # Riavvia il bridge
