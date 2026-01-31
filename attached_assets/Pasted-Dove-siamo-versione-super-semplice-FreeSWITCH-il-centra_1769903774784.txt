@@ -1,0 +1,127 @@
+Dove siamo (versione super semplice)
+
+FreeSWITCH è il “centralino” che riceve la chiamata.
+
+Il Bridge Node.js è il “traduttore” che prende l’audio della chiamata e lo manda all’AI (Replit/Gemini) e poi rimanda indietro la voce.
+
+Replit resta “il cervello/app”: DB + context + collegamento a Gemini (come nel browser).
+
+Quindi: manca solo che il ponte (Bridge) funzioni davvero e che FreeSWITCH gli mandi l’audio nel modo giusto.
+
+✅ Cose OK nei tuoi file
+1) Dialplan dialplan-9999.xml
+
+Hai già messo la cosa giusta:
+
+usa audio_stream (non socket)
+
+manda a ws://127.0.0.1:9090
+
+imposta codec PCMU (μ-law 8k) → perfetto per telefonia
+
+👉 Questo è corretto SE FreeSWITCH e il bridge stanno sulla stessa VPS (come nel tuo caso).
+
+2) Service systemd alessia-voice.service
+
+Impostazione sensata:
+
+parte da /opt/alessia-voice
+
+restart automatico
+
+user dedicato
+
+✅ Buono.
+
+3) voice-bridge-server.ts
+
+Ha già:
+
+WebSocket server (porta 9090)
+
+endpoint /health e /stats
+
+gestione messaggi JSON (“start/stop/dtmf”) + audio binario
+
+✅ Struttura giusta.
+
+❌ Cose che NON vanno (qui ti si romperà tutto)
+
+Questa è la parte importante da riferire al programmatore: così com’è non compila / non gira.
+
+Problema A — config.ts NON ha config.session, ma il codice lo usa ovunque
+
+Nei file:
+
+index.ts
+
+voice-bridge-server.ts
+
+session-manager.ts
+
+si legge config.session.maxConcurrent e config.session.timeoutMs, ma in config.ts non esiste session.
+
+✅ Soluzione semplice (da dire al programmatore):
+
+o aggiunge session dentro config.ts
+
+o cambia il codice per usare config.audio.maxConcurrentCalls e config.audio.maxCallDurationMs (che già esistono).
+
+Io farei la soluzione più veloce: aggiungere session in config.ts così non deve toccare 3 file.
+
+Problema B — SessionManager salva le sessioni con chiave callId, ma poi prova a cancellarle con session.id
+
+In session-manager.ts:
+
+this.sessions.set(callId, session) ✅
+
+ma endSession(sessionId) fa this.sessions.delete(sessionId) ❌
+
+Quindi non cancella mai, e ti ritrovi sessioni “zombie” (memory leak) + limiti “max concurrent” sballati.
+
+✅ Soluzione semplice (da dire al programmatore):
+
+Decidere una sola chiave:
+
+o usiamo sempre callId
+
+o usiamo sempre session.id
+
+Ma visto che FreeSWITCH ti parla sempre in callId/uuid, la cosa più pulita è:
+
+mappa principale: callId -> session
+
+endSession(callId, reason) elimina per callId
+
+in voice-bridge-server.ts quando chiude, chiamare endSession(callId, ...) (non session.id)
+
+Problema C — autenticazione WS (se metti 0.0.0.0)
+
+Nel tuo .env.example c’è WS_AUTH_TOKEN, ma nel codice non viene verificato.
+Se il server ascolta su 0.0.0.0:9090, chiunque su internet può attaccarsi.
+
+✅ Per test:
+
+lascia il bridge su 127.0.0.1 e fine.
+
+✅ Se vuoi “pubblico”:
+
+bridge su 0.0.0.0
+
+UFW consenti 9090 solo dal tuo IP
+
+e implementare check token (banale) nel WS handshake o nel primo messaggio.
+
+Risposta alla tua domanda su “127 vs IP pubblico”
+
+127.0.0.1 = “questa stessa macchina”.
+
+FreeSWITCH → Bridge (stessa VPS) = usa 127.0.0.1 ✅
+
+Bridge → Replit (internet) = usa URL pubblico Replit ✅
+
+Se tu sei fuori casa e vuoi “entrare” nel 127 della VPS:
+
+non devi aprire tutto al mondo
+
+fai un tunnel SSH e sei a posto.
