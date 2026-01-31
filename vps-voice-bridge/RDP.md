@@ -52,51 +52,49 @@ Creare un bridge audio che colleghi FreeSWITCH a Gemini 2.5 Flash Native Audio, 
 
 ### 2.1 Diagramma Architetturale
 
+**Architettura semplificata: riusa il WebSocket Replit esistente (/ws/ai-voice)**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              VPS HOSTINGER                                  │
 │                                                                             │
 │  ┌───────────────┐                      ┌───────────────────────────────┐  │
 │  │               │    mod_audio_stream  │      VOICE BRIDGE             │  │
-│  │  FreeSWITCH   │◄────────────────────►│                               │  │
-│  │               │    ws://127.0.0.1    │  ┌─────────────────────────┐  │  │
-│  │  - SIP/RTP    │        :9090         │  │  voice-bridge-server.ts │  │  │
-│  │  - Dialplan   │                      │  │  - WebSocket Server     │  │  │
-│  │  - Codec      │                      │  │  - Session Manager      │  │  │
-│  │               │                      │  │  - Token Auth           │  │  │
-│  └───────────────┘                      │  └───────────┬─────────────┘  │  │
-│         │                               │              │                 │  │
-│         │ ESL                           │  ┌───────────▼─────────────┐  │  │
-│         │ 8021                          │  │  audio-converter.ts     │  │  │
-│         │ (localhost)                   │  │  - μ-law ↔ PCM          │  │  │
-│         │                               │  │  - 8kHz ↔ 16kHz ↔ 24kHz │  │  │
+│  │  FreeSWITCH   │◄────────────────────►│      (Proxy/Converter)        │  │
+│  │               │    ws://127.0.0.1    │                               │  │
+│  │  - SIP/RTP    │        :9090         │  ┌─────────────────────────┐  │  │
+│  │  - Dialplan   │                      │  │  voice-bridge-server.ts │  │  │
+│  │  - Codec      │                      │  │  - WebSocket Server     │  │  │
+│  │               │                      │  │  - Session Manager      │  │  │
+│  └───────────────┘                      │  │  - Audio Converter      │  │  │
 │         │                               │  └───────────┬─────────────┘  │  │
-│         │                               │              │                 │  │
-│         │                               │  ┌───────────▼─────────────┐  │  │
-│         │                               │  │  gemini-client.ts       │  │  │
-│         │                               │  │  - WebSocket to Gemini  │  │  │
-│         │                               │  │  - Audio streaming      │  │  │
-│         │                               │  │  - Session config       │  │  │
+│         │ ESL                           │              │                 │  │
+│         │ 8021                          │  ┌───────────▼─────────────┐  │  │
+│         │ (localhost)                   │  │  replit-ws-client.ts    │  │  │
+│         │                               │  │  - Connette a Replit    │  │  │
+│         │                               │  │  - Stesso protocollo    │  │  │
+│         │                               │  │    del browser          │  │  │
 │         │                               │  └───────────┬─────────────┘  │  │
 │         │                               │              │                 │  │
 │         │                               └──────────────┼─────────────────┘  │
 │         │                                              │                    │
 └─────────┼──────────────────────────────────────────────┼────────────────────┘
           │                                              │
-          │                                              │ HTTPS
+          │                                              │ WSS
           │                                              ▼
           │                               ┌───────────────────────────────┐
-          │                               │        INTERNET               │
+          │                               │        REPLIT                 │
           │                               │                               │
           │                               │  ┌─────────────────────────┐  │
-          │                               │  │  Gemini API             │  │
-          │                               │  │  wss://generativelang   │  │
-          │                               │  │  uage.googleapis.com    │  │
-          │                               │  └─────────────────────────┘  │
-          │                               │                               │
+          │                               │  │  /ws/ai-voice           │  │
+          │                               │  │  gemini-live-ws-service │  │
+          │                               │  │  (codice esistente)     │  │
+          │                               │  └───────────┬─────────────┘  │
+          │                               │              │                 │
+          │                               │              ▼                 │
           │                               │  ┌─────────────────────────┐  │
-          │                               │  │  Replit API             │  │
-          │                               │  │  (client context)       │  │
+          │                               │  │  Vertex AI / Gemini     │  │
+          │                               │  │  Live API               │  │
           │                               │  └─────────────────────────┘  │
           │                               │                               │
           │                               └───────────────────────────────┘
@@ -108,6 +106,12 @@ Creare un bridge audio che colleghi FreeSWITCH a Gemini 2.5 Flash Native Audio, 
     │   SIP/PSTN    │
     └───────────────┘
 ```
+
+**Vantaggi di questa architettura:**
+- Riusa esattamente lo stesso codice AI del browser
+- Nessuna duplicazione di logica Gemini
+- Stesso comportamento, stessa voce, stesso context
+- Il bridge VPS è solo un "traduttore" audio
 
 ### 2.2 Flusso Chiamata
 
@@ -156,8 +160,8 @@ vps-voice-bridge/
 │   ├── index.ts                 # Entry point
 │   ├── voice-bridge-server.ts   # WebSocket server principale
 │   ├── audio-converter.ts       # Conversioni audio
-│   ├── gemini-client.ts         # Client Gemini Live API
-│   ├── caller-context.ts        # Fetch context da Replit
+│   ├── replit-ws-client.ts      # Client WebSocket Replit (riusa /ws/ai-voice)
+│   ├── caller-context.ts        # Notifiche a Replit API
 │   ├── session-manager.ts       # Gestione sessioni chiamata
 │   ├── logger.ts                # Logging strutturato
 │   └── config.ts                # Configurazione

@@ -1,5 +1,8 @@
 # 🚀 Guida Deploy - Alessia Voice Bridge
 
+> **Architettura semplificata**: Il bridge si connette al WebSocket Replit esistente (`/ws/ai-voice`),
+> riusando esattamente lo stesso codice AI del browser. Nessuna logica Gemini duplicata.
+
 ## Prerequisiti
 
 - VPS con Ubuntu 22.04+ o Debian 12+
@@ -42,19 +45,20 @@ nano .env
 ```bash
 # .env
 
-# WebSocket Server
+# WebSocket Server (porta 9090 per FreeSWITCH)
 WS_HOST=0.0.0.0
 WS_PORT=9090
 WS_AUTH_TOKEN=il-tuo-token-segreto-qui  # Genera con: openssl rand -hex 32
 
-# Gemini API
-GEMINI_API_KEY=AIza...  # La tua API key Gemini
-GEMINI_MODEL=gemini-2.5-flash-native-audio-preview
-GEMINI_VOICE_ID=Puck
-
-# Replit API (per context clienti)
+# Replit WebSocket + API
 REPLIT_API_URL=https://tuo-progetto.repl.co
-REPLIT_API_TOKEN=token-api-replit
+REPLIT_WS_URL=https://tuo-progetto.repl.co
+# NOTA: Il token deve essere un JWT valido generato dal tuo sistema di auth
+# Per test, puoi generare un token di servizio con ruolo consultant
+REPLIT_API_TOKEN=token-jwt-valido
+
+# Voce AI (usata dal WebSocket Replit)
+GEMINI_VOICE_ID=Puck
 
 # Sessioni
 SESSION_TIMEOUT_MS=30000

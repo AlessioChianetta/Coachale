@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
 import { logger, formatBytes, formatDuration } from './logger.js';
 import { config } from './config.js';
-import type { GeminiClient } from './gemini-client.js';
+import type { ReplitWSClient } from './replit-ws-client.js';
 
 const log = logger.child('SESSION');
 
@@ -25,7 +25,7 @@ export interface CallSession {
   startTime: Date;
   state: 'connecting' | 'active' | 'ending' | 'ended';
   fsWebSocket: WebSocket | null;
-  geminiClient: GeminiClient | null;
+  replitClient: ReplitWSClient | null;
   clientContext: ClientContext | null;
   audioStats: {
     bytesIn: number;
@@ -78,7 +78,7 @@ class SessionManager {
       startTime: now,
       state: 'connecting',
       fsWebSocket,
-      geminiClient: null,
+      replitClient: null,
       clientContext: null,
       audioStats: {
         bytesIn: 0,
@@ -133,11 +133,11 @@ class SessionManager {
     }
   }
 
-  setGeminiClient(sessionId: string, client: GeminiClient): void {
+  setReplitClient(sessionId: string, client: ReplitWSClient): void {
     const session = this.sessions.get(sessionId);
     if (session) {
-      session.geminiClient = client;
-      log.info(`Gemini client attached`, { sessionId: sessionId.slice(0, 8) });
+      session.replitClient = client;
+      log.info(`Replit client attached`, { sessionId: sessionId.slice(0, 8) });
     }
   }
 
@@ -184,9 +184,9 @@ class SessionManager {
 
     session.state = 'ended';
 
-    if (session.geminiClient) {
+    if (session.replitClient) {
       try {
-        session.geminiClient.close();
+        session.replitClient.close();
       } catch (e) {}
     }
 

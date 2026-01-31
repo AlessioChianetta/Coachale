@@ -6,13 +6,12 @@ export interface BridgeConfig {
     port: number;
     authToken: string | null;
   };
-  gemini: {
-    apiKey: string;
-    model: string;
+  voice: {
     voiceId: string;
   };
   replit: {
     apiUrl: string;
+    wsUrl: string;
     apiToken: string;
   };
   esl: {
@@ -53,13 +52,12 @@ export function loadConfig(): BridgeConfig {
       port: parseInt(getEnv('WS_PORT', '9090'), 10),
       authToken: getEnvOptional('WS_AUTH_TOKEN'),
     },
-    gemini: {
-      apiKey: getEnv('GEMINI_API_KEY'),
-      model: getEnv('GEMINI_MODEL', 'gemini-2.5-flash-native-audio-preview'),
+    voice: {
       voiceId: getEnv('GEMINI_VOICE_ID', 'Puck'),
     },
     replit: {
       apiUrl: getEnv('REPLIT_API_URL', ''),
+      wsUrl: getEnv('REPLIT_WS_URL', '').replace('https://', 'wss://').replace('http://', 'ws://') + '/ws/ai-voice',
       apiToken: getEnv('REPLIT_API_TOKEN', ''),
     },
     esl: {

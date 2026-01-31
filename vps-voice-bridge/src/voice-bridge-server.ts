@@ -4,9 +4,9 @@ import { parse as parseUrl } from 'url';
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { sessionManager } from './session-manager.js';
-import { GeminiClient } from './gemini-client.js';
+import { ReplitWSClient } from './replit-ws-client.js';
 import { convertForGemini, convertFromGemini } from './audio-converter.js';
-import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
+import { notifyCallStart, notifyCallEnd } from './caller-context.js';
 
 const log = logger.child('SERVER');
 
@@ -27,9 +27,25 @@ interface AudioStreamStopMessage {
 
 type AudioStreamMessage = AudioStreamStartMessage | AudioStreamStopMessage;
 
+function isAuthorized(req: IncomingMessage): boolean {
+  if (!config.ws.authToken) return true;
+  
+  const clientIp = req.socket.remoteAddress || '';
+  const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+  if (isLocalhost) return true;
+  
+  const url = parseUrl(req.url || '', true);
+  return url.query.token === config.ws.authToken;
+}
+
 export function startVoiceBridgeServer(): void {
   const server = createServer((req, res) => {
-    if (req.url === '/health') {
+    if (req.url?.startsWith('/health')) {
+      if (!isAuthorized(req)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+      }
       const stats = sessionManager.getStats();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
@@ -41,12 +57,17 @@ export function startVoiceBridgeServer(): void {
       return;
     }
 
-    if (req.url === '/stats') {
+    if (req.url?.startsWith('/stats')) {
+      if (!isAuthorized(req)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+      }
       const stats = sessionManager.getStats();
       const sessions = sessionManager.getAllSessions().map(s => ({
         id: s.id.slice(0, 8),
         callId: s.callId,
-        callerId: s.callerId,
+        callerId: s.callerId.slice(0, 6) + '***',
         state: s.state,
         duration: Date.now() - s.startTime.getTime(),
         bytesIn: s.audioStats.bytesIn,
@@ -178,40 +199,35 @@ async function handleCallStart(
   await notifyCallStart(session.id, message.caller_id, message.called_number);
 
   try {
-    const geminiClient = new GeminiClient({
+    const replitClient = new ReplitWSClient({
       sessionId: session.id,
       callerId: message.caller_id,
-      clientContext,
       onAudioResponse: (audioData: Buffer) => {
         sendAudioToFreeSWITCH(session.id, audioData);
       },
       onTextResponse: (text: string) => {
-        log.debug(`Gemini text`, { sessionId: session.id.slice(0, 8), text: text.slice(0, 100) });
+        log.debug(`AI text`, { sessionId: session.id.slice(0, 8), text: text.slice(0, 100) });
       },
       onError: (error: Error) => {
-        log.error(`Gemini error`, { sessionId: session.id.slice(0, 8), error: error.message });
+        log.error(`Replit WS error`, { sessionId: session.id.slice(0, 8), error: error.message });
       },
       onClose: () => {
-        log.info(`Gemini connection closed`, { sessionId: session.id.slice(0, 8) });
+        log.info(`Replit connection closed`, { sessionId: session.id.slice(0, 8) });
       },
     });
 
-    await geminiClient.connect();
-    
-    const geminiWs = geminiClient.getWebSocket();
-    if (geminiWs) {
-      sessionManager.setGeminiWebSocket(session.id, geminiWs);
-    }
+    await replitClient.connect();
+    sessionManager.setReplitClient(session.id, replitClient);
 
     sessionManager.updateSessionState(session.id, 'active');
-    log.info(`Call active - Gemini connected`, { sessionId: session.id.slice(0, 8) });
+    log.info(`Call active - Replit connected`, { sessionId: session.id.slice(0, 8) });
 
   } catch (error) {
-    log.error(`Failed to connect to Gemini`, {
+    log.error(`Failed to connect to Replit`, {
       sessionId: session.id.slice(0, 8),
       error: error instanceof Error ? error.message : 'Unknown',
     });
-    sessionManager.endSession(session.id, 'gemini_connection_failed');
+    sessionManager.endSession(session.id, 'replit_connection_failed');
   }
 
   return session.id;
@@ -227,18 +243,8 @@ function handleAudioData(sessionId: string, audioData: Buffer): void {
 
   const pcmData = convertForGemini(audioData, session.codec, session.sampleRate);
 
-  if (session.geminiWebSocket && session.geminiWebSocket.readyState === WebSocket.OPEN) {
-    const message = {
-      realtimeInput: {
-        mediaChunks: [
-          {
-            mimeType: 'audio/pcm;rate=16000',
-            data: pcmData.toString('base64'),
-          },
-        ],
-      },
-    };
-    session.geminiWebSocket.send(JSON.stringify(message));
+  if (session.replitClient && session.replitClient.connected) {
+    session.replitClient.sendAudio(pcmData);
   }
 }
 

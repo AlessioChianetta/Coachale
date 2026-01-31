@@ -25,9 +25,8 @@ function printConfig(): void {
   log.info('Configuration loaded:');
   log.info(`  WebSocket Server: ${config.ws.host}:${config.ws.port}`);
   log.info(`  Auth Token: ${config.ws.authToken ? 'configured' : 'disabled'}`);
-  log.info(`  Gemini Model: ${config.gemini.model}`);
-  log.info(`  Gemini Voice: ${config.gemini.voiceId}`);
-  log.info(`  Replit API: ${config.replit.apiUrl || 'not configured'}`);
+  log.info(`  Replit WS: ${config.replit.wsUrl || 'not configured'}`);
+  log.info(`  Voice: ${config.voice.voiceId}`);
   log.info(`  Max Concurrent Calls: ${config.session.maxConcurrent}`);
   log.info(`  Session Timeout: ${config.session.timeoutMs}ms`);
   log.info(`  Log Level: ${config.logLevel}`);
