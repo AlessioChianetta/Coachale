@@ -1,0 +1,183 @@
+Perfetto, questo è un classico bug di sistemi LLM + tool orchestration:
+non è “colpa del modello”, è mancanza di routing stateful + tool gating.
+
+Ti spiego perché è successo e come lo rendi impossibile da ripetere.
+
+Cosa è successo davvero
+
+Scenario:
+
+1️⃣ Hai appena creato una consultation
+2️⃣ Stato reale: esiste una consultation nel DB
+3️⃣ Utente scrive:
+
+“me lo puoi modificare”
+
+Il tuo router ha fatto questo:
+
+Intent → general (o confidence bassa)
+
+Non ha trovato keyword booking
+
+hasPendingBooking=false (perché è già confirmed)
+
+isConsultationQuery=false
+
+Tool booking NON esposti
+
+File Search + codeExecution ATTIVI
+
+👉 Gemini ha solo una scelta: parlare
+👉 e quindi ha “finto” la modifica.
+
+Root problem (architetturale)
+
+Tu stai usando solo:
+
+pending state (awaiting confirm)
+
+Ma non hai uno stato per:
+
+“esiste una consultation appena creata che può essere modificata”
+
+Serve uno POST-BOOKING CONTEXT.
+
+Soluzione corretta (production pattern)
+
+Devi introdurre questo concetto:
+
+🧠 Active Consultation Context
+
+Quando fai confirmBooking:
+
+Salva in session:
+lastConsultationId
+lastConsultationStartAt
+lastConsultationExpiresAt (es: now + 30 min)
+
+
+Questo può stare:
+
+Redis
+
+DB conversation state
+
+in-memory cache per user session
+
+Router logic nuova
+
+Prima di decidere intent/tools:
+
+if lastConsultationExists AND within time window:
+   allow modify/cancel tools
+
+Devi anche avere INTENT esplicito
+
+Aggiungi nel tuo classifier:
+
+modify_booking - User wants to change existing consultation
+Examples:
+- "me lo puoi modificare"
+- "spostalo"
+- "cambia orario"
+- "vorrei anticiparlo"
+
+Tool set corretto per MODIFY
+
+Non riusare confirmBooking.
+
+Crea:
+
+rescheduleBooking
+cancelBooking
+
+E soprattutto: QUI devi usare REQUIRED
+
+Caso tuo:
+
+Utente:
+
+me lo puoi modificare
+
+Router:
+
+if intent == modify_booking AND lastConsultationId exists:
+   tools = [rescheduleBooking]
+   mode = REQUIRED
+
+
+Così:
+
+Gemini NON può usare file search
+
+NON può parlare
+
+DEVE chiamare backend
+
+Guardrail fondamentale (da mettere nel system prompt)
+
+Aggiungi:
+
+Never claim to modify, cancel, or reschedule a consultation unless a tool call succeeds.
+
+Questo da solo elimina il 70% delle allucinazioni operative.
+
+Extra: fallback UX corretto
+
+Se l’utente scrive:
+
+me lo puoi modificare
+
+Ma NON c’è lastConsultation:
+
+Risposta corretta:
+
+Non vedo consulenze recenti da modificare. Vuoi prenotarne una nuova o indicarmi quale vuoi cambiare?
+
+NON chiamare tools.
+
+Riassunto operativo (da implementare)
+1️⃣ Aggiungi intent
+modify_booking
+cancel_booking
+
+2️⃣ Salva stato post-confirm
+
+Quando confirmBooking success:
+
+session.lastConsultationId = consultation_id
+session.bookingContextTTL = now + 30min
+
+3️⃣ Router patch
+if (
+  intent === 'modify_booking' &&
+  session.lastConsultationId
+) {
+  tools = ['rescheduleBooking'];
+  mode = 'REQUIRED';
+}
+
+4️⃣ Blocca file search durante booking flows
+
+Se:
+
+booking_flow_active OR lastConsultationExists
+
+
+👉 fileSearch = false
+
+Livello architetturale (quello che stai costruendo)
+
+Stai passando da:
+
+❌ stateless chat bot
+a
+✅ transactional assistant
+
+Serve:
+
+memory corta (booking state)
+
+router deterministico
+
+REQUIRED per azioni mutative
