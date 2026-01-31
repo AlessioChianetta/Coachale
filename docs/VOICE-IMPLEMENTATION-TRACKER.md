@@ -32,13 +32,13 @@
 | # | Task RDP | File/Componente | Status | Note |
 |---|----------|-----------------|--------|------|
 | 1 | Schema DB | SQL tables | ✅ DONE | 4 tabelle + indici + FK |
-| 2 | ESL Client | voice-esl-client.ts | ⏳ TODO | VPS reference code |
-| 3 | Rate Limiter | voice-rate-limiter.ts | ⏳ TODO | VPS reference code |
-| 4 | Caller Lookup | voice-caller-lookup.ts | ⏳ TODO | VPS reference code |
-| 5 | Audio Handler | voice-audio-handler.ts | ⏳ TODO | VPS reference code |
-| 6 | Gemini Bridge | voice-gemini-bridge.ts | ⏳ TODO | VPS reference code |
-| 7 | Call Manager | voice-call-manager.ts | ⏳ TODO | VPS reference code |
-| 8 | Health Check | voice-health.ts | ⏳ TODO | VPS reference code |
+| 2 | ESL Client | voice-esl-client.ts | ✅ DONE | VPS reference code |
+| 3 | Rate Limiter | voice-rate-limiter.ts | ✅ DONE | VPS reference code |
+| 4 | Caller Lookup | voice-caller-lookup.ts | ✅ DONE | VPS reference code |
+| 5 | Audio Handler | voice-audio-handler.ts | ✅ DONE | VPS reference code |
+| 6 | Gemini Bridge | voice-gemini-bridge.ts | ✅ DONE | VPS reference code |
+| 7 | Call Manager | voice-call-manager.ts | ✅ DONE | VPS reference code |
+| 8 | Health Check | voice-health.ts | ✅ DONE | VPS reference code |
 | 9 | Voice Routes | voice-routes.ts | ✅ DONE | API Replit |
 | 10 | Frontend Dashboard | VoiceCalls.tsx | ✅ DONE | /consultant/voice-calls |
 | 11 | Frontend Settings | VoiceSettings.tsx | ✅ DONE | /consultant/voice-settings |

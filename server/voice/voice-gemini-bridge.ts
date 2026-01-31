@@ -1,4 +1,4 @@
-import { GoogleGenAI, LiveServerMessage, Modality, Part, Session } from '@anthropic-ai/generative-ai';
+import { GoogleGenAI, Modality, Session } from '@google/genai';
 import { buildSystemPrompt } from '../ai-prompts';
 import { EventEmitter } from 'events';
 import { voiceConfig } from './config';

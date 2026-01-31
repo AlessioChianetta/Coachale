@@ -7,19 +7,21 @@
  */
 
 export interface VoiceConfig {
-  esl: {
-    host: string;
-    port: number;
-    password: string;
+  freeswitch: {
+    eslHost: string;
+    eslPort: number;
+    eslPassword: string;
   };
   audio: {
     tempDir: string;
     recordingsDir: string;
-    sampleRate: number;
+    sampleRateIn: number;
+    sampleRateOut: number;
   };
   gemini: {
     apiKey: string;
     model: string;
+    voiceId: string;
   };
   rateLimits: {
     maxCallsPerMinute: number;
@@ -29,38 +31,33 @@ export interface VoiceConfig {
     blockAnonymous: boolean;
     blockedPrefixes: string[];
   };
+  limits: {
+    maxConcurrentCalls: number;
+    maxCallDurationSeconds: number;
+    idleTimeoutSeconds: number;
+  };
   database: {
     url: string;
   };
 }
 
-export function loadConfig(): VoiceConfig {
-  const requiredEnvVars = [
-    'ESL_PASSWORD',
-    'GEMINI_API_KEY',
-    'DATABASE_URL'
-  ];
-
-  for (const envVar of requiredEnvVars) {
-    if (!process.env[envVar]) {
-      throw new Error(`Missing required environment variable: ${envVar}`);
-    }
-  }
-
+function safeLoadConfig(): VoiceConfig {
   return {
-    esl: {
-      host: process.env.ESL_HOST || '127.0.0.1',
-      port: parseInt(process.env.ESL_PORT || '8021', 10),
-      password: process.env.ESL_PASSWORD!,
+    freeswitch: {
+      eslHost: process.env.ESL_HOST || '127.0.0.1',
+      eslPort: parseInt(process.env.ESL_PORT || '8021', 10),
+      eslPassword: process.env.ESL_PASSWORD || '',
     },
     audio: {
       tempDir: process.env.AUDIO_TEMP_DIR || '/dev/shm/alessia',
       recordingsDir: process.env.AUDIO_RECORDINGS_DIR || '/var/lib/alessia/voice_recordings',
-      sampleRate: 8000,
+      sampleRateIn: 16000,
+      sampleRateOut: 24000,
     },
     gemini: {
-      apiKey: process.env.GEMINI_API_KEY!,
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.AI_INTEGRATIONS_GOOGLE_AI_API_KEY || '',
       model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp',
+      voiceId: process.env.GEMINI_VOICE_ID || 'Puck',
     },
     rateLimits: {
       maxCallsPerMinute: parseInt(process.env.MAX_CALLS_PER_MINUTE || '3', 10),
@@ -70,10 +67,15 @@ export function loadConfig(): VoiceConfig {
       blockAnonymous: process.env.BLOCK_ANONYMOUS !== 'false',
       blockedPrefixes: (process.env.BLOCKED_PREFIXES || '+1900,+44870,+39199,+390899').split(','),
     },
+    limits: {
+      maxConcurrentCalls: parseInt(process.env.MAX_CONCURRENT_CALLS || '10', 10),
+      maxCallDurationSeconds: parseInt(process.env.MAX_CALL_DURATION || '1800', 10),
+      idleTimeoutSeconds: parseInt(process.env.IDLE_TIMEOUT || '30', 10),
+    },
     database: {
-      url: process.env.DATABASE_URL!,
+      url: process.env.DATABASE_URL || '',
     },
   };
 }
 
-export const config = loadConfig();
+export const voiceConfig = safeLoadConfig();
