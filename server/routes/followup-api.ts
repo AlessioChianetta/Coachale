@@ -1159,7 +1159,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         conversation_id, 
         created_at 
       FROM whatsapp_messages 
-      WHERE conversation_id = ANY(${conversationIds}::uuid[])
+      WHERE conversation_id IN (${sql.join(conversationIds.map(id => sql`${id}::uuid`), sql`, `)})
         AND sender = 'client'
       ORDER BY conversation_id, created_at DESC
     `) : [];
