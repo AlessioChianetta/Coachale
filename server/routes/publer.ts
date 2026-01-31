@@ -334,4 +334,93 @@ function startPublerStatusPolling() {
 // Start polling when module loads
 startPublerStatusPolling();
 
+const bulkPublishSchema = z.object({
+  accountIds: z.array(z.string()).min(1, 'Seleziona almeno un account'),
+  accountPlatforms: z.array(z.object({
+    id: z.string(),
+    platform: z.string(),
+  })).optional(),
+  postIds: z.array(z.string()).min(1, 'Seleziona almeno un post'),
+});
+
+router.post('/bulk-publish', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const status = await publerService.getConfigStatus(consultantId);
+    if (!status.configured || !status.isActive) {
+      return res.status(400).json({ success: false, error: 'Publer non configurato o disattivato' });
+    }
+    
+    const data = bulkPublishSchema.parse(req.body);
+    
+    const results: { postId: string; success: boolean; error?: string; publerPostId?: string }[] = [];
+    
+    for (const postId of data.postIds) {
+      try {
+        const post = await publerService.getPostById(postId, consultantId);
+        if (!post) {
+          results.push({ postId, success: false, error: 'Post non trovato o non autorizzato' });
+          continue;
+        }
+        
+        if (!post.publerMediaIds || post.publerMediaIds.length === 0) {
+          results.push({ postId, success: false, error: 'Post senza immagine' });
+          continue;
+        }
+        
+        if (!post.scheduledAt && !post.scheduledDate) {
+          results.push({ postId, success: false, error: 'Post senza data programmata' });
+          continue;
+        }
+        
+        if (post.publerStatus === 'scheduled' || post.publerStatus === 'published') {
+          results.push({ postId, success: false, error: 'Post già programmato/pubblicato' });
+          continue;
+        }
+        
+        const scheduledDate = new Date(post.scheduledAt || post.scheduledDate);
+        const mediaIds = post.publerMediaIds.map((m: any) => typeof m === 'string' ? m : m.id);
+        
+        const text = publerService.composePostText(post);
+        
+        const result = await publerService.schedulePost(consultantId, {
+          accountIds: data.accountIds,
+          accountPlatforms: data.accountPlatforms,
+          text,
+          state: 'scheduled',
+          scheduledAt: scheduledDate,
+          mediaIds,
+        });
+        
+        if (!result.success && result.errors && result.errors.length > 0) {
+          await publerService.updatePostStatus(postId, 'failed', undefined, undefined, result.errors[0]);
+          results.push({ postId, success: false, error: result.errors[0] });
+        } else {
+          const publerPostId = result.postIds?.[0] || result.jobId;
+          await publerService.updatePostStatus(postId, 'scheduled', publerPostId, scheduledDate);
+          results.push({ postId, success: true, publerPostId });
+        }
+      } catch (err: any) {
+        await publerService.updatePostStatus(postId, 'failed', undefined, undefined, err.message);
+        results.push({ postId, success: false, error: err.message });
+      }
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+    
+    res.json({ 
+      success: true, 
+      results,
+      summary: { total: data.postIds.length, success: successCount, failed: failCount }
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ success: false, error: error.errors[0].message });
+    }
+    console.error('[PUBLER] Error bulk publishing:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

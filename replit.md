@@ -43,6 +43,7 @@ Key enhancements include:
 - Content Studio Platform-Specific Schema Selection with 40+ templates, character limit enforcement, AI shortening, and 5 selectable writing styles.
 - Content Autopilot System for automated content scheduling with platform-specific frequency, content theme rotation, and full AdVisage AI integration for image generation and publishing.
 - AdVisage AI Visual Concept Generator integrated into Content Studio for generating visual concepts, image prompts, and social captions from ad copy.
+- Bulk Publish System for Publer: one-click scheduling of all posts with scheduled dates and images to Publer accounts, with ownership validation and duplicate prevention.
 - AI-Powered Consultation Booking System with autonomous booking flow:
   - Google Calendar OAuth integration for consultants (connect/disconnect/status)
   - Configurable availability settings (weekdays, time ranges, appointment duration, buffer before/after, min notice hours, max days ahead)

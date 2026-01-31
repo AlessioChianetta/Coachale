@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { publerConfigs, publerAccounts, contentPosts } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { storage } from '../storage';
 
 const PUBLER_BASE_URL = 'https://app.publer.com/api/v1';
@@ -912,6 +912,46 @@ export class PublerService {
       console.error('[PUBLER SYNC] Global sync error:', error);
       return { consultants: consultantCount, totalUpdated };
     }
+  }
+
+  async getPostById(postId: string, consultantId?: string): Promise<any> {
+    const conditions = [eq(contentStudioPosts.id, postId)];
+    if (consultantId) {
+      conditions.push(eq(contentStudioPosts.consultantId, consultantId));
+    }
+    const post = await db.select().from(contentStudioPosts).where(and(...conditions)).limit(1);
+    return post[0] || null;
+  }
+
+  composePostText(post: any): string {
+    const parts: string[] = [];
+    
+    let structured = null;
+    if (typeof post.structuredContent === 'string' && post.structuredContent) {
+      try {
+        structured = JSON.parse(post.structuredContent);
+      } catch (e) {
+        structured = null;
+      }
+    } else if (post.structuredContent && typeof post.structuredContent === 'object') {
+      structured = post.structuredContent;
+    }
+    
+    if (structured?.hook) parts.push(structured.hook);
+    if (structured?.body) parts.push(structured.body);
+    if (structured?.cta) parts.push(structured.cta);
+    
+    if (parts.length === 0) {
+      if (post.hook) parts.push(post.hook);
+      if (post.body) parts.push(post.body);
+      if (post.cta) parts.push(post.cta);
+    }
+    
+    if (post.suggestedHashtags && Array.isArray(post.suggestedHashtags) && post.suggestedHashtags.length > 0) {
+      parts.push('\n' + post.suggestedHashtags.join(' '));
+    }
+    
+    return parts.join('\n\n');
   }
 }
 

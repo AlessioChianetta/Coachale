@@ -110,6 +110,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Navbar from "@/components/navbar";
 import { PublerPublishDialog } from "@/components/publer/PublerPublishDialog";
+import { BulkPublishDialog } from "@/components/publer/BulkPublishDialog";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -668,6 +669,7 @@ export default function ContentStudioPosts() {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
   const [publerDialogOpen, setPublerDialogOpen] = useState(false);
+  const [bulkPublishDialogOpen, setBulkPublishDialogOpen] = useState(false);
   const [publerPost, setPublerPost] = useState<Post | null>(null);
   const [openPublerAfterSave, setOpenPublerAfterSave] = useState(false);
 
@@ -2244,6 +2246,14 @@ export default function ContentStudioPosts() {
                     title="Aggiorna stato post da Publer"
                   >
                     <RefreshCw className={`h-4 w-4 ${isSyncingStatuses ? 'animate-spin' : ''}`} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkPublishDialogOpen(true)}
+                    title="Pubblica tutti i post programmati con immagine"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Pubblica Tutti
                   </Button>
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 // Block closing during upload
@@ -4542,6 +4552,12 @@ export default function ContentStudioPosts() {
         open={publerDialogOpen}
         onOpenChange={setPublerDialogOpen}
         post={publerPost}
+      />
+
+      <BulkPublishDialog
+        open={bulkPublishDialogOpen}
+        onOpenChange={setBulkPublishDialogOpen}
+        posts={posts}
       />
       </div>
     </div>
