@@ -39,7 +39,7 @@ import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboardi
 import { consultationTools, isConsultationTool } from "./ai/consultation-tools";
 import { executeConsultationTool } from "./ai/consultation-tool-executor";
 import { getPendingBookingState } from "./booking/booking-service";
-import { getBookingFlowState } from "./booking/booking-flow-service";
+import { getBookingFlowState, setBookingFlowState } from "./booking/booking-flow-service";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -2219,7 +2219,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     const msgLower = message.toLowerCase();
     // Fixed regex: removed anchors ^$ to match "ok grazie", "sì va bene", etc.
     // Added modify/cancel keywords for post-booking context
-    const potentialConsultationKeywords = /\b(incontri|call|slot|appuntament|prenotare|disponibil|limite|sessioni|conferm|ok|si|sì|perfetto|va bene|procedi|prenota|modifica|sposta|cambia|anticipa|posticipa|cancel|annulla|disdici)\b/i;
+    // Use prefix matching for Italian verb conjugations (spostarlo, annullarlo, cancellalo, etc.)
+    const potentialConsultationKeywords = /\b(incontri|call|slot|appuntament|prenotare|disponibil|limite|sessioni|conferm|ok|si|sì|perfetto|va bene|procedi|prenota|modific|spost|cambi|anticip|postici|cancel|annull|disdic)/i;
     const shouldRunClassifier = isInBookingFlow || hasRecentConsultation || intent === 'consultations' || intent === 'appointment_request' || potentialConsultationKeywords.test(msgLower);
     
     // Build classifier context for memory safety (include flow state info + conversation history)
@@ -2373,6 +2374,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         content: clarificationPrompt,
         createdAt: new Date(),
       });
+      
+      // Set booking flow state to track we're awaiting clarification response
+      // This ensures the classifier runs on the next message ("spostarlo", "annullalo", etc.)
+      if (consultationIntentClassification?.intent === 'booking_impediment') {
+        await setBookingFlowState(conversation.id, 'awaiting_impediment_clarification');
+        console.log(`📌 [CLARIFICATION BYPASS] Set flow state: awaiting_impediment_clarification`);
+      }
       
       return; // Exit early - no AI call needed
     }
