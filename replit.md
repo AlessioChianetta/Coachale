@@ -78,6 +78,16 @@ Key enhancements include:
   - Enhanced anti-repetition with pattern detection, fingerprint analysis, and recommendations
   - Content Topics system with pillar organization and usage tracking
   - AI compression for content exceeding platform limits (90% target, 0.3 temperature for consistency)
+- Voice Telephony System (Alessia AI Phone):
+  - FreeSWITCH integration via ESL (Event Socket Library) on VPS Hostinger
+  - Automatic caller recognition: caller_id → users.phone_number → full client context
+  - Gemini 2.0 Flash Live API for real-time voice AI conversations
+  - 4 database tables: voice_calls (32 columns with billing), voice_call_events, voice_numbers (multi-tenant), voice_rate_limits
+  - VPS reference modules: voice-esl-client.ts, voice-audio-handler.ts (μ-law↔PCM), voice-rate-limiter.ts, voice-caller-lookup.ts, voice-gemini-bridge.ts, voice-call-manager.ts, voice-health.ts
+  - Frontend: VoiceCalls.tsx (dashboard), VoiceSettings.tsx (configuration), VoiceCallDetail.tsx (call analysis)
+  - Rate limiting: 3 calls/min, 10/hour, 30/day per caller, anonymous/premium prefix blocking
+  - Architecture: API on Replit, voice processing on VPS for <100ms latency
+  - Caller lookup uses buildUserContext() from ai-context-builder.ts for full personalization
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
