@@ -233,11 +233,7 @@ const AdVisagePage: React.FC = () => {
         sourceMediaType: post.mediaType || undefined,
       }
     ]);
-    setShowImportDialog(false);
-    toast({
-      title: "Post collegato",
-      description: `"${post.title || 'Post'}" collegato - le immagini generate saranno associate automaticamente`,
-    });
+    // Non chiude il dialog - permette selezione multipla
   };
 
   const fetchFromExternalSource = async () => {
@@ -1107,6 +1103,36 @@ const AdVisagePage: React.FC = () => {
               );
             })()}
           </ScrollArea>
+          
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              {postInputs.filter(p => p.sourcePostId).length > 0 && (
+                <Badge variant="secondary" className="mr-2">
+                  {postInputs.filter(p => p.sourcePostId).length} selezionati
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+                Annulla
+              </Button>
+              <Button 
+                className="bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => {
+                  setShowImportDialog(false);
+                  if (postInputs.filter(p => p.sourcePostId).length > 0) {
+                    toast({
+                      title: "Post collegati",
+                      description: `${postInputs.filter(p => p.sourcePostId).length} post aggiunti alla coda`,
+                    });
+                  }
+                }}
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Conferma Selezione
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
