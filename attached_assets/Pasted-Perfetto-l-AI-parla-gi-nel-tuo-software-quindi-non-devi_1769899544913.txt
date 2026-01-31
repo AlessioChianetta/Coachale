@@ -1,0 +1,127 @@
+Perfetto: l’AI “parla” già nel tuo software, quindi non devi rifare STT/TTS/LLM. Ti manca solo il “cavo” che porta l’audio della chiamata FreeSWITCH dentro al tuo programma (ora su Replit) e poi riporta l’audio di risposta nella chiamata.
+
+Pensa così (sempre stile bimbo di 7 anni):
+
+FreeSWITCH = telefono
+
+Il tuo programma su Replit = AI
+
+Ti manca il tubo per far passare la voce avanti/indietro.
+
+La strada più semplice con Replit (consigliata)
+
+Replit è ottimo per test, ma UDP/RTP spesso è un incubo lì. Quindi scegli un “tubo” che funziona bene su Replit:
+
+✅ “Tubo” via WebSocket (WSS)
+
+FreeSWITCH → (WebSocket) → Replit → (WebSocket) → FreeSWITCH
+
+Questo è il modo più pratico per test.
+
+Cosa fai adesso (passi concreti)
+1) Lascia ESL (8021) com’è: SOLO localhost ✅
+
+Hai già:
+
+listen-ip = 127.0.0.1
+
+password cambiata
+Questa cosa è giusta e sicura. Non devi aprire 8021 su Internet.
+
+2) Sul tuo programma (Replit) devi avere un endpoint “audio”
+
+Al programmatore devi dire:
+
+“Mi serve un endpoint WSS pubblico tipo wss://<tuo-repl>.repl.co/ws che:
+
+riceve audio 8kHz mono (PCM16 o mu-law, decidiamo uno)
+
+restituisce audio nello stesso formato
+
+e tiene una sessione per tutta la durata della chiamata”
+
+Se il tuo software già fa voce, è molto probabile che internamente già gestisca audio streaming: va solo esposto con un WS “compatibile”.
+
+3) Su FreeSWITCH devi usare un modulo che “streamma” audio su WebSocket
+
+Il nome più comune è mod_audio_stream (in alcune build).
+
+Da host (non dentro fs_cli), lancia:
+
+docker exec -it freeswitch fs_cli -H 127.0.0.1 -P 8021 -p '1NoxIsTheBest1!' -x "show modules like audio"
+
+
+Se vedi qualcosa tipo mod_audio_stream, sei a cavallo.
+
+Se NON lo vedi, allora:
+
+o lo abiliti e ricompili l’immagine
+
+oppure usi un’alternativa (ma per Replit WebSocket è la più comoda)
+
+4) Agganci il dialplan 9999 al “tubo”
+
+Nel tuo /opt/freeswitch/conf/dialplan/default/ai_support.xml metti una cosa del genere (esempio):
+
+<include>
+  <extension name="ai_support">
+    <condition field="destination_number" expression="^9999$">
+      <action application="answer"/>
+      <!-- collega l'audio della chiamata al tuo ws su replit -->
+      <action application="audio_stream" data="wss://TUO-REPL/ws"/>
+      <!-- tieni viva la chiamata -->
+      <action application="park"/>
+    </condition>
+  </extension>
+</include>
+
+
+Poi:
+
+docker exec -it freeswitch fs_cli -H 127.0.0.1 -P 8021 -p '1NoxIsTheBest1!' -x "reloadxml"
+
+
+E testi:
+
+docker exec -it freeswitch fs_cli -H 127.0.0.1 -P 8021 -p '1NoxIsTheBest1!' -x "originate loopback/9999/default &park"
+
+La cosa importante: dove mettere “il ponte”
+Per test: ok Replit ✅
+
+Ma in produzione, il pezzo “audio realtime” conviene metterlo sul VPS, non su Replit (latenza + limiti + stabilità).
+
+Quindi architettura consigliata:
+
+VPS: FreeSWITCH + un piccolo “bridge” audio (o mod_audio_stream diretto)
+
+Replit: solo “cervello/logica” per test, poi lo sposti
+
+Cosa dire al programmatore (testo pronto)
+
+Copia e incolla:
+
+“FreeSWITCH è ok e controllo via ESL in localhost. Mi serve ora il collegamento audio.
+Crea un endpoint WSS pubblico (Replit) che gestisca una sessione chiamata:
+
+IN: riceve audio 8kHz mono (scegliamo PCM16 o mulaw)
+
+OUT: ritorna audio stesso formato da riprodurre in chiamata
+
+Il WS deve restare aperto finché la chiamata è attiva.
+Io nel dialplan collego audio_stream a wss://.../ws.”
+
+Dimmi SOLO una cosa (e poi ti dico esattamente cosa scrivere)
+
+Il tuo programma su Replit oggi parla con l’AI usando:
+
+WebRTC (tipo “in browser”), oppure
+
+WebSocket audio già, oppure
+
+fa STT/TTS via HTTP ma non ha streaming?
+
+Se mi dici quale dei 3, ti dico:
+
+se puoi collegare FreeSWITCH diretto al tuo Replit,
+
+oppure se serve un “bridge” piccolo sul VPS (che spesso è la soluzione più veloce e stabile).
