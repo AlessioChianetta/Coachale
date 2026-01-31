@@ -81,7 +81,7 @@ Key enhancements include:
 - Voice Telephony System (Alessia AI Phone):
   - FreeSWITCH integration via ESL (Event Socket Library) on VPS Hostinger
   - Automatic caller recognition: caller_id → users.phone_number → full client context
-  - Gemini 2.0 Flash Live API for real-time voice AI conversations
+  - Gemini 2.5 Flash Native Audio (gemini-2.5-flash-native-audio-preview) for real-time voice AI conversations
   - 4 database tables: voice_calls (32 columns with billing), voice_call_events, voice_numbers (multi-tenant), voice_rate_limits
   - VPS reference modules: voice-esl-client.ts, voice-audio-handler.ts (μ-law↔PCM), voice-rate-limiter.ts, voice-caller-lookup.ts, voice-gemini-bridge.ts, voice-call-manager.ts, voice-health.ts
   - Frontend: VoiceCalls.tsx (dashboard), VoiceSettings.tsx (configuration), VoiceCallDetail.tsx (call analysis)

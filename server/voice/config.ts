@@ -56,7 +56,7 @@ function safeLoadConfig(): VoiceConfig {
     },
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.AI_INTEGRATIONS_GOOGLE_AI_API_KEY || '',
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash-native-audio-preview',
       voiceId: process.env.GEMINI_VOICE_ID || 'Puck',
     },
     rateLimits: {
