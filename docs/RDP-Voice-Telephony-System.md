@@ -1220,8 +1220,8 @@ DATABASE_URL=postgresql://user:pass@db.supabase.co:5432/postgres
 # ═══════════════════════════════════════════════════════════════════
 # GEMINI API
 # ═══════════════════════════════════════════════════════════════════
-GOOGLE_AI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.0-flash-live
+GOOGLE_AI_API_KEY=Providery factory o quella che usiamo normalmente
+GEMINI_MODEL=Il modello che usiamo per gemini live
 
 # ═══════════════════════════════════════════════════════════════════
 # NUMERI
