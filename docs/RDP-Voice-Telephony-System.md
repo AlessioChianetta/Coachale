@@ -2,7 +2,7 @@
 ## Requirements Definition Document
 
 **Progetto**: Integrazione Telefonica con Alessia AI  
-**Versione**: 1.0  
+**Versione**: 2.0 (Production-Ready)  
 **Data**: Gennaio 2026  
 **Stato**: In Sviluppo
 
@@ -17,9 +17,12 @@
 5. [Backend](#5-backend)
 6. [Frontend](#6-frontend)
 7. [Flusso Chiamata](#7-flusso-chiamata)
-8. [Requisiti Tecnici](#8-requisiti-tecnici)
-9. [Divisione Responsabilità](#9-divisione-responsabilità)
-10. [Timeline](#10-timeline)
+8. [Sicurezza](#8-sicurezza)
+9. [Anti-Abuso e Rate Limiting](#9-anti-abuso-e-rate-limiting)
+10. [Requisiti Tecnici](#10-requisiti-tecnici)
+11. [Divisione Responsabilità](#11-divisione-responsabilità)
+12. [Timeline](#12-timeline)
+13. [Appendici](#13-appendici)
 
 ---
 
@@ -35,7 +38,13 @@ Estendere l'assistente vocale **Alessia** (attualmente funzionante via browser) 
 - **Scalabilità**: Centralino proprio senza costi per chiamata a terzi
 
 ### Approccio
-Riutilizzo del **95%** del codice esistente di Alessia. L'unica aggiunta è un **bridge ESL** che collega FreeSWITCH (centralino VoIP) al WebSocket server già funzionante.
+Riutilizzo del **95%** del codice esistente di Alessia. L'unica aggiunta è un **bridge ESL** che collega FreeSWITCH (centralino VoIP) al sistema AI già funzionante.
+
+### Architettura di Deployment
+
+> ⚠️ **IMPORTANTE**: Tutto il sistema vocale (FreeSWITCH + Node Backend Voice) risiede su **VPS Hostinger**, NON su Replit.
+> 
+> Replit rimane solo per l'applicazione web principale (React frontend + Express API). La telefonia richiede latenza ultra-bassa e IP statico.
 
 ---
 
@@ -59,8 +68,8 @@ Riutilizzo del **95%** del codice esistente di Alessia. L'unica aggiunta è un *
 │   │      ▼       │                      │             │                │   │
 │   │  ┌────────┐  │                      │             ▼                │   │
 │   │  │Resampler│ │                      │  ┌────────────────────────┐  │   │
-│   │  │ 48k→16k │ │                      │  │    Gemini Live API     │  │   │
-│   │  └────────┘  │                      │  │     (Vertex AI)        │  │   │
+│   │  │ 48k→16k │ │                      │  │    Gemini Live API     │   │
+│   │  └────────┘  │                      │  │     (Vertex AI)        │   │
 │   │      │       │                      │  └────────────────────────┘  │   │
 │   │      ▼       │                      │             │                │   │
 │   │  ┌────────┐  │      Audio Base64    │             ▼                │   │
@@ -70,9 +79,9 @@ Riutilizzo del **95%** del codice esistente di Alessia. L'unica aggiunta è un *
 │   │      │       │   ◄──────────────────┼───  Audio PCM 24k            │   │
 │   │  ┌────────┐  │                      │                              │   │
 │   │  │Speaker │  │                      │  ┌────────────────────────┐  │   │
-│   │  └────────┘  │                      │  │      PostgreSQL        │  │   │
-│   │              │                      │  │  (ai_conversations,    │  │   │
-│   └──────────────┘                      │  │   ai_messages)         │  │   │
+│   │  └────────┘  │                      │  │      PostgreSQL        │   │
+│   │              │                      │  │  (ai_conversations,    │   │
+│   └──────────────┘                      │  │   ai_messages)         │   │
 │                                         │  └────────────────────────┘  │   │
 │                                         └──────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -93,8 +102,8 @@ Riutilizzo del **95%** del codice esistente di Alessia. L'unica aggiunta è un *
 | File | Linee | Descrizione |
 |------|-------|-------------|
 | `gemini-live-ws-service.ts` | 6113 | **Core**: WebSocket server, connessione Gemini Live, gestione audio, salvataggio conversazioni |
-| `ai-context-builder.ts` | 76880 | Costruisce contesto utente (profilo, storico, knowledge base) |
-| `ai-prompts.ts` | 116045 | System prompt per ogni modalità AI |
+| `ai-context-builder.ts` | ~77000 | Costruisce contesto utente (profilo, storico, knowledge base) |
+| `ai-prompts.ts` | ~116000 | System prompt per ogni modalità AI |
 | `audio-converter.ts` | ~500 | Conversione audio: WebM↔PCM, PCM↔WAV, base64 |
 
 ### 2.4 Flusso Audio Attuale
@@ -164,7 +173,7 @@ CREATE TABLE ai_weekly_consultations (
   client_id VARCHAR REFERENCES users(id),
   consultant_id VARCHAR REFERENCES users(id),
   scheduled_for TIMESTAMP NOT NULL,
-  status TEXT DEFAULT 'scheduled',  -- 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  status TEXT DEFAULT 'scheduled',
   ai_conversation_id VARCHAR REFERENCES ai_conversations(id),
   full_transcript TEXT,
   started_at TIMESTAMP,
@@ -177,73 +186,82 @@ CREATE TABLE ai_weekly_consultations (
 
 ## 3. Architettura Futura (Telefonia)
 
-### 3.1 Panoramica
+### 3.1 Panoramica Deployment
+
+> ⚠️ **ARCHITETTURA PRODUCTION**: Il backend vocale risiede interamente su VPS Hostinger per garantire:
+> - **Latenza ultra-bassa** (< 100ms)
+> - **IP statico** per SIP e firewall
+> - **Connessione ESL locale** (127.0.0.1)
+> - **Storage audio persistente**
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                           ARCHITETTURA CON TELEFONIA                                │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                     │
-│  ┌────────────────────────────────────────────────────────────────────────────┐    │
-│  │                        HOSTINGER VPS                                        │    │
-│  │  ┌──────────────────────────────────────────────────────────────────────┐  │    │
-│  │  │                         FreeSWITCH                                    │  │    │
-│  │  │                                                                       │  │    │
-│  │  │   ┌─────────┐      ┌─────────────┐      ┌─────────────────────────┐  │  │    │
-│  │  │   │  SIP    │      │  Dialplan   │      │    Event Socket         │  │  │    │
-│  │  │   │ Profile │◄────►│ ai_support  │◄────►│    (porta 8021)         │  │  │    │
-│  │  │   └─────────┘      └─────────────┘      └───────────┬─────────────┘  │  │    │
-│  │  │        ▲                                            │                 │  │    │
-│  │  │        │                                            │ TCP             │  │    │
-│  │  └────────┼────────────────────────────────────────────┼─────────────────┘  │    │
-│  └───────────┼────────────────────────────────────────────┼─────────────────────┘    │
-│              │                                            │                          │
-│              │ SIP Trunk                                  │                          │
-│              │                                            ▼                          │
-│  ┌───────────┴───────────┐            ┌──────────────────────────────────────────┐  │
-│  │                       │            │               REPLIT                      │  │
-│  │   MESSAGENET / VOIP   │            │  ┌────────────────────────────────────┐  │  │
-│  │   (Numero Italiano)   │            │  │        voice-esl-client.ts         │  │  │
-│  │                       │            │  │                                    │  │  │
-│  └───────────────────────┘            │  │  • Connessione ESL                 │  │  │
-│              ▲                        │  │  • Event handlers                  │  │  │
-│              │                        │  │  • uuid_broadcast                  │  │  │
-│              │                        │  │  • Caller ID lookup                │  │  │
-│  ┌───────────┴───────────┐            │  └──────────────┬─────────────────────┘  │  │
-│  │                       │            │                 │                        │  │
-│  │   📞 TELEFONO         │            │                 ▼                        │  │
-│  │   (Cliente)           │            │  ┌────────────────────────────────────┐  │  │
-│  │                       │            │  │      voice-audio-handler.ts        │  │  │
-│  └───────────────────────┘            │  │                                    │  │  │
-│                                       │  │  • Audio chunks → Gemini           │  │  │
-│                                       │  │  • Risposta → WAV 8k               │  │  │
-│                                       │  │  • Conversione μ-law ↔ PCM         │  │  │
-│                                       │  └──────────────┬─────────────────────┘  │  │
-│                                       │                 │                        │  │
-│                                       │                 ▼                        │  │
-│                                       │  ┌────────────────────────────────────┐  │  │
-│                                       │  │    gemini-live-ws-service.ts       │  │  │
-│                                       │  │    (ESISTENTE - NESSUNA MODIFICA)  │  │  │
-│                                       │  │                                    │  │  │
-│                                       │  │  • buildUserContext()              │  │  │
-│                                       │  │  • buildSystemPrompt()             │  │  │
-│                                       │  │  • Gemini Live API                 │  │  │
-│                                       │  │  • Salvataggio DB                  │  │  │
-│                                       │  └────────────────────────────────────┘  │  │
-│                                       └──────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                        ARCHITETTURA PRODUCTION TELEFONIA                              │
+├──────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  ┌────────────────────────────────────────────────────────────────────────────────┐ │
+│  │                          HOSTINGER VPS (IP STATICO)                             │ │
+│  │                                                                                 │ │
+│  │  ┌─────────────────────────────────┐   ┌─────────────────────────────────────┐ │ │
+│  │  │         FreeSWITCH              │   │      NODE VOICE BACKEND             │ │ │
+│  │  │                                 │   │                                     │ │ │
+│  │  │  ┌─────────┐    ┌───────────┐  │   │  ┌────────────────────────────────┐ │ │ │
+│  │  │  │  SIP    │    │ Dialplan  │  │   │  │   voice-esl-client.ts          │ │ │ │
+│  │  │  │ Profile │◄──►│ai_support │  │   │  │   • Connessione ESL            │ │ │ │
+│  │  │  │ (PCMU!) │    │           │  │   │  │   • Event handlers             │ │ │ │
+│  │  │  └─────────┘    └───────────┘  │   │  │   • uuid_broadcast             │ │ │ │
+│  │  │       ▲              │         │   │  └───────────────┬────────────────┘ │ │ │
+│  │  │       │              │         │   │                  │                  │ │ │
+│  │  │       │         ┌────┴─────┐   │   │                  ▼                  │ │ │
+│  │  │       │         │  ESL     │   │   │  ┌────────────────────────────────┐ │ │ │
+│  │  │       │         │ 127.0.0.1│◄──┼───┼──┤   voice-audio-handler.ts       │ │ │ │
+│  │  │       │         │ :8021    │   │   │  │   • μ-law ↔ PCM conversion     │ │ │ │
+│  │  │       │         └──────────┘   │   │  │   • /dev/shm temp chunks       │ │ │ │
+│  │  │       │                        │   │  └───────────────┬────────────────┘ │ │ │
+│  │  └───────┼────────────────────────┘   │                  │                  │ │ │
+│  │          │ SIP Trunk                  │                  ▼                  │ │ │
+│  │          │                            │  ┌────────────────────────────────┐ │ │ │
+│  │          │                            │  │   voice-gemini-bridge.ts       │ │ │ │
+│  │          ▼                            │  │   • buildUserContext()         │ │ │ │
+│  │  ┌───────────────────────┐            │  │   • buildSystemPrompt()        │ │ │ │
+│  │  │   MESSAGENET / VOIP   │            │  │   • Gemini Live API            │ │ │ │
+│  │  │   (Numero Italiano)   │            │  └───────────────┬────────────────┘ │ │ │
+│  │  │   +39 02 1234567      │            │                  │                  │ │ │
+│  │  └───────────────────────┘            │                  ▼                  │ │ │
+│  │          ▲                            │  ┌────────────────────────────────┐ │ │ │
+│  │          │                            │  │   /var/lib/alessia/recordings │ │ │ │
+│  │          │                            │  │   (Storage persistente)        │ │ │ │
+│  │  ┌───────┴───────────┐                │  └────────────────────────────────┘ │ │ │
+│  │  │                   │                │                                     │ │ │
+│  │  │  📞 TELEFONO      │                └─────────────────────────────────────┘ │ │
+│  │  │   (Cliente)       │                                                        │ │
+│  │  │                   │                                                        │ │
+│  │  └───────────────────┘                                                        │ │
+│  │                                                                                 │ │
+│  └─────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐ │
+│  │                              COMUNICAZIONE DB                                    │ │
+│  │                                                                                 │ │
+│  │   VPS Hostinger ◄────────────────► PostgreSQL (Supabase) ◄────────► Replit App │ │
+│  │                    HTTPS/TLS                               HTTPS/TLS           │ │
+│  │                                                                                 │ │
+│  └─────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Componenti Nuovi
+### 3.2 Componenti Nuovi (VPS Hostinger)
 
 | Componente | File | Descrizione |
 |------------|------|-------------|
-| **ESL Client** | `server/voice/voice-esl-client.ts` | Connessione Event Socket a FreeSWITCH, gestione eventi chiamata |
-| **Audio Handler** | `server/voice/voice-audio-handler.ts` | Ricezione audio da FreeSWITCH, conversione formati, invio a Gemini |
-| **Caller Lookup** | `server/voice/voice-caller-lookup.ts` | Mapping Caller ID → profilo cliente database |
-| **Call Manager** | `server/voice/voice-call-manager.ts` | Gestione stato chiamata, turni parlato, timeout |
-| **Voice Routes** | `server/routes/voice-routes.ts` | API REST per monitoring e configurazione |
-| **Voice Calls Table** | Schema DB | Logging chiamate telefoniche |
+| **ESL Client** | `voice-esl-client.ts` | Connessione ESL locale (127.0.0.1:8021) |
+| **Audio Handler** | `voice-audio-handler.ts` | Conversione μ-law↔PCM, temp su /dev/shm |
+| **Caller Lookup** | `voice-caller-lookup.ts` | Mapping Caller ID → profilo cliente |
+| **Call Manager** | `voice-call-manager.ts` | State machine, rate limiting |
+| **Gemini Bridge** | `voice-gemini-bridge.ts` | Ponte verso Gemini Live API |
+| **Voice API** | `voice-routes.ts` | REST API per monitoring |
+| **Health Check** | `voice-health.ts` | Verifica ESL, FreeSWITCH, Gemini |
 
 ### 3.3 Differenze Audio
 
@@ -255,6 +273,7 @@ CREATE TABLE ai_weekly_consultations (
 | **Codec Uscita** | PCM Linear16 | G.711 μ-law (PCMU) |
 | **Canali** | Stereo → Mono | Mono |
 | **Trasporto** | WebSocket | ESL + File WAV |
+| **Temp Storage** | Memory | /dev/shm (RAM disk) |
 
 ### 3.4 Flusso Audio Telefonia
 
@@ -266,13 +285,13 @@ CREATE TABLE ai_weekly_consultations (
 │  INGRESSO (Utente → AI)                                                         │
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │
 │  │  FreeSWITCH │     │  Recording  │     │  Conversione │     │   Gemini    │   │
-│  │  (G.711 8k) │────►│  (chunk)    │────►│  μ-law→PCM16 │────►│   Live      │   │
+│  │  (PCMU 8k)  │────►│  /dev/shm   │────►│  μ-law→PCM16 │────►│   Live      │   │
 │  └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘   │
 │                                                                                 │
 │  USCITA (AI → Utente)                                                           │
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │
 │  │   Gemini    │     │  Conversione │     │  WAV 8k     │     │ uuid_       │   │
-│  │   Live      │────►│  PCM24→PCM8 │────►│  mono       │────►│ broadcast   │   │
+│  │   Live      │────►│  PCM24→PCM8 │────►│  /dev/shm   │────►│ broadcast   │   │
 │  └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘   │
 │                                                                                 │
 │  MODALITÀ: Turn-Based (MVP)                                                     │
@@ -300,14 +319,14 @@ CREATE TABLE voice_calls (
   id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
   
   -- Identificazione
-  caller_id VARCHAR(20) NOT NULL,           -- Numero chiamante
-  called_number VARCHAR(20) NOT NULL,       -- Numero chiamato (DID)
-  client_id VARCHAR REFERENCES users(id),   -- Cliente riconosciuto (nullable)
-  consultant_id VARCHAR REFERENCES users(id), -- Consulente associato
+  caller_id VARCHAR(20) NOT NULL,
+  called_number VARCHAR(20) NOT NULL,
+  client_id VARCHAR REFERENCES users(id),
+  consultant_id VARCHAR REFERENCES users(id),
   
   -- FreeSWITCH
-  freeswitch_uuid VARCHAR(36) NOT NULL,     -- UUID chiamata FreeSWITCH
-  freeswitch_channel VARCHAR(100),          -- Nome canale
+  freeswitch_uuid VARCHAR(36) NOT NULL,
+  freeswitch_channel VARCHAR(100),
   
   -- Stato
   status VARCHAR(20) NOT NULL DEFAULT 'ringing',
@@ -327,14 +346,19 @@ CREATE TABLE voice_calls (
   
   -- Trascrizione
   full_transcript TEXT,
-  transcript_chunks JSONB,  -- Array di {timestamp, role, text}
+  transcript_chunks JSONB,
   
   -- Audio
   recording_url TEXT,
   
   -- Risultato
-  outcome VARCHAR(50),  -- 'completed' | 'transferred' | 'voicemail' | 'abandoned'
-  transfer_target VARCHAR(20),  -- Se trasferito, a che numero
+  outcome VARCHAR(50),
+  transfer_target VARCHAR(20),
+  
+  -- 💰 BILLING (per SaaS futuro)
+  telephony_minutes DECIMAL(10,2),
+  ai_tokens_used INTEGER,
+  ai_cost_estimate DECIMAL(10,4),
   
   -- Metadata
   metadata JSONB,
@@ -348,6 +372,7 @@ CREATE INDEX idx_voice_calls_caller ON voice_calls(caller_id);
 CREATE INDEX idx_voice_calls_client ON voice_calls(client_id);
 CREATE INDEX idx_voice_calls_status ON voice_calls(status);
 CREATE INDEX idx_voice_calls_started ON voice_calls(started_at);
+CREATE INDEX idx_voice_calls_consultant ON voice_calls(consultant_id);
 ```
 
 ### 4.2 Nuova Tabella: `voice_call_events`
@@ -367,16 +392,84 @@ CREATE TABLE voice_call_events (
 );
 
 CREATE INDEX idx_voice_call_events_call ON voice_call_events(call_id);
+CREATE INDEX idx_voice_call_events_type ON voice_call_events(event_type);
 ```
 
-### 4.3 Estensione: `users` (già esistente)
+### 4.3 Nuova Tabella: `voice_numbers` (Multi-tenant Ready)
 
 ```sql
--- Campo già esistente
-phone_number TEXT  -- Usato per lookup Caller ID → Cliente
+-- Preparazione per multi-tenant SaaS
+CREATE TABLE voice_numbers (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Numero
+  phone_number VARCHAR(20) NOT NULL UNIQUE,
+  display_name VARCHAR(100),
+  
+  -- Proprietario
+  consultant_id VARCHAR REFERENCES users(id),
+  
+  -- Configurazione
+  greeting_text TEXT,
+  ai_mode VARCHAR(50) DEFAULT 'assistenza',
+  fallback_number VARCHAR(20),
+  
+  -- Orari attività
+  active_days JSONB DEFAULT '["mon","tue","wed","thu","fri"]',
+  active_hours_start TIME DEFAULT '09:00',
+  active_hours_end TIME DEFAULT '18:00',
+  timezone VARCHAR(50) DEFAULT 'Europe/Rome',
+  
+  -- Fuori orario
+  out_of_hours_action VARCHAR(20) DEFAULT 'voicemail',
+  -- 'voicemail' | 'message' | 'transfer' | 'reject'
+  
+  -- Limiti
+  max_concurrent_calls INTEGER DEFAULT 5,
+  max_call_duration_minutes INTEGER DEFAULT 30,
+  
+  -- Stato
+  is_active BOOLEAN DEFAULT true,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_voice_numbers_phone ON voice_numbers(phone_number);
+CREATE INDEX idx_voice_numbers_consultant ON voice_numbers(consultant_id);
 ```
 
-### 4.4 Entity Relationship Diagram
+### 4.4 Nuova Tabella: `voice_rate_limits` (Anti-Abuso)
+
+```sql
+CREATE TABLE voice_rate_limits (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  caller_id VARCHAR(20) NOT NULL,
+  
+  -- Contatori (rolling window)
+  calls_last_minute INTEGER DEFAULT 0,
+  calls_last_hour INTEGER DEFAULT 0,
+  calls_today INTEGER DEFAULT 0,
+  total_minutes_today DECIMAL(10,2) DEFAULT 0,
+  
+  -- Timestamp
+  last_call_at TIMESTAMP,
+  first_call_today TIMESTAMP,
+  
+  -- Stato
+  is_blocked BOOLEAN DEFAULT false,
+  blocked_reason TEXT,
+  blocked_until TIMESTAMP,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_voice_rate_limits_caller ON voice_rate_limits(caller_id);
+```
+
+### 4.5 Entity Relationship Diagram
 
 ```
 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
@@ -388,16 +481,30 @@ phone_number TEXT  -- Usato per lookup Caller ID → Cliente
 └─────────────────┘         │ _id (FK)        │         │ event_data      │
         ▲                   │ caller_id       │         └─────────────────┘
         │                   │ status          │
-        │                   │ transcript      │
+        │                   │ telephony_mins  │
+        │                   │ ai_cost_est     │
         │                   └─────────────────┘
         │                           │
         │                           ▼
         │                   ┌─────────────────┐
-        └───────────────────┤ai_conversations │
+        │                   │ai_conversations │
+        │                   └─────────────────┘
+        │
+        │                   ┌─────────────────┐
+        └───────────────────┤ voice_numbers   │
                            ├─────────────────┤
-                           │ id (PK)         │
-                           │ client_id (FK)  │
-                           │ mode            │
+                           │ phone_number    │
+                           │ consultant_id   │
+                           │ greeting_text   │
+                           │ fallback_number │
+                           └─────────────────┘
+                           
+                           ┌─────────────────┐
+                           │voice_rate_limits│
+                           ├─────────────────┤
+                           │ caller_id       │
+                           │ calls_last_min  │
+                           │ is_blocked      │
                            └─────────────────┘
 ```
 
@@ -405,44 +512,48 @@ phone_number TEXT  -- Usato per lookup Caller ID → Cliente
 
 ## 5. Backend
 
-### 5.1 Struttura Directory
+### 5.1 Struttura Directory (VPS Hostinger)
 
 ```
-server/
-├── voice/
-│   ├── index.ts                    # Export modulo
-│   ├── voice-esl-client.ts         # Connessione ESL a FreeSWITCH
-│   ├── voice-audio-handler.ts      # Gestione audio (conversione, chunk)
-│   ├── voice-caller-lookup.ts      # Lookup Caller ID → Cliente
-│   ├── voice-call-manager.ts       # State machine chiamata
-│   └── voice-gemini-bridge.ts      # Ponte verso Gemini Live
-├── routes/
-│   └── voice-routes.ts             # API REST
-└── ai/
-    └── gemini-live-ws-service.ts   # ESISTENTE (nessuna modifica)
+/opt/alessia-voice/
+├── src/
+│   ├── index.ts                    # Entry point
+│   ├── config.ts                   # Environment config
+│   ├── esl/
+│   │   └── voice-esl-client.ts     # Connessione ESL (127.0.0.1)
+│   ├── audio/
+│   │   └── voice-audio-handler.ts  # Conversione, /dev/shm
+│   ├── calls/
+│   │   ├── voice-call-manager.ts   # State machine
+│   │   ├── voice-caller-lookup.ts  # Caller ID → Cliente
+│   │   └── voice-rate-limiter.ts   # Anti-abuso
+│   ├── ai/
+│   │   └── voice-gemini-bridge.ts  # Ponte Gemini Live
+│   ├── routes/
+│   │   └── voice-routes.ts         # API REST
+│   └── health/
+│       └── voice-health.ts         # Health checks
+├── package.json
+├── tsconfig.json
+└── .env
 ```
 
 ### 5.2 ESL Client (`voice-esl-client.ts`)
 
 ```typescript
-// Responsabilità:
-// 1. Connessione persistente a FreeSWITCH (porta 8021)
-// 2. Autenticazione ESL
-// 3. Sottoscrizione eventi: CHANNEL_CREATE, CHANNEL_ANSWER, CHANNEL_HANGUP, DTMF
-// 4. Esecuzione comandi: uuid_broadcast, uuid_transfer, uuid_kill
-
 import { Connection } from 'modesl';
 
 interface ESLConfig {
-  host: string;      // FREESWITCH_HOST
+  host: string;      // '127.0.0.1' - SEMPRE localhost
   port: number;      // 8021
-  password: string;  // FREESWITCH_ESL_PASSWORD
+  password: string;  // Password lunga random
 }
 
 class VoiceESLClient {
   private connection: Connection | null = null;
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 10;
   
   async connect(): Promise<void>;
   async disconnect(): Promise<void>;
@@ -461,19 +572,20 @@ class VoiceESLClient {
   async hangup(uuid: string, cause?: string): Promise<void>;
   async recordStart(uuid: string, filePath: string): Promise<void>;
   async recordStop(uuid: string): Promise<void>;
+  
+  // Health
+  async ping(): Promise<boolean>;
+  getConnectionState(): 'connected' | 'disconnected' | 'reconnecting';
 }
 ```
 
 ### 5.3 Audio Handler (`voice-audio-handler.ts`)
 
 ```typescript
-// Responsabilità:
-// 1. Ricezione audio chunk da FreeSWITCH (file o stream)
-// 2. Conversione G.711 μ-law 8kHz → PCM Linear16 16kHz
-// 3. Invio a Gemini Live
-// 4. Ricezione risposta Gemini (PCM 24kHz)
-// 5. Conversione → WAV 8kHz mono
-// 6. Salvataggio file per playback
+interface AudioConfig {
+  tempDir: string;           // '/dev/shm/alessia' - RAM disk per bassa latenza
+  recordingsDir: string;     // '/var/lib/alessia/voice_recordings' - persistente
+}
 
 interface AudioChunk {
   data: Buffer;
@@ -490,144 +602,156 @@ class VoiceAudioHandler {
   
   // Processing
   async processIncomingAudio(chunk: AudioChunk): Promise<Buffer>;
-  async processOutgoingAudio(geminiAudio: Buffer): Promise<string>;  // returns WAV path
+  async processOutgoingAudio(geminiAudio: Buffer): Promise<string>;
   
-  // VAD (Voice Activity Detection)
+  // VAD
   detectSpeechEnd(samples: Buffer): boolean;
-}
-```
-
-### 5.4 Caller Lookup (`voice-caller-lookup.ts`)
-
-```typescript
-// Responsabilità:
-// 1. Normalizzazione numero telefono (+39, 0039, spazi, ecc.)
-// 2. Lookup in database: users.phone_number
-// 3. Ritorno profilo cliente se trovato
-
-interface CallerLookupResult {
-  found: boolean;
-  userId?: string;
-  clientId?: string;
-  consultantId?: string;
-  clientName?: string;
-  clientProfile?: UserProfile;
-}
-
-class VoiceCallerLookup {
-  normalizePhoneNumber(raw: string): string;
-  async lookupByPhone(phoneNumber: string): Promise<CallerLookupResult>;
-  async getClientContext(clientId: string): Promise<ClientContext>;
-}
-```
-
-### 5.5 Call Manager (`voice-call-manager.ts`)
-
-```typescript
-// Responsabilità:
-// 1. State machine per ogni chiamata attiva
-// 2. Gestione turni: utente parla → AI risponde → utente parla
-// 3. Timeout e fallback
-// 4. Logging eventi
-
-type CallState = 
-  | 'ringing'
-  | 'answered' 
-  | 'greeting'      // AI saluta
-  | 'listening'     // Utente parla
-  | 'processing'    // AI elabora
-  | 'speaking'      // AI risponde
-  | 'transferring'
-  | 'ended';
-
-interface ActiveCall {
-  uuid: string;
-  callerId: string;
-  state: CallState;
-  clientId?: string;
-  conversationHistory: TranscriptEntry[];
-  startTime: number;
-  lastActivity: number;
-}
-
-class VoiceCallManager {
-  private activeCalls: Map<string, ActiveCall> = new Map();
   
-  async handleIncomingCall(event: ESLEvent): Promise<void>;
-  async handleUserSpeech(uuid: string, audioChunk: Buffer): Promise<void>;
-  async handleAIResponse(uuid: string, response: string, audio: Buffer): Promise<void>;
-  async handleHangup(uuid: string): Promise<void>;
-  
-  // Fallback
-  async transferToHuman(uuid: string, reason: string): Promise<void>;
-  async sendToVoicemail(uuid: string): Promise<void>;
+  // Cleanup
+  async cleanupTempFiles(): Promise<void>;
 }
 ```
 
-### 5.6 Gemini Bridge (`voice-gemini-bridge.ts`)
+### 5.4 Rate Limiter (`voice-rate-limiter.ts`)
 
 ```typescript
-// Responsabilità:
-// 1. Creare "sessione virtuale" verso gemini-live-ws-service
-// 2. Passare audio in formato compatibile
-// 3. Ricevere risposta testuale e audio
-// 4. Riutilizzare buildUserContext e buildSystemPrompt
+interface RateLimitConfig {
+  maxCallsPerMinute: number;     // 3
+  maxCallsPerHour: number;       // 20
+  maxCallsPerDay: number;        // 50
+  maxMinutesPerDay: number;      // 120
+  maxCallDuration: number;       // 1800 (30 min)
+  blockAnonymous: boolean;       // true
+  blockedPrefixes: string[];     // ['+1900', '+44870']
+}
 
-class VoiceGeminiBridge {
-  async createSession(
-    clientId: string | null,
-    consultantId: string,
-    mode: 'assistenza' | 'consulente'
-  ): Promise<GeminiSession>;
-  
-  async sendAudio(sessionId: string, audio: Buffer): Promise<GeminiResponse>;
-  async closeSession(sessionId: string): Promise<void>;
+interface RateLimitResult {
+  allowed: boolean;
+  reason?: string;
+  waitSeconds?: number;
+}
+
+class VoiceRateLimiter {
+  async checkLimit(callerId: string): Promise<RateLimitResult>;
+  async recordCall(callerId: string, durationSeconds: number): Promise<void>;
+  async blockCaller(callerId: string, reason: string, hours: number): Promise<void>;
+  async unblockCaller(callerId: string): Promise<void>;
+  async getCallerStats(callerId: string): Promise<CallerStats>;
 }
 ```
 
-### 5.7 Voice Routes (`server/routes/voice-routes.ts`)
+### 5.5 Health Check (`voice-health.ts`)
 
 ```typescript
-// API REST per monitoring e configurazione
+interface HealthStatus {
+  overall: 'healthy' | 'degraded' | 'unhealthy';
+  components: {
+    esl: ComponentHealth;
+    freeswitch: ComponentHealth;
+    gemini: ComponentHealth;
+    database: ComponentHealth;
+    storage: ComponentHealth;
+  };
+  metrics: {
+    activeCallsCount: number;
+    callsLast5Min: number;
+    avgLatencyMs: number;
+  };
+}
+
+interface ComponentHealth {
+  status: 'up' | 'down' | 'degraded';
+  latencyMs?: number;
+  lastCheck: Date;
+  error?: string;
+}
+
+class VoiceHealth {
+  // Verifica singoli componenti
+  async checkESL(): Promise<ComponentHealth>;
+  async checkFreeSWITCH(): Promise<ComponentHealth>;
+  async checkGemini(): Promise<ComponentHealth>;
+  async checkDatabase(): Promise<ComponentHealth>;
+  async checkStorage(): Promise<ComponentHealth>;
+  
+  // Verifica completa
+  async getFullHealth(): Promise<HealthStatus>;
+  
+  // Codec check
+  async verifyCodecHandshake(): Promise<boolean>;
+}
+```
+
+### 5.6 Voice Routes (`voice-routes.ts`)
+
+```typescript
+// GET /api/voice/health
+// Stato completo di tutti i componenti
+// Response: HealthStatus
 
 // GET /api/voice/status
-// Stato connessione ESL, chiamate attive
+// Stato connessione ESL + chiamate attive
+// Response: { eslConnected, activeCalls[], uptime }
 
 // GET /api/voice/calls
-// Lista chiamate recenti con filtri
+// Lista chiamate con filtri
+// Query: ?from=date&to=date&status=completed&client_id=xxx
+// Response: { calls[], total, page, limit }
 
 // GET /api/voice/calls/:id
-// Dettaglio singola chiamata
+// Dettaglio singola chiamata con eventi
+// Response: { call, events[] }
+
+// GET /api/voice/calls/:id/audio
+// Stream audio registrazione
+// Response: audio/wav
 
 // GET /api/voice/stats
-// Statistiche: chiamate/giorno, durata media, outcome
+// Statistiche aggregate
+// Query: ?period=day|week|month
+// Response: { totalCalls, avgDuration, outcomes{}, costEstimate }
 
 // POST /api/voice/config
-// Aggiornamento configurazione (numeri, fallback, ecc.)
+// Aggiornamento configurazione numero
+// Body: { greeting_text, fallback_number, ... }
 
-// GET /api/voice/health
-// Health check per monitoring
+// GET /api/voice/rate-limits/:callerId
+// Stato rate limit per numero
+// Response: RateLimitStats
+
+// POST /api/voice/block/:callerId
+// Blocca numero manualmente
+// Body: { reason, hours }
+
+// DELETE /api/voice/block/:callerId
+// Sblocca numero
 ```
 
 ---
 
 ## 6. Frontend
 
-### 6.1 Nuove Pagine
-
-#### Dashboard Chiamate Vocali (`/consultant/voice-calls`)
+### 6.1 Dashboard Chiamate Vocali (`/consultant/voice-calls`)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  📞 Chiamate Vocali                                               [Config] │
+│  📞 Chiamate Vocali                                    [⚙️ Config] [🔄 5s] │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  STATO SISTEMA                                          🟢 Online   │   │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐       │   │
+│  │  │ ESL       │  │ FreeSWITCH│  │  Gemini   │  │    DB     │       │   │
+│  │  │ 🟢 12ms   │  │ 🟢 OK     │  │ 🟢 45ms   │  │ 🟢 8ms    │       │   │
+│  │  └───────────┘  └───────────┘  └───────────┘  └───────────┘       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  STATISTICHE OGGI                                                   │   │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐            │   │
-│  │  │    12    │  │   8m 23s │  │    85%   │  │    2     │            │   │
-│  │  │ Chiamate │  │ Durata ⌀ │  │ Complete │  │ Attive   │            │   │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘            │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐│   │
+│  │  │    12    │  │   8m 23s │  │    85%   │  │    2     │  │  €3.40 ││   │
+│  │  │ Chiamate │  │ Durata ⌀ │  │ Complete │  │ Attive   │  │ Costo  ││   │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └────────┘│   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -647,6 +771,7 @@ class VoiceGeminiBridge {
 │  │  │ 13:15        │ +39 347 9876  │ —            │ 02:45  │ ✅     │ │   │
 │  │  │ 11:42        │ +39 320 5555  │ Anna Bianchi │ 00:45  │ 📲     │ │   │
 │  │  │ 10:08        │ +39 339 1111  │ Luca Verdi   │ 08:12  │ ✅     │ │   │
+│  │  │ 09:30        │ Anonymous     │ —            │ 00:00  │ 🚫     │ │   │
 │  │  └───────────────────────────────────────────────────────────────┘ │   │
 │  │                                                      Pagina 1 di 5  │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
@@ -657,10 +782,11 @@ Legenda esiti:
 ✅ = Completata con successo
 📲 = Trasferita a operatore
 📭 = Voicemail
+🚫 = Bloccata (rate limit / anonimo)
 ❌ = Fallita/Abbandonata
 ```
 
-#### Dettaglio Chiamata (`/consultant/voice-calls/:id`)
+### 6.2 Dettaglio Chiamata (`/consultant/voice-calls/:id`)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -675,8 +801,16 @@ Legenda esiti:
 │  │  Data: 31/01/2026 14:32         │  │                                 │  │
 │  │  Durata: 5 minuti 23 secondi    │  └─────────────────────────────────┘  │
 │  │  Esito: ✅ Completata           │                                       │
-│  │                                 │                                       │
-│  └─────────────────────────────────┘                                       │
+│  │                                 │  ┌─────────────────────────────────┐  │
+│  │  💰 COSTI                       │  │  TIMELINE EVENTI                │  │
+│  │  Minuti telefonia: 5.38         │  │                                 │  │
+│  │  Token AI: 1,245                │  │  14:32:00 │ 📞 Chiamata in arr. │  │
+│  │  Costo stimato: €0.28           │  │  14:32:02 │ ✅ Risposta         │  │
+│  │                                 │  │  14:32:03 │ 🎵 Saluto iniziale  │  │
+│  └─────────────────────────────────┘  │  14:32:15 │ 🎤 Utente parla    │  │
+│                                       │  14:32:28 │ 🤖 AI risponde     │  │
+│                                       │  14:37:25 │ 📴 Fine chiamata   │  │
+│                                       └─────────────────────────────────┘  │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  TRASCRIZIONE                                                       │   │
@@ -693,16 +827,13 @@ Legenda esiti:
 │  │  lunedì 3 febbraio alle ore 15:00. Vuoi che ti invii un            │   │
 │  │  promemoria?                                                        │   │
 │  │                                                                     │   │
-│  │  [00:28] 👤 Cliente:                                                │   │
-│  │  Sì grazie, mandamelo su WhatsApp                                  │   │
-│  │                                                                     │   │
 │  │  ...                                                                │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Configurazione Telefonia (`/consultant/settings/voice`)
+### 6.3 Configurazione Telefonia (`/consultant/settings/voice`)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -712,16 +843,10 @@ Legenda esiti:
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  CONNESSIONE FREESWITCH                                    🟢 Online│   │
 │  │                                                                     │   │
-│  │  Host:     ┌─────────────────────────────────────┐                 │   │
-│  │            │ vps123.hostinger.com                │                 │   │
-│  │            └─────────────────────────────────────┘                 │   │
-│  │  Porta:    ┌─────────┐                                             │   │
-│  │            │ 8021    │                                             │   │
-│  │            └─────────┘                                             │   │
-│  │  Password: ┌─────────────────────────────────────┐                 │   │
-│  │            │ ••••••••••••                        │                 │   │
-│  │            └─────────────────────────────────────┘                 │   │
-│  │                                                     [Test Connessione] │   │
+│  │  Host:     vps123.hostinger.com (127.0.0.1 interno)                │   │
+│  │  Porta:    8021 (ESL locale)                                       │   │
+│  │  Latenza:  12ms                                                    │   │
+│  │                                                     [Test Connessione]│   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -751,6 +876,19 @@ Legenda esiti:
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  🛡️ ANTI-ABUSO                                                     │   │
+│  │                                                                     │   │
+│  │  Max chiamate/minuto per numero: ┌───┐                             │   │
+│  │                                  │ 3 │                             │   │
+│  │                                  └───┘                             │   │
+│  │  Max durata chiamata: ┌────┐ minuti                                │   │
+│  │                       │ 30 │                                       │   │
+│  │                       └────┘                                       │   │
+│  │  ☑ Blocca chiamate anonime                                        │   │
+│  │  ☑ Blocca prefissi internazionali sospetti                        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  FALLBACK                                                           │   │
 │  │                                                                     │   │
 │  │  Numero Trasferimento: ┌─────────────────────────────────────┐     │   │
@@ -768,17 +906,19 @@ Legenda esiti:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 Componenti React Nuovi
+### 6.4 Componenti React Nuovi
 
 | Componente | Descrizione |
 |------------|-------------|
-| `VoiceCallsDashboard.tsx` | Dashboard principale con stats e lista chiamate |
-| `VoiceCallsTable.tsx` | Tabella chiamate con sorting, filtering, pagination |
-| `VoiceCallDetail.tsx` | Dettaglio singola chiamata con player audio |
-| `VoiceCallTranscript.tsx` | Visualizzatore trascrizione con timestamp |
-| `VoiceSettings.tsx` | Form configurazione telefonia |
-| `VoiceConnectionStatus.tsx` | Badge stato connessione ESL |
-| `ActiveCallsBadge.tsx` | Indicatore chiamate attive in tempo reale |
+| `VoiceCallsDashboard.tsx` | Dashboard con stats, health, lista chiamate |
+| `VoiceSystemHealth.tsx` | Stato ESL, FreeSWITCH, Gemini, DB |
+| `VoiceCallsTable.tsx` | Tabella con sorting, filtering, pagination |
+| `VoiceCallDetail.tsx` | Dettaglio singola chiamata |
+| `VoiceCallTranscript.tsx` | Visualizzatore trascrizione |
+| `VoiceCallTimeline.tsx` | Timeline eventi chiamata |
+| `VoiceSettings.tsx` | Form configurazione |
+| `VoiceAntiAbuseSettings.tsx` | Configurazione rate limits |
+| `ActiveCallsBadge.tsx` | Indicatore chiamate real-time |
 
 ---
 
@@ -791,45 +931,46 @@ Legenda esiti:
 │                              SEQUENCE DIAGRAM - CHIAMATA IN INGRESSO                    │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                         │
-│  Telefono     FreeSWITCH      ESL Client      Call Manager     Gemini Bridge    DB     │
-│     │              │              │                │                │            │      │
-│     │──INVITE────►│              │                │                │            │      │
-│     │              │──CHANNEL────►│                │                │            │      │
-│     │              │  _CREATE     │                │                │            │      │
-│     │              │              │──lookupCaller─►│                │            │      │
-│     │              │              │                │──findByPhone──►│            │      │
-│     │              │              │                │◄───clientId────│            │      │
-│     │              │              │                │                │            │      │
-│     │              │◄──answer─────│                │                │            │      │
-│     │◄──200 OK────│              │                │                │            │      │
-│     │              │              │                │──createCall───►│            │      │
-│     │              │              │                │◄──callId───────│            │      │
-│     │              │              │                │                │            │      │
-│     │              │              │                │──createSession─────────────►│      │
-│     │              │              │                │◄──sessionId─────────────────│      │
-│     │              │              │                │                │            │      │
-│     │              │◄──playback───│                │                │            │      │
-│     │◄──"Ciao..."─│  (greeting)  │                │                │            │      │
-│     │              │              │                │                │            │      │
-│     │──"Vorrei.."►│              │                │                │            │      │
-│     │              │──audio──────►│                │                │            │      │
-│     │              │              │──processAudio─►│                │            │      │
-│     │              │              │                │──sendToGemini─────────────►│      │
-│     │              │              │                │                │──query────►│      │
-│     │              │              │                │◄──response + audio──────────│      │
-│     │              │              │                │                │            │      │
-│     │              │              │                │──saveWAV──────►│            │      │
-│     │              │◄──broadcast──│                │                │            │      │
-│     │◄──"Certo.."─│              │                │                │            │      │
-│     │              │              │                │                │            │      │
-│     │    ...       │     ...      │      ...       │      ...       │    ...     │      │
-│     │              │              │                │                │            │      │
-│     │──BYE────────►│              │                │                │            │      │
-│     │              │──HANGUP─────►│                │                │            │      │
-│     │              │              │──endCall──────►│                │            │      │
-│     │              │              │                │──saveCall─────►│            │      │
-│     │              │              │                │                │──insert───►│      │
-│     │              │              │                │                │            │      │
+│  Telefono   FreeSWITCH   RateLimiter   ESL Client    Call Manager   Gemini     DB      │
+│     │           │            │             │              │            │        │       │
+│     │──INVITE──►│            │             │              │            │        │       │
+│     │           │──CHANNEL───────────────►│              │            │        │       │
+│     │           │  _CREATE   │             │              │            │        │       │
+│     │           │            │◄─checkLimit─│              │            │        │       │
+│     │           │            │             │              │            │        │       │
+│     │           │            │─allowed?────►              │            │        │       │
+│     │           │            │             │              │            │        │       │
+│     │           │            │    [SE BLOCCATO: hangup + log]         │        │       │
+│     │           │            │             │              │            │        │       │
+│     │           │◄──answer───┼─────────────│              │            │        │       │
+│     │◄─200 OK───│            │             │              │            │        │       │
+│     │           │            │             │──newCall────►│            │        │       │
+│     │           │            │             │              │──insert───►│        │       │
+│     │           │            │             │              │            │◄──ok───│       │
+│     │           │            │             │              │            │        │       │
+│     │           │            │             │              │──session──►│        │       │
+│     │           │            │             │              │◄─sessionId─│        │       │
+│     │           │            │             │              │            │        │       │
+│     │           │◄─playback──┼─────────────│              │            │        │       │
+│     │◄─"Ciao.."─│  (greeting)│             │              │            │        │       │
+│     │           │            │             │              │            │        │       │
+│     │─"Vorrei.."────────────────────────►│              │            │        │       │
+│     │           │            │             │──audio──────►│            │        │       │
+│     │           │            │             │              │─toGemini──►│        │       │
+│     │           │            │             │              │◄─response──│        │       │
+│     │           │            │             │              │            │        │       │
+│     │           │            │             │◄─saveWAV─────│            │        │       │
+│     │           │◄─broadcast─┼─────────────│              │            │        │       │
+│     │◄─"Certo.."│            │             │              │            │        │       │
+│     │           │            │             │              │            │        │       │
+│     │   ...     │    ...     │    ...      │     ...      │    ...     │   ...  │       │
+│     │           │            │             │              │            │        │       │
+│     │──BYE─────►│            │             │              │            │        │       │
+│     │           │──HANGUP────────────────►│              │            │        │       │
+│     │           │            │             │──endCall────►│            │        │       │
+│     │           │            │◄─recordCall─│              │            │        │       │
+│     │           │            │             │              │──update───►│        │       │
+│     │           │            │             │              │            │        │       │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -841,6 +982,8 @@ Legenda esiti:
                    ┌──────────│    RINGING      │
                    │          │                 │
                    │          └────────┬────────┘
+                   │                   │
+                   │        [rate limit check]
                    │                   │
                    │            answer │
                    │                   ▼
@@ -896,128 +1039,307 @@ Legenda esiti:
 
 ---
 
-## 8. Requisiti Tecnici
+## 8. Sicurezza
 
-### 8.1 Infrastruttura (TUO COMPITO)
+### 8.1 ESL Security (CRITICO)
 
-| Componente | Requisito |
-|------------|-----------|
-| **VPS** | Ubuntu 22.04, IP pubblico statico, 2+ vCPU, 2GB+ RAM |
-| **FreeSWITCH** | Versione 1.10.x, installato e funzionante |
-| **SIP Trunk** | Provider italiano (Messagenet o simile), numero DID |
-| **Porte Aperte** | 5060/UDP (SIP), 16384-32768/UDP (RTP), 8021/TCP (ESL) |
-| **NAT** | `external_sip_ip` e `external_rtp_ip` configurati |
+> ⚠️ **ESL = Controllo totale delle chiamate**. Se compromesso, un attaccante può:
+> - Ascoltare tutte le chiamate
+> - Trasferire chiamate a numeri premium
+> - Generare costi enormi
 
-### 8.2 Software (MIO COMPITO)
+**Configurazione obbligatoria FreeSWITCH** (`/etc/freeswitch/autoload_configs/event_socket.conf.xml`):
 
-| Componente | Tecnologia |
-|------------|------------|
-| **ESL Client** | `modesl` npm package |
-| **Audio Processing** | Buffer manipulation, custom μ-law codec |
-| **Database** | PostgreSQL (Drizzle ORM) |
-| **API** | Express.js REST endpoints |
-| **Frontend** | React + TypeScript + Tailwind |
+```xml
+<configuration name="event_socket.conf" description="Socket Client">
+  <settings>
+    <!-- SOLO localhost - MAI 0.0.0.0 -->
+    <param name="listen-ip" value="127.0.0.1"/>
+    <param name="listen-port" value="8021"/>
+    
+    <!-- Password lunga random (minimo 32 caratteri) -->
+    <param name="password" value="$(ESL_PASSWORD)"/>
+    
+    <!-- ACL restrittiva -->
+    <param name="apply-inbound-acl" value="loopback.auto"/>
+  </settings>
+</configuration>
+```
 
-### 8.3 Environment Variables
-
+**Firewall (iptables)**:
 ```bash
-# FreeSWITCH Connection
-FREESWITCH_HOST=vps123.hostinger.com
-FREESWITCH_ESL_PORT=8021
-FREESWITCH_ESL_PASSWORD=your-esl-password
+# Blocca ESL dall'esterno
+iptables -A INPUT -p tcp --dport 8021 -s 127.0.0.1 -j ACCEPT
+iptables -A INPUT -p tcp --dport 8021 -j DROP
+```
 
-# Numeri
-VOICE_DID_NUMBER=+390212345678
-VOICE_FALLBACK_NUMBER=+393339999999
+### 8.2 Codec Forcing (OBBLIGATORIO)
 
-# Comportamento
-VOICE_GREETING_TEXT=Buongiorno, sono Alessia. Come posso aiutarti?
-VOICE_SILENCE_TIMEOUT=10
-VOICE_MAX_DURATION=1800  # 30 minuti max
+**SIP Profile** (`/etc/freeswitch/sip_profiles/external.xml`):
 
-# Storage audio
-VOICE_RECORDINGS_PATH=/tmp/voice_recordings
+```xml
+<param name="inbound-codec-prefs" value="PCMU"/>
+<param name="outbound-codec-prefs" value="PCMU"/>
+<param name="codec-prefs" value="PCMU"/>
+```
+
+**Perché**: Se non forzato, alcuni carrier inviano ALAW o altri codec che Gemini non gestisce correttamente.
+
+### 8.3 Storage Sicuro
+
+| Tipo File | Path | Permessi |
+|-----------|------|----------|
+| Chunk temporanei | `/dev/shm/alessia/` | 700 (solo processo Node) |
+| Registrazioni | `/var/lib/alessia/voice_recordings/` | 750 |
+| Logs | `/var/log/alessia/` | 640 |
+
+**Cleanup automatico**:
+```bash
+# Cron job: pulisci chunk temp ogni 5 minuti
+*/5 * * * * find /dev/shm/alessia -type f -mmin +10 -delete
+
+# Cron job: comprimi registrazioni vecchie di 7 giorni
+0 3 * * * find /var/lib/alessia/voice_recordings -name "*.wav" -mtime +7 -exec gzip {} \;
 ```
 
 ---
 
-## 9. Divisione Responsabilità
+## 9. Anti-Abuso e Rate Limiting
 
-### 9.1 TU (Infrastruttura/Telecom)
+### 9.1 Limiti Default
+
+| Parametro | Valore | Descrizione |
+|-----------|--------|-------------|
+| `max_calls_per_minute` | 3 | Per singolo numero chiamante |
+| `max_calls_per_hour` | 20 | Per singolo numero chiamante |
+| `max_calls_per_day` | 50 | Per singolo numero chiamante |
+| `max_minutes_per_day` | 120 | Minuti totali per numero |
+| `max_call_duration` | 1800s | 30 minuti max per chiamata |
+| `block_anonymous` | true | Rifiuta Caller ID nascosto |
+
+### 9.2 Prefissi Bloccati
+
+```typescript
+const BLOCKED_PREFIXES = [
+  '+1900',     // USA premium
+  '+44870',    // UK premium
+  '+44871',    // UK premium
+  '+44872',    // UK premium
+  '+39199',    // Italia premium
+  '+39892',    // Italia premium
+  '+39899',    // Italia premium
+];
+```
+
+### 9.3 Comportamento Rate Limit
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                        RATE LIMIT FLOW                               │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Chiamata in arrivo                                                  │
+│         │                                                            │
+│         ▼                                                            │
+│  ┌──────────────┐                                                    │
+│  │ Caller ID?   │──NO──► Rifiuta + Log "anonymous_blocked"          │
+│  └──────┬───────┘                                                    │
+│         │ SI                                                         │
+│         ▼                                                            │
+│  ┌──────────────┐                                                    │
+│  │ Prefisso OK? │──NO──► Rifiuta + Log "blocked_prefix"             │
+│  └──────┬───────┘                                                    │
+│         │ SI                                                         │
+│         ▼                                                            │
+│  ┌──────────────┐                                                    │
+│  │ In blacklist?│──SI──► Rifiuta + Log "blacklisted"                │
+│  └──────┬───────┘                                                    │
+│         │ NO                                                         │
+│         ▼                                                            │
+│  ┌──────────────┐                                                    │
+│  │ < 3 call/min?│──NO──► Rifiuta + Log "rate_limit_minute"          │
+│  └──────┬───────┘                                                    │
+│         │ SI                                                         │
+│         ▼                                                            │
+│  ┌──────────────┐                                                    │
+│  │ < 20 call/h? │──NO──► Rifiuta + Log "rate_limit_hour"            │
+│  └──────┬───────┘                                                    │
+│         │ SI                                                         │
+│         ▼                                                            │
+│  ┌──────────────┐                                                    │
+│  │< 120 min/day?│──NO──► Rifiuta + Log "daily_limit"                │
+│  └──────┬───────┘                                                    │
+│         │ SI                                                         │
+│         ▼                                                            │
+│     ✅ ACCETTA                                                       │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 10. Requisiti Tecnici
+
+### 10.1 Infrastruttura VPS (TUO COMPITO)
+
+| Componente | Requisito |
+|------------|-----------|
+| **VPS** | Ubuntu 22.04, IP pubblico statico, 2+ vCPU, 4GB+ RAM |
+| **FreeSWITCH** | Versione 1.10.x, installato e funzionante |
+| **SIP Trunk** | Provider italiano (Messagenet o simile), numero DID |
+| **Porte Firewall** | 5060/UDP (SIP), 16384-32768/UDP (RTP) |
+| **ESL** | Bind su 127.0.0.1:8021, password 32+ caratteri |
+| **NAT** | `external_sip_ip` e `external_rtp_ip` configurati |
+| **Codec** | PCMU forzato in SIP profile |
+
+### 10.2 Software Voice Backend (MIO COMPITO)
+
+| Componente | Tecnologia |
+|------------|------------|
+| **ESL Client** | `modesl` npm package |
+| **Audio Processing** | Custom μ-law codec, resampling |
+| **Database** | PostgreSQL (Supabase) via HTTPS |
+| **API** | Express.js REST |
+| **Health Monitoring** | Custom health checks |
+
+### 10.3 Environment Variables (VPS)
+
+```bash
+# ═══════════════════════════════════════════════════════════════════
+# CONNESSIONE ESL (locale)
+# ═══════════════════════════════════════════════════════════════════
+FREESWITCH_ESL_HOST=127.0.0.1
+FREESWITCH_ESL_PORT=8021
+FREESWITCH_ESL_PASSWORD=your-very-long-random-password-min-32-chars
+
+# ═══════════════════════════════════════════════════════════════════
+# DATABASE (remoto)
+# ═══════════════════════════════════════════════════════════════════
+DATABASE_URL=postgresql://user:pass@db.supabase.co:5432/postgres
+
+# ═══════════════════════════════════════════════════════════════════
+# GEMINI API
+# ═══════════════════════════════════════════════════════════════════
+GOOGLE_AI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.0-flash-live
+
+# ═══════════════════════════════════════════════════════════════════
+# NUMERI
+# ═══════════════════════════════════════════════════════════════════
+VOICE_DID_NUMBER=+390212345678
+VOICE_FALLBACK_NUMBER=+393339999999
+
+# ═══════════════════════════════════════════════════════════════════
+# COMPORTAMENTO
+# ═══════════════════════════════════════════════════════════════════
+VOICE_GREETING_TEXT=Buongiorno, sono Alessia. Come posso aiutarti?
+VOICE_SILENCE_TIMEOUT=10
+VOICE_MAX_DURATION=1800
+
+# ═══════════════════════════════════════════════════════════════════
+# STORAGE (locale VPS)
+# ═══════════════════════════════════════════════════════════════════
+VOICE_TEMP_DIR=/dev/shm/alessia
+VOICE_RECORDINGS_DIR=/var/lib/alessia/voice_recordings
+VOICE_LOGS_DIR=/var/log/alessia
+
+# ═══════════════════════════════════════════════════════════════════
+# RATE LIMITING
+# ═══════════════════════════════════════════════════════════════════
+VOICE_MAX_CALLS_PER_MINUTE=3
+VOICE_MAX_CALLS_PER_HOUR=20
+VOICE_MAX_CALLS_PER_DAY=50
+VOICE_MAX_MINUTES_PER_DAY=120
+VOICE_BLOCK_ANONYMOUS=true
+```
+
+---
+
+## 11. Divisione Responsabilità
+
+### 11.1 TU (Infrastruttura/Telecom)
 
 | # | Task | Deliverable |
 |---|------|-------------|
 | 1 | Acquisto numero VoIP | Credenziali SIP, DID italiano |
-| 2 | Setup VPS Hostinger | IP pubblico, porte aperte |
-| 3 | Installazione FreeSWITCH | FreeSWITCH running |
+| 2 | Setup VPS Hostinger | IP pubblico, 4GB RAM, Ubuntu 22.04 |
+| 3 | Installazione FreeSWITCH | FreeSWITCH 1.10.x running |
 | 4 | Configurazione SIP trunk | Chiamate inbound funzionanti |
-| 5 | Dialplan `ai_support` | Context per routing AI |
-| 6 | Abilitazione ESL | Porta 8021 raggiungibile |
-| 7 | Test chiamata base | Chiamata → risponde → riattacca |
+| 5 | **Codec forcing PCMU** | SIP profile con `inbound-codec-prefs=PCMU` |
+| 6 | Dialplan `ai_support` | Context per routing AI |
+| 7 | **ESL sicuro** | Bind 127.0.0.1, password 32+ char, firewall |
+| 8 | Creazione directory | `/var/lib/alessia/`, `/dev/shm/alessia/` |
+| 9 | Test chiamata base | Chiamata → risponde → riattacca |
 
-### 9.2 IO (Programmatore/Node)
+### 11.2 IO (Programmatore/Node)
 
 | # | Task | Deliverable |
 |---|------|-------------|
-| 1 | Schema DB `voice_calls` | Migrazione database |
-| 2 | ESL Client | Connessione + event handlers |
-| 3 | Caller Lookup | Riconoscimento clienti |
-| 4 | Audio Handler | Conversione μ-law ↔ PCM |
-| 5 | Gemini Bridge | Integrazione con AI esistente |
-| 6 | Call Manager | State machine + logging |
-| 7 | Voice Routes | API monitoring |
-| 8 | Frontend Dashboard | UI gestione chiamate |
-| 9 | Frontend Settings | Configurazione telefonia |
+| 1 | Schema DB (voice_calls, voice_numbers, voice_rate_limits) | Migrazione database |
+| 2 | ESL Client | Connessione locale + event handlers |
+| 3 | Rate Limiter | Anti-abuso completo |
+| 4 | Caller Lookup | Riconoscimento clienti |
+| 5 | Audio Handler | Conversione μ-law ↔ PCM, /dev/shm |
+| 6 | Gemini Bridge | Integrazione con AI |
+| 7 | Call Manager | State machine + logging |
+| 8 | Health Check | Verifica ESL, FreeSWITCH, Gemini, codec |
+| 9 | Voice Routes | API monitoring |
+| 10 | Frontend Dashboard | UI gestione chiamate |
+| 11 | Frontend Settings | Configurazione telefonia |
 
-### 9.3 Punti di Contatto
+### 11.3 Checklist Pre-Produzione
 
-| Argomento | Chi Decide |
-|-----------|------------|
-| Codec audio (PCMU) | TU (FreeSWITCH) |
-| Formato WAV output | IO (Node) |
-| IP e Porta ESL | TU (Firewall) |
-| Nome context dialplan | TU (FreeSWITCH) |
-| Comandi ESL | IO (Node) |
-| Credenziali ESL | TU (crea) → IO (usa) |
+| Check | Chi | Stato |
+|-------|-----|-------|
+| ESL bind su 127.0.0.1 | TU | ⬜ |
+| Password ESL 32+ char | TU | ⬜ |
+| Firewall ESL chiuso | TU | ⬜ |
+| Codec PCMU forzato | TU | ⬜ |
+| Directory /var/lib/alessia create | TU | ⬜ |
+| Rate limiter testato | IO | ⬜ |
+| Health check funzionante | IO | ⬜ |
+| Chiamata test E2E | INSIEME | ⬜ |
 
 ---
 
-## 10. Timeline
+## 12. Timeline
 
-### Fase 1: Setup (1-2 giorni)
-**TU**: VPS + FreeSWITCH + SIP trunk  
-**IO**: Schema DB + struttura file
+### Fase 1: Setup Infrastruttura (1-2 giorni)
+**TU**: VPS + FreeSWITCH + SIP trunk + ESL sicuro + codec forcing  
+**IO**: Schema DB + struttura progetto VPS
 
 ### Fase 2: Connessione (1 giorno)
-**TU**: ESL abilitato e testato  
-**IO**: ESL Client funzionante
+**TU**: ESL testato da locale  
+**IO**: ESL Client funzionante + Health checks
 
-### Fase 3: Audio (1-2 giorni)
+### Fase 3: Audio + Rate Limiting (1-2 giorni)
 **TU**: Dialplan `ai_support`  
-**IO**: Audio handler + Gemini bridge
+**IO**: Audio handler + Rate limiter + Gemini bridge
 
 ### Fase 4: Integrazione (1 giorno)
-**INSIEME**: Test end-to-end chiamata → AI risponde
+**INSIEME**: Test end-to-end chiamata → rate check → AI risponde
 
 ### Fase 5: UI (1-2 giorni)
 **IO**: Dashboard + Settings frontend
 
-### Fase 6: Polish (1 giorno)
-**INSIEME**: Bug fixing, ottimizzazioni
+### Fase 6: Security Review + Polish (1 giorno)
+**INSIEME**: Penetration test ESL, bug fixing, ottimizzazioni
 
 ---
 
-## Appendice A: Comandi ESL Utili
+## 13. Appendici
+
+### Appendice A: Comandi ESL Utili
 
 ```bash
 # Rispondere alla chiamata
 uuid_answer <uuid>
 
 # Riprodurre audio
-uuid_broadcast <uuid> /path/to/file.wav aleg
+uuid_broadcast <uuid> /var/lib/alessia/responses/greeting.wav aleg
 
 # Registrare audio
-uuid_record <uuid> start /path/to/recording.wav
+uuid_record <uuid> start /var/lib/alessia/voice_recordings/call_123.wav
 
 # Trasferire chiamata
 uuid_transfer <uuid> <destination> XML default
@@ -1027,27 +1349,74 @@ uuid_kill <uuid> NORMAL_CLEARING
 
 # Ottenere variabili
 uuid_getvar <uuid> Caller-Caller-ID-Number
+
+# Verificare codec
+uuid_getvar <uuid> read_codec
+uuid_getvar <uuid> write_codec
 ```
 
-## Appendice B: Formato Audio
+### Appendice B: Formato Audio
 
-### G.711 μ-law (PCMU)
+#### G.711 μ-law (PCMU)
 - Sample rate: 8000 Hz
 - Bit depth: 8-bit companded
 - Bitrate: 64 kbps
 - Standard PSTN
 
-### PCM Linear16 (per Gemini)
+#### PCM Linear16 (per Gemini)
 - Sample rate: 16000 Hz (input) / 24000 Hz (output)
 - Bit depth: 16-bit signed little-endian
 - Canali: Mono
 
-### Conversione
+#### Conversione
 ```
 Ingresso: μ-law 8k → upsample → PCM16 16k → Gemini
 Uscita:   Gemini → PCM 24k → downsample → PCM 8k → μ-law → FreeSWITCH
 ```
 
+### Appendice C: Health Check Response Example
+
+```json
+{
+  "overall": "healthy",
+  "components": {
+    "esl": {
+      "status": "up",
+      "latencyMs": 12,
+      "lastCheck": "2026-01-31T14:30:00Z"
+    },
+    "freeswitch": {
+      "status": "up",
+      "codec": "PCMU",
+      "channels": 2,
+      "lastCheck": "2026-01-31T14:30:00Z"
+    },
+    "gemini": {
+      "status": "up",
+      "latencyMs": 45,
+      "model": "gemini-2.0-flash-live",
+      "lastCheck": "2026-01-31T14:30:00Z"
+    },
+    "database": {
+      "status": "up",
+      "latencyMs": 8,
+      "lastCheck": "2026-01-31T14:30:00Z"
+    },
+    "storage": {
+      "status": "up",
+      "tempFreeBytes": 1073741824,
+      "recordingsFreeBytes": 10737418240,
+      "lastCheck": "2026-01-31T14:30:00Z"
+    }
+  },
+  "metrics": {
+    "activeCallsCount": 2,
+    "callsLast5Min": 5,
+    "avgLatencyMs": 65
+  }
+}
+```
+
 ---
 
-**Fine Documento**
+**Fine Documento - Versione 2.0 Production-Ready**
