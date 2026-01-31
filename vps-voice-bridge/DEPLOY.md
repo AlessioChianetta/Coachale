@@ -53,9 +53,8 @@ WS_AUTH_TOKEN=il-tuo-token-segreto-qui  # Genera con: openssl rand -hex 32
 # Replit WebSocket + API
 REPLIT_API_URL=https://tuo-progetto.repl.co
 REPLIT_WS_URL=https://tuo-progetto.repl.co
-# NOTA: Il token deve essere un JWT valido generato dal tuo sistema di auth
-# Per test, puoi generare un token di servizio con ruolo consultant
-REPLIT_API_TOKEN=token-jwt-valido
+# Token di servizio: genera con POST /api/voice/service-token (vedi sotto)
+REPLIT_API_TOKEN=eyJhbG...
 
 # Voce AI (usata dal WebSocket Replit)
 GEMINI_VOICE_ID=Puck
@@ -329,11 +328,52 @@ rsync -avz vps-voice-bridge/ root@VPS:/opt/alessia-voice/ && \
 
 ---
 
+## 12. Generare Service Token
+
+Il bridge VPS richiede un token di servizio per autenticarsi con Replit.
+
+### Da browser (loggato come consultant):
+
+```bash
+# Usando curl con il tuo JWT utente
+curl -X POST https://tuo-progetto.repl.co/api/voice/service-token \
+  -H "Authorization: Bearer IL_TUO_JWT_UTENTE" \
+  -H "Content-Type: application/json" \
+  -d '{"expiresIn": "30d"}'
+```
+
+### Risposta:
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "consultantId": "abc123",
+  "expiresIn": "30d",
+  "usage": {
+    "wsUrl": "/ws/ai-voice",
+    "params": "?token=<TOKEN>&mode=phone_service&callerId=<PHONE_NUMBER>&voice=Puck"
+  }
+}
+```
+
+### Configura sul VPS:
+
+Copia il token nella variabile `REPLIT_API_TOKEN` nel file `.env` sul VPS.
+
+### Validare il token:
+
+```bash
+curl "https://tuo-progetto.repl.co/api/voice/service-token/validate?token=IL_TOKEN"
+```
+
+---
+
 ## Note Finali
 
 - **Sicurezza**: La porta 9090 dovrebbe essere protetta (firewall o token)
 - **Backup**: Esegui backup di `.env` prima di aggiornare
 - **Monitoraggio**: Configura alerting su `/health` endpoint
 - **Scaling**: Per più chiamate, aumenta `MAX_CONCURRENT_CALLS` (dipende da CPU/RAM)
+- **Token scaduto**: Rigenera il service token prima della scadenza (default 30 giorni)
 
 Per supporto, controlla i log o contatta il team di sviluppo.

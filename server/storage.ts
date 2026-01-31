@@ -173,6 +173,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByPhoneNumber(phoneNumber: string, consultantId: string): Promise<User | undefined>;
   getUsersByRole(role: "client" | "consultant"): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
@@ -729,6 +730,32 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.username, username));
+    return user || undefined;
+  }
+
+  async getUserByPhoneNumber(phoneNumber: string, consultantId: string): Promise<User | undefined> {
+    const digitsOnly = phoneNumber.replace(/[^\d+]/g, '');
+    const normalizedE164 = digitsOnly.startsWith('00') 
+      ? '+' + digitsOnly.slice(2) 
+      : digitsOnly.startsWith('+') 
+        ? digitsOnly 
+        : digitsOnly;
+    const withoutPlus = normalizedE164.replace(/^\+/, '');
+    const with00 = '00' + withoutPlus;
+    const withPlus = '+' + withoutPlus;
+    
+    const [user] = await db.select().from(schema.users).where(
+      and(
+        eq(schema.users.consultantId, consultantId),
+        or(
+          eq(schema.users.phoneNumber, normalizedE164),
+          eq(schema.users.phoneNumber, withoutPlus),
+          eq(schema.users.phoneNumber, with00),
+          eq(schema.users.phoneNumber, withPlus),
+          eq(schema.users.phoneNumber, phoneNumber)
+        )
+      )
+    );
     return user || undefined;
   }
 

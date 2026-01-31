@@ -628,9 +628,79 @@ async function getUserIdFromRequest(req: any): Promise<{
     }
 
     // Validate mode
-    if (mode !== 'assistenza' && mode !== 'consulente' && mode !== 'sales_agent' && mode !== 'consultation_invite') {
-      console.error('❌ Invalid mode provided. Must be "assistenza", "consulente", "sales_agent", or "consultation_invite"');
+    if (mode !== 'assistenza' && mode !== 'consulente' && mode !== 'sales_agent' && mode !== 'consultation_invite' && mode !== 'phone_service') {
+      console.error('❌ Invalid mode provided. Must be "assistenza", "consulente", "sales_agent", "consultation_invite", or "phone_service"');
       return null;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // PHONE SERVICE MODE - VPS Voice Bridge authenticated sessions
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (mode === 'phone_service') {
+      if (!token) {
+        console.error('❌ No service token provided for phone_service mode');
+        return null;
+      }
+
+      const callerId = url.searchParams.get('callerId');
+      if (!callerId) {
+        console.error('❌ No callerId provided for phone_service mode');
+        return null;
+      }
+
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+        if (decoded.type !== 'phone_service') {
+          console.error('❌ Invalid token type. Must be phone_service');
+          return null;
+        }
+
+        if (!decoded.consultantId) {
+          console.error('❌ Invalid phone_service token: missing consultantId');
+          return null;
+        }
+
+        const normalizedCallerId = callerId.replace(/\s+/g, '').replace(/^00/, '+');
+        console.log(`📞 [PHONE SERVICE] Incoming call from ${normalizedCallerId} for consultant ${decoded.consultantId}`);
+
+        let userId: string | null = null;
+        let userRole = 'anonymous_caller';
+
+        const userByPhone = await storage.getUserByPhoneNumber(normalizedCallerId, decoded.consultantId);
+        if (userByPhone) {
+          userId = userByPhone.id;
+          userRole = userByPhone.role;
+          console.log(`✅ [PHONE SERVICE] Caller recognized: ${userByPhone.fullName || userByPhone.email} (${userId})`);
+        } else {
+          console.log(`📞 [PHONE SERVICE] Unknown caller - using anonymous mode`);
+        }
+
+        console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'}`);
+
+        return {
+          userId: userId,
+          role: userRole,
+          consultantId: decoded.consultantId,
+          mode: 'assistenza' as const,
+          consultantType: null,
+          customPrompt: null,
+          useFullPrompt: false,
+          voiceName: voiceName || 'Puck',
+          resumeHandle: null,
+          sessionType: null,
+          conversationId: null,
+          agentId: null,
+          shareToken: null,
+          inviteToken: null,
+          testMode: null,
+          isPhoneCall: true,
+          phoneCallerId: normalizedCallerId,
+        };
+      } catch (jwtError) {
+        console.error('❌ Invalid phone_service token:', jwtError);
+        return null;
+      }
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -12,6 +12,12 @@ import { Router, Request, Response } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+if (!JWT_SECRET) {
+  console.error("❌ [VOICE ROUTER] JWT_SECRET or SESSION_SECRET environment variable is required");
+}
 
 const router = Router();
 
@@ -460,6 +466,94 @@ router.get("/blocked", authenticateToken, requireRole(["consultant", "super_admi
 // ═══════════════════════════════════════════════════════════════════
 // HEALTH - Stato sistema (placeholder per VPS)
 // ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// SERVICE TOKEN - Token per VPS Voice Bridge
+// ═══════════════════════════════════════════════════════════════════
+
+// POST /api/voice/service-token - Genera token di servizio per VPS Bridge
+router.post("/service-token", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!JWT_SECRET) {
+      return res.status(500).json({ error: "Server configuration error: JWT secret not set" });
+    }
+
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const consultantId = user.role === "consultant" ? user.id : req.body.consultantId;
+    
+    if (!consultantId) {
+      return res.status(400).json({ error: "consultantId required for super_admin" });
+    }
+
+    const consultantExists = await db.execute(sql`SELECT id FROM users WHERE id = ${consultantId} AND role = 'consultant' LIMIT 1`);
+    if (consultantExists.rows.length === 0) {
+      return res.status(404).json({ error: "Consultant not found" });
+    }
+
+    const expiresIn = req.body.expiresIn || "30d";
+
+    const token = jwt.sign(
+      {
+        type: "phone_service",
+        consultantId: consultantId,
+        createdAt: new Date().toISOString(),
+      },
+      JWT_SECRET,
+      { expiresIn }
+    );
+
+    console.log(`📞 [VOICE] Phone service token generated for consultant ${consultantId}`);
+
+    res.json({
+      token,
+      consultantId,
+      expiresIn,
+      usage: {
+        wsUrl: "/ws/ai-voice",
+        params: "?token=<TOKEN>&mode=phone_service&callerId=<PHONE_NUMBER>&voice=Puck",
+        example: `wss://your-domain.repl.co/ws/ai-voice?token=${token.substring(0, 20)}...&mode=phone_service&callerId=+393331234567`,
+      },
+    });
+  } catch (error) {
+    console.error("[Voice] Error generating phone service token:", error);
+    res.status(500).json({ error: "Failed to generate token" });
+  }
+});
+
+// GET /api/voice/service-token/validate - Valida token di servizio
+router.get("/service-token/validate", async (req: Request, res: Response) => {
+  try {
+    if (!JWT_SECRET) {
+      return res.status(500).json({ valid: false, error: "Server configuration error" });
+    }
+
+    const token = req.query.token as string;
+    
+    if (!token) {
+      return res.status(400).json({ valid: false, error: "Token required" });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    if (decoded.type !== "phone_service") {
+      return res.status(400).json({ valid: false, error: "Invalid token type" });
+    }
+
+    res.json({
+      valid: true,
+      consultantId: decoded.consultantId,
+      createdAt: decoded.createdAt,
+      expiresAt: new Date((decoded.exp || 0) * 1000).toISOString(),
+    });
+  } catch (error: any) {
+    res.status(400).json({ valid: false, error: error.message || "Invalid token" });
+  }
+});
 
 // GET /api/voice/health - Health check (placeholder)
 router.get("/health", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
