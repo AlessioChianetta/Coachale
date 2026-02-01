@@ -1,0 +1,61 @@
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer, type IncomingMessage } from 'http';
+import { parse as parseUrl } from 'url';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { sessionManager } from './session-manager.js';
+import { ReplitWSClient } from './replit-ws-client.js';
+import { convertForGemini, convertFromGemini } from './audio-converter.js';
+import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
+
+const log = logger.child('SERVER');
+
+interface AudioStreamStartMessage {
+  event: 'start';
+  call_id: string;
+  caller_id: string;
+  called_number: string;
+  codec: 'PCMU' | 'L16';
+  sample_rate: number;
+}
+
+interface AudioStreamStopMessage {
+  event: 'stop';
+  call_id: string;
+  reason: string;
+}
+
+type AudioStreamMessage = AudioStreamStartMessage | AudioStreamStopMessage;
+
+function isLocalNetwork(clientIp: string): boolean {
+  return clientIp === '127.0.0.1' || 
+    clientIp === '::1' || 
+    clientIp === '::ffff:127.0.0.1' ||
+    clientIp.startsWith('172.17.') ||
+    clientIp.startsWith('::ffff:172.17.') ||
+    clientIp.startsWith('172.18.') ||
+    clientIp.startsWith('::ffff:172.18.') ||
+    clientIp.startsWith('10.') ||
+    clientIp.startsWith('::ffff:10.');
+}
+function isAuthorized(req: IncomingMessage): boolean {
+  if (!config.ws.authToken) return true;
+  
+  const clientIp = req.socket.remoteAddress || '';
+  if (isLocalNetwork(clientIp)) return true;
+  
+  const url = parseUrl(req.url || '', true);
+  return url.query.token === config.ws.authToken;
+}
+
+export function startVoiceBridgeServer(): void {
+  const server = createServer((req, res) => {
+    if (req.url?.startsWith('/health')) {
+      if (!isAuthorized(req)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+      }
+      const stats = sessionManager.getStats();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
