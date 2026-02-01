@@ -8,7 +8,7 @@ import {
   bufferToBase64 
 } from './audio-converter';
 import { db } from '../db';
-import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts } from '@shared/schema';
+import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings } from '@shared/schema';
 import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
 import { buildUserContext } from '../ai-context-builder';
@@ -614,7 +614,7 @@ async function getUserIdFromRequest(req: any): Promise<{
     const consultantType = url.searchParams.get('consultantType');
     const customPrompt = url.searchParams.get('customPrompt');
     const useFullPrompt = url.searchParams.get('useFullPrompt') === 'true';
-    const voiceName = url.searchParams.get('voice') || 'achernar';
+    const voiceName = url.searchParams.get('voice') || 'Achernar';
     const resumeHandle = url.searchParams.get('resumeHandle');
     const sessionType = url.searchParams.get('sessionType');
     const testModeParam = url.searchParams.get('testMode');
@@ -676,7 +676,24 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.log(`📞 [PHONE SERVICE] Unknown caller - using anonymous mode`);
         }
 
-        console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'}`);
+        // Fetch voice preference from consultant settings
+        let consultantVoice = 'Achernar'; // Default to Italian professional voice
+        try {
+          const [settings] = await db
+            .select({ voiceId: consultantAvailabilitySettings.voiceId })
+            .from(consultantAvailabilitySettings)
+            .where(eq(consultantAvailabilitySettings.consultantId, decoded.consultantId))
+            .limit(1);
+          
+          if (settings?.voiceId) {
+            consultantVoice = settings.voiceId;
+            console.log(`🎤 [PHONE SERVICE] Using consultant voice: ${consultantVoice}`);
+          }
+        } catch (voiceErr) {
+          console.warn(`⚠️ [PHONE SERVICE] Could not fetch voice settings, using default: ${consultantVoice}`);
+        }
+
+        console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}`);
 
         return {
           userId: userId,
@@ -686,7 +703,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           consultantType: null,
           customPrompt: null,
           useFullPrompt: false,
-          voiceName: voiceName || 'Puck',
+          voiceName: consultantVoice,
           resumeHandle: null,
           sessionType: null,
           conversationId: null,

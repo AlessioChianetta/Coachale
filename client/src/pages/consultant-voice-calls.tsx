@@ -43,6 +43,7 @@ import {
   Key,
   Copy,
   Check,
+  Mic2,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -102,6 +103,15 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Phone; color: 
   ended: { label: "Terminata", icon: PhoneOff, color: "bg-gray-500" },
 };
 
+const VOICES = [
+  { value: 'Achernar', label: 'Achernar', description: '🇮🇹 Femminile Professionale' },
+  { value: 'Puck', label: 'Puck', description: '🇬🇧 Maschile Giovane' },
+  { value: 'Charon', label: 'Charon', description: '🇬🇧 Maschile Maturo' },
+  { value: 'Kore', label: 'Kore', description: '🇬🇧 Femminile Giovane' },
+  { value: 'Fenrir', label: 'Fenrir', description: '🇬🇧 Maschile Profondo' },
+  { value: 'Aoede', label: 'Aoede', description: '🇬🇧 Femminile Melodiosa' },
+];
+
 export default function ConsultantVoiceCallsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -112,8 +122,45 @@ export default function ConsultantVoiceCallsPage() {
   const [serviceToken, setServiceToken] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
 
   const { toast } = useToast();
+
+  // Voice settings query
+  const { data: voiceSettings, refetch: refetchVoice } = useQuery({
+    queryKey: ["/api/voice/settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/settings", { headers: getAuthHeaders() });
+      if (!res.ok) return { voiceId: 'achernar' };
+      return res.json();
+    },
+  });
+
+  const updateVoiceMutation = useMutation({
+    mutationFn: async (voiceId: string) => {
+      const res = await fetch("/api/voice/settings", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ voiceId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nell'aggiornamento della voce");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      refetchVoice();
+      const voice = VOICES.find(v => v.value === data.voiceId);
+      toast({ 
+        title: `🎤 Voce aggiornata`, 
+        description: `${voice?.label} - ${voice?.description}` 
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
 
   const generateTokenMutation = useMutation({
     mutationFn: async () => {
@@ -217,6 +264,46 @@ export default function ConsultantVoiceCallsPage() {
                 </p>
               </div>
               <div className="flex gap-2">
+                {/* Voice Selector */}
+                <Dialog open={voiceDialogOpen} onOpenChange={setVoiceDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Mic2 className="h-4 w-4 mr-2" />
+                      Voce: {VOICES.find(v => v.value === voiceSettings?.voiceId)?.label || 'Achernar'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Voce AI Telefonica</DialogTitle>
+                      <DialogDescription>
+                        Scegli la voce che Alessia userà durante le chiamate telefoniche.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-2 py-4">
+                      {VOICES.map((voice) => (
+                        <Button
+                          key={voice.value}
+                          variant={voiceSettings?.voiceId === voice.value ? "default" : "outline"}
+                          className="justify-start h-auto py-3"
+                          onClick={() => {
+                            updateVoiceMutation.mutate(voice.value);
+                            setVoiceDialogOpen(false);
+                          }}
+                          disabled={updateVoiceMutation.isPending}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="font-semibold">{voice.label}</span>
+                            <span className="text-xs text-muted-foreground">{voice.description}</span>
+                          </div>
+                          {voiceSettings?.voiceId === voice.value && (
+                            <Check className="h-4 w-4 ml-auto" />
+                          )}
+                        </Button>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 <Dialog open={tokenDialogOpen} onOpenChange={setTokenDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline">

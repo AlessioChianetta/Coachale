@@ -13,6 +13,7 @@ import { authenticateToken, requireRole, type AuthRequest } from "../middleware/
 import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
 import jwt from "jsonwebtoken";
+import { consultantAvailabilitySettings } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -552,6 +553,84 @@ router.get("/service-token/validate", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     res.status(400).json({ valid: false, error: error.message || "Invalid token" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// VOICE SETTINGS - Impostazioni voce consultant
+// ═══════════════════════════════════════════════════════════════════
+
+const VALID_VOICES = ['Achernar', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
+
+// GET /api/voice/settings - Ottieni impostazioni voce
+router.get("/settings", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const result = await db.execute(sql`
+      SELECT voice_id FROM consultant_availability_settings
+      WHERE consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    const voiceId = (result.rows[0] as any)?.voice_id || 'achernar';
+
+    res.json({ voiceId });
+  } catch (error) {
+    console.error("[Voice] Error fetching settings:", error);
+    res.status(500).json({ error: "Errore nel recupero delle impostazioni" });
+  }
+});
+
+// PUT /api/voice/settings - Aggiorna impostazioni voce
+router.put("/settings", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { voiceId } = req.body;
+
+    if (!voiceId || !VALID_VOICES.includes(voiceId)) {
+      return res.status(400).json({ 
+        error: "Voce non valida", 
+        validVoices: VALID_VOICES 
+      });
+    }
+
+    // Check if settings exist
+    const existing = await db.execute(sql`
+      SELECT id FROM consultant_availability_settings
+      WHERE consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    if (existing.rows.length > 0) {
+      // Update existing
+      await db.execute(sql`
+        UPDATE consultant_availability_settings
+        SET voice_id = ${voiceId}, updated_at = NOW()
+        WHERE consultant_id = ${consultantId}
+      `);
+    } else {
+      // Insert new with defaults
+      await db.execute(sql`
+        INSERT INTO consultant_availability_settings (
+          id, consultant_id, voice_id, 
+          appointment_duration, buffer_before, buffer_after,
+          morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
+          max_days_ahead, min_hours_notice, timezone, is_active
+        ) VALUES (
+          gen_random_uuid(), ${consultantId}, ${voiceId},
+          60, 15, 15,
+          '09:00', '13:00', '14:00', '18:00',
+          30, 24, 'Europe/Rome', true
+        )
+      `);
+    }
+
+    console.log(`🎤 [Voice] Voice updated for consultant ${consultantId}: ${voiceId}`);
+    res.json({ success: true, voiceId });
+  } catch (error) {
+    console.error("[Voice] Error updating settings:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni" });
   }
 });
 

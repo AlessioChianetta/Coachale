@@ -3225,6 +3225,9 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   webhookResourceId: varchar("webhook_resource_id"),
   webhookExpiration: timestamp("webhook_expiration"),
 
+  // Voice Telephony Settings
+  voiceId: text("voice_id").default("Achernar").notNull(), // Gemini voice: Achernar, Puck, Charon, Kore, Fenrir, Aoede
+
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
