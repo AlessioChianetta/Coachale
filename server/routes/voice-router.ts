@@ -39,19 +39,19 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
     let whereConditions = [];
     
     if (consultantId) {
-      whereConditions.push(sql`consultant_id = ${consultantId}`);
+      whereConditions.push(sql`vc.consultant_id = ${consultantId}`);
     }
     if (from) {
-      whereConditions.push(sql`started_at >= ${from}::timestamp`);
+      whereConditions.push(sql`vc.started_at >= ${from}::timestamp`);
     }
     if (to) {
-      whereConditions.push(sql`started_at <= ${to}::timestamp`);
+      whereConditions.push(sql`vc.started_at <= ${to}::timestamp`);
     }
     if (status) {
-      whereConditions.push(sql`status = ${status}`);
+      whereConditions.push(sql`vc.status = ${status}`);
     }
     if (client_id) {
-      whereConditions.push(sql`client_id = ${client_id}`);
+      whereConditions.push(sql`vc.client_id = ${client_id}`);
     }
 
     const whereClause = whereConditions.length > 0 
@@ -71,7 +71,7 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
     `);
 
     const totalResult = await db.execute(sql`
-      SELECT COUNT(*) as total FROM voice_calls ${whereClause}
+      SELECT COUNT(*) as total FROM voice_calls vc ${whereClause}
     `);
     const total = parseInt((totalResult.rows[0] as any)?.total || "0", 10);
 
@@ -507,12 +507,30 @@ router.post("/service-token", authenticateToken, requireAnyRole(["consultant", "
       // No expiresIn = token never expires
     );
 
-    console.log(`📞 [VOICE] Phone service token generated for consultant ${consultantId} (no expiration)`);
+    // Update token tracking in database
+    await db.execute(sql`
+      INSERT INTO consultant_availability_settings (consultant_id, voice_service_token_created_at, voice_service_token_count)
+      VALUES (${consultantId}, NOW(), 1)
+      ON CONFLICT (consultant_id) DO UPDATE SET
+        voice_service_token_created_at = NOW(),
+        voice_service_token_count = consultant_availability_settings.voice_service_token_count + 1,
+        updated_at = NOW()
+    `);
+
+    // Get the updated count
+    const countResult = await db.execute(sql`
+      SELECT voice_service_token_count FROM consultant_availability_settings WHERE consultant_id = ${consultantId}
+    `);
+    const tokenCount = (countResult.rows[0] as any)?.voice_service_token_count || 1;
+
+    console.log(`📞 [VOICE] Phone service token generated for consultant ${consultantId} (token #${tokenCount}, no expiration)`);
 
     res.json({
       token,
       consultantId,
       expiresIn: "never",
+      tokenNumber: tokenCount,
+      createdAt: new Date().toISOString(),
       usage: {
         wsUrl: "/ws/ai-voice",
         params: "?token=<TOKEN>&mode=phone_service&callerId=<PHONE_NUMBER>&voice=Puck",
@@ -522,6 +540,51 @@ router.post("/service-token", authenticateToken, requireAnyRole(["consultant", "
   } catch (error) {
     console.error("[Voice] Error generating phone service token:", error);
     res.status(500).json({ error: "Failed to generate token" });
+  }
+});
+
+// GET /api/voice/service-token/status - Stato del token di servizio
+router.get("/service-token/status", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const consultantId = user.role === "consultant" ? user.id : (req.query.consultantId as string);
+    
+    if (!consultantId) {
+      return res.status(400).json({ error: "consultantId required for super_admin" });
+    }
+
+    const result = await db.execute(sql`
+      SELECT voice_service_token_created_at, voice_service_token_count
+      FROM consultant_availability_settings
+      WHERE consultant_id = ${consultantId}
+    `);
+
+    if (result.rows.length === 0 || !(result.rows[0] as any).voice_service_token_created_at) {
+      return res.json({
+        hasToken: false,
+        tokenCount: 0,
+        lastGeneratedAt: null,
+        message: "Nessun token generato"
+      });
+    }
+
+    const row = result.rows[0] as any;
+    res.json({
+      hasToken: true,
+      tokenCount: row.voice_service_token_count || 0,
+      lastGeneratedAt: row.voice_service_token_created_at,
+      revokedCount: Math.max(0, (row.voice_service_token_count || 1) - 1),
+      message: row.voice_service_token_count > 1 
+        ? `Token attivo (${row.voice_service_token_count - 1} token precedenti revocati)`
+        : "Token attivo"
+    });
+  } catch (error) {
+    console.error("[Voice] Error fetching token status:", error);
+    res.status(500).json({ error: "Failed to fetch token status" });
   }
 });
 

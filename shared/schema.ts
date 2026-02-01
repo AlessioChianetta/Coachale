@@ -3227,6 +3227,8 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
 
   // Voice Telephony Settings
   voiceId: text("voice_id").default("Achernar").notNull(), // Gemini voice: Achernar, Puck, Charon, Kore, Fenrir, Aoede
+  voiceServiceTokenCreatedAt: timestamp("voice_service_token_created_at"), // When current VPS token was generated
+  voiceServiceTokenCount: integer("voice_service_token_count").default(0).notNull(), // How many tokens generated (includes revoked)
 
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),

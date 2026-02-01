@@ -94,6 +94,14 @@ interface HealthStatus {
   };
 }
 
+interface TokenStatus {
+  hasToken: boolean;
+  tokenCount: number;
+  lastGeneratedAt: string | null;
+  revokedCount: number;
+  message: string;
+}
+
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Phone; color: string }> = {
   ringing: { label: "In Arrivo", icon: PhoneIncoming, color: "bg-yellow-500" },
   answered: { label: "Connessa", icon: Phone, color: "bg-blue-500" },
@@ -178,7 +186,13 @@ export default function ConsultantVoiceCallsPage() {
     },
     onSuccess: (data) => {
       setServiceToken(data.token);
-      toast({ title: "Token generato", description: "Il token di servizio è pronto per essere copiato" });
+      refetchTokenStatus();
+      toast({ 
+        title: "Token generato", 
+        description: data.tokenNumber > 1 
+          ? `Token #${data.tokenNumber} generato (${data.tokenNumber - 1} precedenti revocati)` 
+          : "Il token di servizio è pronto per essere copiato" 
+      });
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -226,11 +240,21 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 30000,
   });
 
+  const { data: tokenStatusData, refetch: refetchTokenStatus } = useQuery<TokenStatus>({
+    queryKey: ["/api/voice/service-token/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/service-token/status", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento stato token");
+      return res.json();
+    },
+  });
+
   const calls: VoiceCall[] = callsData?.calls || [];
   const pagination = callsData?.pagination || { page: 1, totalPages: 1, total: 0 };
   const stats: VoiceStats | undefined = statsData?.stats;
   const activeCalls: number = statsData?.activeCalls || 0;
   const health: HealthStatus | undefined = healthData;
+  const tokenStatus: TokenStatus | undefined = tokenStatusData;
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "-";
@@ -638,27 +662,39 @@ export default function ConsultantVoiceCallsPage() {
                   <CardContent className="space-y-6">
                     {/* Stato Token */}
                     <div className="flex items-center gap-4 p-4 rounded-lg border bg-muted/50">
-                      <div className={`p-2 rounded-full ${serviceToken ? 'bg-green-100' : 'bg-yellow-100'}`}>
-                        <Key className={`h-5 w-5 ${serviceToken ? 'text-green-600' : 'text-yellow-600'}`} />
+                      <div className={`p-2 rounded-full ${tokenStatus?.hasToken || serviceToken ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                        <Key className={`h-5 w-5 ${tokenStatus?.hasToken || serviceToken ? 'text-green-600' : 'text-yellow-600'}`} />
                       </div>
                       <div className="flex-1">
                         <p className="font-medium">
-                          {serviceToken ? 'Token Generato' : 'Token Non Generato'}
+                          {tokenStatus?.hasToken || serviceToken ? 'Token Attivo' : 'Nessun Token'}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {serviceToken 
                             ? 'Il token è pronto. Copialo nel file .env della VPS.' 
-                            : 'Genera un token per connettere il VPS a questa piattaforma.'}
+                            : tokenStatus?.hasToken 
+                              ? tokenStatus.message
+                              : 'Genera un token per connettere il VPS a questa piattaforma.'}
                         </p>
+                        {tokenStatus?.hasToken && tokenStatus.lastGeneratedAt && !serviceToken && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Ultimo generato: {new Date(tokenStatus.lastGeneratedAt).toLocaleString('it-IT')}
+                            {tokenStatus.revokedCount > 0 && (
+                              <span className="ml-2 text-orange-600">
+                                ({tokenStatus.revokedCount} token precedenti revocati)
+                              </span>
+                            )}
+                          </p>
+                        )}
                       </div>
                       <Button 
                         onClick={() => generateTokenMutation.mutate()}
                         disabled={generateTokenMutation.isPending}
-                        variant={serviceToken ? "outline" : "default"}
+                        variant={tokenStatus?.hasToken || serviceToken ? "outline" : "default"}
                       >
                         {generateTokenMutation.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : serviceToken ? (
+                        ) : tokenStatus?.hasToken || serviceToken ? (
                           <>
                             <RefreshCw className="h-4 w-4 mr-2" />
                             Rigenera
