@@ -94,7 +94,17 @@ export function startVoiceBridgeServer(): void {
     res.end('Not Found');
   });
 
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ 
+    server,
+    // Accept audio.raw subprotocol from mod_audio_stream
+    handleProtocols: (protocols: Set<string>) => {
+      if (protocols.has('audio.raw')) {
+        return 'audio.raw';
+      }
+      // Accept connection even without subprotocol
+      return false;
+    }
+  });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const clientIp = req.socket.remoteAddress || 'unknown';
