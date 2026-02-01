@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -396,7 +397,20 @@ export default function ConsultantVoiceCallsPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Tabs defaultValue="calls" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="calls" className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Chiamate
+                </TabsTrigger>
+                <TabsTrigger value="vps" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Configurazione VPS
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="calls" className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
@@ -465,153 +479,6 @@ export default function ConsultantVoiceCallsPage() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Configurazione VPS */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Configurazione VPS Voice Bridge
-                </CardTitle>
-                <CardDescription>
-                  Configura il bridge VPS per connettere FreeSWITCH a questa piattaforma
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Stato Token */}
-                <div className="flex items-center gap-4 p-4 rounded-lg border bg-muted/50">
-                  <div className={`p-2 rounded-full ${serviceToken ? 'bg-green-100' : 'bg-yellow-100'}`}>
-                    <Key className={`h-5 w-5 ${serviceToken ? 'text-green-600' : 'text-yellow-600'}`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">
-                      {serviceToken ? 'Token Generato' : 'Token Non Generato'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {serviceToken 
-                        ? 'Il token è pronto. Copialo nel file .env della VPS.' 
-                        : 'Genera un token per connettere il VPS a questa piattaforma.'}
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={() => generateTokenMutation.mutate()}
-                    disabled={generateTokenMutation.isPending}
-                    variant={serviceToken ? "outline" : "default"}
-                  >
-                    {generateTokenMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : serviceToken ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Rigenera
-                      </>
-                    ) : (
-                      <>
-                        <Key className="h-4 w-4 mr-2" />
-                        Genera Token
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Token generato */}
-                {serviceToken && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Token di Servizio (REPLIT_API_TOKEN):</label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={serviceToken}
-                        readOnly
-                        className="font-mono text-xs"
-                      />
-                      <Button onClick={copyToken} variant="outline" size="icon">
-                        {tokenCopied ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Il token non scade. Se lo rigeneri, quello vecchio smette di funzionare.
-                    </p>
-                  </div>
-                )}
-
-                {/* Template .env */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">File .env per la VPS:</label>
-                  <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
-                    <pre>{`# Bridge WebSocket Server
-WS_HOST=0.0.0.0
-WS_PORT=9090
-WS_AUTH_TOKEN=genera_un_token_random_qui
-
-# Connessione a Replit (NO /ws/ai-voice - lo aggiunge il codice)
-REPLIT_WS_URL=${window.location.origin}
-REPLIT_API_URL=${window.location.origin}
-REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
-
-# Audio
-AUDIO_SAMPLE_RATE_IN=8000
-AUDIO_SAMPLE_RATE_OUT=8000
-SESSION_TIMEOUT_MS=120000
-MAX_CONCURRENT_CALLS=10
-LOG_LEVEL=info`}</pre>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      const envContent = `# Bridge WebSocket Server
-WS_HOST=0.0.0.0
-WS_PORT=9090
-WS_AUTH_TOKEN=genera_un_token_random_qui
-
-# Connessione a Replit
-REPLIT_WS_URL=${window.location.origin}
-REPLIT_API_URL=${window.location.origin}
-REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
-
-# Audio
-AUDIO_SAMPLE_RATE_IN=8000
-AUDIO_SAMPLE_RATE_OUT=8000
-SESSION_TIMEOUT_MS=120000
-MAX_CONCURRENT_CALLS=10
-LOG_LEVEL=info`;
-                      navigator.clipboard.writeText(envContent);
-                      toast({ title: "Copiato!", description: "Template .env copiato negli appunti" });
-                    }}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copia Template .env
-                  </Button>
-                </div>
-
-                {/* Istruzioni FreeSWITCH */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Configurazione FreeSWITCH (dialplan):</label>
-                  <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
-                    <pre>{`<action application="audio_stream" data="ws://127.0.0.1:9090?token=IL_TUO_WS_AUTH_TOKEN mono 8000"/>`}</pre>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Sostituisci IL_TUO_WS_AUTH_TOKEN con il valore di WS_AUTH_TOKEN che hai messo nel .env della VPS.
-                  </p>
-                </div>
-
-                {/* Comandi VPS */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Comandi per avviare il bridge sulla VPS:</label>
-                  <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
-                    <pre>{`cd /opt/alessia-voice
-npm install
-npm run build
-systemctl restart alessia-voice
-journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             <Card>
               <CardHeader>
@@ -755,6 +622,156 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                 )}
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="vps" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings className="h-5 w-5" />
+                      Configurazione VPS Voice Bridge
+                    </CardTitle>
+                    <CardDescription>
+                      Configura il bridge VPS per connettere FreeSWITCH a questa piattaforma
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Stato Token */}
+                    <div className="flex items-center gap-4 p-4 rounded-lg border bg-muted/50">
+                      <div className={`p-2 rounded-full ${serviceToken ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                        <Key className={`h-5 w-5 ${serviceToken ? 'text-green-600' : 'text-yellow-600'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {serviceToken ? 'Token Generato' : 'Token Non Generato'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {serviceToken 
+                            ? 'Il token è pronto. Copialo nel file .env della VPS.' 
+                            : 'Genera un token per connettere il VPS a questa piattaforma.'}
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => generateTokenMutation.mutate()}
+                        disabled={generateTokenMutation.isPending}
+                        variant={serviceToken ? "outline" : "default"}
+                      >
+                        {generateTokenMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : serviceToken ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Rigenera
+                          </>
+                        ) : (
+                          <>
+                            <Key className="h-4 w-4 mr-2" />
+                            Genera Token
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Token generato */}
+                    {serviceToken && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Token di Servizio (REPLIT_API_TOKEN):</label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={serviceToken}
+                            readOnly
+                            className="font-mono text-xs"
+                          />
+                          <Button onClick={copyToken} variant="outline" size="icon">
+                            {tokenCopied ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Il token non scade. Se lo rigeneri, quello vecchio smette di funzionare.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Template .env */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">File .env per la VPS:</label>
+                      <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                        <pre>{`# Bridge WebSocket Server
+WS_HOST=0.0.0.0
+WS_PORT=9090
+WS_AUTH_TOKEN=genera_un_token_random_qui
+
+# Connessione a Replit (NO /ws/ai-voice - lo aggiunge il codice)
+REPLIT_WS_URL=${window.location.origin}
+REPLIT_API_URL=${window.location.origin}
+REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
+
+# Audio
+AUDIO_SAMPLE_RATE_IN=8000
+AUDIO_SAMPLE_RATE_OUT=8000
+SESSION_TIMEOUT_MS=120000
+MAX_CONCURRENT_CALLS=10
+LOG_LEVEL=info`}</pre>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const envContent = `# Bridge WebSocket Server
+WS_HOST=0.0.0.0
+WS_PORT=9090
+WS_AUTH_TOKEN=genera_un_token_random_qui
+
+# Connessione a Replit
+REPLIT_WS_URL=${window.location.origin}
+REPLIT_API_URL=${window.location.origin}
+REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
+
+# Audio
+AUDIO_SAMPLE_RATE_IN=8000
+AUDIO_SAMPLE_RATE_OUT=8000
+SESSION_TIMEOUT_MS=120000
+MAX_CONCURRENT_CALLS=10
+LOG_LEVEL=info`;
+                          navigator.clipboard.writeText(envContent);
+                          toast({ title: "Copiato!", description: "Template .env copiato negli appunti" });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copia Template .env
+                      </Button>
+                    </div>
+
+                    {/* Istruzioni FreeSWITCH */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Configurazione FreeSWITCH (dialplan):</label>
+                      <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                        <pre>{`<action application="audio_stream" data="ws://127.0.0.1:9090?token=IL_TUO_WS_AUTH_TOKEN mono 8000"/>`}</pre>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Sostituisci IL_TUO_WS_AUTH_TOKEN con il valore di WS_AUTH_TOKEN che hai messo nel .env della VPS.
+                      </p>
+                    </div>
+
+                    {/* Comandi VPS */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Comandi per avviare il bridge sulla VPS:</label>
+                      <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                        <pre>{`cd /opt/alessia-voice
+npm install
+npm run build
+systemctl restart alessia-voice
+journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>
