@@ -496,24 +496,23 @@ router.post("/service-token", authenticateToken, requireRole(["consultant", "sup
       return res.status(404).json({ error: "Consultant not found" });
     }
 
-    const expiresIn = req.body.expiresIn || "30d";
-
+    // Token without expiration - valid until manually revoked
     const token = jwt.sign(
       {
         type: "phone_service",
         consultantId: consultantId,
         createdAt: new Date().toISOString(),
       },
-      JWT_SECRET,
-      { expiresIn }
+      JWT_SECRET
+      // No expiresIn = token never expires
     );
 
-    console.log(`📞 [VOICE] Phone service token generated for consultant ${consultantId}`);
+    console.log(`📞 [VOICE] Phone service token generated for consultant ${consultantId} (no expiration)`);
 
     res.json({
       token,
       consultantId,
-      expiresIn,
+      expiresIn: "never",
       usage: {
         wsUrl: "/ws/ai-voice",
         params: "?token=<TOKEN>&mode=phone_service&callerId=<PHONE_NUMBER>&voice=Puck",

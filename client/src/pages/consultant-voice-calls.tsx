@@ -167,7 +167,7 @@ export default function ConsultantVoiceCallsPage() {
       const res = await fetch("/api/voice/service-token", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ expiresIn: "30d" }),
+        body: JSON.stringify({}),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -316,7 +316,7 @@ export default function ConsultantVoiceCallsPage() {
                       <DialogTitle>Token di Servizio VPS</DialogTitle>
                       <DialogDescription>
                         Genera un token per connettere il VPS Voice Bridge a questa piattaforma.
-                        Il token scade dopo 30 giorni.
+                        Il token non scade e rimane valido finché non ne generi uno nuovo.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
