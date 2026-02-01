@@ -129,6 +129,7 @@ export default function ConsultantVoiceCallsPage() {
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<string>("day");
   const [serviceToken, setServiceToken] = useState<string | null>(null);
+  const [wsAuthToken, setWsAuthToken] = useState<string>(() => crypto.randomUUID().replace(/-/g, ''));
   const [tokenCopied, setTokenCopied] = useState(false);
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
@@ -732,6 +733,41 @@ export default function ConsultantVoiceCallsPage() {
                       </div>
                     )}
 
+                    {/* WS_AUTH_TOKEN */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">WS_AUTH_TOKEN (per FreeSWITCH):</label>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setWsAuthToken(crypto.randomUUID().replace(/-/g, ''))}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Rigenera
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          value={wsAuthToken}
+                          readOnly
+                          className="font-mono text-xs"
+                        />
+                        <Button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(wsAuthToken);
+                            toast({ title: "Copiato!", description: "WS_AUTH_TOKEN copiato" });
+                          }} 
+                          variant="outline" 
+                          size="icon"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Questo token autentica FreeSWITCH al bridge. Usalo sia nel .env che nel dialplan.
+                      </p>
+                    </div>
+
                     {/* Template .env */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium">File .env per la VPS:</label>
@@ -739,7 +775,7 @@ export default function ConsultantVoiceCallsPage() {
                         <pre>{`# Bridge WebSocket Server
 WS_HOST=0.0.0.0
 WS_PORT=9090
-WS_AUTH_TOKEN=genera_un_token_random_qui
+WS_AUTH_TOKEN=${wsAuthToken}
 
 # Connessione a Replit (NO /ws/ai-voice - lo aggiunge il codice)
 REPLIT_WS_URL=${window.location.origin}
@@ -760,7 +796,7 @@ LOG_LEVEL=info`}</pre>
                           const envContent = `# Bridge WebSocket Server
 WS_HOST=0.0.0.0
 WS_PORT=9090
-WS_AUTH_TOKEN=genera_un_token_random_qui
+WS_AUTH_TOKEN=${wsAuthToken}
 
 # Connessione a Replit
 REPLIT_WS_URL=${window.location.origin}
@@ -786,11 +822,19 @@ LOG_LEVEL=info`;
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Configurazione FreeSWITCH (dialplan):</label>
                       <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
-                        <pre>{`<action application="audio_stream" data="ws://127.0.0.1:9090?token=IL_TUO_WS_AUTH_TOKEN mono 8000"/>`}</pre>
+                        <pre>{`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`}</pre>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Sostituisci IL_TUO_WS_AUTH_TOKEN con il valore di WS_AUTH_TOKEN che hai messo nel .env della VPS.
-                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`);
+                          toast({ title: "Copiato!", description: "Configurazione FreeSWITCH copiata" });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copia Dialplan
+                      </Button>
                     </div>
 
                     {/* Comandi VPS */}
