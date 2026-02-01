@@ -91,12 +91,25 @@ export function startVoiceBridgeServer(): void {
 
     if (config.ws.authToken) {
       const token = url.query.token;
-      const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+      const isLocalNetwork = 
+        clientIp === '127.0.0.1' || 
+        clientIp === '::1' || 
+        clientIp === '::ffff:127.0.0.1' ||
+        clientIp.startsWith('172.17.') ||
+        clientIp.startsWith('::ffff:172.17.') ||
+        clientIp.startsWith('172.18.') ||
+        clientIp.startsWith('::ffff:172.18.') ||
+        clientIp.startsWith('10.') ||
+        clientIp.startsWith('::ffff:10.');
 
-      if (!isLocalhost && token !== config.ws.authToken) {
+      if (!isLocalNetwork && token !== config.ws.authToken) {
         log.warn(`Unauthorized connection attempt`, { clientIp });
         ws.close(4001, 'Unauthorized');
         return;
+      }
+      
+      if (isLocalNetwork) {
+        log.debug(`Allowing local network connection without token`, { clientIp });
       }
     }
 
