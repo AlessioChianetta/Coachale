@@ -27,12 +27,23 @@ interface AudioStreamStopMessage {
 
 type AudioStreamMessage = AudioStreamStartMessage | AudioStreamStopMessage;
 
+function isLocalNetwork(clientIp: string): boolean {
+  return clientIp === '127.0.0.1' || 
+    clientIp === '::1' || 
+    clientIp === '::ffff:127.0.0.1' ||
+    clientIp.startsWith('172.17.') ||
+    clientIp.startsWith('::ffff:172.17.') ||
+    clientIp.startsWith('172.18.') ||
+    clientIp.startsWith('::ffff:172.18.') ||
+    clientIp.startsWith('10.') ||
+    clientIp.startsWith('::ffff:10.');
+}
+
 function isAuthorized(req: IncomingMessage): boolean {
   if (!config.ws.authToken) return true;
   
   const clientIp = req.socket.remoteAddress || '';
-  const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
-  if (isLocalhost) return true;
+  if (isLocalNetwork(clientIp)) return true;
   
   const url = parseUrl(req.url || '', true);
   return url.query.token === config.ws.authToken;
@@ -91,24 +102,15 @@ export function startVoiceBridgeServer(): void {
 
     if (config.ws.authToken) {
       const token = url.query.token;
-      const isLocalNetwork = 
-        clientIp === '127.0.0.1' || 
-        clientIp === '::1' || 
-        clientIp === '::ffff:127.0.0.1' ||
-        clientIp.startsWith('172.17.') ||
-        clientIp.startsWith('::ffff:172.17.') ||
-        clientIp.startsWith('172.18.') ||
-        clientIp.startsWith('::ffff:172.18.') ||
-        clientIp.startsWith('10.') ||
-        clientIp.startsWith('::ffff:10.');
+      const isLocal = isLocalNetwork(clientIp);
 
-      if (!isLocalNetwork && token !== config.ws.authToken) {
+      if (!isLocal && token !== config.ws.authToken) {
         log.warn(`Unauthorized connection attempt`, { clientIp });
         ws.close(4001, 'Unauthorized');
         return;
       }
       
-      if (isLocalNetwork) {
+      if (isLocal) {
         log.debug(`Allowing local network connection without token`, { clientIp });
       }
     }
