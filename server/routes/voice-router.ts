@@ -61,7 +61,7 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
     const calls = await db.execute(sql`
       SELECT 
         vc.*,
-        u.name as client_name,
+        CONCAT(u.first_name, ' ', u.last_name) as client_name,
         u.phone_number as client_phone
       FROM voice_calls vc
       LEFT JOIN users u ON vc.client_id = u.id
@@ -104,7 +104,7 @@ router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super
     const callResult = await db.execute(sql`
       SELECT 
         vc.*,
-        u.name as client_name,
+        CONCAT(u.first_name, ' ', u.last_name) as client_name,
         u.email as client_email,
         u.phone_number as client_phone
       FROM voice_calls vc
