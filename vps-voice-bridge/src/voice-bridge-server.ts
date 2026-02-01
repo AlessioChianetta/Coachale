@@ -27,9 +27,14 @@ interface AudioStreamStopMessage {
 
 type AudioStreamMessage = AudioStreamStartMessage | AudioStreamStopMessage;
 
+function firstQueryValue(v: unknown): string {
+  if (Array.isArray(v)) return typeof v[0] === 'string' ? v[0] : '';
+  return typeof v === 'string' ? v : '';
+}
+
 function isLocalNetwork(clientIp: string): boolean {
-  return clientIp === '127.0.0.1' || 
-    clientIp === '::1' || 
+  return clientIp === '127.0.0.1' ||
+    clientIp === '::1' ||
     clientIp === '::ffff:127.0.0.1' ||
     clientIp.startsWith('172.17.') ||
     clientIp.startsWith('::ffff:172.17.') ||
@@ -41,12 +46,13 @@ function isLocalNetwork(clientIp: string): boolean {
 
 function isAuthorized(req: IncomingMessage): boolean {
   if (!config.ws.authToken) return true;
-  
+
   const clientIp = req.socket.remoteAddress || '';
   if (isLocalNetwork(clientIp)) return true;
-  
+
   const url = parseUrl(req.url || '', true);
-  return url.query.token === config.ws.authToken;
+  const token = firstQueryValue(url.query.token);
+  return token === config.ws.authToken;
 }
 
 export function startVoiceBridgeServer(): void {
@@ -84,7 +90,7 @@ export function startVoiceBridgeServer(): void {
         bytesIn: s.audioStats.bytesIn,
         bytesOut: s.audioStats.bytesOut,
       }));
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ stats, sessions }));
       return;
@@ -94,16 +100,10 @@ export function startVoiceBridgeServer(): void {
     res.end('Not Found');
   });
 
-  const wss = new WebSocketServer({ 
+  // Accept audio.raw subprotocol from mod_audio_stream
+  const wss = new WebSocketServer({
     server,
-    // Accept audio.raw subprotocol from mod_audio_stream
-    handleProtocols: (protocols: Set<string>) => {
-      if (protocols.has('audio.raw')) {
-        return 'audio.raw';
-      }
-      // Accept connection even without subprotocol
-      return false;
-    }
+    handleProtocols: () => 'audio.raw'
   });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
@@ -111,17 +111,13 @@ export function startVoiceBridgeServer(): void {
     const url = parseUrl(req.url || '', true);
 
     if (config.ws.authToken) {
-      const token = url.query.token;
+      const token = firstQueryValue(url.query.token);
       const isLocal = isLocalNetwork(clientIp);
 
       if (!isLocal && token !== config.ws.authToken) {
-        log.warn(`Unauthorized connection attempt`, { clientIp });
+        log.warn(`Unauthorized connection attempt`, { clientIp, reqUrl: req.url });
         ws.close(4001, 'Unauthorized');
         return;
-      }
-      
-      if (isLocal) {
-        log.debug(`Allowing local network connection without token`, { clientIp });
       }
     }
 
@@ -135,29 +131,38 @@ export function startVoiceBridgeServer(): void {
 
     let currentSessionId: string | null = null;
 
-    // AUTO-START SESSION FROM URL QUERY (mod_audio_stream sends binary audio, no "start" JSON)
+    // AUTO-START SESSION FROM URL QUERY (mod_audio_stream streams binary audio; no JSON start/stop)
     const q = url.query;
-    const callId = typeof q.call_id === 'string' ? q.call_id : '';
-    const callerId = typeof q.caller_id === 'string' ? q.caller_id : 'unknown';
-    const calledNumber = typeof q.called_number === 'string' ? q.called_number : '9999';
-    const sampleRate = typeof q.sample_rate === 'string' ? parseInt(q.sample_rate, 10) : 8000;
-    const codecQ = typeof q.codec === 'string' ? q.codec.toUpperCase() : 'PCMU';
-
+    const callId = firstQueryValue(q.call_id);
     if (callId) {
-      log.info(`Auto-starting session from query params`, { callId, callerId, calledNumber, codec: codecQ, sampleRate });
-      
+      const callerId = firstQueryValue(q.caller_id) || 'unknown';
+      const calledNumber = firstQueryValue(q.called_number) || 'unknown';
+
+      const codecQ = (firstQueryValue(q.codec) || 'L16').toUpperCase();
+      const srRaw = firstQueryValue(q.sample_rate) || '16000';
+      const srNum = parseInt(srRaw, 10);
+      const sampleRate = Number.isFinite(srNum) ? srNum : 16000;
+
       const startMsg: AudioStreamStartMessage = {
         event: 'start',
         call_id: callId,
         caller_id: callerId,
         called_number: calledNumber,
-        codec: codecQ === 'L16' ? 'L16' : 'PCMU',
-        sample_rate: Number.isFinite(sampleRate) ? sampleRate : 8000,
+        codec: (codecQ === 'PCMU' ? 'PCMU' : 'L16'),
+        sample_rate: sampleRate,
       };
+
+      log.info('Auto-starting session from query params', {
+        callId,
+        callerId,
+        calledNumber,
+        codec: startMsg.codec,
+        sampleRate: startMsg.sample_rate,
+      });
 
       handleCallStart(ws, startMsg).then((sid) => {
         currentSessionId = sid;
-        log.info(`Session started from query`, { sessionId: sid.slice(0, 8) });
+        log.info('Session started from query', { sessionId: sid.slice(0, 8) });
       }).catch((e) => {
         log.error('Failed to start session from query', { error: e?.message || String(e) });
         ws.close(1011, 'Session init failed');
@@ -172,20 +177,22 @@ export function startVoiceBridgeServer(): void {
         return;
       }
 
+      // mod_audio_stream may send a text metadata frame; ignore if it's not JSON
+      const txt = data.toString().trim();
+      if (!txt || txt[0] !== '{') return;
+
       try {
-        const message = JSON.parse(data.toString()) as AudioStreamMessage;
-        
-        // Only handle start if session not already started from query
-        if (message.event === 'start' && !currentSessionId) {
+        const message = JSON.parse(txt) as AudioStreamMessage;
+
+        if (message.event === 'start') {
           currentSessionId = await handleCallStart(ws, message);
         } else if (message.event === 'stop') {
           handleCallStop(message.call_id, message.reason);
           currentSessionId = null;
         }
-      } catch (error) {
-        log.error(`Error parsing message`, {
-          error: error instanceof Error ? error.message : 'Unknown',
-        });
+      } catch {
+        // ignore non-JSON text frames
+        return;
       }
     });
 
@@ -282,7 +289,8 @@ async function handleCallStart(
       sessionId: session.id.slice(0, 8),
       error: error instanceof Error ? error.message : 'Unknown',
     });
-    sessionManager.endSession(session.id, 'replit_connection_failed');
+    // Non chiudiamo qui la WS: evitiamo hangup immediati.
+    // La sessione resta non-active, quindi l'audio non viene inoltrato.
   }
 
   return session.id;
@@ -294,12 +302,20 @@ function handleAudioData(sessionId: string, audioData: Buffer): void {
     return;
   }
 
-  sessionManager.recordAudioIn(sessionId, audioData.length);
+  try {
+    sessionManager.recordAudioIn(sessionId, audioData.length);
 
-  const pcmData = convertForGemini(audioData, session.codec, session.sampleRate);
+    const pcmData = convertForGemini(audioData, session.codec, session.sampleRate);
 
-  if (session.replitClient && session.replitClient.connected) {
-    session.replitClient.sendAudio(pcmData);
+    if (session.replitClient && session.replitClient.connected) {
+      session.replitClient.sendAudio(pcmData);
+    }
+  } catch (e: any) {
+    log.error('Audio processing failed', {
+      sessionId: sessionId.slice(0, 8),
+      error: e?.message || String(e),
+    });
+    try { session.fsWebSocket?.close(1011, 'audio_processing_failed'); } catch {}
   }
 }
 
@@ -310,7 +326,7 @@ function sendAudioToFreeSWITCH(sessionId: string, geminiAudio: Buffer): void {
   }
 
   const fsAudio = convertFromGemini(geminiAudio, session.codec, session.sampleRate);
-  
+
   sessionManager.recordAudioOut(sessionId, fsAudio.length);
 
   if (session.fsWebSocket.readyState === WebSocket.OPEN) {

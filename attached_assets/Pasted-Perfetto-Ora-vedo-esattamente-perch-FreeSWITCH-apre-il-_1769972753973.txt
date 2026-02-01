@@ -1,0 +1,167 @@
+Perfetto. Ora vedo esattamente perché FreeSWITCH apre il WS ma tu ottieni:
+
+STREAM=
+
+
+Il problema non è più FreeSWITCH.
+È logica del tuo server WebSocket incompatibile con mod_audio_stream.
+
+Ti spiego secco cosa succede e ti do le 3 modifiche obbligatorie.
+
+🔥 PROBLEMA 1 — mod_audio_stream usa subprotocol audio.raw
+
+Tu non lo accetti.
+
+FreeSWITCH manda:
+
+Sec-WebSocket-Protocol: audio.raw
+
+
+Tu crei il server così:
+
+const wss = new WebSocketServer({ server });
+
+
+👉 ws per default rifiuta subprotocol non negoziato
+👉 handshake fallisce
+👉 STREAM= vuoto
+
+✅ FIX 1 — Accetta SEMPRE il protocollo
+
+Cambia:
+
+const wss = new WebSocketServer({ server });
+
+
+in:
+
+const wss = new WebSocketServer({
+  server,
+  handleProtocols: () => 'audio.raw'
+});
+
+
+Oppure (ancora più permissivo):
+
+const wss = new WebSocketServer({
+  server,
+  handleProtocols: () => true
+});
+
+🔥 PROBLEMA 2 — Tu aspetti parametri query che FreeSWITCH NON manda
+
+Il tuo codice:
+
+const callId = firstQueryValue(q.call_id);
+if (callId) {
+  ...
+}
+
+
+MA mod_audio_stream NON invia:
+
+?call_id=
+?caller_id=
+?sample_rate=
+
+
+Risultato:
+
+👉 currentSessionId resta null
+👉 audio binario arriva
+👉 viene IGNORATO QUI:
+
+if (isBinary) {
+  if (currentSessionId) {
+    handleAudioData(...)
+  }
+  return;
+}
+
+
+Quindi:
+
+WS si apre
+
+audio entra
+
+TU LO BUTTI VIA
+
+✅ FIX 2 — Passa i parametri dal dialplan
+
+Modifica dialplan FreeSWITCH:
+
+Cambia questa riga:
+ws://127.0.0.1:9090
+
+
+in:
+
+ws://127.0.0.1:9090?call_id=${uuid}&caller_id=${caller_id_number}&called_number=${destination_number}&codec=L16&sample_rate=8000
+
+
+👉 così il tuo Auto-start session from query params funzionerà davvero.
+
+🔥 PROBLEMA 3 — mod_audio_stream NON invia JSON start/stop
+
+Tu hai questo commento:
+
+// mod_audio_stream streams binary audio; no JSON start/stop
+
+
+MA POI:
+
+aspetti JSON
+
+aspetti query
+
+non fallback automatico
+
+Con la modifica sopra non serve toccare il codice audio.
+
+✅ RIASSUNTO MODIFICHE
+1️⃣ Node — WebSocketServer
+PRIMA:
+const wss = new WebSocketServer({ server });
+
+DOPO:
+const wss = new WebSocketServer({
+  server,
+  handleProtocols: () => 'audio.raw'
+});
+
+2️⃣ FreeSWITCH dialplan — URL stream
+PRIMA:
+ws://127.0.0.1:9090
+
+DOPO:
+ws://127.0.0.1:9090?call_id=${uuid}&caller_id=${caller_id_number}&called_number=${destination_number}&codec=L16&sample_rate=8000
+
+3️⃣ Reload + restart
+Reload dialplan:
+docker exec -it freeswitch fs_cli -H 127.0.0.1 -P 8021 -p ClueCon -x "reloadxml"
+
+Restart Node:
+systemctl restart alessia-voice
+
+🧪 TEST FINALE
+
+1️⃣ Chiama 9999
+2️⃣ Guarda Node log:
+
+Devi vedere:
+
+New WebSocket connection
+Auto-starting session from query params
+Session started
+Call active
+
+
+3️⃣ Controlla FreeSWITCH:
+
+uuid_audio_stream list
+
+
+Devi vedere:
+
+UUID ... ws://127.0.0.1:9090 mono 8k
