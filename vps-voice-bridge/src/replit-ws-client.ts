@@ -34,7 +34,8 @@ export class ReplitWSClient {
   }
 
   async connect(): Promise<void> {
-    const mode = this.options.mode || 'assistenza';
+    // phone_service mode usa il service token per autenticazione VPS
+    const mode = this.options.mode || 'phone_service';
     const voice = this.options.voice || config.voice.voiceId;
     
     const wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
