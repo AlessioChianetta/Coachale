@@ -1,0 +1,120 @@
+a=rtcp-mux
+
+2026-02-01 15:39:36.063495 93.63% [DEBUG] sofia.c:7906 (sofia/internal/1000@72.62.50.40) State Change CS_NEW -> CS_INIT
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1000@72.62.50.40) Running State Change CS_INIT (Cur 1 Tot 28)
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:624 (sofia/internal/1000@72.62.50.40) State INIT
+2026-02-01 15:39:36.063495 93.63% [DEBUG] mod_sofia.c:97 sofia/internal/1000@72.62.50.40 SOFIA INIT
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:40 sofia/internal/1000@72.62.50.40 Standard INIT
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:48 (sofia/internal/1000@72.62.50.40) State Change CS_INIT -> CS_ROUTING
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:624 (sofia/internal/1000@72.62.50.40) State INIT going to sleep
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1000@72.62.50.40) Running State Change CS_ROUTING (Cur 1 Tot 28)
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_channel.c:2400 (sofia/internal/1000@72.62.50.40) Callstate Change DOWN -> RINGING
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:640 (sofia/internal/1000@72.62.50.40) State ROUTING
+2026-02-01 15:39:36.063495 93.63% [DEBUG] mod_sofia.c:158 sofia/internal/1000@72.62.50.40 SOFIA ROUTING
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:230 sofia/internal/1000@72.62.50.40 Standard ROUTING
+2026-02-01 15:39:36.063495 93.63% [INFO] mod_dialplan_xml.c:648 Processing 1000 <1000>->9999 in context public
+Dialplan: sofia/internal/1000@72.62.50.40 parsing [public->unloop] continue=false
+Dialplan: sofia/internal/1000@72.62.50.40 Regex (PASS) [unloop] ${unroll_loops}(true) =~ /^true$/ break=on-false
+Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [unloop] ${sip_looped_call}() =~ /^true$/ break=on-false
+Dialplan: sofia/internal/1000@72.62.50.40 parsing [public->outside_call] continue=true
+Dialplan: sofia/internal/1000@72.62.50.40 Absolute Condition [outside_call]
+Dialplan: sofia/internal/1000@72.62.50.40 Action set(outside_call=true) 
+Dialplan: sofia/internal/1000@72.62.50.40 Action export(RFC2822_DATE=${strftime(%a, %d %b %Y %T %z)}) 
+Dialplan: sofia/internal/1000@72.62.50.40 parsing [public->call_debug] continue=true
+Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [call_debug] ${call_debug}(false) =~ /^true$/ break=never
+Dialplan: sofia/internal/1000@72.62.50.40 parsing [public->public_extensions] continue=false
+Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_extensions] destination_number(9999) =~ /^(10[01][0-9])$/ break=on-false
+Dialplan: sofia/internal/1000@72.62.50.40 parsing [public->public_conference_extensions] continue=false
+Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_conference_extensions] destination_number(9999) =~ /^(3[5-8][01][0-9])$/ break=on-false
+Dialplan: sofia/internal/1000@72.62.50.40 parsing [public->public_did] continue=false
+Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_did] destination_number(9999) =~ /^(5551212)$/ break=on-false
+Dialplan: sofia/internal/1000@72.62.50.40 parsing [public->alessia_ai_9999_public] continue=false
+Dialplan: sofia/internal/1000@72.62.50.40 Regex (PASS) [alessia_ai_9999_public] destination_number(9999) =~ /^9999$/ break=on-false
+Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] 9999 ENTER uuid=${uuid} caller=${caller_id_number}) 
+Dialplan: sofia/internal/1000@72.62.50.40 Action answer() 
+Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea) 
+Dialplan: sofia/internal/1000@72.62.50.40 Action answer() 
+Dialplan: sofia/internal/1000@72.62.50.40 Action playback(tone_stream://%(200,0,800)) 
+Dialplan: sofia/internal/1000@72.62.50.40 Action set(as_res=${api(uuid_audio_stream ${uuid} start ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea mono 8000)}) 
+Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] uuid_audio_stream result=${as_res}) 
+Dialplan: sofia/internal/1000@72.62.50.40 Action park() 
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:281 (sofia/internal/1000@72.62.50.40) State Change CS_ROUTING -> CS_EXECUTE
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:640 (sofia/internal/1000@72.62.50.40) State ROUTING going to sleep
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1000@72.62.50.40) Running State Change CS_EXECUTE (Cur 1 Tot 28)
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:647 (sofia/internal/1000@72.62.50.40) State EXECUTE
+2026-02-01 15:39:36.063495 93.63% [DEBUG] mod_sofia.c:213 sofia/internal/1000@72.62.50.40 SOFIA EXECUTE
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_state_machine.c:323 sofia/internal/1000@72.62.50.40 Standard EXECUTE
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(outside_call=true)
+2026-02-01 15:39:36.063495 93.63% [DEBUG] mod_dptools.c:1671 SET sofia/internal/1000@72.62.50.40 [outside_call]=[true]
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 export(RFC2822_DATE=Sun, 01 Feb 2026 15:39:36 +0000)
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_channel.c:1335 EXPORT (export_vars) [RFC2822_DATE]=[Sun, 01 Feb 2026 15:39:36 +0000]
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] 9999 ENTER uuid=ecaebda3-d4aa-4935-bec8-9cfff7670669 caller=1000)
+2026-02-01 15:39:36.063495 93.63% [WARNING] mod_dptools.c:1865 [ALESSIA] 9999 ENTER uuid=ecaebda3-d4aa-4935-bec8-9cfff7670669 caller=1000
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 answer()
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [opus:106:48000:20:0:1]/[opus:116:48000:20:0:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5567 Audio Codec Compare [opus:116:48000:20:0:1] is saved as a near-match
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [opus:106:16000:20:0:1]/[G722:9:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [opus:106:16000:20:0:1]/[PCMU:0:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [opus:106:16000:20:0:1]/[PCMA:8:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[opus:116:48000:20:0:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[G722:9:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5586 Audio Codec Compare [G722:9:8000:20:64000:1] ++++ is saved as a match
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[PCMU:0:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [G722:9:8000:20:64000:1]/[PCMA:8:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5436 Set telephone-event payload to 98@48000
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[opus:116:48000:20:0:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[G722:9:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[PCMU:0:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5586 Audio Codec Compare [PCMU:0:8000:20:64000:1] ++++ is saved as a match
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMU:0:8000:20:64000:1]/[PCMA:8:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[opus:116:48000:20:0:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[G722:9:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[PCMU:0:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [PCMA:8:8000:20:64000:1]/[PCMA:8:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5586 Audio Codec Compare [PCMA:8:8000:20:64000:1] ++++ is saved as a match
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [GSM:3:8000:20:13200:1]/[opus:116:48000:20:0:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [GSM:3:8000:20:13200:1]/[G722:9:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [GSM:3:8000:20:13200:1]/[PCMU:0:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5524 Audio Codec Compare [GSM:3:8000:20:13200:1]/[PCMA:8:8000:20:64000:1]
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:3730 Set Codec sofia/internal/1000@72.62.50.40 G722/8000 20 ms 160 samples 64000 bits 1 channels
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_codec.c:132 sofia/internal/1000@72.62.50.40 Original read codec set to G722:9
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5796 Set telephone-event payload to 101@8000
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:5854 sofia/internal/1000@72.62.50.40 Set 2833 dtmf send payload to 101 recv payload to 101
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:8658 AUDIO RTP [sofia/internal/1000@72.62.50.40] 72.62.50.40 port 17970 -> 109.116.200.59 port 59900 codec: 9 ms: 20
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_rtp.c:4566 Starting timer [soft] 160 bytes per 20ms
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:8879 Activating RTCP PORT 59900
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_rtp.c:4901 RTCP send rate is: 1000 and packet rate is: 20000 Remote Port: 59900
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:8971 sofia/internal/1000@72.62.50.40 Set 2833 dtmf send payload to 101
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:8978 sofia/internal/1000@72.62.50.40 Set 2833 dtmf receive payload to 101
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:9001 sofia/internal/1000@72.62.50.40 Set rtp dtmf delay to 40
+2026-02-01 15:39:36.063495 93.63% [NOTICE] sofia_media.c:90 Pre-Answer sofia/internal/1000@72.62.50.40!
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_channel.c:3587 (sofia/internal/1000@72.62.50.40) Callstate Change RINGING -> EARLY
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_core_media.c:8640 Audio params are unchanged for sofia/internal/1000@72.62.50.40.
+2026-02-01 15:39:36.063495 93.63% [DEBUG] mod_sofia.c:914 Local SDP sofia/internal/1000@72.62.50.40:
+v=0
+o=FreeSWITCH 1769942406 1769942407 IN IP4 72.62.50.40
+s=FreeSWITCH
+c=IN IP4 72.62.50.40
+t=0 0
+m=audio 17970 RTP/AVP 9 101
+a=rtpmap:9 G722/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=ptime:20
+a=sendrecv
+a=rtcp-mux
+a=rtcp:17970 IN IP4 72.62.50.40
+
+2026-02-01 15:39:36.063495 93.63% [NOTICE] mod_dptools.c:1406 Channel [sofia/internal/1000@72.62.50.40] has been answered
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_channel.c:3914 (sofia/internal/1000@72.62.50.40) Callstate Change EARLY -> ACTIVE
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea)
+2026-02-01 15:39:36.063495 93.63% [WARNING] mod_dptools.c:1865 [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 answer()
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 playback(tone_stream://%(200,0,800))
+2026-02-01 15:39:36.063495 93.63% [DEBUG] switch_ivr_play_say.c:1564 Codec Activated L16@16000hz 1 channels 20ms
+2026-02-01 15:39:36.063495 93.63% [DEBUG] sofia.c:7493 Channel sofia/internal/1000@72.62.50.40 entering state [completed][200]
+2026-02-01 15:39:36.263467 93.60% [DEBUG] switch_ivr_play_say.c:2013 done playing file tone_stream://%(200,0,800)
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(as_res=)
+2026-02-01 15:39:36.263467 93.60% [DEBUG] mod_dptools.c:1671 SET sofia/internal/1000@72.62.50.40 [as_res]=[UNDEF]
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] uuid_audio_stream result=)
+2026-02-01 15:39:36.263467 93.60% [WARNING] mod_dptools.c:1865 [ALESSIA] uuid_audio_stream result=
