@@ -1,0 +1,32 @@
+root@srv1164256:~# docker exec -it freeswitch grep -iE "(error|fail|refused|uuid_audio)" /usr/local/freeswitch/var/log/freeswitch/freeswitch.log | tail -30
+99f9d55c-daa3-46fe-aadc-265ad336d46a Dialplan: sofia/internal/1000@72.62.50.40 Action set(as_res=${api(uuid_audio_stream ${uuid} start ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea mono 8000)})
+99f9d55c-daa3-46fe-aadc-265ad336d46a Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] uuid_audio_stream result=${as_res})
+99f9d55c-daa3-46fe-aadc-265ad336d46a EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea)
+99f9d55c-daa3-46fe-aadc-265ad336d46a 2026-02-01 14:56:00.643465 97.10% [WARNING] mod_dptools.c:1865 [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea
+99f9d55c-daa3-46fe-aadc-265ad336d46a EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] uuid_audio_stream result=)
+99f9d55c-daa3-46fe-aadc-265ad336d46a 2026-02-01 14:56:00.843494 97.10% [WARNING] mod_dptools.c:1865 [ALESSIA] uuid_audio_stream result=
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [unloop] ${sip_looped_call}() =~ /^true$/ break=on-false
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [call_debug] ${call_debug}(false) =~ /^true$/ break=never
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_extensions] destination_number(9999) =~ /^(10[01][0-9])$/ break=on-false
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_conference_extensions] destination_number(9999) =~ /^(3[5-8][01][0-9])$/ break=on-false
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_did] destination_number(9999) =~ /^(5551212)$/ break=on-false
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea)
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Action set(as_res=${api(uuid_audio_stream ${uuid} start ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea mono 8000)})
+9a270b54-2642-41c1-96d8-1522255b7577 Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] uuid_audio_stream result=${as_res})
+9a270b54-2642-41c1-96d8-1522255b7577 EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea)
+9a270b54-2642-41c1-96d8-1522255b7577 2026-02-01 14:56:14.863467 95.97% [WARNING] mod_dptools.c:1865 [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea
+9a270b54-2642-41c1-96d8-1522255b7577 EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] uuid_audio_stream result=)
+9a270b54-2642-41c1-96d8-1522255b7577 2026-02-01 14:56:15.063472 95.97% [WARNING] mod_dptools.c:1865 [ALESSIA] uuid_audio_stream result=
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [unloop] ${sip_looped_call}() =~ /^true$/ break=on-false
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [call_debug] ${call_debug}(false) =~ /^true$/ break=never
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_extensions] destination_number(9999) =~ /^(10[01][0-9])$/ break=on-false
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_conference_extensions] destination_number(9999) =~ /^(3[5-8][01][0-9])$/ break=on-false
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Regex (FAIL) [public_did] destination_number(9999) =~ /^(5551212)$/ break=on-false
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea)
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Action set(as_res=${api(uuid_audio_stream ${uuid} start ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea mono 8000)})
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab Dialplan: sofia/internal/1000@72.62.50.40 Action log(WARNING [ALESSIA] uuid_audio_stream result=${as_res})
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea)
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab 2026-02-01 15:09:14.323465 94.80% [WARNING] mod_dptools.c:1865 [ALESSIA] starting uuid_audio_stream url=ws://172.17.0.1:9090?token=7a8fad4d5ad94fe3bc342c1c1799b5ea
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 log(WARNING [ALESSIA] uuid_audio_stream result=)
+7cf7bda8-cc0f-444f-9577-8b8a5201f9ab 2026-02-01 15:09:14.523486 94.80% [WARNING] mod_dptools.c:1865 [ALESSIA] uuid_audio_stream result=
+root@srv1164256:~# 
