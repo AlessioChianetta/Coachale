@@ -9,7 +9,7 @@
  */
 
 import { Router, Request, Response } from "express";
-import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
+import { authenticateToken, requireAnyRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
 import jwt from "jsonwebtoken";
@@ -27,7 +27,7 @@ const router = Router();
 // ═══════════════════════════════════════════════════════════════════
 
 // GET /api/voice/calls - Lista chiamate con filtri
-router.get("/calls", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { from, to, status, client_id, page = "1", limit = "20" } = req.query;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
@@ -91,7 +91,7 @@ router.get("/calls", authenticateToken, requireRole(["consultant", "super_admin"
 });
 
 // GET /api/voice/calls/:id - Dettaglio singola chiamata con eventi
-router.get("/calls/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
@@ -133,7 +133,7 @@ router.get("/calls/:id", authenticateToken, requireRole(["consultant", "super_ad
 });
 
 // GET /api/voice/stats - Statistiche aggregate
-router.get("/stats", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/stats", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { period = "day" } = req.query;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
@@ -199,7 +199,7 @@ router.get("/stats", authenticateToken, requireRole(["consultant", "super_admin"
 // ═══════════════════════════════════════════════════════════════════
 
 // GET /api/voice/numbers - Lista numeri configurati
-router.get("/numbers", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/numbers", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
 
@@ -219,7 +219,7 @@ router.get("/numbers", authenticateToken, requireRole(["consultant", "super_admi
 });
 
 // GET /api/voice/numbers/:id - Dettaglio numero
-router.get("/numbers/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
@@ -245,7 +245,7 @@ router.get("/numbers/:id", authenticateToken, requireRole(["consultant", "super_
 });
 
 // POST /api/voice/numbers - Crea nuovo numero
-router.post("/numbers", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/numbers", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.id;
     const {
@@ -291,7 +291,7 @@ router.post("/numbers", authenticateToken, requireRole(["consultant", "super_adm
 });
 
 // PUT /api/voice/numbers/:id - Aggiorna numero
-router.put("/numbers/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
@@ -343,7 +343,7 @@ router.put("/numbers/:id", authenticateToken, requireRole(["consultant", "super_
 });
 
 // DELETE /api/voice/numbers/:id - Elimina numero
-router.delete("/numbers/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.delete("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
@@ -372,7 +372,7 @@ router.delete("/numbers/:id", authenticateToken, requireRole(["consultant", "sup
 // ═══════════════════════════════════════════════════════════════════
 
 // GET /api/voice/rate-limits/:callerId - Stato rate limit per numero
-router.get("/rate-limits/:callerId", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/rate-limits/:callerId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { callerId } = req.params;
 
@@ -399,7 +399,7 @@ router.get("/rate-limits/:callerId", authenticateToken, requireRole(["consultant
 });
 
 // POST /api/voice/block/:callerId - Blocca numero manualmente
-router.post("/block/:callerId", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/block/:callerId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { callerId } = req.params;
     const { reason, hours = 24 } = req.body;
@@ -426,7 +426,7 @@ router.post("/block/:callerId", authenticateToken, requireRole(["consultant", "s
 });
 
 // DELETE /api/voice/block/:callerId - Sblocca numero
-router.delete("/block/:callerId", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.delete("/block/:callerId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { callerId } = req.params;
 
@@ -449,7 +449,7 @@ router.delete("/block/:callerId", authenticateToken, requireRole(["consultant", 
 });
 
 // GET /api/voice/blocked - Lista numeri bloccati
-router.get("/blocked", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/blocked", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const result = await db.execute(sql`
       SELECT * FROM voice_rate_limits 
@@ -473,7 +473,7 @@ router.get("/blocked", authenticateToken, requireRole(["consultant", "super_admi
 // ═══════════════════════════════════════════════════════════════════
 
 // POST /api/voice/service-token - Genera token di servizio per VPS Bridge
-router.post("/service-token", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/service-token", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     if (!JWT_SECRET) {
       return res.status(500).json({ error: "Server configuration error: JWT secret not set" });
@@ -562,7 +562,7 @@ router.get("/service-token/validate", async (req: Request, res: Response) => {
 const VALID_VOICES = ['Achernar', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
 
 // GET /api/voice/settings - Ottieni impostazioni voce
-router.get("/settings", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
 
@@ -582,7 +582,7 @@ router.get("/settings", authenticateToken, requireRole(["consultant", "super_adm
 });
 
 // PUT /api/voice/settings - Aggiorna impostazioni voce
-router.put("/settings", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
     const { voiceId } = req.body;
@@ -634,7 +634,7 @@ router.put("/settings", authenticateToken, requireRole(["consultant", "super_adm
 });
 
 // GET /api/voice/health - Health check (placeholder)
-router.get("/health", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     // Verifica DB
     const dbCheck = await db.execute(sql`SELECT 1 as ok`);
