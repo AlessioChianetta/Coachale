@@ -6,7 +6,7 @@ import { logger } from './logger.js';
 import { sessionManager } from './session-manager.js';
 import { ReplitWSClient } from './replit-ws-client.js';
 import { convertForGemini, convertFromGemini } from './audio-converter.js';
-import { notifyCallStart, notifyCallEnd } from './caller-context.js';
+import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
 
 const log = logger.child('SERVER');
 

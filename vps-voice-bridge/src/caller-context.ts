@@ -4,6 +4,20 @@ import type { ClientContext } from './session-manager.js';
 
 const log = logger.child('CONTEXT');
 
+interface CallerContextResponse {
+  found: boolean;
+  user?: {
+    id: string;
+    name: string;
+    role: string;
+    phoneNumber: string;
+  };
+  consultant?: {
+    id: string;
+    name: string;
+  };
+}
+
 export async function fetchCallerContext(callerId: string): Promise<ClientContext | null> {
   if (!config.replit.apiUrl || !config.replit.apiToken) {
     log.debug(`Replit API not configured, skipping context fetch`);
@@ -35,7 +49,7 @@ export async function fetchCallerContext(callerId: string): Promise<ClientContex
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as CallerContextResponse;
     
     if (!data.found) {
       log.debug(`Caller not recognized`, { callerId });
