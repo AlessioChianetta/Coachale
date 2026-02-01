@@ -1,0 +1,57 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# cd /opt/alessia-voice/vps-voice-bridge
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec freeswitch bash -c 'cat > /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml << '\''EOF'\''
+<include>
+  <extension name="alessia_ai_9999_public">
+    <condition field="destination_number" expression="^9999$">
+      <action application="log" data="WARNING [ALESSIA] 9999 ENTER uuid=${uuid} caller=${caller_id_number}"/>
+      <action application="answer"/>
+      <action application="sleep" data="500"/>
+      <action application="set" data="as_url=ws://172.17.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=9999&amp;codec=PCMU&amp;sample_rate=8000"/>
+      <action application="log" data="WARNING [ALESSIA] connecting to ${as_url}"/>
+      <action application="uuid_audio_stream" data="${uuid} start ${as_url} mono 8000"/>
+      <action application="park"/>
+    </condition>
+  </extension>
+</include>
+EOF'
+
+docker exec freeswitch fs_cli -H 127.0.0.1 -P 8021 -p '1NoxIsTheBest1!' -x "reloadxml"
++OK [Success]
+
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# sed -n '126,160p' /opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts
+          handleAudioData(currentSessionId, data);
+        }
+        return;
+      }
+
+      try {
+        const message = JSON.parse(data.toString()) as AudioStreamMessage;
+        
+        if (message.event === 'start') {
+          currentSessionId = await handleCallStart(ws, message);
+        } else if (message.event === 'stop') {
+          handleCallStop(message.call_id, message.reason);
+          currentSessionId = null;
+        }
+      } catch (error) {
+        log.error(`Error parsing message`, {
+          error: error instanceof Error ? error.message : 'Unknown',
+        });
+      }
+    });
+
+    ws.on('close', (code, reason) => {
+      log.info(`WebSocket closed`, { code, reason: reason.toString() });
+      if (currentSessionId) {
+        const session = sessionManager.getSession(currentSessionId);
+        if (session) {
+          handleCallStop(session.callId, 'websocket_closed');
+        }
+      }
+    });
+
+    ws.on('error', (error) => {
+      log.error(`WebSocket error`, { error: error.message });
+    });
+  });
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
