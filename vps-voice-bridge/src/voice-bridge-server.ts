@@ -57,6 +57,18 @@ function isAuthorized(req: IncomingMessage): boolean {
 
 export function startVoiceBridgeServer(): void {
   const server = createServer((req, res) => {
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    log.debug(`HTTP request received`, { 
+      method: req.method, 
+      url: req.url, 
+      clientIp,
+      headers: {
+        upgrade: req.headers.upgrade,
+        connection: req.headers.connection,
+        'sec-websocket-protocol': req.headers['sec-websocket-protocol'],
+      }
+    });
+
     if (req.url?.startsWith('/health')) {
       if (!isAuthorized(req)) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -98,6 +110,24 @@ export function startVoiceBridgeServer(): void {
 
     res.writeHead(404);
     res.end('Not Found');
+  });
+
+  // Log all incoming connections at TCP level
+  server.on('connection', (socket) => {
+    log.debug(`New TCP connection`, { 
+      remoteAddress: socket.remoteAddress, 
+      remotePort: socket.remotePort 
+    });
+  });
+
+  // Log upgrade requests (WebSocket handshake)
+  server.on('upgrade', (req, socket, head) => {
+    log.info(`WebSocket upgrade request`, {
+      url: req.url,
+      clientIp: req.socket.remoteAddress,
+      protocol: req.headers['sec-websocket-protocol'],
+      origin: req.headers.origin,
+    });
   });
 
   // Accept audio.raw subprotocol from mod_audio_stream
