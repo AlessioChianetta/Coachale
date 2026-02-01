@@ -125,6 +125,35 @@ export function startVoiceBridgeServer(): void {
 
     let currentSessionId: string | null = null;
 
+    // AUTO-START SESSION FROM URL QUERY (mod_audio_stream sends binary audio, no "start" JSON)
+    const q = url.query;
+    const callId = typeof q.call_id === 'string' ? q.call_id : '';
+    const callerId = typeof q.caller_id === 'string' ? q.caller_id : 'unknown';
+    const calledNumber = typeof q.called_number === 'string' ? q.called_number : '9999';
+    const sampleRate = typeof q.sample_rate === 'string' ? parseInt(q.sample_rate, 10) : 8000;
+    const codecQ = typeof q.codec === 'string' ? q.codec.toUpperCase() : 'PCMU';
+
+    if (callId) {
+      log.info(`Auto-starting session from query params`, { callId, callerId, calledNumber, codec: codecQ, sampleRate });
+      
+      const startMsg: AudioStreamStartMessage = {
+        event: 'start',
+        call_id: callId,
+        caller_id: callerId,
+        called_number: calledNumber,
+        codec: codecQ === 'L16' ? 'L16' : 'PCMU',
+        sample_rate: Number.isFinite(sampleRate) ? sampleRate : 8000,
+      };
+
+      handleCallStart(ws, startMsg).then((sid) => {
+        currentSessionId = sid;
+        log.info(`Session started from query`, { sessionId: sid.slice(0, 8) });
+      }).catch((e) => {
+        log.error('Failed to start session from query', { error: e?.message || String(e) });
+        ws.close(1011, 'Session init failed');
+      });
+    }
+
     ws.on('message', async (data: Buffer, isBinary: boolean) => {
       if (isBinary) {
         if (currentSessionId) {
@@ -136,7 +165,8 @@ export function startVoiceBridgeServer(): void {
       try {
         const message = JSON.parse(data.toString()) as AudioStreamMessage;
         
-        if (message.event === 'start') {
+        // Only handle start if session not already started from query
+        if (message.event === 'start' && !currentSessionId) {
           currentSessionId = await handleCallStart(ws, message);
         } else if (message.event === 'stop') {
           handleCallStop(message.call_id, message.reason);
