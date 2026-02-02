@@ -97,8 +97,8 @@ Key enhancements include:
   - **Caller History Context System** (for returning anonymous callers):
     - `caller_phone` column in `ai_conversations` table (CHECK constraint: client_id OR sales_conversation_id OR caller_phone)
     - Conversations saved with normalized caller phone for non-client calls
-    - On reconnection: loads last 3 conversations (max 10 messages each) for caller phone
-    - History injected into system prompt with date, title, and transcript excerpts
+    - On reconnection: loads last 3 conversations (ALL messages per conversation) for caller phone
+    - History injected into system prompt with date, title, and full transcript
     - Enables AI to reference past conversations: "L'ultima volta avevamo parlato di..."
 
 # External Dependencies

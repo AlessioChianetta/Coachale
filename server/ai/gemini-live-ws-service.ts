@@ -2452,10 +2452,8 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
                     FROM ai_messages am
                     WHERE am.conversation_id = ac.id
                     ORDER BY am.created_at ASC
-                    LIMIT 10
                   ) sub
-                ) as messages,
-                (SELECT COUNT(*) FROM ai_messages am WHERE am.conversation_id = ac.id) as total_messages
+                ) as messages
               FROM ai_conversations ac
               WHERE ac.caller_phone = ${phoneCallerId}
               ORDER BY ac.created_at DESC
@@ -2488,7 +2486,7 @@ Ecco un riepilogo delle conversazioni precedenti:
                 previousCallContext += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
                 
                 if (conv.messages && Array.isArray(conv.messages)) {
-                  // Messages already limited to 10 in SQL query
+                  // Include ALL messages from each conversation
                   for (const msg of conv.messages) {
                     const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Alessia';
                     // Truncate long messages
@@ -2496,11 +2494,6 @@ Ecco un riepilogo delle conversazioni precedenti:
                       ? msg.content.substring(0, 200) + '...'
                       : msg.content;
                     previousCallContext += `${roleLabel}: ${content}\n`;
-                  }
-                  
-                  const totalMessages = parseInt(conv.total_messages) || conv.messages.length;
-                  if (totalMessages > 10) {
-                    previousCallContext += `... (${totalMessages - 10} altri messaggi)\n`;
                   }
                 }
                 previousCallContext += '\n---\n\n';
