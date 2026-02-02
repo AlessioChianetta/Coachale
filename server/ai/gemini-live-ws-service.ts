@@ -2427,32 +2427,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
 - Esempio CORRETTO: "Ciao! Come posso aiutarti?"
 - Esempio SBAGLIATO: "Buongiorno, come posso esserle utile?"`;
         
-        // Default non-client prompt template - will be customized if caller name is known
-        const getDefaultNonClientPrompt = (callerName: string) => {
-          const greetingSection = callerName 
-            ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 COMPORTAMENTO INIZIALE - CHIAMANTE CONOSCIUTO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⭐ CONOSCI GIÀ QUESTA PERSONA! Si chiama ${callerName}.
-NON presentarti con "Sono Alessia l'assistente di..." perché vi conoscete già!
-
-Fai un saluto caloroso e personalizzato:
-- "Ehi ${callerName}! Che bello risentirti! Come stai?"
-- "Ciao ${callerName}! Ma che piacere! Come posso aiutarti oggi?"
-- "Oh ${callerName}! Bentornato! Tutto bene? Dimmi pure!"
-
-Poi chiedi come puoi aiutarlo oggi.`
-            : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 COMPORTAMENTO INIZIALE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Quando rispondi, fai un saluto caloroso e chiedi chi è:
-- "Ciao! Sono Alessia, l'assistente di {{consultantName}}. Con chi ho il piacere di parlare?"
-- "Ehi, ciao! Benvenuto! Dimmi, come ti chiami?"
-- "Ciao! Che bello sentirti! Come posso chiamarti?"`;
-          
-          return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Default non-client prompt template
+        const DEFAULT_NON_CLIENT_PROMPT = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 IL TUO RUOLO E IDENTITÀ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -2466,8 +2442,17 @@ Il tuo obiettivo è:
 ⚠️ LA TUA IDENTITÀ (usa questa frase se ti chiedono chi sei):
 "Sono Alessia, l'assistente digitale di {{consultantName}}. Faccio parte del suo team e aiuto i clienti nel loro percorso."
 
-${greetingSection}`;
-        };
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 COMPORTAMENTO INIZIALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⭐ REGOLA IMPORTANTE:
+Se nelle CONVERSAZIONI PRECEDENTI (sotto) conosci già il nome della persona:
+- Ti ricordi di lei! NON presentarti di nuovo
+- Salutala per nome: "Ehi [nome]! Che bello risentirti!"
+
+Se invece è la PRIMA chiamata (nessuna conversazione precedente):
+- Presentati: "Ciao! Sono Alessia, l'assistente di {{consultantName}}. Con chi parlo?"`;
         
         // Add remaining sections to the prompt
         const NON_CLIENT_PROMPT_SUFFIX = `
@@ -2515,10 +2500,9 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         // LOAD PREVIOUS CONVERSATIONS FOR RETURNING CALLERS
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         let previousCallContext = '';
-        let knownCallerName = ''; // Will be extracted from previous conversations
         if (phoneCallerId) {
           try {
-            // Find previous conversations from this phone number (limit messages in SQL for performance)
+            // Find previous conversations from this phone number
             const previousConversations = await db.execute(sql`
               SELECT 
                 ac.id,
@@ -2546,66 +2530,14 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
             if (previousConversations.rows.length > 0) {
               console.log(`📱 [${connectionId}] Found ${previousConversations.rows.length} previous conversations for caller ${phoneCallerId}`);
               
-              // Try to extract caller name from previous conversations
-              // Look for patterns like "mi chiamo X", "sono X", or Alessia saying "Ciao X"
-              for (const conv of previousConversations.rows as any[]) {
-                if (knownCallerName) break; // Already found the name
-                if (conv.messages && Array.isArray(conv.messages)) {
-                  for (const msg of conv.messages) {
-                    // Look for caller introducing themselves
-                    if (msg.role === 'user') {
-                      const introPatterns = [
-                        /mi chiamo\s+([A-Z][a-zà-ù]+)/i,
-                        /sono\s+([A-Z][a-zà-ù]+)(?:\s|,|\.|\!|$)/i,
-                        /^([A-Z][a-zà-ù]+)(?:\s|,|\.|\!|$)/i, // Just the name at the start
-                      ];
-                      for (const pattern of introPatterns) {
-                        const match = msg.content.match(pattern);
-                        if (match && match[1] && match[1].length >= 2 && match[1].length <= 20) {
-                          // Validate it looks like a name (capitalized, reasonable length)
-                          const potentialName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
-                          // Exclude common non-name words
-                          const excludeWords = ['ciao', 'buongiorno', 'salve', 'pronto', 'ecco', 'bene', 'grazie', 'okay', 'allora', 'quindi'];
-                          if (!excludeWords.includes(potentialName.toLowerCase())) {
-                            knownCallerName = potentialName;
-                            console.log(`📱 [${connectionId}] Extracted caller name from history: ${knownCallerName}`);
-                            break;
-                          }
-                        }
-                      }
-                    }
-                    // Also check if Alessia addressed them by name
-                    if (msg.role === 'assistant' && !knownCallerName) {
-                      const addressPatterns = [
-                        /ciao\s+([A-Z][a-zà-ù]+)(?:\s|,|\.|\!|$)/i,
-                        /grazie\s+([A-Z][a-zà-ù]+)(?:\s|,|\.|\!|$)/i,
-                        /allora\s+([A-Z][a-zà-ù]+)(?:\s|,|\.|\!|$)/i,
-                      ];
-                      for (const pattern of addressPatterns) {
-                        const match = msg.content.match(pattern);
-                        if (match && match[1] && match[1].length >= 2 && match[1].length <= 20) {
-                          const potentialName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
-                          const excludeWords = ['alessia', 'ciao', 'buongiorno'];
-                          if (!excludeWords.includes(potentialName.toLowerCase())) {
-                            knownCallerName = potentialName;
-                            console.log(`📱 [${connectionId}] Extracted caller name from Alessia's response: ${knownCallerName}`);
-                            break;
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              
               previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 STORICO CHIAMATE PRECEDENTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Questo numero (${phoneCallerId}) ha già chiamato in passato.
-${knownCallerName ? `⭐ NOME DEL CHIAMANTE: ${knownCallerName} (usa questo nome per salutarlo!)` : ''}
-Ecco un riepilogo delle conversazioni precedenti:
+⭐ Questo numero ha già chiamato! Ti ricordi di questa persona.
+Se nelle conversazioni sotto vedi il suo nome, salutala per nome!
+Ecco le conversazioni precedenti:
 
 `;
               
@@ -2668,19 +2600,19 @@ Puoi fare riferimento alle conversazioni precedenti: "Ah, certo! L'ultima volta 
               console.log(`📞 [${connectionId}] Using agent prompt: ${agent.name} (${contentPrompt.length} chars)`);
             } else {
               console.warn(`⚠️ [${connectionId}] Agent ${nonClientAgentId} not found, falling back to default`);
-              contentPrompt = interpolatePlaceholders(getDefaultNonClientPrompt(knownCallerName) + NON_CLIENT_PROMPT_SUFFIX);
+              contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
             }
           } catch (err) {
             console.warn(`⚠️ [${connectionId}] Could not fetch agent prompt:`, err);
-            contentPrompt = interpolatePlaceholders(getDefaultNonClientPrompt(knownCallerName) + NON_CLIENT_PROMPT_SUFFIX);
+            contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
           }
         } else if (nonClientPromptSource === 'manual' && nonClientManualPrompt) {
           contentPrompt = interpolatePlaceholders(nonClientManualPrompt);
           console.log(`📞 [${connectionId}] Using manual prompt (${contentPrompt.length} chars)`);
         } else {
-          // Default template - personalized based on known caller name
-          contentPrompt = interpolatePlaceholders(getDefaultNonClientPrompt(knownCallerName) + NON_CLIENT_PROMPT_SUFFIX);
-          console.log(`📞 [${connectionId}] Using default prompt template${knownCallerName ? ` (caller: ${knownCallerName})` : ''}`);
+          // Default template
+          contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
+          console.log(`📞 [${connectionId}] Using default prompt template`);
         }
         
         // Get current Italian time for the prompt
