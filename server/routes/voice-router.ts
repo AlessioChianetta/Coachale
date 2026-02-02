@@ -797,12 +797,13 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       WHERE consultant_id = ${consultantId}
     `);
 
-    // Get available agents for dropdown
+    // Get available agents for dropdown (from live_sales_agents table)
     const agentsResult = await db.execute(sql`
-      SELECT id, name, persona, prompt, status
-      FROM ai_agents 
+      SELECT id, agent_name as name, agent_type as persona, system_prompt_override as prompt, 
+             CASE WHEN is_active THEN 'active' ELSE 'inactive' END as status
+      FROM live_sales_agents 
       WHERE consultant_id = ${consultantId}
-      ORDER BY name ASC
+      ORDER BY agent_name ASC
     `);
 
     const settings = result.rows[0] as any;
@@ -843,10 +844,10 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       return res.status(400).json({ error: "Invalid nonClientPromptSource, must be 'agent', 'manual', or 'default'" });
     }
 
-    // If agent source, validate agentId exists
+    // If agent source, validate agentId exists (using live_sales_agents table)
     if (nonClientPromptSource === 'agent' && nonClientAgentId) {
       const agentCheck = await db.execute(sql`
-        SELECT id FROM ai_agents WHERE id = ${nonClientAgentId} AND consultant_id = ${consultantId}
+        SELECT id FROM live_sales_agents WHERE id = ${nonClientAgentId} AND consultant_id = ${consultantId}
       `);
       if (agentCheck.rows.length === 0) {
         return res.status(400).json({ error: "Agent not found or does not belong to this consultant" });

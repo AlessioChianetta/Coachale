@@ -2397,11 +2397,11 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         let contentPrompt = '';
         
         if (nonClientPromptSource === 'agent' && nonClientAgentId) {
-          // Load agent prompt from ai_agents table using raw SQL
+          // Load agent prompt from live_sales_agents table using raw SQL
           try {
             const agentResult = await db.execute(sql`
-              SELECT prompt, name
-              FROM ai_agents 
+              SELECT system_prompt_override as prompt, agent_name as name
+              FROM live_sales_agents 
               WHERE id = ${nonClientAgentId}
             `);
             
