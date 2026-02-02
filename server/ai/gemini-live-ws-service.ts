@@ -2261,22 +2261,39 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       else if (isPhoneCall && !userId) {
         console.log(`📞 [${connectionId}] Phone call from UNKNOWN CALLER - using non-client prompt`);
         
-        // Import the functions for Live API
-        const { buildMinimalSystemInstructionForLive } = await import('../ai-prompts');
+        // Get consultant info for personalized prompt
+        let consultantName = 'il consulente';
+        let consultantBusinessName = '';
+        if (consultantId) {
+          try {
+            const consultant = await storage.getUser(consultantId);
+            if (consultant) {
+              consultantName = consultant.fullName || consultant.email?.split('@')[0] || 'il consulente';
+              consultantBusinessName = consultant.businessName || '';
+              console.log(`📞 [${connectionId}] Consultant info: ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}`);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
+          }
+        }
         
-        // Build non-client phone prompt with same energetic tone
+        // Build non-client phone prompt with same energetic tone and consultant name
         systemInstruction = `🎙️ MODALITÀ: CHIAMATA VOCALE - CHIAMANTE NON RICONOSCIUTO
 ⚡ Stai parlando con qualcuno che chiama per la prima volta. Non è ancora un cliente registrato.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 IL TUO RUOLO
+🎯 IL TUO RUOLO E IDENTITÀ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Sei Alessia, l'assistente AI vocale. Chi ti chiama NON è un cliente registrato.
+Sei Alessia, l'assistente AI vocale di ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}.
+Chi ti chiama NON è un cliente registrato.
 Il tuo obiettivo è:
 1. Capire chi sta chiamando e cosa cerca
 2. Fare una mini-discovery per capire le sue esigenze
-3. Se appropriato, proporre un appuntamento con un consulente
+3. Se appropriato, proporre un appuntamento con ${consultantName}
+
+⚠️ LA TUA IDENTITÀ (usa questa frase se ti chiedono chi sei):
+"Sono Alessia, l'assistente digitale di ${consultantName}. Faccio parte del suo team e aiuto i clienti nel loro percorso."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🗣️ TONO E STILE - STESSO DEI CLIENTI!
@@ -2299,7 +2316,7 @@ Il tuo obiettivo è:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Quando rispondi, fai un saluto caloroso e chiedi chi è:
-- "Ciao! Sono Alessia, l'assistente di [nome consulente]. Con chi ho il piacere di parlare?"
+- "Ciao! Sono Alessia, l'assistente di ${consultantName}. Con chi ho il piacere di parlare?"
 - "Ehi, ciao! Benvenuto! Dimmi, come ti chiami?"
 - "Ciao! Che bello sentirti! Come posso chiamarti?"
 
@@ -2322,7 +2339,7 @@ Esempi di domande:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Quando appropriato, proponi di fissare una consulenza:
-- "Sai cosa? Mi sembra che potresti beneficiare di una chiacchierata con il nostro consulente. Che ne dici se fissiamo un appuntamento?"
+- "Sai cosa? Mi sembra che potresti beneficiare di una chiacchierata con ${consultantName}. Che ne dici se fissiamo un appuntamento?"
 - "Questo è proprio il tipo di cosa in cui possiamo aiutarti! Ti va di prenotare una consulenza per approfondire?"
 
 Se accettano, chiedi:
@@ -2338,7 +2355,7 @@ Puoi rispondere anche a domande generali su finanza, investimenti, budgeting.
 Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         
         userDataContext = ''; // No user data for unknown callers
-        console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars)`);
+        console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars) - Consultant: ${consultantName}`);
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // CLIENT MODE - Build prompt from user context
