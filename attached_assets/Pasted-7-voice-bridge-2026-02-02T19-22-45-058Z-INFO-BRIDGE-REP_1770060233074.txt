@@ -1,0 +1,100 @@
+7|voice-bridge  | 2026-02-02T19:22:45.058Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=a16715de url=wss://32c1c27a-eef0-4005-b5dc-d0cb3d0de45e-00-3r6fx0u1ii8hv.kirk.replit.dev/ws/ai-voice voice=Puck
+7|voice-bridge  | 2026-02-02T19:22:45.657Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=a16715de
+7|voice-bridge  | 2026-02-02T19:22:45.657Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=a16715de
+7|voice-bridge  | 2026-02-02T19:22:45.657Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=a16715de from=connecting to=active
+7|voice-bridge  | 2026-02-02T19:22:52.705Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao! Sono
+7|voice-bridge  | 2026-02-02T19:22:52.706Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao! Sono"
+7|voice-bridge  | 2026-02-02T19:22:53.002Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Alessia,
+7|voice-bridge  | 2026-02-02T19:22:53.002Z [INFO ] [BRIDGE:SERVER] [AI]: " Alessia,"
+7|voice-bridge  | 2026-02-02T19:22:53.146Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  l'assistente
+7|voice-bridge  | 2026-02-02T19:22:53.146Z [INFO ] [BRIDGE:SERVER] [AI]: " l'assistente"
+7|voice-bridge  | 2026-02-02T19:22:53.308Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di alessio.
+7|voice-bridge  | 2026-02-02T19:22:53.308Z [INFO ] [BRIDGE:SERVER] [AI]: " di alessio."
+7|voice-bridge  | 2026-02-02T19:22:53.374Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Con chi
+7|voice-bridge  | 2026-02-02T19:22:53.374Z [INFO ] [BRIDGE:SERVER] [AI]: " Con chi"
+7|voice-bridge  | 2026-02-02T19:22:53.465Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ho il piacere
+7|voice-bridge  | 2026-02-02T19:22:53.465Z [INFO ] [BRIDGE:SERVER] [AI]: " ho il piacere"
+7|voice-bridge  | 2026-02-02T19:22:53.556Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di parlare?
+7|voice-bridge  | 2026-02-02T19:22:53.556Z [INFO ] [BRIDGE:SERVER] [AI]: " di parlare?"
+7|voice-bridge  | 2026-02-02T19:23:00.681Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao Marco!
+7|voice-bridge  | 2026-02-02T19:23:00.681Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao Marco!"
+7|voice-bridge  | 2026-02-02T19:23:00.935Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che bello
+7|voice-bridge  | 2026-02-02T19:23:00.935Z [INFO ] [BRIDGE:SERVER] [AI]: " Che bello"
+7|voice-bridge  | 2026-02-02T19:23:01.021Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sentirti!
+7|voice-bridge  | 2026-02-02T19:23:01.021Z [INFO ] [BRIDGE:SERVER] [AI]: " sentirti!"
+7|voice-bridge  | 2026-02-02T19:23:01.140Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Dimmi
+7|voice-bridge  | 2026-02-02T19:23:01.140Z [INFO ] [BRIDGE:SERVER] [AI]: " Dimmi"
+7|voice-bridge  | 2026-02-02T19:23:01.305Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  tutto,
+7|voice-bridge  | 2026-02-02T19:23:01.305Z [INFO ] [BRIDGE:SERVER] [AI]: " tutto,"
+7|voice-bridge  | 2026-02-02T19:23:01.395Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  come
+7|voice-bridge  | 2026-02-02T19:23:01.395Z [INFO ] [BRIDGE:SERVER] [AI]: " come"
+7|voice-bridge  | 2026-02-02T19:23:01.437Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  posso
+7|voice-bridge  | 2026-02-02T19:23:01.437Z [INFO ] [BRIDGE:SERVER] [AI]: " posso"
+7|voice-bridge  | 2026-02-02T19:23:01.478Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti
+7|voice-bridge  | 2026-02-02T19:23:01.479Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti"
+7|voice-bridge  | 2026-02-02T19:23:01.570Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  oggi?
+7|voice-bridge  | 2026-02-02T19:23:01.570Z [INFO ] [BRIDGE:SERVER] [AI]: " oggi?"
+7|voice-bridge  | 2026-02-02T19:23:08.648Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Sono qui
+7|voice-bridge  | 2026-02-02T19:23:08.649Z [INFO ] [BRIDGE:SERVER] [AI]: "Sono qui"
+7|voice-bridge  | 2026-02-02T19:23:08.857Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  per darti
+7|voice-bridge  | 2026-02-02T19:23:08.857Z [INFO ] [BRIDGE:SERVER] [AI]: " per darti"
+7|voice-bridge  | 2026-02-02T19:23:08.990Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  una mano
+7|voice-bridge  | 2026-02-02T19:23:08.991Z [INFO ] [BRIDGE:SERVER] [AI]: " una mano"
+7|voice-bridge  | 2026-02-02T19:23:09.036Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  con
+7|voice-bridge  | 2026-02-02T19:23:09.036Z [INFO ] [BRIDGE:SERVER] [AI]: " con"
+7|voice-bridge  | 2026-02-02T19:23:09.106Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  tutto
+7|voice-bridge  | 2026-02-02T19:23:09.107Z [INFO ] [BRIDGE:SERVER] [AI]: " tutto"
+7|voice-bridge  | 2026-02-02T19:23:09.150Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ciò che
+7|voice-bridge  | 2026-02-02T19:23:09.151Z [INFO ] [BRIDGE:SERVER] [AI]: " ciò che"
+7|voice-bridge  | 2026-02-02T19:23:09.200Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  riguarda
+7|voice-bridge  | 2026-02-02T19:23:09.200Z [INFO ] [BRIDGE:SERVER] [AI]: " riguarda"
+7|voice-bridge  | 2026-02-02T19:23:09.293Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  la finanza
+7|voice-bridge  | 2026-02-02T19:23:09.294Z [INFO ] [BRIDGE:SERVER] [AI]: " la finanza"
+7|voice-bridge  | 2026-02-02T19:23:09.398Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  personale!
+7|voice-bridge  | 2026-02-02T19:23:09.398Z [INFO ] [BRIDGE:SERVER] [AI]: " personale!"
+7|voice-bridge  | 2026-02-02T19:23:09.640Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che tu
+7|voice-bridge  | 2026-02-02T19:23:09.640Z [INFO ] [BRIDGE:SERVER] [AI]: " Che tu"
+7|voice-bridge  | 2026-02-02T19:23:09.693Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  stia
+7|voice-bridge  | 2026-02-02T19:23:09.693Z [INFO ] [BRIDGE:SERVER] [AI]: " stia"
+7|voice-bridge  | 2026-02-02T19:23:09.752Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  pensando
+7|voice-bridge  | 2026-02-02T19:23:09.753Z [INFO ] [BRIDGE:SERVER] [AI]: " pensando"
+7|voice-bridge  | 2026-02-02T19:23:09.876Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di investire,
+7|voice-bridge  | 2026-02-02T19:23:09.876Z [INFO ] [BRIDGE:SERVER] [AI]: " di investire,"
+7|voice-bridge  | 2026-02-02T19:23:10.049Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di gestire
+7|voice-bridge  | 2026-02-02T19:23:10.049Z [INFO ] [BRIDGE:SERVER] [AI]: " di gestire"
+7|voice-bridge  | 2026-02-02T19:23:10.179Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  meglio
+7|voice-bridge  | 2026-02-02T19:23:10.179Z [INFO ] [BRIDGE:SERVER] [AI]: " meglio"
+7|voice-bridge  | 2026-02-02T19:23:10.284Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  i tuoi
+7|voice-bridge  | 2026-02-02T19:23:10.284Z [INFO ] [BRIDGE:SERVER] [AI]: " i tuoi"
+7|voice-bridge  | 2026-02-02T19:23:10.321Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  budget
+7|voice-bridge  | 2026-02-02T19:23:10.322Z [INFO ] [BRIDGE:SERVER] [AI]: " budget"
+7|voice-bridge  | 2026-02-02T19:23:10.430Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  o anche
+7|voice-bridge  | 2026-02-02T19:23:10.430Z [INFO ] [BRIDGE:SERVER] [AI]: " o anche"
+7|voice-bridge  | 2026-02-02T19:23:10.574Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  solo
+7|voice-bridge  | 2026-02-02T19:23:10.574Z [INFO ] [BRIDGE:SERVER] [AI]: " solo"
+7|voice-bridge  | 2026-02-02T19:23:10.612Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di capire
+7|voice-bridge  | 2026-02-02T19:23:10.612Z [INFO ] [BRIDGE:SERVER] [AI]: " di capire"
+7|voice-bridge  | 2026-02-02T19:23:10.749Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  qualcosa
+7|voice-bridge  | 2026-02-02T19:23:10.749Z [INFO ] [BRIDGE:SERVER] [AI]: " qualcosa"
+7|voice-bridge  | 2026-02-02T19:23:10.793Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  in più,
+7|voice-bridge  | 2026-02-02T19:23:10.793Z [INFO ] [BRIDGE:SERVER] [AI]: " in più,"
+7|voice-bridge  | 2026-02-02T19:23:10.919Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sono
+7|voice-bridge  | 2026-02-02T19:23:10.919Z [INFO ] [BRIDGE:SERVER] [AI]: " sono"
+7|voice-bridge  | 2026-02-02T19:23:11.024Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  qui per
+7|voice-bridge  | 2026-02-02T19:23:11.024Z [INFO ] [BRIDGE:SERVER] [AI]: " qui per"
+7|voice-bridge  | 2026-02-02T19:23:11.072Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  rispondere
+7|voice-bridge  | 2026-02-02T19:23:11.072Z [INFO ] [BRIDGE:SERVER] [AI]: " rispondere"
+7|voice-bridge  | 2026-02-02T19:23:11.161Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  alle tue
+7|voice-bridge  | 2026-02-02T19:23:11.161Z [INFO ] [BRIDGE:SERVER] [AI]: " alle tue"
+7|voice-bridge  | 2026-02-02T19:23:11.265Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  domande.
+7|voice-bridge  | 2026-02-02T19:23:11.265Z [INFO ] [BRIDGE:SERVER] [AI]: " domande."
+7|voice-bridge  | 2026-02-02T19:23:11.329Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  C'è
+7|voice-bridge  | 2026-02-02T19:23:11.329Z [INFO ] [BRIDGE:SERVER] [AI]: " C'è"
+7|voice-bridge  | 2026-02-02T19:23:11.452Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  qualcosa
+7|voice-bridge  | 2026-02-02T19:23:11.453Z [INFO ] [BRIDGE:SERVER] [AI]: " qualcosa"
+7|voice-bridge  | 2026-02-02T19:23:11.538Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di specifico
+7|voice-bridge  | 2026-02-02T19:23:11.538Z [INFO ] [BRIDGE:SERVER] [AI]: " di specifico"
+7|voice-bridge  | 2026-02-02T19:23:11.671Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  che ti
+7|voice-bridge  | 2026-02-02T19:23:11.671Z [INFO ] [BRIDGE:SERVER] [AI]: " che ti"
+7|voice-bridge  | 2026-02-02T19:23:11.713Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  interessa?
+7|voice-bridge  | 2026-02-02T19:23:11.713Z [INFO ] [BRIDGE:SERVER] [AI]: " interessa?"
