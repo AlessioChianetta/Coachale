@@ -308,6 +308,28 @@ export default function ConsultantVoiceCallsPage() {
     },
   });
 
+  const saveTokenMutation = useMutation({
+    mutationFn: async (token: string) => {
+      const res = await fetch("/api/voice/service-token", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio del token");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchTokenStatus();
+      toast({ title: "Token salvato", description: "Il token è stato sincronizzato con il database" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
   const { data: callsData, isLoading: loadingCalls, refetch: refetchCalls } = useQuery({
     queryKey: ["/api/voice/calls", page, statusFilter, search],
     queryFn: async () => {
@@ -1330,29 +1352,42 @@ export default function ConsultantVoiceCallsPage() {
                       </Button>
                     </div>
 
-                    {/* Token generato */}
-                    {serviceToken && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Token di Servizio (REPLIT_API_TOKEN):</label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={serviceToken}
-                            readOnly
-                            className="font-mono text-xs"
-                          />
-                          <Button onClick={copyToken} variant="outline" size="icon">
-                            {tokenCopied ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Il token non scade. Se lo rigeneri, quello vecchio smette di funzionare.
-                        </p>
+                    {/* Token input/output */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Token di Servizio (REPLIT_SERVICE_TOKEN):</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={serviceToken || ''}
+                          onChange={(e) => setServiceToken(e.target.value)}
+                          placeholder="Incolla qui il token JWT esistente oppure genera uno nuovo"
+                          className="font-mono text-xs"
+                        />
+                        <Button onClick={copyToken} variant="outline" size="icon" disabled={!serviceToken}>
+                          {tokenCopied ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button 
+                          onClick={() => saveTokenMutation.mutate(serviceToken || '')}
+                          disabled={saveTokenMutation.isPending || !serviceToken}
+                          variant="default"
+                        >
+                          {saveTokenMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              Salva
+                            </>
+                          )}
+                        </Button>
                       </div>
-                    )}
+                      <p className="text-xs text-muted-foreground">
+                        Incolla il token esistente dalla VPS oppure generane uno nuovo. Clicca "Salva" per sincronizzarlo.
+                      </p>
+                    </div>
 
                     {/* VPS Bridge URL */}
                     <div className="space-y-2">

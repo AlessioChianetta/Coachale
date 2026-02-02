@@ -515,6 +515,45 @@ router.get("/blocked", authenticateToken, requireAnyRole(["consultant", "super_a
 // SERVICE TOKEN - Token per VPS Voice Bridge
 // ═══════════════════════════════════════════════════════════════════
 
+// PUT /api/voice/service-token - Salva token esistente nel database
+router.put("/service-token", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { token } = req.body;
+
+    if (!token || typeof token !== 'string' || token.length < 50) {
+      return res.status(400).json({ error: "Token non valido (deve essere un JWT)" });
+    }
+
+    // Revoke existing tokens
+    await db.execute(sql`
+      UPDATE voice_service_tokens 
+      SET revoked_at = NOW(), revoked_reason = 'Replaced by manual token'
+      WHERE consultant_id = ${consultantId} AND revoked_at IS NULL
+    `);
+
+    // Insert new token
+    await db.execute(sql`
+      INSERT INTO voice_service_tokens (id, consultant_id, token, created_at)
+      VALUES (gen_random_uuid(), ${consultantId}, ${token}, NOW())
+    `);
+
+    // Update tracking
+    await db.execute(sql`
+      UPDATE consultant_availability_settings 
+      SET voice_service_token_created_at = NOW(), 
+          voice_service_token_count = COALESCE(voice_service_token_count, 0) + 1
+      WHERE consultant_id = ${consultantId}
+    `);
+
+    console.log(`📞 [VOICE] Manual service token saved for consultant ${consultantId}`);
+    res.json({ success: true, message: "Token salvato" });
+  } catch (error) {
+    console.error("[Voice] Error saving service token:", error);
+    res.status(500).json({ error: "Errore nel salvataggio del token" });
+  }
+});
+
 // POST /api/voice/service-token - Genera token di servizio per VPS Bridge
 router.post("/service-token", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
