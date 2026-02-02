@@ -8,7 +8,7 @@ import {
   bufferToBase64 
 } from './audio-converter';
 import { db } from '../db';
-import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings } from '@shared/schema';
+import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings, voiceCalls } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
@@ -42,8 +42,27 @@ interface ActiveSessionEntry {
   clientId: string;
 }
 
+interface ActiveVoiceCall {
+  id: string;
+  callerId: string;
+  consultantId: string;
+  clientId: string | null;
+  startedAt: Date;
+  status: string;
+}
+
 const activeSessionsCache = new Map<string, ActiveSessionEntry>();
+const activeVoiceCalls = new Map<string, ActiveVoiceCall>();
 const SESSION_TTL_MS = 3 * 60 * 1000; // 3 minuti
+
+// Export function to get active voice calls
+export function getActiveVoiceCalls(): ActiveVoiceCall[] {
+  return Array.from(activeVoiceCalls.values());
+}
+
+export function getActiveVoiceCallsForConsultant(consultantId: string): ActiveVoiceCall[] {
+  return Array.from(activeVoiceCalls.values()).filter(call => call.consultantId === consultantId);
+}
 
 /**
  * Cleanup automatico entries scadute ogni 60 secondi
@@ -694,6 +713,37 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.warn(`⚠️ [PHONE SERVICE] Could not fetch voice settings, using default: ${consultantVoice}`);
         }
 
+        // Create voice call record in database
+        const voiceCallId = `vc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const freeswitchUuid = url.searchParams.get('uuid') || `ws_${Date.now()}`;
+        
+        try {
+          await db.insert(voiceCalls).values({
+            id: voiceCallId,
+            callerId: normalizedCallerId,
+            calledNumber: '9999', // Extension for assistenza
+            clientId: userId || null,
+            consultantId: decoded.consultantId,
+            freeswitchUuid: freeswitchUuid,
+            status: 'active',
+            startedAt: new Date(),
+            aiMode: 'assistenza',
+          });
+          console.log(`📞 [PHONE SERVICE] Voice call record created: ${voiceCallId}`);
+          
+          // Track active call
+          activeVoiceCalls.set(voiceCallId, {
+            id: voiceCallId,
+            callerId: normalizedCallerId,
+            consultantId: decoded.consultantId,
+            clientId: userId,
+            startedAt: new Date(),
+            status: 'active',
+          });
+        } catch (dbErr) {
+          console.error(`❌ [PHONE SERVICE] Failed to create voice call record:`, dbErr);
+        }
+
         console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}`);
 
         return {
@@ -714,6 +764,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           testMode: null,
           isPhoneCall: true,
           phoneCallerId: normalizedCallerId,
+          voiceCallId: voiceCallId,
         };
       } catch (jwtError) {
         console.error('❌ Invalid phone_service token:', jwtError);
@@ -1042,7 +1093,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       return;
     }
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId } = authResult;
 
     // Validazione: consultantId è obbligatorio per Live Mode (except sales_agent and consultation_invite)
     if (!consultantId && mode !== 'sales_agent' && mode !== 'consultation_invite') {
@@ -6074,6 +6125,53 @@ ${compactFeedback}
       clientWs.on('close', async (code, reason) => {
         console.log(`❌ [${connectionId}] Client disconnected - Code: ${code}, Reason: ${reason}`);
         isSessionActive = false;
+        
+        // 📞 VOICE CALL CLEANUP: Update voice_calls record if this was a phone call
+        if (voiceCallId) {
+          try {
+            const endedAt = new Date();
+            const activeCall = activeVoiceCalls.get(voiceCallId);
+            const startTime = activeCall?.startedAt || new Date();
+            const durationSeconds = Math.round((endedAt.getTime() - startTime.getTime()) / 1000);
+            
+            // Get transcript from saved ai_conversation if available
+            let transcriptText = '';
+            if (currentConversationId) {
+              try {
+                const messages = await db.execute(sql`
+                  SELECT role, content FROM ai_messages 
+                  WHERE conversation_id = ${currentConversationId}
+                  ORDER BY created_at ASC
+                `);
+                transcriptText = (messages.rows as any[])
+                  .map(m => `[${m.role}] ${m.content}`)
+                  .join('\n');
+              } catch (e) {
+                console.warn(`⚠️ [${connectionId}] Could not fetch transcript for voice call`);
+              }
+            }
+            
+            await db
+              .update(voiceCalls)
+              .set({
+                status: 'completed',
+                endedAt: endedAt,
+                durationSeconds: durationSeconds,
+                fullTranscript: transcriptText || null,
+                aiConversationId: currentConversationId || null,
+                outcome: code === 1000 ? 'normal_end' : `disconnect_${code}`,
+                updatedAt: new Date(),
+              })
+              .where(eq(voiceCalls.id, voiceCallId));
+            
+            // Remove from active calls tracking
+            activeVoiceCalls.delete(voiceCallId);
+            
+            console.log(`📞 [${connectionId}] Voice call ${voiceCallId} completed - Duration: ${durationSeconds}s`);
+          } catch (vcErr) {
+            console.error(`❌ [${connectionId}] Failed to update voice call record:`, vcErr);
+          }
+        }
         
         // 🔴 CACHE CLEANUP: Rimuovi sessione dalla cache
         if (currentConsultationId) {

@@ -14,6 +14,7 @@ import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { consultantAvailabilitySettings } from "@shared/schema";
+import { getActiveVoiceCallsForConsultant } from "../ai/gemini-live-ws-service";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -25,6 +26,27 @@ const router = Router();
 // ═══════════════════════════════════════════════════════════════════
 // VOICE CALLS - Lista e dettaglio chiamate
 // ═══════════════════════════════════════════════════════════════════
+
+// GET /api/voice/calls/active - Chiamate attive in tempo reale
+router.get("/calls/active", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const activeCalls = getActiveVoiceCallsForConsultant(consultantId);
+    
+    return res.json({
+      success: true,
+      activeCalls: activeCalls,
+      count: activeCalls.length,
+    });
+  } catch (error: any) {
+    console.error("[VOICE] Error fetching active calls:", error);
+    return res.status(500).json({ error: "Failed to fetch active calls" });
+  }
+});
 
 // GET /api/voice/calls - Lista chiamate con filtri
 router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
