@@ -1,0 +1,31 @@
+
+7|voice-bridge  | 2026-02-02T05:06:47.521Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=f9914ddd-fa69-4b16-b7f9-39f93801b4f7
+7|voice-bridge  | 2026-02-02T05:06:47.521Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: f9914ddd-fa69-4b16-b7f9-39f93801b4f7
+7|voice-bridge  | 2026-02-02T05:06:47.570Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=f9914ddd-fa69-4b16-b7f9-39f93801b4f7
+7|voice-bridge  | 2026-02-02T05:06:47.574Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-bridge  | 2026-02-02T05:06:47.575Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=f9914ddd-fa69-4b16-b7f9-39f93801b4f7 | Codec=L16 | Rate=16000
+7|voice-bridge  | 2026-02-02T05:06:47.575Z [INFO ] [BRIDGE:SESSION] Session created sessionId=75550c81 callId=f9914ddd-fa69-4b16-b7f9-39f93801b4f7 callerId=unknown calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-bridge  | 2026-02-02T05:06:48.151Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=75550c81 url=wss://ecd62906-8d14-4db7-b8da-31957459c644-00-be9rk8l4u13l.riker.replit.dev/ws/ai-voice voice=Puck
+7|voice-bridge  | 2026-02-02T05:06:48.660Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=75550c81
+7|voice-bridge  | 2026-02-02T05:06:48.660Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=75550c81
+7|voice-bridge  | 2026-02-02T05:06:48.660Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=75550c81 from=connecting to=active
+7|voice-bridge  | 2026-02-02T05:06:50.945Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao Jacopo!
+7|voice-bridge  | 2026-02-02T05:06:50.945Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao Jacopo!"
+7|voice-bridge  | 2026-02-02T05:06:51.265Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che super
+7|voice-bridge  | 2026-02-02T05:06:51.265Z [INFO ] [BRIDGE:SERVER] [AI]: " Che super"
+7|voice-bridge  | 2026-02-02T05:06:51.318Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  giornata!
+7|voice-bridge  | 2026-02-02T05:06:51.318Z [INFO ] [BRIDGE:SERVER] [AI]: " giornata!"
+7|voice-bridge  | 2026-02-02T05:06:51.484Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Come
+7|voice-bridge  | 2026-02-02T05:06:51.484Z [INFO ] [BRIDGE:SERVER] [AI]: " Come"
+7|voice-bridge  | 2026-02-02T05:06:51.583Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  posso
+7|voice-bridge  | 2026-02-02T05:06:51.583Z [INFO ] [BRIDGE:SERVER] [AI]: " posso"
+7|voice-bridge  | 2026-02-02T05:06:51.603Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti
+7|voice-bridge  | 2026-02-02T05:06:51.603Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti"
+7|voice-bridge  | 2026-02-02T05:06:51.739Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  in questo
+7|voice-bridge  | 2026-02-02T05:06:51.739Z [INFO ] [BRIDGE:SERVER] [AI]: " in questo"
+7|voice-bridge  | 2026-02-02T05:06:51.796Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  momento
+7|voice-bridge  | 2026-02-02T05:06:51.797Z [INFO ] [BRIDGE:SERVER] [AI]: " momento"
+7|voice-bridge  | 2026-02-02T05:06:51.880Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  super
+7|voice-bridge  | 2026-02-02T05:06:51.880Z [INFO ] [BRIDGE:SERVER] [AI]: " super"
+7|voice-bridge  | 2026-02-02T05:06:51.955Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  energico?
+7|voice-bridge  | 2026-02-02T05:06:51.955Z [INFO ] [BRIDGE:SERVER] [AI]: " energico?"

@@ -1041,7 +1041,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       return;
     }
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId } = authResult;
 
     // Validazione: consultantId è obbligatorio per Live Mode (except sales_agent and consultation_invite)
     if (!consultantId && mode !== 'sales_agent' && mode !== 'consultation_invite') {
@@ -3604,14 +3604,24 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                   isAiSpeaking = true;
                 }
                 
-                // PCM 24kHz raw da Gemini - converti in WAV per il browser
+                // PCM 24kHz raw da Gemini
                 const pcmBuffer = base64ToBuffer(part.inlineData.data);
-                const wavBuffer = await convertPCMToWAV(pcmBuffer, 24000);
                 
-                clientWs.send(JSON.stringify({
-                  type: 'audio_output',
-                  data: bufferToBase64(wavBuffer)
-                }));
+                if (isPhoneCall) {
+                  // PHONE CALL: Invia PCM raw binario direttamente al VPS (24kHz)
+                  clientWs.send(pcmBuffer, { binary: true });
+                  // Log solo ogni 10 chunk per non spammare
+                  if (Math.random() < 0.1) {
+                    console.log(`📞 [${connectionId}] Phone audio: ${pcmBuffer.length} bytes PCM raw → VPS`);
+                  }
+                } else {
+                  // BROWSER: Converti in WAV e invia come JSON base64
+                  const wavBuffer = await convertPCMToWAV(pcmBuffer, 24000);
+                  clientWs.send(JSON.stringify({
+                    type: 'audio_output',
+                    data: bufferToBase64(wavBuffer)
+                  }));
+                }
               }
 
               if (part.text) {

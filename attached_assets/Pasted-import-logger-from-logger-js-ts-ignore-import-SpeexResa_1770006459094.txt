@@ -1,0 +1,119 @@
+import { logger } from './logger.js';
+// @ts-ignore
+import SpeexResampler from 'speex-resampler';
+
+const log = logger.child('AUDIO');
+
+const MULAW_BIAS = 33;
+const MULAW_MAX = 32635;
+const mulawDecodeTable = new Int16Array(256);
+const mulawEncodeTable = new Uint8Array(65536);
+
+function initMulawTables(): void {
+    for (let i = 0; i < 256; i++) {
+        let mulaw = ~i;
+        const sign = mulaw & 0x80;
+        const exponent = (mulaw >> 4) & 0x07;
+        const mantissa = mulaw & 0x0f;
+        let sample = ((mantissa << 3) + MULAW_BIAS) << exponent;
+        sample -= MULAW_BIAS;
+        if (sign) sample = -sample;
+        mulawDecodeTable[i] = sample;
+    }
+    for (let i = -32768; i < 32768; i++) {
+        const sign = i < 0 ? 0x80 : 0;
+        let sample = Math.abs(i);
+        if (sample > MULAW_MAX) sample = MULAW_MAX;
+        sample += MULAW_BIAS;
+        let exponent = 7;
+        for (let expMask = 0x4000; (sample & expMask) === 0 && exponent > 0; exponent--, expMask >>= 1) { }
+        const mantissa = (sample >> (exponent + 3)) & 0x0f;
+        const mulaw = ~(sign | (exponent << 4) | mantissa);
+        mulawEncodeTable[(i + 32768) & 0xffff] = mulaw & 0xff;
+    }
+    log.debug('μ-law lookup tables initialized');
+}
+initMulawTables();
+
+export function mulawToPcm(mulawData: Buffer): Buffer {
+    const pcmData = Buffer.alloc(mulawData.length * 2);
+    for (let i = 0; i < mulawData.length; i++) {
+        const sample = mulawDecodeTable[mulawData[i]];
+        pcmData.writeInt16LE(sample, i * 2);
+    }
+    return pcmData;
+}
+
+export function pcmToMulaw(pcmData: Buffer): Buffer {
+    const mulawData = Buffer.alloc(pcmData.length / 2);
+    for (let i = 0; i < mulawData.length; i++) {
+        const sample = pcmData.readInt16LE(i * 2);
+        mulawData[i] = mulawEncodeTable[(sample + 32768) & 0xffff];
+    }
+    return mulawData;
+}
+
+// *** NUOVA FUNZIONE RESAMPLE CON SPEEX ***
+export function resample(input: Buffer, inputRate: number, outputRate: number): Buffer {
+    if (inputRate === outputRate) return input;
+
+    try {
+        // CORREZIONE QUI: (SpeexResampler as any) per evitare errore TS2351
+        const resampler = new (SpeexResampler as any)(1, inputRate, outputRate, 6);
+        return resampler.process(input);
+    } catch (err) {
+        // FALLBACK: Se Speex fallisce, usiamo il vecchio metodo lineare
+        // log.warn('Speex resampling failed, using linear fallback', { error: err });
+        
+        const inputSamples = input.length / 2;
+        const ratio = outputRate / inputRate;
+        const outputSamples = Math.floor(inputSamples * ratio);
+        const output = Buffer.alloc(outputSamples * 2);
+        for (let i = 0; i < outputSamples; i++) {
+            const srcPos = i / ratio;
+            const srcIndex = Math.floor(srcPos);
+            const frac = srcPos - srcIndex;
+            const s1 = input.readInt16LE(Math.min(srcIndex, inputSamples - 1) * 2);
+            const s2 = input.readInt16LE(Math.min(srcIndex + 1, inputSamples - 1) * 2);
+            const sample = Math.round(s1 + (s2 - s1) * frac);
+            output.writeInt16LE(sample, i * 2);
+        }
+        return output;
+    }
+}
+
+export function convertForGemini(fsAudio: Buffer, codec: string, inputRate: number = 16000): Buffer {
+    let pcm: Buffer;
+    if (codec === 'PCMU') {
+        pcm = mulawToPcm(fsAudio);
+    } else {
+        pcm = fsAudio;
+    }
+    if (inputRate !== 16000) {
+        pcm = resample(pcm, inputRate, 16000);
+    }
+    return pcm;
+}
+
+export function convertFromGemini(geminiAudio: Buffer, codec: string, outputRate: number = 16000): Buffer {
+    let pcm = geminiAudio;
+
+    // 1. Gemini manda a 24k, noi portiamo a outputRate (che ora è 8000)
+    // Qui entra in gioco la nuova funzione resample con Speex
+    if (outputRate !== 24000) {
+        pcm = resample(pcm, 24000, outputRate);
+    }
+
+    // 2. SE IL CODEC È L16, MANDIAMO AUDIO PURO (Buffer diretto)
+    if (codec === 'L16') {
+        return pcm;
+    }
+
+    // 3. Conversione in G.711 PCMU se necessario
+    return pcmToMulaw(pcm);
+}
+
+export function pcmToBase64(pcmData: Buffer): string { return pcmData.toString('base64'); }
+export function base64ToPcm(base64Data: string): Buffer { return Buffer.from(base64Data, 'base64'); }
+
+log.info('Audio converter updated: Using Speex Resampler');

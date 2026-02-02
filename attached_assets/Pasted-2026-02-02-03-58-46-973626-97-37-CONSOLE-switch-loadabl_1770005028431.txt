@@ -1,0 +1,69 @@
+2026-02-02 03:58:46.973626 97.37% [CONSOLE] switch_loadable_module.c:2354 Stopping: mod_audio_stream
+2026-02-02 03:58:46.973626 97.37% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::json
+2026-02-02 03:58:46.973626 97.37% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::connect
+2026-02-02 03:58:46.973626 97.37% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::disconnect
+2026-02-02 03:58:46.973626 97.37% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::error
+2026-02-02 03:58:46.973626 97.37% [CONSOLE] switch_loadable_module.c:2374 mod_audio_stream unloaded.
+2026-02-02 03:58:46.973626 97.37% [NOTICE] mod_audio_stream.c:253 mod_audio_stream API loading..
+2026-02-02 03:58:46.973626 97.37% [NOTICE] mod_audio_stream.c:274 mod_audio_stream API successfully loaded
+2026-02-02 03:58:46.973626 97.37% [CONSOLE] switch_loadable_module.c:1772 Successfully Loaded [mod_audio_stream]
+2026-02-02 03:58:46.973626 97.37% [NOTICE] switch_loadable_module.c:389 Adding API Function 'uuid_audio_stream'
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 playback(tone_stream://%(200,0,800))
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"})
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(mod_audio_stream_bidirectional=true)
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(audio_stream_bidirectional=true)
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 playback(silence_stream://-1)
+2026-02-02 04:02:26.333624 94.63% [INFO] mod_audio_stream.c:34 Got SWITCH_ABC_TYPE_CLOSE.
+2026-02-02 04:02:26.333624 94.63% [INFO] audio_streamer_glue.cpp:502 1e7e680b-2ead-4e3d-b2b9-354c37dba807 destroy_tech_pvt
+2026-02-02 04:02:26.333624 94.63% [INFO] audio_streamer_glue.cpp:921 (1e7e680b-2ead-4e3d-b2b9-354c37dba807) stream_session_cleanup: connection closed
+2026-02-02 04:02:26.373608 94.63% [NOTICE] switch_loadable_module.c:1285 Deleting API Function 'local_stream'
+2026-02-02 04:02:26.373608 94.63% [NOTICE] switch_loadable_module.c:1360 Deleting File Format 'local_stream'
+2026-02-02 04:02:26.373608 94.63% [CONSOLE] switch_loadable_module.c:2354 Stopping: mod_local_stream
+2026-02-02 04:02:27.573925 94.50% [NOTICE] switch_loadable_module.c:1285 Deleting API Function 'uuid_audio_stream'
+2026-02-02 04:02:27.573925 94.50% [CONSOLE] switch_loadable_module.c:2354 Stopping: mod_audio_stream
+2026-02-02 04:02:27.573925 94.50% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::json
+2026-02-02 04:02:27.573925 94.50% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::connect
+2026-02-02 04:02:27.573925 94.50% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::disconnect
+2026-02-02 04:02:27.573925 94.50% [NOTICE] switch_event.c:467 Subclass reservation deleted for /usr/src/mod_audio_stream/mod_audio_stream.c:mod_audio_stream::error
+2026-02-02 04:02:28.253629 94.53% [NOTICE] switch_loadable_module.c:1360 Deleting File Format 'tone_stream'
+2026-02-02 04:02:28.253629 94.53% [NOTICE] switch_loadable_module.c:1360 Deleting File Format 'silence_stream'
+2026-02-02 04:02:28.253629 94.53% [CONSOLE] switch_loadable_module.c:2357 mod_tone_stream has no shutdown routine
+2026-02-02 04:02:28.400736 94.53% [NOTICE] switch_loadable_module.c:1230 Deleting Application 'set_audio_level'
+2026-02-02 04:02:28.404288 94.53% [NOTICE] switch_loadable_module.c:1230 Deleting Application 'playback'
+2026-02-02 04:02:28.404535 94.53% [NOTICE] switch_loadable_module.c:1230 Deleting Application 'endless_playback'
+2026-02-02 04:02:28.404580 94.53% [NOTICE] switch_loadable_module.c:1230 Deleting Application 'loop_playback'
+2026-02-02 04:02:28.405085 94.53% [NOTICE] switch_loadable_module.c:1230 Deleting Application 'detect_audio'
+2026-02-02 04:02:29.413008 94.53% [CONSOLE] switch_loadable_module.c:2374 mod_local_stream unloaded.
+2026-02-02 04:02:29.414347 94.53% [CONSOLE] switch_loadable_module.c:2374 mod_audio_stream unloaded.
+2026-02-02 04:02:29.417991 94.53% [CONSOLE] switch_loadable_module.c:2374 mod_tone_stream unloaded.
+2026-02-02 04:02:34.797274 0.00% [NOTICE] switch_loadable_module.c:389 Adding API Function 'spawn_stream'
+2026-02-02 04:02:34.797806 0.00% [NOTICE] switch_loadable_module.c:389 Adding API Function 'uuid_audio'
+2026-02-02 04:02:35.303095 0.00% [NOTICE] switch_loadable_module.c:329 Adding Application 'set_audio_level'
+2026-02-02 04:02:35.303569 0.00% [NOTICE] switch_loadable_module.c:329 Adding Application 'playback'
+2026-02-02 04:02:35.303577 0.00% [NOTICE] switch_loadable_module.c:329 Adding Application 'endless_playback'
+2026-02-02 04:02:35.303582 0.00% [NOTICE] switch_loadable_module.c:329 Adding Application 'loop_playback'
+2026-02-02 04:02:35.303736 0.00% [NOTICE] switch_loadable_module.c:329 Adding Application 'detect_audio'
+AVR (Audio Visual Research)  (extension "avr")
+CAF (Apple Core Audio File)  (extension "caf")
+FLAC (Free Lossless Audio Codec)  (extension "flac")
+MPEG-1/2 Audio  (extension "m1a")
+2026-02-02 04:02:35.561371 0.00% [CONSOLE] switch_loadable_module.c:1772 Successfully Loaded [mod_local_stream]
+2026-02-02 04:02:35.561384 0.00% [NOTICE] switch_loadable_module.c:389 Adding API Function 'local_stream'
+2026-02-02 04:02:35.561392 0.00% [NOTICE] switch_loadable_module.c:455 Adding File Format 'local_stream'
+2026-02-02 04:02:35.562133 0.00% [CONSOLE] switch_loadable_module.c:1772 Successfully Loaded [mod_tone_stream]
+2026-02-02 04:02:35.562147 0.00% [NOTICE] switch_loadable_module.c:455 Adding File Format 'tone_stream'
+2026-02-02 04:02:35.562156 0.00% [NOTICE] switch_loadable_module.c:455 Adding File Format 'silence_stream'
+2026-02-02 04:02:35.564506 0.00% [CONSOLE] mod_local_stream.c:289 Can't open directory: /usr/local/freeswitch/share/freeswitch/sounds/music/8000
+2026-02-02 04:02:35.565285 0.00% [CONSOLE] mod_local_stream.c:289 Can't open directory: /usr/local/freeswitch/share/freeswitch/sounds/music/8000
+2026-02-02 04:02:35.567727 0.00% [CONSOLE] mod_local_stream.c:289 Can't open directory: /usr/local/freeswitch/share/freeswitch/sounds/music/16000
+2026-02-02 04:02:35.568847 0.00% [CONSOLE] mod_local_stream.c:289 Can't open directory: /usr/local/freeswitch/share/freeswitch/sounds/music/48000
+2026-02-02 04:02:35.568857 0.00% [NOTICE] mod_audio_stream.c:474 mod_audio_stream API loading..
+2026-02-02 04:02:35.568890 0.00% [NOTICE] mod_audio_stream.c:499 mod_audio_stream API successfully loaded
+2026-02-02 04:02:35.568894 0.00% [CONSOLE] switch_loadable_module.c:1772 Successfully Loaded [mod_audio_stream]
+2026-02-02 04:02:35.568904 0.00% [NOTICE] switch_loadable_module.c:389 Adding API Function 'uuid_audio_stream'
+2026-02-02 04:02:35.568911 0.00% [CONSOLE] mod_local_stream.c:289 Can't open directory: /usr/local/freeswitch/share/freeswitch/sounds/music/32000
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 playback(tone_stream://%(200,0,800))
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"})
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(mod_audio_stream_bidirectional=true)
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 set(audio_stream_bidirectional=true)
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 playback(silence_stream://-1)

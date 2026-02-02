@@ -1,0 +1,94 @@
+root@srv1164256:/tmp# grep -B 5 -A 30 "convertFromGemini" /opt/alessia-voice/vps-voice-bridge/src/*.ts
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    }
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    return pcm;
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-}
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-// *** QUI ERA L'ERRORE ***
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts:export function convertFromGemini(geminiAudio: Buffer, codec: string, outputRate: number = 16000): Buffer {
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    let pcm = geminiAudio;
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    // 1. Gemini manda a 24k, noi portiamo a 16k
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    if (outputRate !== 24000) {
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-        pcm = resample(pcm, 24000, outputRate);
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    }
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    // 2. SE IL CODEC È L16, MANDIAMO AUDIO PURO (Buffer diretto)
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    if (codec === 'L16') {
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-        return pcm;
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    }
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    // 3. Solo se fosse PCMU faremmo la conversione (ma ora usiamo L16)
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-    return pcmToMulaw(pcm);
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-}
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-export function pcmToBase64(pcmData: Buffer): string { return pcmData.toString('base64'); }
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-export function base64ToPcm(base64Data: string): Buffer { return Buffer.from(base64Data, 'base64'); }
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-
+/opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts-log.info('Audio converter fixed: respecting L16 codec');
+--
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-import { parse as parseUrl } from 'url';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-import { config } from './config.js';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-import { logger } from './logger.js';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-import { sessionManager } from './session-manager.js';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-import { ReplitWSClient } from './replit-ws-client.js';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts:import { convertForGemini, convertFromGemini } from './audio-converter.js';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-const log = logger.child('SERVER');
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-let pendingCallId: string | null = null;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-let pendingCallTimer: NodeJS.Timeout | null = null;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-export function setExpectedCallId(uuid: string): void {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  pendingCallId = uuid;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  log.info(`Expecting connection for Call ID: ${uuid}`);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  if (pendingCallTimer) clearTimeout(pendingCallTimer);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  pendingCallTimer = setTimeout(() => {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    if (pendingCallId === uuid) pendingCallId = null;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  }, 5000);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-interface AudioStreamStartMessage {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  event: 'start';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  call_id: string;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  caller_id: string;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  called_number: string;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  codec: 'PCMU' | 'L16';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  sample_rate: number;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-interface AudioStreamStopMessage {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  event: 'stop';
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  call_id: string;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  reason: string;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
+--
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-      console.log('[DEBUG] ⚠️ Impossibile inviare: WebSocket assente o chiuso');
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-      return;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  }
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  // 1. Convertiamo l'audio (il converter ora rispetta L16)
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts:  const fsAudio = convertFromGemini(audio, session.codec, session.sampleRate);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  // 2. Chunking a 20ms (640 bytes per L16 16k)
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const CHUNK_SIZE = 640;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  let chunks = 0;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  for (let i = 0; i < fsAudio.length; i += CHUNK_SIZE) {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    const chunk = fsAudio.slice(i, i + CHUNK_SIZE);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    session.fsWebSocket.send(chunk, { binary: true });
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    chunks++;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  }
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  // 3. Logghiamo l'invio
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  console.log(`[DEBUG] 🚀 Inviati ${chunks} pacchetti (${fsAudio.length} bytes) a FreeSWITCH`);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-function handleCallStop(callId: string, reason: string): void {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const session = sessionManager.getSessionByCallId(callId);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  if (!session) return;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const duration = Date.now() - session.startTime.getTime();
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  sessionManager.endSession(session.id, reason);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
+root@srv1164256:/tmp# 

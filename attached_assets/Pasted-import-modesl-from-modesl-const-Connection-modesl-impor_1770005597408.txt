@@ -1,0 +1,64 @@
+import modesl from 'modesl';
+const { Connection } = modesl;
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { setExpectedCallId } from './voice-bridge-server.js';
+
+const log = logger.child('ESL');
+
+export function startESLController(): void {
+  log.info(`Connecting to FreeSWITCH ESL at ${config.esl.host}:${config.esl.port}...`);
+
+  const conn = new Connection(config.esl.host, config.esl.port, config.esl.password, () => {
+    log.info('✅ Connected to FreeSWITCH Event Socket!');
+    conn.subscribe(['CHANNEL_ANSWER', 'CHANNEL_HANGUP']);
+  });
+
+  conn.on('esl::event::CHANNEL_ANSWER::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    const dest = event.getHeader('Caller-Destination-Number');
+    
+    if (dest !== '9999') return;
+
+    log.info(`📞 Detected call to 9999 (Answered)`, { uuid });
+
+    // 1. Diciamo al Server TS di aspettarsi questo UUID
+    setExpectedCallId(uuid);
+
+    // 2. FORZIAMO LE VARIABILI VIA ESL (Cruciale per la bidirezionalità!)
+    // Impostiamo queste variabili direttamente sul canale attivo
+    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_PLAYBACK true`);
+    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_SAMPLE_RATE 16000`);
+    (conn as any).bgapi(`uuid_setvar ${uuid} mod_audio_stream_bidirectional true`); // Per sicurezza
+
+    // 3. URL PULITO (Il server userà pendingCallId per capire chi siamo)
+    const wsUrl = `ws://172.17.0.1:${config.ws.port}`;
+    const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 16000`;
+
+    // 4. Avvio ritardato per dare tempo alle variabili di settarsi
+    setTimeout(() => {
+        log.debug(`🚀 Executing stream command via bgapi`, { cmd: streamCmd });
+
+        (conn as any).bgapi(streamCmd, (res: any) => {
+          const body = res.getBody();
+          if (body && body.includes('+OK')) {
+            log.info(`✅ Audio stream initiated successfully`, { uuid });
+          } else {
+            log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
+          }
+        });
+    }, 500); 
+  });
+
+  conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
+    const dest = event.getHeader('Caller-Destination-Number');
+    if (dest === '9999') {
+      log.debug(`🛑 Call 9999 ended`, { uuid: event.getHeader('Unique-ID') });
+    }
+  });
+
+  conn.on('error', (err: any) => {
+    log.error('❌ ESL Connection Error', { error: err?.message || err });
+    setTimeout(() => startESLController(), 5000);
+  });
+}

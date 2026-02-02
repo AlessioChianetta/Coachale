@@ -1,0 +1,179 @@
+7|voice-br | 
+7|voice-br | 2026-02-02T03:59:56.723Z [INFO ] [BRIDGE:MAIN] Configuration loaded:
+7|voice-br | 2026-02-02T03:59:56.723Z [INFO ] [BRIDGE:MAIN]   WebSocket Server: 0.0.0.0:9090
+7|voice-br | 2026-02-02T03:59:56.723Z [INFO ] [BRIDGE:MAIN]   Auth Token: configured
+7|voice-br | 2026-02-02T03:59:56.723Z [INFO ] [BRIDGE:MAIN]   Replit WS: wss://ecd62906-8d14-4db7-b8da-31957459c644-00-be9rk8l4u13l.riker.replit.dev/ws/ai-voice
+7|voice-br | 2026-02-02T03:59:56.724Z [INFO ] [BRIDGE:MAIN]   Voice: Puck
+7|voice-br | 2026-02-02T03:59:56.724Z [INFO ] [BRIDGE:MAIN]   ESL Connection: 127.0.0.1:8021
+7|voice-br | 2026-02-02T03:59:56.724Z [INFO ] [BRIDGE:MAIN]   Max Concurrent Calls: 10
+7|voice-br | 2026-02-02T03:59:56.724Z [INFO ] [BRIDGE:MAIN]   Session Timeout: 120000ms
+7|voice-br | 2026-02-02T03:59:56.724Z [INFO ] [BRIDGE:MAIN]   Log Level: debug
+7|voice-br | 2026-02-02T03:59:56.724Z [INFO ] [BRIDGE:MAIN] Starting Voice Bridge System...
+7|voice-br | 2026-02-02T03:59:56.727Z [INFO ] [BRIDGE:ESL] Connecting to FreeSWITCH ESL at 127.0.0.1:8021...
+7|voice-br | 2026-02-02T03:59:56.729Z [INFO ] [BRIDGE:SERVER] Voice Bridge Server started on port 9090
+7|voice-br | 2026-02-02T03:59:56.734Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+
+7|voice-bridge  | 2026-02-02T04:00:01.356Z [INFO ] [BRIDGE:ESL] 📞 Detected call to 9999 (Answered) uuid=1e7e680b-2ead-4e3d-b2b9-354c37dba807
+7|voice-bridge  | 2026-02-02T04:00:01.356Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: 1e7e680b-2ead-4e3d-b2b9-354c37dba807
+7|voice-bridge  | 2026-02-02T04:00:01.924Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-bridge  | [DEBUG] 📞 CHIAMATA RILEVATA: ID=1e7e680b-2ead-4e3d-b2b9-354c37dba807 | Codec=L16
+7|voice-bridge  | 2026-02-02T04:00:01.931Z [INFO ] [BRIDGE:SESSION] Session created sessionId=099cd480 callId=1e7e680b-2ead-4e3d-b2b9-354c37dba807 callerId=unknown calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-bridge  | 2026-02-02T04:00:02.093Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=1e7e680b-2ead-4e3d-b2b9-354c37dba807
+7|voice-bridge  | 2026-02-02T04:00:02.765Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=099cd480 url=wss://ecd62906-8d14-4db7-b8da-31957459c644-00-be9rk8l4u13l.riker.replit.dev/ws/ai-voice voice=Puck
+7|voice-bridge  | 2026-02-02T04:00:03.379Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=099cd480
+7|voice-bridge  | 2026-02-02T04:00:03.379Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=099cd480
+7|voice-bridge  | 2026-02-02T04:00:03.380Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=099cd480 from=connecting to=active
+7|voice-bridge  | 2026-02-02T04:00:06.236Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: (Rimango in
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: "(Rimango in"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11158 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 12 pacchetti (7438 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 15404 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 17 pacchetti (10268 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:06.581Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  attesa
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " attesa"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:06.583Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  del saluto
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " del saluto"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:06.589Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  del cliente)
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " del cliente)"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 5804 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 7 pacchetti (3868 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:11.874Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: EVVAI! Ciao
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: "EVVAI! Ciao"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11158 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 12 pacchetti (7438 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 15404 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 17 pacchetti (10268 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 15404 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 17 pacchetti (10268 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:12.186Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Jacopo,
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " Jacopo,"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:12.268Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ti sento
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " ti sento"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:12.385Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  benissimo!
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " benissimo!"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:12.585Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Come
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " Come"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:12.692Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  posso
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " posso"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:12.735Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " aiutarti"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:12.824Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  oggi?
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " oggi?"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:16.675Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Oh, caspiterina!
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: "Oh, caspiterina!"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11158 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 12 pacchetti (7438 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 15404 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 17 pacchetti (10268 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 15404 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 17 pacchetti (10268 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:16.954Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Proviamo
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " Proviamo"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:17.112Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  a risolvere
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " a risolvere"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:17.215Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  subito!
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " subito!"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:17.373Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Hai controllato
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " Hai controllato"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:17.567Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  il volume
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " il volume"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:17.633Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sul tuo
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " sul tuo"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | 2026-02-02T04:00:17.698Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  dispositivo?
+7|voice-bridge  | [DEBUG] 🤖 GEMINI DICE: " dispositivo?"
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 13484 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 15 pacchetti (8988 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 9644 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 11 pacchetti (6428 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 11564 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 13 pacchetti (7708 bytes) a FreeSWITCH
+7|voice-bridge  | [DEBUG] 🎤 AUDIO DA GEMINI: 5804 bytes
+7|voice-bridge  | [DEBUG] 🚀 Inviati 7 pacchetti (3868 bytes) a FreeSWITCH

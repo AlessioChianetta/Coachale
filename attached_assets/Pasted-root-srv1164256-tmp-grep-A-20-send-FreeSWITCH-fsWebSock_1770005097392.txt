@@ -1,0 +1,55 @@
+root@srv1164256:/tmp# grep -A 20 "send.*FreeSWITCH\|fsWebSocket.send" /opt/alessia-voice/vps-voice-bridge/src/*.ts
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts:        sendAudioToFreeSWITCH(session.id, audio);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    },
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    // *** LOG DEL TESTO ***
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    onTextResponse: (text) => {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-        console.log(`[DEBUG] 🤖 GEMINI DICE: "${text}"`);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-        log.debug(`AI: ${text}`);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    },
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    onError: (err) => {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-        console.error(`[DEBUG] ❌ Errore Replit: ${err.message}`);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-        log.error(`Replit Error`, { error: err.message });
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    },
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    onClose: () => log.info(`Replit closed`),
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  });
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  await replitClient.connect();
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  sessionManager.setReplitClient(session.id, replitClient);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  sessionManager.updateSessionState(session.id, 'active');
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  return session.id;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
+--
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts:function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const session = sessionManager.getSession(sessionId);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  if (!session?.fsWebSocket || session.fsWebSocket.readyState !== WebSocket.OPEN) {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-      console.log('[DEBUG] ⚠️ Impossibile inviare: WebSocket assente o chiuso');
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-      return;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  }
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  // 1. Convertiamo l'audio (il converter ora rispetta L16)
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const fsAudio = convertFromGemini(audio, session.codec, session.sampleRate);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  // 2. Chunking a 20ms (640 bytes per L16 16k)
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const CHUNK_SIZE = 640;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  let chunks = 0;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  for (let i = 0; i < fsAudio.length; i += CHUNK_SIZE) {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    const chunk = fsAudio.slice(i, i + CHUNK_SIZE);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts:    session.fsWebSocket.send(chunk, { binary: true });
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-    chunks++;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  }
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  // 3. Logghiamo l'invio
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  console.log(`[DEBUG] 🚀 Inviati ${chunks} pacchetti (${fsAudio.length} bytes) a FreeSWITCH`);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-function handleCallStop(callId: string, reason: string): void {
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const session = sessionManager.getSessionByCallId(callId);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  if (!session) return;
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  const duration = Date.now() - session.startTime.getTime();
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-  sessionManager.endSession(session.id, reason);
+/opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts-}
