@@ -725,8 +725,9 @@ async function getUserIdFromRequest(req: any): Promise<{
             clientId: userId || null,
             consultantId: decoded.consultantId,
             freeswitchUuid: freeswitchUuid,
-            status: 'active',
+            status: 'talking', // Use 'talking' for frontend "In Corso" display
             startedAt: new Date(),
+            answeredAt: new Date(), // Mark as answered immediately
             aiMode: 'assistenza',
           });
           console.log(`📞 [PHONE SERVICE] Voice call record created: ${voiceCallId}`);
@@ -738,7 +739,7 @@ async function getUserIdFromRequest(req: any): Promise<{
             consultantId: decoded.consultantId,
             clientId: userId,
             startedAt: new Date(),
-            status: 'active',
+            status: 'talking',
           });
         } catch (dbErr) {
           console.error(`❌ [PHONE SERVICE] Failed to create voice call record:`, dbErr);
@@ -1237,6 +1238,41 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // feedback to the next user message so it gets processed naturally.
     let pendingFeedbackForAI: string | null = null;
     
+    // 📞 VOICE CALL TRANSCRIPT UPDATE: Debounced function to update transcript in DB
+    let transcriptUpdateTimeout: NodeJS.Timeout | null = null;
+    const TRANSCRIPT_UPDATE_DEBOUNCE_MS = 2000; // Update DB every 2 seconds max
+    
+    async function updateVoiceCallTranscriptInDb() {
+      if (!voiceCallId || conversationMessages.length === 0) return;
+      
+      try {
+        const transcriptText = conversationMessages
+          .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.transcript}`)
+          .join('\n');
+        
+        await db
+          .update(voiceCalls)
+          .set({
+            fullTranscript: transcriptText,
+            updatedAt: new Date(),
+          })
+          .where(eq(voiceCalls.id, voiceCallId));
+        
+        console.log(`📝 [${connectionId}] Voice call transcript updated (${conversationMessages.length} messages)`);
+      } catch (err) {
+        console.warn(`⚠️ [${connectionId}] Failed to update voice call transcript:`, err);
+      }
+    }
+    
+    function scheduleTranscriptUpdate() {
+      if (transcriptUpdateTimeout) {
+        clearTimeout(transcriptUpdateTimeout);
+      }
+      transcriptUpdateTimeout = setTimeout(() => {
+        updateVoiceCallTranscriptInDb();
+      }, TRANSCRIPT_UPDATE_DEBOUNCE_MS);
+    }
+    
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🕐 RESPONSE WATCHDOG - Rileva quando Gemini non risponde
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1598,6 +1634,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       });
       
       console.log(`💾 [${connectionId}] Saved USER message: "${trimmed.substring(0, 80)}${trimmed.length > 80 ? '...' : ''}" (${conversationMessages.length} total)`);
+      
+      // 📞 Update voice call transcript in real-time
+      scheduleTranscriptUpdate();
     }
     
     // 🤖➡️😊 Contextual Response Tracking (Anti-Robot Mode)
@@ -4463,6 +4502,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               });
               console.log(`💾 [${connectionId}] Saved AI message (server-side): ${conversationMessages.length} total messages`);
               
+              // 📞 Update voice call transcript in real-time
+              scheduleTranscriptUpdate();
+              
               // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
               // 🎯 SALES SCRIPT TRACKING - Track AI message
               // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -6128,28 +6170,24 @@ ${compactFeedback}
         
         // 📞 VOICE CALL CLEANUP: Update voice_calls record if this was a phone call
         if (voiceCallId) {
+          // Clear transcript update timeout
+          if (transcriptUpdateTimeout) {
+            clearTimeout(transcriptUpdateTimeout);
+            transcriptUpdateTimeout = null;
+          }
+          
           try {
             const endedAt = new Date();
             const activeCall = activeVoiceCalls.get(voiceCallId);
             const startTime = activeCall?.startedAt || new Date();
             const durationSeconds = Math.round((endedAt.getTime() - startTime.getTime()) / 1000);
             
-            // Get transcript from saved ai_conversation if available
-            let transcriptText = '';
-            if (currentConversationId) {
-              try {
-                const messages = await db.execute(sql`
-                  SELECT role, content FROM ai_messages 
-                  WHERE conversation_id = ${currentConversationId}
-                  ORDER BY created_at ASC
-                `);
-                transcriptText = (messages.rows as any[])
-                  .map(m => `[${m.role}] ${m.content}`)
-                  .join('\n');
-              } catch (e) {
-                console.warn(`⚠️ [${connectionId}] Could not fetch transcript for voice call`);
-              }
-            }
+            // Use conversationMessages directly for final transcript (already accumulated during call)
+            const transcriptText = conversationMessages.length > 0
+              ? conversationMessages
+                  .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.transcript}`)
+                  .join('\n')
+              : '';
             
             await db
               .update(voiceCalls)
