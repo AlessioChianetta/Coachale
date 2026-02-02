@@ -229,7 +229,13 @@ conn.api(originateCmd);
 - [ ] Task 6: Test E2E
 
 ### ⏳ Da Fare
+- [ ] Task 6: Test E2E (richiede VPS con FreeSWITCH configurato)
 - [ ] Task 10: Review finale
+
+### ⚠️ Note Importanti
+- **VPS Handler**: Il file `vps-voice-bridge/src/outbound-handler.ts` è un template/placeholder
+- **ESL Connection**: L'implementazione ESL reale deve essere fatta sul VPS con le credenziali FreeSWITCH
+- **Test E2E**: Non possibile senza VPS configurato con FreeSWITCH + trunk SIP
 
 ---
 
