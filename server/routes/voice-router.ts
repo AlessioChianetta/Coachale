@@ -1121,10 +1121,11 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
       return res.status(400).json({ error: "targetPhone is required" });
     }
     
-    // Validate phone format (basic E.164 validation)
+    // Validate phone format (E.164 or internal extension)
     const cleanPhone = targetPhone.replace(/[\s\-\(\)]/g, '');
-    if (!/^\+?[1-9]\d{6,14}$/.test(cleanPhone)) {
-      return res.status(400).json({ error: "Invalid phone number format" });
+    // Accept: internal extensions (3-6 digits) OR international numbers (7-15 digits with optional +)
+    if (!/^(\+?[1-9]\d{6,14}|\d{3,6})$/.test(cleanPhone)) {
+      return res.status(400).json({ error: "Invalid phone number format. Use extension (1000) or international (+393331234567)" });
     }
     
     const callId = generateScheduledCallId();
@@ -1173,10 +1174,11 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
       return res.status(400).json({ error: "targetPhone and scheduledAt are required" });
     }
     
-    // Validate phone format
+    // Validate phone format (E.164 or internal extension)
     const cleanPhone = targetPhone.replace(/[\s\-\(\)]/g, '');
-    if (!/^\+?[1-9]\d{6,14}$/.test(cleanPhone)) {
-      return res.status(400).json({ error: "Invalid phone number format" });
+    // Accept: internal extensions (3-6 digits) OR international numbers (7-15 digits with optional +)
+    if (!/^(\+?[1-9]\d{6,14}|\d{3,6})$/.test(cleanPhone)) {
+      return res.status(400).json({ error: "Invalid phone number format. Use extension (1000) or international (+393331234567)" });
     }
     
     const scheduledDate = new Date(scheduledAt);

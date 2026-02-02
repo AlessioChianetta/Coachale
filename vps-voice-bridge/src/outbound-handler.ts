@@ -25,11 +25,12 @@ interface OutboundCallResponse {
 }
 
 /**
- * Valida il numero di telefono
+ * Valida il numero di telefono (E.164 o estensione interna)
  */
 function validatePhoneNumber(phone: string): boolean {
   const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
-  return /^\+?[1-9]\d{6,14}$/.test(cleanPhone);
+  // Accept: internal extensions (3-6 digits) OR international numbers (7-15 digits with optional +)
+  return /^(\+?[1-9]\d{6,14}|\d{3,6})$/.test(cleanPhone);
 }
 
 /**
