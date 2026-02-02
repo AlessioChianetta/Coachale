@@ -696,6 +696,205 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// NON-CLIENT SETTINGS - Configurazione prompt per non-clienti
+// ═══════════════════════════════════════════════════════════════════
+
+// Default voice directives template
+const DEFAULT_VOICE_DIRECTIVES = `🎙️ MODALITÀ: CHIAMATA VOCALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ TONO E STILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Tono MOLTO ENERGICO e VIVACE! Parla con entusiasmo e carica!
+- La tua voce deve trasmettere energia e positività
+- Sii entusiasta in modo naturale, come un amico esperto
+- Scherza ogni tanto per alleggerire la conversazione
+
+🚫 TONO INFORMALE - REGOLE OBBLIGATORIE:
+- USA SEMPRE "Ciao!" - MAI "Buongiorno" o "Buonasera"
+- DAI SEMPRE DEL TU - MAI del Lei
+- Parla come un AMICO, non come un centralinista
+- Esempio CORRETTO: "Ciao! Come posso aiutarti?"
+- Esempio SBAGLIATO: "Buongiorno, come posso esserle utile?"`;
+
+// Default non-client prompt template (without voice directives)
+const DEFAULT_NON_CLIENT_PROMPT = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 IL TUO RUOLO E IDENTITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sei Alessia, l'assistente AI vocale di {{consultantName}}{{businessName}}.
+Chi ti chiama NON è un cliente registrato.
+Il tuo obiettivo è:
+1. Capire chi sta chiamando e cosa cerca
+2. Fare una mini-discovery per capire le sue esigenze
+3. Se appropriato, proporre un appuntamento con {{consultantName}}
+
+⚠️ LA TUA IDENTITÀ (usa questa frase se ti chiedono chi sei):
+"Sono Alessia, l'assistente digitale di {{consultantName}}. Faccio parte del suo team e aiuto i clienti nel loro percorso."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 COMPORTAMENTO INIZIALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando rispondi, fai un saluto caloroso e chiedi chi è:
+- "Ciao! Sono Alessia, l'assistente di {{consultantName}}. Con chi ho il piacere di parlare?"
+- "Ehi, ciao! Benvenuto! Dimmi, come ti chiami?"
+- "Ciao! Che bello sentirti! Come posso chiamarti?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 MINI-DISCOVERY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dopo il saluto, fai domande per capire:
+1. Come hanno trovato il numero (referral, web, passaparola?)
+2. Cosa cercano o di cosa hanno bisogno
+3. Se hanno già lavorato con un consulente
+
+Esempi di domande:
+- "Come hai trovato il nostro numero?"
+- "Raccontami un po', cosa ti ha spinto a chiamare oggi?"
+- "C'è qualcosa di specifico su cui vorresti lavorare?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 PROPORRE APPUNTAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando appropriato, proponi di fissare una consulenza:
+- "Sai cosa? Mi sembra che potresti beneficiare di una chiacchierata con {{consultantName}}. Che ne dici se fissiamo un appuntamento?"
+- "Questo è proprio il tipo di cosa in cui possiamo aiutarti! Ti va di prenotare una consulenza per approfondire?"
+
+Se accettano, chiedi:
+- Email per il contatto
+- Preferenza di giorno/orario
+- Numero di telefono se diverso da quello che stanno usando
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 SEI ANCHE UN'AI GENERALISTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Puoi rispondere anche a domande generali.
+Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
+
+// GET /api/voice/non-client-settings - Get non-client prompt configuration
+router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "consultant" ? req.user.id : req.query.consultantId as string;
+    
+    if (!consultantId) {
+      return res.status(400).json({ error: "consultantId required" });
+    }
+
+    // Get current settings
+    const result = await db.execute(sql`
+      SELECT 
+        voice_directives,
+        non_client_prompt_source,
+        non_client_agent_id,
+        non_client_manual_prompt
+      FROM consultant_availability_settings 
+      WHERE consultant_id = ${consultantId}
+    `);
+
+    // Get available agents for dropdown
+    const agentsResult = await db.execute(sql`
+      SELECT id, name, persona, prompt, status
+      FROM ai_agents 
+      WHERE consultant_id = ${consultantId}
+      ORDER BY name ASC
+    `);
+
+    const settings = result.rows[0] as any;
+    
+    res.json({
+      voiceDirectives: settings?.voice_directives || DEFAULT_VOICE_DIRECTIVES,
+      nonClientPromptSource: settings?.non_client_prompt_source || 'default',
+      nonClientAgentId: settings?.non_client_agent_id,
+      nonClientManualPrompt: settings?.non_client_manual_prompt || '',
+      defaultVoiceDirectives: DEFAULT_VOICE_DIRECTIVES,
+      defaultNonClientPrompt: DEFAULT_NON_CLIENT_PROMPT,
+      availableAgents: agentsResult.rows
+    });
+  } catch (error) {
+    console.error("[Voice] Error fetching non-client settings:", error);
+    res.status(500).json({ error: "Errore nel recupero delle impostazioni" });
+  }
+});
+
+// PUT /api/voice/non-client-settings - Update non-client prompt configuration
+router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "consultant" ? req.user.id : req.body.consultantId;
+    
+    if (!consultantId) {
+      return res.status(400).json({ error: "consultantId required" });
+    }
+
+    const { 
+      voiceDirectives, 
+      nonClientPromptSource, 
+      nonClientAgentId, 
+      nonClientManualPrompt 
+    } = req.body;
+
+    // Validate promptSource
+    if (!['agent', 'manual', 'default'].includes(nonClientPromptSource)) {
+      return res.status(400).json({ error: "Invalid nonClientPromptSource, must be 'agent', 'manual', or 'default'" });
+    }
+
+    // If agent source, validate agentId exists
+    if (nonClientPromptSource === 'agent' && nonClientAgentId) {
+      const agentCheck = await db.execute(sql`
+        SELECT id FROM ai_agents WHERE id = ${nonClientAgentId} AND consultant_id = ${consultantId}
+      `);
+      if (agentCheck.rows.length === 0) {
+        return res.status(400).json({ error: "Agent not found or does not belong to this consultant" });
+      }
+    }
+
+    // Update or insert settings
+    const existingResult = await db.execute(sql`
+      SELECT id FROM consultant_availability_settings WHERE consultant_id = ${consultantId}
+    `);
+
+    if (existingResult.rows.length > 0) {
+      await db.execute(sql`
+        UPDATE consultant_availability_settings 
+        SET 
+          voice_directives = ${voiceDirectives || null},
+          non_client_prompt_source = ${nonClientPromptSource},
+          non_client_agent_id = ${nonClientAgentId || null},
+          non_client_manual_prompt = ${nonClientManualPrompt || null},
+          updated_at = NOW()
+        WHERE consultant_id = ${consultantId}
+      `);
+    } else {
+      await db.execute(sql`
+        INSERT INTO consultant_availability_settings (
+          id, consultant_id, voice_directives, non_client_prompt_source, 
+          non_client_agent_id, non_client_manual_prompt, voice_id,
+          appointment_duration, buffer_before, buffer_after,
+          morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
+          max_days_ahead, min_hours_notice, timezone, is_active
+        ) VALUES (
+          gen_random_uuid(), ${consultantId}, ${voiceDirectives || null}, ${nonClientPromptSource},
+          ${nonClientAgentId || null}, ${nonClientManualPrompt || null}, 'Achernar',
+          60, 15, 15,
+          '09:00', '13:00', '14:00', '18:00',
+          30, 24, 'Europe/Rome', true
+        )
+      `);
+    }
+
+    console.log(`🎤 [Voice] Non-client settings updated for consultant ${consultantId}: source=${nonClientPromptSource}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[Voice] Error updating non-client settings:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni" });
+  }
+});
+
 // GET /api/voice/health - Health check (placeholder)
 router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
