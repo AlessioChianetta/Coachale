@@ -1,0 +1,145 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# npm run build
+
+> alessia-voice-bridge@1.0.0 build
+> tsc
+
+src/outbound-handler.ts:63:44 - error TS1005: ')' expected.
+
+63       (conn as any).api(originateCmd, ( da copiare sulla VPS:
+                                              ~~~~~~~
+
+src/outbound-handler.ts:63:52 - error TS1005: ',' expected.
+
+63       (conn as any).api(originateCmd, ( da copiare sulla VPS:
+                                                      ~~~~~
+
+src/outbound-handler.ts:63:58 - error TS1005: ',' expected.
+
+63       (conn as any).api(originateCmd, ( da copiare sulla VPS:
+                                                            ~~~
+
+src/outbound-handler.ts:63:61 - error TS1005: ',' expected.
+
+63       (conn as any).api(originateCmd, ( da copiare sulla VPS:
+                                                               ~
+
+src/outbound-handler.ts:112:25 - error TS1005: ',' expected.
+
+112       reject(new Error(`ESL connection failed: ${err.message}`));
+                            ~~~
+
+src/outbound-handler.ts:112:29 - error TS1005: ',' expected.
+
+112       reject(new Error(`ESL connection failed: ${err.message}`));
+                                ~~~~~~~~~~
+
+src/outbound-handler.ts:112:40 - error TS1005: ',' expected.
+
+112       reject(new Error(`ESL connection failed: ${err.message}`));
+                                           ~~~~~~
+
+src/outbound-handler.ts:112:46 - error TS1005: ',' expected.
+
+112       reject(new Error(`ESL connection failed: ${err.message}`));
+                                                 ~
+
+src/outbound-handler.ts:112:49 - error TS1005: ',' expected.
+
+112       reject(new Error(`ESL connection failed: ${err.message}`));
+                                                    ~
+
+src/outbound-handler.ts:112:53 - error TS1005: ',' expected.
+
+112       reject(new Error(`ESL connection failed: ${err.message}`));
+                                                        ~
+
+src/outbound-handler.ts:116:21 - error TS1005: ',' expected.
+
+116       const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                        ~~~~~~~~
+
+src/outbound-handler.ts:116:31 - error TS1005: ',' expected.
+
+116       const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                                  ~
+
+src/outbound-handler.ts:116:36 - error TS1005: ',' expected.
+
+116       const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                                       ~
+
+src/outbound-handler.ts:116:45 - error TS1005: ',' expected.
+
+116       const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                                                ~
+
+src/outbound-handler.ts:116:50 - error TS1005: ',' expected.
+
+116       const uuid = `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                                                     ~
+
+src/outbound-handler.ts:124:29 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                ~~~~~~~~~
+
+src/outbound-handler.ts:124:39 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                          ~
+
+src/outbound-handler.ts:124:58 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                                             ~
+
+src/outbound-handler.ts:124:95 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                                                                                  ~
+
+src/outbound-handler.ts:124:140 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                                                                                                                               ~
+
+src/outbound-handler.ts:124:141 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                                                                                                                                ~~~~~
+
+src/outbound-handler.ts:124:156 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                                                                                                                                               ~
+
+src/outbound-handler.ts:124:167 - error TS1005: ',' expected.
+
+124       const originateCmd = `originate {origination_uuid=${uuid},origination_caller_id_number=${callerId},origination_caller_id_name=Alessia}sofia/gateway/${gateway}/${normalizedPhone} &bridge(user/9999)`;
+                                                                                                                                                                          ~
+
+src/outbound-handler.ts:133:29 - error TS1005: ',' expected.
+
+133           reject(new Error(`FreeSWITCH error: ${response}`));
+                                ~~~~~~~~~~
+
+src/outbound-handler.ts:133:40 - error TS1005: ',' expected.
+
+133           reject(new Error(`FreeSWITCH error: ${response}`));
+                                           ~~~~~
+
+src/outbound-handler.ts:133:45 - error TS1005: ',' expected.
+
+133           reject(new Error(`FreeSWITCH error: ${response}`));
+                                                ~
+
+src/outbound-handler.ts:133:48 - error TS1005: ',' expected.
+
+133           reject(new Error(`FreeSWITCH error: ${response}`));
+                                                   ~
+
+src/outbound-handler.ts:176:1 - error TS1160: Unterminated template literal.
+
+176 
+    
+
