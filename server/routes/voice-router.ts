@@ -979,15 +979,19 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       WHERE id = ${callId}
     `);
     
-    // Get VPS URL from environment variable
-    const vpsUrl = process.env.VPS_BRIDGE_URL;
+    // Get VPS URL from database or environment variable
+    const vpsResult = await db.execute(sql`
+      SELECT vps_bridge_url FROM consultant_availability_settings 
+      WHERE consultant_id = ${consultantId}
+    `);
+    const vpsUrl = (vpsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
     if (!vpsUrl) {
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
-        SET status = 'failed', error_message = 'VPS_BRIDGE_URL not configured', updated_at = NOW()
+        SET status = 'failed', error_message = 'VPS URL not configured', updated_at = NOW()
         WHERE id = ${callId}
       `);
-      return { success: false, error: "VPS_BRIDGE_URL environment variable not set" };
+      return { success: false, error: "VPS URL not configured. Set it in Voice Settings → VPS tab" };
     }
     
     // Get service token
