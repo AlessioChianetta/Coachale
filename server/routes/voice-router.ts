@@ -138,6 +138,27 @@ router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super
       return res.status(404).json({ error: "Chiamata non trovata" });
     }
 
+    const call = callResult.rows[0] as any;
+    
+    // Fallback: if no full_transcript but has ai_conversation_id, fetch from ai_messages
+    if (!call.full_transcript && call.ai_conversation_id) {
+      try {
+        const messagesResult = await db.execute(sql`
+          SELECT role, content FROM ai_messages 
+          WHERE conversation_id = ${call.ai_conversation_id}
+          ORDER BY created_at ASC
+        `);
+        if (messagesResult.rows.length > 0) {
+          call.full_transcript = (messagesResult.rows as any[])
+            .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.content}`)
+            .join('\n');
+          console.log(`[Voice] Fallback: loaded ${messagesResult.rows.length} messages from ai_messages for call ${id}`);
+        }
+      } catch (e) {
+        console.warn(`[Voice] Could not fetch transcript fallback for call ${id}`);
+      }
+    }
+
     const eventsResult = await db.execute(sql`
       SELECT * FROM voice_call_events
       WHERE call_id = ${id}
@@ -145,7 +166,7 @@ router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super
     `);
 
     res.json({
-      call: callResult.rows[0],
+      call: call,
       events: eventsResult.rows
     });
   } catch (error) {

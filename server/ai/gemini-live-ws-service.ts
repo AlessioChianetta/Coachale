@@ -6183,11 +6183,27 @@ ${compactFeedback}
             const durationSeconds = Math.round((endedAt.getTime() - startTime.getTime()) / 1000);
             
             // Use conversationMessages directly for final transcript (already accumulated during call)
-            const transcriptText = conversationMessages.length > 0
-              ? conversationMessages
-                  .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.transcript}`)
-                  .join('\n')
-              : '';
+            let transcriptText = '';
+            if (conversationMessages.length > 0) {
+              transcriptText = conversationMessages
+                .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.transcript}`)
+                .join('\n');
+            } else if (currentConversationId) {
+              // Fallback: fetch from ai_messages if conversationMessages is empty
+              try {
+                const messages = await db.execute(sql`
+                  SELECT role, content FROM ai_messages 
+                  WHERE conversation_id = ${currentConversationId}
+                  ORDER BY created_at ASC
+                `);
+                transcriptText = (messages.rows as any[])
+                  .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.content}`)
+                  .join('\n');
+                console.log(`📞 [${connectionId}] Fallback: fetched ${messages.rows.length} messages from ai_messages`);
+              } catch (e) {
+                console.warn(`⚠️ [${connectionId}] Could not fetch transcript fallback from ai_messages`);
+              }
+            }
             
             await db
               .update(voiceCalls)
