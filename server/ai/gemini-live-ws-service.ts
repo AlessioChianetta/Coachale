@@ -2435,23 +2435,27 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         let previousCallContext = '';
         if (phoneCallerId) {
           try {
-            // Find previous conversations from this phone number
+            // Find previous conversations from this phone number (limit messages in SQL for performance)
             const previousConversations = await db.execute(sql`
               SELECT 
                 ac.id,
                 ac.title,
                 ac.created_at,
                 (
-                  SELECT json_agg(
-                    json_build_object(
+                  SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
+                  FROM (
+                    SELECT json_build_object(
                       'role', am.role,
                       'content', am.content,
                       'created_at', am.created_at
-                    ) ORDER BY am.created_at ASC
-                  )
-                  FROM ai_messages am
-                  WHERE am.conversation_id = ac.id
-                ) as messages
+                    ) as msg_data
+                    FROM ai_messages am
+                    WHERE am.conversation_id = ac.id
+                    ORDER BY am.created_at ASC
+                    LIMIT 10
+                  ) sub
+                ) as messages,
+                (SELECT COUNT(*) FROM ai_messages am WHERE am.conversation_id = ac.id) as total_messages
               FROM ai_conversations ac
               WHERE ac.caller_phone = ${phoneCallerId}
               ORDER BY ac.created_at DESC
@@ -2484,9 +2488,8 @@ Ecco un riepilogo delle conversazioni precedenti:
                 previousCallContext += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
                 
                 if (conv.messages && Array.isArray(conv.messages)) {
-                  // Include max 10 messages per conversation
-                  const messagesToInclude = conv.messages.slice(0, 10);
-                  for (const msg of messagesToInclude) {
+                  // Messages already limited to 10 in SQL query
+                  for (const msg of conv.messages) {
                     const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Alessia';
                     // Truncate long messages
                     const content = msg.content.length > 200 
@@ -2495,8 +2498,9 @@ Ecco un riepilogo delle conversazioni precedenti:
                     previousCallContext += `${roleLabel}: ${content}\n`;
                   }
                   
-                  if (conv.messages.length > 10) {
-                    previousCallContext += `... (${conv.messages.length - 10} altri messaggi)\n`;
+                  const totalMessages = parseInt(conv.total_messages) || conv.messages.length;
+                  if (totalMessages > 10) {
+                    previousCallContext += `... (${totalMessages - 10} altri messaggi)\n`;
                   }
                 }
                 previousCallContext += '\n---\n\n';
