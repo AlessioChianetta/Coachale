@@ -187,6 +187,7 @@ export default function ConsultantVoiceCallsPage() {
   const [serviceToken, setServiceToken] = useState<string | null>(null);
   const [wsAuthToken, setWsAuthToken] = useState<string>(() => crypto.randomUUID().replace(/-/g, ''));
   const [tokenCopied, setTokenCopied] = useState(false);
+  const [vpsBridgeUrl, setVpsBridgeUrl] = useState<string>("");
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
 
@@ -210,10 +211,17 @@ export default function ConsultantVoiceCallsPage() {
     queryKey: ["/api/voice/settings"],
     queryFn: async () => {
       const res = await fetch("/api/voice/settings", { headers: getAuthHeaders() });
-      if (!res.ok) return { voiceId: 'achernar' };
+      if (!res.ok) return { voiceId: 'achernar', vpsBridgeUrl: '' };
       return res.json();
     },
   });
+
+  // Load vpsBridgeUrl when settings load
+  useEffect(() => {
+    if (voiceSettings?.vpsBridgeUrl) {
+      setVpsBridgeUrl(voiceSettings.vpsBridgeUrl);
+    }
+  }, [voiceSettings?.vpsBridgeUrl]);
 
   const updateVoiceMutation = useMutation({
     mutationFn: async (voiceId: string) => {
@@ -277,6 +285,28 @@ export default function ConsultantVoiceCallsPage() {
       setTimeout(() => setTokenCopied(false), 2000);
     }
   };
+
+  const saveVpsUrlMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const res = await fetch("/api/voice/vps-url", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ vpsBridgeUrl: url }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio dell'URL VPS");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchVoice();
+      toast({ title: "Salvato", description: "URL del VPS aggiornato" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
 
   const { data: callsData, isLoading: loadingCalls, refetch: refetchCalls } = useQuery({
     queryKey: ["/api/voice/calls", page, statusFilter, search],
@@ -1323,6 +1353,36 @@ export default function ConsultantVoiceCallsPage() {
                         </p>
                       </div>
                     )}
+
+                    {/* VPS Bridge URL */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">URL del VPS Bridge (per chiamate in uscita):</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={vpsBridgeUrl}
+                          onChange={(e) => setVpsBridgeUrl(e.target.value)}
+                          placeholder="http://72.62.50.40:9090"
+                          className="font-mono text-xs"
+                        />
+                        <Button 
+                          onClick={() => saveVpsUrlMutation.mutate(vpsBridgeUrl)}
+                          disabled={saveVpsUrlMutation.isPending}
+                          variant="outline"
+                        >
+                          {saveVpsUrlMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              Salva
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        L'indirizzo IP e porta del tuo VPS dove gira il bridge (es: http://IP:9090)
+                      </p>
+                    </div>
 
                     {/* WS_AUTH_TOKEN */}
                     <div className="space-y-2">

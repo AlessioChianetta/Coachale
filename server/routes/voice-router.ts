@@ -673,14 +673,16 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const consultantId = req.user!.id;
 
     const result = await db.execute(sql`
-      SELECT voice_id FROM consultant_availability_settings
+      SELECT voice_id, vps_bridge_url FROM consultant_availability_settings
       WHERE consultant_id = ${consultantId}
       LIMIT 1
     `);
 
-    const voiceId = (result.rows[0] as any)?.voice_id || 'achernar';
+    const row = result.rows[0] as any;
+    const voiceId = row?.voice_id || 'achernar';
+    const vpsBridgeUrl = row?.vps_bridge_url || '';
 
-    res.json({ voiceId });
+    res.json({ voiceId, vpsBridgeUrl });
   } catch (error) {
     console.error("[Voice] Error fetching settings:", error);
     res.status(500).json({ error: "Errore nel recupero delle impostazioni" });
@@ -736,6 +738,53 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
   } catch (error) {
     console.error("[Voice] Error updating settings:", error);
     res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni" });
+  }
+});
+
+// PUT /api/voice/vps-url - Aggiorna URL del VPS Bridge
+router.put("/vps-url", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { vpsBridgeUrl } = req.body;
+
+    if (vpsBridgeUrl && typeof vpsBridgeUrl !== 'string') {
+      return res.status(400).json({ error: "URL non valido" });
+    }
+
+    // Check if settings exist
+    const existing = await db.execute(sql`
+      SELECT id FROM consultant_availability_settings
+      WHERE consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    if (existing.rows.length > 0) {
+      await db.execute(sql`
+        UPDATE consultant_availability_settings
+        SET vps_bridge_url = ${vpsBridgeUrl || null}, updated_at = NOW()
+        WHERE consultant_id = ${consultantId}
+      `);
+    } else {
+      await db.execute(sql`
+        INSERT INTO consultant_availability_settings (
+          id, consultant_id, vps_bridge_url,
+          appointment_duration, buffer_before, buffer_after,
+          morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
+          max_days_ahead, min_hours_notice, timezone, is_active
+        ) VALUES (
+          gen_random_uuid(), ${consultantId}, ${vpsBridgeUrl || null},
+          60, 15, 15,
+          '09:00', '13:00', '14:00', '18:00',
+          30, 24, 'Europe/Rome', true
+        )
+      `);
+    }
+
+    console.log(`🌐 [Voice] VPS URL updated for consultant ${consultantId}: ${vpsBridgeUrl}`);
+    res.json({ success: true, vpsBridgeUrl });
+  } catch (error) {
+    console.error("[Voice] Error updating VPS URL:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento dell'URL VPS" });
   }
 });
 
