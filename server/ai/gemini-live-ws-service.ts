@@ -2429,13 +2429,101 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         // Use custom voice directives or default
         const finalVoiceDirectives = voiceDirectives || DEFAULT_VOICE_DIRECTIVES;
         
-        // Combine: Voice Directives + Content Prompt
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LOAD PREVIOUS CONVERSATIONS FOR RETURNING CALLERS
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        let previousCallContext = '';
+        if (phoneCallerId) {
+          try {
+            // Find previous conversations from this phone number
+            const previousConversations = await db.execute(sql`
+              SELECT 
+                ac.id,
+                ac.title,
+                ac.created_at,
+                (
+                  SELECT json_agg(
+                    json_build_object(
+                      'role', am.role,
+                      'content', am.content,
+                      'created_at', am.created_at
+                    ) ORDER BY am.created_at ASC
+                  )
+                  FROM ai_messages am
+                  WHERE am.conversation_id = ac.id
+                ) as messages
+              FROM ai_conversations ac
+              WHERE ac.caller_phone = ${phoneCallerId}
+              ORDER BY ac.created_at DESC
+              LIMIT 3
+            `);
+            
+            if (previousConversations.rows.length > 0) {
+              console.log(`📱 [${connectionId}] Found ${previousConversations.rows.length} previous conversations for caller ${phoneCallerId}`);
+              
+              previousCallContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Questo numero (${phoneCallerId}) ha già chiamato in passato.
+Ecco un riepilogo delle conversazioni precedenti:
+
+`;
+              
+              for (const conv of previousConversations.rows as any[]) {
+                const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+                
+                previousCallContext += `📅 Chiamata del ${callDate}\n`;
+                previousCallContext += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
+                
+                if (conv.messages && Array.isArray(conv.messages)) {
+                  // Include max 10 messages per conversation
+                  const messagesToInclude = conv.messages.slice(0, 10);
+                  for (const msg of messagesToInclude) {
+                    const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Alessia';
+                    // Truncate long messages
+                    const content = msg.content.length > 200 
+                      ? msg.content.substring(0, 200) + '...'
+                      : msg.content;
+                    previousCallContext += `${roleLabel}: ${content}\n`;
+                  }
+                  
+                  if (conv.messages.length > 10) {
+                    previousCallContext += `... (${conv.messages.length - 10} altri messaggi)\n`;
+                  }
+                }
+                previousCallContext += '\n---\n\n';
+              }
+              
+              previousCallContext += `⚠️ USA QUESTE INFORMAZIONI per contestualizzare la conversazione.
+Se il chiamante si riferisce a qualcosa discusso in passato, usa questo contesto per rispondere in modo appropriato.
+Puoi fare riferimento alle conversazioni precedenti: "Ah, certo! L'ultima volta avevamo parlato di..."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+            } else {
+              console.log(`📱 [${connectionId}] No previous conversations found for caller ${phoneCallerId}`);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [${connectionId}] Could not load previous caller conversations:`, err);
+          }
+        }
+        
+        // Combine: Voice Directives + Content Prompt + Previous Call Context
         systemInstruction = `${finalVoiceDirectives}
 
-${contentPrompt}`;
+${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
         
         userDataContext = ''; // No user data for unknown callers
-        console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars) - Source: ${nonClientPromptSource}`);
+        console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars) - Source: ${nonClientPromptSource}${previousCallContext ? ' [WITH CALL HISTORY]' : ''}`);
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // CLIENT MODE - Build prompt from user context
