@@ -9,6 +9,7 @@ import {
 } from './audio-converter';
 import { db } from '../db';
 import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings } from '@shared/schema';
+import { sql } from 'drizzle-orm';
 import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
 import { buildUserContext } from '../ai-context-builder';
@@ -2259,7 +2260,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       // PHONE CALL - UNKNOWN CALLER MODE (Non-Client)
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       else if (isPhoneCall && !userId) {
-        console.log(`📞 [${connectionId}] Phone call from UNKNOWN CALLER - using non-client prompt`);
+        console.log(`📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
         // Get consultant info for personalized prompt
         let consultantName = 'il consulente';
@@ -2277,26 +2278,49 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           }
         }
         
-        // Build non-client phone prompt with same energetic tone and consultant name
-        systemInstruction = `🎙️ MODALITÀ: CHIAMATA VOCALE - CHIAMANTE NON RICONOSCIUTO
-⚡ Stai parlando con qualcuno che chiama per la prima volta. Non è ancora un cliente registrato.
+        // Load non-client settings from database
+        let voiceDirectives = '';
+        let nonClientPromptSource: 'agent' | 'manual' | 'default' = 'default';
+        let nonClientAgentId: number | null = null;
+        let nonClientManualPrompt = '';
+        
+        if (consultantId) {
+          try {
+            const settingsResult = await db
+              .select({
+                voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+                nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
+                nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
+                nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
+              })
+              .from(consultantAvailabilitySettings)
+              .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
+            
+            if (settingsResult.length > 0) {
+              const settings = settingsResult[0];
+              voiceDirectives = settings.voiceDirectives || '';
+              nonClientPromptSource = (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') || 'default';
+              nonClientAgentId = settings.nonClientAgentId;
+              nonClientManualPrompt = settings.nonClientManualPrompt || '';
+              console.log(`📞 [${connectionId}] Non-client settings loaded: source=${nonClientPromptSource}, agentId=${nonClientAgentId}`);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [${connectionId}] Could not fetch non-client settings:`, err);
+          }
+        }
+        
+        // Helper to interpolate placeholders
+        const interpolatePlaceholders = (text: string): string => {
+          return text
+            .replace(/\{\{consultantName\}\}/g, consultantName)
+            .replace(/\{\{businessName\}\}/g, consultantBusinessName ? ` (${consultantBusinessName})` : '');
+        };
+        
+        // Default voice directives template
+        const DEFAULT_VOICE_DIRECTIVES = `🎙️ MODALITÀ: CHIAMATA VOCALE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 IL TUO RUOLO E IDENTITÀ
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Sei Alessia, l'assistente AI vocale di ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}.
-Chi ti chiama NON è un cliente registrato.
-Il tuo obiettivo è:
-1. Capire chi sta chiamando e cosa cerca
-2. Fare una mini-discovery per capire le sue esigenze
-3. Se appropriato, proporre un appuntamento con ${consultantName}
-
-⚠️ LA TUA IDENTITÀ (usa questa frase se ti chiedono chi sei):
-"Sono Alessia, l'assistente digitale di ${consultantName}. Faccio parte del suo team e aiuto i clienti nel loro percorso."
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🗣️ TONO E STILE - STESSO DEI CLIENTI!
+🗣️ TONO E STILE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 - Tono MOLTO ENERGICO e VIVACE! Parla con entusiasmo e carica!
@@ -2309,14 +2333,29 @@ Il tuo obiettivo è:
 - DAI SEMPRE DEL TU - MAI del Lei
 - Parla come un AMICO, non come un centralinista
 - Esempio CORRETTO: "Ciao! Come posso aiutarti?"
-- Esempio SBAGLIATO: "Buongiorno, come posso esserle utile?"
+- Esempio SBAGLIATO: "Buongiorno, come posso esserle utile?"`;
+        
+        // Default non-client prompt template
+        const DEFAULT_NON_CLIENT_PROMPT = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 IL TUO RUOLO E IDENTITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sei Alessia, l'assistente AI vocale di {{consultantName}}{{businessName}}.
+Chi ti chiama NON è un cliente registrato.
+Il tuo obiettivo è:
+1. Capire chi sta chiamando e cosa cerca
+2. Fare una mini-discovery per capire le sue esigenze
+3. Se appropriato, proporre un appuntamento con {{consultantName}}
+
+⚠️ LA TUA IDENTITÀ (usa questa frase se ti chiedono chi sei):
+"Sono Alessia, l'assistente digitale di {{consultantName}}. Faccio parte del suo team e aiuto i clienti nel loro percorso."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚀 COMPORTAMENTO INIZIALE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Quando rispondi, fai un saluto caloroso e chiedi chi è:
-- "Ciao! Sono Alessia, l'assistente di ${consultantName}. Con chi ho il piacere di parlare?"
+- "Ciao! Sono Alessia, l'assistente di {{consultantName}}. Con chi ho il piacere di parlare?"
 - "Ehi, ciao! Benvenuto! Dimmi, come ti chiami?"
 - "Ciao! Che bello sentirti! Come posso chiamarti?"
 
@@ -2327,7 +2366,7 @@ Quando rispondi, fai un saluto caloroso e chiedi chi è:
 Dopo il saluto, fai domande per capire:
 1. Come hanno trovato il numero (referral, web, passaparola?)
 2. Cosa cercano o di cosa hanno bisogno
-3. Se hanno già lavorato con un consulente finanziario
+3. Se hanno già lavorato con un consulente
 
 Esempi di domande:
 - "Come hai trovato il nostro numero?"
@@ -2339,7 +2378,7 @@ Esempi di domande:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Quando appropriato, proponi di fissare una consulenza:
-- "Sai cosa? Mi sembra che potresti beneficiare di una chiacchierata con ${consultantName}. Che ne dici se fissiamo un appuntamento?"
+- "Sai cosa? Mi sembra che potresti beneficiare di una chiacchierata con {{consultantName}}. Che ne dici se fissiamo un appuntamento?"
 - "Questo è proprio il tipo di cosa in cui possiamo aiutarti! Ti va di prenotare una consulenza per approfondire?"
 
 Se accettano, chiedi:
@@ -2351,11 +2390,52 @@ Se accettano, chiedi:
 🧠 SEI ANCHE UN'AI GENERALISTA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Puoi rispondere anche a domande generali su finanza, investimenti, budgeting.
+Puoi rispondere anche a domande generali.
 Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         
+        // Build the content prompt based on source
+        let contentPrompt = '';
+        
+        if (nonClientPromptSource === 'agent' && nonClientAgentId) {
+          // Load agent prompt from ai_agents table using raw SQL
+          try {
+            const agentResult = await db.execute(sql`
+              SELECT prompt, name
+              FROM ai_agents 
+              WHERE id = ${nonClientAgentId}
+            `);
+            
+            if (agentResult.rows.length > 0 && (agentResult.rows[0] as any).prompt) {
+              const agent = agentResult.rows[0] as { prompt: string; name: string };
+              contentPrompt = agent.prompt;
+              console.log(`📞 [${connectionId}] Using agent prompt: ${agent.name} (${contentPrompt.length} chars)`);
+            } else {
+              console.warn(`⚠️ [${connectionId}] Agent ${nonClientAgentId} not found or has no prompt, falling back to default`);
+              contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [${connectionId}] Could not fetch agent prompt:`, err);
+            contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT);
+          }
+        } else if (nonClientPromptSource === 'manual' && nonClientManualPrompt) {
+          contentPrompt = interpolatePlaceholders(nonClientManualPrompt);
+          console.log(`📞 [${connectionId}] Using manual prompt (${contentPrompt.length} chars)`);
+        } else {
+          // Default template
+          contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT);
+          console.log(`📞 [${connectionId}] Using default prompt template`);
+        }
+        
+        // Use custom voice directives or default
+        const finalVoiceDirectives = voiceDirectives || DEFAULT_VOICE_DIRECTIVES;
+        
+        // Combine: Voice Directives + Content Prompt
+        systemInstruction = `${finalVoiceDirectives}
+
+${contentPrompt}`;
+        
         userDataContext = ''; // No user data for unknown callers
-        console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars) - Consultant: ${consultantName}`);
+        console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars) - Source: ${nonClientPromptSource}`);
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // CLIENT MODE - Build prompt from user context
