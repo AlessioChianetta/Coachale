@@ -101,11 +101,13 @@ Key enhancements include:
     - History injected into system prompt with date, title, and full transcript
     - Enables AI to reference past conversations: "L'ultima volta avevamo parlato di..."
   - **Voice Call Recording System** (Storico Chiamate):
-    - All phone_service WebSocket connections create `voice_calls` record on connect
+    - All phone_service WebSocket connections create `voice_calls` record on connect with status='talking'
+    - Real-time transcript updates every 2 seconds (debounced) during active calls
     - Record updated on disconnect with duration, transcript, outcome, ai_conversation_id
     - `activeVoiceCalls` Map tracks currently active calls in memory
     - GET /api/voice/calls/active endpoint returns real-time active calls for consultant
     - Integration between voice_calls and ai_conversations via ai_conversation_id field
+    - Frontend STATUS_CONFIG: ringing, answered, talking (In Corso), completed, failed, transferred, ended
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
