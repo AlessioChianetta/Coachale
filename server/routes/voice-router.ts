@@ -939,6 +939,387 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// OUTBOUND CALLS - Chiamate in uscita programmate
+// ═══════════════════════════════════════════════════════════════════
+
+// In-memory timer map for scheduled calls (scalable: replace with Redis/Bull later)
+const scheduledCallTimers = new Map<string, NodeJS.Timeout>();
+
+// Generate unique ID for scheduled calls
+function generateScheduledCallId(): string {
+  return `sc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+}
+
+// Execute outbound call - contacts VPS to initiate call
+async function executeOutboundCall(callId: string, consultantId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get call details from DB
+    const callResult = await db.execute(sql`
+      SELECT * FROM scheduled_voice_calls WHERE id = ${callId}
+    `);
+    
+    if (callResult.rows.length === 0) {
+      return { success: false, error: "Call not found" };
+    }
+    
+    const call = callResult.rows[0] as any;
+    
+    if (call.status === 'cancelled' || call.status === 'completed') {
+      return { success: false, error: `Call already ${call.status}` };
+    }
+    
+    // Update status to 'calling'
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls 
+      SET status = 'calling', 
+          attempts = attempts + 1,
+          last_attempt_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${callId}
+    `);
+    
+    // Get VPS URL from consultant settings
+    const vpsResult = await db.execute(sql`
+      SELECT vps_bridge_url FROM consultant_availability_settings 
+      WHERE consultant_id = ${consultantId}
+    `);
+    
+    const vpsUrl = (vpsResult.rows[0] as any)?.vps_bridge_url;
+    if (!vpsUrl) {
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'failed', error_message = 'VPS URL not configured', updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      return { success: false, error: "VPS URL not configured" };
+    }
+    
+    // Get service token
+    const tokenResult = await db.execute(sql`
+      SELECT token FROM voice_service_tokens 
+      WHERE consultant_id = ${consultantId} AND revoked_at IS NULL
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    
+    const token = (tokenResult.rows[0] as any)?.token;
+    if (!token) {
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'failed', error_message = 'No service token', updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      return { success: false, error: "No service token configured" };
+    }
+    
+    // Call VPS outbound endpoint
+    const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
+    console.log(`📞 [Outbound] Calling VPS: ${outboundUrl} for ${call.target_phone}`);
+    
+    const response = await fetch(outboundUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        targetPhone: call.target_phone,
+        callId: callId,
+        aiMode: call.ai_mode,
+        customPrompt: call.custom_prompt
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`VPS error: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log(`✅ [Outbound] VPS accepted call:`, result);
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error(`❌ [Outbound] Failed to execute call ${callId}:`, error);
+    
+    // Check if should retry
+    const callResult = await db.execute(sql`
+      SELECT attempts, max_attempts FROM scheduled_voice_calls WHERE id = ${callId}
+    `);
+    const call = callResult.rows[0] as any;
+    
+    if (call && call.attempts < call.max_attempts) {
+      // Schedule retry with exponential backoff
+      const retryDelayMs = Math.min(60000 * Math.pow(2, call.attempts - 1), 900000); // 1min, 2min, 4min... max 15min
+      
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'pending', 
+            scheduled_at = NOW() + INTERVAL '${sql.raw(String(retryDelayMs / 1000))} seconds',
+            error_message = ${error.message},
+            updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      
+      // Set timer for retry
+      const timer = setTimeout(() => executeOutboundCall(callId, consultantId), retryDelayMs);
+      scheduledCallTimers.set(callId, timer);
+      
+      return { success: false, error: `Retry scheduled in ${retryDelayMs / 1000}s` };
+    } else {
+      // Max attempts reached
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'failed', error_message = ${error.message}, updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      return { success: false, error: error.message };
+    }
+  }
+}
+
+// Schedule a call timer
+function scheduleCallTimer(callId: string, consultantId: string, scheduledAt: Date): void {
+  const now = new Date();
+  const delayMs = scheduledAt.getTime() - now.getTime();
+  
+  if (delayMs <= 0) {
+    // Execute immediately
+    executeOutboundCall(callId, consultantId);
+  } else {
+    // Schedule for later
+    const timer = setTimeout(() => {
+      scheduledCallTimers.delete(callId);
+      executeOutboundCall(callId, consultantId);
+    }, delayMs);
+    scheduledCallTimers.set(callId, timer);
+    console.log(`⏰ [Outbound] Scheduled call ${callId} for ${scheduledAt.toISOString()} (in ${Math.round(delayMs / 1000)}s)`);
+  }
+}
+
+// Cancel a scheduled timer
+function cancelCallTimer(callId: string): void {
+  const timer = scheduledCallTimers.get(callId);
+  if (timer) {
+    clearTimeout(timer);
+    scheduledCallTimers.delete(callId);
+    console.log(`🚫 [Outbound] Cancelled timer for ${callId}`);
+  }
+}
+
+// POST /api/voice/outbound/trigger - Chiamata immediata
+router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const { targetPhone, aiMode = "assistenza", customPrompt } = req.body;
+    
+    if (!targetPhone) {
+      return res.status(400).json({ error: "targetPhone is required" });
+    }
+    
+    // Validate phone format (basic E.164 validation)
+    const cleanPhone = targetPhone.replace(/[\s\-\(\)]/g, '');
+    if (!/^\+?[1-9]\d{6,14}$/.test(cleanPhone)) {
+      return res.status(400).json({ error: "Invalid phone number format" });
+    }
+    
+    const callId = generateScheduledCallId();
+    
+    // Create record in DB
+    await db.execute(sql`
+      INSERT INTO scheduled_voice_calls (
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt
+      ) VALUES (
+        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}
+      )
+    `);
+    
+    console.log(`📞 [Outbound] Trigger immediate call ${callId} to ${cleanPhone}`);
+    
+    // Execute call asynchronously
+    executeOutboundCall(callId, consultantId).then(result => {
+      if (!result.success) {
+        console.error(`[Outbound] Call ${callId} failed:`, result.error);
+      }
+    });
+    
+    res.json({
+      success: true,
+      callId,
+      message: "Chiamata in corso...",
+      targetPhone: cleanPhone
+    });
+  } catch (error: any) {
+    console.error("[Outbound] Trigger error:", error);
+    res.status(500).json({ error: "Errore nell'avvio della chiamata" });
+  }
+});
+
+// POST /api/voice/outbound/schedule - Programma chiamata futura
+router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const { targetPhone, scheduledAt, aiMode = "assistenza", customPrompt, priority = 5 } = req.body;
+    
+    if (!targetPhone || !scheduledAt) {
+      return res.status(400).json({ error: "targetPhone and scheduledAt are required" });
+    }
+    
+    // Validate phone format
+    const cleanPhone = targetPhone.replace(/[\s\-\(\)]/g, '');
+    if (!/^\+?[1-9]\d{6,14}$/.test(cleanPhone)) {
+      return res.status(400).json({ error: "Invalid phone number format" });
+    }
+    
+    const scheduledDate = new Date(scheduledAt);
+    if (isNaN(scheduledDate.getTime())) {
+      return res.status(400).json({ error: "Invalid scheduledAt date" });
+    }
+    
+    if (scheduledDate <= new Date()) {
+      return res.status(400).json({ error: "scheduledAt must be in the future" });
+    }
+    
+    const callId = generateScheduledCallId();
+    
+    // Create record in DB
+    await db.execute(sql`
+      INSERT INTO scheduled_voice_calls (
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority
+      ) VALUES (
+        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}
+      )
+    `);
+    
+    // Schedule timer
+    scheduleCallTimer(callId, consultantId, scheduledDate);
+    
+    console.log(`📅 [Outbound] Scheduled call ${callId} to ${cleanPhone} at ${scheduledDate.toISOString()}`);
+    
+    res.json({
+      success: true,
+      callId,
+      scheduledAt: scheduledDate.toISOString(),
+      targetPhone: cleanPhone
+    });
+  } catch (error: any) {
+    console.error("[Outbound] Schedule error:", error);
+    res.status(500).json({ error: "Errore nella programmazione della chiamata" });
+  }
+});
+
+// GET /api/voice/outbound/scheduled - Lista chiamate programmate
+router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    const { status } = req.query;
+    
+    let whereConditions = [];
+    if (consultantId) {
+      whereConditions.push(sql`consultant_id = ${consultantId}`);
+    }
+    if (status) {
+      whereConditions.push(sql`status = ${status}`);
+    }
+    
+    const whereClause = whereConditions.length > 0 
+      ? sql`WHERE ${sql.join(whereConditions, sql` AND `)}`
+      : sql``;
+    
+    const result = await db.execute(sql`
+      SELECT * FROM scheduled_voice_calls
+      ${whereClause}
+      ORDER BY 
+        CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
+        scheduled_at ASC
+    `);
+    
+    res.json({
+      calls: result.rows,
+      count: result.rows.length,
+      activeTimers: scheduledCallTimers.size
+    });
+  } catch (error: any) {
+    console.error("[Outbound] List error:", error);
+    res.status(500).json({ error: "Errore nel recupero delle chiamate programmate" });
+  }
+});
+
+// DELETE /api/voice/outbound/:id - Cancella chiamata programmata
+router.delete("/outbound/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    const { id } = req.params;
+    
+    // Check ownership
+    let whereClause = sql`WHERE id = ${id}`;
+    if (consultantId) {
+      whereClause = sql`WHERE id = ${id} AND consultant_id = ${consultantId}`;
+    }
+    
+    const existing = await db.execute(sql`
+      SELECT status FROM scheduled_voice_calls ${whereClause}
+    `);
+    
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: "Chiamata non trovata" });
+    }
+    
+    const call = existing.rows[0] as any;
+    if (call.status === 'calling' || call.status === 'talking') {
+      return res.status(400).json({ error: "Impossibile cancellare una chiamata in corso" });
+    }
+    
+    // Cancel timer if exists
+    cancelCallTimer(id);
+    
+    // Update status
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls 
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE id = ${id}
+    `);
+    
+    console.log(`🚫 [Outbound] Cancelled call ${id}`);
+    
+    res.json({ success: true, message: "Chiamata cancellata" });
+  } catch (error: any) {
+    console.error("[Outbound] Cancel error:", error);
+    res.status(500).json({ error: "Errore nella cancellazione" });
+  }
+});
+
+// Reload pending calls on server restart
+async function reloadPendingCalls(): Promise<void> {
+  try {
+    const result = await db.execute(sql`
+      SELECT sc.id, sc.consultant_id, sc.scheduled_at 
+      FROM scheduled_voice_calls sc
+      WHERE sc.status = 'pending' AND sc.scheduled_at IS NOT NULL
+    `);
+    
+    for (const call of result.rows as any[]) {
+      const scheduledAt = new Date(call.scheduled_at);
+      scheduleCallTimer(call.id, call.consultant_id, scheduledAt);
+    }
+    
+    console.log(`🔄 [Outbound] Reloaded ${result.rows.length} pending calls`);
+  } catch (error) {
+    console.error("[Outbound] Failed to reload pending calls:", error);
+  }
+}
+
+// Call reload on module load (deferred to avoid blocking)
+setTimeout(() => reloadPendingCalls(), 5000);
+
 // GET /api/voice/health - Health check (placeholder)
 router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
