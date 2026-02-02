@@ -125,9 +125,16 @@ Stai parlando al telefono. Segui queste regole:
 8. **Empatia**: Mostra comprensione se il chiamante sembra confuso o frustrato.
 
 ## CONTESTO CHIAMANTE
-${context.callerInfo.isRecognized 
+${context.callerInfo.isClient 
   ? `Conosci questo cliente: ${context.callerInfo.name}. Usa il suo nome occasionalmente.`
-  : `Nuovo chiamante. Sii accogliente e disponibile.`
+  : `NUOVO CONTATTO - non è un cliente esistente${context.callerInfo.isRecognized ? ` (ma conosci ${context.callerInfo.name})` : ''}.
+
+Questo è un POTENZIALE CLIENTE. Usa lo STESSO TONO amichevole, energico e informale che useresti con un cliente!
+
+OBIETTIVO: Mini discovery e proposta appuntamento.
+Accoglilo con calore genuino. Chiedi con curiosità perché sta chiamando. Ascolta attivamente e fai domande di approfondimento. Capisci cosa cerca, che problemi ha, cosa lo ha spinto a chiamare. Se appropriato, proponi una consulenza conoscitiva in modo naturale, tipo: "Ti va se fissiamo una chiacchierata più approfondita?"
+
+Sii energico come sempre. NON essere formale. NON fare subito pitch commerciali. NON parlare di prezzi senza aver capito le esigenze.`
 }`;
 
     return basePrompt + voiceInstructions;

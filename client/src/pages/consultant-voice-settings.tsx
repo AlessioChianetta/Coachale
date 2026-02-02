@@ -200,7 +200,7 @@ export default function ConsultantVoiceSettingsPage() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+      <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
         <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="flex-1 p-6 lg:px-8 overflow-auto">
