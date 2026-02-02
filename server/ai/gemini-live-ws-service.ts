@@ -6194,11 +6194,12 @@ ${compactFeedback}
               };
               
               await saveConversation(
-                userId!,
+                userId,
                 consultantId!,
                 conversationData,
                 voiceName,
-                sessionType
+                sessionType,
+                phoneCallerId // Pass caller phone for anonymous callers
               );
               console.log(`✅ [${connectionId}] AUTO-SAVE: Conversation saved successfully`);
             }
@@ -6251,29 +6252,38 @@ ${compactFeedback}
  * Salva conversazione vocale nel database
  */
 async function saveConversation(
-  userId: string,
+  userId: string | null,
   consultantId: string,
   conversationData: NonNullable<LiveMessage['conversationData']>,
   voiceName?: string,
-  sessionType?: 'weekly_consultation' | null
+  sessionType?: 'weekly_consultation' | null,
+  callerPhone?: string | null
 ): Promise<string> {
   try {
-    console.log(`💾 Saving voice conversation for user ${userId} (consultant: ${consultantId})...`);
+    console.log(`💾 Saving voice conversation for user ${userId || 'anonymous'} (consultant: ${consultantId}, callerPhone: ${callerPhone || 'none'})...`);
 
     // Trova il timestamp dell'ultimo messaggio per lastMessageAt
     const lastMessageTimestamp = conversationData.messages.length > 0
       ? new Date(conversationData.messages[conversationData.messages.length - 1].timestamp)
       : new Date();
 
-    // Crea conversazione
-    const [conversation] = await db.insert(aiConversations).values({
-      clientId: userId,
+    // Build conversation values - either clientId OR callerPhone must be set
+    const conversationValues: any = {
       title: generateConversationTitle(conversationData.messages),
       mode: 'live_voice',
       lastMessageAt: lastMessageTimestamp,
       createdAt: new Date(),
       updatedAt: new Date()
-    }).returning();
+    };
+    
+    if (userId) {
+      conversationValues.clientId = userId;
+    } else if (callerPhone) {
+      conversationValues.callerPhone = callerPhone;
+    }
+
+    // Crea conversazione
+    const [conversation] = await db.insert(aiConversations).values(conversationValues).returning();
 
     // Salva messaggi
     for (const msg of conversationData.messages) {

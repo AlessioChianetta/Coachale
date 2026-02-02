@@ -2101,6 +2101,7 @@ export const aiConversations = pgTable("ai_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }), // Nullable for sales agent prospects
   salesConversationId: varchar("sales_conversation_id"), // References client_sales_conversations.id - defined after the table
+  callerPhone: varchar("caller_phone", { length: 50 }), // Phone number for anonymous voice callers (CHECK constraint: clientId OR salesConversationId OR callerPhone required)
   agentId: varchar("agent_id"), // WhatsApp agent ID for agent-specific conversations (null = base assistance)
   mode: text("mode").notNull().$type<"assistenza" | "consulente" | "live_voice">(),
   consultantType: text("consultant_type").$type<"finanziario" | "business" | "vendita">(),
