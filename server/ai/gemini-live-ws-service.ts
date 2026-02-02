@@ -2604,8 +2604,21 @@ Puoi fare riferimento alle conversazioni precedenti: "Ah, certo! L'ultima volta 
           }
         }
         
-        // Combine: Voice Directives + Content Prompt + Previous Call Context
+        // Get current Italian time for the prompt
+        const italianTime = new Date().toLocaleString('it-IT', { 
+          timeZone: 'Europe/Rome',
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        // Combine: Voice Directives + Current Time + Content Prompt + Previous Call Context
         systemInstruction = `${finalVoiceDirectives}
+
+📅 Data e ora attuale: ${italianTime} (fuso orario Italia)
 
 ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
         
