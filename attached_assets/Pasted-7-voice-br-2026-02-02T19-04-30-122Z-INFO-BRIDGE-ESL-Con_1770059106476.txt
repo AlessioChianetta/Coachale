@@ -1,0 +1,15 @@
+7|voice-br | 2026-02-02T19:04:30.122Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+
+7|voice-bridge  | 2026-02-02T19:04:51.512Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=4459e623-5bee-4815-ba7e-088e14ffc325 callerIdNumber=1000 callerIdName=Alessio
+7|voice-bridge  | 2026-02-02T19:04:51.512Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: 4459e623-5bee-4815-ba7e-088e14ffc325
+7|voice-bridge  | 2026-02-02T19:04:51.566Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-bridge  | 2026-02-02T19:04:51.566Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=4459e623-5bee-4815-ba7e-088e14ffc325 | CallerId=1000 | CallerName=Alessio
+7|voice-bridge  | 2026-02-02T19:04:51.567Z [INFO ] [BRIDGE:SESSION] Session created sessionId=43216aa8 callId=4459e623-5bee-4815-ba7e-088e14ffc325 callerId=1000 calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-bridge  | 2026-02-02T19:04:51.617Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=4459e623-5bee-4815-ba7e-088e14ffc325
+7|voice-bridge  | 2026-02-02T19:04:52.325Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=43216aa8 url=wss://32c1c27a-eef0-4005-b5dc-d0cb3d0de45e-00-3r6fx0u1ii8hv.kirk.replit.dev/ws/ai-voice voice=Puck
+7|voice-bridge  | 2026-02-02T19:04:52.930Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=43216aa8
+7|voice-bridge  | 2026-02-02T19:04:52.930Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=43216aa8
+7|voice-bridge  | 2026-02-02T19:04:52.930Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=43216aa8 from=connecting to=active
+7|voice-bridge  | 2026-02-02T19:04:56.316Z [ERROR] [BRIDGE:REPLIT-WS] [REPLIT ERROR]: Failed to initialize Live session
+7|voice-bridge  | 2026-02-02T19:04:56.466Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=43216aa8 code=4500 reason=Server error
+7|voice-bridge  | 2026-02-02T19:04:56.466Z [INFO ] [BRIDGE:SERVER] Replit connection closed

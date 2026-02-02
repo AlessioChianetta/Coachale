@@ -1,0 +1,27 @@
+7|voice-br | 2026-02-02T18:27:27.440Z [INFO ] [BRIDGE:SERVER] [AI]: " sulla"
+7|voice-br | 2026-02-02T18:27:27.483Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  piattaforma?
+7|voice-br | 2026-02-02T18:27:27.483Z [INFO ] [BRIDGE:SERVER] [AI]: " piattaforma?"
+7|voice-br | 2026-02-02T18:30:55.127Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: 05cd1c06-1283-4a83-b1d9-a9a6dcd5335e)
+7|voice-br | 2026-02-02T18:30:55.131Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=05cd1c06 callId=7c5d535d-20de-4923-8d4e-ea48c1c76c14 reason=websocket_closed duration=11m 4s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+7|voice-br | 2026-02-02T18:30:55.278Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=05cd1c06 code=1000 reason=Session ended
+7|voice-br | 2026-02-02T18:30:55.278Z [INFO ] [BRIDGE:SERVER] Replit connection closed
+7|voice-br | 2026-02-02T18:31:11.044Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=6de04d0f-0630-42b5-b6cb-baffad46c276
+7|voice-br | 2026-02-02T18:31:11.044Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: 6de04d0f-0630-42b5-b6cb-baffad46c276
+7|voice-br | 2026-02-02T18:31:11.091Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=6de04d0f-0630-42b5-b6cb-baffad46c276
+7|voice-br | 2026-02-02T18:31:11.093Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-br | 2026-02-02T18:31:11.093Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=6de04d0f-0630-42b5-b6cb-baffad46c276 | Codec=L16 | Rate=16000
+7|voice-br | 2026-02-02T18:31:11.093Z [INFO ] [BRIDGE:SESSION] Session created sessionId=2d45be76 callId=6de04d0f-0630-42b5-b6cb-baffad46c276 callerId=unknown calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-br | 2026-02-02T18:31:11.782Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=2d45be76 url=wss://32c1c27a-eef0-4005-b5dc-d0cb3d0de45e-00-3r6fx0u1ii8hv.kirk.replit.dev/ws/ai-voice voice=Puck
+7|voice-br | 2026-02-02T18:31:12.384Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=2d45be76
+7|voice-br | 2026-02-02T18:31:12.384Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=2d45be76
+7|voice-br | 2026-02-02T18:31:12.384Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=2d45be76 from=connecting to=active
+7|voice-br | 2026-02-02T18:31:17.030Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao Jacopo!
+7|voice-br | 2026-02-02T18:31:17.030Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao Jacopo!"
+7|voice-br | 2026-02-02T18:31:17.420Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che bello
+7|voice-br | 2026-02-02T18:31:17.420Z [INFO ] [BRIDGE:SERVER] [AI]: " Che bello"
+7|voice-br | 2026-02-02T18:31:17.423Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sentirti!
+7|voice-br | 2026-02-02T18:31:17.423Z [INFO ] [BRIDGE:SERVER] [AI]: " sentirti!"
+7|voice-br | 2026-02-02T18:31:17.578Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Allora,
+7|voice-br | 2026-02-02T18:31:17.578Z [INFO ] [BRIDGE:SERVER] [AI]: " Allora,"
+
+7|voice-bridge  | 2026-02-02T18:31:17.789Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  dimmi

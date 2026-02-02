@@ -1,0 +1,148 @@
+  GNU nano 7.2                                                                                                                                                                                                                                                                  /opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts                                                                                                                                                                                                                                                                           
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer, type IncomingMessage } from 'http';
+import { parse as parseUrl } from 'url';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { sessionManager } from './session-manager.js';
+import { ReplitWSClient } from './replit-ws-client.js';
+import { convertForGemini, convertFromGemini } from './audio-converter.js';
+import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
+const log = logger.child('SERVER');
+let pendingCallId: string | null = null;
+let pendingCallTimer: NodeJS.Timeout | null = null;
+export function setExpectedCallId(uuid: string): void {
+  pendingCallId = uuid;
+  log.info(`Expecting connection for Call ID: ${uuid}`);
+  if (pendingCallTimer) clearTimeout(pendingCallTimer);
+  pendingCallTimer = setTimeout(() => {
+    if (pendingCallId === uuid) pendingCallId = null;
+  }, 5000);
+}
+interface AudioStreamStartMessage {
+  event: 'start';
+  call_id: string;
+  caller_id: string;
+  called_number: string;
+  codec: 'PCMU' | 'L16';
+  sample_rate: number;
+}
+interface AudioStreamStopMessage {
+  event: 'stop';
+  call_id: string;
+  reason: string;
+}
+type AudioStreamMessage = AudioStreamStartMessage | AudioStreamStopMessage;
+function firstQueryValue(v: unknown): string {
+  if (Array.isArray(v)) return typeof v[0] === 'string' ? v[0] : '';
+  return typeof v === 'string' ? v : '';
+}
+export function startVoiceBridgeServer(): void {
+  const server = createServer((req, res) => {
+    res.writeHead(404);
+    res.end('Not Found');
+  });
+  const wss = new WebSocketServer({ server });
+  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    const url = parseUrl(req.url || '', true);
+    const q = url.query;
+    log.info(`New WebSocket connection`, { clientIp });
+    let currentSessionId: string | null = null;
+    let callId = firstQueryValue(q.call_id);
+    if (!callId && pendingCallId) {
+      callId = pendingCallId;
+      pendingCallId = null;
+      if (pendingCallTimer) clearTimeout(pendingCallTimer);
+    }
+    if (callId) {
+      const callerId = firstQueryValue(q.caller_id) || 'unknown';
+      const startMsg: AudioStreamStartMessage = {
+        event: 'start',
+        call_id: callId,
+        caller_id: callerId,
+        called_number: '9999',
+        codec: 'L16',
+        sample_rate: 16000,
+      };
+      log.info(`📞 Call detected: ID=${callId} | Codec=${startMsg.codec} | Rate=${startMsg.sample_rate}`);
+      handleCallStart(ws, startMsg).then((sid) => {
+        currentSessionId = sid;
+      }).catch((e) => {
+        log.error(`Session init error: ${e.message}`);
+        ws.close(1011, 'Session init failed');
+      });
+    }
+    ws.on('message', (data: Buffer, isBinary: boolean) => {
+      if (isBinary && currentSessionId) {
+        handleAudioData(currentSessionId, data);
+      }
+    });
+    ws.on('close', () => {
+      if (currentSessionId) {
+        log.info(`WebSocket closed (Session: ${currentSessionId})`);
+        const session = sessionManager.getSession(currentSessionId);
+        if (session) handleCallStop(session.callId, 'websocket_closed');
+      }
+    });
+  });
+  server.listen(config.ws.port, config.ws.host, () => {
+    log.info(`Voice Bridge Server started on port ${config.ws.port}`);
+  });
+}
+async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage): Promise<string> {
+  const session = sessionManager.createSession(
+    message.call_id, message.caller_id, message.called_number,
+    message.codec, message.sample_rate, ws
+  );
+  await notifyCallStart(session.id, message.caller_id, message.called_number);
+  const replitClient = new ReplitWSClient({
+    sessionId: session.id,
+    callerId: message.caller_id,
+    onAudioResponse: (audio) => {
+      sendAudioToFreeSWITCH(session.id, audio);
+    },
+    onTextResponse: (text) => {
+      log.info(`[AI]: "${text}"`);
+    },
+    onError: (err) => {
+      log.error(`Replit Error: ${err.message}`);
+    },
+
+    onClose: () => log.info(`Replit connection closed`),
+  });
+  await replitClient.connect();
+  sessionManager.setReplitClient(session.id, replitClient);
+  sessionManager.updateSessionState(session.id, 'active');
+  return session.id;
+}
+function handleAudioData(sessionId: string, audioData: Buffer): void {
+  const session = sessionManager.getSession(sessionId);
+  if (!session || session.state !== 'active') return;
+
+  const pcm = convertForGemini(audioData, session.codec, session.sampleRate);
+  session.replitClient?.sendAudio(pcm);
+}
+function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
+  const session = sessionManager.getSession(sessionId);
+  if (!session?.fsWebSocket || session.fsWebSocket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  // Converti da 24kHz (Gemini) a 16kHz (FreeSWITCH)
+  const fsAudio = convertFromGemini(audio, session.codec, session.sampleRate);
+  // Chunking a 20ms (640 bytes per L16 16kHz)
+  const CHUNK_SIZE = 640;
+  for (let i = 0; i < fsAudio.length; i += CHUNK_SIZE) {
+    const chunk = fsAudio.slice(i, i + CHUNK_SIZE);
+    session.fsWebSocket.send(chunk, { binary: true });
+  }
+}
+function handleCallStop(callId: string, reason: string): void {
+  const session = sessionManager.getSessionByCallId(callId);
+  if (!session) return;
+  const duration = Date.now() - session.startTime.getTime();
+  notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
+  sessionManager.endSession(session.id, reason);
+}
+
+
