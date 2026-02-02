@@ -1376,9 +1376,21 @@ REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
 # Audio
 AUDIO_SAMPLE_RATE_IN=8000
 AUDIO_SAMPLE_RATE_OUT=8000
-SESSION_TIMEOUT_MS=120000
+SESSION_TIMEOUT_MS=1800000
 MAX_CONCURRENT_CALLS=10
-LOG_LEVEL=info`}</pre>
+LOG_LEVEL=debug
+
+# FreeSWITCH Event Socket
+ESL_HOST=127.0.0.1
+ESL_PORT=8021
+ESL_PASSWORD=LA_TUA_PASSWORD_ESL
+
+# SIP Trunk per chiamate in uscita
+SIP_GATEWAY=voip_trunk
+SIP_CALLER_ID=+39TUONUMERO
+
+# Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
+REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`}</pre>
                       </div>
                       <Button 
                         variant="outline" 
@@ -1389,7 +1401,7 @@ WS_HOST=0.0.0.0
 WS_PORT=9090
 WS_AUTH_TOKEN=${wsAuthToken}
 
-# Connessione a Replit
+# Connessione a Replit (NO /ws/ai-voice - lo aggiunge il codice)
 REPLIT_WS_URL=${window.location.origin}
 REPLIT_API_URL=${window.location.origin}
 REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
@@ -1397,9 +1409,21 @@ REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
 # Audio
 AUDIO_SAMPLE_RATE_IN=8000
 AUDIO_SAMPLE_RATE_OUT=8000
-SESSION_TIMEOUT_MS=120000
+SESSION_TIMEOUT_MS=1800000
 MAX_CONCURRENT_CALLS=10
-LOG_LEVEL=info`;
+LOG_LEVEL=debug
+
+# FreeSWITCH Event Socket
+ESL_HOST=127.0.0.1
+ESL_PORT=8021
+ESL_PASSWORD=LA_TUA_PASSWORD_ESL
+
+# SIP Trunk per chiamate in uscita
+SIP_GATEWAY=voip_trunk
+SIP_CALLER_ID=+39TUONUMERO
+
+# Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
+REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`;
                           navigator.clipboard.writeText(envContent);
                           toast({ title: "Copiato!", description: "Template .env copiato negli appunti" });
                         }}
