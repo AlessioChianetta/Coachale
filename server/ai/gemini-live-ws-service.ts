@@ -6212,12 +6212,12 @@ ${compactFeedback}
               transcriptText = conversationMessages
                 .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.transcript}`)
                 .join('\n');
-            } else if (currentConversationId) {
+            } else if (currentAiConversationId) {
               // Fallback: fetch from ai_messages if conversationMessages is empty
               try {
                 const messages = await db.execute(sql`
                   SELECT role, content FROM ai_messages 
-                  WHERE conversation_id = ${currentConversationId}
+                  WHERE conversation_id = ${currentAiConversationId}
                   ORDER BY created_at ASC
                 `);
                 transcriptText = (messages.rows as any[])
@@ -6236,7 +6236,7 @@ ${compactFeedback}
                 endedAt: endedAt,
                 durationSeconds: durationSeconds,
                 fullTranscript: transcriptText || null,
-                aiConversationId: currentConversationId || null,
+                aiConversationId: currentAiConversationId || null,
                 outcome: code === 1000 ? 'normal_end' : `disconnect_${code}`,
                 updatedAt: new Date(),
               })
