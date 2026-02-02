@@ -94,6 +94,12 @@ Key enhancements include:
     - mode='phone_service' in WebSocket connection triggers caller ID lookup via getUserByPhoneNumber
     - Phone number normalization: handles +, 00, parentheses, dashes, spaces for robust matching
     - VPS bridge authenticates via token query param, passes callerId for caller recognition
+  - **Caller History Context System** (for returning anonymous callers):
+    - `caller_phone` column in `ai_conversations` table (CHECK constraint: client_id OR sales_conversation_id OR caller_phone)
+    - Conversations saved with normalized caller phone for non-client calls
+    - On reconnection: loads last 3 conversations (max 10 messages each) for caller phone
+    - History injected into system prompt with date, title, and transcript excerpts
+    - Enables AI to reference past conversations: "L'ultima volta avevamo parlato di..."
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
