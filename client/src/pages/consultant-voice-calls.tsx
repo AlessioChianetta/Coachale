@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -45,6 +48,11 @@ import {
   Copy,
   Check,
   Mic2,
+  MessageSquare,
+  Bot,
+  FileText,
+  RotateCcw,
+  Save,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -102,6 +110,22 @@ interface TokenStatus {
   message: string;
 }
 
+interface NonClientSettings {
+  voiceDirectives: string;
+  nonClientPromptSource: 'agent' | 'manual' | 'default';
+  nonClientAgentId: number | null;
+  nonClientManualPrompt: string;
+  defaultVoiceDirectives: string;
+  defaultNonClientPrompt: string;
+  availableAgents: Array<{
+    id: number;
+    name: string;
+    persona: string | null;
+    prompt: string | null;
+    status: string;
+  }>;
+}
+
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Phone; color: string }> = {
   ringing: { label: "In Arrivo", icon: PhoneIncoming, color: "bg-yellow-500" },
   answered: { label: "Connessa", icon: Phone, color: "bg-blue-500" },
@@ -134,7 +158,14 @@ export default function ConsultantVoiceCallsPage() {
   const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
 
+  const [voiceDirectives, setVoiceDirectives] = useState("");
+  const [promptSource, setPromptSource] = useState<'agent' | 'manual' | 'default'>('default');
+  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+  const [manualPrompt, setManualPrompt] = useState("");
+  const [hasChanges, setHasChanges] = useState(false);
+
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Voice settings query
   const { data: voiceSettings, refetch: refetchVoice } = useQuery({
@@ -249,6 +280,62 @@ export default function ConsultantVoiceCallsPage() {
       return res.json();
     },
   });
+
+  const { data: nonClientSettingsData, isLoading: loadingNonClientSettings } = useQuery<NonClientSettings>({
+    queryKey: ["/api/voice/non-client-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/non-client-settings", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento impostazioni");
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (nonClientSettingsData) {
+      setVoiceDirectives(nonClientSettingsData.voiceDirectives);
+      setPromptSource(nonClientSettingsData.nonClientPromptSource);
+      setSelectedAgentId(nonClientSettingsData.nonClientAgentId);
+      setManualPrompt(nonClientSettingsData.nonClientManualPrompt);
+      setHasChanges(false);
+    }
+  }, [nonClientSettingsData]);
+
+  const saveNonClientSettingsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/non-client-settings", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voiceDirectives,
+          nonClientPromptSource: promptSource,
+          nonClientAgentId: selectedAgentId,
+          nonClientManualPrompt: manualPrompt,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setHasChanges(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/non-client-settings"] });
+      toast({ title: "Salvato!", description: "Le impostazioni sono state salvate correttamente" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleResetDirectives = () => {
+    if (nonClientSettingsData) {
+      setVoiceDirectives(nonClientSettingsData.defaultVoiceDirectives);
+      setHasChanges(true);
+    }
+  };
+
+  const selectedAgent = nonClientSettingsData?.availableAgents.find(a => a.id === selectedAgentId);
 
   const calls: VoiceCall[] = callsData?.calls || [];
   const pagination = callsData?.pagination || { page: 1, totalPages: 1, total: 0 };
@@ -427,6 +514,10 @@ export default function ConsultantVoiceCallsPage() {
                 <TabsTrigger value="calls" className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
                   Chiamate
+                </TabsTrigger>
+                <TabsTrigger value="non-client" className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Prompt Non-Clienti
                 </TabsTrigger>
                 <TabsTrigger value="vps" className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
@@ -647,6 +738,183 @@ export default function ConsultantVoiceCallsPage() {
                 )}
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="non-client" className="space-y-6">
+                {loadingNonClientSettings ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              <Mic2 className="h-5 w-5" />
+                              Direttive Vocali
+                            </CardTitle>
+                            <CardDescription>
+                              Queste istruzioni vengono sempre aggiunte in cima al prompt finale. Definiscono il tono, lo stile e le regole di comunicazione.
+                            </CardDescription>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetDirectives}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Ripristina Default
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Textarea
+                          value={voiceDirectives}
+                          onChange={(e) => {
+                            setVoiceDirectives(e.target.value);
+                            setHasChanges(true);
+                          }}
+                          className="min-h-[200px] font-mono text-sm"
+                          placeholder="Direttive vocali..."
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Contenuto Prompt
+                        </CardTitle>
+                        <CardDescription>
+                          Scegli la fonte del prompt per le chiamate da numeri non riconosciuti. Il prompt finale sarà: Direttive Vocali + Contenuto Prompt.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <RadioGroup
+                          value={promptSource}
+                          onValueChange={(value: 'agent' | 'manual' | 'default') => {
+                            setPromptSource(value);
+                            setHasChanges(true);
+                          }}
+                          className="space-y-4"
+                        >
+                          <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                            <RadioGroupItem value="agent" id="agent" className="mt-1" />
+                            <div className="flex-1 space-y-3">
+                              <Label htmlFor="agent" className="flex items-center gap-2 cursor-pointer">
+                                <Bot className="h-4 w-4" />
+                                Importa da Agente
+                              </Label>
+                              <p className="text-sm text-muted-foreground">
+                                Usa il prompt di un agente WhatsApp esistente. L'agente verrà usato con le sue istruzioni complete.
+                              </p>
+                              {promptSource === 'agent' && (
+                                <div className="pt-2">
+                                  <Select
+                                    value={selectedAgentId?.toString() || ''}
+                                    onValueChange={(value) => {
+                                      setSelectedAgentId(value ? parseInt(value) : null);
+                                      setHasChanges(true);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Seleziona un agente..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {nonClientSettingsData?.availableAgents.map((agent) => (
+                                        <SelectItem key={agent.id} value={agent.id.toString()}>
+                                          <div className="flex items-center gap-2">
+                                            <span>{agent.name}</span>
+                                            {agent.persona && (
+                                              <Badge variant="outline" className="text-xs">
+                                                {agent.persona}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {selectedAgent?.prompt && (
+                                    <div className="mt-3 p-3 bg-muted rounded-md">
+                                      <Label className="text-xs text-muted-foreground">Anteprima Prompt Agente:</Label>
+                                      <pre className="mt-2 text-xs whitespace-pre-wrap max-h-[200px] overflow-auto">
+                                        {selectedAgent.prompt}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                            <RadioGroupItem value="manual" id="manual" className="mt-1" />
+                            <div className="flex-1 space-y-3">
+                              <Label htmlFor="manual" className="flex items-center gap-2 cursor-pointer">
+                                <FileText className="h-4 w-4" />
+                                Template Manuale
+                              </Label>
+                              <p className="text-sm text-muted-foreground">
+                                Scrivi un prompt personalizzato per i non-clienti. Usa {"{{consultantName}}"} e {"{{businessName}}"} come placeholder.
+                              </p>
+                              {promptSource === 'manual' && (
+                                <Textarea
+                                  value={manualPrompt}
+                                  onChange={(e) => {
+                                    setManualPrompt(e.target.value);
+                                    setHasChanges(true);
+                                  }}
+                                  className="min-h-[200px] font-mono text-sm"
+                                  placeholder="Scrivi il tuo prompt personalizzato..."
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                            <RadioGroupItem value="default" id="default" className="mt-1" />
+                            <div className="flex-1 space-y-3">
+                              <Label htmlFor="default" className="flex items-center gap-2 cursor-pointer">
+                                <Settings className="h-4 w-4" />
+                                Template Default
+                              </Label>
+                              <p className="text-sm text-muted-foreground">
+                                Usa il template predefinito di sistema con mini-discovery e proposta appuntamento.
+                              </p>
+                              {promptSource === 'default' && nonClientSettingsData?.defaultNonClientPrompt && (
+                                <div className="mt-3 p-3 bg-muted rounded-md">
+                                  <Label className="text-xs text-muted-foreground">Template Default (non modificabile):</Label>
+                                  <pre className="mt-2 text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground">
+                                    {nonClientSettingsData.defaultNonClientPrompt}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </RadioGroup>
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => saveNonClientSettingsMutation.mutate()}
+                        disabled={!hasChanges || saveNonClientSettingsMutation.isPending}
+                        size="lg"
+                      >
+                        {saveNonClientSettingsMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Salva Impostazioni
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="vps" className="space-y-6">
