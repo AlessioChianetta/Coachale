@@ -137,16 +137,70 @@ Cancella chiamata programmata.
 Request:
 {
   "targetPhone": "+393331234567",
-  "callbackUrl": "wss://replit-app.com/voice-ws",
   "callId": "sc_xxx",
-  "token": "JWT_SERVICE_TOKEN"
+  "aiMode": "assistenza",
+  "customPrompt": null
+}
+
+Headers:
+Authorization: Bearer <service_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "callId": "sc_xxx",
+  "freeswitchUuid": "abc-123-def"
 }
 ```
 
-Azioni VPS:
-1. Valida token
-2. FreeSWITCH: `originate sofia/gateway/trunk/+393331234567 &bridge(user/ai-bridge)`
-3. Quando risponde, connette WebSocket con callId
+### Implementazione VPS
+
+File: `vps-voice-bridge/src/outbound-handler.ts`
+
+**Azioni VPS:**
+1. Valida token Bearer
+2. Valida formato numero telefono
+3. Connetti a FreeSWITCH via ESL (Event Socket Library)
+4. Esegui comando originate:
+   ```
+   originate {origination_caller_id_number=NUMERO_CENTRALINO}sofia/gateway/TRUNK/${targetPhone} &bridge(user/ai-bridge)
+   ```
+5. Quando l'utente risponde, FreeSWITCH connette audio al WebSocket bridge
+6. Il bridge si connette a Replit con il callId per tracking
+
+### FreeSWITCH ESL Commands
+
+```javascript
+// Connessione ESL
+const conn = new ESLconnection('127.0.0.1', 8021, 'password');
+
+// Originate
+const originateCmd = `originate {origination_caller_id_number=+39XXXXXXXXXX,origination_uuid=${uuid}}sofia/gateway/voip_trunk/${targetPhone} &bridge(user/9999)`;
+conn.api(originateCmd);
+```
+
+### Configurazione FreeSWITCH
+
+1. **Gateway SIP** (sip_profiles/external.xml):
+   ```xml
+   <gateway name="voip_trunk">
+     <param name="realm" value="sip.provider.com"/>
+     <param name="username" value="account"/>
+     <param name="password" value="password"/>
+   </gateway>
+   ```
+
+2. **Dialplan per bridge audio** (dialplan/default.xml):
+   ```xml
+   <extension name="ai-bridge">
+     <condition field="destination_number" expression="^9999$">
+       <action application="answer"/>
+       <action application="socket" data="127.0.0.1:8085 async full"/>
+     </condition>
+   </extension>
+   ```
 
 ---
 
@@ -162,19 +216,19 @@ Azioni VPS:
 ## Progresso Implementazione
 
 ### ✅ Completato
-- [ ] Task 1: Tabella database
+- [x] Task 1: Tabella database `scheduled_voice_calls`
+- [x] Task 2: Endpoint POST /api/voice/outbound/trigger
+- [x] Task 3: Restart timer (reloadPendingCalls al boot)
+- [x] Task 4: Frontend tab "Chiamate in Uscita"
+- [x] Task 7: CRUD schedule (POST schedule, GET list, DELETE cancel)
+- [x] Task 8: Form programmazione (numero, data/ora, modalità AI)
+- [x] Task 9: Lista chiamate programmate con stato e azioni
 
 ### 🔄 In Corso
-- [ ] Task 2: Endpoint trigger
+- [ ] Task 5: VPS endpoint docs (per originate FreeSWITCH)
+- [ ] Task 6: Test E2E
 
 ### ⏳ Da Fare
-- [ ] Task 3: Restart timer
-- [ ] Task 4: Frontend tab
-- [ ] Task 5: VPS endpoint docs
-- [ ] Task 6: Test E2E
-- [ ] Task 7: CRUD schedule
-- [ ] Task 8: Form programmazione
-- [ ] Task 9: Lista programmate
 - [ ] Task 10: Review finale
 
 ---

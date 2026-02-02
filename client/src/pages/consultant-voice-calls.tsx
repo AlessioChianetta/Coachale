@@ -33,7 +33,9 @@ import {
   PhoneOff,
   PhoneMissed,
   PhoneForwarded,
+  PhoneOutgoing,
   Clock,
+  Calendar,
   User,
   Search,
   Loader2,
@@ -53,6 +55,8 @@ import {
   FileText,
   RotateCcw,
   Save,
+  Trash2,
+  Play,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -110,6 +114,24 @@ interface TokenStatus {
   message: string;
 }
 
+interface ScheduledVoiceCall {
+  id: string;
+  consultant_id: string;
+  target_phone: string;
+  scheduled_at: string | null;
+  status: string;
+  ai_mode: string;
+  custom_prompt: string | null;
+  voice_call_id: string | null;
+  attempts: number;
+  max_attempts: number;
+  last_attempt_at: string | null;
+  error_message: string | null;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface NonClientSettings {
   voiceDirectives: string;
   nonClientPromptSource: 'agent' | 'manual' | 'default';
@@ -134,6 +156,16 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Phone; color: 
   failed: { label: "Fallita", icon: PhoneMissed, color: "bg-red-500" },
   transferred: { label: "Trasferita", icon: PhoneForwarded, color: "bg-purple-500" },
   ended: { label: "Terminata", icon: PhoneOff, color: "bg-gray-500" },
+};
+
+const OUTBOUND_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  pending: { label: "In Attesa", color: "bg-yellow-500" },
+  calling: { label: "Chiamando...", color: "bg-blue-500" },
+  ringing: { label: "Sta Squillando", color: "bg-blue-400" },
+  talking: { label: "In Corso", color: "bg-green-500" },
+  completed: { label: "Completata", color: "bg-green-600" },
+  failed: { label: "Fallita", color: "bg-red-500" },
+  cancelled: { label: "Cancellata", color: "bg-gray-500" },
 };
 
 const VOICES = [
@@ -163,6 +195,12 @@ export default function ConsultantVoiceCallsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [manualPrompt, setManualPrompt] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
+
+  const [outboundPhone, setOutboundPhone] = useState("");
+  const [outboundAiMode, setOutboundAiMode] = useState("assistenza");
+  const [outboundScheduledDate, setOutboundScheduledDate] = useState("");
+  const [outboundScheduledTime, setOutboundScheduledTime] = useState("");
+  const [isScheduleMode, setIsScheduleMode] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -289,6 +327,106 @@ export default function ConsultantVoiceCallsPage() {
       return res.json();
     },
   });
+
+  const { data: scheduledCallsData, isLoading: loadingScheduledCalls, refetch: refetchScheduledCalls } = useQuery<{ calls: ScheduledVoiceCall[]; count: number; activeTimers: number }>({
+    queryKey: ["/api/voice/outbound/scheduled"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/outbound/scheduled", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento chiamate programmate");
+      return res.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const triggerOutboundMutation = useMutation({
+    mutationFn: async ({ targetPhone, aiMode }: { targetPhone: string; aiMode: string }) => {
+      const res = await fetch("/api/voice/outbound/trigger", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ targetPhone, aiMode }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nell'avvio della chiamata");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setOutboundPhone("");
+      refetchScheduledCalls();
+      toast({ title: "Chiamata avviata!", description: `Chiamando ${data.targetPhone}...` });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const scheduleOutboundMutation = useMutation({
+    mutationFn: async ({ targetPhone, scheduledAt, aiMode }: { targetPhone: string; scheduledAt: string; aiMode: string }) => {
+      const res = await fetch("/api/voice/outbound/schedule", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ targetPhone, scheduledAt, aiMode }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella programmazione");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setOutboundPhone("");
+      setOutboundScheduledDate("");
+      setOutboundScheduledTime("");
+      setIsScheduleMode(false);
+      refetchScheduledCalls();
+      toast({ 
+        title: "Chiamata programmata!", 
+        description: `Chiamerà ${data.targetPhone} il ${new Date(data.scheduledAt).toLocaleString('it-IT')}` 
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const cancelOutboundMutation = useMutation({
+    mutationFn: async (callId: string) => {
+      const res = await fetch(`/api/voice/outbound/${callId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella cancellazione");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchScheduledCalls();
+      toast({ title: "Chiamata cancellata" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleTriggerCall = () => {
+    if (!outboundPhone.trim()) {
+      toast({ title: "Errore", description: "Inserisci un numero di telefono", variant: "destructive" });
+      return;
+    }
+    triggerOutboundMutation.mutate({ targetPhone: outboundPhone.trim(), aiMode: outboundAiMode });
+  };
+
+  const handleScheduleCall = () => {
+    if (!outboundPhone.trim() || !outboundScheduledDate || !outboundScheduledTime) {
+      toast({ title: "Errore", description: "Inserisci numero, data e ora", variant: "destructive" });
+      return;
+    }
+    const scheduledAt = new Date(`${outboundScheduledDate}T${outboundScheduledTime}`).toISOString();
+    scheduleOutboundMutation.mutate({ targetPhone: outboundPhone.trim(), scheduledAt, aiMode: outboundAiMode });
+  };
 
   useEffect(() => {
     if (nonClientSettingsData) {
@@ -515,6 +653,10 @@ export default function ConsultantVoiceCallsPage() {
                   <Phone className="h-4 w-4" />
                   Chiamate
                 </TabsTrigger>
+                <TabsTrigger value="outbound" className="flex items-center gap-2">
+                  <PhoneOutgoing className="h-4 w-4" />
+                  Chiamate in Uscita
+                </TabsTrigger>
                 <TabsTrigger value="non-client" className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
                   Prompt Non-Clienti
@@ -738,6 +880,187 @@ export default function ConsultantVoiceCallsPage() {
                 )}
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="outbound" className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <PhoneOutgoing className="h-5 w-5" />
+                        {isScheduleMode ? "Programma Chiamata" : "Chiamata Immediata"}
+                      </CardTitle>
+                      <CardDescription>
+                        {isScheduleMode 
+                          ? "Programma una chiamata per un orario specifico"
+                          : "Avvia subito una chiamata in uscita verso un numero"
+                        }
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex gap-2">
+                        <Button
+                          variant={!isScheduleMode ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setIsScheduleMode(false)}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Chiama Ora
+                        </Button>
+                        <Button
+                          variant={isScheduleMode ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setIsScheduleMode(true)}
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Programma
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="outbound-phone">Numero di Telefono</Label>
+                          <Input
+                            id="outbound-phone"
+                            type="tel"
+                            placeholder="+393331234567"
+                            value={outboundPhone}
+                            onChange={(e) => setOutboundPhone(e.target.value)}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Formato: +39 seguito dal numero (es. +393331234567)
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="outbound-mode">Modalità AI</Label>
+                          <Select value={outboundAiMode} onValueChange={setOutboundAiMode}>
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Seleziona modalità" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="assistenza">Assistenza</SelectItem>
+                              <SelectItem value="vendita">Vendita</SelectItem>
+                              <SelectItem value="followup">Follow-up</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {isScheduleMode && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="outbound-date">Data</Label>
+                              <Input
+                                id="outbound-date"
+                                type="date"
+                                value={outboundScheduledDate}
+                                onChange={(e) => setOutboundScheduledDate(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="outbound-time">Ora</Label>
+                              <Input
+                                id="outbound-time"
+                                type="time"
+                                value={outboundScheduledTime}
+                                onChange={(e) => setOutboundScheduledTime(e.target.value)}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <Button
+                          className="w-full"
+                          onClick={isScheduleMode ? handleScheduleCall : handleTriggerCall}
+                          disabled={triggerOutboundMutation.isPending || scheduleOutboundMutation.isPending || !outboundPhone.trim()}
+                        >
+                          {(triggerOutboundMutation.isPending || scheduleOutboundMutation.isPending) ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : isScheduleMode ? (
+                            <Calendar className="h-4 w-4 mr-2" />
+                          ) : (
+                            <PhoneOutgoing className="h-4 w-4 mr-2" />
+                          )}
+                          {isScheduleMode ? "Programma Chiamata" : "Chiama Adesso"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Clock className="h-5 w-5" />
+                            Chiamate Programmate
+                          </CardTitle>
+                          <CardDescription>
+                            {scheduledCallsData?.count || 0} chiamate in coda
+                            {scheduledCallsData?.activeTimers ? ` (${scheduledCallsData.activeTimers} timer attivi)` : ''}
+                          </CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => refetchScheduledCalls()}>
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingScheduledCalls ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : !scheduledCallsData?.calls?.length ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <PhoneOutgoing className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                          <p>Nessuna chiamata programmata</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[400px] overflow-auto">
+                          {scheduledCallsData.calls.map((call) => {
+                            const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
+                            return (
+                              <div key={call.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div className="space-y-1">
+                                  <p className="font-mono font-medium">{call.target_phone}</p>
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+                                    <span>{call.ai_mode}</span>
+                                    {call.scheduled_at && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {call.error_message && (
+                                    <p className="text-xs text-red-500">{call.error_message}</p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  {(call.status === 'pending' || call.status === 'failed') && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => cancelOutboundMutation.mutate(call.id)}
+                                      disabled={cancelOutboundMutation.isPending}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               <TabsContent value="non-client" className="space-y-6">
