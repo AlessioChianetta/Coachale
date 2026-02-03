@@ -928,12 +928,29 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       WHERE consultant_id = ${consultantId}
     `);
 
-    // Get available agents for dropdown (from consultant_whatsapp_config table - the real WhatsApp agents)
+    // Get available agents for dropdown with full Brand Voice data
     const agentsResult = await db.execute(sql`
       SELECT id, 
              COALESCE(agent_name, business_name) as name, 
              agent_type as persona, 
-             agent_instructions as prompt, 
+             agent_instructions,
+             business_name,
+             business_description,
+             consultant_bio,
+             vision,
+             mission,
+             values,
+             usp,
+             who_we_help,
+             who_we_dont_help,
+             what_we_do,
+             how_we_do_it,
+             years_experience,
+             clients_helped,
+             results_generated,
+             services_offered,
+             guarantees,
+             ai_personality,
              CASE WHEN is_active THEN 'active' ELSE 'inactive' END as status
       FROM consultant_whatsapp_config 
       WHERE consultant_id = ${consultantId}
@@ -942,6 +959,79 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
 
     const settings = result.rows[0] as any;
     
+    // Build full prompt preview for each agent (including Brand Voice)
+    const agentsWithFullPrompt = agentsResult.rows.map((agent: any) => {
+      let fullPrompt = agent.agent_instructions || '';
+      
+      // Build Brand Voice section
+      let brandVoice = '';
+      
+      if (agent.business_name) {
+        brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏢 BUSINESS & IDENTITÀ\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        brandVoice += `• Business: ${agent.business_name}\n`;
+        if (agent.business_description) brandVoice += `• Descrizione: ${agent.business_description}\n`;
+        if (agent.consultant_bio) brandVoice += `• Bio: ${agent.consultant_bio}\n`;
+      }
+      
+      if (agent.vision || agent.mission || agent.usp) {
+        brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎯 POSIZIONAMENTO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        if (agent.vision) brandVoice += `• Vision: ${agent.vision}\n`;
+        if (agent.mission) brandVoice += `• Mission: ${agent.mission}\n`;
+        const valuesArray = Array.isArray(agent.values) ? agent.values : (typeof agent.values === 'string' ? JSON.parse(agent.values || '[]') : []);
+        if (valuesArray.length > 0) brandVoice += `• Valori: ${valuesArray.join(', ')}\n`;
+        if (agent.usp) brandVoice += `• USP: ${agent.usp}\n`;
+      }
+      
+      if (agent.who_we_help || agent.who_we_dont_help) {
+        brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👥 TARGET\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        if (agent.who_we_help) brandVoice += `• Chi aiutiamo: ${agent.who_we_help}\n`;
+        if (agent.who_we_dont_help) brandVoice += `• Chi NON aiutiamo: ${agent.who_we_dont_help}\n`;
+      }
+      
+      if (agent.what_we_do || agent.how_we_do_it) {
+        brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔧 METODO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        if (agent.what_we_do) brandVoice += `• Cosa facciamo: ${agent.what_we_do}\n`;
+        if (agent.how_we_do_it) brandVoice += `• Come lo facciamo: ${agent.how_we_do_it}\n`;
+      }
+      
+      if (agent.years_experience || agent.clients_helped || agent.results_generated) {
+        brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏆 CREDENZIALI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        if (agent.years_experience) brandVoice += `• Anni di esperienza: ${agent.years_experience}\n`;
+        if (agent.clients_helped) brandVoice += `• Clienti aiutati: ${agent.clients_helped}\n`;
+        if (agent.results_generated) brandVoice += `• Risultati: ${agent.results_generated}\n`;
+      }
+      
+      const servicesArray = Array.isArray(agent.services_offered) ? agent.services_offered : (typeof agent.services_offered === 'string' ? JSON.parse(agent.services_offered || '[]') : []);
+      if (servicesArray.length > 0 || agent.guarantees) {
+        brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n💼 SERVIZI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        for (const service of servicesArray) {
+          if (service.name) {
+            brandVoice += `• ${service.name}${service.price ? ` (${service.price})` : ''}\n`;
+            if (service.description) brandVoice += `  ${service.description}\n`;
+          }
+        }
+        if (agent.guarantees) brandVoice += `• Garanzie: ${agent.guarantees}\n`;
+      }
+      
+      if (agent.ai_personality) {
+        brandVoice += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🤖 PERSONALITÀ AI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        brandVoice += agent.ai_personality + '\n';
+      }
+      
+      // Combine instructions + Brand Voice
+      if (brandVoice) {
+        fullPrompt = fullPrompt + '\n\n' + brandVoice;
+      }
+      
+      return {
+        id: agent.id,
+        name: agent.name,
+        persona: agent.persona,
+        prompt: fullPrompt || '(Nessun prompt configurato)',
+        status: agent.status
+      };
+    });
+    
     res.json({
       voiceDirectives: settings?.voice_directives || DEFAULT_VOICE_DIRECTIVES,
       nonClientPromptSource: settings?.non_client_prompt_source || 'default',
@@ -949,7 +1039,7 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       nonClientManualPrompt: settings?.non_client_manual_prompt || '',
       defaultVoiceDirectives: DEFAULT_VOICE_DIRECTIVES,
       defaultNonClientPrompt: DEFAULT_NON_CLIENT_PROMPT,
-      availableAgents: agentsResult.rows
+      availableAgents: agentsWithFullPrompt
     });
   } catch (error) {
     console.error("[Voice] Error fetching non-client settings:", error);
