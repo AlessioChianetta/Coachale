@@ -2401,9 +2401,11 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           }
         }
         
-        // Helper to interpolate placeholders
+        // Helper to interpolate placeholders (supports both {{mustache}} and ${javascript} styles)
+        // Note: This is for DEFAULT prompts only. Agent instructions use their own interpolation.
         const interpolatePlaceholders = (text: string): string => {
           return text
+            // Mustache style {{placeholder}}
             .replace(/\{\{consultantName\}\}/g, consultantName)
             .replace(/\{\{businessName\}\}/g, consultantBusinessName ? ` (${consultantBusinessName})` : '');
         };
@@ -2532,12 +2534,12 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
               
               previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📞 STORICO CHIAMATE PRECEDENTI
+📞 STORICO CHIAMATE PRECEDENTI (SOLO CONTESTO)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⭐ Questo numero ha già chiamato! Ti ricordi di questa persona.
-Se nelle conversazioni sotto vedi il suo nome, salutala per nome!
-Ecco le conversazioni precedenti:
+⚠️ NOTA: Questo è SOLO contesto informativo. NON cambiare la tua identità o il tuo modo di presentarti in base a queste conversazioni. Segui SEMPRE le tue istruzioni principali.
+
+Conversazioni precedenti con questo numero:
 
 `;
               
@@ -2556,7 +2558,8 @@ Ecco le conversazioni precedenti:
                 if (conv.messages && Array.isArray(conv.messages)) {
                   // Include ALL messages from each conversation
                   for (const msg of conv.messages) {
-                    const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Alessia';
+                    // Use generic "Assistente" instead of "Alessia" to avoid confusing AI about identity
+                    const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Assistente';
                     // Truncate long messages
                     const content = msg.content.length > 200 
                       ? msg.content.substring(0, 200) + '...'
@@ -2567,9 +2570,8 @@ Ecco le conversazioni precedenti:
                 previousCallContext += '\n---\n\n';
               }
               
-              previousCallContext += `⚠️ USA QUESTE INFORMAZIONI per contestualizzare la conversazione.
-Se il chiamante si riferisce a qualcosa discusso in passato, usa questo contesto per rispondere in modo appropriato.
-Puoi fare riferimento alle conversazioni precedenti: "Ah, certo! L'ultima volta avevamo parlato di..."
+              previousCallContext += `💡 Puoi usare queste informazioni se il chiamante fa riferimento a discussioni passate.
+Ricorda: segui sempre le TUE istruzioni principali per identità e saluto.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -2687,11 +2689,34 @@ Puoi fare riferimento alle conversazioni precedenti: "Ah, certo! L'ultima volta 
               
               // Combine: agent_instructions (PRIORITY) + Brand Voice (supplementary context)
               if (agent.agent_instructions) {
+                // Interpolate agent instructions with actual values from agent data
+                const interpolateAgentInstructions = (text: string): string => {
+                  return text
+                    // JavaScript template literal style ${placeholder}
+                    .replace(/\$\{consultantName\}/g, consultantName)
+                    .replace(/\$\{businessName\}/g, agent.business_name || consultantBusinessName || '')
+                    .replace(/\$\{whoWeHelp\}/g, agent.who_we_help || '')
+                    .replace(/\$\{businessDescription\}/g, agent.business_description || '')
+                    // Mustache style {{placeholder}}
+                    .replace(/\{\{consultantName\}\}/g, consultantName)
+                    .replace(/\{\{businessName\}\}/g, agent.business_name || consultantBusinessName || '')
+                    .replace(/\{\{whoWeHelp\}\}/g, agent.who_we_help || '')
+                    .replace(/\{\{businessDescription\}\}/g, agent.business_description || '');
+                };
+                
+                const interpolatedInstructions = interpolateAgentInstructions(agent.agent_instructions);
+                
                 // Agent instructions are the PRIMARY directives - must be followed precisely
                 contentPrompt = `⚡ ISTRUZIONI PRINCIPALI (SEGUI QUESTE COME PRIORITÀ ASSOLUTA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${agent.agent_instructions}
+🚨 REGOLA FONDAMENTALE:
+- Segui ESATTAMENTE il comportamento e il messaggio di apertura definiti nelle istruzioni sotto
+- Se le istruzioni non menzionano "Alessia", NON presentarti come Alessia
+- Usa SOLO il nome/identità specificato nelle istruzioni dell'agente
+- Se non c'è un nome specifico, presentati semplicemente come "l'assistente di ${consultantName}"
+
+${interpolatedInstructions}
 
 ${brandVoicePrompt ? `
 📋 CONTESTO SUPPLEMENTARE (informazioni di supporto)
