@@ -3231,11 +3231,25 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   voiceServiceTokenCreatedAt: timestamp("voice_service_token_created_at"), // When current VPS token was generated
   voiceServiceTokenCount: integer("voice_service_token_count").default(0).notNull(), // How many tokens generated (includes revoked)
 
-  // Non-Client Phone Call Prompt Configuration
+  // Non-Client Phone Call Prompt Configuration - Common
   voiceDirectives: text("voice_directives"), // Customizable voice directives (tone, greeting style, etc.)
+  
+  // LEGACY fields (kept for backwards compatibility, will migrate to inbound)
   nonClientPromptSource: text("non_client_prompt_source").$type<"agent" | "manual" | "default">().default("default"), // Source for non-client prompt
   nonClientAgentId: varchar("non_client_agent_id"), // Reference to consultant_whatsapp_config if source is 'agent' (UUID)
   nonClientManualPrompt: text("non_client_manual_prompt"), // Manual prompt text if source is 'manual'
+  
+  // INBOUND: Non-client calls YOU (their phone → your phone)
+  inboundPromptSource: text("inbound_prompt_source").$type<"agent" | "manual" | "default">().default("default"),
+  inboundTemplateId: text("inbound_template_id").default("mini-discovery"), // Template ID from voice-templates.ts
+  inboundAgentId: varchar("inbound_agent_id"), // Reference to consultant_whatsapp_config if source is 'agent'
+  inboundManualPrompt: text("inbound_manual_prompt"), // Manual prompt text if source is 'manual'
+  
+  // OUTBOUND: YOU call non-client (your phone → their phone)
+  outboundPromptSource: text("outbound_prompt_source").$type<"agent" | "manual" | "default">().default("default"),
+  outboundTemplateId: text("outbound_template_id").default("sales-orbitale"), // Template ID from voice-templates.ts
+  outboundAgentId: varchar("outbound_agent_id"), // Reference to consultant_whatsapp_config if source is 'agent'
+  outboundManualPrompt: text("outbound_manual_prompt"), // Manual prompt text if source is 'manual'
 
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
