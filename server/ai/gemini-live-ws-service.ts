@@ -5781,15 +5781,27 @@ ${compactFeedback}
             }
             
             // Send to Gemini Live API using raw WebSocket protocol
+            // Use camelCase for AI Studio, snake_case for Vertex AI
             if (geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
-              const audioMessage = {
-                realtime_input: {
-                  media_chunks: [{
-                    data: msg.data,  // base64 PCM16
-                    mime_type: 'audio/pcm'
-                  }]
-                }
-              };
+              const audioMessage = (liveApiProvider === 'ai_studio')
+                ? {
+                    // AI Studio: camelCase
+                    realtimeInput: {
+                      mediaChunks: [{
+                        data: msg.data,  // base64 PCM16
+                        mimeType: 'audio/pcm'
+                      }]
+                    }
+                  }
+                : {
+                    // Vertex AI: snake_case
+                    realtime_input: {
+                      media_chunks: [{
+                        data: msg.data,  // base64 PCM16
+                        mime_type: 'audio/pcm'
+                      }]
+                    }
+                  };
               geminiSession.send(JSON.stringify(audioMessage));
               
               // 🔬 DIAGNOSTIC: Track audio chunks sent to Gemini
