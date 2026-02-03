@@ -24,7 +24,9 @@ import {
   CheckCircle,
   RefreshCw,
   Volume2,
+  ArrowLeft,
 } from "lucide-react";
+import { Link } from "wouter";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -206,14 +208,21 @@ export default function ConsultantVoiceSettingsPage() {
         <main className="flex-1 p-6 lg:px-8 overflow-auto">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                  <Phone className="h-8 w-8" />
-                  Configurazione Voice
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Gestisci i numeri telefonici e le impostazioni per le chiamate AI
-                </p>
+              <div className="flex items-center gap-4">
+                <Link href="/consultant/voice-calls">
+                  <Button variant="ghost" size="icon">
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <div>
+                  <h1 className="text-3xl font-bold flex items-center gap-2">
+                    <Phone className="h-8 w-8" />
+                    Configurazione Voice
+                  </h1>
+                  <p className="text-muted-foreground mt-1">
+                    Gestisci i numeri telefonici e le impostazioni per le chiamate AI
+                  </p>
+                </div>
               </div>
               <Button onClick={refetchHealth} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />

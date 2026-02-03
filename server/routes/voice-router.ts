@@ -1242,7 +1242,9 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
         targetPhone: call.target_phone,
         callId: callId,
         aiMode: call.ai_mode,
-        customPrompt: call.custom_prompt
+        customPrompt: call.custom_prompt,
+        callInstruction: call.call_instruction,
+        instructionType: call.instruction_type
       })
     });
     
@@ -1331,10 +1333,15 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    const { targetPhone, aiMode = "assistenza", customPrompt } = req.body;
+    const { targetPhone, aiMode = "assistenza", customPrompt, callInstruction, instructionType } = req.body;
     
     if (!targetPhone) {
       return res.status(400).json({ error: "targetPhone is required" });
+    }
+    
+    // Validate instruction_type if provided
+    if (instructionType && !['task', 'reminder'].includes(instructionType)) {
+      return res.status(400).json({ error: "instructionType must be 'task' or 'reminder'" });
     }
     
     // Validate phone format (E.164 or internal extension)
@@ -1346,12 +1353,12 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
     
     const callId = generateScheduledCallId();
     
-    // Create record in DB
+    // Create record in DB with instruction fields
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}
+        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}
       )
     `);
     
@@ -1384,10 +1391,15 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    const { targetPhone, scheduledAt, aiMode = "assistenza", customPrompt, priority = 5 } = req.body;
+    const { targetPhone, scheduledAt, aiMode = "assistenza", customPrompt, priority = 5, callInstruction, instructionType } = req.body;
     
     if (!targetPhone || !scheduledAt) {
       return res.status(400).json({ error: "targetPhone and scheduledAt are required" });
+    }
+    
+    // Validate instruction_type if provided
+    if (instructionType && !['task', 'reminder'].includes(instructionType)) {
+      return res.status(400).json({ error: "instructionType must be 'task' or 'reminder'" });
     }
     
     // Validate phone format (E.164 or internal extension)
@@ -1408,12 +1420,12 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
     
     const callId = generateScheduledCallId();
     
-    // Create record in DB
+    // Create record in DB with instruction fields
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority, call_instruction, instruction_type
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}
+        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}, ${callInstruction || null}, ${instructionType || null}
       )
     `);
     

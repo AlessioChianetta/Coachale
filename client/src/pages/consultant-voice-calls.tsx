@@ -67,6 +67,10 @@ import {
   Save,
   Trash2,
   Play,
+  ClipboardList,
+  Bell,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -140,6 +144,8 @@ interface ScheduledVoiceCall {
   priority: number;
   created_at: string;
   updated_at: string;
+  call_instruction: string | null;
+  instruction_type: 'task' | 'reminder' | null;
 }
 
 interface NonClientSettings {
@@ -346,6 +352,9 @@ export default function ConsultantVoiceCallsPage() {
   const [outboundScheduledDate, setOutboundScheduledDate] = useState("");
   const [outboundScheduledTime, setOutboundScheduledTime] = useState("");
   const [isScheduleMode, setIsScheduleMode] = useState(false);
+  const [callInstruction, setCallInstruction] = useState("");
+  const [instructionType, setInstructionType] = useState<'task' | 'reminder' | null>(null);
+  const [clientTypeFilter, setClientTypeFilter] = useState<'all' | 'client' | 'non-client'>('all');
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -477,7 +486,7 @@ export default function ConsultantVoiceCallsPage() {
   const { data: callsData, isLoading: loadingCalls, refetch: refetchCalls } = useQuery({
     queryKey: ["/api/voice/calls", page, statusFilter, search],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      const params = new URLSearchParams({ page: String(page), limit: "10" });
       if (statusFilter !== "all") params.set("status", statusFilter);
       const res = await fetch(`/api/voice/calls?${params}`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Errore nel caricamento chiamate");
@@ -535,11 +544,11 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   const triggerOutboundMutation = useMutation({
-    mutationFn: async ({ targetPhone, aiMode }: { targetPhone: string; aiMode: string }) => {
+    mutationFn: async ({ targetPhone, aiMode, callInstruction, instructionType }: { targetPhone: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null }) => {
       const res = await fetch("/api/voice/outbound/trigger", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ targetPhone, aiMode }),
+        body: JSON.stringify({ targetPhone, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -549,6 +558,8 @@ export default function ConsultantVoiceCallsPage() {
     },
     onSuccess: (data) => {
       setOutboundPhone("");
+      setCallInstruction("");
+      setInstructionType(null);
       refetchScheduledCalls();
       toast({ title: "Chiamata avviata!", description: `Chiamando ${data.targetPhone}...` });
     },
@@ -558,11 +569,11 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   const scheduleOutboundMutation = useMutation({
-    mutationFn: async ({ targetPhone, scheduledAt, aiMode }: { targetPhone: string; scheduledAt: string; aiMode: string }) => {
+    mutationFn: async ({ targetPhone, scheduledAt, aiMode, callInstruction, instructionType }: { targetPhone: string; scheduledAt: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null }) => {
       const res = await fetch("/api/voice/outbound/schedule", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ targetPhone, scheduledAt, aiMode }),
+        body: JSON.stringify({ targetPhone, scheduledAt, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -574,6 +585,8 @@ export default function ConsultantVoiceCallsPage() {
       setOutboundPhone("");
       setOutboundScheduledDate("");
       setOutboundScheduledTime("");
+      setCallInstruction("");
+      setInstructionType(null);
       setIsScheduleMode(false);
       refetchScheduledCalls();
       toast({ 
@@ -612,7 +625,12 @@ export default function ConsultantVoiceCallsPage() {
       toast({ title: "Errore", description: "Inserisci un numero di telefono", variant: "destructive" });
       return;
     }
-    triggerOutboundMutation.mutate({ targetPhone: outboundPhone.trim(), aiMode: outboundAiMode });
+    triggerOutboundMutation.mutate({ 
+      targetPhone: outboundPhone.trim(), 
+      aiMode: outboundAiMode,
+      callInstruction: callInstruction.trim() || undefined,
+      instructionType: instructionType
+    });
   };
 
   const handleScheduleCall = () => {
@@ -621,7 +639,13 @@ export default function ConsultantVoiceCallsPage() {
       return;
     }
     const scheduledAt = new Date(`${outboundScheduledDate}T${outboundScheduledTime}`).toISOString();
-    scheduleOutboundMutation.mutate({ targetPhone: outboundPhone.trim(), scheduledAt, aiMode: outboundAiMode });
+    scheduleOutboundMutation.mutate({ 
+      targetPhone: outboundPhone.trim(), 
+      scheduledAt, 
+      aiMode: outboundAiMode,
+      callInstruction: callInstruction.trim() || undefined,
+      instructionType: instructionType
+    });
   };
 
   useEffect(() => {
@@ -685,19 +709,23 @@ export default function ConsultantVoiceCallsPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const filteredCalls = search
-    ? calls.filter(
-        (c) =>
-          c.caller_id.includes(search) ||
-          c.client_name?.toLowerCase().includes(search.toLowerCase())
-      )
-    : calls;
+  const filteredCalls = calls.filter((c) => {
+    const matchesSearch = !search || 
+      c.caller_id.includes(search) ||
+      c.client_name?.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesClientType = 
+      clientTypeFilter === 'all' ||
+      (clientTypeFilter === 'client' && c.client_id) ||
+      (clientTypeFilter === 'non-client' && !c.client_id);
+    
+    return matchesSearch && matchesClientType;
+  });
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
-        <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="flex-1 p-6 lg:px-8 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -945,15 +973,40 @@ export default function ConsultantVoiceCallsPage() {
                         placeholder="Cerca numero o cliente..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 w-[200px]"
+                        className="pl-9 w-[180px]"
                       />
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <Select value={clientTypeFilter} onValueChange={(v) => setClientTypeFilter(v as 'all' | 'client' | 'non-client')}>
                       <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          <span className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Tutti
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="client">
+                          <span className="flex items-center gap-2">
+                            <UserCheck className="h-4 w-4 text-green-500" />
+                            Clienti
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="non-client">
+                          <span className="flex items-center gap-2">
+                            <UserX className="h-4 w-4 text-orange-500" />
+                            Non Clienti
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[130px]">
                         <SelectValue placeholder="Stato" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tutti</SelectItem>
+                        <SelectItem value="all">Tutti gli stati</SelectItem>
                         {Object.entries(STATUS_CONFIG).map(([value, config]) => (
                           <SelectItem key={value} value={value}>
                             {config.label}
@@ -1169,6 +1222,107 @@ export default function ConsultantVoiceCallsPage() {
                           </div>
                         )}
 
+                        <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="flex items-center gap-2 text-sm font-medium">
+                              <Sparkles className="h-4 w-4 text-purple-500" />
+                              Istruzioni per l'AI
+                            </Label>
+                            <div className="flex gap-1">
+                              <Button
+                                type="button"
+                                variant={instructionType === 'task' ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setInstructionType(instructionType === 'task' ? null : 'task')}
+                              >
+                                <ClipboardList className="h-3 w-3 mr-1" />
+                                Task
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={instructionType === 'reminder' ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setInstructionType(instructionType === 'reminder' ? null : 'reminder')}
+                              >
+                                <Bell className="h-3 w-3 mr-1" />
+                                Reminder
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {instructionType && (
+                            <>
+                              <Textarea
+                                placeholder={instructionType === 'task' 
+                                  ? "Es: Chiedi conferma per l'appuntamento di giovedì alle 15..."
+                                  : "Es: Ricordagli che la scadenza del pagamento è il 15..."
+                                }
+                                value={callInstruction}
+                                onChange={(e) => setCallInstruction(e.target.value)}
+                                className="min-h-[80px] text-sm"
+                              />
+                              <div className="flex flex-wrap gap-1">
+                                <span className="text-xs text-muted-foreground mr-2">Suggerimenti:</span>
+                                {instructionType === 'task' ? (
+                                  <>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                                      onClick={() => setCallInstruction("Chiedi conferma per l'appuntamento fissato")}
+                                    >
+                                      Conferma appuntamento
+                                    </Badge>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                                      onClick={() => setCallInstruction("Chiedi se ha ricevuto il preventivo e se ha domande")}
+                                    >
+                                      Follow-up preventivo
+                                    </Badge>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                                      onClick={() => setCallInstruction("Proponi il nuovo servizio/offerta speciale")}
+                                    >
+                                      Proposta commerciale
+                                    </Badge>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                                      onClick={() => setCallInstruction("Ricordagli l'appuntamento fissato per domani")}
+                                    >
+                                      Promemoria appuntamento
+                                    </Badge>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                                      onClick={() => setCallInstruction("Ricordagli la scadenza del pagamento")}
+                                    >
+                                      Scadenza pagamento
+                                    </Badge>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                                      onClick={() => setCallInstruction("Informalo che l'ordine è stato spedito")}
+                                    >
+                                      Aggiornamento ordine
+                                    </Badge>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          )}
+                          
+                          {!instructionType && (
+                            <p className="text-xs text-muted-foreground">
+                              Seleziona Task o Reminder per dare istruzioni specifiche all'AI durante la chiamata
+                            </p>
+                          )}
+                        </div>
+
                         <Button
                           className="w-full"
                           onClick={isScheduleMode ? handleScheduleCall : handleTriggerCall}
@@ -1220,35 +1374,47 @@ export default function ConsultantVoiceCallsPage() {
                           {scheduledCallsData.calls.map((call) => {
                             const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
                             return (
-                              <div key={call.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                <div className="space-y-1">
-                                  <p className="font-mono font-medium">{call.target_phone}</p>
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-                                    <span>{call.ai_mode}</span>
-                                    {call.scheduled_at && (
-                                      <span className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        {format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}
-                                      </span>
+                              <div key={call.id} className="p-3 border rounded-lg space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="space-y-1">
+                                    <p className="font-mono font-medium">{call.target_phone}</p>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+                                      <span>{call.ai_mode}</span>
+                                      {call.scheduled_at && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          {format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {(call.status === 'pending' || call.status === 'failed') && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => cancelOutboundMutation.mutate(call.id)}
+                                        disabled={cancelOutboundMutation.isPending}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
                                     )}
                                   </div>
-                                  {call.error_message && (
-                                    <p className="text-xs text-red-500">{call.error_message}</p>
-                                  )}
                                 </div>
-                                <div className="flex gap-2">
-                                  {(call.status === 'pending' || call.status === 'failed') && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => cancelOutboundMutation.mutate(call.id)}
-                                      disabled={cancelOutboundMutation.isPending}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  )}
-                                </div>
+                                {call.call_instruction && (
+                                  <div className="flex items-start gap-2 p-2 bg-muted/50 rounded text-sm">
+                                    {call.instruction_type === 'task' ? (
+                                      <ClipboardList className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                                    ) : (
+                                      <Bell className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                                    )}
+                                    <span className="text-muted-foreground">{call.call_instruction}</span>
+                                  </div>
+                                )}
+                                {call.error_message && (
+                                  <p className="text-xs text-red-500">{call.error_message}</p>
+                                )}
                               </div>
                             );
                           })}
