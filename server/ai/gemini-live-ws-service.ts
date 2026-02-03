@@ -2428,12 +2428,57 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             minute: '2-digit'
           });
           
+          // 🎙️ Fetch voice directives from database for this consultant
+          let consultantVoiceDirectives = '';
+          if (consultantId) {
+            try {
+              const settingsResult = await db
+                .select({
+                  voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+                })
+                .from(consultantAvailabilitySettings)
+                .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
+              
+              if (settingsResult.length > 0 && settingsResult[0].voiceDirectives) {
+                consultantVoiceDirectives = settingsResult[0].voiceDirectives;
+                console.log(`🎙️ [${connectionId}] Using consultant voice directives (${consultantVoiceDirectives.length} chars)`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not fetch voice directives:`, err);
+            }
+          }
+          
+          // Use consultant's voice directives or fallback to default
+          const voiceDirectivesSection = consultantVoiceDirectives || `🎙️ MODALITÀ: CHIAMATA VOCALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ TONO E STILE - SEMPRE ENERGICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ Mantieni SEMPRE un tono allegro, energico e dinamico!
+🎯 Sii diretta e vai al punto - niente giri di parole
+💬 DAI DEL TU sempre, mai del Lei
+😊 Usa un linguaggio colloquiale e amichevole
+🚫 NO suoni tipo "Mmm", "Uhm", "Ehm", "Ah"
+📝 Risposte brevi: max 2-3 frasi per turno
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 STILE VOCALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Parla in italiano fluente e naturale
+• Voce vivace e coinvolgente
+• Ritmo sostenuto ma comprensibile
+• Entusiasmo genuino (non forzato)`;
+          
           // Build instruction type label
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
-          // Build prompt with: IDENTITY + INSTRUCTION + VOICE DIRECTIVES + DEFAULT TEMPLATE (for after instruction)
-          systemInstruction = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // Build prompt with: VOICE DIRECTIVES FIRST + IDENTITY + INSTRUCTION + DEFAULT TEMPLATE
+          systemInstruction = `${voiceDirectivesSection}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 CHI SEI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -2452,18 +2497,6 @@ ${phoneCallInstruction}
 • NON chiedere "Come posso aiutarti?" - SEI TU che chiami per un motivo specifico
 • Assicurati che la persona abbia CAPITO e CONFERMATO l'istruzione
 • Solo DOPO che l'istruzione è stata completata, puoi passare alla modalità normale
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎙️ DIRETTIVE VOCALI
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-• Parla in italiano fluente e naturale
-• Tono allegro, energico ma professionale
-• Sii diretta ma cordiale
-• Risposte concise e chiare (max 2-3 frasi per turno)
-• NON ripetere le stesse frasi
-• Adatta il ritmo alla conversazione
-• NO suoni tipo "Mmm", "Uhm", "Ehm"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 CONTESTO
@@ -2994,6 +3027,40 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
             }
           }
           
+          // 🎙️ Fetch voice directives from database for this consultant
+          let clientVoiceDirectives = '';
+          if (consultantId) {
+            try {
+              const settingsResult = await db
+                .select({
+                  voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+                })
+                .from(consultantAvailabilitySettings)
+                .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
+              
+              if (settingsResult.length > 0 && settingsResult[0].voiceDirectives) {
+                clientVoiceDirectives = settingsResult[0].voiceDirectives;
+                console.log(`🎙️ [${connectionId}] Using consultant voice directives for client call (${clientVoiceDirectives.length} chars)`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not fetch voice directives:`, err);
+            }
+          }
+          
+          // Use consultant's voice directives or fallback to default
+          const clientVoiceDirectivesSection = clientVoiceDirectives || `🎙️ MODALITÀ: CHIAMATA VOCALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ TONO E STILE - SEMPRE ENERGICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ Mantieni SEMPRE un tono allegro, energico e dinamico!
+🎯 Sii diretta e vai al punto - niente giri di parole
+💬 DAI DEL TU sempre, mai del Lei
+😊 Usa un linguaggio colloquiale e amichevole
+🚫 NO suoni tipo "Mmm", "Uhm", "Ehm", "Ah"
+📝 Risposte brevi: max 2-3 frasi per turno`;
+          
           // Get client name from context
           const clientName = userContext.user?.firstName || userContext.user?.email?.split('@')[0] || 'il cliente';
           
@@ -3008,8 +3075,10 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
             userContext
           );
           
-          // Prepend instruction priority to client's system prompt
-          const instructionPrefix = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // Prepend: VOICE DIRECTIVES + instruction priority to client's system prompt
+          const instructionPrefix = `${clientVoiceDirectivesSection}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 CHI SEI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -3028,17 +3097,6 @@ ${phoneCallInstruction}
 • NON chiedere "Come posso aiutarti?" - SEI TU che chiami per un motivo specifico
 • Assicurati che ${clientName} abbia CAPITO e CONFERMATO l'istruzione
 • Solo DOPO che l'istruzione è stata completata, puoi passare al tuo ruolo normale
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎙️ DIRETTIVE VOCALI
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-• Parla in italiano fluente e naturale
-• Tono allegro, energico ma professionale
-• Sii diretta ma cordiale
-• Risposte concise e chiare (max 2-3 frasi per turno)
-• NON ripetere le stesse frasi
-• NO suoni tipo "Mmm", "Uhm", "Ehm"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 CONTESTO
