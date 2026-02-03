@@ -2377,12 +2377,12 @@ export default function ConsultantVoiceCallsPage() {
                                       const selectedTemplate = nonClientSettingsData?.availableInboundTemplates?.find(t => t.id === inboundTemplateId);
                                       if (selectedTemplate?.prompt) {
                                         return (
-                                          <div className="mt-3 p-3 bg-muted rounded-md border">
+                                          <div className="mt-3 p-3 bg-muted rounded-md border overflow-hidden">
                                             <div className="flex items-center gap-2 mb-2">
-                                              <FileText className="h-4 w-4 text-green-600" />
-                                              <span className="text-xs font-medium">Anteprima Template: {selectedTemplate.name}</span>
+                                              <FileText className="h-4 w-4 text-green-600 shrink-0" />
+                                              <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
                                             </div>
-                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground">
+                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground break-words">
                                               {selectedTemplate.prompt}
                                             </pre>
                                           </div>
@@ -2520,12 +2520,12 @@ export default function ConsultantVoiceCallsPage() {
                                       const selectedTemplate = nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === outboundTemplateId);
                                       if (selectedTemplate?.prompt) {
                                         return (
-                                          <div className="mt-3 p-3 bg-muted rounded-md border">
+                                          <div className="mt-3 p-3 bg-muted rounded-md border overflow-hidden">
                                             <div className="flex items-center gap-2 mb-2">
-                                              <FileText className="h-4 w-4 text-blue-600" />
-                                              <span className="text-xs font-medium">Anteprima Template: {selectedTemplate.name}</span>
+                                              <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                                              <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
                                             </div>
-                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground">
+                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground break-words">
                                               {selectedTemplate.prompt}
                                             </pre>
                                           </div>
