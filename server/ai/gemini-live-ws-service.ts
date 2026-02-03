@@ -3152,7 +3152,7 @@ ${brandVoicePrompt}` : ''}`;
                   consultantName: consultantName,
                   businessName: consultantBusinessName || '',
                   aiName: 'Alessia',
-                  contactName: phoneContactName || 'Cliente'
+                  contactName: '' // No name for anonymous callers
                 });
                 console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${contentPrompt.length} chars)`);
               } else {
@@ -3174,7 +3174,7 @@ ${brandVoicePrompt}` : ''}`;
               consultantName: consultantName,
               businessName: consultantBusinessName || '',
               aiName: 'Alessia',
-              contactName: phoneContactName || 'Cliente'
+              contactName: '' // No name for anonymous callers
             });
             console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${templateId}) - ${contentPrompt.length} chars`);
           } else {
