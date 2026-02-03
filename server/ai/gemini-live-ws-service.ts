@@ -3269,18 +3269,34 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         // - Vertex AI: snake_case (generation_config, response_modalities, etc.)
         const setupMessage: any = (liveApiProvider === 'ai_studio') 
           ? {
-              // AI Studio format: camelCase - SIMPLIFIED to match working SDK
+              // AI Studio format: camelCase
               setup: {
                 model: modelPath,
                 generationConfig: {
                   responseModalities: ["AUDIO"],
-                  speechConfig: speechConfig
-                },
-                systemInstruction: {
-                  parts: [{ text: systemInstruction }]
+                  speechConfig: speechConfig,
+                  temperature: 1.0,
+                  topP: 0.95,
+                  topK: 40,
+                  maxOutputTokens: 8192
                 },
                 inputAudioTranscription: {},
-                outputAudioTranscription: {}
+                outputAudioTranscription: {},
+                ...(!validatedResumeHandle && {
+                  systemInstruction: {
+                    parts: [{ text: systemInstruction }]
+                  }
+                }),
+                realtimeInputConfig: {
+                  automaticActivityDetection: {
+                    disabled: false,
+                    startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+                    endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+                    prefixPaddingMs: 500,
+                    silenceDurationMs: 700
+                  }
+                },
+                sessionResumption: { handle: validatedResumeHandle || null }
               }
             }
           : {
