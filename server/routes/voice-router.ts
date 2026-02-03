@@ -1142,7 +1142,8 @@ ${brandVoice}`;
       defaultNonClientPrompt: DEFAULT_NON_CLIENT_PROMPT,
       availableInboundTemplates: getTemplateOptions('inbound'),
       availableOutboundTemplates: getTemplateOptions('outbound'),
-      agents: agentsWithFullPrompt
+      agents: agentsWithFullPrompt,
+      availableAgents: agentsWithFullPrompt // Legacy field for backwards compatibility
     });
   } catch (error) {
     console.error("[Voice] Error fetching non-client settings:", error);
