@@ -331,7 +331,8 @@ export function buildDynamicContextForLive(userContext: UserContext | null): str
   }
 
   // Full dynamic context with user data
-  const userDataContext = buildUserDataContextForLive(userContext);
+  // Voice calls exclude financial data to reduce tokens (24k -> ~7k)
+  const userDataContext = buildUserDataContextForLive(userContext, { excludeFinancialData: true });
   
   return `[CONTESTO ATTUALE - NON LEGGERE AD ALTA VOCE]
 
@@ -370,8 +371,9 @@ Durante le consulenze settimanali live (90 minuti totali):
 }
 
 // Build full user data context for Live API (sent as chunked messages after setup)
-export function buildUserDataContextForLive(userContext: UserContext, options?: { hasFileSearch?: boolean }): string {
+export function buildUserDataContextForLive(userContext: UserContext, options?: { hasFileSearch?: boolean; excludeFinancialData?: boolean }): string {
   const hasFileSearch = options?.hasFileSearch ?? false;
+  const excludeFinancialData = options?.excludeFinancialData ?? false;
   const relevantDocs = userContext.library.documents;
 
   return `
@@ -391,7 +393,7 @@ per fornire risposte personalizzate e consulenza specifica.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${!hasFileSearch && userContext.financeData ? `
+${!hasFileSearch && !excludeFinancialData && userContext.financeData ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚨 DATI FINANZIARI REALI - SOFTWARE ORBITALE 🚨  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -433,7 +435,7 @@ ${userContext.financeData.transactions.slice(0, 10).map(t =>
 ` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-` : hasFileSearch && userContext.financeData ? `
+` : hasFileSearch && !excludeFinancialData && userContext.financeData ? `
 💰 DATI FINANZIARI VIA FILE SEARCH
 I dati finanziari sono disponibili via File Search RAG.
 ` : ''}
