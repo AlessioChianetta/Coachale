@@ -279,8 +279,8 @@ function AgentPromptPreview({ prompt, agentName }: { prompt: string; agentName: 
                 )}
               </div>
               {expandedSections.has('instructions') && (
-                <div className="ml-6 p-3 bg-white dark:bg-slate-950 rounded-md border text-xs leading-relaxed whitespace-pre-wrap max-h-[150px] overflow-auto">
-                  {instructions.slice(0, 1500)}{instructions.length > 1500 ? '...' : ''}
+                <div className="ml-6 p-3 bg-white dark:bg-slate-950 rounded-md border text-xs leading-relaxed whitespace-pre-wrap max-h-[300px] overflow-auto">
+                  {instructions}
                 </div>
               )}
             </div>
