@@ -1244,7 +1244,8 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
         aiMode: call.ai_mode,
         customPrompt: call.custom_prompt,
         callInstruction: call.call_instruction,
-        instructionType: call.instruction_type
+        instructionType: call.instruction_type,
+        useDefaultTemplate: call.use_default_template
       })
     });
     
@@ -1333,7 +1334,7 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    const { targetPhone, aiMode = "assistenza", customPrompt, callInstruction, instructionType } = req.body;
+    const { targetPhone, aiMode = "assistenza", customPrompt, callInstruction, instructionType, useDefaultTemplate } = req.body;
     
     if (!targetPhone) {
       return res.status(400).json({ error: "targetPhone is required" });
@@ -1354,11 +1355,12 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
     const callId = generateScheduledCallId();
     
     // Create record in DB with instruction fields
+    // When task/reminder is set, use_default_template forces base template (ignores agent prompt)
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, use_default_template
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}
+        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}
       )
     `);
     
@@ -1391,7 +1393,7 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
       return res.status(401).json({ error: "Unauthorized" });
     }
     
-    const { targetPhone, scheduledAt, aiMode = "assistenza", customPrompt, priority = 5, callInstruction, instructionType } = req.body;
+    const { targetPhone, scheduledAt, aiMode = "assistenza", customPrompt, priority = 5, callInstruction, instructionType, useDefaultTemplate } = req.body;
     
     if (!targetPhone || !scheduledAt) {
       return res.status(400).json({ error: "targetPhone and scheduledAt are required" });
@@ -1421,11 +1423,12 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
     const callId = generateScheduledCallId();
     
     // Create record in DB with instruction fields
+    // When task/reminder is set, use_default_template forces base template (ignores agent prompt)
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority, call_instruction, instruction_type
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority, call_instruction, instruction_type, use_default_template
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}, ${callInstruction || null}, ${instructionType || null}
+        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}
       )
     `);
     

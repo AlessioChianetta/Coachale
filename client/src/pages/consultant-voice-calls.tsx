@@ -71,6 +71,13 @@ import {
   Bell,
   UserCheck,
   UserX,
+  BookOpen,
+  X,
+  Package,
+  Handshake,
+  AlertTriangle,
+  FileCheck,
+  TrendingUp,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -147,6 +154,113 @@ interface ScheduledVoiceCall {
   call_instruction: string | null;
   instruction_type: 'task' | 'reminder' | null;
 }
+
+interface ClientWithPhone {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  lastContact: string | null;
+}
+
+interface TemplateItem {
+  label: string;
+  text: string;
+  type: 'task' | 'reminder';
+}
+
+interface TemplateCategory {
+  icon: React.ElementType;
+  label: string;
+  color: string;
+  category: string;
+  items: TemplateItem[];
+}
+
+const TEMPLATE_LIBRARY: TemplateCategory[] = [
+  {
+    icon: Calendar,
+    category: "appuntamenti",
+    label: "Appuntamenti",
+    color: "text-blue-600",
+    items: [
+      { label: "Conferma appuntamento", text: "Chiedi conferma per l'appuntamento fissato", type: "task" },
+      { label: "Richiesta nuovo appuntamento", text: "Proponi di fissare un nuovo appuntamento", type: "task" },
+      { label: "Promemoria domani", text: "Ricordagli l'appuntamento previsto per domani", type: "reminder" },
+      { label: "Riprogrammazione", text: "Proponi di riprogrammare l'appuntamento", type: "reminder" },
+    ]
+  },
+  {
+    icon: Target,
+    category: "pagamenti",
+    label: "Pagamenti",
+    color: "text-green-600",
+    items: [
+      { label: "Scadenza in arrivo", text: "Ricordagli la scadenza del pagamento in arrivo", type: "reminder" },
+      { label: "Sollecito scaduto", text: "Sollecita gentilmente il pagamento scaduto", type: "reminder" },
+      { label: "Rate in scadenza", text: "Ricordagli le rate in scadenza questo mese", type: "reminder" },
+      { label: "Conferma pagamento", text: "Conferma la ricezione del pagamento effettuato", type: "task" },
+    ]
+  },
+  {
+    icon: FileCheck,
+    category: "documenti",
+    label: "Documenti",
+    color: "text-purple-600",
+    items: [
+      { label: "Richiesta documenti", text: "Richiedi i documenti mancanti per procedere", type: "task" },
+      { label: "Firma contratto", text: "Chiedi se ha firmato il contratto inviato", type: "task" },
+      { label: "Conferma ricezione", text: "Conferma la corretta ricezione dei documenti", type: "reminder" },
+      { label: "Invio preventivo", text: "Informalo dell'invio del preventivo via email", type: "reminder" },
+    ]
+  },
+  {
+    icon: TrendingUp,
+    category: "commerciale",
+    label: "Commerciale",
+    color: "text-orange-600",
+    items: [
+      { label: "Proposta servizio", text: "Proponi il nuovo servizio/prodotto disponibile", type: "task" },
+      { label: "Follow-up preventivo", text: "Chiedi se ha ricevuto il preventivo e se ha domande", type: "task" },
+      { label: "Cross-sell", text: "Proponi un servizio complementare a quello attuale", type: "task" },
+      { label: "Rinnovo contratto", text: "Ricordagli che il contratto è in scadenza", type: "reminder" },
+    ]
+  },
+  {
+    icon: Package,
+    category: "ordini",
+    label: "Ordini",
+    color: "text-cyan-600",
+    items: [
+      { label: "Stato spedizione", text: "Informalo sullo stato della spedizione dell'ordine", type: "reminder" },
+      { label: "Conferma consegna", text: "Verifica che abbia ricevuto correttamente l'ordine", type: "reminder" },
+      { label: "Richiesta feedback", text: "Chiedi un feedback sul prodotto/servizio ricevuto", type: "task" },
+    ]
+  },
+  {
+    icon: Handshake,
+    category: "relazione",
+    label: "Relazione",
+    color: "text-pink-600",
+    items: [
+      { label: "Check-in periodico", text: "Fai un check-in per sapere come va e se ha bisogno di supporto", type: "task" },
+      { label: "Riattivazione", text: "Ricontatta per sapere se è interessato a riprendere la collaborazione", type: "task" },
+      { label: "Auguri", text: "Fai gli auguri per il compleanno/festività", type: "reminder" },
+      { label: "Ringraziamento", text: "Ringrazia per la collaborazione e la fiducia accordata", type: "reminder" },
+    ]
+  },
+  {
+    icon: AlertTriangle,
+    category: "urgenze",
+    label: "Urgenze",
+    color: "text-red-600",
+    items: [
+      { label: "Scadenza fiscale", text: "Avvisa della scadenza fiscale imminente", type: "reminder" },
+      { label: "Variazione importante", text: "Comunica una variazione importante da conoscere subito", type: "reminder" },
+      { label: "Azione immediata", text: "Richiedi un'azione immediata per una questione urgente", type: "task" },
+    ]
+  },
+];
 
 interface NonClientSettings {
   voiceDirectives: string;
@@ -355,6 +469,10 @@ export default function ConsultantVoiceCallsPage() {
   const [callInstruction, setCallInstruction] = useState("");
   const [instructionType, setInstructionType] = useState<'task' | 'reminder' | null>(null);
   const [clientTypeFilter, setClientTypeFilter] = useState<'all' | 'client' | 'non-client'>('all');
+  const [selectedClient, setSelectedClient] = useState<ClientWithPhone | null>(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientTab, setClientTab] = useState<'active' | 'inactive'>('active');
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -543,6 +661,32 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 10000,
   });
 
+  const { data: clientsData, isLoading: loadingClients } = useQuery<{ active: ClientWithPhone[]; inactive: ClientWithPhone[] }>({
+    queryKey: ["/api/voice/clients-with-phone"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/clients-with-phone", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento clienti");
+      return res.json();
+    },
+  });
+
+  const handleSelectClient = (client: ClientWithPhone) => {
+    setSelectedClient(client);
+    const phone = client.phoneNumber.startsWith('+') ? client.phoneNumber : `+39${client.phoneNumber}`;
+    setOutboundPhone(phone);
+  };
+
+  const handleSelectTemplate = (template: TemplateItem) => {
+    setInstructionType(template.type);
+    setCallInstruction(template.text);
+  };
+
+  const filteredClients = (clientTab === 'active' ? clientsData?.active : clientsData?.inactive)?.filter(c => 
+    !clientSearch || 
+    `${c.firstName} ${c.lastName}`.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    c.phoneNumber.includes(clientSearch)
+  ) || [];
+
   const triggerOutboundMutation = useMutation({
     mutationFn: async ({ targetPhone, aiMode, callInstruction, instructionType }: { targetPhone: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null }) => {
       const res = await fetch("/api/voice/outbound/trigger", {
@@ -629,7 +773,8 @@ export default function ConsultantVoiceCallsPage() {
       targetPhone: outboundPhone.trim(), 
       aiMode: outboundAiMode,
       callInstruction: callInstruction.trim() || undefined,
-      instructionType: instructionType
+      instructionType: instructionType,
+      useDefaultTemplate: !!instructionType
     });
   };
 
@@ -644,7 +789,8 @@ export default function ConsultantVoiceCallsPage() {
       scheduledAt, 
       aiMode: outboundAiMode,
       callInstruction: callInstruction.trim() || undefined,
-      instructionType: instructionType
+      instructionType: instructionType,
+      useDefaultTemplate: !!instructionType
     });
   };
 
@@ -1132,60 +1278,150 @@ export default function ConsultantVoiceCallsPage() {
               </TabsContent>
 
               <TabsContent value="outbound" className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {/* COLONNA SINISTRA: Rubrica Clienti */}
+                  <Card className="lg:row-span-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Users className="h-4 w-4" />
+                        Rubrica Clienti
+                      </CardTitle>
+                      <div className="flex gap-1 mt-2">
+                        <Button
+                          variant={clientTab === 'active' ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setClientTab('active')}
+                          className="flex-1"
+                        >
+                          <UserCheck className="h-3 w-3 mr-1" />
+                          Attivi ({clientsData?.active?.length || 0})
+                        </Button>
+                        <Button
+                          variant={clientTab === 'inactive' ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setClientTab('inactive')}
+                          className="flex-1"
+                        >
+                          <UserX className="h-3 w-3 mr-1" />
+                          Inattivi ({clientsData?.inactive?.length || 0})
+                        </Button>
+                      </div>
+                      <div className="relative mt-2">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                        <Input
+                          placeholder="Cerca cliente..."
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          className="pl-7 h-8 text-sm"
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {loadingClients ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        </div>
+                      ) : filteredClients.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Nessun cliente trovato</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1 max-h-[400px] overflow-auto">
+                          {filteredClients.map((client) => (
+                            <div
+                              key={client.id}
+                              onClick={() => handleSelectClient(client)}
+                              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                selectedClient?.id === client.id 
+                                  ? 'bg-primary/10 border border-primary' 
+                                  : 'hover:bg-muted/50'
+                              }`}
+                            >
+                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                                {client.firstName[0]}{client.lastName[0]}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">
+                                  {client.firstName} {client.lastName}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {client.phoneNumber}
+                                </p>
+                              </div>
+                              {client.lastContact && (
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(client.lastContact), { addSuffix: true, locale: it })}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* COLONNA CENTRALE: Form Chiamata */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <PhoneOutgoing className="h-5 w-5" />
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <PhoneOutgoing className="h-4 w-4" />
                         {isScheduleMode ? "Programma Chiamata" : "Chiamata Immediata"}
                       </CardTitle>
-                      <CardDescription>
-                        {isScheduleMode 
-                          ? "Programma una chiamata per un orario specifico"
-                          : "Avvia subito una chiamata in uscita verso un numero"
-                        }
-                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3">
+                      {selectedClient && (
+                        <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                              {selectedClient.firstName[0]}{selectedClient.lastName[0]}
+                            </div>
+                            <span className="text-sm font-medium">{selectedClient.firstName} {selectedClient.lastName}</span>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => { setSelectedClient(null); setOutboundPhone(""); }}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         <Button
                           variant={!isScheduleMode ? "default" : "outline"}
                           size="sm"
                           onClick={() => setIsScheduleMode(false)}
+                          className="flex-1"
                         >
-                          <Play className="h-4 w-4 mr-2" />
-                          Chiama Ora
+                          <Play className="h-3 w-3 mr-1" />
+                          Ora
                         </Button>
                         <Button
                           variant={isScheduleMode ? "default" : "outline"}
                           size="sm"
                           onClick={() => setIsScheduleMode(true)}
+                          className="flex-1"
                         >
-                          <Calendar className="h-4 w-4 mr-2" />
+                          <Calendar className="h-3 w-3 mr-1" />
                           Programma
                         </Button>
                       </div>
 
                       <div className="space-y-3">
                         <div>
-                          <Label htmlFor="outbound-phone">Numero di Telefono</Label>
+                          <Label htmlFor="outbound-phone" className="text-xs">Numero</Label>
                           <Input
                             id="outbound-phone"
                             type="tel"
                             placeholder="+393331234567"
                             value={outboundPhone}
                             onChange={(e) => setOutboundPhone(e.target.value)}
-                            className="mt-1"
+                            className="mt-1 h-8"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Formato: +39 seguito dal numero (es. +393331234567)
-                          </p>
                         </div>
 
                         <div>
-                          <Label htmlFor="outbound-mode">Modalità AI</Label>
+                          <Label htmlFor="outbound-mode" className="text-xs">Modalità AI</Label>
                           <Select value={outboundAiMode} onValueChange={setOutboundAiMode}>
-                            <SelectTrigger className="mt-1">
+                            <SelectTrigger className="mt-1 h-8">
                               <SelectValue placeholder="Seleziona modalità" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1197,42 +1433,43 @@ export default function ConsultantVoiceCallsPage() {
                         </div>
 
                         {isScheduleMode && (
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label htmlFor="outbound-date">Data</Label>
+                              <Label htmlFor="outbound-date" className="text-xs">Data</Label>
                               <Input
                                 id="outbound-date"
                                 type="date"
                                 value={outboundScheduledDate}
                                 onChange={(e) => setOutboundScheduledDate(e.target.value)}
                                 min={new Date().toISOString().split('T')[0]}
-                                className="mt-1"
+                                className="mt-1 h-8"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="outbound-time">Ora</Label>
+                              <Label htmlFor="outbound-time" className="text-xs">Ora</Label>
                               <Input
                                 id="outbound-time"
                                 type="time"
                                 value={outboundScheduledTime}
                                 onChange={(e) => setOutboundScheduledTime(e.target.value)}
-                                className="mt-1"
+                                className="mt-1 h-8"
                               />
                             </div>
                           </div>
                         )}
 
-                        <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+                        <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label className="flex items-center gap-2 text-sm font-medium">
-                              <Sparkles className="h-4 w-4 text-purple-500" />
-                              Istruzioni per l'AI
+                            <Label className="flex items-center gap-1 text-xs font-medium">
+                              <Sparkles className="h-3 w-3 text-purple-500" />
+                              Istruzioni AI
                             </Label>
                             <div className="flex gap-1">
                               <Button
                                 type="button"
                                 variant={instructionType === 'task' ? "default" : "outline"}
                                 size="sm"
+                                className="h-6 px-2 text-xs"
                                 onClick={() => setInstructionType(instructionType === 'task' ? null : 'task')}
                               >
                                 <ClipboardList className="h-3 w-3 mr-1" />
@@ -1242,6 +1479,7 @@ export default function ConsultantVoiceCallsPage() {
                                 type="button"
                                 variant={instructionType === 'reminder' ? "default" : "outline"}
                                 size="sm"
+                                className="h-6 px-2 text-xs"
                                 onClick={() => setInstructionType(instructionType === 'reminder' ? null : 'reminder')}
                               >
                                 <Bell className="h-3 w-3 mr-1" />
@@ -1251,74 +1489,20 @@ export default function ConsultantVoiceCallsPage() {
                           </div>
                           
                           {instructionType && (
-                            <>
-                              <Textarea
-                                placeholder={instructionType === 'task' 
-                                  ? "Es: Chiedi conferma per l'appuntamento di giovedì alle 15..."
-                                  : "Es: Ricordagli che la scadenza del pagamento è il 15..."
-                                }
-                                value={callInstruction}
-                                onChange={(e) => setCallInstruction(e.target.value)}
-                                className="min-h-[80px] text-sm"
-                              />
-                              <div className="flex flex-wrap gap-1">
-                                <span className="text-xs text-muted-foreground mr-2">Suggerimenti:</span>
-                                {instructionType === 'task' ? (
-                                  <>
-                                    <Badge 
-                                      variant="outline" 
-                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
-                                      onClick={() => setCallInstruction("Chiedi conferma per l'appuntamento fissato")}
-                                    >
-                                      Conferma appuntamento
-                                    </Badge>
-                                    <Badge 
-                                      variant="outline" 
-                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
-                                      onClick={() => setCallInstruction("Chiedi se ha ricevuto il preventivo e se ha domande")}
-                                    >
-                                      Follow-up preventivo
-                                    </Badge>
-                                    <Badge 
-                                      variant="outline" 
-                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
-                                      onClick={() => setCallInstruction("Proponi il nuovo servizio/offerta speciale")}
-                                    >
-                                      Proposta commerciale
-                                    </Badge>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Badge 
-                                      variant="outline" 
-                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
-                                      onClick={() => setCallInstruction("Ricordagli l'appuntamento fissato per domani")}
-                                    >
-                                      Promemoria appuntamento
-                                    </Badge>
-                                    <Badge 
-                                      variant="outline" 
-                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
-                                      onClick={() => setCallInstruction("Ricordagli la scadenza del pagamento")}
-                                    >
-                                      Scadenza pagamento
-                                    </Badge>
-                                    <Badge 
-                                      variant="outline" 
-                                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
-                                      onClick={() => setCallInstruction("Informalo che l'ordine è stato spedito")}
-                                    >
-                                      Aggiornamento ordine
-                                    </Badge>
-                                  </>
-                                )}
-                              </div>
-                            </>
+                            <Textarea
+                              placeholder={instructionType === 'task' 
+                                ? "Es: Chiedi conferma per l'appuntamento..."
+                                : "Es: Ricordagli la scadenza del pagamento..."
+                              }
+                              value={callInstruction}
+                              onChange={(e) => setCallInstruction(e.target.value)}
+                              className="min-h-[60px] text-sm"
+                            />
                           )}
                           
                           {!instructionType && (
                             <p className="text-xs text-muted-foreground">
-                              Seleziona Task o Reminder per dare istruzioni specifiche all'AI durante la chiamata
+                              Seleziona Task o Reminder oppure scegli un template dalla libreria
                             </p>
                           )}
                         </div>
@@ -1335,93 +1519,133 @@ export default function ConsultantVoiceCallsPage() {
                           ) : (
                             <PhoneOutgoing className="h-4 w-4 mr-2" />
                           )}
-                          {isScheduleMode ? "Programma Chiamata" : "Chiama Adesso"}
+                          {isScheduleMode ? "Programma" : "Chiama"}
                         </Button>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <Clock className="h-5 w-5" />
-                            Chiamate Programmate
-                          </CardTitle>
-                          <CardDescription>
-                            {scheduledCallsData?.count || 0} chiamate in coda
-                            {scheduledCallsData?.activeTimers ? ` (${scheduledCallsData.activeTimers} timer attivi)` : ''}
-                          </CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => refetchScheduledCalls()}>
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {loadingScheduledCalls ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                        </div>
-                      ) : !scheduledCallsData?.calls?.length ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <PhoneOutgoing className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                          <p>Nessuna chiamata programmata</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3 max-h-[400px] overflow-auto">
-                          {scheduledCallsData.calls.map((call) => {
-                            const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
+                  {/* COLONNA DESTRA: Libreria Template + Chiamate Programmate */}
+                  <div className="space-y-4 lg:row-span-2">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <FileText className="h-4 w-4" />
+                          Libreria Template
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-1 max-h-[280px] overflow-auto">
+                          {TEMPLATE_LIBRARY.map((category) => {
+                            const CategoryIcon = category.icon;
+                            const isExpanded = expandedCategory === category.category;
                             return (
-                              <div key={call.id} className="p-3 border rounded-lg space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="space-y-1">
-                                    <p className="font-mono font-medium">{call.target_phone}</p>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                      <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-                                      <span>{call.ai_mode}</span>
-                                      {call.scheduled_at && (
-                                        <span className="flex items-center gap-1">
-                                          <Clock className="h-3 w-3" />
-                                          {format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}
-                                        </span>
-                                      )}
-                                    </div>
+                              <div key={category.category}>
+                                <button
+                                  onClick={() => setExpandedCategory(isExpanded ? null : category.category)}
+                                  className={`w-full flex items-center justify-between p-2 rounded-lg text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <CategoryIcon className={`h-4 w-4 ${category.color}`} />
+                                    <span className="text-sm font-medium">{category.label}</span>
+                                    <Badge variant="outline" className="text-xs px-1 py-0">{category.items.length}</Badge>
                                   </div>
-                                  <div className="flex gap-2">
-                                    {(call.status === 'pending' || call.status === 'failed') && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => cancelOutboundMutation.mutate(call.id)}
-                                        disabled={cancelOutboundMutation.isPending}
+                                  <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                </button>
+                                {isExpanded && (
+                                  <div className="ml-6 mt-1 space-y-1">
+                                    {category.items.map((item, idx) => (
+                                      <button
+                                        key={idx}
+                                        onClick={() => handleSelectTemplate(item)}
+                                        className="w-full flex items-center gap-2 p-2 text-left text-sm rounded hover:bg-primary/10 transition-colors"
                                       >
-                                        <Trash2 className="h-4 w-4 text-red-500" />
-                                      </Button>
-                                    )}
+                                        {item.type === 'task' ? (
+                                          <ClipboardList className="h-3 w-3 text-blue-500" />
+                                        ) : (
+                                          <Bell className="h-3 w-3 text-orange-500" />
+                                        )}
+                                        <span className="truncate">{item.label}</span>
+                                      </button>
+                                    ))}
                                   </div>
-                                </div>
-                                {call.call_instruction && (
-                                  <div className="flex items-start gap-2 p-2 bg-muted/50 rounded text-sm">
-                                    {call.instruction_type === 'task' ? (
-                                      <ClipboardList className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                                    ) : (
-                                      <Bell className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                                    )}
-                                    <span className="text-muted-foreground">{call.call_instruction}</span>
-                                  </div>
-                                )}
-                                {call.error_message && (
-                                  <p className="text-xs text-red-500">{call.error_message}</p>
                                 )}
                               </div>
                             );
                           })}
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center gap-2 text-base">
+                            <Clock className="h-4 w-4" />
+                            Chiamate Programmate
+                            <Badge variant="secondary" className="text-xs">{scheduledCallsData?.count || 0}</Badge>
+                          </CardTitle>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => refetchScheduledCalls()}>
+                            <RefreshCw className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        {loadingScheduledCalls ? (
+                          <div className="flex items-center justify-center py-6">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          </div>
+                        ) : !scheduledCallsData?.calls?.length ? (
+                          <div className="text-center py-4 text-muted-foreground text-sm">
+                            <PhoneOutgoing className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                            <p>Nessuna</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-[200px] overflow-auto">
+                            {scheduledCallsData.calls.map((call) => {
+                              const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
+                              return (
+                                <div key={call.id} className="p-2 border rounded-lg space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-mono text-sm truncate">{call.target_phone}</p>
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <Badge className={`${statusConfig.color} text-xs px-1 py-0`}>{statusConfig.label}</Badge>
+                                        {call.scheduled_at && (
+                                          <span>{format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {(call.status === 'pending' || call.status === 'failed') && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => cancelOutboundMutation.mutate(call.id)}
+                                        disabled={cancelOutboundMutation.isPending}
+                                      >
+                                        <Trash2 className="h-3 w-3 text-red-500" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                  {call.call_instruction && (
+                                    <div className="flex items-start gap-1 p-1 bg-muted/50 rounded text-xs">
+                                      {call.instruction_type === 'task' ? (
+                                        <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                      ) : (
+                                        <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                                      )}
+                                      <span className="text-muted-foreground line-clamp-2">{call.call_instruction}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </TabsContent>
 
