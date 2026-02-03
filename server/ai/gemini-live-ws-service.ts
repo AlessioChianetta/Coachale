@@ -2960,7 +2960,120 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
           buildDynamicContextForLive  // ✅ NEW: For cache optimization
         } = await import('../ai-prompts');
         
-        if (customPrompt) {
+        // 🎯 PRIORITY CHECK: If there's a specific call instruction for CLIENT
+        if (phoneCallInstruction && isPhoneCall) {
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🎯 [${connectionId}] CLIENT CALL WITH INSTRUCTION (PRIORITY MODE)`);
+          console.log(`🎯   Type: ${phoneInstructionType || 'generic'}`);
+          console.log(`🎯   Instruction: ${phoneCallInstruction}`);
+          console.log(`🎯   Client User ID: ${userId}`);
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          
+          // Get current Italian time
+          const italianTime = new Date().toLocaleString('it-IT', { 
+            timeZone: 'Europe/Rome',
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          // Get consultant name for the prompt
+          let clientConsultantName = 'il consulente';
+          if (consultantId) {
+            try {
+              const consultant = await storage.getUser(consultantId);
+              if (consultant) {
+                const fullName = [consultant.firstName, consultant.lastName].filter(Boolean).join(' ').trim();
+                clientConsultantName = fullName || consultant.email?.split('@')[0] || 'il consulente';
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
+            }
+          }
+          
+          // Get client name from context
+          const clientName = userContext.user?.firstName || userContext.user?.email?.split('@')[0] || 'il cliente';
+          
+          // Build instruction type label
+          const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
+                                        phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
+          
+          // Build the client's normal system prompt
+          const clientSystemPrompt = buildFullSystemInstructionForLive(
+            mode,
+            mode === 'consulente' ? consultantType : null,
+            userContext
+          );
+          
+          // Prepend instruction priority to client's system prompt
+          const instructionPrefix = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 CHI SEI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sei Alessia, l'assistente AI di ${clientConsultantName}.
+Stai chiamando ${clientName}, un CLIENTE REGISTRATO.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨🚨🚨 ISTRUZIONE PRIORITARIA - IL TUO COMPITO 🚨🚨🚨
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${instructionTypeLabel}:
+${phoneCallInstruction}
+
+⚠️ QUESTA ISTRUZIONE HA PRIORITÀ ASSOLUTA!
+• Inizia SUBITO parlando di questo
+• NON chiedere "Come posso aiutarti?" - SEI TU che chiami per un motivo specifico
+• Assicurati che ${clientName} abbia CAPITO e CONFERMATO l'istruzione
+• Solo DOPO che l'istruzione è stata completata, puoi passare al tuo ruolo normale
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎙️ DIRETTIVE VOCALI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Parla in italiano fluente e naturale
+• Tono allegro, energico ma professionale
+• Sii diretta ma cordiale
+• Risposte concise e chiare (max 2-3 frasi per turno)
+• NON ripetere le stesse frasi
+• NO suoni tipo "Mmm", "Uhm", "Ehm"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 CONTESTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Data e ora: ${italianTime} (Italia)
+Tipo chiamata: OUTBOUND a cliente registrato
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 DOPO CHE L'ISTRUZIONE È COMPLETATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Una volta che ${clientName} ha capito e confermato, puoi:
+• Chiedere se ha altre domande
+• Aiutarlo con qualsiasi cosa legata al suo percorso
+• Usare il tuo system prompt normale (sotto)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 IL TUO SYSTEM PROMPT NORMALE (da usare DOPO l'istruzione)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+          
+          systemInstruction = instructionPrefix + clientSystemPrompt;
+          userDataContext = ''; // Already included in clientSystemPrompt
+          
+          console.log(`🎯 [${connectionId}] Client instruction prompt built (${systemInstruction.length} chars)`);
+          
+          // 🔥 PRINT FULL PROMPT FOR DEBUGGING
+          console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🎯 FULL CLIENT INSTRUCTION PROMPT (first 2000 chars):`);
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(systemInstruction.substring(0, 2000) + (systemInstruction.length > 2000 ? '\n... [truncated]' : ''));
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        } else if (customPrompt) {
           // Custom prompt overrides everything
           systemInstruction = customPrompt;
           console.log(`📝 [${connectionId}] Using custom prompt (${customPrompt.length} characters)`);
@@ -2988,7 +3101,7 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
         }
 
         // Aggiungi prompt prefix per consulenze settimanali
-        if (sessionType === 'weekly_consultation' && !customPrompt) {
+        if (sessionType === 'weekly_consultation' && !customPrompt && !phoneCallInstruction) {
           const consultationPrefix = `🎯 CONTESTO SESSIONE CONSULENZA SETTIMANALE:
 Sei in una sessione di CONSULENZA SETTIMANALE programmata.
 Durata massima: 1 ora e mezza (90 minuti).
