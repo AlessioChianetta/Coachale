@@ -2475,7 +2475,81 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
-          // Build prompt with: VOICE DIRECTIVES FIRST + IDENTITY + INSTRUCTION + DEFAULT TEMPLATE
+          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (same mechanism as inbound calls)
+          let instructionPreviousCallContext = '';
+          if (phoneCallerId) {
+            try {
+              const previousConversations = await db.execute(sql`
+                SELECT 
+                  ac.id,
+                  ac.title,
+                  ac.created_at,
+                  (
+                    SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
+                    FROM (
+                      SELECT json_build_object(
+                        'role', am.role,
+                        'content', am.content,
+                        'created_at', am.created_at
+                      ) as msg_data
+                      FROM ai_messages am
+                      WHERE am.conversation_id = ac.id
+                      ORDER BY am.created_at ASC
+                    ) sub
+                  ) as messages
+                FROM ai_conversations ac
+                WHERE ac.caller_phone = ${phoneCallerId}
+                ORDER BY ac.created_at DESC
+                LIMIT 3
+              `);
+              
+              if (previousConversations.rows.length > 0) {
+                console.log(`📱 [${connectionId}] Found ${previousConversations.rows.length} previous conversations for instruction call to ${phoneCallerId}`);
+                
+                instructionPreviousCallContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI (CONTESTO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hai già parlato con questa persona! Usa queste info per essere più personale:
+
+`;
+                
+                for (const conv of previousConversations.rows as any[]) {
+                  const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                  
+                  instructionPreviousCallContext += `📅 Chiamata del ${callDate}\n`;
+                  instructionPreviousCallContext += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
+                  
+                  if (conv.messages && Array.isArray(conv.messages)) {
+                    for (const msg of conv.messages) {
+                      const roleLabel = msg.role === 'user' ? '👤 Loro' : '🤖 Tu';
+                      const content = msg.content.length > 200 
+                        ? msg.content.substring(0, 200) + '...'
+                        : msg.content;
+                      instructionPreviousCallContext += `${roleLabel}: ${content}\n`;
+                    }
+                  }
+                  instructionPreviousCallContext += '\n---\n\n';
+                }
+                
+                instructionPreviousCallContext += `💡 Usa queste info per salutare per nome e fare riferimento a conversazioni passate!
+`;
+              } else {
+                console.log(`📱 [${connectionId}] No previous conversations found for ${phoneCallerId}`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not load previous conversations for instruction call:`, err);
+            }
+          }
+          
+          // Build prompt with: VOICE DIRECTIVES FIRST + IDENTITY + INSTRUCTION + CALL HISTORY
           systemInstruction = `${voiceDirectivesSection}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2542,10 +2616,10 @@ Tipo chiamata: OUTBOUND (sei tu che chiami)
 Una volta che hanno capito e confermato:
 • Chiedere "C'è qualcos'altro di cui hai bisogno?"
 • Se no, saluta cordialmente "Perfetto allora! Buona giornata!"
-• Proponi appuntamento con ${consultantName} solo se appropriato`;
+• Proponi appuntamento con ${consultantName} solo se appropriato${instructionPreviousCallContext}`;
 
           userDataContext = '';
-          console.log(`🎯 [${connectionId}] Instruction prompt built (${systemInstruction.length} chars)`);
+          console.log(`🎯 [${connectionId}] Instruction prompt built (${systemInstruction.length} chars)${instructionPreviousCallContext ? ' [WITH CALL HISTORY]' : ''}`);
           
           // 🔥 PRINT FULL PROMPT FOR DEBUGGING
           console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -3085,6 +3159,80 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
           // Get client name from context
           const clientName = userContext.user?.firstName || userContext.user?.email?.split('@')[0] || 'il cliente';
           
+          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (same mechanism as non-clients)
+          let clientInstructionCallHistory = '';
+          if (phoneCallerId) {
+            try {
+              const previousConversations = await db.execute(sql`
+                SELECT 
+                  ac.id,
+                  ac.title,
+                  ac.created_at,
+                  (
+                    SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
+                    FROM (
+                      SELECT json_build_object(
+                        'role', am.role,
+                        'content', am.content,
+                        'created_at', am.created_at
+                      ) as msg_data
+                      FROM ai_messages am
+                      WHERE am.conversation_id = ac.id
+                      ORDER BY am.created_at ASC
+                    ) sub
+                  ) as messages
+                FROM ai_conversations ac
+                WHERE ac.caller_phone = ${phoneCallerId}
+                ORDER BY ac.created_at DESC
+                LIMIT 3
+              `);
+              
+              if (previousConversations.rows.length > 0) {
+                console.log(`📱 [${connectionId}] Found ${previousConversations.rows.length} previous conversations for client instruction call`);
+                
+                clientInstructionCallHistory = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI (CONTESTO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hai già parlato con ${clientName}! Ecco le conversazioni precedenti:
+
+`;
+                
+                for (const conv of previousConversations.rows as any[]) {
+                  const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                  
+                  clientInstructionCallHistory += `📅 Chiamata del ${callDate}\n`;
+                  clientInstructionCallHistory += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
+                  
+                  if (conv.messages && Array.isArray(conv.messages)) {
+                    for (const msg of conv.messages) {
+                      const roleLabel = msg.role === 'user' ? `👤 ${clientName}` : '🤖 Tu';
+                      const content = msg.content.length > 200 
+                        ? msg.content.substring(0, 200) + '...'
+                        : msg.content;
+                      clientInstructionCallHistory += `${roleLabel}: ${content}\n`;
+                    }
+                  }
+                  clientInstructionCallHistory += '\n---\n\n';
+                }
+                
+                clientInstructionCallHistory += `💡 Usa queste info per far sentire ${clientName} riconosciuto!
+`;
+              } else {
+                console.log(`📱 [${connectionId}] No previous conversations found for client ${phoneCallerId}`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not load previous conversations for client instruction call:`, err);
+            }
+          }
+          
           // Build instruction type label
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
@@ -3165,7 +3313,7 @@ Una volta che ${clientName} ha capito e confermato:
 • Chiedi "C'è qualcos'altro di cui hai bisogno?"
 • Se no, saluta "Perfetto! Ci sentiamo, ciao!"
 • Usa il tuo system prompt normale (sotto) se serve aiuto su altro
-
+${clientInstructionCallHistory}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 IL TUO SYSTEM PROMPT NORMALE (da usare DOPO l'istruzione)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3175,7 +3323,7 @@ Una volta che ${clientName} ha capito e confermato:
           systemInstruction = instructionPrefix + clientSystemPrompt;
           userDataContext = ''; // Already included in clientSystemPrompt
           
-          console.log(`🎯 [${connectionId}] Client instruction prompt built (${systemInstruction.length} chars)`);
+          console.log(`🎯 [${connectionId}] Client instruction prompt built (${systemInstruction.length} chars)${clientInstructionCallHistory ? ' [WITH CALL HISTORY]' : ''}`);
           
           // 🔥 PRINT FULL PROMPT FOR DEBUGGING
           console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
