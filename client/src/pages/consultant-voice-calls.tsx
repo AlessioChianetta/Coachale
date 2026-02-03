@@ -1278,264 +1278,157 @@ export default function ConsultantVoiceCallsPage() {
               </TabsContent>
 
               <TabsContent value="outbound" className="space-y-6">
-                <div className="grid gap-4 lg:grid-cols-3">
-                  {/* COLONNA SINISTRA: Rubrica Clienti */}
-                  <Card className="lg:row-span-2">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Users className="h-4 w-4" />
-                        Rubrica Clienti
-                      </CardTitle>
-                      <div className="flex gap-1 mt-2">
-                        <Button
-                          variant={clientTab === 'active' ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setClientTab('active')}
-                          className="flex-1"
-                        >
-                          <UserCheck className="h-3 w-3 mr-1" />
-                          Attivi ({clientsData?.active?.length || 0})
-                        </Button>
-                        <Button
-                          variant={clientTab === 'inactive' ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setClientTab('inactive')}
-                          className="flex-1"
-                        >
-                          <UserX className="h-3 w-3 mr-1" />
-                          Inattivi ({clientsData?.inactive?.length || 0})
-                        </Button>
+                {/* HEADER OPERATIVO */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                    <div>
+                      <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <Phone className="h-6 w-6" />
+                        Centro Chiamate AI
+                      </h2>
+                      <div className="flex items-center gap-3 mt-1 text-sm flex-wrap">
+                        <Badge className={health?.overall === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'}>
+                          {health?.overall === 'healthy' ? '🟢 Sistema Online' : '🟡 Verifica Sistema'}
+                        </Badge>
+                        <span className="text-muted-foreground">Voice: {voiceSettings?.voiceId || 'Achernar'}</span>
+                        <span className="text-muted-foreground">VPS: {voiceSettings?.vpsBridgeUrl ? 'Connesso' : 'Non configurato'}</span>
                       </div>
-                      <div className="relative mt-2">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                        <Input
-                          placeholder="Cerca cliente..."
-                          value={clientSearch}
-                          onChange={(e) => setClientSearch(e.target.value)}
-                          className="pl-7 h-8 text-sm"
-                        />
+                    </div>
+                    <div className="flex gap-4 text-center">
+                      <div>
+                        <p className="text-2xl font-bold">{stats?.total_calls || 0}</p>
+                        <p className="text-xs text-muted-foreground">Chiamate oggi</p>
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      {loadingClients ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        </div>
-                      ) : filteredClients.length === 0 ? (
-                        <div className="text-center py-6 text-muted-foreground text-sm">
-                          <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>Nessun cliente trovato</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-1 max-h-[400px] overflow-auto">
-                          {filteredClients.map((client) => (
-                            <div
-                              key={client.id}
-                              onClick={() => handleSelectClient(client)}
-                              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                                selectedClient?.id === client.id 
-                                  ? 'bg-primary/10 border border-primary' 
-                                  : 'hover:bg-muted/50'
-                              }`}
-                            >
-                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
-                                {client.firstName[0]}{client.lastName[0]}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">
-                                  {client.firstName} {client.lastName}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {client.phoneNumber}
-                                </p>
-                              </div>
-                              {client.lastContact && (
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(client.lastContact), { addSuffix: true, locale: it })}
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      <div>
+                        <p className="text-2xl font-bold text-green-600">{stats?.completed_calls || 0}</p>
+                        <p className="text-xs text-muted-foreground">Completate</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-blue-600">{scheduledCallsData?.count || 0}</p>
+                        <p className="text-xs text-muted-foreground">Programmate</p>
+                      </div>
+                    </div>
+                  </div>
 
-                  {/* COLONNA CENTRALE: Form Chiamata */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <PhoneOutgoing className="h-4 w-4" />
-                        {isScheduleMode ? "Programma Chiamata" : "Chiamata Immediata"}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {selectedClient && (
-                        <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
-                              {selectedClient.firstName[0]}{selectedClient.lastName[0]}
-                            </div>
-                            <span className="text-sm font-medium">{selectedClient.firstName} {selectedClient.lastName}</span>
-                          </div>
-                          <Button variant="ghost" size="sm" onClick={() => { setSelectedClient(null); setOutboundPhone(""); }}>
-                            <X className="h-3 w-3" />
+                  <div className="flex gap-4">
+                    <Button 
+                      size="lg" 
+                      className="flex-1 h-14 text-lg"
+                      onClick={() => setIsScheduleMode(false)}
+                      variant={!isScheduleMode ? "default" : "outline"}
+                    >
+                      <PhoneOutgoing className="h-5 w-5 mr-2" />
+                      👉 Chiama Ora
+                    </Button>
+                    <Button 
+                      size="lg" 
+                      className="flex-1 h-14 text-lg"
+                      onClick={() => setIsScheduleMode(true)}
+                      variant={isScheduleMode ? "default" : "outline"}
+                    >
+                      <Calendar className="h-5 w-5 mr-2" />
+                      👉 Programma Chiamata
+                    </Button>
+                  </div>
+                </div>
+
+                {/* LAYOUT A 3 COLONNE */}
+                <div className="grid gap-4 lg:grid-cols-4">
+                  {/* COLONNA SINISTRA (25%): Rubrica + Template */}
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Users className="h-4 w-4" />
+                          Rubrica
+                        </CardTitle>
+                        <div className="flex gap-1 mt-2">
+                          <Button
+                            variant={clientTab === 'active' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setClientTab('active')}
+                            className="flex-1 h-7 text-xs"
+                          >
+                            <UserCheck className="h-3 w-3 mr-1" />
+                            Attivi ({clientsData?.active?.length || 0})
+                          </Button>
+                          <Button
+                            variant={clientTab === 'inactive' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setClientTab('inactive')}
+                            className="flex-1 h-7 text-xs"
+                          >
+                            <UserX className="h-3 w-3 mr-1" />
+                            Inattivi ({clientsData?.inactive?.length || 0})
                           </Button>
                         </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant={!isScheduleMode ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setIsScheduleMode(false)}
-                          className="flex-1"
-                        >
-                          <Play className="h-3 w-3 mr-1" />
-                          Ora
-                        </Button>
-                        <Button
-                          variant={isScheduleMode ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setIsScheduleMode(true)}
-                          className="flex-1"
-                        >
-                          <Calendar className="h-3 w-3 mr-1" />
-                          Programma
-                        </Button>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="outbound-phone" className="text-xs">Numero</Label>
+                        <div className="relative mt-2">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                           <Input
-                            id="outbound-phone"
-                            type="tel"
-                            placeholder="+393331234567"
-                            value={outboundPhone}
-                            onChange={(e) => setOutboundPhone(e.target.value)}
-                            className="mt-1 h-8"
+                            placeholder="Cerca..."
+                            value={clientSearch}
+                            onChange={(e) => setClientSearch(e.target.value)}
+                            className="pl-7 h-7 text-xs"
                           />
                         </div>
-
-                        <div>
-                          <Label htmlFor="outbound-mode" className="text-xs">Modalità AI</Label>
-                          <Select value={outboundAiMode} onValueChange={setOutboundAiMode}>
-                            <SelectTrigger className="mt-1 h-8">
-                              <SelectValue placeholder="Seleziona modalità" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="assistenza">Assistenza</SelectItem>
-                              <SelectItem value="vendita">Vendita</SelectItem>
-                              <SelectItem value="followup">Follow-up</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {isScheduleMode && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label htmlFor="outbound-date" className="text-xs">Data</Label>
-                              <Input
-                                id="outbound-date"
-                                type="date"
-                                value={outboundScheduledDate}
-                                onChange={(e) => setOutboundScheduledDate(e.target.value)}
-                                min={new Date().toISOString().split('T')[0]}
-                                className="mt-1 h-8"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="outbound-time" className="text-xs">Ora</Label>
-                              <Input
-                                id="outbound-time"
-                                type="time"
-                                value={outboundScheduledTime}
-                                onChange={(e) => setOutboundScheduledTime(e.target.value)}
-                                className="mt-1 h-8"
-                              />
-                            </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        {loadingClients ? (
+                          <div className="flex items-center justify-center py-6">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        ) : filteredClients.length === 0 ? (
+                          <div className="text-center py-4 text-muted-foreground text-sm">
+                            <Users className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                            <p className="font-medium">👥 Nessun cliente ancora</p>
+                            <Link href="/consultant/clients">
+                              <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-xs">
+                                Vai a Clienti →
+                              </Button>
+                            </Link>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 max-h-[200px] overflow-auto">
+                            {filteredClients.slice(0, 10).map((client) => (
+                              <div
+                                key={client.id}
+                                onClick={() => client.phoneNumber ? handleSelectClient(client) : null}
+                                className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+                                  !client.phoneNumber 
+                                    ? 'opacity-50 cursor-not-allowed' 
+                                    : selectedClient?.id === client.id 
+                                      ? 'bg-primary/10 border border-primary cursor-pointer' 
+                                      : 'hover:bg-muted/50 cursor-pointer'
+                                }`}
+                              >
+                                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium flex-shrink-0">
+                                  {client.firstName[0]}{client.lastName[0]}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-xs truncate flex items-center gap-1">
+                                    {client.firstName} {client.lastName}
+                                    {!client.phoneNumber && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {client.phoneNumber || 'No telefono'}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
+                      </CardContent>
+                    </Card>
 
-                        <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="flex items-center gap-1 text-xs font-medium">
-                              <Sparkles className="h-3 w-3 text-purple-500" />
-                              Istruzioni AI
-                            </Label>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant={instructionType === 'task' ? "default" : "outline"}
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => setInstructionType(instructionType === 'task' ? null : 'task')}
-                              >
-                                <ClipboardList className="h-3 w-3 mr-1" />
-                                Task
-                              </Button>
-                              <Button
-                                type="button"
-                                variant={instructionType === 'reminder' ? "default" : "outline"}
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => setInstructionType(instructionType === 'reminder' ? null : 'reminder')}
-                              >
-                                <Bell className="h-3 w-3 mr-1" />
-                                Reminder
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          {instructionType && (
-                            <Textarea
-                              placeholder={instructionType === 'task' 
-                                ? "Es: Chiedi conferma per l'appuntamento..."
-                                : "Es: Ricordagli la scadenza del pagamento..."
-                              }
-                              value={callInstruction}
-                              onChange={(e) => setCallInstruction(e.target.value)}
-                              className="min-h-[60px] text-sm"
-                            />
-                          )}
-                          
-                          {!instructionType && (
-                            <p className="text-xs text-muted-foreground">
-                              Seleziona Task o Reminder oppure scegli un template dalla libreria
-                            </p>
-                          )}
-                        </div>
-
-                        <Button
-                          className="w-full"
-                          onClick={isScheduleMode ? handleScheduleCall : handleTriggerCall}
-                          disabled={triggerOutboundMutation.isPending || scheduleOutboundMutation.isPending || !outboundPhone.trim()}
-                        >
-                          {(triggerOutboundMutation.isPending || scheduleOutboundMutation.isPending) ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : isScheduleMode ? (
-                            <Calendar className="h-4 w-4 mr-2" />
-                          ) : (
-                            <PhoneOutgoing className="h-4 w-4 mr-2" />
-                          )}
-                          {isScheduleMode ? "Programma" : "Chiama"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* COLONNA DESTRA: Libreria Template + Chiamate Programmate */}
-                  <div className="space-y-4 lg:row-span-2">
                     <Card>
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-base">
                           <FileText className="h-4 w-4" />
-                          Libreria Template
+                          Template
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-0">
-                        <div className="space-y-1 max-h-[280px] overflow-auto">
+                        <div className="space-y-1 max-h-[180px] overflow-auto">
                           {TEMPLATE_LIBRARY.map((category) => {
                             const CategoryIcon = category.icon;
                             const isExpanded = expandedCategory === category.category;
@@ -1543,27 +1436,26 @@ export default function ConsultantVoiceCallsPage() {
                               <div key={category.category}>
                                 <button
                                   onClick={() => setExpandedCategory(isExpanded ? null : category.category)}
-                                  className={`w-full flex items-center justify-between p-2 rounded-lg text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
+                                  className={`w-full flex items-center justify-between p-1.5 rounded text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <CategoryIcon className={`h-4 w-4 ${category.color}`} />
-                                    <span className="text-sm font-medium">{category.label}</span>
-                                    <Badge variant="outline" className="text-xs px-1 py-0">{category.items.length}</Badge>
+                                  <div className="flex items-center gap-1.5">
+                                    <CategoryIcon className={`h-3 w-3 ${category.color}`} />
+                                    <span className="text-xs font-medium">{category.label}</span>
                                   </div>
-                                  <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  <ChevronRight className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                 </button>
                                 {isExpanded && (
-                                  <div className="ml-6 mt-1 space-y-1">
+                                  <div className="ml-4 mt-1 space-y-0.5">
                                     {category.items.map((item, idx) => (
                                       <button
                                         key={idx}
                                         onClick={() => handleSelectTemplate(item)}
-                                        className="w-full flex items-center gap-2 p-2 text-left text-sm rounded hover:bg-primary/10 transition-colors"
+                                        className="w-full flex items-center gap-1 p-1.5 text-left text-xs rounded hover:bg-primary/10 transition-colors"
                                       >
                                         {item.type === 'task' ? (
-                                          <ClipboardList className="h-3 w-3 text-blue-500" />
+                                          <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
                                         ) : (
-                                          <Bell className="h-3 w-3 text-orange-500" />
+                                          <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />
                                         )}
                                         <span className="truncate">{item.label}</span>
                                       </button>
@@ -1576,76 +1468,235 @@ export default function ConsultantVoiceCallsPage() {
                         </div>
                       </CardContent>
                     </Card>
+                  </div>
 
+                  {/* COLONNA CENTRALE (50%): Wizard Chiamata */}
+                  <div className="lg:col-span-2">
                     <Card>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="flex items-center gap-2 text-base">
-                            <Clock className="h-4 w-4" />
-                            Chiamate Programmate
-                            <Badge variant="secondary" className="text-xs">{scheduledCallsData?.count || 0}</Badge>
-                          </CardTitle>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => refetchScheduledCalls()}>
-                            <RefreshCw className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      <CardHeader>
+                        <CardTitle>{isScheduleMode ? "Programma Chiamata" : "Avvia Chiamata AI"}</CardTitle>
                       </CardHeader>
-                      <CardContent className="pt-0">
-                        {loadingScheduledCalls ? (
-                          <div className="flex items-center justify-center py-6">
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          </div>
-                        ) : !scheduledCallsData?.calls?.length ? (
-                          <div className="text-center py-4 text-muted-foreground text-sm">
-                            <PhoneOutgoing className="h-6 w-6 mx-auto mb-1 opacity-50" />
-                            <p>Nessuna</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2 max-h-[200px] overflow-auto">
-                            {scheduledCallsData.calls.map((call) => {
-                              const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
-                              return (
-                                <div key={call.id} className="p-2 border rounded-lg space-y-1">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-mono text-sm truncate">{call.target_phone}</p>
-                                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                        <Badge className={`${statusConfig.color} text-xs px-1 py-0`}>{statusConfig.label}</Badge>
-                                        {call.scheduled_at && (
-                                          <span>{format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {(call.status === 'pending' || call.status === 'failed') && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 p-0"
-                                        onClick={() => cancelOutboundMutation.mutate(call.id)}
-                                        disabled={cancelOutboundMutation.isPending}
-                                      >
-                                        <Trash2 className="h-3 w-3 text-red-500" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                  {call.call_instruction && (
-                                    <div className="flex items-start gap-1 p-1 bg-muted/50 rounded text-xs">
-                                      {call.instruction_type === 'task' ? (
-                                        <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
-                                      ) : (
-                                        <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />
-                                      )}
-                                      <span className="text-muted-foreground line-clamp-2">{call.call_instruction}</span>
-                                    </div>
-                                  )}
+                      <CardContent className="space-y-4">
+                        {/* Step 1: Numero */}
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
+                            Numero da chiamare
+                          </Label>
+                          {selectedClient && (
+                            <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                                  {selectedClient.firstName[0]}{selectedClient.lastName[0]}
                                 </div>
-                              );
-                            })}
+                                <span className="text-sm font-medium">{selectedClient.firstName} {selectedClient.lastName}</span>
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedClient(null); setOutboundPhone(""); }}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🇮🇹</span>
+                            <Input
+                              type="tel"
+                              placeholder="+39 XXX XXX XXXX"
+                              value={outboundPhone}
+                              onChange={(e) => setOutboundPhone(e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Step 2: Tipo chiamata */}
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
+                            Tipo chiamata
+                          </Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { value: 'assistenza', label: '🛠 Assistenza' },
+                              { value: 'vendita', label: '🧑‍💼 Commerciale' },
+                              { value: 'followup', label: '📅 Follow-up' },
+                            ].map((mode) => (
+                              <button
+                                key={mode.value}
+                                onClick={() => setOutboundAiMode(mode.value)}
+                                className={`p-3 rounded-lg border text-center transition-colors ${
+                                  outboundAiMode === mode.value 
+                                    ? 'bg-primary text-primary-foreground border-primary' 
+                                    : 'hover:bg-muted'
+                                }`}
+                              >
+                                <span className="text-sm">{mode.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Step 3: Obiettivo */}
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
+                            🎯 Cosa deve dire l'AI
+                          </Label>
+                          <div className="flex gap-1 mb-2">
+                            <Button 
+                              variant={instructionType === 'task' ? "default" : "outline"} 
+                              size="sm" 
+                              onClick={() => setInstructionType(instructionType === 'task' ? null : 'task')}
+                            >
+                              <ClipboardList className="h-3 w-3 mr-1" /> Task
+                            </Button>
+                            <Button 
+                              variant={instructionType === 'reminder' ? "default" : "outline"} 
+                              size="sm" 
+                              onClick={() => setInstructionType(instructionType === 'reminder' ? null : 'reminder')}
+                            >
+                              <Bell className="h-3 w-3 mr-1" /> Reminder
+                            </Button>
+                          </div>
+                          {instructionType && (
+                            <Textarea 
+                              value={callInstruction} 
+                              onChange={(e) => setCallInstruction(e.target.value)} 
+                              placeholder="Descrivi l'obiettivo della chiamata..." 
+                              className="min-h-[80px]" 
+                            />
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {['Ricorda scadenza contratto', 'Recupera pagamento', 'Follow-up preventivo', 'Upsell servizio'].map(ex => (
+                              <Badge 
+                                key={ex} 
+                                variant="outline" 
+                                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors" 
+                                onClick={() => { setInstructionType('task'); setCallInstruction(ex); }}
+                              >
+                                {ex}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Step 4: Data/Ora (solo se programma) */}
+                        {isScheduleMode && (
+                          <div className="space-y-2">
+                            <Label className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">4</span>
+                              Quando chiamare
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input 
+                                type="date" 
+                                value={outboundScheduledDate} 
+                                onChange={(e) => setOutboundScheduledDate(e.target.value)} 
+                                min={new Date().toISOString().split('T')[0]} 
+                              />
+                              <Input 
+                                type="time" 
+                                value={outboundScheduledTime} 
+                                onChange={(e) => setOutboundScheduledTime(e.target.value)} 
+                              />
+                            </div>
                           </div>
                         )}
+
+                        {/* BOTTONE AZIONE */}
+                        <Button
+                          size="lg"
+                          className="w-full h-14 text-lg bg-purple-600 hover:bg-purple-700"
+                          onClick={isScheduleMode ? handleScheduleCall : handleTriggerCall}
+                          disabled={triggerOutboundMutation.isPending || scheduleOutboundMutation.isPending || !outboundPhone.trim()}
+                        >
+                          {(triggerOutboundMutation.isPending || scheduleOutboundMutation.isPending) ? (
+                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          ) : (
+                            <PhoneOutgoing className="h-5 w-5 mr-2" />
+                          )}
+                          {isScheduleMode ? "🟣 PROGRAMMA CHIAMATA" : "🟣 AVVIA CHIAMATA AI ORA"}
+                        </Button>
+                        <p className="text-xs text-center text-muted-foreground">
+                          {isScheduleMode ? "La chiamata partirà all'orario impostato" : "L'AI chiamerà entro 5 secondi"}
+                        </p>
                       </CardContent>
                     </Card>
                   </div>
+
+                  {/* COLONNA DESTRA (25%): Prossime Chiamate */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Clock className="h-4 w-4" />
+                          Prossime Chiamate
+                        </CardTitle>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => refetchScheduledCalls()}>
+                          <RefreshCw className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {loadingScheduledCalls ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : !scheduledCallsData?.calls?.length ? (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          <PhoneOutgoing className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                          <p>Nessuna chiamata programmata</p>
+                          <p className="text-xs mt-1">Usa il form a sinistra per programmare</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {scheduledCallsData.calls.slice(0, 5).map((call) => {
+                            const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
+                            return (
+                              <div key={call.id} className="p-2 border rounded-lg space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-mono text-xs truncate">{call.target_phone}</p>
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Badge className={`${statusConfig.color} text-xs px-1 py-0`}>{statusConfig.label}</Badge>
+                                      {call.scheduled_at && (
+                                        <span>{format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {(call.status === 'pending' || call.status === 'failed') && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => cancelOutboundMutation.mutate(call.id)}
+                                      disabled={cancelOutboundMutation.isPending}
+                                    >
+                                      <Trash2 className="h-3 w-3 text-red-500" />
+                                    </Button>
+                                  )}
+                                </div>
+                                {call.call_instruction && (
+                                  <div className="flex items-start gap-1 p-1 bg-muted/50 rounded text-xs">
+                                    {call.instruction_type === 'task' ? (
+                                      <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                    ) : (
+                                      <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                                    )}
+                                    <span className="text-muted-foreground line-clamp-1">{call.call_instruction}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {scheduledCallsData.count > 5 && (
+                            <Button variant="link" size="sm" className="w-full text-xs">
+                              Vedi tutte ({scheduledCallsData.count}) →
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </TabsContent>
 
