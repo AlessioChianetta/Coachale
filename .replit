@@ -51,5 +51,4 @@ externalPort = 80
 [userenv.shared]
 PROACTIVE_OUTREACH_ENABLED = "true"
 ENCRYPTION_KEY = "132ab8844cefdb321b673f775c6fef883591135e88ac7fd2b42178b621a12180"
-
-[userenv.development]
+VPS_BRIDGE_URL = "http://72.62.50.40:9090"
