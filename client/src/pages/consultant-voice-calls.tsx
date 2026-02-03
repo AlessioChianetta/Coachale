@@ -730,6 +730,8 @@ export default function ConsultantVoiceCallsPage() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateItem | null>(null);
   const [templateFieldValues, setTemplateFieldValues] = useState<Record<string, string>>({});
+  const [retryMaxAttempts, setRetryMaxAttempts] = useState<number>(3);
+  const [retryIntervalMinutes, setRetryIntervalMinutes] = useState<number>(5);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -739,17 +741,23 @@ export default function ConsultantVoiceCallsPage() {
     queryKey: ["/api/voice/settings"],
     queryFn: async () => {
       const res = await fetch("/api/voice/settings", { headers: getAuthHeaders() });
-      if (!res.ok) return { voiceId: 'achernar', vpsBridgeUrl: '' };
+      if (!res.ok) return { voiceId: 'achernar', vpsBridgeUrl: '', voiceMaxRetryAttempts: 3, voiceRetryIntervalMinutes: 5 };
       return res.json();
     },
   });
 
-  // Load vpsBridgeUrl when settings load
+  // Load vpsBridgeUrl and retry settings when settings load
   useEffect(() => {
     if (voiceSettings?.vpsBridgeUrl) {
       setVpsBridgeUrl(voiceSettings.vpsBridgeUrl);
     }
-  }, [voiceSettings?.vpsBridgeUrl]);
+    if (voiceSettings?.voiceMaxRetryAttempts !== undefined) {
+      setRetryMaxAttempts(voiceSettings.voiceMaxRetryAttempts);
+    }
+    if (voiceSettings?.voiceRetryIntervalMinutes !== undefined) {
+      setRetryIntervalMinutes(voiceSettings.voiceRetryIntervalMinutes);
+    }
+  }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes]);
 
   const updateVoiceMutation = useMutation({
     mutationFn: async (voiceId: string) => {
@@ -852,6 +860,33 @@ export default function ConsultantVoiceCallsPage() {
     onSuccess: () => {
       refetchTokenStatus();
       toast({ title: "Token salvato", description: "Il token è stato sincronizzato con il database" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const saveRetrySettingsMutation = useMutation({
+    mutationFn: async ({ maxAttempts, intervalMinutes }: { maxAttempts: number; intervalMinutes: number }) => {
+      const res = await fetch("/api/voice/retry-settings", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          voiceMaxRetryAttempts: maxAttempts, 
+          voiceRetryIntervalMinutes: intervalMinutes 
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio delle impostazioni retry");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      refetchVoice();
+      setRetryMaxAttempts(data.voiceMaxRetryAttempts);
+      setRetryIntervalMinutes(data.voiceRetryIntervalMinutes);
+      toast({ title: "Salvato", description: "Impostazioni retry aggiornate" });
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -2442,6 +2477,80 @@ export default function ConsultantVoiceCallsPage() {
                       <p className="text-xs text-muted-foreground">
                         L'indirizzo IP e porta del tuo VPS dove gira il bridge (es: http://IP:9090)
                       </p>
+                    </div>
+
+                    {/* Retry Settings per chiamate in uscita */}
+                    <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <RotateCcw className="h-5 w-5 text-blue-600" />
+                        <h4 className="font-medium">Configurazione Retry Chiamate in Uscita</h4>
+                      </div>
+                      
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="retryMaxAttempts" className="text-sm font-medium">
+                            Max tentativi retry (1-5)
+                          </Label>
+                          <Input
+                            id="retryMaxAttempts"
+                            type="number"
+                            min={1}
+                            max={5}
+                            value={retryMaxAttempts}
+                            onChange={(e) => setRetryMaxAttempts(Math.max(1, Math.min(5, parseInt(e.target.value) || 3)))}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Numero di tentativi se la chiamata non viene risposta
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="retryIntervalMinutes" className="text-sm font-medium">
+                            Intervallo base retry (1-30 min)
+                          </Label>
+                          <Input
+                            id="retryIntervalMinutes"
+                            type="number"
+                            min={1}
+                            max={30}
+                            value={retryIntervalMinutes}
+                            onChange={(e) => setRetryIntervalMinutes(Math.max(1, Math.min(30, parseInt(e.target.value) || 5)))}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Minuti tra il primo e il secondo tentativo
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/50 rounded-md">
+                        <div className="flex-1">
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            <strong>Backoff esponenziale:</strong> L'intervallo raddoppia ad ogni tentativo
+                          </p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            Es: {retryIntervalMinutes}min → {retryIntervalMinutes * 2}min → {retryIntervalMinutes * 4}min...
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => saveRetrySettingsMutation.mutate({ 
+                            maxAttempts: retryMaxAttempts, 
+                            intervalMinutes: retryIntervalMinutes 
+                          })}
+                          disabled={saveRetrySettingsMutation.isPending}
+                          size="sm"
+                        >
+                          {saveRetrySettingsMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              Salva Retry
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
 
                     {/* WS_AUTH_TOKEN */}

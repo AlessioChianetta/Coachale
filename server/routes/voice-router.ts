@@ -712,7 +712,8 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const consultantId = req.user!.id;
 
     const result = await db.execute(sql`
-      SELECT voice_id, vps_bridge_url FROM consultant_availability_settings
+      SELECT voice_id, vps_bridge_url, voice_max_retry_attempts, voice_retry_interval_minutes 
+      FROM consultant_availability_settings
       WHERE consultant_id = ${consultantId}
       LIMIT 1
     `);
@@ -720,8 +721,10 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const row = result.rows[0] as any;
     const voiceId = row?.voice_id || 'achernar';
     const vpsBridgeUrl = row?.vps_bridge_url || '';
+    const voiceMaxRetryAttempts = row?.voice_max_retry_attempts ?? 3;
+    const voiceRetryIntervalMinutes = row?.voice_retry_interval_minutes ?? 5;
 
-    res.json({ voiceId, vpsBridgeUrl });
+    res.json({ voiceId, vpsBridgeUrl, voiceMaxRetryAttempts, voiceRetryIntervalMinutes });
   } catch (error) {
     console.error("[Voice] Error fetching settings:", error);
     res.status(500).json({ error: "Errore nel recupero delle impostazioni" });
@@ -777,6 +780,55 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
   } catch (error) {
     console.error("[Voice] Error updating settings:", error);
     res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni" });
+  }
+});
+
+// PUT /api/voice/retry-settings - Aggiorna impostazioni retry chiamate in uscita
+router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { voiceMaxRetryAttempts, voiceRetryIntervalMinutes } = req.body;
+
+    // Validate inputs
+    const maxRetry = Math.max(1, Math.min(5, parseInt(voiceMaxRetryAttempts) || 3));
+    const retryInterval = Math.max(1, Math.min(30, parseInt(voiceRetryIntervalMinutes) || 5));
+
+    // Check if settings exist
+    const existing = await db.execute(sql`
+      SELECT id FROM consultant_availability_settings
+      WHERE consultant_id = ${consultantId}
+      LIMIT 1
+    `);
+
+    if (existing.rows.length > 0) {
+      await db.execute(sql`
+        UPDATE consultant_availability_settings
+        SET voice_max_retry_attempts = ${maxRetry}, 
+            voice_retry_interval_minutes = ${retryInterval},
+            updated_at = NOW()
+        WHERE consultant_id = ${consultantId}
+      `);
+    } else {
+      await db.execute(sql`
+        INSERT INTO consultant_availability_settings (
+          id, consultant_id, voice_max_retry_attempts, voice_retry_interval_minutes,
+          appointment_duration, buffer_before, buffer_after,
+          morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
+          max_days_ahead, min_hours_notice, timezone, is_active
+        ) VALUES (
+          gen_random_uuid(), ${consultantId}, ${maxRetry}, ${retryInterval},
+          60, 15, 15,
+          '09:00', '13:00', '14:00', '18:00',
+          30, 24, 'Europe/Rome', true
+        )
+      `);
+    }
+
+    console.log(`🔄 [Voice] Retry settings updated for consultant ${consultantId}: max=${maxRetry}, interval=${retryInterval}min`);
+    res.json({ success: true, voiceMaxRetryAttempts: maxRetry, voiceRetryIntervalMinutes: retryInterval });
+  } catch (error) {
+    console.error("[Voice] Error updating retry settings:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni retry" });
   }
 });
 
@@ -1367,13 +1419,20 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
     
     const callId = generateScheduledCallId();
     
+    // Get consultant retry config
+    const configResult = await db.execute(sql`
+      SELECT voice_max_retry_attempts FROM consultant_availability_settings 
+      WHERE consultant_id = ${consultantId}
+    `);
+    const maxAttempts = (configResult.rows[0] as any)?.voice_max_retry_attempts || 3;
+    
     // Create record in DB with instruction fields
     // When task/reminder is set, use_default_template forces base template (ignores agent prompt)
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, use_default_template
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, use_default_template, max_attempts
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}
+        ${callId}, ${consultantId}, ${cleanPhone}, NOW(), 'calling', ${aiMode}, ${customPrompt || null}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}
       )
     `);
     
@@ -1435,13 +1494,20 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
     
     const callId = generateScheduledCallId();
     
+    // Get consultant retry config
+    const configResult = await db.execute(sql`
+      SELECT voice_max_retry_attempts FROM consultant_availability_settings 
+      WHERE consultant_id = ${consultantId}
+    `);
+    const maxAttempts = (configResult.rows[0] as any)?.voice_max_retry_attempts || 3;
+    
     // Create record in DB with instruction fields
     // When task/reminder is set, use_default_template forces base template (ignores agent prompt)
     await db.execute(sql`
       INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority, call_instruction, instruction_type, use_default_template
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, priority, call_instruction, instruction_type, use_default_template, max_attempts
       ) VALUES (
-        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}
+        ${callId}, ${consultantId}, ${cleanPhone}, ${scheduledDate.toISOString()}, 'pending', ${aiMode}, ${customPrompt || null}, ${priority}, ${callInstruction || null}, ${instructionType || null}, ${useDefaultTemplate || false}, ${maxAttempts}
       )
     `);
     
@@ -1746,8 +1812,16 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     if (retryableStatuses.includes(status)) {
       // Check if should retry
       if (currentAttempts < maxAttempts) {
-        // Calculate retry delay with exponential backoff: 5min, 10min, 20min... max 30min
-        const retryDelayMs = Math.min(300000 * Math.pow(2, currentAttempts - 1), 1800000);
+        // Get consultant retry interval config
+        const retryConfigResult = await db.execute(sql`
+          SELECT voice_retry_interval_minutes FROM consultant_availability_settings 
+          WHERE consultant_id = ${consultantId}
+        `);
+        const baseIntervalMinutes = (retryConfigResult.rows[0] as any)?.voice_retry_interval_minutes || 5;
+        const baseIntervalMs = baseIntervalMinutes * 60 * 1000; // Convert to ms
+        
+        // Calculate retry delay with exponential backoff: baseInterval, 2x, 4x... max 30min
+        const retryDelayMs = Math.min(baseIntervalMs * Math.pow(2, currentAttempts - 1), 1800000);
         const retryDelaySeconds = Math.floor(retryDelayMs / 1000);
         
         // Update status to retry_scheduled
