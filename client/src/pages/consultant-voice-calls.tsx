@@ -719,13 +719,13 @@ export default function ConsultantVoiceCallsPage() {
   const [hasChanges, setHasChanges] = useState(false);
 
   // Inbound non-client settings
-  const [inboundPromptSource, setInboundPromptSource] = useState<'agent' | 'manual' | 'default'>('default');
+  const [inboundPromptSource, setInboundPromptSource] = useState<'agent' | 'manual' | 'template'>('template');
   const [inboundTemplateId, setInboundTemplateId] = useState('mini-discovery');
   const [inboundAgentId, setInboundAgentId] = useState<string | null>(null);
   const [inboundManualPrompt, setInboundManualPrompt] = useState('');
 
   // Outbound non-client settings
-  const [outboundPromptSource, setOutboundPromptSource] = useState<'agent' | 'manual' | 'default'>('default');
+  const [outboundPromptSource, setOutboundPromptSource] = useState<'agent' | 'manual' | 'template'>('template');
   const [outboundTemplateId, setOutboundTemplateId] = useState('sales-orbitale');
   const [outboundAgentId, setOutboundAgentId] = useState<string | null>(null);
   const [outboundManualPrompt, setOutboundManualPrompt] = useState('');
@@ -1150,12 +1150,12 @@ export default function ConsultantVoiceCallsPage() {
     if (nonClientSettingsData) {
       setVoiceDirectives(nonClientSettingsData.voiceDirectives);
       // Inbound
-      setInboundPromptSource(nonClientSettingsData.inboundPromptSource || 'default');
+      setInboundPromptSource(nonClientSettingsData.inboundPromptSource || 'template');
       setInboundTemplateId(nonClientSettingsData.inboundTemplateId || 'mini-discovery');
       setInboundAgentId(nonClientSettingsData.inboundAgentId);
       setInboundManualPrompt(nonClientSettingsData.inboundManualPrompt || '');
       // Outbound
-      setOutboundPromptSource(nonClientSettingsData.outboundPromptSource || 'default');
+      setOutboundPromptSource(nonClientSettingsData.outboundPromptSource || 'template');
       setOutboundTemplateId(nonClientSettingsData.outboundTemplateId || 'sales-orbitale');
       setOutboundAgentId(nonClientSettingsData.outboundAgentId);
       setOutboundManualPrompt(nonClientSettingsData.outboundManualPrompt || '');
@@ -2269,7 +2269,7 @@ export default function ConsultantVoiceCallsPage() {
                         <CardContent className="space-y-4">
                           <RadioGroup
                             value={inboundPromptSource}
-                            onValueChange={(value: 'agent' | 'manual' | 'default') => {
+                            onValueChange={(value: 'agent' | 'manual' | 'template') => {
                               setInboundPromptSource(value);
                               setHasChanges(true);
                             }}
@@ -2339,13 +2339,13 @@ export default function ConsultantVoiceCallsPage() {
                             </div>
 
                             <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
-                              <RadioGroupItem value="default" id="inbound-default" className="mt-1 shrink-0" />
+                              <RadioGroupItem value="template" id="inbound-template" className="mt-1 shrink-0" />
                               <div className="flex-1 min-w-0 space-y-2">
-                                <Label htmlFor="inbound-default" className="flex items-center gap-2 cursor-pointer text-sm">
+                                <Label htmlFor="inbound-template" className="flex items-center gap-2 cursor-pointer text-sm">
                                   <Settings className="h-4 w-4" />
                                   Template Predefinito
                                 </Label>
-                                {inboundPromptSource === 'default' && (
+                                {inboundPromptSource === 'template' && (
                                   <div className="pt-1 w-full">
                                     <Select
                                       value={inboundTemplateId}
@@ -2412,7 +2412,7 @@ export default function ConsultantVoiceCallsPage() {
                         <CardContent className="space-y-4">
                           <RadioGroup
                             value={outboundPromptSource}
-                            onValueChange={(value: 'agent' | 'manual' | 'default') => {
+                            onValueChange={(value: 'agent' | 'manual' | 'template') => {
                               setOutboundPromptSource(value);
                               setHasChanges(true);
                             }}
@@ -2482,13 +2482,13 @@ export default function ConsultantVoiceCallsPage() {
                             </div>
 
                             <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
-                              <RadioGroupItem value="default" id="outbound-default" className="mt-1 shrink-0" />
+                              <RadioGroupItem value="template" id="outbound-template" className="mt-1 shrink-0" />
                               <div className="flex-1 min-w-0 space-y-2">
-                                <Label htmlFor="outbound-default" className="flex items-center gap-2 cursor-pointer text-sm">
+                                <Label htmlFor="outbound-template" className="flex items-center gap-2 cursor-pointer text-sm">
                                   <Settings className="h-4 w-4" />
                                   Template Predefinito
                                 </Label>
-                                {outboundPromptSource === 'default' && (
+                                {outboundPromptSource === 'template' && (
                                   <div className="pt-1 w-full">
                                     <Select
                                       value={outboundTemplateId}
