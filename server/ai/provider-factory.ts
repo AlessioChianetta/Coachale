@@ -134,6 +134,48 @@ export async function getGeminiApiKeyForClassifier(): Promise<string | null> {
 }
 
 /**
+ * Get API key for Google AI Studio Live API
+ * Priority order:
+ * 1. SuperAdmin Gemini keys from database (if configured)
+ * 2. GEMINI_API_KEY environment variable
+ * 3. GOOGLE_AI_API_KEY environment variable
+ * 4. AI_INTEGRATIONS_GOOGLE_AI_API_KEY environment variable
+ * 
+ * @returns API key string or null if not found
+ */
+export async function getAiStudioApiKey(): Promise<string | null> {
+  // Priority 1: SuperAdmin Gemini keys from database
+  const superAdminKeys = await getSuperAdminGeminiKeys();
+  if (superAdminKeys && superAdminKeys.keys.length > 0) {
+    const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+    console.log(`🔑 [AI Studio] Using SuperAdmin Gemini key (${superAdminKeys.keys.length} available)`);
+    return superAdminKeys.keys[index];
+  }
+  
+  // Priority 2-4: Environment variables
+  const envKey = process.env.GEMINI_API_KEY || 
+                 process.env.GOOGLE_AI_API_KEY || 
+                 process.env.AI_INTEGRATIONS_GOOGLE_AI_API_KEY;
+  
+  if (envKey) {
+    const source = process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' :
+                   process.env.GOOGLE_AI_API_KEY ? 'GOOGLE_AI_API_KEY' : 
+                   'AI_INTEGRATIONS_GOOGLE_AI_API_KEY';
+    console.log(`🔑 [AI Studio] Using API key from ${source}`);
+    return envKey;
+  }
+  
+  console.error(`❌ [AI Studio] No API key found. Set GEMINI_API_KEY, GOOGLE_AI_API_KEY, or AI_INTEGRATIONS_GOOGLE_AI_API_KEY`);
+  return null;
+}
+
+/**
+ * Live API model for Google AI Studio
+ * Uses environment variable GEMINI_LIVE_MODEL if set, otherwise defaults to gemini-2.5-flash-native-audio-preview-12-2025
+ */
+export const GEMINI_LIVE_AI_STUDIO_MODEL = process.env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-preview-12-2025';
+
+/**
  * AI provider source (tier)
  */
 export type AiProviderSource = "superadmin" | "client" | "admin" | "google";

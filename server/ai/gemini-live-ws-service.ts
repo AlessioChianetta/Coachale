@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
-import { getVertexAITokenForLive } from './provider-factory';
+import { getVertexAITokenForLive, getAiStudioApiKey, GEMINI_LIVE_AI_STUDIO_MODEL } from './provider-factory';
 import { 
   convertWebMToPCM, 
   convertPCMToWAV, 
@@ -1876,15 +1876,46 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     }
 
     try {
-      // 2. Get OAuth2 token for Vertex AI Live API
-      console.log(`🔑 [${connectionId}] Getting OAuth2 token for Vertex AI Live API...`);
-      const vertexConfig = await getVertexAITokenForLive(
-        (mode === 'sales_agent' || mode === 'consultation_invite') ? null : userId, 
-        consultantId
-      );
+      // 2. Get credentials based on LIVE_API_PROVIDER setting
+      const liveApiProvider = process.env.LIVE_API_PROVIDER || 'vertex_ai';
+      let vertexConfig: { accessToken: string; projectId: string; location: string; modelId: string } | null = null;
+      let aiStudioApiKey: string | null = null;
       
-      if (!vertexConfig) {
-        throw new Error('Failed to get Vertex AI token for Live API - no valid configuration found');
+      console.log(`\n🌐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`[${connectionId}] LIVE API PROVIDER: ${liveApiProvider.toUpperCase()}`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      
+      if (liveApiProvider === 'ai_studio') {
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🔑 GOOGLE AI STUDIO: Use API key authentication
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log(`🔑 [${connectionId}] Getting API key for Google AI Studio Live API...`);
+        aiStudioApiKey = await getAiStudioApiKey();
+        
+        if (!aiStudioApiKey) {
+          throw new Error('Failed to get Google AI Studio API key for Live API - no valid key found');
+        }
+        
+        console.log(`✅ [${connectionId}] Google AI Studio API key obtained successfully`);
+        console.log(`   Model: ${GEMINI_LIVE_AI_STUDIO_MODEL}`);
+      } else {
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🔐 VERTEX AI: Use OAuth2 Bearer token authentication
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log(`🔑 [${connectionId}] Getting OAuth2 token for Vertex AI Live API...`);
+        vertexConfig = await getVertexAITokenForLive(
+          (mode === 'sales_agent' || mode === 'consultation_invite') ? null : userId, 
+          consultantId
+        );
+        
+        if (!vertexConfig) {
+          throw new Error('Failed to get Vertex AI token for Live API - no valid configuration found');
+        }
+        
+        console.log(`✅ [${connectionId}] Vertex AI credentials obtained successfully`);
+        console.log(`   Project: ${vertexConfig.projectId}`);
+        console.log(`   Location: ${vertexConfig.location}`);
+        console.log(`   Model: ${vertexConfig.modelId}`);
       }
 
       // 2b. Build prompts based on mode
@@ -2956,16 +2987,40 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       console.log(`\n🎁 TOTAL TOKENS INVIATI (setup): ${totalTokens.toLocaleString()} tokens`);
       console.log(`${'═'.repeat(70)}\n`);
 
-      // 3. Build Vertex AI WebSocket URL
-      const wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
-      console.log(`🔗 [${connectionId}] Connecting to Vertex AI at ${vertexConfig.location}...`);
-
-      // 4. Create raw WebSocket connection with OAuth2 Bearer token
-      geminiSession = new WebSocket(wsUrl, {
-        headers: {
+      // 3. Build WebSocket URL based on provider
+      let wsUrl: string;
+      let wsHeaders: Record<string, string>;
+      
+      if (liveApiProvider === 'ai_studio' && aiStudioApiKey) {
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🌐 GOOGLE AI STUDIO: API key in URL query string
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${aiStudioApiKey}`;
+        wsHeaders = {
+          'Content-Type': 'application/json',
+        };
+        console.log(`🔗 [${connectionId}] Connecting to Google AI Studio...`);
+        console.log(`   URL: wss://generativelanguage.googleapis.com/ws/...BidiGenerateContent?key=***`);
+        console.log(`   Model: ${GEMINI_LIVE_AI_STUDIO_MODEL}`);
+      } else if (vertexConfig) {
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🔐 VERTEX AI: OAuth2 Bearer token in Authorization header
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+        wsHeaders = {
           'Authorization': `Bearer ${vertexConfig.accessToken}`,
           'Content-Type': 'application/json',
-        }
+        };
+        console.log(`🔗 [${connectionId}] Connecting to Vertex AI at ${vertexConfig.location}...`);
+        console.log(`   URL: wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/...BidiGenerateContent`);
+        console.log(`   Model: ${vertexConfig.modelId}`);
+      } else {
+        throw new Error('No valid Live API provider configuration found');
+      }
+
+      // 4. Create raw WebSocket connection
+      geminiSession = new WebSocket(wsUrl, {
+        headers: wsHeaders
       });
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3178,9 +3233,15 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         // Send setup message to Gemini Live API
         // ✅ FIX RESUME: Omit system_instruction field entirely when resuming
         // Using conditional object spread to avoid sending undefined/null
+        
+        // Determine model path based on provider
+        const modelPath = (liveApiProvider === 'ai_studio')
+          ? `models/${GEMINI_LIVE_AI_STUDIO_MODEL}`
+          : `projects/${vertexConfig!.projectId}/locations/${vertexConfig!.location}/publishers/google/models/${vertexConfig!.modelId}`;
+        
         const setupMessage: any = {
           setup: {
-            model: `projects/${vertexConfig.projectId}/locations/${vertexConfig.location}/publishers/google/models/${vertexConfig.modelId}`,
+            model: modelPath,
             generation_config: {
               response_modalities: ["AUDIO"],
               speech_config: {
@@ -3244,7 +3305,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         };
         
         console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
-        console.log(`🤖 [${connectionId}] Model: ${vertexConfig.modelId} - Language: ITALIAN ONLY`);
+        const currentModelId = (liveApiProvider === 'ai_studio') ? GEMINI_LIVE_AI_STUDIO_MODEL : vertexConfig!.modelId;
+        console.log(`🤖 [${connectionId}] Provider: ${liveApiProvider.toUpperCase()} | Model: ${currentModelId} - Language: ITALIAN ONLY`);
         if (validatedResumeHandle) {
           console.log(`🔄 [${connectionId}] RESUMING SESSION with handle: ${validatedResumeHandle.substring(0, 20)}...`);
         } else {
@@ -5518,7 +5580,8 @@ ${compactFeedback}
           console.log(`   4. Invalid WebSocket frame or protocol violation`);
           console.log(`   5. Proxy/firewall interference`);
           console.log(`\n🔧 Debugging info:`);
-          console.log(`   - Model ID: ${vertexConfig.modelId}`);
+          console.log(`   - Provider: ${liveApiProvider}`);
+          console.log(`   - Model ID: ${currentModelId}`);
           console.log(`   - Voice: ${voiceName}`);
           console.log(`   - System instruction length: ${systemInstruction?.length || 0} chars`);
           console.log(`   - Reason buffer length: ${reason.length} bytes`);
@@ -5538,7 +5601,8 @@ ${compactFeedback}
           console.log(`   4. System instruction too long or malformed`);
           console.log(`   5. Invalid response_modalities configuration`);
           console.log(`\n🔧 Troubleshooting steps:`);
-          console.log(`   - Check if model ID is correct: ${vertexConfig.modelId}`);
+          console.log(`   - Provider: ${liveApiProvider}`);
+          console.log(`   - Check if model ID is correct: ${currentModelId}`);
           console.log(`   - Verify voice "${voiceName}" is supported by this model`);
           console.log(`   - Check system instruction length: ${systemInstruction?.length || 0} chars`);
           console.log(`   - Validate all generation_config parameters`);
