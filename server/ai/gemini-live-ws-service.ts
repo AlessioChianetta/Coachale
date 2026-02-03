@@ -2502,7 +2502,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
                 FROM ai_conversations ac
                 WHERE ac.caller_phone = ${phoneCallerId}
                 ORDER BY ac.created_at DESC
-                LIMIT 10
+                LIMIT 100
               `);
               
               if (previousConversations.rows.length > 0) {
@@ -2823,7 +2823,7 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
               FROM ai_conversations ac
               WHERE ac.caller_phone = ${phoneCallerId}
               ORDER BY ac.created_at DESC
-              LIMIT 10
+              LIMIT 100
             `);
             
             if (previousConversations.rows.length > 0) {
@@ -3204,7 +3204,7 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
                 FROM ai_conversations ac
                 WHERE ac.caller_phone = ${phoneCallerId}
                 ORDER BY ac.created_at DESC
-                LIMIT 10
+                LIMIT 100
               `);
               
               if (previousConversations.rows.length > 0) {
