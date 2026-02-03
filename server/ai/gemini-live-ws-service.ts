@@ -2399,6 +2399,14 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       // PHONE CALL - UNKNOWN CALLER MODE (Non-Client)
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       else if (isPhoneCall && !userId) {
+        console.log(`\n📞 ════════════════════════════════════════════════════════════════════`);
+        console.log(`📞 [${connectionId}] PHONE CALL SCENARIO DETECTION`);
+        console.log(`📞 ════════════════════════════════════════════════════════════════════`);
+        console.log(`📞   isPhoneCall: true`);
+        console.log(`📞   userId (known client): ${userId || 'NULL (unknown caller)'}`);
+        console.log(`📞   phoneCallInstruction: ${phoneCallInstruction ? 'YES (' + phoneInstructionType + ')' : 'NO'}`);
+        console.log(`📞   → SCENARIO: ${phoneCallInstruction ? 'SCENARIO 3/4 - OUTBOUND NON-CLIENT WITH TASK/REMINDER' : 'SCENARIO 2 - INBOUND NON-CLIENT'}`);
+        console.log(`📞 ════════════════════════════════════════════════════════════════════\n`);
         console.log(`📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
         // Get consultant info FIRST (needed for both instruction and normal flow)
@@ -2489,6 +2497,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (max 8000 chars ≈ 2k tokens)
           const MAX_HISTORY_CHARS = 8000;
           let instructionPreviousCallContext = '';
+          let instructionHasPreviousConversations = false;
           if (phoneCallerId) {
             try {
               // Fetch more conversations to allow character-based limiting
@@ -2517,6 +2526,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
               `);
               
               if (previousConversations.rows.length > 0) {
+                instructionHasPreviousConversations = true;
                 let historyContent = '';
                 let includedConvCount = 0;
                 
@@ -2565,6 +2575,7 @@ ${historyContent}
 `;
                 }
               } else {
+                instructionHasPreviousConversations = false;
                 console.log(`📱 [${connectionId}] No previous conversations found for ${phoneCallerId}`);
               }
             } catch (err) {
@@ -2572,7 +2583,47 @@ ${historyContent}
             }
           }
           
-          // Build prompt with: VOICE DIRECTIVES FIRST + IDENTITY + INSTRUCTION + CALL HISTORY
+          // Build dynamic greeting based on previous conversations
+          const instructionGreetingSection = instructionHasPreviousConversations 
+            ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 SALUTO INIZIALE (LI CONOSCI GIÀ!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANTE: Hai GIÀ parlato con questa persona! NON ripresentarti!
+
+✅ SALUTI CORRETTI (calorosi, informali):
+- "Ciao! Come stai? Senti, ti stavo chiamando perché..."
+- "Ehi ciao! Tutto bene? Allora, ti volevo avvisare che..."
+- "Ciao! Ti disturbo un attimo? Ti chiamo veloce perché..."
+
+🚫 NON DIRE MAI:
+- "Ciao sono Alessia..." (sanno già chi sei!)
+- "Sono l'assistente di..." (sanno già chi sei!)
+- Qualsiasi presentazione formale
+
+📞 FLUSSO VELOCE:
+1️⃣ Saluto breve → 2️⃣ VAI DRITTO all'istruzione → 3️⃣ Conferma e chiudi`
+            : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 SALUTO INIZIALE (PRIMA INTERAZIONE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Questa è la prima volta che parli con questa persona.
+Presentati brevemente e poi vai dritto all'istruzione.
+
+📞 FLUSSO DELLA CHIAMATA:
+
+1️⃣ SALUTO + BREVE PRESENTAZIONE:
+   "Ciao! Sono Alessia, ti chiamo da parte di ${consultantName}. Come stai?"
+   
+2️⃣ CHIACCHIERATA BREVE (dopo che rispondono):
+   Rispondi al loro "come stai" - "Fantastico! Anch'io benissimo!" o simile
+   
+3️⃣ INTRODUCI L'ISTRUZIONE IN MODO NATURALE:
+   "Senti, ti stavo chiamando perché..." 
+   
+4️⃣ CONFERMA E CHIUDI`;
+          
+          // Build prompt with: VOICE DIRECTIVES FIRST + IDENTITY + INSTRUCTION + GREETING + CALL HISTORY
           systemInstruction = `${voiceDirectivesSection}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2583,54 +2634,23 @@ Sei Alessia, l'assistente AI di ${consultantName}${consultantBusinessName ? ` ($
 Stai chiamando per conto del consulente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 IL TUO COMPITO PER QUESTA CHIAMATA
+🎯 IL TUO COMPITO PER QUESTA CHIAMATA - VAI DRITTO AL PUNTO!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${instructionTypeLabel}:
 ${phoneCallInstruction}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎭 COME COMPORTARTI - SII UMANA, NON ROBOTICA!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ PRIORITÀ: Comunica questa istruzione in modo naturale ma DIRETTO!
+Non fare giri di parole, vai al punto rapidamente dopo il saluto.
 
-⚠️ NON leggere l'istruzione come un robot! RECITALA in modo naturale.
-
-📞 FLUSSO DELLA CHIAMATA:
-
-1️⃣ SALUTO INIZIALE (quando rispondono):
-   "Ciao! Sono Alessia, ti chiamo da parte di ${consultantName}. Come stai?"
-   
-2️⃣ CHIACCHIERATA BREVE (dopo che rispondono):
-   Rispondi al loro "come stai" - "Fantastico! Anch'io benissimo!" o simile
-   
-3️⃣ INTRODUCI L'ISTRUZIONE IN MODO NATURALE:
-   "Senti, ti stavo chiamando perché..." 
-   "Allora, il motivo della chiamata è..."
-   "Ti volevo avvisare che..."
-   
-4️⃣ RECITA L'ISTRUZIONE (non leggerla!):
-   Riformula l'istruzione con parole tue, come farebbe un vero dipendente
-   
-5️⃣ CONFERMA E CHIUDI:
-   Assicurati che abbiano capito, poi chiedi se c'è altro
-
-💡 ESEMPI DI APERTURA NATURALE:
-- "Ciao! Sono Alessia di ${consultantName}. Come va oggi?"
-- "Ehi ciao! Ti disturbo? Ti chiamo veloce da ${consultantName}!"
-- "Buongiorno! Alessia qui, dall'ufficio di ${consultantName}. Tutto bene?"
-
-🚫 NON FARE:
-- NON iniziare subito con l'istruzione senza salutare
-- NON leggere l'istruzione parola per parola come un robot
-- NON chiedere "Come posso aiutarti?" - sei TU che chiami!
-- NON essere troppo formale o dare del Lei
+${instructionGreetingSection}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 CONTESTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Data e ora: ${italianTime} (Italia)
-Tipo chiamata: OUTBOUND (sei tu che chiami)
+Tipo chiamata: OUTBOUND con ${instructionHasPreviousConversations ? 'persona già conosciuta' : 'nuova persona'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 DOPO CHE L'ISTRUZIONE È COMPLETATA
@@ -3104,6 +3124,22 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
       // CLIENT MODE - Build prompt from user context
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       else {
+        // DETAILED LOGGING FOR CLIENT MODE
+        console.log(`\n📊 ════════════════════════════════════════════════════════════════════`);
+        console.log(`📊 [${connectionId}] CLIENT MODE SCENARIO DETECTION`);
+        console.log(`📊 ════════════════════════════════════════════════════════════════════`);
+        console.log(`📊   userId (known client): ${userId}`);
+        console.log(`📊   isPhoneCall: ${isPhoneCall}`);
+        console.log(`📊   phoneCallInstruction: ${phoneCallInstruction ? 'YES (' + phoneInstructionType + ')' : 'NO'}`);
+        if (isPhoneCall && phoneCallInstruction) {
+          console.log(`📊   → SCENARIO: SCENARIO 3/4 - OUTBOUND CLIENT WITH TASK/REMINDER`);
+        } else if (isPhoneCall && !phoneCallInstruction) {
+          console.log(`📊   → SCENARIO: SCENARIO 1 - INBOUND CALL FROM KNOWN CLIENT`);
+        } else {
+          console.log(`📊   → SCENARIO: NORMAL CLIENT MODE (non-phone call)`);
+        }
+        console.log(`📊 ════════════════════════════════════════════════════════════════════\n`);
+        
         console.log(`📊 [${connectionId}] Building user context for personalized Live Mode...`);
         // Pass sessionType to buildUserContext for proper separation
         userContext = await buildUserContext(userId!, {
@@ -3192,6 +3228,7 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
           // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (max 8000 chars ≈ 2k tokens)
           const CLIENT_MAX_HISTORY_CHARS = 8000;
           let clientInstructionCallHistory = '';
+          let clientInstructionHasPreviousConversations = false;
           if (phoneCallerId) {
             try {
               const previousConversations = await db.execute(sql`
@@ -3219,6 +3256,7 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
               `);
               
               if (previousConversations.rows.length > 0) {
+                clientInstructionHasPreviousConversations = true;
                 let historyContent = '';
                 let includedConvCount = 0;
                 
@@ -3266,6 +3304,7 @@ ${historyContent}
 `;
                 }
               } else {
+                clientInstructionHasPreviousConversations = false;
                 console.log(`📱 [${connectionId}] No previous conversations found for client ${phoneCallerId}`);
               }
             } catch (err) {
@@ -3283,6 +3322,60 @@ ${historyContent}
             mode === 'consulente' ? consultantType : null,
             userContext
           );
+          
+          // Build dynamic greeting section based on previous conversations with client
+          // If already talked → don't re-introduce yourself, go straight to point
+          // If first time → brief intro, then go to point
+          const clientInstructionGreetingSection = clientInstructionHasPreviousConversations 
+            ? `⚠️ IMPORTANTE: Hai GIÀ parlato con ${clientName}! NON ripresentarti!
+
+1️⃣ SALUTO INIZIALE (caloroso, lo/la conosci già!):
+   "Ciao ${clientName}! Come stai?"
+   "Ehi ${clientName}! Tutto bene?"
+   
+   🚫 NON DIRE: "Sono Alessia" o "Sono l'assistente di..." (sa già chi sei!)
+   
+2️⃣ CHIACCHIERATA BREVE (dopo che rispondono):
+   Rispondi al loro "come stai" - "Fantastico! Anch'io alla grande!"
+   
+3️⃣ INTRODUCI L'ISTRUZIONE IN MODO NATURALE:
+   "Senti, ti stavo chiamando perché..." 
+   "Allora, ti volevo avvisare che..."
+   "Guarda, il motivo della chiamata è..."
+   
+4️⃣ RECITA L'ISTRUZIONE (non leggerla!):
+   Riformula l'istruzione con parole tue, come farebbe un vero collega
+   
+5️⃣ CONFERMA E CHIUDI:
+   Assicurati che abbia capito, poi chiedi se c'è altro
+
+💡 ESEMPI DI APERTURA NATURALE (lo/la conosci già!):
+- "Ciao ${clientName}! Come va? Ti chiamo veloce..."
+- "Ehi ${clientName}! Tutto bene? Senti, ti volevo dire una cosa..."
+- "${clientName}! Che piacere sentirti! Come stai?"`
+            : `📌 NOTA: Prima chiamata vocale con ${clientName} (è comunque un cliente registrato)
+
+1️⃣ SALUTO INIZIALE + BREVE PRESENTAZIONE:
+   "Ciao ${clientName}! Sono Alessia, l'assistente di ${clientConsultantName}. Come stai?"
+   "Ehi ${clientName}! Sono Alessia, tutto bene?"
+   
+2️⃣ CHIACCHIERATA BREVE (dopo che rispondono):
+   Rispondi al loro "come stai" - "Fantastico! Anch'io alla grande!"
+   
+3️⃣ INTRODUCI L'ISTRUZIONE IN MODO NATURALE:
+   "Senti, ti stavo chiamando perché..." 
+   "Allora, ti volevo avvisare che..."
+   "Guarda, il motivo della chiamata è..."
+   
+4️⃣ RECITA L'ISTRUZIONE (non leggerla!):
+   Riformula l'istruzione con parole tue, come farebbe un vero collega
+   
+5️⃣ CONFERMA E CHIUDI:
+   Assicurati che abbia capito, poi chiedi se c'è altro
+
+💡 ESEMPI DI APERTURA NATURALE (prima chiamata):
+- "Ciao ${clientName}! Sono Alessia, come va? Ti chiamo veloce..."
+- "Ehi ${clientName}! Sono Alessia di ${clientConsultantName}, tutto bene? Senti, ti volevo dire una cosa..."`;
           
           // Prepend: VOICE DIRECTIVES + instruction priority to client's system prompt
           const instructionPrefix = `${clientVoiceDirectivesSection}
@@ -3309,28 +3402,7 @@ ${phoneCallInstruction}
 
 📞 FLUSSO DELLA CHIAMATA:
 
-1️⃣ SALUTO INIZIALE (caloroso, lo/la conosci!):
-   "Ciao ${clientName}! Sono Alessia, come stai?"
-   "Ehi ${clientName}! Tutto bene?"
-   
-2️⃣ CHIACCHIERATA BREVE (dopo che rispondono):
-   Rispondi al loro "come stai" - "Fantastico! Anch'io alla grande!"
-   
-3️⃣ INTRODUCI L'ISTRUZIONE IN MODO NATURALE:
-   "Senti, ti stavo chiamando perché..." 
-   "Allora, ti volevo avvisare che..."
-   "Guarda, il motivo della chiamata è..."
-   
-4️⃣ RECITA L'ISTRUZIONE (non leggerla!):
-   Riformula l'istruzione con parole tue, come farebbe un vero collega
-   
-5️⃣ CONFERMA E CHIUDI:
-   Assicurati che abbia capito, poi chiedi se c'è altro
-
-💡 ESEMPI DI APERTURA NATURALE (è un cliente che conosci!):
-- "Ciao ${clientName}! Come va? Ti chiamo veloce..."
-- "Ehi ${clientName}! Tutto bene? Senti, ti volevo dire una cosa..."
-- "${clientName}! Che piacere sentirti! Come stai?"
+${clientInstructionGreetingSection}
 
 🚫 NON FARE:
 - NON iniziare subito con l'istruzione senza salutare
@@ -3343,7 +3415,7 @@ ${phoneCallInstruction}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Data e ora: ${italianTime} (Italia)
-Tipo chiamata: OUTBOUND a cliente registrato
+Tipo chiamata: OUTBOUND a cliente registrato ${clientInstructionHasPreviousConversations ? '(già parlato prima)' : '(prima chiamata vocale)'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 DOPO CHE L'ISTRUZIONE È COMPLETATA
@@ -3371,6 +3443,231 @@ ${clientInstructionCallHistory}
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           console.log(systemInstruction.substring(0, 2000) + (systemInstruction.length > 2000 ? '\n... [truncated]' : ''));
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        } else if (isPhoneCall && !phoneCallInstruction) {
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // 📞 SCENARIO 1: CHIAMATA IN DA CLIENTE NOTO (senza instruction)
+          // Usa il system prompt di live-consultation + voice directives
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          console.log(`\n📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📞 [${connectionId}] SCENARIO 1: INBOUND CALL FROM KNOWN CLIENT`);
+          console.log(`📞   Client User ID: ${userId}`);
+          console.log(`📞   Phone Caller ID: ${phoneCallerId}`);
+          console.log(`📞   Using: Voice Directives + Live-Consultation System Prompt`);
+          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          
+          // Get current Italian time
+          const italianTime = new Date().toLocaleString('it-IT', { 
+            timeZone: 'Europe/Rome',
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          // Get consultant info for the prompt
+          let inboundConsultantName = 'il consulente';
+          if (consultantId) {
+            try {
+              const consultant = await storage.getUser(consultantId);
+              if (consultant) {
+                const fullName = [consultant.firstName, consultant.lastName].filter(Boolean).join(' ').trim();
+                inboundConsultantName = fullName || consultant.email?.split('@')[0] || 'il consulente';
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
+            }
+          }
+          
+          // 🎙️ Fetch voice directives from database for this consultant
+          let inboundVoiceDirectives = '';
+          if (consultantId) {
+            try {
+              const settingsResult = await db
+                .select({
+                  voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+                })
+                .from(consultantAvailabilitySettings)
+                .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
+              
+              if (settingsResult.length > 0 && settingsResult[0].voiceDirectives) {
+                inboundVoiceDirectives = settingsResult[0].voiceDirectives;
+                console.log(`🎙️ [${connectionId}] Using consultant voice directives for inbound client call (${inboundVoiceDirectives.length} chars)`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not fetch voice directives:`, err);
+            }
+          }
+          
+          // Use consultant's voice directives or fallback to default
+          const inboundVoiceDirectivesSection = inboundVoiceDirectives || `🎙️ MODALITÀ: CHIAMATA VOCALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ TONO E STILE - SEMPRE ENERGICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ Mantieni SEMPRE un tono allegro, energico e dinamico!
+🎯 Sii diretta e vai al punto - niente giri di parole
+💬 DAI DEL TU sempre, mai del Lei
+😊 Usa un linguaggio colloquiale e amichevole
+🚫 NO suoni tipo "Mmm", "Uhm", "Ehm", "Ah"`;
+          
+          // Get client name from context
+          const inboundClientName = userContext.user?.firstName || userContext.user?.email?.split('@')[0] || 'il cliente';
+          
+          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (max 8000 chars ≈ 2k tokens)
+          const INBOUND_MAX_HISTORY_CHARS = 8000;
+          let inboundCallHistory = '';
+          let hasPreviousConversations = false;
+          if (phoneCallerId) {
+            try {
+              const previousConversations = await db.execute(sql`
+                SELECT 
+                  ac.id,
+                  ac.title,
+                  ac.created_at,
+                  (
+                    SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
+                    FROM (
+                      SELECT json_build_object(
+                        'role', am.role,
+                        'content', am.content,
+                        'created_at', am.created_at
+                      ) as msg_data
+                      FROM ai_messages am
+                      WHERE am.conversation_id = ac.id
+                      ORDER BY am.created_at ASC
+                    ) sub
+                  ) as messages
+                FROM ai_conversations ac
+                WHERE ac.caller_phone = ${phoneCallerId}
+                ORDER BY ac.created_at DESC
+                LIMIT 100
+              `);
+              
+              if (previousConversations.rows.length > 0) {
+                hasPreviousConversations = true;
+                let historyContent = '';
+                let includedConvCount = 0;
+                
+                for (const conv of previousConversations.rows as any[]) {
+                  let convText = '';
+                  const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                  
+                  convText += `📅 Chiamata del ${callDate}\n`;
+                  convText += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
+                  
+                  if (conv.messages && Array.isArray(conv.messages)) {
+                    for (const msg of conv.messages) {
+                      const roleLabel = msg.role === 'user' ? `👤 ${inboundClientName}` : '🤖 Tu';
+                      convText += `${roleLabel}: ${msg.content}\n`;
+                    }
+                  }
+                  convText += '\n---\n\n';
+                  
+                  if (historyContent.length + convText.length > INBOUND_MAX_HISTORY_CHARS) {
+                    break;
+                  }
+                  
+                  historyContent += convText;
+                  includedConvCount++;
+                }
+                
+                if (historyContent.length > 0) {
+                  console.log(`📱 [${connectionId}] Included ${includedConvCount} conversations (${historyContent.length} chars) for inbound client call`);
+                  
+                  inboundCallHistory = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI (CONTESTO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hai già parlato con ${inboundClientName}! Ecco le conversazioni precedenti:
+
+${historyContent}
+💡 Usa queste info per far sentire ${inboundClientName} riconosciuto!
+`;
+                }
+              } else {
+                console.log(`📱 [${connectionId}] No previous conversations found for inbound client ${phoneCallerId}`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not load previous conversations for inbound client call:`, err);
+            }
+          }
+          
+          // Build the client's FULL system prompt using live-consultation mode
+          const clientLiveSystemPrompt = buildFullSystemInstructionForLive(
+            mode,
+            mode === 'consulente' ? consultantType : null,
+            userContext
+          );
+          
+          // Determine greeting based on previous conversations
+          const greetingSection = hasPreviousConversations 
+            ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 SALUTO INIZIALE (LO/LA CONOSCI!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANTE: Hai già parlato con ${inboundClientName}! NON ripresentarti!
+
+✅ SALUTI CORRETTI:
+- "Ciao ${inboundClientName}! Come stai?"
+- "Ehi ${inboundClientName}! Tutto bene?"
+- "${inboundClientName}! Che bello risentirti! Come va?"
+
+🚫 NON DIRE MAI:
+- "Ciao sono Alessia..." (sa già chi sei!)
+- "Sono l'assistente di..." (sa già chi sei!)
+- Qualsiasi presentazione formale
+
+`
+            : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 SALUTO INIZIALE (PRIMA CHIAMATA VOCALE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Questa è la prima chiamata vocale con ${inboundClientName}.
+Presentati brevemente e poi ascolta cosa serve.
+
+✅ ESEMPIO: "Ciao ${inboundClientName}! Sono Alessia, ti assisto per conto di ${inboundConsultantName}. Dimmi pure, come posso aiutarti?"
+
+`;
+          
+          // Combine: Voice Directives + Greeting + Call History + Full Live-Consultation Prompt
+          systemInstruction = `${inboundVoiceDirectivesSection}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 CONTESTO CHIAMATA IN ENTRATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Data e ora: ${italianTime} (Italia)
+Tipo chiamata: INBOUND (${inboundClientName} ti sta chiamando)
+Cliente: ${inboundClientName} (CLIENTE REGISTRATO ✅)
+Consulente: ${inboundConsultantName}
+
+${greetingSection}${inboundCallHistory}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 IL TUO SYSTEM PROMPT COMPLETO (Live-Consultation)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${clientLiveSystemPrompt}`;
+          
+          userDataContext = ''; // Already included in clientLiveSystemPrompt
+          
+          console.log(`📞 [${connectionId}] Inbound client call prompt built (${systemInstruction.length} chars)${inboundCallHistory ? ' [WITH CALL HISTORY]' : ''}`);
+          
+          // 🔥 PRINT FULL PROMPT FOR DEBUGGING
+          console.log(`\n📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📞 SCENARIO 1 PROMPT (first 2000 chars):`);
+          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(systemInstruction.substring(0, 2000) + (systemInstruction.length > 2000 ? '\n... [truncated]' : ''));
+          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         } else if (customPrompt) {
           // Custom prompt overrides everything
           systemInstruction = customPrompt;
