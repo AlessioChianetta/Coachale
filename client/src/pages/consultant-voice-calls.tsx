@@ -153,6 +153,10 @@ interface ScheduledVoiceCall {
   updated_at: string;
   call_instruction: string | null;
   instruction_type: 'task' | 'reminder' | null;
+  retry_reason: string | null;
+  next_retry_at: string | null;
+  duration_seconds: number | null;
+  hangup_cause: string | null;
 }
 
 interface ClientWithPhone {
@@ -530,14 +534,18 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Phone; color: 
   ended: { label: "Terminata", icon: PhoneOff, color: "bg-gray-500" },
 };
 
-const OUTBOUND_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: "In Attesa", color: "bg-yellow-500" },
-  calling: { label: "Chiamando...", color: "bg-blue-500" },
-  ringing: { label: "Sta Squillando", color: "bg-blue-400" },
-  talking: { label: "In Corso", color: "bg-green-500" },
-  completed: { label: "Completata", color: "bg-green-600" },
-  failed: { label: "Fallita", color: "bg-red-500" },
-  cancelled: { label: "Cancellata", color: "bg-gray-500" },
+const OUTBOUND_STATUS_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
+  pending: { label: "In Attesa", color: "bg-yellow-500", icon: "⏳" },
+  calling: { label: "Chiamando...", color: "bg-blue-500", icon: "📞" },
+  ringing: { label: "Sta Squillando", color: "bg-blue-400", icon: "🔔" },
+  talking: { label: "In Corso", color: "bg-green-500", icon: "🗣️" },
+  completed: { label: "Completata", color: "bg-green-600", icon: "✅" },
+  no_answer: { label: "Nessuna Risposta", color: "bg-orange-500", icon: "📵" },
+  busy: { label: "Occupato", color: "bg-orange-400", icon: "🔴" },
+  short_call: { label: "Staccata", color: "bg-orange-600", icon: "⚡" },
+  retry_scheduled: { label: "Retry Programmato", color: "bg-purple-500", icon: "🔄" },
+  failed: { label: "Fallita", color: "bg-red-500", icon: "❌" },
+  cancelled: { label: "Cancellata", color: "bg-gray-500", icon: "🚫" },
 };
 
 const VOICES = [
@@ -1971,14 +1979,19 @@ export default function ConsultantVoiceCallsPage() {
                       <div className="flex gap-2 flex-wrap">
                         {/* Filtro per stato */}
                         <Select value={scheduledStatusFilter} onValueChange={(v) => { setScheduledStatusFilter(v); setScheduledPage(1); }}>
-                          <SelectTrigger className="w-[140px]">
+                          <SelectTrigger className="w-[160px]">
                             <SelectValue placeholder="Stato" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">Tutti gli stati</SelectItem>
-                            <SelectItem value="pending">In coda</SelectItem>
-                            <SelectItem value="in_progress">In corso</SelectItem>
+                            <SelectItem value="pending">In Attesa</SelectItem>
+                            <SelectItem value="calling">Chiamando</SelectItem>
+                            <SelectItem value="talking">In Corso</SelectItem>
                             <SelectItem value="completed">Completate</SelectItem>
+                            <SelectItem value="no_answer">Nessuna Risposta</SelectItem>
+                            <SelectItem value="busy">Occupato</SelectItem>
+                            <SelectItem value="short_call">Staccata</SelectItem>
+                            <SelectItem value="retry_scheduled">Retry Programmato</SelectItem>
                             <SelectItem value="failed">Fallite</SelectItem>
                             <SelectItem value="cancelled">Cancellate</SelectItem>
                           </SelectContent>
@@ -2017,6 +2030,7 @@ export default function ConsultantVoiceCallsPage() {
                             <TableRow>
                               <TableHead>Numero</TableHead>
                               <TableHead>Stato</TableHead>
+                              <TableHead>Tentativi</TableHead>
                               <TableHead>Tipo</TableHead>
                               <TableHead>Data/Ora</TableHead>
                               <TableHead>Istruzione</TableHead>
@@ -2026,11 +2040,38 @@ export default function ConsultantVoiceCallsPage() {
                           <TableBody>
                             {paginatedScheduledCalls.map((call) => {
                               const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
+                              const isRetryState = ['no_answer', 'busy', 'short_call', 'retry_scheduled'].includes(call.status);
+                              const retryReasonLabel = call.retry_reason ? (OUTBOUND_STATUS_CONFIG[call.retry_reason]?.label || call.retry_reason) : null;
                               return (
                                 <TableRow key={call.id}>
                                   <TableCell className="font-mono text-sm">{call.target_phone}</TableCell>
                                   <TableCell>
-                                    <Badge className={`${statusConfig.color} text-xs`}>{statusConfig.label}</Badge>
+                                    <div className="flex flex-col gap-1">
+                                      <Badge className={`${statusConfig.color} text-xs`}>
+                                        {statusConfig.icon && <span className="mr-1">{statusConfig.icon}</span>}
+                                        {statusConfig.label}
+                                      </Badge>
+                                      {call.status === 'retry_scheduled' && call.next_retry_at && (
+                                        <span className="text-xs text-muted-foreground">
+                                          Retry: {format(new Date(call.next_retry_at), "HH:mm", { locale: it })}
+                                        </span>
+                                      )}
+                                      {isRetryState && retryReasonLabel && call.status !== call.retry_reason && (
+                                        <span className="text-xs text-orange-600">
+                                          Motivo: {retryReasonLabel}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-1">
+                                      <span className={`text-sm font-medium ${call.attempts >= call.max_attempts ? 'text-red-500' : ''}`}>
+                                        {call.attempts}/{call.max_attempts}
+                                      </span>
+                                      {call.attempts > 0 && call.attempts < call.max_attempts && (
+                                        <RotateCcw className="h-3 w-3 text-purple-500" />
+                                      )}
+                                    </div>
                                   </TableCell>
                                   <TableCell>
                                     {call.instruction_type === 'task' ? (
@@ -2050,11 +2091,11 @@ export default function ConsultantVoiceCallsPage() {
                                   <TableCell className="text-sm">
                                     {call.scheduled_at ? format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it }) : 'Immediata'}
                                   </TableCell>
-                                  <TableCell className="max-w-[250px]">
+                                  <TableCell className="max-w-[200px]">
                                     <p className="truncate text-sm text-muted-foreground">{call.call_instruction || '-'}</p>
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    {(call.status === 'pending' || call.status === 'failed') && (
+                                    {(call.status === 'pending' || call.status === 'failed' || call.status === 'retry_scheduled') && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
