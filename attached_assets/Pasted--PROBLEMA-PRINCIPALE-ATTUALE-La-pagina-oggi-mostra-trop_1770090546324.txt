@@ -1,0 +1,277 @@
+🔥 PROBLEMA PRINCIPALE ATTUALE
+
+La pagina oggi:
+
+mostra troppe aree contemporaneamente
+
+non guida l’utente su cosa fare per primo
+
+non comunica lo stato del sistema voice
+
+sembra “dashboard tecnica” invece che strumento operativo
+
+Deve diventare:
+
+“Entra → capisci subito lo stato → fai una chiamata in 2 click → monitori risultato”
+
+✅ 1) CREA UNA “PRIMARY ACTION ZONE” (sopra la piega)
+
+Ora tutto ha lo stesso peso visivo.
+
+Suggerisco HEADER OPERATIVO:
+
+In alto al centro:
+
+📞 Centro Chiamate AI
+
+🟢 Sistema Online | Voice: Achernar | VPS: Connesso
+
+
+Subito sotto 2 CTA grandi:
+
+👉 Chiama Ora
+👉 Programma Chiamata
+
+Non pulsantini piccoli.
+
+Deve essere impossibile non capire cosa fare.
+
+✅ 2) RIDUCI IL CARICO VISIVO (COLUMNS REBALANCE)
+
+Ora hai:
+
+Rubrica
+
+Chiamata immediata
+
+Template
+
+Programmate
+
+Tutto insieme = overload.
+
+Layout migliore:
+COLONNA SINISTRA (NAV)
+
+Trasforma in sidebar:
+
+Rubrica clienti
+
+Template
+
+Storico chiamate
+
+Programmate
+
+👉 Non devono rubare attenzione al flusso primario.
+
+COLONNA CENTRALE (AZIONE)
+
+SOLO questo:
+
+BOX: Avvia chiamata
+
+Sequenza verticale guidata:
+
+1️⃣ Numero
+2️⃣ Modalità AI
+3️⃣ Istruzioni
+4️⃣ Bottone CHIAMA (grande)
+
+Con step numerati.
+
+COLONNA DESTRA (FEEDBACK)
+
+Solo:
+
+Stato chiamata live
+
+Ultime chiamate
+
+Esito
+
+✅ 3) MIGLIORA LA CHIAMATA IMMEDIATA (FLOW UX)
+
+Ora è piatta.
+
+Cambiala in wizard:
+Step 1 — Numero
+
+Con:
+
+placeholder smart:
++39 XXX XXX XXXX
+
+validazione live
+
+badge paese 🇮🇹
+
+Step 2 — Modalità AI
+
+Invece di dropdown freddo:
+
+Usa cards selectable:
+
+🧑‍💼 Commerciale
+🛠 Assistenza
+📅 Appuntamenti
+
+Così è chiaro cosa cambia.
+
+Step 3 — Istruzioni AI
+
+Ora sembra textarea generica.
+
+Trasformala in:
+
+🎯 Obiettivo chiamata
+
+con esempi rapidi cliccabili:
+
+Ricorda scadenza contratto
+
+Recupera pagamento
+
+Follow-up preventivo
+
+Upsell servizio
+
+Click = autocompila.
+
+Step 4 — CALL BUTTON
+
+Ora è anonimo.
+
+Deve essere:
+
+🟣 AVVIA CHIAMATA AI ORA
+
+con micro copy sotto:
+
+L'AI chiamerà entro 5 secondi
+
+✅ 4) TEMPLATE LIBRARY: ORA È CONFUSA
+
+Attualmente:
+
+sembra menu tecnico
+
+non comunica valore
+
+Trasformala in:
+📚 Script Pronti
+
+Ogni card:
+
+📞 Follow-up Preventivo
+✔️ Conversion rate medio: 32%
+⏱ Durata: 1m 30s
+[Usa]
+
+
+👉 Il bottone "Usa" deve:
+
+compilare le istruzioni
+
+settare modalità AI
+
+focus immediato su CHIAMA
+
+✅ 5) RUBRICA CLIENTI: TROPPO VUOTA
+
+Ora dice:
+
+Nessun cliente trovato
+
+Brutto UX.
+
+Inserisci Empty State intelligente:
+👥 Nessun cliente ancora
+
+👉 Importa CSV
+👉 Aggiungi manualmente
+👉 Sincronizza CRM
+
+✅ 6) CHIAMATE PROGRAMMATE = SCROLL KILLER
+
+35 chiamate in lista lunga = pesante.
+
+Miglioria:
+
+Mostra SOLO:
+
+Prossime 5
+
+Bottone:
+👉 Vedi tutte
+
+Ogni item:
+
+📞 +39...
+🕒 Oggi 23:00
+🟢 In coda
+❌ Annulla
+
+✅ 7) FEEDBACK LIVE (CRITICO PER PRODOTTO VOICE)
+
+Manca completamente il senso di “sistema vivo”.
+
+Serve:
+
+BOX STATO LIVE
+
+In alto a destra:
+
+🎙 Chiamata in corso
+Numero: +39...
+Stato: Parlato
+Durata: 00:42
+
+
+Questo aumenta:
+
+fiducia
+
+percezione SaaS serio
+
+controllo
+
+✅ 8) MICROCOPY MIGLIORA CONVERSIONE
+
+Ora è troppo tecnico.
+
+Esempi:
+
+❌ Token VPS
+✅ Sicurezza chiamate
+❌ Modalità AI
+✅ Tipo chiamata
+❌ Istruzioni AI
+✅ Cosa deve dire l'AI
+✅ 9) COLOR HIERARCHY
+
+Ora tutto è viola simile.
+
+Devi avere:
+
+CTA principale = viola pieno
+
+Azioni secondarie = outline
+
+Info = grigio soft
+
+Regola base:
+
+Un solo bottone deve “urlare”.
+
+BONUS — KPI CHE TI CONSIGLIO DI MOSTRARE
+
+In alto piccola strip:
+
+📊 Oggi
+Chiamate: 12
+Risposte: 7
+Conversioni: 2
+
+
+Questo trasforma la pagina da tool a strumento di performance.

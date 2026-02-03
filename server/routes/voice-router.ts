@@ -13,7 +13,7 @@ import { authenticateToken, requireAnyRole, type AuthRequest } from "../middlewa
 import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
 import jwt from "jsonwebtoken";
-import { consultantAvailabilitySettings } from "@shared/schema";
+import { consultantAvailabilitySettings, users } from "@shared/schema";
 import { getActiveVoiceCallsForConsultant } from "../ai/gemini-live-ws-service";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
@@ -1446,6 +1446,58 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
   } catch (error: any) {
     console.error("[Outbound] Schedule error:", error);
     res.status(500).json({ error: "Errore nella programmazione della chiamata" });
+  }
+});
+
+// GET /api/voice/clients-with-phone - Lista clienti con telefono (attivi/inattivi)
+router.get("/clients-with-phone", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Recupera tutti i clienti del consulente (anche senza telefono)
+    const allClients = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      phoneNumber: users.phoneNumber,
+      isActive: users.isActive,
+      enrolledAt: users.enrolledAt,
+    })
+    .from(users)
+    .where(and(
+      eq(users.consultantId, consultantId),
+      eq(users.role, "client")
+    ))
+    .orderBy(desc(users.enrolledAt));
+
+    // Separa clienti attivi e inattivi
+    const active = allClients
+      .filter(c => c.isActive !== false)
+      .map(c => ({
+        id: c.id,
+        firstName: c.firstName || "",
+        lastName: c.lastName || "",
+        phoneNumber: c.phoneNumber || "",
+        lastContact: c.enrolledAt?.toISOString() || null,
+      }));
+
+    const inactive = allClients
+      .filter(c => c.isActive === false)
+      .map(c => ({
+        id: c.id,
+        firstName: c.firstName || "",
+        lastName: c.lastName || "",
+        phoneNumber: c.phoneNumber || "",
+        lastContact: c.enrolledAt?.toISOString() || null,
+      }));
+
+    return res.json({ active, inactive });
+  } catch (error: any) {
+    console.error("[VOICE] Error fetching clients with phone:", error);
+    return res.status(500).json({ error: "Failed to fetch clients" });
   }
 });
 
