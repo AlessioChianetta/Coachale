@@ -1457,7 +1457,8 @@ router.get("/clients-with-phone", authenticateToken, requireAnyRole(["consultant
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Recupera tutti i clienti del consulente (anche senza telefono)
+    // Recupera tutti gli utenti che hanno questo consulente come riferimento
+    // (indipendentemente dal ruolo, perché un consultant può essere cliente di un altro consultant)
     const allClients = await db.select({
       id: users.id,
       firstName: users.firstName,
@@ -1467,10 +1468,7 @@ router.get("/clients-with-phone", authenticateToken, requireAnyRole(["consultant
       enrolledAt: users.enrolledAt,
     })
     .from(users)
-    .where(and(
-      eq(users.consultantId, consultantId),
-      eq(users.role, "client")
-    ))
+    .where(eq(users.consultantId, consultantId))
     .orderBy(desc(users.enrolledAt));
 
     // Separa clienti attivi e inattivi
