@@ -663,6 +663,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       const callerId = url.searchParams.get('callerId');
+      const scheduledCallIdParam = url.searchParams.get('scheduledCallId');
       if (!callerId) {
         console.error('❌ No callerId provided for phone_service mode');
         return null;
@@ -713,35 +714,45 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.warn(`⚠️ [PHONE SERVICE] Could not fetch voice settings, using default: ${consultantVoice}`);
         }
 
-        // 🎯 Check for active scheduled call with instruction for this phone number
+        // 🎯 Check for active scheduled call with instruction
+        // IMPORTANT: Only lookup by specific scheduledCallId if provided by VPS
+        // This prevents loading OLD call instructions from previous calls to the same number
         let callInstruction: string | null = null;
         let instructionType: 'task' | 'reminder' | null = null;
         let scheduledCallId: string | null = null;
         try {
-          const scheduledCallResult = await db.execute(sql`
-            SELECT id, call_instruction, instruction_type 
-            FROM scheduled_voice_calls 
-            WHERE consultant_id = ${decoded.consultantId}
-              AND target_phone = ${normalizedCallerId}
-              AND status = 'calling'
-              AND call_instruction IS NOT NULL
-            ORDER BY updated_at DESC
-            LIMIT 1
-          `);
-          
-          if (scheduledCallResult.rows.length > 0) {
-            const scheduledCall = scheduledCallResult.rows[0] as any;
-            callInstruction = scheduledCall.call_instruction;
-            instructionType = scheduledCall.instruction_type;
-            scheduledCallId = scheduledCall.id;
-            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`🎯 [PHONE SERVICE] FOUND CALL INSTRUCTION!`);
-            console.log(`🎯   Scheduled Call ID: ${scheduledCallId}`);
-            console.log(`🎯   Type: ${instructionType || 'generic'}`);
-            console.log(`🎯   Instruction: ${callInstruction}`);
-            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          if (scheduledCallIdParam) {
+            // Outbound call with specific scheduledCallId from VPS - lookup by ID
+            console.log(`🔍 [PHONE SERVICE] Looking up scheduled call by ID: ${scheduledCallIdParam}`);
+            const scheduledCallResult = await db.execute(sql`
+              SELECT id, call_instruction, instruction_type 
+              FROM scheduled_voice_calls 
+              WHERE id = ${scheduledCallIdParam}
+                AND consultant_id = ${decoded.consultantId}
+                AND status = 'calling'
+              LIMIT 1
+            `);
+            
+            if (scheduledCallResult.rows.length > 0) {
+              const scheduledCall = scheduledCallResult.rows[0] as any;
+              callInstruction = scheduledCall.call_instruction;
+              instructionType = scheduledCall.instruction_type;
+              scheduledCallId = scheduledCall.id;
+              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`🎯 [PHONE SERVICE] FOUND CALL INSTRUCTION (by ID)!`);
+              console.log(`🎯   Scheduled Call ID: ${scheduledCallId}`);
+              console.log(`🎯   Type: ${instructionType || 'generic'}`);
+              console.log(`🎯   Instruction: ${callInstruction || '(no instruction)'}`);
+              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            } else {
+              // Scheduled call found but no instruction attached (normal outbound call)
+              scheduledCallId = scheduledCallIdParam;
+              console.log(`📞 [PHONE SERVICE] Outbound call ${scheduledCallIdParam} has no instruction attached`);
+            }
           } else {
-            console.log(`📞 [PHONE SERVICE] No active scheduled call with instruction found for ${normalizedCallerId}`);
+            // Inbound call - no scheduledCallId provided - DO NOT search for instructions
+            // This prevents loading OLD outbound call instructions for inbound calls
+            console.log(`📞 [PHONE SERVICE] Inbound call from ${normalizedCallerId} - no scheduled call instruction (by design)`);
           }
         } catch (scheduledErr) {
           console.warn(`⚠️ [PHONE SERVICE] Could not fetch scheduled call instruction:`, scheduledErr);

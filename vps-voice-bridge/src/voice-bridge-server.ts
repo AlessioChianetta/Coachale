@@ -291,9 +291,12 @@ async function handleCallStart(
   await notifyCallStart(session.id, message.caller_id, message.called_number);
 
   try {
+    // Pass call_id as scheduledCallId for outbound calls with instructions
+    // For outbound calls, message.call_id is the scheduled_voice_calls.id (e.g., sc_1234567890_xyz)
     const replitClient = new ReplitWSClient({
       sessionId: session.id,
       callerId: message.caller_id,
+      scheduledCallId: message.call_id, // Pass to Replit so it can lookup the specific scheduled call
       onAudioResponse: (audioData: Buffer) => {
         sendAudioToFreeSWITCH(session.id, audioData);
       },

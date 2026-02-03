@@ -9,6 +9,7 @@ const log = logger.child('REPLIT-WS');
 export interface ReplitClientOptions {
   sessionId: string;
   callerId: string;
+  scheduledCallId?: string;
   mode?: string;
   voice?: string;
   onAudioResponse: (audioData: Buffer) => void;
@@ -21,6 +22,7 @@ export class ReplitWSClient {
   private ws: WebSocket | null = null;
   private sessionId: string;
   private callerId: string;
+  private scheduledCallId: string | undefined;
   private options: ReplitClientOptions;
   private isConnected = false;
   private audioSequence = 0;
@@ -30,6 +32,7 @@ export class ReplitWSClient {
   constructor(options: ReplitClientOptions) {
     this.sessionId = options.sessionId;
     this.callerId = options.callerId;
+    this.scheduledCallId = options.scheduledCallId;
     this.options = options;
   }
 
@@ -38,12 +41,18 @@ export class ReplitWSClient {
     const mode = this.options.mode || 'phone_service';
     const voice = this.options.voice || config.voice.voiceId;
     
-    const wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
+    let wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
+    
+    // Pass scheduledCallId if available (for outbound calls with instructions)
+    if (this.scheduledCallId) {
+      wsUrl += `&scheduledCallId=${encodeURIComponent(this.scheduledCallId)}`;
+    }
 
     log.info(`Connecting to Replit WebSocket`, { 
       sessionId: this.sessionId.slice(0, 8),
       mode,
       voice,
+      scheduledCallId: this.scheduledCallId || 'none',
     });
 
     return new Promise((resolve, reject) => {
