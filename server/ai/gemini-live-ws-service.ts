@@ -3244,16 +3244,18 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         // AI Studio voices: Kore, Aoede, Charon, Fenrir, Puck, etc.
         const effectiveVoiceName = (liveApiProvider === 'ai_studio') ? 'Kore' : voiceName;
         
-        // Build speech_config differently for AI Studio (no language_code - auto-detected)
+        // Build speech_config differently for AI Studio (camelCase, no languageCode - auto-detected)
         const speechConfig = (liveApiProvider === 'ai_studio') 
           ? {
-              voice_config: {
-                prebuilt_voice_config: {
-                  voice_name: effectiveVoiceName
+              // AI Studio: camelCase
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: effectiveVoiceName
                 }
               }
             }
           : {
+              // Vertex AI: snake_case
               language_code: "it-IT",
               voice_config: {
                 prebuilt_voice_config: {
@@ -3262,63 +3264,72 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               }
             };
         
-        const setupMessage: any = {
-          setup: {
-            model: modelPath,
-            generation_config: {
-              response_modalities: ["AUDIO"],
-              speech_config: speechConfig,
-              temperature: 1.0,
-              top_p: 0.95,
-              top_k: 40,
-              max_output_tokens: 8192  // Permetti risposte più lunghe per monologhi/spiegazioni dettagliate
-            },
-            // 🧠 NOTE: thinking_config is NOT supported by Vertex AI Live API native audio models
-            // (gemini-live-2.5-flash-native-audio GA - December 2025)
-            // Thinking is only available on Gemini API (Google AI Studio), not Vertex AI
-            input_audio_transcription: {},
-            output_audio_transcription: {},
-            // Conditionally include system_instruction ONLY on new sessions
-            ...(!validatedResumeHandle && {
-              system_instruction: {
-                parts: [
-                  {
-                    text: systemInstruction
+        // Build setup message with correct format based on provider:
+        // - AI Studio: camelCase (generationConfig, responseModalities, etc.)
+        // - Vertex AI: snake_case (generation_config, response_modalities, etc.)
+        const setupMessage: any = (liveApiProvider === 'ai_studio') 
+          ? {
+              // AI Studio format: camelCase
+              setup: {
+                model: modelPath,
+                generationConfig: {
+                  responseModalities: ["AUDIO"],
+                  speechConfig: speechConfig,
+                  temperature: 1.0,
+                  topP: 0.95,
+                  topK: 40,
+                  maxOutputTokens: 8192
+                },
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
+                ...(!validatedResumeHandle && {
+                  systemInstruction: {
+                    parts: [{ text: systemInstruction }]
                   }
-                ]
+                }),
+                realtimeInputConfig: {
+                  automaticActivityDetection: {
+                    disabled: false,
+                    startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+                    endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+                    prefixPaddingMs: 500,
+                    silenceDurationMs: 700
+                  }
+                },
+                sessionResumption: { handle: validatedResumeHandle || null }
               }
-            }),
-            // 🎙️ BARGE-IN: Automatic Voice Activity Detection (VAD) for natural interruptions
-            // Documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#automaticactivitydetection
-            // When user speaks while AI is talking, Gemini sends `interrupted: true` in serverContent
-            // ⚙️ OPTIMIZED: Balanced sensitivity for natural speech without excessive fragmentation
-            // NOTE: Valid values are only HIGH or LOW (MEDIUM does not exist!)
-            realtime_input_config: {
-              automatic_activity_detection: {
-                disabled: false,  // Enable automatic VAD
-                start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',  // HIGH = instant barge-in when user starts speaking
-                end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',       // LOW = less fragmentation, waits longer before ending speech detection
-                prefix_padding_ms: 500,        // 500ms buffer before speech (balanced: not too long = latency, not too short = cuts onset)
-                silence_duration_ms: 700       // 700ms silence = end of utterance (faster than 1000ms but still complete phrases)
+            }
+          : {
+              // Vertex AI format: snake_case
+              setup: {
+                model: modelPath,
+                generation_config: {
+                  response_modalities: ["AUDIO"],
+                  speech_config: speechConfig,
+                  temperature: 1.0,
+                  top_p: 0.95,
+                  top_k: 40,
+                  max_output_tokens: 8192
+                },
+                input_audio_transcription: {},
+                output_audio_transcription: {},
+                ...(!validatedResumeHandle && {
+                  system_instruction: {
+                    parts: [{ text: systemInstruction }]
+                  }
+                }),
+                realtime_input_config: {
+                  automatic_activity_detection: {
+                    disabled: false,
+                    start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
+                    end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',
+                    prefix_padding_ms: 500,
+                    silence_duration_ms: 700
+                  }
+                },
+                session_resumption: { handle: validatedResumeHandle || null }
               }
-            },
-            // 🔊 PROACTIVE AUDIO: Available in Preview on gemini-live-2.5-flash-native-audio (GA Dec 2025)
-            // Uncomment to enable - model responds only when relevant
-            // proactivity: {
-            //   proactive_audio: true
-            // },
-            // 💚 AFFECTIVE DIALOG: Built-in on gemini-live-2.5-flash-native-audio (GA Dec 2025)
-            // No explicit configuration needed - model automatically understands emotional expressions
-            // Enable session resumption for unlimited session duration
-            // CRITICAL: Always pass { handle: value } - null for new sessions, token for resuming
-            session_resumption: { handle: validatedResumeHandle || null }
-            // 📦 CONTEXT WINDOW COMPRESSION: May be available on gemini-live-2.5-flash-native-audio (GA Dec 2025)
-            // Uncomment to test - enables sliding window for longer conversations
-            // context_window_compression: {
-            //   sliding_window: {}
-            // }
-          }
-        };
+            };
         
         console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
         const currentModelId = (liveApiProvider === 'ai_studio') ? GEMINI_LIVE_AI_STUDIO_MODEL : vertexConfig!.modelId;
