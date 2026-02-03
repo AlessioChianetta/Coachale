@@ -2534,12 +2534,19 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
               
               previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📞 STORICO CHIAMATE PRECEDENTI (SOLO CONTESTO)
+📞 STORICO CHIAMATE PRECEDENTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⚠️ NOTA: Questo è SOLO contesto informativo. NON cambiare la tua identità o il tuo modo di presentarti in base a queste conversazioni. Segui SEMPRE le tue istruzioni principali.
+⭐ OTTIMO! Questo numero ha già chiamato - TI RICORDI di questa persona!
 
-Conversazioni precedenti con questo numero:
+🎯 COMPORTAMENTO PROATTIVO:
+- Se vedi il suo NOME nelle conversazioni sotto → salutala per nome con entusiasmo! "Ciao [Nome]! Che bello risentirti!"
+- Fai capire che ti ricordi di lei: "Come stai? L'ultima volta avevamo parlato di..."
+- Sii CALOROSO e ACCOGLIENTE - la persona deve sentirsi riconosciuta!
+
+📝 NOTA: Mantieni sempre la TUA identità (come definita nelle tue istruzioni principali). Puoi ricordare la persona senza cambiare chi sei.
+
+Ecco le conversazioni precedenti:
 
 `;
               
@@ -2570,8 +2577,10 @@ Conversazioni precedenti con questo numero:
                 previousCallContext += '\n---\n\n';
               }
               
-              previousCallContext += `💡 Puoi usare queste informazioni se il chiamante fa riferimento a discussioni passate.
-Ricorda: segui sempre le TUE istruzioni principali per identità e saluto.
+              previousCallContext += `💡 USA ATTIVAMENTE queste informazioni per:
+- Salutare per nome se lo conosci
+- Fare riferimento a conversazioni passate
+- Far sentire la persona RICONOSCIUTA e SPECIALE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
