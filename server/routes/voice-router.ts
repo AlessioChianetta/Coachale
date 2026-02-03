@@ -15,6 +15,7 @@ import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { consultantAvailabilitySettings, users } from "@shared/schema";
 import { getActiveVoiceCallsForConsultant } from "../ai/gemini-live-ws-service";
+import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -993,13 +994,21 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       return res.status(400).json({ error: "consultantId required" });
     }
 
-    // Get current settings
+    // Get current settings including inbound/outbound specific fields
     const result = await db.execute(sql`
       SELECT 
         voice_directives,
         non_client_prompt_source,
         non_client_agent_id,
-        non_client_manual_prompt
+        non_client_manual_prompt,
+        inbound_prompt_source,
+        inbound_template_id,
+        inbound_agent_id,
+        inbound_manual_prompt,
+        outbound_prompt_source,
+        outbound_template_id,
+        outbound_agent_id,
+        outbound_manual_prompt
       FROM consultant_availability_settings 
       WHERE consultant_id = ${consultantId}
     `);
@@ -1121,9 +1130,19 @@ ${brandVoice}`;
       nonClientPromptSource: settings?.non_client_prompt_source || 'default',
       nonClientAgentId: settings?.non_client_agent_id,
       nonClientManualPrompt: settings?.non_client_manual_prompt || '',
+      inboundPromptSource: settings?.inbound_prompt_source || 'template',
+      inboundTemplateId: settings?.inbound_template_id || 'mini-discovery',
+      inboundAgentId: settings?.inbound_agent_id,
+      inboundManualPrompt: settings?.inbound_manual_prompt || '',
+      outboundPromptSource: settings?.outbound_prompt_source || 'template',
+      outboundTemplateId: settings?.outbound_template_id || 'sales-orbitale',
+      outboundAgentId: settings?.outbound_agent_id,
+      outboundManualPrompt: settings?.outbound_manual_prompt || '',
       defaultVoiceDirectives: DEFAULT_VOICE_DIRECTIVES,
       defaultNonClientPrompt: DEFAULT_NON_CLIENT_PROMPT,
-      availableAgents: agentsWithFullPrompt
+      availableInboundTemplates: getTemplateOptions('inbound'),
+      availableOutboundTemplates: getTemplateOptions('outbound'),
+      agents: agentsWithFullPrompt
     });
   } catch (error) {
     console.error("[Voice] Error fetching non-client settings:", error);
@@ -1141,26 +1160,64 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
     }
 
     const { 
-      voiceDirectives, 
-      nonClientPromptSource, 
-      nonClientAgentId, 
-      nonClientManualPrompt 
+      voiceDirectives,
+      inboundPromptSource,
+      inboundTemplateId,
+      inboundAgentId,
+      inboundManualPrompt,
+      outboundPromptSource,
+      outboundTemplateId,
+      outboundAgentId,
+      outboundManualPrompt
     } = req.body;
 
-    // Validate promptSource
-    if (!['agent', 'manual', 'default'].includes(nonClientPromptSource)) {
-      return res.status(400).json({ error: "Invalid nonClientPromptSource, must be 'agent', 'manual', or 'default'" });
+    // Validate inbound promptSource
+    if (inboundPromptSource && !['template', 'agent', 'manual'].includes(inboundPromptSource)) {
+      return res.status(400).json({ error: "Invalid inboundPromptSource, must be 'template', 'agent', or 'manual'" });
     }
 
-    // If agent source, validate agentId exists (using consultant_whatsapp_config table)
-    if (nonClientPromptSource === 'agent' && nonClientAgentId) {
+    // Validate outbound promptSource
+    if (outboundPromptSource && !['template', 'agent', 'manual'].includes(outboundPromptSource)) {
+      return res.status(400).json({ error: "Invalid outboundPromptSource, must be 'template', 'agent', or 'manual'" });
+    }
+
+    // If inbound agent source, validate agentId exists
+    if (inboundPromptSource === 'agent' && inboundAgentId) {
       const agentCheck = await db.execute(sql`
-        SELECT id FROM consultant_whatsapp_config WHERE id = ${nonClientAgentId} AND consultant_id = ${consultantId}
+        SELECT id FROM consultant_whatsapp_config WHERE id = ${inboundAgentId} AND consultant_id = ${consultantId}
       `);
       if (agentCheck.rows.length === 0) {
-        return res.status(400).json({ error: "Agent not found or does not belong to this consultant" });
+        return res.status(400).json({ error: "Inbound agent not found or does not belong to this consultant" });
       }
     }
+
+    // If outbound agent source, validate agentId exists
+    if (outboundPromptSource === 'agent' && outboundAgentId) {
+      const agentCheck = await db.execute(sql`
+        SELECT id FROM consultant_whatsapp_config WHERE id = ${outboundAgentId} AND consultant_id = ${consultantId}
+      `);
+      if (agentCheck.rows.length === 0) {
+        return res.status(400).json({ error: "Outbound agent not found or does not belong to this consultant" });
+      }
+    }
+
+    // If template source, validate template exists
+    if (inboundPromptSource === 'template' && inboundTemplateId) {
+      if (!INBOUND_TEMPLATES[inboundTemplateId]) {
+        return res.status(400).json({ error: `Invalid inbound template ID: ${inboundTemplateId}` });
+      }
+    }
+
+    if (outboundPromptSource === 'template' && outboundTemplateId) {
+      if (!OUTBOUND_TEMPLATES[outboundTemplateId]) {
+        return res.status(400).json({ error: `Invalid outbound template ID: ${outboundTemplateId}` });
+      }
+    }
+
+    // Derive legacy fields from inbound settings for backwards compatibility
+    const legacyPromptSource = inboundPromptSource === 'template' ? 'default' : inboundPromptSource;
+    const legacyAgentId = inboundAgentId;
+    const legacyManualPrompt = inboundManualPrompt;
 
     // Update or insert settings
     const existingResult = await db.execute(sql`
@@ -1172,31 +1229,43 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
         UPDATE consultant_availability_settings 
         SET 
           voice_directives = ${voiceDirectives || null},
-          non_client_prompt_source = ${nonClientPromptSource},
-          non_client_agent_id = ${nonClientAgentId || null},
-          non_client_manual_prompt = ${nonClientManualPrompt || null},
+          inbound_prompt_source = ${inboundPromptSource || 'template'},
+          inbound_template_id = ${inboundTemplateId || null},
+          inbound_agent_id = ${inboundAgentId || null},
+          inbound_manual_prompt = ${inboundManualPrompt || null},
+          outbound_prompt_source = ${outboundPromptSource || 'template'},
+          outbound_template_id = ${outboundTemplateId || null},
+          outbound_agent_id = ${outboundAgentId || null},
+          outbound_manual_prompt = ${outboundManualPrompt || null},
+          non_client_prompt_source = ${legacyPromptSource || 'default'},
+          non_client_agent_id = ${legacyAgentId || null},
+          non_client_manual_prompt = ${legacyManualPrompt || null},
           updated_at = NOW()
         WHERE consultant_id = ${consultantId}
       `);
     } else {
       await db.execute(sql`
         INSERT INTO consultant_availability_settings (
-          id, consultant_id, voice_directives, non_client_prompt_source, 
-          non_client_agent_id, non_client_manual_prompt, voice_id,
-          appointment_duration, buffer_before, buffer_after,
+          id, consultant_id, voice_directives,
+          inbound_prompt_source, inbound_template_id, inbound_agent_id, inbound_manual_prompt,
+          outbound_prompt_source, outbound_template_id, outbound_agent_id, outbound_manual_prompt,
+          non_client_prompt_source, non_client_agent_id, non_client_manual_prompt,
+          voice_id, appointment_duration, buffer_before, buffer_after,
           morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
           max_days_ahead, min_hours_notice, timezone, is_active
         ) VALUES (
-          gen_random_uuid(), ${consultantId}, ${voiceDirectives || null}, ${nonClientPromptSource},
-          ${nonClientAgentId || null}, ${nonClientManualPrompt || null}, 'Achernar',
-          60, 15, 15,
+          gen_random_uuid(), ${consultantId}, ${voiceDirectives || null},
+          ${inboundPromptSource || 'template'}, ${inboundTemplateId || 'mini-discovery'}, ${inboundAgentId || null}, ${inboundManualPrompt || null},
+          ${outboundPromptSource || 'template'}, ${outboundTemplateId || 'sales-orbitale'}, ${outboundAgentId || null}, ${outboundManualPrompt || null},
+          ${legacyPromptSource || 'default'}, ${legacyAgentId || null}, ${legacyManualPrompt || null},
+          'Achernar', 60, 15, 15,
           '09:00', '13:00', '14:00', '18:00',
           30, 24, 'Europe/Rome', true
         )
       `);
     }
 
-    console.log(`🎤 [Voice] Non-client settings updated for consultant ${consultantId}: source=${nonClientPromptSource}`);
+    console.log(`🎤 [Voice] Non-client settings updated for consultant ${consultantId}: inbound=${inboundPromptSource}, outbound=${outboundPromptSource}`);
     res.json({ success: true });
   } catch (error) {
     console.error("[Voice] Error updating non-client settings:", error);

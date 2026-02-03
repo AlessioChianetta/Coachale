@@ -20,6 +20,7 @@ import { createSalesLogger, SalesScriptLogger } from './sales-script-logger';
 import { SalesManagerAgent } from './sales-manager-agent';
 import { generateDiscoveryRec, type DiscoveryRec } from './discovery-rec-generator';
 import type { SalesManagerParams, SalesManagerAnalysis, BusinessContext } from './sales-manager-agent';
+import { getTemplateById, resolveTemplateVariables, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
@@ -2442,23 +2443,41 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             minute: '2-digit'
           });
           
-          // 🎙️ Fetch voice directives from database for this consultant
+          // 🎙️ Fetch voice directives and outbound settings from database for this consultant
           let consultantVoiceDirectives = '';
+          let outboundPromptSource: 'agent' | 'manual' | 'default' = 'default';
+          let outboundTemplateId = 'sales-orbitale';
+          let outboundAgentId: string | null = null;
+          let outboundManualPrompt = '';
+          
           if (consultantId) {
             try {
               const settingsResult = await db
                 .select({
                   voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+                  outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
+                  outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
+                  outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
+                  outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
                 })
                 .from(consultantAvailabilitySettings)
                 .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
               
-              if (settingsResult.length > 0 && settingsResult[0].voiceDirectives) {
-                consultantVoiceDirectives = settingsResult[0].voiceDirectives;
-                console.log(`🎙️ [${connectionId}] Using consultant voice directives (${consultantVoiceDirectives.length} chars)`);
+              if (settingsResult.length > 0) {
+                const settings = settingsResult[0];
+                if (settings.voiceDirectives) {
+                  consultantVoiceDirectives = settings.voiceDirectives;
+                  console.log(`🎙️ [${connectionId}] Using consultant voice directives (${consultantVoiceDirectives.length} chars)`);
+                }
+                // Load outbound settings
+                outboundPromptSource = (settings.outboundPromptSource as 'agent' | 'manual' | 'default') || 'default';
+                outboundTemplateId = settings.outboundTemplateId || 'sales-orbitale';
+                outboundAgentId = settings.outboundAgentId;
+                outboundManualPrompt = settings.outboundManualPrompt || '';
+                console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}`);
               }
             } catch (err) {
-              console.warn(`⚠️ [${connectionId}] Could not fetch voice directives:`, err);
+              console.warn(`⚠️ [${connectionId}] Could not fetch voice directives and outbound settings:`, err);
             }
           }
           
@@ -2690,19 +2709,35 @@ Una volta che hanno capito e confermato:
           console.log(systemInstruction);
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         } else {
-          // No specific instruction - continue with normal non-client prompt flow
+          // No specific instruction - continue with normal non-client prompt flow (INBOUND)
         
-        // Load non-client settings from database
+        // Load non-client settings from database (includes both legacy and new direction-specific fields)
         let voiceDirectives = '';
-        let nonClientPromptSource: 'agent' | 'manual' | 'default' = 'default';
-        let nonClientAgentId: string | null = null;
-        let nonClientManualPrompt = '';
+        // Direction-specific settings (new template system)
+        let promptSource: 'agent' | 'manual' | 'default' = 'default';
+        let templateId: string = 'mini-discovery'; // Default INBOUND template
+        let agentId: string | null = null;
+        let manualPrompt = '';
+        
+        // For INBOUND calls (no callInstruction), isOutbound = false
+        const isOutbound = false; // This block only handles INBOUND (no phoneCallInstruction)
         
         if (consultantId) {
           try {
             const settingsResult = await db
               .select({
                 voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+                // INBOUND direction-specific fields
+                inboundPromptSource: consultantAvailabilitySettings.inboundPromptSource,
+                inboundTemplateId: consultantAvailabilitySettings.inboundTemplateId,
+                inboundAgentId: consultantAvailabilitySettings.inboundAgentId,
+                inboundManualPrompt: consultantAvailabilitySettings.inboundManualPrompt,
+                // OUTBOUND direction-specific fields (loaded for completeness, not used here)
+                outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
+                outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
+                outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
+                outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
+                // Legacy fields (fallback)
                 nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
                 nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
                 nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
@@ -2713,10 +2748,17 @@ Una volta che hanno capito e confermato:
             if (settingsResult.length > 0) {
               const settings = settingsResult[0];
               voiceDirectives = settings.voiceDirectives || '';
-              nonClientPromptSource = (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') || 'default';
-              nonClientAgentId = settings.nonClientAgentId;
-              nonClientManualPrompt = settings.nonClientManualPrompt || '';
-              console.log(`📞 [${connectionId}] Non-client settings loaded: source=${nonClientPromptSource}, agentId=${nonClientAgentId}`);
+              
+              // Use INBOUND-specific settings (since this is an INBOUND call - no callInstruction)
+              // Fall back to legacy fields if new fields are not set
+              promptSource = (settings.inboundPromptSource as 'agent' | 'manual' | 'default') 
+                || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
+                || 'default';
+              templateId = settings.inboundTemplateId || 'mini-discovery';
+              agentId = settings.inboundAgentId || settings.nonClientAgentId;
+              manualPrompt = settings.inboundManualPrompt || settings.nonClientManualPrompt || '';
+              
+              console.log(`📞 [${connectionId}] INBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}`);
             }
           } catch (err) {
             console.warn(`⚠️ [${connectionId}] Could not fetch non-client settings:`, err);
@@ -2959,8 +3001,9 @@ ${historyContent}
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // BUILD CONTENT PROMPT (after extracting caller name)
+        // Uses direction-specific settings: promptSource, templateId, agentId, manualPrompt
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        if (nonClientPromptSource === 'agent' && nonClientAgentId) {
+        if (promptSource === 'agent' && agentId) {
           // Load agent prompt from consultant_whatsapp_config table (the real WhatsApp agents)
           try {
             const agentResult = await db.execute(sql`
@@ -2989,7 +3032,7 @@ ${historyContent}
                 books_published,
                 ai_personality
               FROM consultant_whatsapp_config 
-              WHERE id = ${nonClientAgentId}
+              WHERE id = ${agentId}
             `);
             
             if (agentResult.rows.length > 0) {
@@ -3099,22 +3142,46 @@ ${brandVoicePrompt}` : ''}`;
                 contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX) + '\n\n' + brandVoicePrompt;
               }
               
-              console.log(`📞 [${connectionId}] Using agent prompt: ${agent.name} (${contentPrompt.length} chars, includes Brand Voice)`);
+              console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using agent prompt: ${agent.name} (${contentPrompt.length} chars, includes Brand Voice)`);
             } else {
-              console.warn(`⚠️ [${connectionId}] Agent ${nonClientAgentId} not found, falling back to default`);
-              contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
+              console.warn(`⚠️ [${connectionId}] Agent ${agentId} not found, falling back to template`);
+              // Fall back to template
+              const template = getTemplateById(templateId);
+              if (template) {
+                contentPrompt = resolveTemplateVariables(template.prompt, {
+                  consultantName: consultantName,
+                  businessName: consultantBusinessName || '',
+                  aiName: 'Alessia',
+                  contactName: phoneContactName || 'Cliente'
+                });
+                console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${contentPrompt.length} chars)`);
+              } else {
+                contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
+              }
             }
           } catch (err) {
             console.warn(`⚠️ [${connectionId}] Could not fetch agent prompt:`, err);
             contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
           }
-        } else if (nonClientPromptSource === 'manual' && nonClientManualPrompt) {
-          contentPrompt = interpolatePlaceholders(nonClientManualPrompt);
-          console.log(`📞 [${connectionId}] Using manual prompt (${contentPrompt.length} chars)`);
+        } else if (promptSource === 'manual' && manualPrompt) {
+          contentPrompt = interpolatePlaceholders(manualPrompt);
+          console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using manual prompt (${contentPrompt.length} chars)`);
         } else {
-          // Default template
-          contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
-          console.log(`📞 [${connectionId}] Using default prompt template`);
+          // Default: Use template from voice-templates.ts
+          const template = getTemplateById(templateId);
+          if (template) {
+            contentPrompt = resolveTemplateVariables(template.prompt, {
+              consultantName: consultantName,
+              businessName: consultantBusinessName || '',
+              aiName: 'Alessia',
+              contactName: phoneContactName || 'Cliente'
+            });
+            console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${templateId}) - ${contentPrompt.length} chars`);
+          } else {
+            // Template not found, fall back to legacy default
+            console.warn(`⚠️ [${connectionId}] Template '${templateId}' not found, using legacy default`);
+            contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
+          }
         }
         
         // Get current Italian time for the prompt
@@ -3139,7 +3206,8 @@ ${brandVoicePrompt}` : ''}`;
         console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
         console.log(`│ Conversazioni precedenti?    │ ${nonClientHasPreviousConvs ? '✅ SÌ' : '❌ NO'}                               │`);
         console.log(`│ Caller ID                    │ ${(phoneCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-        console.log(`│ Prompt Source                │ ${nonClientPromptSource.padEnd(20)}                 │`);
+        console.log(`│ Prompt Source                │ ${promptSource.padEnd(20)}                 │`);
+        console.log(`│ Template ID                  │ ${templateId.padEnd(20)}                 │`);
         console.log(`├─────────────────────────────────────────────────────────────────────┤`);
         console.log(`│ 🎯 SCENARIO                  │ INBOUND NON-CLIENT (SCENARIO 2)     │`);
         console.log(`├─────────────────────────────────────────────────────────────────────┤`);
@@ -3163,7 +3231,7 @@ ${brandVoicePrompt}` : ''}`;
 ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
         
         userDataContext = ''; // No user data for unknown callers
-        console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars) - Source: ${nonClientPromptSource}${previousCallContext ? ' [WITH CALL HISTORY]' : ''}`);
+        console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} non-client prompt built (${systemInstruction.length} chars) - Source: ${promptSource}, Template: ${templateId}${previousCallContext ? ' [WITH CALL HISTORY]' : ''}`);
         } // Close the else block for non-instruction flow
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
