@@ -2338,15 +2338,15 @@ export default function ConsultantVoiceCallsPage() {
                               </div>
                             </div>
 
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                              <RadioGroupItem value="default" id="inbound-default" className="mt-1" />
-                              <div className="flex-1 space-y-2">
+                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+                              <RadioGroupItem value="default" id="inbound-default" className="mt-1 shrink-0" />
+                              <div className="flex-1 min-w-0 space-y-2">
                                 <Label htmlFor="inbound-default" className="flex items-center gap-2 cursor-pointer text-sm">
                                   <Settings className="h-4 w-4" />
                                   Template Predefinito
                                 </Label>
                                 {inboundPromptSource === 'default' && (
-                                  <div className="pt-1">
+                                  <div className="pt-1 w-full">
                                     <Select
                                       value={inboundTemplateId}
                                       onValueChange={(value) => {
@@ -2377,14 +2377,14 @@ export default function ConsultantVoiceCallsPage() {
                                       const selectedTemplate = nonClientSettingsData?.availableInboundTemplates?.find(t => t.id === inboundTemplateId);
                                       if (selectedTemplate?.prompt) {
                                         return (
-                                          <div className="mt-3 p-3 bg-muted rounded-md border overflow-hidden">
+                                          <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
                                             <div className="flex items-center gap-2 mb-2">
                                               <FileText className="h-4 w-4 text-green-600 shrink-0" />
                                               <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
                                             </div>
-                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground break-words">
+                                            <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
                                               {selectedTemplate.prompt}
-                                            </pre>
+                                            </div>
                                           </div>
                                         );
                                       }
@@ -2481,15 +2481,15 @@ export default function ConsultantVoiceCallsPage() {
                               </div>
                             </div>
 
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                              <RadioGroupItem value="default" id="outbound-default" className="mt-1" />
-                              <div className="flex-1 space-y-2">
+                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+                              <RadioGroupItem value="default" id="outbound-default" className="mt-1 shrink-0" />
+                              <div className="flex-1 min-w-0 space-y-2">
                                 <Label htmlFor="outbound-default" className="flex items-center gap-2 cursor-pointer text-sm">
                                   <Settings className="h-4 w-4" />
                                   Template Predefinito
                                 </Label>
                                 {outboundPromptSource === 'default' && (
-                                  <div className="pt-1">
+                                  <div className="pt-1 w-full">
                                     <Select
                                       value={outboundTemplateId}
                                       onValueChange={(value) => {
@@ -2520,14 +2520,14 @@ export default function ConsultantVoiceCallsPage() {
                                       const selectedTemplate = nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === outboundTemplateId);
                                       if (selectedTemplate?.prompt) {
                                         return (
-                                          <div className="mt-3 p-3 bg-muted rounded-md border overflow-hidden">
+                                          <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
                                             <div className="flex items-center gap-2 mb-2">
                                               <FileText className="h-4 w-4 text-blue-600 shrink-0" />
                                               <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
                                             </div>
-                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground break-words">
+                                            <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
                                               {selectedTemplate.prompt}
-                                            </pre>
+                                            </div>
                                           </div>
                                         );
                                       }
