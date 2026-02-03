@@ -1202,11 +1202,6 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     
     // 🔍 DEBUG: Track all messages sent in current turn for "Fresh Text Input" analysis
     let currentTurnMessages: Array<{type: string; content: string; size: number; timestamp: Date}> = [];
-    
-    // 🔧 AI STUDIO FIX: Store pending chunks to send AFTER setupComplete
-    // AI Studio requires waiting for setupComplete before sending clientContent
-    let pendingChunksForAiStudio: string[] = [];
-    let pendingPrimerContent: string = '';
 
     // Conversazione tracking per auto-save
     let conversationMessages: Array<{
@@ -3478,8 +3473,24 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`   💡 Goal: Test if this order enables better caching`);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           
-          // 🔧 AI STUDIO FIX: For AI Studio, WAIT for setupComplete before sending chunks
-          // Sending clientContent before setupComplete causes error 1007
+          // Send all content chunks FIRST (all with turnComplete: false)
+          for (let i = 0; i < chunks.length; i++) {
+            const chunkTokens = Math.round(chunks[i].length / 4);
+            const chunkMessage = {
+              clientContent: {
+                turns: [{
+                  role: 'user',
+                  parts: [{ text: chunks[i] }]
+                }],
+                turnComplete: false // NOT the last chunk
+              }
+            };
+            geminiSession.send(JSON.stringify(chunkMessage));
+            console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
+          }
+          
+          // Send primer chunk LAST with turnComplete: true
+          // 🆕 TASK 7: Istruzione per aspettare che il cliente parli per primo
           const primerContent = `📋 CONTEXT_END - All user data loaded and ready.
 
 🚨 REGOLA CRITICA - ASPETTA IL CLIENTE:
@@ -3489,57 +3500,34 @@ Solo DOPO che il cliente ha parlato, puoi iniziare con il benvenuto.
 Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi senti?"
 MA NON iniziare con lo script completo finché il cliente non risponde!`;
           
-          if (liveApiProvider === 'ai_studio') {
-            // AI Studio: Save chunks to send AFTER setupComplete
-            console.log(`\n   🔧 AI STUDIO: Saving ${chunks.length} chunks to send AFTER setupComplete...`);
-            pendingChunksForAiStudio = chunks;
-            pendingPrimerContent = primerContent;
-            console.log(`   📦 Chunks saved - will be sent when setupComplete is received`);
-          } else {
-            // Vertex AI: Send chunks immediately (works fine)
-            for (let i = 0; i < chunks.length; i++) {
-              const chunkTokens = Math.round(chunks[i].length / 4);
-              const chunkMessage = {
-                clientContent: {
-                  turns: [{
-                    role: 'user',
-                    parts: [{ text: chunks[i] }]
-                  }],
-                  turnComplete: false
-                }
-              };
-              geminiSession.send(JSON.stringify(chunkMessage));
-              console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
+          const primerTokens = Math.round(primerContent.length / 4);
+          const primerMessage = {
+            clientContent: {
+              turns: [{
+                role: 'user',
+                parts: [{ text: primerContent }]
+              }],
+              turnComplete: true // FINAL chunk completes the turn
             }
-            
-            const primerTokens = Math.round(primerContent.length / 4);
-            const primerMessage = {
-              clientContent: {
-                turns: [{
-                  role: 'user',
-                  parts: [{ text: primerContent }]
-                }],
-                turnComplete: true
-              }
-            };
-            geminiSession.send(JSON.stringify(primerMessage));
-            console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
-            console.log(`   ✅ Turn complete with primer at END`);
-            console.log(`   🚨 AI instructed to WAIT for client to speak first\n`);
-            
-            currentTurnMessages.push({
-              type: 'PRIMER CHUNK at END - Cache Optimization (TASK 7 v2)',
-              content: primerContent,
-              size: primerContent.length,
-              timestamp: new Date()
-            });
-            
-            console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED`);
-            console.log(`   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)`);
-            console.log(`   🎙️ AI can now speak (has complete context: ${Math.round(userDataContext.length / 4)} tokens)`);
-            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-          }
+          };
+          geminiSession.send(JSON.stringify(primerMessage));
+          console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
+          console.log(`   ✅ Turn complete with primer at END`);
+          console.log(`   🚨 AI instructed to WAIT for client to speak first\n`);
+          
+          // Track primer in currentTurnMessages
+          currentTurnMessages.push({
+            type: 'PRIMER CHUNK at END - Cache Optimization (TASK 7 v2)',
+            content: primerContent,
+            size: primerContent.length,
+            timestamp: new Date()
+          });
+          
+          console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED`);
+          console.log(`   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)`);
+          console.log(`   🎙️ AI can now speak (has complete context: ${Math.round(userDataContext.length / 4)} tokens)`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         } else if (isResuming) {
           console.log(`\n⏩ [${connectionId}] RESUMING - Skipping dynamic context (preserved in session)`);
         }
@@ -3632,55 +3620,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               startSuperWatchdog();
             }
             
-            // 🔧 AI STUDIO FIX: Send pending chunks NOW (after setupComplete)
-            if (liveApiProvider === 'ai_studio' && pendingChunksForAiStudio.length > 0) {
-              console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🔧 AI STUDIO: Now sending ${pendingChunksForAiStudio.length} pending chunks AFTER setupComplete`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-              
-              for (let i = 0; i < pendingChunksForAiStudio.length; i++) {
-                const chunk = pendingChunksForAiStudio[i];
-                const chunkTokens = Math.round(chunk.length / 4);
-                const chunkMessage = {
-                  clientContent: {
-                    turns: [{
-                      role: 'user',
-                      parts: [{ text: chunk }]
-                    }],
-                    turnComplete: false
-                  }
-                };
-                geminiSession.send(JSON.stringify(chunkMessage));
-                console.log(`   ✅ Chunk ${i + 1}/${pendingChunksForAiStudio.length} sent - ${chunk.length} chars (~${chunkTokens.toLocaleString()} tokens)`);
-              }
-              
-              // Send primer chunk LAST
-              const primerTokens = Math.round(pendingPrimerContent.length / 4);
-              const primerMessage = {
-                clientContent: {
-                  turns: [{
-                    role: 'user',
-                    parts: [{ text: pendingPrimerContent }]
-                  }],
-                  turnComplete: true
-                }
-              };
-              geminiSession.send(JSON.stringify(primerMessage));
-              console.log(`\n   🎯 Primer chunk sent (FINAL) - ${pendingPrimerContent.length} chars (~${primerTokens} tokens)`);
-              console.log(`   ✅ Turn complete with primer at END`);
-              
-              // Clear pending chunks
-              pendingChunksForAiStudio = [];
-              pendingPrimerContent = '';
-              
-              console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`✅ [${connectionId}] AI STUDIO: All chunks sent AFTER setupComplete`);
-              console.log(`   💾 Chunks are now in Gemini context`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-            }
-            
-            // ✅ OPTIMIZATION: For Vertex AI, dynamic context was sent immediately after setup
-            // For AI Studio, chunks were sent above after setupComplete
+            // ✅ OPTIMIZATION: Dynamic context already sent immediately after setup (see 'open' handler)
+            // Now we just notify client that session is ready
             const isResuming = !!validatedResumeHandle;
             
             if (isResuming) {
