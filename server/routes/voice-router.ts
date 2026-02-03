@@ -1046,9 +1046,17 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
         brandVoice += agent.ai_personality + '\n';
       }
       
-      // Combine instructions + Brand Voice
-      if (brandVoice) {
-        fullPrompt = fullPrompt + '\n\n' + brandVoice;
+      // Combine instructions (PRIORITY) + Brand Voice (supplementary)
+      if (fullPrompt && brandVoice) {
+        fullPrompt = `⚡ ISTRUZIONI PRINCIPALI (PRIORITÀ ASSOLUTA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${fullPrompt}
+
+📋 CONTESTO SUPPLEMENTARE (informazioni di supporto)
+${brandVoice}`;
+      } else if (brandVoice && !fullPrompt) {
+        fullPrompt = brandVoice;
       }
       
       return {

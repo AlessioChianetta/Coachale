@@ -2685,9 +2685,18 @@ Puoi fare riferimento alle conversazioni precedenti: "Ah, certo! L'ultima volta 
                 brandVoicePrompt += agent.ai_personality + '\n';
               }
               
-              // Combine: agent_instructions (main prompt) + Brand Voice context
+              // Combine: agent_instructions (PRIORITY) + Brand Voice (supplementary context)
               if (agent.agent_instructions) {
-                contentPrompt = agent.agent_instructions + '\n\n' + brandVoicePrompt;
+                // Agent instructions are the PRIMARY directives - must be followed precisely
+                contentPrompt = `⚡ ISTRUZIONI PRINCIPALI (SEGUI QUESTE COME PRIORITÀ ASSOLUTA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${agent.agent_instructions}
+
+${brandVoicePrompt ? `
+📋 CONTESTO SUPPLEMENTARE (informazioni di supporto)
+Le seguenti informazioni sono di contorno per arricchire il contesto, ma le istruzioni sopra hanno la priorità.
+${brandVoicePrompt}` : ''}`;
               } else {
                 // No agent_instructions, use Brand Voice as context for default prompt
                 contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX) + '\n\n' + brandVoicePrompt;
