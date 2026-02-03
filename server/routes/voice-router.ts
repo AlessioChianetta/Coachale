@@ -1643,4 +1643,185 @@ router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_ad
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// OUTBOUND CALLBACK - VPS reports call result
+// ═══════════════════════════════════════════════════════════════════
+
+// POST /api/voice/outbound/callback - VPS reports call result
+router.post("/outbound/callback", async (req: Request, res: Response) => {
+  try {
+    // Verify service token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.warn('📞 [Callback] Missing or invalid Authorization header');
+      return res.status(401).json({ error: 'Unauthorized: Bearer token required' });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    
+    if (!JWT_SECRET) {
+      console.error('❌ [Callback] JWT_SECRET not configured');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    
+    // Verify JWT token
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.type !== 'phone_service') {
+        return res.status(401).json({ error: 'Invalid token type' });
+      }
+    } catch (jwtError: any) {
+      console.warn('📞 [Callback] Invalid JWT token:', jwtError.message);
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    
+    const consultantId = decoded.consultantId;
+    const { callId, status, duration_seconds, hangup_cause } = req.body;
+    
+    if (!callId || !status) {
+      return res.status(400).json({ error: 'callId and status are required' });
+    }
+    
+    console.log(`📞 [Callback] Received for call ${callId}: status=${status}, duration=${duration_seconds}s, cause=${hangup_cause}`);
+    
+    // Check if call exists and belongs to this consultant
+    const callResult = await db.execute(sql`
+      SELECT id, attempts, max_attempts, consultant_id FROM scheduled_voice_calls 
+      WHERE id = ${callId}
+    `);
+    
+    if (callResult.rows.length === 0) {
+      console.warn(`📞 [Callback] Call ${callId} not found`);
+      return res.status(404).json({ error: 'Call not found' });
+    }
+    
+    const call = callResult.rows[0] as any;
+    
+    // Verify consultant ownership
+    if (call.consultant_id !== consultantId) {
+      console.warn(`📞 [Callback] Consultant mismatch: expected ${call.consultant_id}, got ${consultantId}`);
+      return res.status(403).json({ error: 'Forbidden: consultant mismatch' });
+    }
+    
+    const currentAttempts = call.attempts || 1;
+    const maxAttempts = call.max_attempts || 3;
+    
+    // Handle based on status
+    const retryableStatuses = ['no_answer', 'busy', 'short_call'];
+    
+    if (status === 'completed') {
+      // Call completed successfully - no retry needed
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'completed',
+            duration_seconds = ${duration_seconds || 0},
+            hangup_cause = ${hangup_cause || null},
+            last_attempt_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      
+      console.log(`✅ [Callback] Call ${callId} completed successfully (duration: ${duration_seconds}s)`);
+      return res.json({ success: true, message: 'Call marked as completed' });
+    }
+    
+    if (status === 'failed') {
+      // Hard failure - no retry
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'failed',
+            duration_seconds = ${duration_seconds || 0},
+            hangup_cause = ${hangup_cause || null},
+            error_message = ${hangup_cause || 'Call failed'},
+            last_attempt_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      
+      console.log(`❌ [Callback] Call ${callId} failed permanently: ${hangup_cause}`);
+      return res.json({ success: true, message: 'Call marked as failed' });
+    }
+    
+    if (retryableStatuses.includes(status)) {
+      // Check if should retry
+      if (currentAttempts < maxAttempts) {
+        // Calculate retry delay with exponential backoff: 5min, 10min, 20min... max 30min
+        const retryDelayMs = Math.min(300000 * Math.pow(2, currentAttempts - 1), 1800000);
+        const retryDelaySeconds = Math.floor(retryDelayMs / 1000);
+        
+        // Update status to retry_scheduled
+        await db.execute(sql`
+          UPDATE scheduled_voice_calls 
+          SET status = 'retry_scheduled',
+              retry_reason = ${status},
+              attempts = ${currentAttempts + 1},
+              duration_seconds = ${duration_seconds || 0},
+              hangup_cause = ${hangup_cause || null},
+              last_attempt_at = NOW(),
+              next_retry_at = NOW() + INTERVAL '${sql.raw(String(retryDelaySeconds))} seconds',
+              updated_at = NOW()
+          WHERE id = ${callId}
+        `);
+        
+        // Schedule timer for retry
+        const timer = setTimeout(() => {
+          scheduledCallTimers.delete(callId);
+          console.log(`🔄 [Callback] Executing retry for call ${callId}`);
+          executeOutboundCall(callId, consultantId);
+        }, retryDelayMs);
+        scheduledCallTimers.set(callId, timer);
+        
+        console.log(`🔄 [Callback] Call ${callId} scheduled for retry in ${retryDelaySeconds}s (attempt ${currentAttempts + 1}/${maxAttempts})`);
+        return res.json({ 
+          success: true, 
+          message: 'Retry scheduled',
+          nextRetryAt: new Date(Date.now() + retryDelayMs).toISOString(),
+          attempt: currentAttempts + 1,
+          maxAttempts
+        });
+      } else {
+        // Max attempts reached - mark as failed
+        await db.execute(sql`
+          UPDATE scheduled_voice_calls 
+          SET status = 'failed',
+              retry_reason = ${status},
+              duration_seconds = ${duration_seconds || 0},
+              hangup_cause = ${hangup_cause || null},
+              error_message = ${'Max attempts reached: ' + status},
+              last_attempt_at = NOW(),
+              updated_at = NOW()
+          WHERE id = ${callId}
+        `);
+        
+        console.log(`❌ [Callback] Call ${callId} failed after ${maxAttempts} attempts (reason: ${status})`);
+        return res.json({ 
+          success: true, 
+          message: 'Call failed - max attempts reached',
+          finalStatus: 'failed',
+          reason: status
+        });
+      }
+    }
+    
+    // Unknown status - just update and log
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls 
+      SET status = ${status},
+          duration_seconds = ${duration_seconds || 0},
+          hangup_cause = ${hangup_cause || null},
+          last_attempt_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${callId}
+    `);
+    
+    console.log(`📞 [Callback] Call ${callId} updated with status: ${status}`);
+    return res.json({ success: true, message: `Call updated with status: ${status}` });
+    
+  } catch (error: any) {
+    console.error('❌ [Callback] Error processing callback:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
