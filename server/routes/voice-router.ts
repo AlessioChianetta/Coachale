@@ -1273,6 +1273,37 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
   }
 });
 
+// DELETE /api/voice/non-client-history - Delete call history for non-clients (for testing)
+router.delete("/non-client-history", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "consultant" ? req.user.id : req.query.consultantId as string;
+    
+    if (!consultantId) {
+      return res.status(400).json({ error: "consultantId required" });
+    }
+
+    // Delete all voice calls for this consultant where client_id is NULL (non-clients)
+    const result = await db.execute(sql`
+      DELETE FROM voice_calls 
+      WHERE consultant_id = ${consultantId} 
+        AND client_id IS NULL
+      RETURNING id
+    `);
+
+    const deletedCount = result.rows.length;
+    console.log(`🗑️ [Voice] Deleted ${deletedCount} non-client call records for consultant ${consultantId}`);
+    
+    res.json({ 
+      success: true, 
+      deletedCount,
+      message: `Cancellate ${deletedCount} chiamate di non-clienti` 
+    });
+  } catch (error) {
+    console.error("[Voice] Error deleting non-client history:", error);
+    res.status(500).json({ error: "Errore nella cancellazione dello storico" });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════
 // OUTBOUND CALLS - Chiamate in uscita programmate
 // ═══════════════════════════════════════════════════════════════════
