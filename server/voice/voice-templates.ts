@@ -373,17 +373,19 @@ export function resolveTemplateVariables(
 }
 
 /**
- * Lista template per dropdown UI
+ * Lista template per dropdown UI (con prompt per anteprima)
  */
 export function getTemplateOptions(direction: 'inbound' | 'outbound'): Array<{
   id: string;
   name: string;
   description: string;
+  prompt: string;
 }> {
   const templates = getTemplatesByDirection(direction);
   return templates.map(t => ({
     id: t.id,
     name: t.name,
-    description: t.shortDescription || t.description
+    description: t.shortDescription || t.description,
+    prompt: t.prompt
   }));
 }

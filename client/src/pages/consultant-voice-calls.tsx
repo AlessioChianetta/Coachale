@@ -520,9 +520,9 @@ interface NonClientSettings {
   outboundTemplateId: string;
   outboundAgentId: string | null;
   outboundManualPrompt: string;
-  // Template options
-  availableInboundTemplates: Array<{ id: string; name: string; description: string }>;
-  availableOutboundTemplates: Array<{ id: string; name: string; description: string }>;
+  // Template options (with prompt for preview)
+  availableInboundTemplates: Array<{ id: string; name: string; description: string; prompt: string }>;
+  availableOutboundTemplates: Array<{ id: string; name: string; description: string; prompt: string }>;
   // Legacy
   defaultVoiceDirectives: string;
   availableAgents: Array<{
@@ -2372,6 +2372,24 @@ export default function ConsultantVoiceCallsPage() {
                                         ))}
                                       </SelectContent>
                                     </Select>
+                                    {/* Template Preview */}
+                                    {(() => {
+                                      const selectedTemplate = nonClientSettingsData?.availableInboundTemplates?.find(t => t.id === inboundTemplateId);
+                                      if (selectedTemplate?.prompt) {
+                                        return (
+                                          <div className="mt-3 p-3 bg-muted rounded-md border">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <FileText className="h-4 w-4 text-green-600" />
+                                              <span className="text-xs font-medium">Anteprima Template: {selectedTemplate.name}</span>
+                                            </div>
+                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground">
+                                              {selectedTemplate.prompt}
+                                            </pre>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                   </div>
                                 )}
                               </div>
@@ -2497,6 +2515,24 @@ export default function ConsultantVoiceCallsPage() {
                                         ))}
                                       </SelectContent>
                                     </Select>
+                                    {/* Template Preview */}
+                                    {(() => {
+                                      const selectedTemplate = nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === outboundTemplateId);
+                                      if (selectedTemplate?.prompt) {
+                                        return (
+                                          <div className="mt-3 p-3 bg-muted rounded-md border">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <FileText className="h-4 w-4 text-blue-600" />
+                                              <span className="text-xs font-medium">Anteprima Template: {selectedTemplate.name}</span>
+                                            </div>
+                                            <pre className="text-xs whitespace-pre-wrap max-h-[200px] overflow-auto text-muted-foreground">
+                                              {selectedTemplate.prompt}
+                                            </pre>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                   </div>
                                 )}
                               </div>
