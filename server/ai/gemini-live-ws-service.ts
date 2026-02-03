@@ -2399,15 +2399,10 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       // PHONE CALL - UNKNOWN CALLER MODE (Non-Client)
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       else if (isPhoneCall && !userId) {
-        console.log(`\n📞 ════════════════════════════════════════════════════════════════════`);
-        console.log(`📞 [${connectionId}] PHONE CALL SCENARIO DETECTION`);
-        console.log(`📞 ════════════════════════════════════════════════════════════════════`);
-        console.log(`📞   isPhoneCall: true`);
-        console.log(`📞   userId (known client): ${userId || 'NULL (unknown caller)'}`);
-        console.log(`📞   phoneCallInstruction: ${phoneCallInstruction ? 'YES (' + phoneInstructionType + ')' : 'NO'}`);
-        console.log(`📞   → SCENARIO: ${phoneCallInstruction ? 'SCENARIO 3/4 - OUTBOUND NON-CLIENT WITH TASK/REMINDER' : 'SCENARIO 2 - INBOUND NON-CLIENT'}`);
-        console.log(`📞 ════════════════════════════════════════════════════════════════════\n`);
-        console.log(`📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
+        // Will be determined later after checking previous conversations
+        let nonClientHasPreviousConversations = false;
+        
+        console.log(`\n📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
         // Get consultant info FIRST (needed for both instruction and normal flow)
         let consultantName = 'il consulente';
@@ -2582,6 +2577,30 @@ ${historyContent}
               console.warn(`⚠️ [${connectionId}] Could not load previous conversations for instruction call:`, err);
             }
           }
+          
+          // 📊 LOG SCENARIO TABLE FOR NON-CLIENT WITH INSTRUCTION
+          console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+          console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT WITH INSTRUCTION        │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ Parametro                    │ Valore                              │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ È cliente registrato?        │ ❌ NO                                │`);
+          console.log(`│ Ha istruzione (task/remind)? │ ✅ SÌ (${(phoneInstructionType || 'generic').padEnd(10)})              │`);
+          console.log(`│ Conversazioni precedenti?    │ ${instructionHasPreviousConversations ? '✅ SÌ' : '❌ NO'}                               │`);
+          console.log(`│ Caller ID                    │ ${(phoneCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ 🎯 SCENARIO                  │ OUTBOUND NON-CLIENT + TASK/REMINDER │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
+          if (instructionHasPreviousConversations) {
+            console.log(`│   → Saluto informale (lo/la conosce già!)                          │`);
+            console.log(`│   → NON si presenta ("Ciao! Come stai?")                           │`);
+            console.log(`│   → Va dritto all'istruzione                                        │`);
+          } else {
+            console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
+            console.log(`│   → Poi va dritto all'istruzione                                    │`);
+          }
+          console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
           
           // Build dynamic greeting based on previous conversations
           const instructionGreetingSection = instructionHasPreviousConversations 
@@ -3109,6 +3128,33 @@ ${brandVoicePrompt}` : ''}`;
           minute: '2-digit'
         });
         
+        // 📊 LOG SCENARIO TABLE FOR NON-CLIENT WITHOUT INSTRUCTION (INBOUND)
+        const nonClientHasPreviousConvs = previousCallContext ? true : false;
+        console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+        console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT INBOUND                 │`);
+        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+        console.log(`│ Parametro                    │ Valore                              │`);
+        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+        console.log(`│ È cliente registrato?        │ ❌ NO                                │`);
+        console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
+        console.log(`│ Conversazioni precedenti?    │ ${nonClientHasPreviousConvs ? '✅ SÌ' : '❌ NO'}                               │`);
+        console.log(`│ Caller ID                    │ ${(phoneCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+        console.log(`│ Prompt Source                │ ${nonClientPromptSource.padEnd(20)}                 │`);
+        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+        console.log(`│ 🎯 SCENARIO                  │ INBOUND NON-CLIENT (SCENARIO 2)     │`);
+        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+        console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
+        if (nonClientHasPreviousConvs) {
+          console.log(`│   → Saluto informale (già parlato prima!)                           │`);
+          console.log(`│   → Chiede come può aiutare                                          │`);
+          console.log(`│   → Propone appuntamento se appropriato                              │`);
+        } else {
+          console.log(`│   → Si presenta ("Sono Alessia, assistente di...")                   │`);
+          console.log(`│   → Chiede come può aiutare                                          │`);
+          console.log(`│   → Propone appuntamento se appropriato                              │`);
+        }
+        console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+        
         // Combine: Voice Directives + Current Time + Content Prompt + Previous Call Context
         systemInstruction = `${finalVoiceDirectives}
 
@@ -3124,23 +3170,7 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
       // CLIENT MODE - Build prompt from user context
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       else {
-        // DETAILED LOGGING FOR CLIENT MODE
-        console.log(`\n📊 ════════════════════════════════════════════════════════════════════`);
-        console.log(`📊 [${connectionId}] CLIENT MODE SCENARIO DETECTION`);
-        console.log(`📊 ════════════════════════════════════════════════════════════════════`);
-        console.log(`📊   userId (known client): ${userId}`);
-        console.log(`📊   isPhoneCall: ${isPhoneCall}`);
-        console.log(`📊   phoneCallInstruction: ${phoneCallInstruction ? 'YES (' + phoneInstructionType + ')' : 'NO'}`);
-        if (isPhoneCall && phoneCallInstruction) {
-          console.log(`📊   → SCENARIO: SCENARIO 3/4 - OUTBOUND CLIENT WITH TASK/REMINDER`);
-        } else if (isPhoneCall && !phoneCallInstruction) {
-          console.log(`📊   → SCENARIO: SCENARIO 1 - INBOUND CALL FROM KNOWN CLIENT`);
-        } else {
-          console.log(`📊   → SCENARIO: NORMAL CLIENT MODE (non-phone call)`);
-        }
-        console.log(`📊 ════════════════════════════════════════════════════════════════════\n`);
-        
-        console.log(`📊 [${connectionId}] Building user context for personalized Live Mode...`);
+        console.log(`📊 [${connectionId}] CLIENT MODE - Building user context...`);
         // Pass sessionType to buildUserContext for proper separation
         userContext = await buildUserContext(userId!, {
           message: '',
@@ -3316,6 +3346,33 @@ ${historyContent}
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
+          // 📊 LOG SCENARIO TABLE FOR CLIENT WITH INSTRUCTION (SCENARIO 3/4)
+          console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+          console.log(`│           📊 SCENARIO DETECTION: CLIENT + INSTRUCTION               │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ Parametro                    │ Valore                              │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ È cliente registrato?        │ ✅ SÌ                                │`);
+          console.log(`│ Ha istruzione (task/remind)? │ ✅ SÌ (${(phoneInstructionType || 'generic').padEnd(10)})              │`);
+          console.log(`│ Conversazioni precedenti?    │ ${clientInstructionHasPreviousConversations ? '✅ SÌ' : '❌ NO'}                               │`);
+          console.log(`│ Client User ID               │ ${(userId?.toString() || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`│ Nome Cliente                 │ ${(clientName || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ 🎯 SCENARIO                  │ OUTBOUND CLIENT + TASK/REMINDER     │`);
+          console.log(`│                              │ (SCENARIO 3/4)                      │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
+          if (clientInstructionHasPreviousConversations) {
+            console.log(`│   → Saluto caloroso ("Ciao ${clientName.substring(0, 15)}! Come stai?")`.padEnd(70) + `│`);
+            console.log(`│   → NON si presenta (sa già chi è!)                                 │`);
+            console.log(`│   → Va dritto all'istruzione (task/reminder)                        │`);
+          } else {
+            console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
+            console.log(`│   → Poi va dritto all'istruzione (task/reminder)                    │`);
+          }
+          console.log(`│ 📋 PROMPT USED               │ Instruction Priority + Client Prompt│`);
+          console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+          
           // Build the client's normal system prompt
           const clientSystemPrompt = buildFullSystemInstructionForLive(
             mode,
@@ -3448,12 +3505,9 @@ ${clientInstructionCallHistory}
           // 📞 SCENARIO 1: CHIAMATA IN DA CLIENTE NOTO (senza instruction)
           // Usa il system prompt di live-consultation + voice directives
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          console.log(`\n📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`📞 [${connectionId}] SCENARIO 1: INBOUND CALL FROM KNOWN CLIENT`);
-          console.log(`📞   Client User ID: ${userId}`);
-          console.log(`📞   Phone Caller ID: ${phoneCallerId}`);
-          console.log(`📞   Using: Voice Directives + Live-Consultation System Prompt`);
-          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          
+          // Will be determined later
+          let inboundClientHasPreviousConvs = false;
           
           // Get current Italian time
           const italianTime = new Date().toLocaleString('it-IT', { 
@@ -3594,13 +3648,41 @@ ${historyContent}
 💡 Usa queste info per far sentire ${inboundClientName} riconosciuto!
 `;
                 }
+                inboundClientHasPreviousConvs = true;
               } else {
+                inboundClientHasPreviousConvs = false;
                 console.log(`📱 [${connectionId}] No previous conversations found for inbound client ${phoneCallerId}`);
               }
             } catch (err) {
               console.warn(`⚠️ [${connectionId}] Could not load previous conversations for inbound client call:`, err);
             }
           }
+          
+          // 📊 LOG SCENARIO TABLE FOR CLIENT INBOUND (SCENARIO 1)
+          console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+          console.log(`│           📊 SCENARIO DETECTION: CLIENT INBOUND                     │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ Parametro                    │ Valore                              │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ È cliente registrato?        │ ✅ SÌ                                │`);
+          console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
+          console.log(`│ Conversazioni precedenti?    │ ${hasPreviousConversations ? '✅ SÌ' : '❌ NO'}                               │`);
+          console.log(`│ Client User ID               │ ${(userId?.toString() || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`│ Nome Cliente                 │ ${(inboundClientName || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ 🎯 SCENARIO                  │ INBOUND CLIENT (SCENARIO 1)         │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
+          if (hasPreviousConversations) {
+            console.log(`│   → Saluto caloroso ("Ciao ${inboundClientName.substring(0, 15)}! Come stai?")`.padEnd(70) + `│`);
+            console.log(`│   → NON si presenta (sa già chi è!)                                 │`);
+            console.log(`│   → Chiede come può aiutare                                          │`);
+          } else {
+            console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
+            console.log(`│   → Chiede come può aiutare                                          │`);
+          }
+          console.log(`│ 📋 PROMPT USED               │ Live-Consultation + Voice Directives│`);
+          console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
           
           // Build the client's FULL system prompt using live-consultation mode
           const clientLiveSystemPrompt = buildFullSystemInstructionForLive(
