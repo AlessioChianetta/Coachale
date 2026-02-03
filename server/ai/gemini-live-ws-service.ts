@@ -3239,19 +3239,35 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           ? `models/${GEMINI_LIVE_AI_STUDIO_MODEL}`
           : `projects/${vertexConfig!.projectId}/locations/${vertexConfig!.location}/publishers/google/models/${vertexConfig!.modelId}`;
         
+        // For AI Studio native-audio, use compatible voice and no language_code (auto-detected)
+        // Vertex AI voices: Achernar, Algieba, Algenib, etc.
+        // AI Studio voices: Kore, Aoede, Charon, Fenrir, Puck, etc.
+        const effectiveVoiceName = (liveApiProvider === 'ai_studio') ? 'Kore' : voiceName;
+        
+        // Build speech_config differently for AI Studio (no language_code - auto-detected)
+        const speechConfig = (liveApiProvider === 'ai_studio') 
+          ? {
+              voice_config: {
+                prebuilt_voice_config: {
+                  voice_name: effectiveVoiceName
+                }
+              }
+            }
+          : {
+              language_code: "it-IT",
+              voice_config: {
+                prebuilt_voice_config: {
+                  voice_name: effectiveVoiceName
+                }
+              }
+            };
+        
         const setupMessage: any = {
           setup: {
             model: modelPath,
             generation_config: {
               response_modalities: ["AUDIO"],
-              speech_config: {
-                language_code: "it-IT",
-                voice_config: {
-                  prebuilt_voice_config: {
-                    voice_name: voiceName
-                  }
-                }
-              },
+              speech_config: speechConfig,
               temperature: 1.0,
               top_p: 0.95,
               top_k: 40,
@@ -5602,7 +5618,7 @@ ${compactFeedback}
           console.log(`   5. Invalid response_modalities configuration`);
           console.log(`\n🔧 Troubleshooting steps:`);
           console.log(`   - Provider: ${liveApiProvider}`);
-          console.log(`   - Check if model ID is correct: ${currentModelId}`);
+          console.log(`   - Model: ${liveApiProvider === 'ai_studio' ? GEMINI_LIVE_AI_STUDIO_MODEL : vertexConfig?.modelId || 'unknown'}`);
           console.log(`   - Verify voice "${voiceName}" is supported by this model`);
           console.log(`   - Check system instruction length: ${systemInstruction?.length || 0} chars`);
           console.log(`   - Validate all generation_config parameters`);
