@@ -3348,14 +3348,21 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         console.log(`   - Model path: ${setupMessage.setup.model}`);
         console.log(`   - System instruction length: ${systemInstruction.length} chars (always minimal)`);
         console.log(`   - Prompt mode: ${useFullPrompt ? 'FULL (complete prompt in chunks)' : 'MINIMAL (user data in chunks)'}`);
-        console.log(`   - Response modalities: ${setupMessage.setup.generation_config.response_modalities.join(', ')}`);
-        console.log(`   - Voice: ${setupMessage.setup.generation_config.speech_config.voice_config.prebuilt_voice_config.voice_name}`);
-        console.log(`   - Language: ${setupMessage.setup.generation_config.speech_config.language_code}`);
+        // Handle both camelCase (AI Studio) and snake_case (Vertex AI) formats
+        const genConfig = setupMessage.setup.generationConfig || setupMessage.setup.generation_config;
+        const respModalities = genConfig?.responseModalities || genConfig?.response_modalities || ['AUDIO'];
+        const spConfig = genConfig?.speechConfig || genConfig?.speech_config;
+        const vConfig = spConfig?.voiceConfig || spConfig?.voice_config;
+        const pvConfig = vConfig?.prebuiltVoiceConfig || vConfig?.prebuilt_voice_config;
+        console.log(`   - Response modalities: ${respModalities.join(', ')}`);
+        console.log(`   - Voice: ${pvConfig?.voiceName || pvConfig?.voice_name || 'default'}`);
+        console.log(`   - Language: ${spConfig?.languageCode || spConfig?.language_code || 'auto-detected'}`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
         // 🔍 DEBUG: Track system instruction for "Fresh Text Input" analysis
-        if (!validatedResumeHandle && setupMessage.setup.system_instruction) {
-          const sysInstText = setupMessage.setup.system_instruction.parts[0].text;
+        const sysInst = setupMessage.setup.systemInstruction || setupMessage.setup.system_instruction;
+        if (!validatedResumeHandle && sysInst) {
+          const sysInstText = sysInst.parts[0].text;
           currentTurnMessages.push({
             type: 'SETUP - System Instruction (NON-CACHED)',
             content: sysInstText.substring(0, 500) + '...',
