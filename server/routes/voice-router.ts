@@ -1232,21 +1232,34 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
     console.log(`📞 [Outbound] Calling VPS: ${outboundUrl} for ${call.target_phone}`);
     
+    // 🔍 DEBUG: Log the FULL payload being sent to VPS
+    const vpsPayload = {
+      targetPhone: call.target_phone,
+      callId: callId,
+      aiMode: call.ai_mode,
+      customPrompt: call.custom_prompt,
+      callInstruction: call.call_instruction,
+      instructionType: call.instruction_type,
+      useDefaultTemplate: call.use_default_template
+    };
+    console.log(`📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`📋 [Outbound] FULL VPS PAYLOAD:`);
+    console.log(`📋   targetPhone: ${vpsPayload.targetPhone}`);
+    console.log(`📋   callId: ${vpsPayload.callId}`);
+    console.log(`📋   aiMode: ${vpsPayload.aiMode}`);
+    console.log(`📋   customPrompt: ${vpsPayload.customPrompt ? vpsPayload.customPrompt.substring(0, 100) + '...' : 'null'}`);
+    console.log(`📋   callInstruction: ${vpsPayload.callInstruction || 'null'}`);
+    console.log(`📋   instructionType: ${vpsPayload.instructionType || 'null'}`);
+    console.log(`📋   useDefaultTemplate: ${vpsPayload.useDefaultTemplate}`);
+    console.log(`📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    
     const response = await fetch(outboundUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        targetPhone: call.target_phone,
-        callId: callId,
-        aiMode: call.ai_mode,
-        customPrompt: call.custom_prompt,
-        callInstruction: call.call_instruction,
-        instructionType: call.instruction_type,
-        useDefaultTemplate: call.use_default_template
-      })
+      body: JSON.stringify(vpsPayload)
     });
     
     if (!response.ok) {

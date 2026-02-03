@@ -713,6 +713,40 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.warn(`⚠️ [PHONE SERVICE] Could not fetch voice settings, using default: ${consultantVoice}`);
         }
 
+        // 🎯 Check for active scheduled call with instruction for this phone number
+        let callInstruction: string | null = null;
+        let instructionType: 'task' | 'reminder' | null = null;
+        let scheduledCallId: string | null = null;
+        try {
+          const scheduledCallResult = await db.execute(sql`
+            SELECT id, call_instruction, instruction_type 
+            FROM scheduled_voice_calls 
+            WHERE consultant_id = ${decoded.consultantId}
+              AND target_phone = ${normalizedCallerId}
+              AND status = 'calling'
+              AND call_instruction IS NOT NULL
+            ORDER BY updated_at DESC
+            LIMIT 1
+          `);
+          
+          if (scheduledCallResult.rows.length > 0) {
+            const scheduledCall = scheduledCallResult.rows[0] as any;
+            callInstruction = scheduledCall.call_instruction;
+            instructionType = scheduledCall.instruction_type;
+            scheduledCallId = scheduledCall.id;
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🎯 [PHONE SERVICE] FOUND CALL INSTRUCTION!`);
+            console.log(`🎯   Scheduled Call ID: ${scheduledCallId}`);
+            console.log(`🎯   Type: ${instructionType || 'generic'}`);
+            console.log(`🎯   Instruction: ${callInstruction}`);
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          } else {
+            console.log(`📞 [PHONE SERVICE] No active scheduled call with instruction found for ${normalizedCallerId}`);
+          }
+        } catch (scheduledErr) {
+          console.warn(`⚠️ [PHONE SERVICE] Could not fetch scheduled call instruction:`, scheduledErr);
+        }
+
         // Create voice call record in database
         const voiceCallId = `vc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const freeswitchUuid = url.searchParams.get('uuid') || `ws_${Date.now()}`;
@@ -745,7 +779,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.error(`❌ [PHONE SERVICE] Failed to create voice call record:`, dbErr);
         }
 
-        console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}`);
+        console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
 
         return {
           userId: userId,
@@ -766,6 +800,10 @@ async function getUserIdFromRequest(req: any): Promise<{
           isPhoneCall: true,
           phoneCallerId: normalizedCallerId,
           voiceCallId: voiceCallId,
+          // 🎯 Call instruction for outbound calls
+          phoneCallInstruction: callInstruction,
+          phoneInstructionType: instructionType,
+          phoneScheduledCallId: scheduledCallId,
         };
       } catch (jwtError) {
         console.error('❌ Invalid phone_service token:', jwtError);
@@ -1094,7 +1132,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       return;
     }
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneInstructionType, phoneScheduledCallId } = authResult;
 
     // Validazione: consultantId è obbligatorio per Live Mode (except sales_agent and consultation_invite)
     if (!consultantId && mode !== 'sales_agent' && mode !== 'consultation_invite') {
@@ -2352,6 +2390,80 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       else if (isPhoneCall && !userId) {
         console.log(`📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
+        // 🎯 PRIORITY CHECK: If there's a specific call instruction, use ONLY that
+        if (phoneCallInstruction) {
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🎯 [${connectionId}] USING CALL INSTRUCTION (PRIORITY MODE)`);
+          console.log(`🎯   Type: ${phoneInstructionType || 'generic'}`);
+          console.log(`🎯   Instruction: ${phoneCallInstruction}`);
+          console.log(`🎯   Scheduled Call ID: ${phoneScheduledCallId}`);
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          
+          // Get current Italian time
+          const italianTime = new Date().toLocaleString('it-IT', { 
+            timeZone: 'Europe/Rome',
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          // Build MINIMAL prompt with ONLY the instruction
+          const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
+                                        phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
+          
+          systemInstruction = `🎙️ MODALITÀ: CHIAMATA VOCALE CON ISTRUZIONE SPECIFICA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨🚨🚨 ISTRUZIONE PRIORITARIA - SEGUI QUESTA 🚨🚨🚨
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${instructionTypeLabel}:
+${phoneCallInstruction}
+
+⚠️ QUESTA ISTRUZIONE HA PRIORITÀ ASSOLUTA!
+- Inizia SUBITO con questa istruzione
+- NON parlare di altro prima
+- NON chiedere "Come posso aiutarti?"
+- VAI DRITTO al punto dell'istruzione
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ TONO E STILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ Mantieni un tono allegro, energico ma professionale.
+🎯 Sii diretto ma cordiale.
+📞 Ricorda che stai chiamando TU il cliente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 CONTESTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Data e ora: ${italianTime} (Italia)
+Tipo chiamata: OUTBOUND (sei tu che chiami)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 ESEMPIO DI APERTURA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"Ciao! Sono Alessia, ti chiamo per ricordarti che [ISTRUZIONE]. Come stai? Hai già pensato a come gestire questa cosa?"
+
+NON DIRE: "Come posso aiutarti?" - SEI TU CHE CHIAMI PER UN MOTIVO SPECIFICO!`;
+
+          userDataContext = '';
+          console.log(`🎯 [${connectionId}] Instruction-only prompt built (${systemInstruction.length} chars)`);
+          
+          // 🔥 PRINT FULL PROMPT FOR DEBUGGING
+          console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🎯 FULL INSTRUCTION-ONLY PROMPT:`);
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(systemInstruction);
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        } else {
+          // No specific instruction - continue with normal non-client prompt flow
+        
         // Get consultant info for personalized prompt
         let consultantName = 'il consulente';
         let consultantBusinessName = '';
@@ -2808,6 +2920,7 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
         
         userDataContext = ''; // No user data for unknown callers
         console.log(`📞 [${connectionId}] Non-client prompt built (${systemInstruction.length} chars) - Source: ${nonClientPromptSource}${previousCallContext ? ' [WITH CALL HISTORY]' : ''}`);
+        } // Close the else block for non-instruction flow
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // CLIENT MODE - Build prompt from user context
