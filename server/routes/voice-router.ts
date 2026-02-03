@@ -928,13 +928,16 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       WHERE consultant_id = ${consultantId}
     `);
 
-    // Get available agents for dropdown (from live_sales_agents table)
+    // Get available agents for dropdown (from consultant_whatsapp_config table - the real WhatsApp agents)
     const agentsResult = await db.execute(sql`
-      SELECT id, agent_name as name, agent_type as persona, system_prompt_override as prompt, 
+      SELECT id, 
+             COALESCE(agent_name, business_name) as name, 
+             agent_type as persona, 
+             agent_instructions as prompt, 
              CASE WHEN is_active THEN 'active' ELSE 'inactive' END as status
-      FROM live_sales_agents 
+      FROM consultant_whatsapp_config 
       WHERE consultant_id = ${consultantId}
-      ORDER BY agent_name ASC
+      ORDER BY COALESCE(agent_name, business_name) ASC
     `);
 
     const settings = result.rows[0] as any;
@@ -975,10 +978,10 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       return res.status(400).json({ error: "Invalid nonClientPromptSource, must be 'agent', 'manual', or 'default'" });
     }
 
-    // If agent source, validate agentId exists (using live_sales_agents table)
+    // If agent source, validate agentId exists (using consultant_whatsapp_config table)
     if (nonClientPromptSource === 'agent' && nonClientAgentId) {
       const agentCheck = await db.execute(sql`
-        SELECT id FROM live_sales_agents WHERE id = ${nonClientAgentId} AND consultant_id = ${consultantId}
+        SELECT id FROM consultant_whatsapp_config WHERE id = ${nonClientAgentId} AND consultant_id = ${consultantId}
       `);
       if (agentCheck.rows.length === 0) {
         return res.status(400).json({ error: "Agent not found or does not belong to this consultant" });

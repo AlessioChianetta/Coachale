@@ -135,12 +135,12 @@ interface ScheduledVoiceCall {
 interface NonClientSettings {
   voiceDirectives: string;
   nonClientPromptSource: 'agent' | 'manual' | 'default';
-  nonClientAgentId: number | null;
+  nonClientAgentId: string | null;
   nonClientManualPrompt: string;
   defaultVoiceDirectives: string;
   defaultNonClientPrompt: string;
   availableAgents: Array<{
-    id: number;
+    id: string;
     name: string;
     persona: string | null;
     prompt: string | null;
@@ -193,7 +193,7 @@ export default function ConsultantVoiceCallsPage() {
 
   const [voiceDirectives, setVoiceDirectives] = useState("");
   const [promptSource, setPromptSource] = useState<'agent' | 'manual' | 'default'>('default');
-  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [manualPrompt, setManualPrompt] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -1189,9 +1189,9 @@ export default function ConsultantVoiceCallsPage() {
                               {promptSource === 'agent' && (
                                 <div className="pt-2">
                                   <Select
-                                    value={selectedAgentId?.toString() || ''}
+                                    value={selectedAgentId || ''}
                                     onValueChange={(value) => {
-                                      setSelectedAgentId(value ? parseInt(value) : null);
+                                      setSelectedAgentId(value || null);
                                       setHasChanges(true);
                                     }}
                                   >
@@ -1200,7 +1200,7 @@ export default function ConsultantVoiceCallsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {nonClientSettingsData?.availableAgents.map((agent) => (
-                                        <SelectItem key={agent.id} value={agent.id.toString()}>
+                                        <SelectItem key={agent.id} value={agent.id}>
                                           <div className="flex items-center gap-2">
                                             <span>{agent.name}</span>
                                             {agent.persona && (
