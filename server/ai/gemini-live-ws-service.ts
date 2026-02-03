@@ -3269,34 +3269,24 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         // - Vertex AI: snake_case (generation_config, response_modalities, etc.)
         const setupMessage: any = (liveApiProvider === 'ai_studio') 
           ? {
-              // AI Studio format: camelCase
+              // AI Studio format: camelCase - SIMPLIFIED to avoid 1007 errors
               setup: {
                 model: modelPath,
                 generationConfig: {
                   responseModalities: ["AUDIO"],
                   speechConfig: speechConfig,
-                  temperature: 1.0,
-                  topP: 0.95,
-                  topK: 40,
-                  maxOutputTokens: 8192
+                  temperature: 1.0
                 },
-                inputAudioTranscription: {},
-                outputAudioTranscription: {},
+                // Only include systemInstruction if no resume handle
                 ...(!validatedResumeHandle && {
                   systemInstruction: {
                     parts: [{ text: systemInstruction }]
                   }
                 }),
-                realtimeInputConfig: {
-                  automaticActivityDetection: {
-                    disabled: false,
-                    startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
-                    endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
-                    prefixPaddingMs: 500,
-                    silenceDurationMs: 700
-                  }
-                },
-                sessionResumption: { handle: validatedResumeHandle || null }
+                // Only include sessionResumption if we have a valid handle
+                ...(validatedResumeHandle && {
+                  sessionResumption: { handle: validatedResumeHandle }
+                })
               }
             }
           : {
