@@ -48,6 +48,7 @@ Key enhancements include:
 - Content Variety System to prevent repetitive AI-generated ads through hook pattern rotation, 4-dimension angle rotation, 100+ dynamic section instruction variants, enhanced anti-repetition with pattern detection, and AI compression for content exceeding platform limits.
 - Voice Telephony System (Alessia AI Phone) with FreeSWITCH integration, automatic caller recognition, Gemini 2.5 Flash Native Audio for real-time voice AI, database tables for call management, rate limiting, service token authentication for VPS bridge, a Caller History Context System for returning anonymous callers, and a Voice Call Recording System with real-time transcript updates.
 - WhatsApp Agent Import System allowing voice calls to import AI agent configurations from WhatsApp agents, with an Agent preview UI and a Prompt Priority System. An Anti-Identity Leak Architecture ensures agent instructions and brand voice are used appropriately without AI identity confusion.
+- Outbound Voice Call Retry System with automatic retry for no_answer/busy/short_call states, exponential backoff (5min → 10min → 20min... max 30min), configurable max attempts and base interval per consultant, VPS callback endpoint for call result reporting, and comprehensive UI with status badges, attempt counters, and retry configuration.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
