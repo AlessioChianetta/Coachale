@@ -120,6 +120,12 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
   
   // 📱 WAKE LOCK: Mantieni schermo sempre acceso durante chiamate
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  
+  // 🔊 OFFICE BACKGROUND AUDIO
+  const backgroundAudioBufferRef = useRef<AudioBuffer | null>(null);
+  const backgroundSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const backgroundGainRef = useRef<GainNode | null>(null);
+  const backgroundLoadedRef = useRef<boolean>(false);
 
   // 🔑 SESSION ISOLATION: Generate unique localStorage key for each agent/user combination
   const getResumeHandleKey = useCallback((): string => {
@@ -404,6 +410,80 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       console.log('⏹️ Autosave interval fermato');
     }
   }, []);
+
+  // 🔊 Load office background audio
+  const loadBackgroundAudio = useCallback(async () => {
+    if (backgroundLoadedRef.current) return;
+    
+    try {
+      const response = await fetch('/audio/office-background.mp3');
+      const arrayBuffer = await response.arrayBuffer();
+      
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+      }
+      
+      backgroundAudioBufferRef.current = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      backgroundLoadedRef.current = true;
+      console.log('🔊 [BACKGROUND] Office audio loaded successfully');
+    } catch (error) {
+      console.error('❌ [BACKGROUND] Failed to load office background audio:', error);
+    }
+  }, []);
+
+  // 🔊 Stop background audio
+  const stopBackgroundAudio = useCallback(() => {
+    if (backgroundSourceRef.current) {
+      try {
+        backgroundSourceRef.current.stop();
+        backgroundSourceRef.current.disconnect();
+      } catch (e) {
+        // Ignore errors if already stopped
+      }
+      backgroundSourceRef.current = null;
+    }
+    if (backgroundGainRef.current) {
+      try {
+        backgroundGainRef.current.disconnect();
+      } catch (e) {
+        // Ignore errors
+      }
+      backgroundGainRef.current = null;
+    }
+    console.log('🔇 [BACKGROUND] Office audio stopped');
+  }, []);
+
+  // 🔊 Start background audio loop
+  const startBackgroundAudio = useCallback(() => {
+    if (!backgroundAudioBufferRef.current || !audioContextRef.current) {
+      console.log('⚠️ [BACKGROUND] Cannot start - audio not loaded or no context');
+      return;
+    }
+    
+    // Stop any existing background audio
+    stopBackgroundAudio();
+    
+    try {
+      // Create gain node for volume control (keep it subtle - 15% volume)
+      const gainNode = audioContextRef.current.createGain();
+      gainNode.gain.value = 0.15; // 15% volume - subtle office ambience
+      gainNode.connect(audioContextRef.current.destination);
+      backgroundGainRef.current = gainNode;
+      
+      // Create source and set to loop
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = backgroundAudioBufferRef.current;
+      source.loop = true;
+      source.connect(gainNode);
+      source.start(0);
+      backgroundSourceRef.current = source;
+      
+      console.log('🔊 [BACKGROUND] Office audio started (15% volume, looping)');
+    } catch (error) {
+      console.error('❌ [BACKGROUND] Failed to start background audio:', error);
+    }
+  }, [stopBackgroundAudio]);
+
   // Effetto "Matrix" per cambiare le scritte di caricamento
   useEffect(() => {
     if (liveState === 'loading' || connectionStatus === 'connecting') {
@@ -722,7 +802,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
         console.log('✅ WebSocket connected');
         setConnectionStatus('connected');
         setLiveState('loading');
@@ -731,6 +811,10 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
         reconnectAttemptsRef.current = 0;
 
         startConversationTimer();
+        
+        // 🔊 Load and start office background audio
+        await loadBackgroundAudio();
+        startBackgroundAudio();
 
         // Show different toast for resumed vs new session
         const isResuming = sessionResumeHandleRef.current !== null;
@@ -1853,6 +1937,9 @@ registerProcessor('pcm-processor', PCMProcessor);
 
     // Mark session as inactive to prevent playback resurrection
     isSessionActiveRef.current = false;
+
+    // 🔊 Stop background audio
+    stopBackgroundAudio();
 
     // Stop audio immediately
     stopCurrentAudio();
