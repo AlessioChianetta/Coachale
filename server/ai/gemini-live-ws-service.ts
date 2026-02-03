@@ -2373,7 +2373,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         // Load non-client settings from database
         let voiceDirectives = '';
         let nonClientPromptSource: 'agent' | 'manual' | 'default' = 'default';
-        let nonClientAgentId: number | null = null;
+        let nonClientAgentId: string | null = null;
         let nonClientManualPrompt = '';
         
         if (consultantId) {
@@ -2586,18 +2586,114 @@ Puoi fare riferimento alle conversazioni precedenti: "Ah, certo! L'ultima volta 
         // BUILD CONTENT PROMPT (after extracting caller name)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         if (nonClientPromptSource === 'agent' && nonClientAgentId) {
-          // Load agent prompt from live_sales_agents table
+          // Load agent prompt from consultant_whatsapp_config table (the real WhatsApp agents)
           try {
             const agentResult = await db.execute(sql`
-              SELECT system_prompt_override as prompt, agent_name as name
-              FROM live_sales_agents 
+              SELECT 
+                agent_instructions,
+                COALESCE(agent_name, business_name) as name,
+                business_name,
+                business_description,
+                consultant_bio,
+                consultant_display_name,
+                vision,
+                mission,
+                values,
+                usp,
+                who_we_help,
+                who_we_dont_help,
+                what_we_do,
+                how_we_do_it,
+                services_offered,
+                guarantees,
+                years_experience,
+                clients_helped,
+                results_generated,
+                case_studies,
+                software_created,
+                books_published,
+                ai_personality
+              FROM consultant_whatsapp_config 
               WHERE id = ${nonClientAgentId}
             `);
             
-            if (agentResult.rows.length > 0 && (agentResult.rows[0] as any).prompt) {
-              const agent = agentResult.rows[0] as { prompt: string; name: string };
-              contentPrompt = agent.prompt;
-              console.log(`📞 [${connectionId}] Using agent prompt: ${agent.name} (${contentPrompt.length} chars)`);
+            if (agentResult.rows.length > 0) {
+              const agent = agentResult.rows[0] as any;
+              
+              // Build comprehensive prompt with Brand Voice data
+              let brandVoicePrompt = '';
+              
+              // Core identity
+              if (agent.business_name) {
+                brandVoicePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏢 BUSINESS & IDENTITÀ\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                brandVoicePrompt += `• Business: ${agent.business_name}\n`;
+                if (agent.consultant_display_name) brandVoicePrompt += `• Consulente: ${agent.consultant_display_name}\n`;
+                if (agent.business_description) brandVoicePrompt += `• Descrizione: ${agent.business_description}\n`;
+                if (agent.consultant_bio) brandVoicePrompt += `• Bio: ${agent.consultant_bio}\n`;
+              }
+              
+              // Vision, Mission, Values, USP
+              if (agent.vision || agent.mission || agent.usp) {
+                brandVoicePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎯 POSIZIONAMENTO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                if (agent.vision) brandVoicePrompt += `• Vision: ${agent.vision}\n`;
+                if (agent.mission) brandVoicePrompt += `• Mission: ${agent.mission}\n`;
+                if (agent.values && Array.isArray(agent.values) && agent.values.length > 0) {
+                  brandVoicePrompt += `• Valori: ${agent.values.join(', ')}\n`;
+                }
+                if (agent.usp) brandVoicePrompt += `• USP: ${agent.usp}\n`;
+              }
+              
+              // Target audience
+              if (agent.who_we_help || agent.who_we_dont_help) {
+                brandVoicePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👥 TARGET\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                if (agent.who_we_help) brandVoicePrompt += `• Chi aiutiamo: ${agent.who_we_help}\n`;
+                if (agent.who_we_dont_help) brandVoicePrompt += `• Chi NON aiutiamo: ${agent.who_we_dont_help}\n`;
+              }
+              
+              // What we do
+              if (agent.what_we_do || agent.how_we_do_it) {
+                brandVoicePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔧 METODO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                if (agent.what_we_do) brandVoicePrompt += `• Cosa facciamo: ${agent.what_we_do}\n`;
+                if (agent.how_we_do_it) brandVoicePrompt += `• Come lo facciamo: ${agent.how_we_do_it}\n`;
+              }
+              
+              // Credentials
+              if (agent.years_experience || agent.clients_helped || agent.results_generated) {
+                brandVoicePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏆 CREDENZIALI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                if (agent.years_experience) brandVoicePrompt += `• Anni di esperienza: ${agent.years_experience}\n`;
+                if (agent.clients_helped) brandVoicePrompt += `• Clienti aiutati: ${agent.clients_helped}\n`;
+                if (agent.results_generated) brandVoicePrompt += `• Risultati: ${agent.results_generated}\n`;
+              }
+              
+              // Services & Guarantees
+              if (agent.services_offered && Array.isArray(agent.services_offered) && agent.services_offered.length > 0) {
+                brandVoicePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n💼 SERVIZI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                for (const service of agent.services_offered) {
+                  if (service.name) {
+                    brandVoicePrompt += `• ${service.name}${service.price ? ` (${service.price})` : ''}\n`;
+                    if (service.description) brandVoicePrompt += `  ${service.description}\n`;
+                  }
+                }
+              }
+              if (agent.guarantees) {
+                brandVoicePrompt += `• Garanzie: ${agent.guarantees}\n`;
+              }
+              
+              // AI Personality
+              if (agent.ai_personality) {
+                brandVoicePrompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🤖 PERSONALITÀ AI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                brandVoicePrompt += agent.ai_personality + '\n';
+              }
+              
+              // Combine: agent_instructions (main prompt) + Brand Voice context
+              if (agent.agent_instructions) {
+                contentPrompt = agent.agent_instructions + '\n\n' + brandVoicePrompt;
+              } else {
+                // No agent_instructions, use Brand Voice as context for default prompt
+                contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX) + '\n\n' + brandVoicePrompt;
+              }
+              
+              console.log(`📞 [${connectionId}] Using agent prompt: ${agent.name} (${contentPrompt.length} chars, includes Brand Voice)`);
             } else {
               console.warn(`⚠️ [${connectionId}] Agent ${nonClientAgentId} not found, falling back to default`);
               contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);

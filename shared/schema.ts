@@ -3234,7 +3234,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   // Non-Client Phone Call Prompt Configuration
   voiceDirectives: text("voice_directives"), // Customizable voice directives (tone, greeting style, etc.)
   nonClientPromptSource: text("non_client_prompt_source").$type<"agent" | "manual" | "default">().default("default"), // Source for non-client prompt
-  nonClientAgentId: integer("non_client_agent_id"), // Reference to ai_agents if source is 'agent'
+  nonClientAgentId: varchar("non_client_agent_id"), // Reference to consultant_whatsapp_config if source is 'agent' (UUID)
   nonClientManualPrompt: text("non_client_manual_prompt"), // Manual prompt text if source is 'manual'
 
   lastSyncAt: timestamp("last_sync_at"),
