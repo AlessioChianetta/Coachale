@@ -2565,8 +2565,8 @@ Ecco le conversazioni precedenti:
                 if (conv.messages && Array.isArray(conv.messages)) {
                   // Include ALL messages from each conversation
                   for (const msg of conv.messages) {
-                    // Use generic "Assistente" instead of "Alessia" to avoid confusing AI about identity
-                    const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Assistente';
+                    // Use "Tu" for assistant messages to be neutral about identity
+                    const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Tu';
                     // Truncate long messages
                     const content = msg.content.length > 200 
                       ? msg.content.substring(0, 200) + '...'
@@ -2721,9 +2721,8 @@ Ecco le conversazioni precedenti:
 
 🚨 REGOLA FONDAMENTALE:
 - Segui ESATTAMENTE il comportamento e il messaggio di apertura definiti nelle istruzioni sotto
-- Se le istruzioni non menzionano "Alessia", NON presentarti come Alessia
-- Usa SOLO il nome/identità specificato nelle istruzioni dell'agente
-- Se non c'è un nome specifico, presentati semplicemente come "l'assistente di ${consultantName}"
+- Se le istruzioni specificano un NOME per te, usa quello
+- Se NON c'è un nome specifico nelle istruzioni, il tuo nome di default è "Alessia"
 
 ${interpolatedInstructions}
 
