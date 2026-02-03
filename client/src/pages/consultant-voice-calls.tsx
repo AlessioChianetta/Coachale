@@ -163,10 +163,21 @@ interface ClientWithPhone {
   lastContact: string | null;
 }
 
+interface TemplateField {
+  name: string;
+  label: string;
+  type: 'text' | 'date' | 'time' | 'number' | 'select';
+  placeholder?: string;
+  options?: string[];
+  required?: boolean;
+}
+
 interface TemplateItem {
   label: string;
   text: string;
   type: 'task' | 'reminder';
+  fields?: TemplateField[];
+  generateText?: (values: Record<string, string>) => string;
 }
 
 interface TemplateCategory {
@@ -184,10 +195,47 @@ const TEMPLATE_LIBRARY: TemplateCategory[] = [
     label: "Appuntamenti",
     color: "text-blue-600",
     items: [
-      { label: "Conferma appuntamento", text: "Chiedi conferma per l'appuntamento fissato", type: "task" },
-      { label: "Richiesta nuovo appuntamento", text: "Proponi di fissare un nuovo appuntamento", type: "task" },
-      { label: "Promemoria domani", text: "Ricordagli l'appuntamento previsto per domani", type: "reminder" },
-      { label: "Riprogrammazione", text: "Proponi di riprogrammare l'appuntamento", type: "reminder" },
+      { 
+        label: "Conferma appuntamento", 
+        text: "Conferma appuntamento",
+        type: "task",
+        fields: [
+          { name: 'date', label: 'Data appuntamento', type: 'date', required: true },
+          { name: 'time', label: 'Ora', type: 'time', required: true },
+          { name: 'purpose', label: 'Motivo', type: 'text', placeholder: 'Es: consulenza fiscale' },
+        ],
+        generateText: (v) => `Chiedi conferma per l'appuntamento del ${v.date} alle ${v.time}${v.purpose ? ` per ${v.purpose}` : ''}. Se non può, proponi alternativa.`
+      },
+      { 
+        label: "Richiesta nuovo appuntamento", 
+        text: "Richiesta appuntamento",
+        type: "task",
+        fields: [
+          { name: 'reason', label: 'Motivo incontro', type: 'text', placeholder: 'Es: revisione pratica', required: true },
+          { name: 'preferredDay', label: 'Giorno preferito', type: 'select', options: ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] },
+        ],
+        generateText: (v) => `Proponi di fissare un nuovo appuntamento per ${v.reason}${v.preferredDay ? `. Preferibilmente ${v.preferredDay}` : ''}. Chiedi disponibilità.`
+      },
+      { 
+        label: "Promemoria domani", 
+        text: "Promemoria appuntamento",
+        type: "reminder",
+        fields: [
+          { name: 'time', label: 'Ora appuntamento', type: 'time', required: true },
+          { name: 'location', label: 'Luogo', type: 'text', placeholder: 'Es: ufficio, online' },
+        ],
+        generateText: (v) => `Ricordagli l'appuntamento di domani alle ${v.time}${v.location ? ` (${v.location})` : ''}. Chiedi conferma.`
+      },
+      { 
+        label: "Riprogrammazione", 
+        text: "Riprogrammazione appuntamento",
+        type: "reminder",
+        fields: [
+          { name: 'originalDate', label: 'Data originale', type: 'date', required: true },
+          { name: 'reason', label: 'Motivo cambio', type: 'text', placeholder: 'Es: impegno imprevisto' },
+        ],
+        generateText: (v) => `Proponi di riprogrammare l'appuntamento previsto per il ${v.originalDate}${v.reason ? ` (${v.reason})` : ''}. Chiedi nuova disponibilità.`
+      },
     ]
   },
   {
@@ -196,10 +244,48 @@ const TEMPLATE_LIBRARY: TemplateCategory[] = [
     label: "Pagamenti",
     color: "text-green-600",
     items: [
-      { label: "Scadenza in arrivo", text: "Ricordagli la scadenza del pagamento in arrivo", type: "reminder" },
-      { label: "Sollecito scaduto", text: "Sollecita gentilmente il pagamento scaduto", type: "reminder" },
-      { label: "Rate in scadenza", text: "Ricordagli le rate in scadenza questo mese", type: "reminder" },
-      { label: "Conferma pagamento", text: "Conferma la ricezione del pagamento effettuato", type: "task" },
+      { 
+        label: "Scadenza in arrivo", 
+        text: "Promemoria scadenza",
+        type: "reminder",
+        fields: [
+          { name: 'amount', label: 'Importo (€)', type: 'number', required: true },
+          { name: 'dueDate', label: 'Scadenza', type: 'date', required: true },
+          { name: 'description', label: 'Descrizione', type: 'text', placeholder: 'Es: rata mutuo' },
+        ],
+        generateText: (v) => `Ricordagli che ha una scadenza di €${v.amount} il ${v.dueDate}${v.description ? ` (${v.description})` : ''}. Chiedi se ha bisogno di assistenza.`
+      },
+      { 
+        label: "Sollecito scaduto", 
+        text: "Sollecito pagamento",
+        type: "reminder",
+        fields: [
+          { name: 'amount', label: 'Importo (€)', type: 'number', required: true },
+          { name: 'daysOverdue', label: 'Giorni di ritardo', type: 'number', required: true },
+        ],
+        generateText: (v) => `Sollecita gentilmente il pagamento di €${v.amount} scaduto da ${v.daysOverdue} giorni. Chiedi se ci sono difficoltà e proponi soluzioni.`
+      },
+      { 
+        label: "Rate in scadenza", 
+        text: "Promemoria rate",
+        type: "reminder",
+        fields: [
+          { name: 'numRates', label: 'Numero rate', type: 'number', required: true },
+          { name: 'totalAmount', label: 'Importo totale (€)', type: 'number', required: true },
+        ],
+        generateText: (v) => `Ricordagli che ha ${v.numRates} rate in scadenza questo mese per un totale di €${v.totalAmount}. Verifica che sia tutto in ordine.`
+      },
+      { 
+        label: "Conferma pagamento", 
+        text: "Conferma ricezione pagamento",
+        type: "task",
+        fields: [
+          { name: 'amount', label: 'Importo (€)', type: 'number', required: true },
+          { name: 'paymentDate', label: 'Data pagamento', type: 'date', required: true },
+          { name: 'method', label: 'Metodo', type: 'select', options: ['Bonifico', 'Carta', 'Contanti', 'Altro'] },
+        ],
+        generateText: (v) => `Conferma la ricezione del pagamento di €${v.amount} del ${v.paymentDate}${v.method ? ` (${v.method})` : ''}. Ringrazia per la puntualità.`
+      },
     ]
   },
   {
@@ -208,10 +294,45 @@ const TEMPLATE_LIBRARY: TemplateCategory[] = [
     label: "Documenti",
     color: "text-purple-600",
     items: [
-      { label: "Richiesta documenti", text: "Richiedi i documenti mancanti per procedere", type: "task" },
-      { label: "Firma contratto", text: "Chiedi se ha firmato il contratto inviato", type: "task" },
-      { label: "Conferma ricezione", text: "Conferma la corretta ricezione dei documenti", type: "reminder" },
-      { label: "Invio preventivo", text: "Informalo dell'invio del preventivo via email", type: "reminder" },
+      { 
+        label: "Richiesta documenti", 
+        text: "Richiesta documenti",
+        type: "task",
+        fields: [
+          { name: 'documents', label: 'Documenti richiesti', type: 'text', placeholder: 'Es: carta identità, codice fiscale', required: true },
+          { name: 'reason', label: 'Motivo', type: 'text', placeholder: 'Es: apertura pratica' },
+        ],
+        generateText: (v) => `Richiedi i seguenti documenti: ${v.documents}${v.reason ? ` per ${v.reason}` : ''}. Spiega come inviarli.`
+      },
+      { 
+        label: "Firma contratto", 
+        text: "Richiesta firma contratto",
+        type: "task",
+        fields: [
+          { name: 'contractType', label: 'Tipo contratto', type: 'text', placeholder: 'Es: consulenza annuale', required: true },
+          { name: 'sentDate', label: 'Data invio', type: 'date', required: true },
+        ],
+        generateText: (v) => `Chiedi se ha firmato il contratto di ${v.contractType} inviato il ${v.sentDate}. Offri assistenza per eventuali dubbi.`
+      },
+      { 
+        label: "Conferma ricezione", 
+        text: "Conferma ricezione documenti",
+        type: "reminder",
+        fields: [
+          { name: 'documentType', label: 'Tipo documento', type: 'text', placeholder: 'Es: preventivo, fattura', required: true },
+        ],
+        generateText: (v) => `Conferma la corretta ricezione dei documenti (${v.documentType}). Chiedi se ha domande.`
+      },
+      { 
+        label: "Invio preventivo", 
+        text: "Notifica invio preventivo",
+        type: "reminder",
+        fields: [
+          { name: 'subject', label: 'Oggetto preventivo', type: 'text', placeholder: 'Es: ristrutturazione ufficio', required: true },
+          { name: 'amount', label: 'Importo (€)', type: 'number' },
+        ],
+        generateText: (v) => `Informalo dell'invio del preventivo per ${v.subject}${v.amount ? ` (€${v.amount})` : ''} via email. Chiedi di revisionarlo.`
+      },
     ]
   },
   {
@@ -220,10 +341,46 @@ const TEMPLATE_LIBRARY: TemplateCategory[] = [
     label: "Commerciale",
     color: "text-orange-600",
     items: [
-      { label: "Proposta servizio", text: "Proponi il nuovo servizio/prodotto disponibile", type: "task" },
-      { label: "Follow-up preventivo", text: "Chiedi se ha ricevuto il preventivo e se ha domande", type: "task" },
-      { label: "Cross-sell", text: "Proponi un servizio complementare a quello attuale", type: "task" },
-      { label: "Rinnovo contratto", text: "Ricordagli che il contratto è in scadenza", type: "reminder" },
+      { 
+        label: "Proposta servizio", 
+        text: "Proposta nuovo servizio",
+        type: "task",
+        fields: [
+          { name: 'serviceName', label: 'Nome servizio', type: 'text', placeholder: 'Es: consulenza premium', required: true },
+          { name: 'benefits', label: 'Benefici principali', type: 'text', placeholder: 'Es: risparmio tempo, assistenza dedicata' },
+        ],
+        generateText: (v) => `Proponi il servizio "${v.serviceName}"${v.benefits ? `. Benefici: ${v.benefits}` : ''}. Verifica interesse e fissa appuntamento.`
+      },
+      { 
+        label: "Follow-up preventivo", 
+        text: "Follow-up preventivo",
+        type: "task",
+        fields: [
+          { name: 'sentDate', label: 'Data invio preventivo', type: 'date', required: true },
+          { name: 'amount', label: 'Importo (€)', type: 'number' },
+        ],
+        generateText: (v) => `Chiedi se ha ricevuto il preventivo inviato il ${v.sentDate}${v.amount ? ` (€${v.amount})` : ''} e se ha domande. Offri chiarimenti.`
+      },
+      { 
+        label: "Cross-sell", 
+        text: "Proposta servizio complementare",
+        type: "task",
+        fields: [
+          { name: 'currentService', label: 'Servizio attuale', type: 'text', placeholder: 'Es: contabilità base', required: true },
+          { name: 'proposedService', label: 'Servizio proposto', type: 'text', placeholder: 'Es: consulenza fiscale', required: true },
+        ],
+        generateText: (v) => `Proponi "${v.proposedService}" come complemento a "${v.currentService}". Spiega i vantaggi dell'integrazione.`
+      },
+      { 
+        label: "Rinnovo contratto", 
+        text: "Promemoria rinnovo",
+        type: "reminder",
+        fields: [
+          { name: 'expiryDate', label: 'Data scadenza', type: 'date', required: true },
+          { name: 'conditions', label: 'Condizioni rinnovo', type: 'text', placeholder: 'Es: stesso prezzo, nuovi servizi inclusi' },
+        ],
+        generateText: (v) => `Ricordagli che il contratto scade il ${v.expiryDate}${v.conditions ? `. Condizioni rinnovo: ${v.conditions}` : ''}. Proponi di discutere il rinnovo.`
+      },
     ]
   },
   {
@@ -232,9 +389,35 @@ const TEMPLATE_LIBRARY: TemplateCategory[] = [
     label: "Ordini",
     color: "text-cyan-600",
     items: [
-      { label: "Stato spedizione", text: "Informalo sullo stato della spedizione dell'ordine", type: "reminder" },
-      { label: "Conferma consegna", text: "Verifica che abbia ricevuto correttamente l'ordine", type: "reminder" },
-      { label: "Richiesta feedback", text: "Chiedi un feedback sul prodotto/servizio ricevuto", type: "task" },
+      { 
+        label: "Stato spedizione", 
+        text: "Aggiornamento spedizione",
+        type: "reminder",
+        fields: [
+          { name: 'orderNumber', label: 'Numero ordine', type: 'text', placeholder: 'Es: ORD-12345', required: true },
+          { name: 'expectedDate', label: 'Data prevista consegna', type: 'date', required: true },
+        ],
+        generateText: (v) => `Informalo sullo stato della spedizione ordine ${v.orderNumber}. Consegna prevista: ${v.expectedDate}. Chiedi se l'indirizzo è corretto.`
+      },
+      { 
+        label: "Conferma consegna", 
+        text: "Verifica consegna",
+        type: "reminder",
+        fields: [
+          { name: 'product', label: 'Prodotto consegnato', type: 'text', placeholder: 'Es: materiale ufficio', required: true },
+          { name: 'deliveryDate', label: 'Data consegna', type: 'date', required: true },
+        ],
+        generateText: (v) => `Verifica che abbia ricevuto correttamente "${v.product}" consegnato il ${v.deliveryDate}. Chiedi se è tutto conforme.`
+      },
+      { 
+        label: "Richiesta feedback", 
+        text: "Richiesta feedback",
+        type: "task",
+        fields: [
+          { name: 'product', label: 'Prodotto/Servizio', type: 'text', placeholder: 'Es: software gestionale', required: true },
+        ],
+        generateText: (v) => `Chiedi un feedback su "${v.product}". Cosa funziona bene? Cosa si potrebbe migliorare? Ringrazia per l'opinione.`
+      },
     ]
   },
   {
@@ -243,10 +426,43 @@ const TEMPLATE_LIBRARY: TemplateCategory[] = [
     label: "Relazione",
     color: "text-pink-600",
     items: [
-      { label: "Check-in periodico", text: "Fai un check-in per sapere come va e se ha bisogno di supporto", type: "task" },
-      { label: "Riattivazione", text: "Ricontatta per sapere se è interessato a riprendere la collaborazione", type: "task" },
-      { label: "Auguri", text: "Fai gli auguri per il compleanno/festività", type: "reminder" },
-      { label: "Ringraziamento", text: "Ringrazia per la collaborazione e la fiducia accordata", type: "reminder" },
+      { 
+        label: "Check-in periodico", 
+        text: "Check-in cliente",
+        type: "task",
+        fields: [
+          { name: 'lastContact', label: 'Ultimo contatto', type: 'date' },
+        ],
+        generateText: (v) => `Fai un check-in per sapere come va${v.lastContact ? ` (ultimo contatto: ${v.lastContact})` : ''}. Chiedi se ha bisogno di supporto.`
+      },
+      { 
+        label: "Riattivazione", 
+        text: "Riattivazione cliente",
+        type: "task",
+        fields: [
+          { name: 'monthsInactive', label: 'Mesi di inattività', type: 'number', required: true },
+          { name: 'proposedService', label: 'Servizio da proporre', type: 'text', placeholder: 'Es: nuovo pacchetto base' },
+        ],
+        generateText: (v) => `Ricontatta dopo ${v.monthsInactive} mesi di inattività. Chiedi come va e${v.proposedService ? ` proponi "${v.proposedService}"` : ' se è interessato a riprendere la collaborazione'}.`
+      },
+      { 
+        label: "Auguri", 
+        text: "Auguri speciali",
+        type: "reminder",
+        fields: [
+          { name: 'occasion', label: 'Occasione', type: 'select', options: ['Compleanno', 'Natale', 'Pasqua', 'Anno Nuovo', 'Altro'], required: true },
+        ],
+        generateText: (v) => `Fai gli auguri per ${v.occasion}. Sii cordiale e personale. Chiedi come sta.`
+      },
+      { 
+        label: "Ringraziamento", 
+        text: "Ringraziamento",
+        type: "reminder",
+        fields: [
+          { name: 'reason', label: 'Motivo ringraziamento', type: 'text', placeholder: 'Es: rinnovo contratto, referenza', required: true },
+        ],
+        generateText: (v) => `Ringrazia per ${v.reason}. Esprimi gratitudine per la fiducia accordata e la collaborazione.`
+      },
     ]
   },
   {
@@ -255,9 +471,35 @@ const TEMPLATE_LIBRARY: TemplateCategory[] = [
     label: "Urgenze",
     color: "text-red-600",
     items: [
-      { label: "Scadenza fiscale", text: "Avvisa della scadenza fiscale imminente", type: "reminder" },
-      { label: "Variazione importante", text: "Comunica una variazione importante da conoscere subito", type: "reminder" },
-      { label: "Azione immediata", text: "Richiedi un'azione immediata per una questione urgente", type: "task" },
+      { 
+        label: "Scadenza fiscale", 
+        text: "Avviso scadenza fiscale",
+        type: "reminder",
+        fields: [
+          { name: 'deadlineType', label: 'Tipo scadenza', type: 'text', placeholder: 'Es: IVA trimestrale, F24', required: true },
+          { name: 'date', label: 'Data scadenza', type: 'date', required: true },
+        ],
+        generateText: (v) => `URGENTE: Avvisa della scadenza fiscale "${v.deadlineType}" del ${v.date}. Chiedi se ha già provveduto o se serve assistenza.`
+      },
+      { 
+        label: "Variazione importante", 
+        text: "Comunicazione variazione",
+        type: "reminder",
+        fields: [
+          { name: 'changeType', label: 'Tipo variazione', type: 'text', placeholder: 'Es: cambio normativa, nuovo listino', required: true },
+        ],
+        generateText: (v) => `IMPORTANTE: Comunica la variazione riguardante "${v.changeType}". Spiega cosa cambia e quali azioni sono necessarie.`
+      },
+      { 
+        label: "Azione immediata", 
+        text: "Richiesta azione urgente",
+        type: "task",
+        fields: [
+          { name: 'action', label: 'Azione richiesta', type: 'text', placeholder: 'Es: firma documento, bonifico urgente', required: true },
+          { name: 'deadline', label: 'Deadline', type: 'date', required: true },
+        ],
+        generateText: (v) => `URGENTE: Richiedi azione immediata - ${v.action}. Scadenza tassativa: ${v.deadline}. Verifica che possa procedere subito.`
+      },
     ]
   },
 ];
@@ -477,6 +719,9 @@ export default function ConsultantVoiceCallsPage() {
   const [scheduledPage, setScheduledPage] = useState(1);
   const SCHEDULED_PER_PAGE = 10;
   const [scheduledTypeFilter, setScheduledTypeFilter] = useState<string>("all");
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateItem | null>(null);
+  const [templateFieldValues, setTemplateFieldValues] = useState<Record<string, string>>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -680,9 +925,29 @@ export default function ConsultantVoiceCallsPage() {
     setOutboundPhone(phone);
   };
 
-  const handleSelectTemplate = (template: TemplateItem) => {
-    setInstructionType(template.type);
-    setCallInstruction(template.text);
+  const handleSelectTemplate = (item: TemplateItem) => {
+    if (item.fields && item.fields.length > 0) {
+      setSelectedTemplate(item);
+      setTemplateFieldValues({});
+      setTemplateDialogOpen(true);
+    } else {
+      setInstructionType(item.type);
+      setCallInstruction(item.text);
+    }
+  };
+
+  const handleApplyTemplate = () => {
+    if (!selectedTemplate) return;
+    
+    const generatedText = selectedTemplate.generateText 
+      ? selectedTemplate.generateText(templateFieldValues)
+      : selectedTemplate.text;
+    
+    setInstructionType(selectedTemplate.type);
+    setCallInstruction(generatedText);
+    setTemplateDialogOpen(false);
+    setSelectedTemplate(null);
+    setTemplateFieldValues({});
   };
 
   const filteredClients = (clientTab === 'active' ? clientsData?.active : clientsData?.inactive)?.filter(c => 
@@ -1303,6 +1568,76 @@ export default function ConsultantVoiceCallsPage() {
               </TabsContent>
 
               <TabsContent value="outbound" className="space-y-6">
+                {/* Template Dialog */}
+                <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        {selectedTemplate?.type === 'task' ? (
+                          <ClipboardList className="h-5 w-5 text-blue-500" />
+                        ) : (
+                          <Bell className="h-5 w-5 text-orange-500" />
+                        )}
+                        {selectedTemplate?.label}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Compila i dettagli per personalizzare il messaggio
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      {selectedTemplate?.fields?.map((field) => (
+                        <div key={field.name} className="space-y-2">
+                          <Label htmlFor={field.name}>
+                            {field.label}
+                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </Label>
+                          {field.type === 'select' ? (
+                            <Select 
+                              value={templateFieldValues[field.name] || ''} 
+                              onValueChange={(v) => setTemplateFieldValues(prev => ({...prev, [field.name]: v}))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={field.placeholder || `Seleziona ${field.label.toLowerCase()}`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options?.map(opt => (
+                                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              id={field.name}
+                              type={field.type}
+                              placeholder={field.placeholder}
+                              value={templateFieldValues[field.name] || ''}
+                              onChange={(e) => setTemplateFieldValues(prev => ({...prev, [field.name]: e.target.value}))}
+                            />
+                          )}
+                        </div>
+                      ))}
+                      
+                      {selectedTemplate?.generateText && Object.keys(templateFieldValues).length > 0 && (
+                        <div className="mt-4 p-3 bg-muted rounded-lg">
+                          <Label className="text-xs text-muted-foreground">Anteprima messaggio:</Label>
+                          <p className="mt-1 text-sm">{selectedTemplate.generateText(templateFieldValues)}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>
+                        Annulla
+                      </Button>
+                      <Button 
+                        onClick={handleApplyTemplate}
+                        disabled={selectedTemplate?.fields?.some(f => f.required && !templateFieldValues[f.name])}
+                      >
+                        Applica Template
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 {/* HEADER OPERATIVO */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
