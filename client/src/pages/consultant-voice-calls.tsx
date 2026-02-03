@@ -1820,38 +1820,11 @@ export default function ConsultantVoiceCallsPage() {
                           </div>
                         </div>
 
-                        {/* Step 2: Tipo chiamata */}
+                        {/* Step 2: Obiettivo */}
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
-                            Tipo chiamata
-                          </Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {[
-                              { value: 'assistenza', label: '🛠 Assistenza' },
-                              { value: 'vendita', label: '🧑‍💼 Commerciale' },
-                              { value: 'followup', label: '📅 Follow-up' },
-                            ].map((mode) => (
-                              <button
-                                key={mode.value}
-                                onClick={() => setOutboundAiMode(mode.value)}
-                                className={`p-3 rounded-lg border text-center transition-colors ${
-                                  outboundAiMode === mode.value 
-                                    ? 'bg-primary text-primary-foreground border-primary' 
-                                    : 'hover:bg-muted'
-                                }`}
-                              >
-                                <span className="text-sm">{mode.label}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Step 3: Obiettivo */}
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
-                            🎯 Cosa deve dire l'AI
+                            Cosa deve dire l'AI
                           </Label>
                           <div className="flex gap-1 mb-2">
                             <Button 
@@ -1891,11 +1864,11 @@ export default function ConsultantVoiceCallsPage() {
                           </div>
                         </div>
 
-                        {/* Step 4: Data/Ora (solo se programma) */}
+                        {/* Step 3: Data/Ora (solo se programma) */}
                         {isScheduleMode && (
                           <div className="space-y-2">
                             <Label className="flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">4</span>
+                              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
                               Quando chiamare
                             </Label>
                             <div className="grid grid-cols-2 gap-2">
