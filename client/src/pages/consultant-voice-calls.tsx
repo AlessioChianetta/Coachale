@@ -42,6 +42,16 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Building2,
+  Target,
+  Users,
+  Wrench,
+  Trophy,
+  Briefcase,
+  Sparkles,
   BarChart3,
   AlertCircle,
   CheckCircle,
@@ -176,6 +186,140 @@ const VOICES = [
   { value: 'Fenrir', label: 'Fenrir', description: '🇬🇧 Maschile Profondo' },
   { value: 'Aoede', label: 'Aoede', description: '🇬🇧 Femminile Melodiosa' },
 ];
+
+interface PromptSection {
+  icon: React.ReactNode;
+  title: string;
+  content: string;
+  color: string;
+}
+
+function AgentPromptPreview({ prompt, agentName }: { prompt: string; agentName: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['instructions']));
+
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const parsePrompt = (text: string): { instructions: string; sections: PromptSection[] } => {
+    const sectionPatterns = [
+      { pattern: /━+\n🏢 BUSINESS & IDENTITÀ\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Building2 className="h-4 w-4" />, title: "Business & Identità", color: "text-blue-500" },
+      { pattern: /━+\n🎯 POSIZIONAMENTO\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Target className="h-4 w-4" />, title: "Posizionamento", color: "text-purple-500" },
+      { pattern: /━+\n👥 TARGET\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Users className="h-4 w-4" />, title: "Target", color: "text-green-500" },
+      { pattern: /━+\n🔧 METODO\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Wrench className="h-4 w-4" />, title: "Metodo", color: "text-orange-500" },
+      { pattern: /━+\n🏆 CREDENZIALI\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Trophy className="h-4 w-4" />, title: "Credenziali", color: "text-yellow-500" },
+      { pattern: /━+\n💼 SERVIZI\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Briefcase className="h-4 w-4" />, title: "Servizi", color: "text-cyan-500" },
+      { pattern: /━+\n🤖 PERSONALITÀ AI\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Sparkles className="h-4 w-4" />, title: "Personalità AI", color: "text-pink-500" },
+    ];
+
+    const sections: PromptSection[] = [];
+    let instructions = text;
+
+    for (const { pattern, icon, title, color } of sectionPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]?.trim()) {
+        sections.push({ icon, title, content: match[1].trim(), color });
+        instructions = instructions.replace(match[0], '');
+      }
+    }
+
+    instructions = instructions.replace(/━+/g, '').trim();
+
+    return { instructions, sections };
+  };
+
+  const { instructions, sections } = parsePrompt(prompt);
+  const hasInstructions = instructions.length > 0;
+  const hasSections = sections.length > 0;
+
+  return (
+    <div className="mt-3 rounded-lg border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+      <div 
+        className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2">
+          <Eye className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Anteprima: {agentName}</span>
+          {hasSections && (
+            <Badge variant="secondary" className="text-xs">
+              {sections.length} sezioni Brand Voice
+            </Badge>
+          )}
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </div>
+
+      {isExpanded && (
+        <div className="border-t p-3 space-y-3 max-h-[400px] overflow-auto">
+          {hasInstructions && (
+            <div className="space-y-2">
+              <div 
+                className="flex items-center justify-between cursor-pointer group"
+                onClick={() => toggleSection('instructions')}
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-indigo-500" />
+                  <span className="text-sm font-medium">Istruzioni Agente</span>
+                </div>
+                {expandedSections.has('instructions') ? (
+                  <ChevronUp className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+                )}
+              </div>
+              {expandedSections.has('instructions') && (
+                <div className="ml-6 p-3 bg-white dark:bg-slate-950 rounded-md border text-xs leading-relaxed whitespace-pre-wrap max-h-[150px] overflow-auto">
+                  {instructions.slice(0, 1500)}{instructions.length > 1500 ? '...' : ''}
+                </div>
+              )}
+            </div>
+          )}
+
+          {sections.map((section, idx) => (
+            <div key={idx} className="space-y-2">
+              <div 
+                className="flex items-center justify-between cursor-pointer group"
+                onClick={() => toggleSection(section.title)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={section.color}>{section.icon}</span>
+                  <span className="text-sm font-medium">{section.title}</span>
+                </div>
+                {expandedSections.has(section.title) ? (
+                  <ChevronUp className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+                )}
+              </div>
+              {expandedSections.has(section.title) && (
+                <div className="ml-6 p-3 bg-white dark:bg-slate-950 rounded-md border text-xs leading-relaxed whitespace-pre-wrap">
+                  {section.content}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {!hasInstructions && !hasSections && (
+            <p className="text-sm text-muted-foreground italic text-center py-4">
+              Nessun contenuto configurato per questo agente
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ConsultantVoiceCallsPage() {
   const isMobile = useIsMobile();
@@ -1214,12 +1358,7 @@ export default function ConsultantVoiceCallsPage() {
                                     </SelectContent>
                                   </Select>
                                   {selectedAgent?.prompt && (
-                                    <div className="mt-3 p-3 bg-muted rounded-md">
-                                      <Label className="text-xs text-muted-foreground">Anteprima Prompt Agente:</Label>
-                                      <pre className="mt-2 text-xs whitespace-pre-wrap max-h-[200px] overflow-auto">
-                                        {selectedAgent.prompt}
-                                      </pre>
-                                    </div>
+                                    <AgentPromptPreview prompt={selectedAgent.prompt} agentName={selectedAgent.name} />
                                   )}
                                 </div>
                               )}
