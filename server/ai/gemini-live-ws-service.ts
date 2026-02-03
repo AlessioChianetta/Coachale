@@ -2390,6 +2390,23 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       else if (isPhoneCall && !userId) {
         console.log(`📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
+        // Get consultant info FIRST (needed for both instruction and normal flow)
+        let consultantName = 'il consulente';
+        let consultantBusinessName = '';
+        if (consultantId) {
+          try {
+            const consultant = await storage.getUser(consultantId);
+            if (consultant) {
+              const fullName = [consultant.firstName, consultant.lastName].filter(Boolean).join(' ').trim();
+              consultantName = fullName || consultant.email?.split('@')[0] || 'il consulente';
+              consultantBusinessName = consultant.businessName || '';
+              console.log(`📞 [${connectionId}] Consultant info: ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}`);
+            }
+          } catch (err) {
+            console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
+          }
+        }
+        
         // 🎯 PRIORITY CHECK: If there's a specific call instruction, use ONLY that
         if (phoneCallInstruction) {
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -2397,6 +2414,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           console.log(`🎯   Type: ${phoneInstructionType || 'generic'}`);
           console.log(`🎯   Instruction: ${phoneCallInstruction}`);
           console.log(`🎯   Scheduled Call ID: ${phoneScheduledCallId}`);
+          console.log(`🎯   Consultant: ${consultantName}`);
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           
           // Get current Italian time
@@ -2410,77 +2428,59 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             minute: '2-digit'
           });
           
-          // Build MINIMAL prompt with ONLY the instruction
+          // Build instruction type label
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
-          systemInstruction = `🎙️ MODALITÀ: CHIAMATA VOCALE CON ISTRUZIONE SPECIFICA
+          // Build prompt with: IDENTITY + VOICE DIRECTIVES + INSTRUCTION AS MAIN TASK
+          systemInstruction = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 CHI SEI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sei Alessia, l'assistente AI di ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}.
+Stai chiamando per conto del consulente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨🚨🚨 ISTRUZIONE PRIORITARIA - SEGUI QUESTA 🚨🚨🚨
+🎙️ DIRETTIVE VOCALI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Parla in italiano fluente e naturale
+• Tono allegro, energico ma professionale
+• Sii diretta ma cordiale
+• Risposte concise e chiare
+• NON ripetere le stesse frasi
+• Adatta il ritmo alla conversazione
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 IL TUO COMPITO PER QUESTA CHIAMATA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${instructionTypeLabel}:
 ${phoneCallInstruction}
 
-⚠️ QUESTA ISTRUZIONE HA PRIORITÀ ASSOLUTA!
-- Inizia SUBITO con questa istruzione
-- NON parlare di altro prima
-- NON chiedere "Come posso aiutarti?"
-- VAI DRITTO al punto dell'istruzione
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🗣️ TONO E STILE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚡ Mantieni un tono allegro, energico ma professionale.
-🎯 Sii diretto ma cordiale.
-📞 Ricorda che stai chiamando TU il cliente.
+⚠️ QUESTA È LA TUA MISSIONE PRINCIPALE!
+• Inizia SUBITO parlando di questo
+• NON chiedere "Come posso aiutarti?" - SEI TU che chiami per un motivo specifico
+• Dopo aver comunicato l'istruzione, puoi chiedere se hanno domande
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 CONTESTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Data e ora: ${italianTime} (Italia)
-Tipo chiamata: OUTBOUND (sei tu che chiami)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 ESEMPIO DI APERTURA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-"Ciao! Sono Alessia, ti chiamo per ricordarti che [ISTRUZIONE]. Come stai? Hai già pensato a come gestire questa cosa?"
-
-NON DIRE: "Come posso aiutarti?" - SEI TU CHE CHIAMI PER UN MOTIVO SPECIFICO!`;
+Tipo chiamata: OUTBOUND (sei tu che chiami)`;
 
           userDataContext = '';
-          console.log(`🎯 [${connectionId}] Instruction-only prompt built (${systemInstruction.length} chars)`);
+          console.log(`🎯 [${connectionId}] Instruction prompt built (${systemInstruction.length} chars)`);
           
           // 🔥 PRINT FULL PROMPT FOR DEBUGGING
           console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`🎯 FULL INSTRUCTION-ONLY PROMPT:`);
+          console.log(`🎯 FULL INSTRUCTION PROMPT:`);
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           console.log(systemInstruction);
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         } else {
           // No specific instruction - continue with normal non-client prompt flow
-        
-        // Get consultant info for personalized prompt
-        let consultantName = 'il consulente';
-        let consultantBusinessName = '';
-        if (consultantId) {
-          try {
-            const consultant = await storage.getUser(consultantId);
-            if (consultant) {
-              // Use full name (firstName + lastName) instead of just firstName
-              const fullName = [consultant.firstName, consultant.lastName].filter(Boolean).join(' ').trim();
-              consultantName = fullName || consultant.email?.split('@')[0] || 'il consulente';
-              consultantBusinessName = consultant.businessName || '';
-              console.log(`📞 [${connectionId}] Consultant info: ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}`);
-            }
-          } catch (err) {
-            console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
-          }
-        }
         
         // Load non-client settings from database
         let voiceDirectives = '';
