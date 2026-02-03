@@ -1,0 +1,28 @@
+7|voice-br | 
+7|voice-br | 2026-02-02T22:31:34.611Z [INFO ] [BRIDGE:MAIN] Configuration loaded:
+7|voice-br | 2026-02-02T22:31:34.611Z [INFO ] [BRIDGE:MAIN]   WebSocket Server: 0.0.0.0:9090
+7|voice-br | 2026-02-02T22:31:34.611Z [INFO ] [BRIDGE:MAIN]   Auth Token: configured
+7|voice-br | 2026-02-02T22:31:34.611Z [INFO ] [BRIDGE:MAIN]   Replit WS: wss://32c1c27a-eef0-4005-b5dc-d0cb3d0de45e-00-3r6fx0u1ii8hv.kirk.replit.dev/ws/ai-voice
+7|voice-br | 2026-02-02T22:31:34.611Z [INFO ] [BRIDGE:MAIN]   Voice: Puck
+7|voice-br | 2026-02-02T22:31:34.611Z [INFO ] [BRIDGE:MAIN]   ESL Connection: 127.0.0.1:8021
+7|voice-br | 2026-02-02T22:31:34.611Z [INFO ] [BRIDGE:MAIN]   Max Concurrent Calls: 10
+7|voice-br | 2026-02-02T22:31:34.612Z [INFO ] [BRIDGE:MAIN]   Session Timeout: 1800000ms
+7|voice-br | 2026-02-02T22:31:34.612Z [INFO ] [BRIDGE:MAIN]   Log Level: debug
+7|voice-br | 2026-02-02T22:31:34.612Z [INFO ] [BRIDGE:MAIN] Starting Voice Bridge System...
+7|voice-br | 2026-02-02T22:31:34.616Z [INFO ] [BRIDGE:ESL] Connecting to FreeSWITCH ESL at 127.0.0.1:8021...
+7|voice-br | 2026-02-02T22:31:34.619Z [INFO ] [BRIDGE:SERVER] Voice Bridge Server started on port 9090
+7|voice-br | 2026-02-02T22:31:34.619Z [INFO ] [BRIDGE:SERVER] Outbound endpoint ready at POST /outbound/call
+7|voice-br | 2026-02-02T22:31:34.623Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+
+7|voice-bridge  | 2026-02-02T22:31:44.066Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1770071503116_gawqe2nzz targetPhone=1000 aiMode=assistenza
+7|voice-bridge  | 2026-02-02T22:31:44.071Z [INFO ] [BRIDGE:OUTBOUND] Calling internal extension extension=1000
+7|voice-bridge  | 2026-02-02T22:31:44.071Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1770071504071-vtzno3 dialString=user/1000
+7|voice-bridge  | 2026-02-02T22:31:47.242Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=+OK outbound-1770071504071-vtzno3
+7|voice-bridge  | 
+7|voice-bridge  | 2026-02-02T22:31:47.243Z [INFO ] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1770071503116_gawqe2nzz uuid=outbound-1770071504071-vtzno3
+7|voice-bridge  | 2026-02-02T22:31:58.847Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1770071517912_hh5xsmr2m targetPhone=1000 aiMode=assistenza
+7|voice-bridge  | 2026-02-02T22:31:58.850Z [INFO ] [BRIDGE:OUTBOUND] Calling internal extension extension=1000
+7|voice-bridge  | 2026-02-02T22:31:58.850Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1770071518849-bv2nit dialString=user/1000
+7|voice-bridge  | 2026-02-02T22:32:00.969Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=+OK outbound-1770071518849-bv2nit
+7|voice-bridge  | 
+7|voice-bridge  | 2026-02-02T22:32:00.970Z [INFO ] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1770071517912_hh5xsmr2m uuid=outbound-1770071518849-bv2nit

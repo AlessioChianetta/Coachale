@@ -1,0 +1,16 @@
+/root/.pm2/logs/voice-bridge-out.log last 15 lines:
+7|voice-br | 2026-02-02T22:57:45.284Z [INFO ] [BRIDGE:OUTBOUND] Calling internal extension extension=1000
+7|voice-br | 2026-02-02T22:57:45.284Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1770073065284-izibtv dialString=user/1000
+7|voice-br | 2026-02-02T22:57:46.699Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=+OK outbound-1770073065284-izibtv
+7|voice-br | 
+7|voice-br | 2026-02-02T22:57:46.700Z [INFO ] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1770073064336_if8j63go9 uuid=outbound-1770073065284-izibtv
+7|voice-br | 2026-02-02T22:57:47.437Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=outbound-1770073065284-izibtv callerIdNumber=1000 callerIdName=Outbound Call
+7|voice-br | 2026-02-02T22:57:47.437Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: outbound-1770073065284-izibtv
+7|voice-br | 2026-02-02T22:57:47.487Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=outbound-1770073065284-izibtv
+7|voice-br | 2026-02-02T22:57:47.490Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-br | 2026-02-02T22:57:47.490Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=outbound-1770073065284-izibtv | CallerId=1000 | CallerName=Outbound Call
+7|voice-br | 2026-02-02T22:57:47.491Z [INFO ] [BRIDGE:SESSION] Session created sessionId=a7e6b53b callId=outbound-1770073065284-izibtv callerId=1000 calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-br | 2026-02-02T22:57:48.163Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=a7e6b53b url=wss://32c1c27a-eef0-4005-b5dc-d0cb3d0de45e-00-3r6fx0u1ii8hv.kirk.replit.dev/ws/ai-voice voice=Puck
+7|voice-br | 2026-02-02T22:57:48.765Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=a7e6b53b
+7|voice-br | 2026-02-02T22:57:48.765Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=a7e6b53b
+7|voice-br | 2026-02-02T22:57:48.765Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=a7e6b53b from=connecting to=active

@@ -1,0 +1,43 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec freeswitch grep -r "9999" /usr/local/freeswitch/etc/freeswitch/dialplan/
+/usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml:  <extension name="alessia_ai_9999_public">
+/usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml:    <condition field="destination_number" expression="^9999$">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml:  <extension name="alessia_ai_9999_public">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml:    <condition field="destination_number" expression="^9999$">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/alessia-ai.xml:  <extension name="alessia_ai_9999_public">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/alessia-ai.xml:    <condition field="destination_number" expression="^9999$">
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec freeswitch grep -r "9999\|audio_stream" /usr/local/freeswitch/etc/freeswitch/
+/usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml:  <extension name="alessia_ai_9999_public">
+/usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml:    <condition field="destination_number" expression="^9999$">
+/usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml:      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml:  <extension name="alessia_ai_9999_public">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml:    <condition field="destination_number" expression="^9999$">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml:      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://72.62.50.40:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sampleRate=16000 mixed)}"/>
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/alessia-ai.xml:  <extension name="alessia_ai_9999_public">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/alessia-ai.xml:    <condition field="destination_number" expression="^9999$">
+/usr/local/freeswitch/etc/freeswitch/dialplan/default/alessia-ai.xml:      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://72.62.50.40:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>
+/usr/local/freeswitch/etc/freeswitch/vars.xml:  <X-PRE-PROCESS cmd="set" data="df_us_ssn=(?!219099999|078051120)(?!666|000|9\d{2})\d{3}(?!00)\d{2}(?!0{4})\d{4}"/>
+/usr/local/freeswitch/etc/freeswitch/directory/default/brian.xml:      <param name="vm-password" value="9999"/><!--if vm-password is omitted password param is used-->
+/usr/local/freeswitch/etc/freeswitch/autoload_configs/modules.conf.xml:    <load module="mod_audio_stream"/>    
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec freeswitch ls -la /usr/local/freeswitch/etc/freeswitch/dialplan/
+total 84
+drwxr-xr-x  5 root root  4096 Feb  1 18:24 .
+drwxr-xr-x 11 root root  4096 Feb  1 22:57 ..
+drwxr-xr-x  2 root root  4096 Feb  2 18:30 default
+-rw-r--r--  1 root root 34278 Feb  1 18:24 default.xml
+-rw-r--r--  1 root root  2379 Feb  1 17:14 features.xml
+drwxr-xr-x  2 root root  4096 Feb  2 01:56 public
+-rw-r--r--  1 root root  2582 Feb  1 17:14 public.xml
+drwxr-xr-x  2 root root  4096 Feb  1 17:14 skinny-patterns
+-rw-r--r--  1 root root   895 Feb  1 17:14 skinny-patterns.xml
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 

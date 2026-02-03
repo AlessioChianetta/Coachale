@@ -1,0 +1,27 @@
+EXECUTE [depth=0] sofia/internal/1000@72.62.50.40 playback(local_stream://default)
+2026-02-02 23:20:42.802744 94.67% [ERR] mod_local_stream.c:883 Unknown source default
+2026-02-02 23:20:42.802744 94.67% [NOTICE] switch_core_state_machine.c:382 sofia/internal/1000@72.62.50.40 has executed the last dialplan instruction, hanging up.
+2026-02-02 23:20:42.802744 94.67% [NOTICE] switch_core_state_machine.c:384 Hangup sofia/internal/1000@72.62.50.40 [CS_EXECUTE] [NORMAL_CLEARING]
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:647 (sofia/internal/1000@72.62.50.40) State EXECUTE going to sleep
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1000@72.62.50.40) Running State Change CS_HANGUP (Cur 1 Tot 54)
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:844 (sofia/internal/1000@72.62.50.40) Callstate Change ACTIVE -> HANGUP
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:846 (sofia/internal/1000@72.62.50.40) State HANGUP
+2026-02-02 23:20:42.802744 94.67% [DEBUG] mod_sofia.c:469 Channel sofia/internal/1000@72.62.50.40 hanging up, cause: NORMAL_CLEARING
+2026-02-02 23:20:42.802744 94.67% [DEBUG] mod_sofia.c:523 Sending BYE to sofia/internal/1000@72.62.50.40
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:59 sofia/internal/1000@72.62.50.40 Standard HANGUP, cause: NORMAL_CLEARING
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:846 (sofia/internal/1000@72.62.50.40) State HANGUP going to sleep
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:616 (sofia/internal/1000@72.62.50.40) State Change CS_HANGUP -> CS_REPORTING
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:581 (sofia/internal/1000@72.62.50.40) Running State Change CS_REPORTING (Cur 1 Tot 54)
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:932 (sofia/internal/1000@72.62.50.40) State REPORTING
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:168 sofia/internal/1000@72.62.50.40 Standard REPORTING, cause: NORMAL_CLEARING
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:932 (sofia/internal/1000@72.62.50.40) State REPORTING going to sleep
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:607 (sofia/internal/1000@72.62.50.40) State Change CS_REPORTING -> CS_DESTROY
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_session.c:1748 Session 54 (sofia/internal/1000@72.62.50.40) Locked, Waiting on external entities
+2026-02-02 23:20:42.802744 94.67% [NOTICE] switch_core_session.c:1766 Session 54 (sofia/internal/1000@72.62.50.40) Ended
+2026-02-02 23:20:42.802744 94.67% [NOTICE] switch_core_session.c:1770 Close Channel sofia/internal/1000@72.62.50.40 [CS_DESTROY]
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:735 (sofia/internal/1000@72.62.50.40) Running State Change CS_DESTROY (Cur 0 Tot 54)
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:745 (sofia/internal/1000@72.62.50.40) State DESTROY
+2026-02-02 23:20:42.802744 94.67% [DEBUG] mod_sofia.c:380 sofia/internal/1000@72.62.50.40 SOFIA DESTROY
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:175 sofia/internal/1000@72.62.50.40 Standard DESTROY
+2026-02-02 23:20:42.802744 94.67% [DEBUG] switch_core_state_machine.c:745 (sofia/internal/1000@72.62.50.40) State DESTROY going to sleep
+freeswitch@srv1164256> 

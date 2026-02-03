@@ -1,0 +1,140 @@
+📞 [6jpddn] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt
+📞 [6jpddn] Consultant info: alessio chianetta
+📞 [6jpddn] Non-client settings loaded: source=default, agentId=null
+📱 [6jpddn] Found 3 previous conversations for caller 1000
+📞 [6jpddn] Using default prompt template
+📞 [6jpddn] Non-client prompt built (5648 chars) - Source: default [WITH CALL HISTORY]
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┃ 🤖 MINIMAL SYSTEM PROMPT (LIVE MODE) - 5648 chars
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎙️ MODALITÀ: CHIAMATA VOCALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ TONO E STILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Tono MOLTO ENERGICO e VIVACE! Parla con entusiasmo e carica!
+- La tua voce deve trasmettere energia e positività
+- Sii entusiasta in modo naturale, come un amico esperto
+- Scherza ogni tanto per alleggerire la conversazione
+
+🚫 TONO INFORMALE - REGOLE OBBLIGATORIE:
+- USA SEMPRE "Ciao!" - MAI "Buongiorno" o "Buonasera"
+- DAI SEMPRE DEL TU - MAI del Lei
+- Parla come un AMICO, non come un centralinista
+- Esempio CORRETTO: "Ciao! Come posso aiutarti?"
+- Esempio SBAGLIATO: "Buongiorno, come posso esserle utile?"
+
+📅 Data e ora attuale: lunedì 2 febbraio 2026 alle ore 23:48 (fuso orario Italia)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 IL TUO RUOLO E IDENTITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sei Alessia, l'assistente AI vocale di alessio chianetta.
+Chi ti chiama NON è un cliente registrato.
+Il tuo obiettiv...
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+══════════════════════════════════════════════════════════════════════
+📊 [6jpddn] TOKEN BREAKDOWN - LIVE MODE
+══════════════════════════════════════════════════════════════════════
+🎯 System Instruction: 1,412 tokens
+
+🎁 TOTAL TOKENS INVIATI (setup): 1,412 tokens
+══════════════════════════════════════════════════════════════════════
+
+🔗 [6jpddn] Connecting to Vertex AI at us-central1...
+✅ [6jpddn] Gemini Live session created successfully
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 [6jpddn] AUDIO DIAGNOSTIC - Chunk #1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 Base64 length: 856 chars
+   📦 Binary size: 640 bytes
+   🎵 Samples: 320
+   ⏱️  Duration @16kHz: 20.0ms
+   ⏱️  Duration @48kHz: 6.7ms (if wrong rate)
+   📊 RMS level: 0.000031 (1/32768)
+   🎯 Expected: ~40ms chunks @16kHz = 640 samples = 1280 bytes
+   ⚠️  If samples >> 640, audio is NOT resampled to 16kHz!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎤 [6jpddn] Receiving audio chunks (last logged: seq 44)
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 [6jpddn] AUDIO DIAGNOSTIC - Chunk #2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 Base64 length: 856 chars
+   📦 Binary size: 640 bytes
+   🎵 Samples: 320
+   ⏱️  Duration @16kHz: 20.0ms
+   ⏱️  Duration @48kHz: 6.7ms (if wrong rate)
+   📊 RMS level: 0.000031 (1/32768)
+   🎯 Expected: ~40ms chunks @16kHz = 640 samples = 1280 bytes
+   ⚠️  If samples >> 640, audio is NOT resampled to 16kHz!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 [6jpddn] AUDIO DIAGNOSTIC - Chunk #3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 Base64 length: 856 chars
+   📦 Binary size: 640 bytes
+   🎵 Samples: 320
+   ⏱️  Duration @16kHz: 20.0ms
+   ⏱️  Duration @48kHz: 6.7ms (if wrong rate)
+   📊 RMS level: 0.000031 (1/32768)
+   🎯 Expected: ~40ms chunks @16kHz = 640 samples = 1280 bytes
+   ⚠️  If samples >> 640, audio is NOT resampled to 16kHz!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [6jpddn] Gemini Live WebSocket opened
+🎙️ [6jpddn] Using voice: Achernar
+🤖 [6jpddn] Model: gemini-live-2.5-flash-native-audio - Language: ITALIAN ONLY
+🆕 [6jpddn] STARTING NEW SESSION (session resumption enabled for unlimited duration)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [6jpddn] SETUP MESSAGE BEING SENT TO GEMINI:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{
+  "setup": {
+    "model": "projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-live-2.5-flash-native-audio",
+    "generation_config": {
+      "response_modalities": [
+        "AUDIO"
+      ],
+      "speech_config": {
+        "language_code": "it-IT",
+        "voice_config": {
+          "prebuilt_voice_config": {
+            "voice_name": "Achernar"
+          }
+        }
+      },
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 40,
+      "max_output_tokens": 8192
+    },
+    "input_audio_transcription": {},
+    "output_audio_transcription": {},
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "🎙️ MODALITÀ: CHIAMATA VOCALE\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🗣️ TONO E STILE\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n- Tono MOLTO ENERGICO e VIVACE! Parla con entusiasmo e carica!\n- La tua voce deve trasmettere energia e positività\n- Sii entusiasta in modo naturale, come un amico e...
+
+📊 Setup Message Stats:
+   - Model path: projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-live-2.5-flash-native-audio
+   - System instruction length: 5648 chars (always minimal)
+   - Prompt mode: MINIMAL (user data in chunks)
+   - Response modalities: AUDIO
+   - Voice: Achernar
+   - Language: it-IT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 [FRESH INPUT TRACKING] System Instruction: 5648 chars (~1412 tokens) - WILL BE COUNTED AS FRESH TEXT INPUT
+✅ [6jpddn] Setup message SENT to Gemini WebSocket - awaiting response...
+📥 [6jpddn] RAW MSG #1: 85 bytes, starts with: "{\n  "setupComplete":"
+✅ [6jpddn] Gemini Live session ready
+10:48:32 PM [express] GET /api/v

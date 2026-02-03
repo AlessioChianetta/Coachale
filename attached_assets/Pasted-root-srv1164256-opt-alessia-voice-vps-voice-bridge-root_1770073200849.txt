@@ -1,0 +1,42 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec freeswitch cat /usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml
+<include>
+  <extension name="alessia_ai_9999_default">
+    <condition field="destination_number" expression="^9999$">
+      <action application="sleep" data="500"/>
+      <action application="playback" data="tone_stream://%(200,0,800)"/>
+      
+      <action application="set" data='STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}'/>
+      
+      <action application="set" data="play_stream_name=websocket_audio"/>
+      <action application="set" data="write_stream_name=websocket_audio"/>
+
+      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://72.62.50.40:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>
+      
+      <action application="park"/>
+      
+    </condition>
+  </extension>
+</include>
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# cat /opt/alessia-voice/freeswitch-conf/dialplan/default/01_alessia_9999.xml
+<include>
+  <extension name="alessia_ai_9999_default">
+    <condition field="destination_number" expression="^9999$">
+      <action application="sleep" data="500"/>
+      <action application="playback" data="tone_stream://%(200,0,800)"/>
+      
+      <action application="set" data='STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}'/>
+      
+      <action application="set" data="play_stream_name=websocket_audio"/>
+      <action application="set" data="write_stream_name=websocket_audio"/>
+
+      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://72.62.50.40:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>
+      
+      <action application="park"/>
+      
+    </condition>
+  </extension>
+</include>
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 

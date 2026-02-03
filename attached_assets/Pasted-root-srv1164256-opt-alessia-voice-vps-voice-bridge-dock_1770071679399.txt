@@ -1,0 +1,33 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec freeswitch find / -name "dialplan" -type d 2>/dev/null
+/usr/src/freeswitch/src/mod/endpoints/mod_skinny/conf/dialplan
+/usr/src/freeswitch/src/mod/say/mod_say_pl/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_distributor/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_valet_parking/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_vmd/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_easyroute/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_lcr/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_limit/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_nibblebill/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_http_cache/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_fifo/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_voicemail/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_conference/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_hash/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_spandsp/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_memcache/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_translate/conf/dialplan
+/usr/src/freeswitch/src/mod/applications/mod_enum/conf/dialplan
+/usr/src/freeswitch/conf/vanilla/dialplan
+/usr/src/freeswitch/conf/insideout/dialplan
+/usr/src/freeswitch/conf/sbc/dialplan
+/usr/src/freeswitch/conf/testing/dialplan
+/usr/src/freeswitch/conf/minimal/dialplan
+/usr/local/freeswitch/etc/freeswitch/dialplan
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# docker exec freeswitch which freeswitch
+docker exec freeswitch freeswitch -version
+/usr/local/freeswitch/bin/freeswitch
+FreeSWITCH version: 1.10.13-dev+git~20260116T201023Z~88fa1f95ca~64bit (git 88fa1f9 2026-01-16 20:10:23Z 64bit)
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
