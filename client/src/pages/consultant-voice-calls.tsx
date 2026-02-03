@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -473,6 +473,10 @@ export default function ConsultantVoiceCallsPage() {
   const [clientSearch, setClientSearch] = useState("");
   const [clientTab, setClientTab] = useState<'active' | 'inactive'>('active');
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [scheduledStatusFilter, setScheduledStatusFilter] = useState<string>("pending");
+  const [scheduledPage, setScheduledPage] = useState(1);
+  const SCHEDULED_PER_PAGE = 10;
+  const [scheduledTypeFilter, setScheduledTypeFilter] = useState<string>("all");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -686,6 +690,27 @@ export default function ConsultantVoiceCallsPage() {
     `${c.firstName} ${c.lastName}`.toLowerCase().includes(clientSearch.toLowerCase()) ||
     c.phoneNumber.includes(clientSearch)
   ) || [];
+
+  const filteredScheduledCalls = useMemo(() => {
+    if (!scheduledCallsData?.calls) return [];
+    const filtered = scheduledCallsData.calls.filter(call => {
+      if (scheduledStatusFilter !== 'all' && call.status !== scheduledStatusFilter) return false;
+      if (scheduledTypeFilter !== 'all' && call.instruction_type !== scheduledTypeFilter) return false;
+      return true;
+    });
+    return filtered.sort((a, b) => {
+      const dateA = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+      const dateB = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [scheduledCallsData?.calls, scheduledStatusFilter, scheduledTypeFilter]);
+
+  const paginatedScheduledCalls = useMemo(() => {
+    const start = (scheduledPage - 1) * SCHEDULED_PER_PAGE;
+    return filteredScheduledCalls.slice(start, start + SCHEDULED_PER_PAGE);
+  }, [filteredScheduledCalls, scheduledPage]);
+
+  const scheduledTotalPages = Math.ceil(filteredScheduledCalls.length / SCHEDULED_PER_PAGE);
 
   const triggerOutboundMutation = useMutation({
     mutationFn: async ({ targetPhone, aiMode, callInstruction, instructionType }: { targetPhone: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null }) => {
@@ -1420,54 +1445,6 @@ export default function ConsultantVoiceCallsPage() {
                       </CardContent>
                     </Card>
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <FileText className="h-4 w-4" />
-                          Template
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="space-y-1 max-h-[180px] overflow-auto">
-                          {TEMPLATE_LIBRARY.map((category) => {
-                            const CategoryIcon = category.icon;
-                            const isExpanded = expandedCategory === category.category;
-                            return (
-                              <div key={category.category}>
-                                <button
-                                  onClick={() => setExpandedCategory(isExpanded ? null : category.category)}
-                                  className={`w-full flex items-center justify-between p-1.5 rounded text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
-                                >
-                                  <div className="flex items-center gap-1.5">
-                                    <CategoryIcon className={`h-3 w-3 ${category.color}`} />
-                                    <span className="text-xs font-medium">{category.label}</span>
-                                  </div>
-                                  <ChevronRight className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                                </button>
-                                {isExpanded && (
-                                  <div className="ml-4 mt-1 space-y-0.5">
-                                    {category.items.map((item, idx) => (
-                                      <button
-                                        key={idx}
-                                        onClick={() => handleSelectTemplate(item)}
-                                        className="w-full flex items-center gap-1 p-1.5 text-left text-xs rounded hover:bg-primary/10 transition-colors"
-                                      >
-                                        {item.type === 'task' ? (
-                                          <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
-                                        ) : (
-                                          <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />
-                                        )}
-                                        <span className="truncate">{item.label}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
                   </div>
 
                   {/* COLONNA CENTRALE (50%): Wizard Chiamata */}
@@ -1623,81 +1600,200 @@ export default function ConsultantVoiceCallsPage() {
                     </Card>
                   </div>
 
-                  {/* COLONNA DESTRA (25%): Prossime Chiamate */}
+                  {/* COLONNA DESTRA (25%): Template */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <Clock className="h-4 w-4" />
-                          Prossime Chiamate
-                        </CardTitle>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => refetchScheduledCalls()}>
-                          <RefreshCw className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <FileText className="h-4 w-4" />
+                        Template
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      {loadingScheduledCalls ? (
-                        <div className="flex items-center justify-center py-6">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : !scheduledCallsData?.calls?.length ? (
-                        <div className="text-center py-6 text-muted-foreground text-sm">
-                          <PhoneOutgoing className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                          <p>Nessuna chiamata programmata</p>
-                          <p className="text-xs mt-1">Usa il form a sinistra per programmare</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {scheduledCallsData.calls.slice(0, 5).map((call) => {
-                            const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
-                            return (
-                              <div key={call.id} className="p-2 border rounded-lg space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-mono text-xs truncate">{call.target_phone}</p>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Badge className={`${statusConfig.color} text-xs px-1 py-0`}>{statusConfig.label}</Badge>
-                                      {call.scheduled_at && (
-                                        <span>{format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it })}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {(call.status === 'pending' || call.status === 'failed') && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => cancelOutboundMutation.mutate(call.id)}
-                                      disabled={cancelOutboundMutation.isPending}
-                                    >
-                                      <Trash2 className="h-3 w-3 text-red-500" />
-                                    </Button>
-                                  )}
+                      <div className="space-y-1 max-h-[400px] overflow-auto">
+                        {TEMPLATE_LIBRARY.map((category) => {
+                          const CategoryIcon = category.icon;
+                          const isExpanded = expandedCategory === category.category;
+                          return (
+                            <div key={category.category}>
+                              <button
+                                onClick={() => setExpandedCategory(isExpanded ? null : category.category)}
+                                className={`w-full flex items-center justify-between p-1.5 rounded text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <CategoryIcon className={`h-3 w-3 ${category.color}`} />
+                                  <span className="text-xs font-medium">{category.label}</span>
                                 </div>
-                                {call.call_instruction && (
-                                  <div className="flex items-start gap-1 p-1 bg-muted/50 rounded text-xs">
-                                    {call.instruction_type === 'task' ? (
-                                      <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
-                                    ) : (
-                                      <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />
-                                    )}
-                                    <span className="text-muted-foreground line-clamp-1">{call.call_instruction}</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {scheduledCallsData.count > 5 && (
-                            <Button variant="link" size="sm" className="w-full text-xs">
-                              Vedi tutte ({scheduledCallsData.count}) →
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                                <ChevronRight className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                              </button>
+                              {isExpanded && (
+                                <div className="ml-4 mt-1 space-y-0.5">
+                                  {category.items.map((item, idx) => (
+                                    <button
+                                      key={idx}
+                                      onClick={() => handleSelectTemplate(item)}
+                                      className="w-full flex items-center gap-1 p-1.5 text-left text-xs rounded hover:bg-primary/10 transition-colors"
+                                    >
+                                      {item.type === 'task' ? (
+                                        <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                      ) : (
+                                        <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                                      )}
+                                      <span className="truncate">{item.label}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* TABELLA CHIAMATE PROGRAMMATE - FULL WIDTH */}
+                <Card className="mt-6">
+                  <CardHeader>
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Chiamate Programmate
+                        <Badge variant="secondary">{scheduledCallsData?.count || 0}</Badge>
+                      </CardTitle>
+                      <div className="flex gap-2 flex-wrap">
+                        {/* Filtro per stato */}
+                        <Select value={scheduledStatusFilter} onValueChange={(v) => { setScheduledStatusFilter(v); setScheduledPage(1); }}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Stato" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti gli stati</SelectItem>
+                            <SelectItem value="pending">In coda</SelectItem>
+                            <SelectItem value="in_progress">In corso</SelectItem>
+                            <SelectItem value="completed">Completate</SelectItem>
+                            <SelectItem value="failed">Fallite</SelectItem>
+                            <SelectItem value="cancelled">Cancellate</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {/* Filtro per tipo istruzione */}
+                        <Select value={scheduledTypeFilter} onValueChange={(v) => { setScheduledTypeFilter(v); setScheduledPage(1); }}>
+                          <SelectTrigger className="w-[130px]">
+                            <SelectValue placeholder="Tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti i tipi</SelectItem>
+                            <SelectItem value="task">Task</SelectItem>
+                            <SelectItem value="reminder">Reminder</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="sm" onClick={() => refetchScheduledCalls()}>
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingScheduledCalls ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : !filteredScheduledCalls.length ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <PhoneOutgoing className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                        <p>Nessuna chiamata programmata</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Numero</TableHead>
+                              <TableHead>Stato</TableHead>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Data/Ora</TableHead>
+                              <TableHead>Istruzione</TableHead>
+                              <TableHead className="text-right">Azioni</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedScheduledCalls.map((call) => {
+                              const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
+                              return (
+                                <TableRow key={call.id}>
+                                  <TableCell className="font-mono text-sm">{call.target_phone}</TableCell>
+                                  <TableCell>
+                                    <Badge className={`${statusConfig.color} text-xs`}>{statusConfig.label}</Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {call.instruction_type === 'task' ? (
+                                      <div className="flex items-center gap-1 text-sm">
+                                        <ClipboardList className="h-3 w-3 text-blue-500" />
+                                        <span>Task</span>
+                                      </div>
+                                    ) : call.instruction_type === 'reminder' ? (
+                                      <div className="flex items-center gap-1 text-sm">
+                                        <Bell className="h-3 w-3 text-orange-500" />
+                                        <span>Reminder</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground text-sm">-</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-sm">
+                                    {call.scheduled_at ? format(new Date(call.scheduled_at), "dd/MM HH:mm", { locale: it }) : 'Immediata'}
+                                  </TableCell>
+                                  <TableCell className="max-w-[250px]">
+                                    <p className="truncate text-sm text-muted-foreground">{call.call_instruction || '-'}</p>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {(call.status === 'pending' || call.status === 'failed') && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => cancelOutboundMutation.mutate(call.id)}
+                                        disabled={cancelOutboundMutation.isPending}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                        {scheduledTotalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                            <p className="text-sm text-muted-foreground">
+                              {filteredScheduledCalls.length} chiamate filtrate
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={scheduledPage <= 1}
+                                onClick={() => setScheduledPage(p => p - 1)}
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <span className="text-sm px-2">
+                                {scheduledPage} / {scheduledTotalPages}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={scheduledPage >= scheduledTotalPages}
+                                onClick={() => setScheduledPage(p => p + 1)}
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="non-client" className="space-y-6">
