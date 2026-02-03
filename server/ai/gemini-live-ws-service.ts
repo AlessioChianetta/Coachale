@@ -2475,10 +2475,12 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
-          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (same mechanism as inbound calls)
+          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (max 8000 chars ≈ 2k tokens)
+          const MAX_HISTORY_CHARS = 8000;
           let instructionPreviousCallContext = '';
           if (phoneCallerId) {
             try {
+              // Fetch more conversations to allow character-based limiting
               const previousConversations = await db.execute(sql`
                 SELECT 
                   ac.id,
@@ -2500,22 +2502,15 @@ export function setupGeminiLiveWSService(): WebSocketServer {
                 FROM ai_conversations ac
                 WHERE ac.caller_phone = ${phoneCallerId}
                 ORDER BY ac.created_at DESC
-                LIMIT 3
+                LIMIT 10
               `);
               
               if (previousConversations.rows.length > 0) {
-                console.log(`📱 [${connectionId}] Found ${previousConversations.rows.length} previous conversations for instruction call to ${phoneCallerId}`);
-                
-                instructionPreviousCallContext = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📞 STORICO CHIAMATE PRECEDENTI (CONTESTO)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Hai già parlato con questa persona! Usa queste info per essere più personale:
-
-`;
+                let historyContent = '';
+                let includedConvCount = 0;
                 
                 for (const conv of previousConversations.rows as any[]) {
+                  let convText = '';
                   const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
                     day: '2-digit',
                     month: 'long',
@@ -2524,23 +2519,40 @@ Hai già parlato con questa persona! Usa queste info per essere più personale:
                     minute: '2-digit'
                   });
                   
-                  instructionPreviousCallContext += `📅 Chiamata del ${callDate}\n`;
-                  instructionPreviousCallContext += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
+                  convText += `📅 Chiamata del ${callDate}\n`;
+                  convText += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
                   
                   if (conv.messages && Array.isArray(conv.messages)) {
                     for (const msg of conv.messages) {
                       const roleLabel = msg.role === 'user' ? '👤 Loro' : '🤖 Tu';
-                      const content = msg.content.length > 200 
-                        ? msg.content.substring(0, 200) + '...'
-                        : msg.content;
-                      instructionPreviousCallContext += `${roleLabel}: ${content}\n`;
+                      convText += `${roleLabel}: ${msg.content}\n`;
                     }
                   }
-                  instructionPreviousCallContext += '\n---\n\n';
+                  convText += '\n---\n\n';
+                  
+                  // Check if adding this conversation would exceed limit
+                  if (historyContent.length + convText.length > MAX_HISTORY_CHARS) {
+                    break;
+                  }
+                  
+                  historyContent += convText;
+                  includedConvCount++;
                 }
                 
-                instructionPreviousCallContext += `💡 Usa queste info per salutare per nome e fare riferimento a conversazioni passate!
+                if (historyContent.length > 0) {
+                  console.log(`📱 [${connectionId}] Included ${includedConvCount} conversations (${historyContent.length} chars) for instruction call`);
+                  
+                  instructionPreviousCallContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI (CONTESTO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hai già parlato con questa persona! Usa queste info per essere più personale:
+
+${historyContent}
+💡 Usa queste info per salutare per nome e fare riferimento a conversazioni passate!
 `;
+                }
               } else {
                 console.log(`📱 [${connectionId}] No previous conversations found for ${phoneCallerId}`);
               }
@@ -2783,8 +2795,9 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         let contentPrompt = '';
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // LOAD PREVIOUS CONVERSATIONS FOR RETURNING CALLERS
+        // LOAD PREVIOUS CONVERSATIONS FOR RETURNING CALLERS (max 8000 chars ≈ 2k tokens)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const INBOUND_MAX_HISTORY_CHARS = 8000;
         let previousCallContext = '';
         if (phoneCallerId) {
           try {
@@ -2810,13 +2823,46 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
               FROM ai_conversations ac
               WHERE ac.caller_phone = ${phoneCallerId}
               ORDER BY ac.created_at DESC
-              LIMIT 3
+              LIMIT 10
             `);
             
             if (previousConversations.rows.length > 0) {
-              console.log(`📱 [${connectionId}] Found ${previousConversations.rows.length} previous conversations for caller ${phoneCallerId}`);
+              let historyContent = '';
+              let includedConvCount = 0;
               
-              previousCallContext = `
+              for (const conv of previousConversations.rows as any[]) {
+                let convText = '';
+                const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+                
+                convText += `📅 Chiamata del ${callDate}\n`;
+                convText += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
+                
+                if (conv.messages && Array.isArray(conv.messages)) {
+                  for (const msg of conv.messages) {
+                    const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Tu';
+                    convText += `${roleLabel}: ${msg.content}\n`;
+                  }
+                }
+                convText += '\n---\n\n';
+                
+                if (historyContent.length + convText.length > INBOUND_MAX_HISTORY_CHARS) {
+                  break;
+                }
+                
+                historyContent += convText;
+                includedConvCount++;
+              }
+              
+              if (historyContent.length > 0) {
+                console.log(`📱 [${connectionId}] Included ${includedConvCount} conversations (${historyContent.length} chars) for inbound call`);
+                
+                previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 STORICO CHIAMATE PRECEDENTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2843,36 +2889,8 @@ Se nelle conversazioni sotto vedi un nome (es. "Marco", "Laura"):
 
 Ecco le conversazioni precedenti:
 
-`;
-              
-              for (const conv of previousConversations.rows as any[]) {
-                const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
-                
-                previousCallContext += `📅 Chiamata del ${callDate}\n`;
-                previousCallContext += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
-                
-                if (conv.messages && Array.isArray(conv.messages)) {
-                  // Include ALL messages from each conversation
-                  for (const msg of conv.messages) {
-                    // Use "Tu" for assistant messages to be neutral about identity
-                    const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Tu';
-                    // Truncate long messages
-                    const content = msg.content.length > 200 
-                      ? msg.content.substring(0, 200) + '...'
-                      : msg.content;
-                    previousCallContext += `${roleLabel}: ${content}\n`;
-                  }
-                }
-                previousCallContext += '\n---\n\n';
-              }
-              
-              previousCallContext += `💡 USA ATTIVAMENTE queste informazioni per:
+${historyContent}
+💡 USA ATTIVAMENTE queste informazioni per:
 - Salutare per nome se lo conosci
 - Fare riferimento a conversazioni passate
 - Far sentire la persona RICONOSCIUTA e SPECIALE
@@ -2880,6 +2898,7 @@ Ecco le conversazioni precedenti:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
+              }
             } else {
               console.log(`📱 [${connectionId}] No previous conversations found for caller ${phoneCallerId}`);
             }
@@ -3159,7 +3178,8 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
           // Get client name from context
           const clientName = userContext.user?.firstName || userContext.user?.email?.split('@')[0] || 'il cliente';
           
-          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (same mechanism as non-clients)
+          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (max 8000 chars ≈ 2k tokens)
+          const CLIENT_MAX_HISTORY_CHARS = 8000;
           let clientInstructionCallHistory = '';
           if (phoneCallerId) {
             try {
@@ -3184,22 +3204,15 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
                 FROM ai_conversations ac
                 WHERE ac.caller_phone = ${phoneCallerId}
                 ORDER BY ac.created_at DESC
-                LIMIT 3
+                LIMIT 10
               `);
               
               if (previousConversations.rows.length > 0) {
-                console.log(`📱 [${connectionId}] Found ${previousConversations.rows.length} previous conversations for client instruction call`);
-                
-                clientInstructionCallHistory = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📞 STORICO CHIAMATE PRECEDENTI (CONTESTO)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Hai già parlato con ${clientName}! Ecco le conversazioni precedenti:
-
-`;
+                let historyContent = '';
+                let includedConvCount = 0;
                 
                 for (const conv of previousConversations.rows as any[]) {
+                  let convText = '';
                   const callDate = new Date(conv.created_at).toLocaleDateString('it-IT', {
                     day: '2-digit',
                     month: 'long',
@@ -3208,23 +3221,39 @@ Hai già parlato con ${clientName}! Ecco le conversazioni precedenti:
                     minute: '2-digit'
                   });
                   
-                  clientInstructionCallHistory += `📅 Chiamata del ${callDate}\n`;
-                  clientInstructionCallHistory += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
+                  convText += `📅 Chiamata del ${callDate}\n`;
+                  convText += `Titolo: ${conv.title || 'Conversazione vocale'}\n\n`;
                   
                   if (conv.messages && Array.isArray(conv.messages)) {
                     for (const msg of conv.messages) {
                       const roleLabel = msg.role === 'user' ? `👤 ${clientName}` : '🤖 Tu';
-                      const content = msg.content.length > 200 
-                        ? msg.content.substring(0, 200) + '...'
-                        : msg.content;
-                      clientInstructionCallHistory += `${roleLabel}: ${content}\n`;
+                      convText += `${roleLabel}: ${msg.content}\n`;
                     }
                   }
-                  clientInstructionCallHistory += '\n---\n\n';
+                  convText += '\n---\n\n';
+                  
+                  if (historyContent.length + convText.length > CLIENT_MAX_HISTORY_CHARS) {
+                    break;
+                  }
+                  
+                  historyContent += convText;
+                  includedConvCount++;
                 }
                 
-                clientInstructionCallHistory += `💡 Usa queste info per far sentire ${clientName} riconosciuto!
+                if (historyContent.length > 0) {
+                  console.log(`📱 [${connectionId}] Included ${includedConvCount} conversations (${historyContent.length} chars) for client instruction call`);
+                  
+                  clientInstructionCallHistory = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI (CONTESTO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hai già parlato con ${clientName}! Ecco le conversazioni precedenti:
+
+${historyContent}
+💡 Usa queste info per far sentire ${clientName} riconosciuto!
 `;
+                }
               } else {
                 console.log(`📱 [${connectionId}] No previous conversations found for client ${phoneCallerId}`);
               }
