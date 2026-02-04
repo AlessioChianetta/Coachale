@@ -936,7 +936,8 @@ export default function ConsultantVoiceCallsPage() {
     recurrence_days: [] as number[],
     recurrence_end_date: '',
     max_attempts: 3,
-    retry_delay_minutes: 15
+    retry_delay_minutes: 15,
+    template_id: undefined as string | undefined
   });
 
   const { toast } = useToast();
@@ -4252,7 +4253,16 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         return (
                                           <button
                                             key={type.value}
-                                            onClick={() => setNewTaskData({...newTaskData, task_type: type.value as 'single_call' | 'follow_up' | 'ai_task'})}
+                                            onClick={() => {
+                                              const newType = type.value as 'single_call' | 'follow_up' | 'ai_task';
+                                              setNewTaskData({
+                                                ...newTaskData, 
+                                                task_type: newType,
+                                                recurrence_type: newType === 'single_call' ? 'once' : newTaskData.recurrence_type,
+                                                recurrence_days: newType === 'single_call' ? [] : newTaskData.recurrence_days,
+                                                template_id: newType === 'ai_task' ? undefined : newTaskData.template_id
+                                              });
+                                            }}
                                             className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 ${
                                               isSelected 
                                                 ? `border-${type.color}-500 bg-gradient-to-br ${type.gradient} text-white shadow-lg shadow-${type.color}-500/25 scale-[1.02]` 
@@ -4277,14 +4287,84 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     </div>
                                   </div>
 
-                                  {/* SEZIONE 2: CONTATTO */}
+                                  {/* SEZIONE 2: CONTATTO con ricerca clienti */}
                                   <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                        <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                          <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Contatto</h3>
                                       </div>
-                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Contatto</h3>
                                     </div>
+                                    
+                                    {/* Ricerca clienti esistenti */}
+                                    {clientsData && (clientsData.active?.length > 0 || clientsData.inactive?.length > 0) && (
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                          <Search className="h-3.5 w-3.5" />
+                                          Cerca tra i clienti esistenti
+                                        </Label>
+                                        <Select
+                                          value=""
+                                          onValueChange={(clientId) => {
+                                            const allClients = [...(clientsData.active || []), ...(clientsData.inactive || [])];
+                                            const client = allClients.find(c => c.id === clientId);
+                                            if (client) {
+                                              const phone = client.phoneNumber.startsWith('+') ? client.phoneNumber : `+39${client.phoneNumber}`;
+                                              setNewTaskData({
+                                                ...newTaskData, 
+                                                contact_phone: phone,
+                                                contact_name: `${client.firstName} ${client.lastName}`
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                              <Users className="h-4 w-4" />
+                                              <span>Seleziona un cliente...</span>
+                                            </div>
+                                          </SelectTrigger>
+                                          <SelectContent className="max-h-[300px]">
+                                            {clientsData.active && clientsData.active.length > 0 && (
+                                              <>
+                                                <div className="px-2 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
+                                                  Clienti Attivi ({clientsData.active.length})
+                                                </div>
+                                                {clientsData.active.map((client) => (
+                                                  <SelectItem key={client.id} value={client.id}>
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                      <span className="font-medium">{client.firstName} {client.lastName}</span>
+                                                      <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
+                                                    </div>
+                                                  </SelectItem>
+                                                ))}
+                                              </>
+                                            )}
+                                            {clientsData.inactive && clientsData.inactive.length > 0 && (
+                                              <>
+                                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-slate-950/30 mt-1">
+                                                  Clienti Inattivi ({clientsData.inactive.length})
+                                                </div>
+                                                {clientsData.inactive.map((client) => (
+                                                  <SelectItem key={client.id} value={client.id}>
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                                      <span>{client.firstName} {client.lastName}</span>
+                                                      <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
+                                                    </div>
+                                                  </SelectItem>
+                                                ))}
+                                              </>
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Input manuali */}
                                     <div className="grid grid-cols-2 gap-4">
                                       <div className="space-y-2">
                                         <Label className="text-sm flex items-center gap-1.5">
@@ -4313,61 +4393,180 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     </div>
                                   </div>
 
-                                  {/* SEZIONE 3: ISTRUZIONE AI */}
+                                  {/* SEZIONE 2.5: TEMPLATE (solo per single_call e follow_up) */}
+                                  {(newTaskData.task_type === 'single_call' || newTaskData.task_type === 'follow_up') && (
+                                    <div className="space-y-4">
+                                      <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+                                          <FileText className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                                        </div>
+                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Template</h3>
+                                        <Badge variant="outline" className="text-xs">Opzionale</Badge>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                          { id: 'sales-orbitale', name: 'Sales Call', desc: 'Qualifica e appuntamento', icon: Target },
+                                          { id: 'follow-up-lead', name: 'Follow-up Lead', desc: 'Richiama lead freddo', icon: RepeatIcon },
+                                          { id: 'recupero-crediti', name: 'Recupero Crediti', desc: 'Sollecito pagamento', icon: AlertCircle },
+                                          { id: 'checkin-cliente', name: 'Check-in Cliente', desc: 'Verifica soddisfazione', icon: CheckCircle },
+                                        ].map((tpl) => {
+                                          const isSelected = newTaskData.template_id === tpl.id;
+                                          return (
+                                            <button
+                                              key={tpl.id}
+                                              type="button"
+                                              onClick={() => {
+                                                if (isSelected) {
+                                                  setNewTaskData({...newTaskData, template_id: undefined});
+                                                } else {
+                                                  setNewTaskData({...newTaskData, template_id: tpl.id});
+                                                }
+                                              }}
+                                              className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 text-left ${
+                                                isSelected 
+                                                  ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-500' 
+                                                  : 'border-border hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-950/10'
+                                              }`}
+                                            >
+                                              <div className={`p-2 rounded-lg ${isSelected ? 'bg-rose-500 text-white' : 'bg-muted'}`}>
+                                                <tpl.icon className="h-4 w-4" />
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className={`text-sm font-medium ${isSelected ? 'text-rose-700 dark:text-rose-300' : ''}`}>{tpl.name}</div>
+                                                <div className="text-xs text-muted-foreground truncate">{tpl.desc}</div>
+                                              </div>
+                                              {isSelected && <Check className="h-4 w-4 text-rose-500 flex-shrink-0" />}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* SEZIONE 3: ISTRUZIONE AI - adattiva per tipo */}
                                   <div className="space-y-4">
                                     <div className="flex items-center gap-2">
-                                      <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                                        <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                      <div className={`p-1.5 rounded-lg ${
+                                        newTaskData.task_type === 'ai_task' 
+                                          ? 'bg-purple-100 dark:bg-purple-900/30' 
+                                          : 'bg-amber-100 dark:bg-amber-900/30'
+                                      }`}>
+                                        {newTaskData.task_type === 'ai_task' 
+                                          ? <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                          : <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                        }
                                       </div>
-                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Istruzione AI</h3>
+                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+                                        {newTaskData.task_type === 'ai_task' ? 'Compito AI' : 'Istruzione per la chiamata'}
+                                      </h3>
+                                      {newTaskData.template_id && (
+                                        <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 text-xs">
+                                          Template attivo
+                                        </Badge>
+                                      )}
                                     </div>
                                     <div className="relative">
                                       <Textarea 
-                                        placeholder="Descrivi cosa deve fare l'AI durante la chiamata. Es: 'Chiama il cliente per ricordare l'appuntamento di domani e confermare la disponibilità...'"
-                                        className="min-h-[120px] bg-muted/30 border-muted-foreground/20 focus:border-primary resize-none pr-12"
+                                        placeholder={
+                                          newTaskData.task_type === 'single_call' 
+                                            ? "Es: 'Ricorda l'appuntamento di domani e conferma la disponibilità'"
+                                            : newTaskData.task_type === 'follow_up'
+                                            ? "Es: 'Ricontatta il lead per sapere se ha avuto modo di valutare la proposta'"
+                                            : "Es: 'Invia un messaggio di follow-up, analizza la risposta e aggiorna il CRM'"
+                                        }
+                                        className={`bg-muted/30 border-muted-foreground/20 focus:border-primary resize-none pr-12 ${
+                                          newTaskData.task_type === 'ai_task' ? 'min-h-[160px]' : 'min-h-[100px]'
+                                        }`}
                                         value={newTaskData.ai_instruction}
                                         onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
                                       />
                                       <Bot className="absolute right-4 bottom-4 h-5 w-5 text-muted-foreground/30" />
                                     </div>
+                                    {newTaskData.task_type === 'ai_task' && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                        <Sparkles className="h-3 w-3" />
+                                        L'AI eseguirà automaticamente questo compito senza necessità di chiamata
+                                      </p>
+                                    )}
                                   </div>
 
-                                  {/* SEZIONE 4: FREQUENZA AVANZATA */}
-                                  <div className="space-y-5 p-5 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700/50">
+                                  {/* SEZIONE 4: FREQUENZA AVANZATA - adattiva per tipo */}
+                                  <div className={`space-y-5 p-5 rounded-2xl border ${
+                                    newTaskData.task_type === 'single_call' 
+                                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800/50'
+                                      : newTaskData.task_type === 'follow_up'
+                                      ? 'bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800/50'
+                                      : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 border-slate-200 dark:border-slate-700/50'
+                                  }`}>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                                          <CalendarClock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                        <div className={`p-1.5 rounded-lg ${
+                                          newTaskData.task_type === 'single_call' 
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                                            : newTaskData.task_type === 'follow_up'
+                                            ? 'bg-blue-100 dark:bg-blue-900/30'
+                                            : 'bg-indigo-100 dark:bg-indigo-900/30'
+                                        }`}>
+                                          <CalendarClock className={`h-4 w-4 ${
+                                            newTaskData.task_type === 'single_call' 
+                                              ? 'text-emerald-600 dark:text-emerald-400'
+                                              : newTaskData.task_type === 'follow_up'
+                                              ? 'text-blue-600 dark:text-blue-400'
+                                              : 'text-indigo-600 dark:text-indigo-400'
+                                          }`} />
                                         </div>
-                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Programmazione</h3>
+                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+                                          {newTaskData.task_type === 'single_call' ? 'Quando chiamare' : 'Programmazione'}
+                                        </h3>
                                       </div>
+                                      {newTaskData.task_type === 'single_call' && (
+                                        <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-700 dark:text-emerald-400">
+                                          Chiamata singola
+                                        </Badge>
+                                      )}
                                     </div>
                                     
-                                    {/* Tipo frequenza - Card selezionabili */}
-                                    <div className="grid grid-cols-3 gap-2">
-                                      {[
-                                        { value: 'once', label: 'Una volta', icon: Circle, desc: 'Solo oggi' },
-                                        { value: 'daily', label: 'Giornaliero', icon: CalendarDays, desc: 'Ogni giorno' },
-                                        { value: 'weekly', label: 'Settimanale', icon: CalendarRange, desc: 'Giorni scelti' }
-                                      ].map((freq) => {
-                                        const isSelected = newTaskData.recurrence_type === freq.value;
-                                        return (
-                                          <button
-                                            key={freq.value}
-                                            type="button"
-                                            onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as 'once' | 'daily' | 'weekly'})}
-                                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 ${
-                                              isSelected 
-                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' 
-                                                : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600'
-                                            }`}
-                                          >
-                                            <freq.icon className={`h-5 w-5 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
-                                            <span className="text-xs font-semibold">{freq.label}</span>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
+                                    {/* Tipo frequenza - Solo per follow_up e ai_task */}
+                                    {newTaskData.task_type !== 'single_call' && (
+                                      <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                          { value: 'once', label: 'Una volta', icon: Circle, desc: 'Solo oggi' },
+                                          { value: 'daily', label: 'Giornaliero', icon: CalendarDays, desc: 'Ogni giorno' },
+                                          { value: 'weekly', label: 'Settimanale', icon: CalendarRange, desc: 'Giorni scelti' }
+                                        ].map((freq) => {
+                                          const isSelected = newTaskData.recurrence_type === freq.value;
+                                          const colorClass = newTaskData.task_type === 'follow_up' ? 'blue' : 'indigo';
+                                          return (
+                                            <button
+                                              key={freq.value}
+                                              type="button"
+                                              onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as 'once' | 'daily' | 'weekly'})}
+                                              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 ${
+                                                isSelected 
+                                                  ? `bg-${colorClass}-600 text-white shadow-lg shadow-${colorClass}-600/25` 
+                                                  : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600'
+                                              }`}
+                                            >
+                                              <freq.icon className={`h-5 w-5 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
+                                              <span className="text-xs font-semibold">{freq.label}</span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+
+                                    {/* Messaggio per single_call */}
+                                    {newTaskData.task_type === 'single_call' && (
+                                      <div className="flex items-center gap-3 p-3 bg-emerald-100/50 dark:bg-emerald-900/20 rounded-xl">
+                                        <Check className="h-5 w-5 text-emerald-600" />
+                                        <div>
+                                          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Chiamata programmata</p>
+                                          <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                            {dragStart && format(dragStart.day, 'EEEE d MMMM', { locale: it })} alle {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {/* Giorni settimana (se weekly) */}
                                     {newTaskData.recurrence_type === 'weekly' && (
