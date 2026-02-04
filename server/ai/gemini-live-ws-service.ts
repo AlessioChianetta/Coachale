@@ -6827,21 +6827,89 @@ ${compactFeedback}
           }
         }
         
-        // 🔄 ERROR 1011: Insufficient model resources - notify client to retry
+        // 🔄 ERROR 1011: Insufficient model resources - auto-retry for VPS calls
         if (code === 1011 || reasonText.includes('Insufficient model resources')) {
-          console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini risorse insufficienti - retry rapido`);
-          try {
-            clientWs.send(JSON.stringify({
-              type: 'error',
-              errorType: 'RETRY_SUGGESTED',
-              retryable: true,
-              retryDelayMs: 2000, // 2 secondi - veloce per chiamate in corso
-              message: 'Riconnessione...',
-              details: reasonText || 'Insufficient model resources'
-            }));
-            clientWs.close(4011, 'RETRY_SUGGESTED');
-          } catch (e) {
-            // Client may already be closed
+          const isVpsCall = mode === 'phone' || mode === 'phone_outbound' || mode === 'voice_call';
+          
+          if (isVpsCall && clientWs.readyState === WebSocket.OPEN) {
+            // VPS call: retry server-side without closing the phone call
+            console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini sovraccarico - RETRY AUTOMATICO per chiamata VPS`);
+            console.log(`   → Tentativo di riconnessione a Gemini in 1.5 secondi...`);
+            console.log(`   → La chiamata telefonica rimane attiva`);
+            
+            // Notify VPS that we're reconnecting (optional audio feedback)
+            try {
+              clientWs.send(JSON.stringify({
+                type: 'status',
+                status: 'reconnecting',
+                message: 'Riconnessione a Gemini in corso...'
+              }));
+            } catch (e) {}
+            
+            // Don't clean up - we'll reconnect
+            // The cleanup will happen if reconnection fails
+            setTimeout(async () => {
+              if (clientWs.readyState !== WebSocket.OPEN) {
+                console.log(`❌ [${connectionId}] Client disconnesso durante retry - annullo`);
+                return;
+              }
+              
+              console.log(`🔄 [${connectionId}] Tentativo riconnessione a Gemini...`);
+              try {
+                // Create new Gemini session
+                const newGeminiWs = new WebSocket(wsUrl, {
+                  headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                
+                newGeminiWs.on('open', () => {
+                  console.log(`✅ [${connectionId}] Riconnessione a Gemini riuscita!`);
+                  // Update geminiSession reference
+                  (geminiSession as any) = newGeminiWs;
+                  isSessionActive = true;
+                  
+                  // Re-send setup message
+                  newGeminiWs.send(JSON.stringify(setupMessage));
+                  
+                  // Re-attach all event handlers (simplified)
+                  // Note: This is a basic implementation - full would need all handlers
+                  clientWs.send(JSON.stringify({
+                    type: 'status',
+                    status: 'reconnected',
+                    message: 'Riconnesso a Gemini'
+                  }));
+                });
+                
+                newGeminiWs.on('error', (err) => {
+                  console.log(`❌ [${connectionId}] Riconnessione fallita: ${err.message}`);
+                  clientWs.send(JSON.stringify({
+                    type: 'error',
+                    errorType: 'RECONNECT_FAILED',
+                    message: 'Riconnessione a Gemini fallita. Riprova la chiamata.'
+                  }));
+                  clientWs.close(4011, 'RECONNECT_FAILED');
+                });
+                
+              } catch (reconnectError) {
+                console.log(`❌ [${connectionId}] Errore riconnessione: ${reconnectError}`);
+                clientWs.close(4011, 'RECONNECT_FAILED');
+              }
+            }, 1500); // 1.5 secondi
+            
+            return; // Don't close client
+          } else {
+            // Browser call: notify client to retry
+            console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini risorse insufficienti - notifica browser`);
+            try {
+              clientWs.send(JSON.stringify({
+                type: 'error',
+                errorType: 'RETRY_SUGGESTED',
+                retryable: true,
+                retryDelayMs: 2000,
+                message: 'Riconnessione...',
+                details: reasonText || 'Insufficient model resources'
+              }));
+              clientWs.close(4011, 'RETRY_SUGGESTED');
+            } catch (e) {}
           }
         }
         

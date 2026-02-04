@@ -1,0 +1,47 @@
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 [xd3f5] GEMINI WEBSOCKET CLOSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Close Code: 1011
+📝 Reason: Insufficient model resources to fulfill request.Please try again later.
+
+🔍 Close Code Meanings:
+   1000 = Normal Closure
+   1001 = Going Away
+   1002 = Protocol Error
+   1003 = Unsupported Data
+   1006 = Abnormal Closure (no close frame)
+   1007 = Invalid Frame Payload Data (INVALID ARGUMENT)
+   1008 = Policy Violation
+   1009 = Message Too Big
+   1011 = Internal Server Error
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔄 [xd3f5] ERROR 1011: Gemini risorse insufficienti - retry rapido
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [xd3f5] SESSION FINAL COST REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 Input (text): 8,616 tokens
+   → $0.0043 ($0.5/1M tokens)
+📤 Output (audio): 131 tokens
+   → $0.0016 ($12/1M tokens)
+
+💵 TOTAL SESSION COST: $0.0059 USD
+   (8,747 total tokens)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [xd3f5] Usage tracked → DB saved (Turn cost: $0.002270)
+✅ [xd3f5] Turn complete
+💾 [xd3f5] Saved USER message: "S ì, io ho presente." (3 total)
+⚠️  [xd3f5] Sales tracking: Fallback - committed user message without isFinal flag
+📝 [xd3f5] Fallback: User message saved, NO watchdog needed (AI already responded)
+❌ [xd3f5] Client disconnected - Code: 4011, Reason: RETRY_SUGGESTED
+📞 [xd3f5] Voice call vc_1770173064605_lstj49161 completed - Duration: 15s
+💾 [xd3f5] AUTO-SAVE: Saving 3 messages before closing...
+💾 Saving voice conversation for user anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, callerPhone: 1007)...
+✅ Conversation saved: 2f2a9437-23da-4531-82ca-d97d7f06dd02 with 3 messages
+✅ [xd3f5] AUTO-SAVE: Conversation saved successfully
+2:44:41 AM [express] GET /api/voice/calls 200 in 406ms :: {"calls":[{"id":"vc_1770173064605_lstj4916…
+2:44:42 AM [express] GET /api/voice/outbound/scheduled 304 in 405ms :: {"calls"
