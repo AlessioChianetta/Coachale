@@ -4310,7 +4310,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         status: 'connecting',
         retryCount: 0,
         websocket: geminiSession,
-        consultantId: msg.consultantId
+        consultantId
       });
       console.log(`🔌 [${connectionId}] Added to connection tracker (total: ${activeGeminiConnections.size})`);
 
