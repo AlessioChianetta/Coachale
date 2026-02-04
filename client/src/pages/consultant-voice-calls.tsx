@@ -3545,10 +3545,14 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         <div className="w-2.5 h-2.5 rounded-sm bg-purple-500"></div>
                         <span className="text-muted-foreground">AI Tasks</span>
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm bg-blue-500"></div>
+                        <span className="text-muted-foreground">Programmate</span>
+                      </div>
                       {(calendarContactFilter || calendarShowAllCalls) && (
                         <div className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-sm bg-blue-500"></div>
-                          <span className="text-muted-foreground">Chiamate</span>
+                          <div className="w-2.5 h-2.5 rounded-sm bg-gray-400"></div>
+                          <span className="text-muted-foreground">Storico</span>
                         </div>
                       )}
                     </div>
@@ -3575,7 +3579,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       )}
                     </div>
                     
-                    {/* Show All Calls Toggle */}
+                    {/* Show Call History Toggle */}
                     <div className="flex items-center gap-2">
                       <Switch
                         id="show-all-calls"
@@ -3584,7 +3588,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         className="data-[state=checked]:bg-blue-500"
                       />
                       <label htmlFor="show-all-calls" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
-                        Tutte le chiamate
+                        Storico chiamate
                       </label>
                     </div>
                     
@@ -3797,14 +3801,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         .sort((a: AITask, b: AITask) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
                         .slice(0, 5);
                       
-                      // Mostra chiamate solo se toggle attivo o filtro contatto
-                      const showCalls = calendarShowAllCalls || calendarContactFilter;
-                      const upcomingCalls = showCalls 
-                        ? (calendarData?.scheduledCalls || [])
-                            .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && c.status === 'pending' && matchesContactFilter(c))
-                            .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-                            .slice(0, 5)
-                        : [];
+                      // Chiamate PROGRAMMATE: sempre visibili (filtrate per contatto se c'è ricerca)
+                      const upcomingCalls = (calendarData?.scheduledCalls || [])
+                        .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && c.status === 'pending' && matchesContactFilter(c))
+                        .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                        .slice(0, 5);
                       
                       const allUpcoming = [...upcomingTasks.map((t: AITask) => ({ ...t, eventType: 'task' as const })), ...upcomingCalls.map((c: any) => ({ ...c, eventType: 'call' as const }))]
                         .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
@@ -3961,14 +3962,14 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     isSameDay(new Date(t.scheduled_at), day) && matchesContactFilter(t)
                                   ) || []);
                                   
-                                  // Chiamate programmate e storico: mostrate solo se c'è filtro contatto o toggle attivo
-                                  const showCalls = calendarShowAllCalls || calendarContactFilter;
-                                  const dayCalls = showCalls 
-                                    ? (calendarData?.scheduledCalls?.filter((c: any) => 
-                                        c.scheduled_at && isSameDay(new Date(c.scheduled_at), day) && matchesContactFilter(c)
-                                      ) || [])
-                                    : [];
-                                  const dayHistory = showCalls 
+                                  // Chiamate PROGRAMMATE: sempre visibili (filtrate per contatto se c'è ricerca)
+                                  const dayCalls = (calendarData?.scheduledCalls?.filter((c: any) => 
+                                    c.scheduled_at && isSameDay(new Date(c.scheduled_at), day) && matchesContactFilter(c)
+                                  ) || []);
+                                  
+                                  // STORICO chiamate: visibile solo con toggle o filtro contatto
+                                  const showHistory = calendarShowAllCalls || calendarContactFilter;
+                                  const dayHistory = showHistory 
                                     ? (calendarData?.voiceCallHistory?.filter((c: any) => 
                                         c.started_at && isSameDay(new Date(c.started_at), day) && matchesContactFilter(c)
                                       ) || [])
