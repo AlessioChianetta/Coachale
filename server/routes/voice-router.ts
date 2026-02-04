@@ -135,11 +135,16 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
         vc.*,
         CONCAT(u.first_name, ' ', u.last_name) as client_name,
         u.phone_number as client_phone,
-        svc.instruction_type,
-        svc.call_instruction
+        COALESCE(svc_direct.instruction_type, svc_phone.instruction_type) as instruction_type,
+        COALESCE(svc_direct.call_instruction, svc_phone.call_instruction) as call_instruction
       FROM voice_calls vc
       LEFT JOIN users u ON vc.client_id = u.id
-      LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
+      LEFT JOIN scheduled_voice_calls svc_direct ON svc_direct.voice_call_id = vc.id
+      LEFT JOIN scheduled_voice_calls svc_phone ON (
+        svc_phone.voice_call_id IS NULL 
+        AND svc_phone.target_phone = vc.called_number
+        AND svc_phone.created_at BETWEEN vc.started_at - INTERVAL '5 minutes' AND vc.started_at + INTERVAL '5 minutes'
+      )
       ${whereClause}
       ORDER BY vc.started_at DESC
       LIMIT ${limitNum} OFFSET ${offset}
