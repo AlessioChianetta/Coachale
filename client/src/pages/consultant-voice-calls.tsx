@@ -81,6 +81,7 @@ import {
   AlertTriangle,
   FileCheck,
   TrendingUp,
+  Flag,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -705,34 +706,40 @@ function AgentPromptPreview({ prompt, agentName }: { prompt: string; agentName: 
 }
 
 interface AgentBrandVoice {
-  businessName?: string;
-  businessDescription?: string;
-  whatWeDo?: string;
-  howWeDoIt?: string;
-  whoWeHelp?: string;
+  business_name?: string;
+  business_description?: string;
+  what_we_do?: string;
+  how_we_do_it?: string;
+  who_we_help?: string;
   usp?: string;
-  servicesOffered?: string | any[];
+  services_offered?: string | any[];
+  vision?: string;
+  mission?: string;
+  years_experience?: string;
+  clients_helped?: string;
 }
 
 function BrandVoicePreview({ agent, agentName }: { agent: AgentBrandVoice; agentName: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const hasAnyInfo = agent.businessName || agent.businessDescription || agent.whatWeDo || 
-                     agent.howWeDoIt || agent.whoWeHelp || agent.usp || agent.servicesOffered;
+  const hasAnyInfo = agent.business_name || agent.business_description || agent.what_we_do || 
+                     agent.how_we_do_it || agent.who_we_help || agent.usp || agent.services_offered ||
+                     agent.vision || agent.mission;
 
   const services = (() => {
-    if (!agent.servicesOffered) return [];
+    if (!agent.services_offered) return [];
     try {
-      const parsed = typeof agent.servicesOffered === 'string' 
-        ? JSON.parse(agent.servicesOffered) 
-        : agent.servicesOffered;
+      const parsed = typeof agent.services_offered === 'string' 
+        ? JSON.parse(agent.services_offered) 
+        : agent.services_offered;
       return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
     } catch { return []; }
   })();
 
   const infoCount = [
-    agent.businessName, agent.businessDescription, agent.whatWeDo, 
-    agent.howWeDoIt, agent.whoWeHelp, agent.usp, services.length > 0
+    agent.business_name, agent.business_description, agent.what_we_do, 
+    agent.how_we_do_it, agent.who_we_help, agent.usp, services.length > 0,
+    agent.vision, agent.mission
   ].filter(Boolean).length;
 
   return (
@@ -763,28 +770,40 @@ function BrandVoicePreview({ agent, agentName }: { agent: AgentBrandVoice; agent
             </p>
           ) : (
             <div className="space-y-2 text-sm">
-              {agent.businessName && (
+              {agent.business_name && (
                 <div className="flex items-start gap-2">
                   <Building2 className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Business:</span> {agent.businessName}</div>
+                  <div><span className="font-medium">Business:</span> {agent.business_name}</div>
                 </div>
               )}
-              {agent.businessDescription && (
+              {agent.business_description && (
                 <div className="flex items-start gap-2">
                   <FileText className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Descrizione:</span> {agent.businessDescription}</div>
+                  <div><span className="font-medium">Descrizione:</span> {agent.business_description}</div>
                 </div>
               )}
-              {agent.whatWeDo && (
+              {agent.vision && (
+                <div className="flex items-start gap-2">
+                  <Eye className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                  <div><span className="font-medium">Vision:</span> {agent.vision}</div>
+                </div>
+              )}
+              {agent.mission && (
+                <div className="flex items-start gap-2">
+                  <Flag className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                  <div><span className="font-medium">Mission:</span> {agent.mission}</div>
+                </div>
+              )}
+              {agent.what_we_do && (
                 <div className="flex items-start gap-2">
                   <Target className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Cosa facciamo:</span> {agent.whatWeDo}</div>
+                  <div><span className="font-medium">Cosa facciamo:</span> {agent.what_we_do}</div>
                 </div>
               )}
-              {agent.whoWeHelp && (
+              {agent.who_we_help && (
                 <div className="flex items-start gap-2">
                   <Users className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Chi aiutiamo:</span> {agent.whoWeHelp}</div>
+                  <div><span className="font-medium">Chi aiutiamo:</span> {agent.who_we_help}</div>
                 </div>
               )}
               {agent.usp && (
