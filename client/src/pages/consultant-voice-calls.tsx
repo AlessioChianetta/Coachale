@@ -943,6 +943,9 @@ export default function ConsultantVoiceCallsPage() {
   const [quickCreateTemplateValues, setQuickCreateTemplateValues] = useState<Record<string, string>>({});
   const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call' | 'history'; data: any } | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
+  // Calendar filter states
+  const [calendarContactFilter, setCalendarContactFilter] = useState("");
+  const [calendarShowAllCalls, setCalendarShowAllCalls] = useState(false);
   const [newTaskData, setNewTaskData] = useState({
     contact_phone: '',
     contact_name: '',
@@ -3542,15 +3545,50 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         <div className="w-2.5 h-2.5 rounded-sm bg-purple-500"></div>
                         <span className="text-muted-foreground">AI Tasks</span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm bg-blue-500"></div>
-                        <span className="text-muted-foreground">Chiamate</span>
-                      </div>
+                      {(calendarContactFilter || calendarShowAllCalls) && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-sm bg-blue-500"></div>
+                          <span className="text-muted-foreground">Chiamate</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
-                  {/* Segment Control Toggle - Google Style */}
-                  <div className="flex items-center gap-2">
+                  {/* Filters and View Toggle */}
+                  <div className="flex items-center gap-3">
+                    {/* Contact Search Filter */}
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cerca cliente o numero..."
+                        value={calendarContactFilter}
+                        onChange={(e) => setCalendarContactFilter(e.target.value)}
+                        className="pl-8 h-8 w-[180px] text-sm"
+                      />
+                      {calendarContactFilter && (
+                        <button
+                          onClick={() => setCalendarContactFilter("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Show All Calls Toggle */}
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="show-all-calls"
+                        checked={calendarShowAllCalls}
+                        onCheckedChange={setCalendarShowAllCalls}
+                        className="data-[state=checked]:bg-blue-500"
+                      />
+                      <label htmlFor="show-all-calls" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+                        Tutte le chiamate
+                      </label>
+                    </div>
+                    
+                    {/* Segment Control Toggle - Google Style */}
                     <div className="flex bg-muted/50 rounded-lg p-0.5">
                       <button
                         onClick={() => setAITasksView('list')}
@@ -3744,14 +3782,30 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     {/* Sezione Prossimi Invii */}
                     {(() => {
                       const now = new Date();
+                      
+                      // Helper per filtrare per contatto (nome o numero)
+                      const matchesContactFilter = (item: any) => {
+                        if (!calendarContactFilter) return true;
+                        const search = calendarContactFilter.toLowerCase();
+                        const name = (item.contact_name || item.client_name || '').toLowerCase();
+                        const phone = (item.contact_phone || item.caller_id || item.target_phone || '').toLowerCase();
+                        return name.includes(search) || phone.includes(search);
+                      };
+                      
                       const upcomingTasks = (calendarData?.aiTasks || [])
-                        .filter((t: AITask) => new Date(t.scheduled_at) > now && t.status === 'scheduled')
+                        .filter((t: AITask) => new Date(t.scheduled_at) > now && t.status === 'scheduled' && matchesContactFilter(t))
                         .sort((a: AITask, b: AITask) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
                         .slice(0, 5);
-                      const upcomingCalls = (calendarData?.scheduledCalls || [])
-                        .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && c.status === 'pending')
-                        .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-                        .slice(0, 5);
+                      
+                      // Mostra chiamate solo se toggle attivo o filtro contatto
+                      const showCalls = calendarShowAllCalls || calendarContactFilter;
+                      const upcomingCalls = showCalls 
+                        ? (calendarData?.scheduledCalls || [])
+                            .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && c.status === 'pending' && matchesContactFilter(c))
+                            .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                            .slice(0, 5)
+                        : [];
+                      
                       const allUpcoming = [...upcomingTasks.map((t: AITask) => ({ ...t, eventType: 'task' as const })), ...upcomingCalls.map((c: any) => ({ ...c, eventType: 'call' as const }))]
                         .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
                         .slice(0, 5);
@@ -3892,9 +3946,33 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 {[0,1,2,3,4,5,6].map(dayOffset => {
                                   const day = addDays(calendarWeekStart, dayOffset);
                                   const isToday = isSameDay(day, new Date());
-                                  const dayTasks = calendarData?.aiTasks?.filter((t: AITask) => isSameDay(new Date(t.scheduled_at), day)) || [];
-                                  const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
-                                  const dayHistory = calendarData?.voiceCallHistory?.filter((c: any) => c.started_at && isSameDay(new Date(c.started_at), day)) || [];
+                                  
+                                  // Helper per filtrare per contatto (nome o numero)
+                                  const matchesContactFilter = (item: any) => {
+                                    if (!calendarContactFilter) return true;
+                                    const search = calendarContactFilter.toLowerCase();
+                                    const name = (item.contact_name || item.client_name || '').toLowerCase();
+                                    const phone = (item.contact_phone || item.caller_id || item.target_phone || '').toLowerCase();
+                                    return name.includes(search) || phone.includes(search);
+                                  };
+                                  
+                                  // AI Tasks: sempre mostrati (filtrati per contatto se c'è ricerca)
+                                  const dayTasks = (calendarData?.aiTasks?.filter((t: AITask) => 
+                                    isSameDay(new Date(t.scheduled_at), day) && matchesContactFilter(t)
+                                  ) || []);
+                                  
+                                  // Chiamate programmate e storico: mostrate solo se c'è filtro contatto o toggle attivo
+                                  const showCalls = calendarShowAllCalls || calendarContactFilter;
+                                  const dayCalls = showCalls 
+                                    ? (calendarData?.scheduledCalls?.filter((c: any) => 
+                                        c.scheduled_at && isSameDay(new Date(c.scheduled_at), day) && matchesContactFilter(c)
+                                      ) || [])
+                                    : [];
+                                  const dayHistory = showCalls 
+                                    ? (calendarData?.voiceCallHistory?.filter((c: any) => 
+                                        c.started_at && isSameDay(new Date(c.started_at), day) && matchesContactFilter(c)
+                                      ) || [])
+                                    : [];
                                   
                                   // Altezza fissa per eventi puntuali (non range)
                                   const EVENT_HEIGHT = 32;
