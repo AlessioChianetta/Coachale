@@ -2403,26 +2403,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         // Will be determined later after checking previous conversations
         let nonClientHasPreviousConversations = false;
         
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 🚦 DIREZIONE CHIAMATA: OUTBOUND vs INBOUND
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // OUTBOUND = NOI chiamiamo loro (scheduledCallId presente)
-        // INBOUND = LORO chiamano noi (scheduledCallId assente)
-        const isOutboundCall = !!phoneScheduledCallId;
-        
-        console.log(`\n🚦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`🚦 [${connectionId}] DIREZIONE CHIAMATA DETERMINATA:`);
-        console.log(`🚦   scheduledCallId: ${phoneScheduledCallId || 'NULL'}`);
-        console.log(`🚦   phoneCallInstruction: ${phoneCallInstruction ? `"${phoneCallInstruction.substring(0, 50)}..."` : 'NULL'}`);
-        console.log(`🚦   ══════════════════════════════════════════════════════════`);
-        if (isOutboundCall) {
-          console.log(`🚦   📤 DECISIONE: OUTBOUND - NOI stiamo chiamando LORO`);
-          console.log(`🚦   (scheduledCallId presente → chiamata programmata da noi)`);
-        } else {
-          console.log(`🚦   📥 DECISIONE: INBOUND - LORO stanno chiamando NOI`);
-          console.log(`🚦   (nessun scheduledCallId → chiamata spontanea da esterno)`);
-        }
-        console.log(`🚦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        console.log(`\n📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
         // Get consultant info FIRST (needed for both instruction and normal flow)
         let consultantName = 'il consulente';
@@ -2441,15 +2422,15 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           }
         }
         
-        // 🎯 OUTBOUND CALL: NOI chiamiamo LORO (con o senza istruzione specifica)
-        if (isOutboundCall) {
-          console.log(`📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`📤 [${connectionId}] OUTBOUND CALL - NOI stiamo chiamando LORO`);
-          console.log(`📤   Scheduled Call ID: ${phoneScheduledCallId}`);
-          console.log(`📤   Istruzione: ${phoneCallInstruction ? `"${phoneCallInstruction}"` : '(nessuna - useremo template OUTBOUND)'}`);
-          console.log(`📤   Type: ${phoneInstructionType || 'generic'}`);
-          console.log(`📤   Consultant: ${consultantName}`);
-          console.log(`📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        // 🎯 PRIORITY CHECK: If there's a specific call instruction, use ONLY that
+        if (phoneCallInstruction) {
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🎯 [${connectionId}] USING CALL INSTRUCTION (PRIORITY MODE)`);
+          console.log(`🎯   Type: ${phoneInstructionType || 'generic'}`);
+          console.log(`🎯   Instruction: ${phoneCallInstruction}`);
+          console.log(`🎯   Scheduled Call ID: ${phoneScheduledCallId}`);
+          console.log(`🎯   Consultant: ${consultantName}`);
+          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           
           // Get current Italian time
           const italianTime = new Date().toLocaleString('it-IT', { 
@@ -2727,105 +2708,19 @@ Una volta che hanno capito e confermato:
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           console.log(systemInstruction);
           console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-          
         } else {
-          // OUTBOUND senza istruzione specifica
-          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          // 📤 OUTBOUND SENZA ISTRUZIONE: usa template OUTBOUND configurato
-          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          console.log(`📤 [${connectionId}] OUTBOUND senza istruzione specifica - usando template OUTBOUND`);
-          
-          // Load OUTBOUND template using same logic as INBOUND but with outbound settings
-          // (questo branch usa le outboundPromptSource già caricate sopra)
-          
-          // Import OUTBOUND templates
-          const { getTemplateById: getOutboundTemplate, OUTBOUND_TEMPLATES } = await import('../voice/voice-templates.js');
-          
-          // Build prompt based on outboundPromptSource
-          let outboundPromptContent = '';
-          
-          if (outboundPromptSource === 'agent' && outboundAgentId) {
-            // Load WhatsApp agent prompt
-            try {
-              const agentResult = await db.execute(sql`
-                SELECT name, ai_instructions, consultant_id FROM consultant_whatsapp_config 
-                WHERE id = ${outboundAgentId} AND consultant_id = ${consultantId}
-              `);
-              if (agentResult.rows.length > 0) {
-                const agent = agentResult.rows[0] as any;
-                outboundPromptContent = agent.ai_instructions || '';
-                console.log(`📤 [${connectionId}] OUTBOUND usando agent WhatsApp: ${agent.name}`);
-              }
-            } catch (err) {
-              console.warn(`⚠️ [${connectionId}] Errore caricamento agent:`, err);
-            }
-          } else if (outboundPromptSource === 'manual' && outboundManualPrompt) {
-            outboundPromptContent = outboundManualPrompt;
-            console.log(`📤 [${connectionId}] OUTBOUND usando prompt manuale`);
-          } else {
-            // Use template (default)
-            const templateResult = getOutboundTemplate(outboundTemplateId);
-            if (templateResult) {
-              // Replace variables in template
-              outboundPromptContent = templateResult.prompt
-                .replace(/\{\{consultantName\}\}/g, consultantName)
-                .replace(/\{\{businessName\}\}/g, consultantBusinessName || 'la nostra azienda')
-                .replace(/\{\{aiName\}\}/g, 'Alessia')
-                .replace(/\{\{contactName\}\}/g, 'la persona');
-              console.log(`📤 [${connectionId}] OUTBOUND usando template: ${templateResult.name}`);
-            } else {
-              console.warn(`⚠️ [${connectionId}] Template OUTBOUND non trovato: ${outboundTemplateId}`);
-            }
-          }
-          
-          // Build OUTBOUND system instruction (similar structure to instruction mode but without specific instruction)
-          systemInstruction = `${voiceDirectivesSection}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 CHI SEI
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Sei Alessia, l'assistente AI di ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}.
-⚠️ STAI CHIAMANDO TU - NON CHIEDERE "COME POSSO AIUTARTI"!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 IL TUO COMPITO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${outboundPromptContent || `Questa è una chiamata OUTBOUND - TU stai chiamando la persona.
-Presentati brevemente e spiega il motivo della chiamata.
-Segui le direttive del template configurato.`}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 CONTESTO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Data e ora: ${italianTime} (Italia)
-Tipo chiamata: OUTBOUND (stai chiamando tu per conto del consulente)`;
-
-          userDataContext = '';
-          console.log(`📤 [${connectionId}] OUTBOUND prompt built (${systemInstruction.length} chars) - template: ${outboundTemplateId}`);
-        }
-        // END of OUTBOUND block (isOutboundCall with/without instruction)
-        } 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 📥 INBOUND: LORO chiamano NOI - usa template INBOUND configurato
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        else {
-          console.log(`📥 [${connectionId}] INBOUND CALL - LORO stanno chiamando NOI - usando template INBOUND`);
-          
           // No specific instruction - continue with normal non-client prompt flow (INBOUND)
         
-          // Load non-client settings from database (includes both legacy and new direction-specific fields)
-          let voiceDirectives = '';
-          // Direction-specific settings (new template system)
-          let promptSource: 'agent' | 'manual' | 'default' = 'default';
-          let templateId: string = 'mini-discovery'; // Default INBOUND template
-          let agentId: string | null = null;
-          let manualPrompt = '';
-          
-          // For INBOUND calls (no callInstruction), isOutbound = false
-          const isOutbound = false; // This block only handles INBOUND (no phoneCallInstruction)
+        // Load non-client settings from database (includes both legacy and new direction-specific fields)
+        let voiceDirectives = '';
+        // Direction-specific settings (new template system)
+        let promptSource: 'agent' | 'manual' | 'default' = 'default';
+        let templateId: string = 'mini-discovery'; // Default INBOUND template
+        let agentId: string | null = null;
+        let manualPrompt = '';
+        
+        // For INBOUND calls (no callInstruction), isOutbound = false
+        const isOutbound = false; // This block only handles INBOUND (no phoneCallInstruction)
         
         if (consultantId) {
           try {
