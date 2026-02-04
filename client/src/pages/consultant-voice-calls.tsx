@@ -1329,8 +1329,42 @@ export default function ConsultantVoiceCallsPage() {
   ) || [];
 
   const filteredScheduledCalls = useMemo(() => {
-    if (!scheduledCallsData?.calls) return [];
-    const filtered = scheduledCallsData.calls.filter(call => {
+    const scheduledCalls: (ScheduledVoiceCall & { isAITask?: boolean })[] = (scheduledCallsData?.calls || []).map(call => ({
+      ...call,
+      isAITask: false
+    }));
+    
+    // Include AI Tasks that are pending/scheduled as scheduled calls
+    const aiTasksAsCalls: (ScheduledVoiceCall & { isAITask?: boolean })[] = (aiTasksData?.tasks || [])
+      .filter(task => ['scheduled', 'retry_pending', 'in_progress'].includes(task.status))
+      .map(task => ({
+        id: task.id,
+        consultant_id: task.consultant_id,
+        target_phone: task.contact_phone,
+        scheduled_at: task.scheduled_at,
+        status: task.status === 'scheduled' ? 'pending' : task.status === 'retry_pending' ? 'retry_scheduled' : task.status,
+        ai_mode: 'ai',
+        custom_prompt: task.ai_instruction,
+        voice_call_id: task.voice_call_id,
+        attempts: task.current_attempt,
+        max_attempts: task.max_attempts,
+        last_attempt_at: null,
+        error_message: task.result_summary,
+        priority: 1,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        call_instruction: task.ai_instruction,
+        instruction_type: task.task_type === 'single_call' ? 'task' as const : null,
+        retry_reason: null,
+        next_retry_at: null,
+        duration_seconds: null,
+        isAITask: true,
+        contact_name: task.contact_name
+      } as ScheduledVoiceCall & { isAITask?: boolean; contact_name?: string }));
+    
+    const allCalls = [...scheduledCalls, ...aiTasksAsCalls];
+    
+    const filtered = allCalls.filter(call => {
       if (scheduledStatusFilter !== 'all' && call.status !== scheduledStatusFilter) return false;
       if (scheduledTypeFilter !== 'all' && call.instruction_type !== scheduledTypeFilter) return false;
       return true;
@@ -1340,7 +1374,7 @@ export default function ConsultantVoiceCallsPage() {
       const dateB = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
       return dateB - dateA;
     });
-  }, [scheduledCallsData?.calls, scheduledStatusFilter, scheduledTypeFilter]);
+  }, [scheduledCallsData?.calls, aiTasksData?.tasks, scheduledStatusFilter, scheduledTypeFilter]);
 
   const paginatedScheduledCalls = useMemo(() => {
     const start = (scheduledPage - 1) * SCHEDULED_PER_PAGE;
@@ -2557,9 +2591,23 @@ export default function ConsultantVoiceCallsPage() {
                               const statusConfig = OUTBOUND_STATUS_CONFIG[call.status] || OUTBOUND_STATUS_CONFIG.pending;
                               const isRetryState = ['no_answer', 'busy', 'short_call', 'retry_scheduled'].includes(call.status);
                               const retryReasonLabel = call.retry_reason ? (OUTBOUND_STATUS_CONFIG[call.retry_reason]?.label || call.retry_reason) : null;
+                              const callWithExtra = call as ScheduledVoiceCall & { isAITask?: boolean; contact_name?: string };
                               return (
                                 <TableRow key={call.id}>
-                                  <TableCell className="font-mono text-sm">{call.target_phone}</TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-mono text-sm">{call.target_phone}</span>
+                                      {callWithExtra.contact_name && (
+                                        <span className="text-xs text-muted-foreground">{callWithExtra.contact_name}</span>
+                                      )}
+                                      {callWithExtra.isAITask && (
+                                        <Badge className="w-fit bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-xs">
+                                          <Bot className="h-3 w-3 mr-1" />
+                                          AI Task
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
                                   <TableCell>
                                     <div className="flex flex-col gap-1">
                                       <Badge className={`${statusConfig.color} text-xs`}>
