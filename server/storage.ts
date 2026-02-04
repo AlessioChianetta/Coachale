@@ -739,7 +739,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     const digitsOnly = phoneNumber.replace(/[^\d+]/g, '');
-    if (digitsOnly.length < 5) {
+    if (digitsOnly.length < 3) {
       return undefined;
     }
     
