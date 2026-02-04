@@ -531,7 +531,8 @@ router.post("/consultant/gold-access", authenticateToken, requireRole("consultan
     const [consultant] = await db.select({
       id: users.id,
       email: users.email,
-      name: users.name,
+      firstName: users.firstName,
+      lastName: users.lastName,
       pricingPageSlug: users.pricingPageSlug,
     })
       .from(users)
@@ -545,8 +546,9 @@ router.post("/consultant/gold-access", authenticateToken, requireRole("consultan
     
     // If no slug exists, generate one automatically
     if (!slug) {
-      // Generate slug based on: name (sanitized) + random suffix
-      const baseName = consultant.name || consultant.email?.split("@")[0] || "consulente";
+      // Generate slug based on: firstName + lastName (sanitized) + random suffix
+      const fullName = `${consultant.firstName || ''} ${consultant.lastName || ''}`.trim();
+      const baseName = fullName || consultant.email?.split("@")[0] || "consulente";
       const sanitizedBase = baseName
         .toLowerCase()
         .normalize("NFD")
