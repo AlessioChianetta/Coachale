@@ -358,6 +358,21 @@ export default function SelectAgent() {
       const storedTier = localStorage.getItem("bronzeUserTier") || "";
       const storedSlug = localStorage.getItem("bronzePublicSlug") || "";
       
+      // PRIORITY 0: Check for Gold token in URL hash (from consultant Gold access)
+      // This handles the case where the token was passed via URL to avoid localStorage timing issues
+      const hash = window.location.hash;
+      if (hash.includes("goldToken=")) {
+        const tokenMatch = hash.match(/goldToken=([^&]+)/);
+        if (tokenMatch) {
+          const urlToken = decodeURIComponent(tokenMatch[1]);
+          console.log("[SELECT-AGENT] Found Gold token in URL hash");
+          // Save to localStorage for future use
+          localStorage.setItem("bronzeAuthToken", urlToken);
+          // Clean up the URL hash
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
+      
       // PRIORITY 1: Check bronzeAuthToken for Gold preview token (consultant accessing as Gold)
       const bronzeAuthToken = localStorage.getItem("bronzeAuthToken");
       if (bronzeAuthToken) {

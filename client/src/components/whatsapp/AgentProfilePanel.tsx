@@ -1121,8 +1121,9 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
       // Save token in localStorage for Gold auth
       localStorage.setItem("bronzeAuthToken", data.token);
       
-      // Open the select-agent page in new tab
-      window.open(data.accessUrl, '_blank');
+      // Open the select-agent page in new tab with token in URL hash
+      // The hash avoids sending the token to the server while making it available to the new tab
+      window.open(`${data.accessUrl}#goldToken=${encodeURIComponent(data.token)}`, '_blank');
       
       toast({
         title: "Accesso Gold generato",
