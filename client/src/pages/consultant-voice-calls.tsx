@@ -96,6 +96,13 @@ import {
   List,
   Plug,
   Zap,
+  CalendarDays,
+  CalendarClock,
+  CalendarRange,
+  CalendarCheck,
+  CalendarX,
+  Circle,
+  Timer,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -4188,7 +4195,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                               </div>
                             </div>
 
-                            {/* Quick Create Sheet */}
+                            {/* Quick Create Sheet - Design Premium */}
                             <Sheet open={showQuickCreate} onOpenChange={(open) => {
                               if (!open) {
                                 setShowQuickCreate(false);
@@ -4196,111 +4203,197 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 setDragEnd(null);
                               }
                             }}>
-                              <SheetContent className="sm:max-w-lg overflow-auto">
-                                <SheetHeader>
-                                  <SheetTitle className="flex items-center gap-2">
-                                    <Phone className="h-5 w-5 text-primary" />
-                                    Nuova Chiamata AI
-                                  </SheetTitle>
-                                  <SheetDescription>
-                                    {dragStart && format(dragStart.day, 'EEEE d MMMM yyyy', { locale: it })} • 
-                                    {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00 - 
-                                    {dragEnd && (Math.max(dragStart?.hour || 0, dragEnd.hour) + 1).toString().padStart(2,'0')}:00
-                                  </SheetDescription>
-                                </SheetHeader>
+                              <SheetContent className="sm:max-w-xl overflow-auto p-0 border-l-0">
+                                {/* HEADER GRADIENT */}
+                                <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-6 py-5 text-white">
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
+                                      <Phone className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <h2 className="text-xl font-semibold">Nuova Chiamata AI</h2>
+                                      <p className="text-white/70 text-sm">Programma una chiamata automatica</p>
+                                    </div>
+                                  </div>
+                                  {/* Badge data/ora */}
+                                  <div className="flex items-center gap-2 mt-4">
+                                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
+                                      <CalendarDays className="h-4 w-4" />
+                                      <span className="text-sm font-medium">
+                                        {dragStart && format(dragStart.day, 'EEE d MMM', { locale: it })}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
+                                      <Clock className="h-4 w-4" />
+                                      <span className="text-sm font-medium">
+                                        {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00 - 
+                                        {dragEnd && (Math.max(dragStart?.hour || 0, dragEnd.hour) + 1).toString().padStart(2,'0')}:00
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                                 
-                                <div className="space-y-6 py-6">
-                                  {/* TIPO CHIAMATA - Pillole */}
-                                  <div className="space-y-3">
-                                    <Label className="text-sm font-medium">Tipo di chiamata *</Label>
+                                <div className="px-6 py-6 space-y-8">
+                                  {/* SEZIONE 1: TIPO CHIAMATA */}
+                                  <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                                        <Zap className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                                      </div>
+                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Tipo di chiamata</h3>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-3">
+                                      {[
+                                        { value: 'single_call', label: 'Chiamata', icon: Phone, desc: 'Una singola chiamata', color: 'emerald', gradient: 'from-emerald-500 to-teal-600' },
+                                        { value: 'follow_up', label: 'Follow-up', icon: RepeatIcon, desc: 'Serie programmata', color: 'blue', gradient: 'from-blue-500 to-cyan-600' },
+                                        { value: 'ai_task', label: 'Task AI', icon: Bot, desc: 'Azione automatica', color: 'purple', gradient: 'from-purple-500 to-pink-600' }
+                                      ].map((type) => {
+                                        const isSelected = newTaskData.task_type === type.value;
+                                        return (
+                                          <button
+                                            key={type.value}
+                                            onClick={() => setNewTaskData({...newTaskData, task_type: type.value as 'single_call' | 'follow_up' | 'ai_task'})}
+                                            className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 ${
+                                              isSelected 
+                                                ? `border-${type.color}-500 bg-gradient-to-br ${type.gradient} text-white shadow-lg shadow-${type.color}-500/25 scale-[1.02]` 
+                                                : 'border-border bg-card hover:border-muted-foreground/30 hover:shadow-md'
+                                            }`}
+                                          >
+                                            {isSelected && (
+                                              <div className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-lg">
+                                                <Check className={`h-3.5 w-3.5 text-${type.color}-600`} />
+                                              </div>
+                                            )}
+                                            <div className={`p-3 rounded-xl ${isSelected ? 'bg-white/20' : `bg-${type.color}-100 dark:bg-${type.color}-900/20`}`}>
+                                              <type.icon className={`h-6 w-6 ${isSelected ? 'text-white' : `text-${type.color}-600 dark:text-${type.color}-400`}`} />
+                                            </div>
+                                            <div className="text-center">
+                                              <span className="text-sm font-semibold block">{type.label}</span>
+                                              <span className={`text-xs ${isSelected ? 'text-white/70' : 'text-muted-foreground'}`}>{type.desc}</span>
+                                            </div>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  {/* SEZIONE 2: CONTATTO */}
+                                  <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                        <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                      </div>
+                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Contatto</h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label className="text-sm flex items-center gap-1.5">
+                                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                          Telefono <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input 
+                                          placeholder="+39 333 1234567" 
+                                          value={newTaskData.contact_phone}
+                                          onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})}
+                                          className="h-11 bg-muted/30 border-muted-foreground/20 focus:border-primary"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label className="text-sm flex items-center gap-1.5">
+                                          <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                          Nome
+                                        </Label>
+                                        <Input 
+                                          placeholder="Mario Rossi" 
+                                          value={newTaskData.contact_name}
+                                          onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})}
+                                          className="h-11 bg-muted/30 border-muted-foreground/20 focus:border-primary"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* SEZIONE 3: ISTRUZIONE AI */}
+                                  <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                                        <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                      </div>
+                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Istruzione AI</h3>
+                                    </div>
+                                    <div className="relative">
+                                      <Textarea 
+                                        placeholder="Descrivi cosa deve fare l'AI durante la chiamata. Es: 'Chiama il cliente per ricordare l'appuntamento di domani e confermare la disponibilità...'"
+                                        className="min-h-[120px] bg-muted/30 border-muted-foreground/20 focus:border-primary resize-none pr-12"
+                                        value={newTaskData.ai_instruction}
+                                        onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
+                                      />
+                                      <Bot className="absolute right-4 bottom-4 h-5 w-5 text-muted-foreground/30" />
+                                    </div>
+                                  </div>
+
+                                  {/* SEZIONE 4: FREQUENZA AVANZATA */}
+                                  <div className="space-y-5 p-5 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700/50">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                                          <CalendarClock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                        </div>
+                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Programmazione</h3>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Tipo frequenza - Card selezionabili */}
                                     <div className="grid grid-cols-3 gap-2">
                                       {[
-                                        { value: 'single_call', label: 'Chiamata', icon: Phone, desc: 'Chiamata singola' },
-                                        { value: 'follow_up', label: 'Follow-up', icon: RepeatIcon, desc: 'Serie di chiamate' },
-                                        { value: 'ai_task', label: 'Task AI', icon: Bot, desc: 'Task automatico' }
-                                      ].map((type) => (
-                                        <button
-                                          key={type.value}
-                                          onClick={() => setNewTaskData({...newTaskData, task_type: type.value as 'single_call' | 'follow_up' | 'ai_task'})}
-                                          className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                                            newTaskData.task_type === type.value 
-                                              ? 'border-primary bg-primary/5' 
-                                              : 'border-border hover:border-primary/50'
-                                          }`}
-                                        >
-                                          <type.icon className={`h-5 w-5 ${newTaskData.task_type === type.value ? 'text-primary' : 'text-muted-foreground'}`} />
-                                          <span className="text-sm font-medium">{type.label}</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  {/* CONTATTO */}
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                      <Label>Numero telefono *</Label>
-                                      <Input 
-                                        placeholder="+39 333 1234567" 
-                                        value={newTaskData.contact_phone}
-                                        onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})}
-                                      />
-                                    </div>
-                                    <div className="space-y-2">
-                                      <Label>Nome contatto</Label>
-                                      <Input 
-                                        placeholder="Mario Rossi" 
-                                        value={newTaskData.contact_name}
-                                        onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* ISTRUZIONE AI */}
-                                  <div className="space-y-2">
-                                    <Label>Istruzione per l'AI *</Label>
-                                    <Textarea 
-                                      placeholder="Descrivi cosa deve fare l'AI durante la chiamata..."
-                                      className="min-h-[100px]"
-                                      value={newTaskData.ai_instruction}
-                                      onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
-                                    />
-                                  </div>
-
-                                  {/* FREQUENZA AVANZATA */}
-                                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                                    <Label className="text-sm font-medium">Frequenza</Label>
-                                    
-                                    {/* Tipo frequenza - pillole */}
-                                    <div className="flex gap-2 flex-wrap">
-                                      {[
-                                        { value: 'once', label: 'Una volta' },
-                                        { value: 'daily', label: 'Ogni giorno' },
-                                        { value: 'weekly', label: 'Settimanale' }
-                                      ].map((freq) => (
-                                        <Button
-                                          key={freq.value}
-                                          type="button"
-                                          variant={newTaskData.recurrence_type === freq.value ? 'default' : 'outline'}
-                                          size="sm"
-                                          onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as 'once' | 'daily' | 'weekly'})}
-                                        >
-                                          {freq.label}
-                                        </Button>
-                                      ))}
+                                        { value: 'once', label: 'Una volta', icon: Circle, desc: 'Solo oggi' },
+                                        { value: 'daily', label: 'Giornaliero', icon: CalendarDays, desc: 'Ogni giorno' },
+                                        { value: 'weekly', label: 'Settimanale', icon: CalendarRange, desc: 'Giorni scelti' }
+                                      ].map((freq) => {
+                                        const isSelected = newTaskData.recurrence_type === freq.value;
+                                        return (
+                                          <button
+                                            key={freq.value}
+                                            type="button"
+                                            onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as 'once' | 'daily' | 'weekly'})}
+                                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 ${
+                                              isSelected 
+                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25' 
+                                                : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600'
+                                            }`}
+                                          >
+                                            <freq.icon className={`h-5 w-5 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
+                                            <span className="text-xs font-semibold">{freq.label}</span>
+                                          </button>
+                                        );
+                                      })}
                                     </div>
 
                                     {/* Giorni settimana (se weekly) */}
                                     {newTaskData.recurrence_type === 'weekly' && (
-                                      <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">Giorni della settimana</Label>
-                                        <div className="flex gap-1">
-                                          {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((dayLabel, idx) => {
+                                      <div className="space-y-3 pt-2 animate-in slide-in-from-top-2 duration-200">
+                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                          <CalendarCheck className="h-3.5 w-3.5" />
+                                          Seleziona i giorni
+                                        </Label>
+                                        <div className="flex gap-2 justify-between">
+                                          {[
+                                            { short: 'L', full: 'Lunedì' },
+                                            { short: 'M', full: 'Martedì' },
+                                            { short: 'M', full: 'Mercoledì' },
+                                            { short: 'G', full: 'Giovedì' },
+                                            { short: 'V', full: 'Venerdì' },
+                                            { short: 'S', full: 'Sabato' },
+                                            { short: 'D', full: 'Domenica' }
+                                          ].map((day, idx) => {
                                             const dayNum = idx + 1;
                                             const isSelected = (newTaskData.recurrence_days || []).includes(dayNum);
+                                            const isWeekend = idx >= 5;
                                             return (
                                               <button
                                                 key={idx}
                                                 type="button"
+                                                title={day.full}
                                                 onClick={() => {
                                                   const current = newTaskData.recurrence_days || [];
                                                   const updated = isSelected 
@@ -4308,13 +4401,15 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                                     : [...current, dayNum].sort();
                                                   setNewTaskData({...newTaskData, recurrence_days: updated});
                                                 }}
-                                                className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${
+                                                className={`w-10 h-10 rounded-xl text-sm font-bold transition-all duration-200 ${
                                                   isSelected 
-                                                    ? 'bg-primary text-primary-foreground' 
-                                                    : 'bg-muted hover:bg-muted/80'
+                                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 scale-110' 
+                                                    : isWeekend 
+                                                      ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100' 
+                                                      : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
                                                 }`}
                                               >
-                                                {dayLabel}
+                                                {day.short}
                                               </button>
                                             );
                                           })}
@@ -4322,20 +4417,24 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       </div>
                                     )}
 
-                                    {/* Tentativi e Retry */}
-                                    <div className="grid grid-cols-2 gap-4">
+                                    {/* Riga: Tentativi + Retry + Data fine */}
+                                    <div className="grid grid-cols-3 gap-4 pt-2">
+                                      {/* Tentativi */}
                                       <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">Tentativi max</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                          <RotateCcw className="h-3.5 w-3.5" />
+                                          Tentativi
+                                        </Label>
                                         <div className="flex gap-1">
                                           {[1, 2, 3, 4, 5].map((n) => (
                                             <button
                                               key={n}
                                               type="button"
                                               onClick={() => setNewTaskData({...newTaskData, max_attempts: n})}
-                                              className={`w-8 h-8 rounded text-sm font-medium transition-all ${
+                                              className={`flex-1 h-9 rounded-lg text-sm font-bold transition-all duration-200 ${
                                                 newTaskData.max_attempts === n 
-                                                  ? 'bg-primary text-primary-foreground' 
-                                                  : 'bg-muted hover:bg-muted/80'
+                                                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md' 
+                                                  : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
                                               }`}
                                             >
                                               {n}
@@ -4343,69 +4442,86 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                           ))}
                                         </div>
                                       </div>
+
+                                      {/* Intervallo retry */}
                                       <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">Intervallo retry</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                          <Timer className="h-3.5 w-3.5" />
+                                          Intervallo
+                                        </Label>
                                         <Select 
                                           value={String(newTaskData.retry_delay_minutes || 15)} 
                                           onValueChange={(v) => setNewTaskData({...newTaskData, retry_delay_minutes: parseInt(v)})}
                                         >
-                                          <SelectTrigger className="h-8">
+                                          <SelectTrigger className="h-9 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600">
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            <SelectItem value="5">5 minuti</SelectItem>
-                                            <SelectItem value="10">10 minuti</SelectItem>
-                                            <SelectItem value="15">15 minuti</SelectItem>
-                                            <SelectItem value="30">30 minuti</SelectItem>
+                                            <SelectItem value="5">5 min</SelectItem>
+                                            <SelectItem value="10">10 min</SelectItem>
+                                            <SelectItem value="15">15 min</SelectItem>
+                                            <SelectItem value="30">30 min</SelectItem>
                                             <SelectItem value="60">1 ora</SelectItem>
                                           </SelectContent>
                                         </Select>
                                       </div>
-                                    </div>
 
-                                    {/* Data fine (se non once) */}
-                                    {newTaskData.recurrence_type !== 'once' && (
+                                      {/* Data fine */}
                                       <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">Termina il (opzionale)</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                          <CalendarX className="h-3.5 w-3.5" />
+                                          Termina il
+                                        </Label>
                                         <Input 
                                           type="date" 
                                           value={newTaskData.recurrence_end_date || ''}
                                           onChange={(e) => setNewTaskData({...newTaskData, recurrence_end_date: e.target.value})}
+                                          className="h-9 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600"
+                                          disabled={newTaskData.recurrence_type === 'once'}
                                         />
                                       </div>
-                                    )}
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* FOOTER */}
-                                <div className="flex gap-3 pt-4 border-t">
-                                  <Button 
-                                    variant="outline" 
-                                    className="flex-1"
-                                    onClick={() => {
-                                      setShowQuickCreate(false);
-                                      setDragStart(null);
-                                      setDragEnd(null);
-                                    }}
-                                  >
-                                    Annulla
-                                  </Button>
-                                  <Button 
-                                    className="flex-1"
-                                    disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
-                                    onClick={() => {
-                                      createAITaskMutation.mutate(newTaskData, {
-                                        onSuccess: () => {
-                                          setShowQuickCreate(false);
-                                          setDragStart(null);
-                                          setDragEnd(null);
-                                        }
-                                      });
-                                    }}
-                                  >
-                                    {createAITaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                                    Salva Task
-                                  </Button>
+                                {/* FOOTER STICKY */}
+                                <div className="sticky bottom-0 bg-background border-t px-6 py-4">
+                                  <div className="flex gap-3">
+                                    <Button 
+                                      variant="outline" 
+                                      size="lg"
+                                      className="flex-1"
+                                      onClick={() => {
+                                        setShowQuickCreate(false);
+                                        setDragStart(null);
+                                        setDragEnd(null);
+                                      }}
+                                    >
+                                      <X className="h-4 w-4 mr-2" />
+                                      Annulla
+                                    </Button>
+                                    <Button 
+                                      size="lg"
+                                      className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-600/25"
+                                      disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
+                                      onClick={() => {
+                                        createAITaskMutation.mutate(newTaskData, {
+                                          onSuccess: () => {
+                                            setShowQuickCreate(false);
+                                            setDragStart(null);
+                                            setDragEnd(null);
+                                          }
+                                        });
+                                      }}
+                                    >
+                                      {createAITaskMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      ) : (
+                                        <Sparkles className="h-4 w-4 mr-2" />
+                                      )}
+                                      Programma Chiamata
+                                    </Button>
+                                  </div>
                                 </div>
                               </SheetContent>
                             </Sheet>
