@@ -1715,7 +1715,7 @@ router.get("/clients-with-phone", authenticateToken, requireAnyRole(["consultant
     .where(eq(users.consultantId, consultantId))
     .orderBy(desc(users.enrolledAt));
 
-    // Separa clienti attivi e inattivi
+    // Separa clienti attivi e inattivi (tutti, filtro telefono fatto sul frontend)
     const active = allClients
       .filter(c => c.isActive !== false)
       .map(c => ({

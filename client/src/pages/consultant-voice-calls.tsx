@@ -4298,71 +4298,96 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       </div>
                                     </div>
                                     
-                                    {/* Ricerca clienti esistenti */}
-                                    {clientsData && (clientsData.active?.length > 0 || clientsData.inactive?.length > 0) && (
-                                      <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                          <Search className="h-3.5 w-3.5" />
-                                          Cerca tra i clienti esistenti
-                                        </Label>
-                                        <Select
-                                          value=""
-                                          onValueChange={(clientId) => {
-                                            const allClients = [...(clientsData.active || []), ...(clientsData.inactive || [])];
-                                            const client = allClients.find(c => c.id === clientId);
-                                            if (client) {
-                                              const phone = client.phoneNumber.startsWith('+') ? client.phoneNumber : `+39${client.phoneNumber}`;
-                                              setNewTaskData({
-                                                ...newTaskData, 
-                                                contact_phone: phone,
-                                                contact_name: `${client.firstName} ${client.lastName}`
-                                              });
-                                            }
-                                          }}
-                                        >
-                                          <SelectTrigger className="h-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
-                                            <div className="flex items-center gap-2 text-muted-foreground">
-                                              <Users className="h-4 w-4" />
-                                              <span>Seleziona un cliente...</span>
+                                    {/* Ricerca clienti esistenti - usa filteredClients come nell'altra sezione */}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                        <Search className="h-3.5 w-3.5" />
+                                        Cerca tra i clienti esistenti
+                                      </Label>
+                                      {loadingClients ? (
+                                        <div className="flex items-center justify-center py-3 bg-muted/30 rounded-lg">
+                                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                          <span className="text-xs text-muted-foreground">Caricamento clienti...</span>
+                                        </div>
+                                      ) : (() => {
+                                        const allClientsWithPhone = [
+                                          ...(clientsData?.active?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || []),
+                                          ...(clientsData?.inactive?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [])
+                                        ];
+                                        const activeWithPhone = clientsData?.active?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [];
+                                        const inactiveWithPhone = clientsData?.inactive?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [];
+                                        
+                                        if (allClientsWithPhone.length === 0) {
+                                          return (
+                                            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                              <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                              <div>
+                                                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Nessun cliente con telefono</p>
+                                                <p className="text-xs text-amber-600 dark:text-amber-500">Aggiungi numeri ai tuoi clienti per selezionarli qui</p>
+                                              </div>
                                             </div>
-                                          </SelectTrigger>
-                                          <SelectContent className="max-h-[300px]">
-                                            {clientsData.active && clientsData.active.length > 0 && (
-                                              <>
-                                                <div className="px-2 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
-                                                  Clienti Attivi ({clientsData.active.length})
-                                                </div>
-                                                {clientsData.active.map((client) => (
-                                                  <SelectItem key={client.id} value={client.id}>
-                                                    <div className="flex items-center gap-2">
-                                                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                      <span className="font-medium">{client.firstName} {client.lastName}</span>
-                                                      <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
-                                                    </div>
-                                                  </SelectItem>
-                                                ))}
-                                              </>
-                                            )}
-                                            {clientsData.inactive && clientsData.inactive.length > 0 && (
-                                              <>
-                                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-slate-950/30 mt-1">
-                                                  Clienti Inattivi ({clientsData.inactive.length})
-                                                </div>
-                                                {clientsData.inactive.map((client) => (
-                                                  <SelectItem key={client.id} value={client.id}>
-                                                    <div className="flex items-center gap-2">
-                                                      <div className="w-2 h-2 rounded-full bg-slate-400" />
-                                                      <span>{client.firstName} {client.lastName}</span>
-                                                      <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
-                                                    </div>
-                                                  </SelectItem>
-                                                ))}
-                                              </>
-                                            )}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    )}
+                                          );
+                                        }
+                                        
+                                        return (
+                                          <Select
+                                            value=""
+                                            onValueChange={(clientId) => {
+                                              const client = allClientsWithPhone.find(c => c.id === clientId);
+                                              if (client) {
+                                                const phone = client.phoneNumber.startsWith('+') ? client.phoneNumber : `+39${client.phoneNumber}`;
+                                                setNewTaskData({
+                                                  ...newTaskData, 
+                                                  contact_phone: phone,
+                                                  contact_name: `${client.firstName} ${client.lastName}`
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <SelectTrigger className="h-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+                                              <div className="flex items-center gap-2 text-muted-foreground">
+                                                <Users className="h-4 w-4" />
+                                                <span>Seleziona un cliente ({allClientsWithPhone.length})</span>
+                                              </div>
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-[300px]">
+                                              {activeWithPhone.length > 0 && (
+                                                <>
+                                                  <div className="px-2 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
+                                                    Clienti Attivi ({activeWithPhone.length})
+                                                  </div>
+                                                  {activeWithPhone.map((client) => (
+                                                    <SelectItem key={client.id} value={client.id}>
+                                                      <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                        <span className="font-medium">{client.firstName} {client.lastName}</span>
+                                                        <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
+                                                      </div>
+                                                    </SelectItem>
+                                                  ))}
+                                                </>
+                                              )}
+                                              {inactiveWithPhone.length > 0 && (
+                                                <>
+                                                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-slate-950/30 mt-1">
+                                                    Clienti Inattivi ({inactiveWithPhone.length})
+                                                  </div>
+                                                  {inactiveWithPhone.map((client) => (
+                                                    <SelectItem key={client.id} value={client.id}>
+                                                      <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                                        <span>{client.firstName} {client.lastName}</span>
+                                                        <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
+                                                      </div>
+                                                    </SelectItem>
+                                                  ))}
+                                                </>
+                                              )}
+                                            </SelectContent>
+                                          </Select>
+                                        );
+                                      })()}
+                                    </div>
                                     
                                     {/* Input manuali */}
                                     <div className="grid grid-cols-2 gap-4">
@@ -4403,43 +4428,94 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Template</h3>
                                         <Badge variant="outline" className="text-xs">Opzionale</Badge>
                                       </div>
-                                      <div className="grid grid-cols-2 gap-2">
-                                        {[
-                                          { id: 'sales-orbitale', name: 'Sales Call', desc: 'Qualifica e appuntamento', icon: Target },
-                                          { id: 'follow-up-lead', name: 'Follow-up Lead', desc: 'Richiama lead freddo', icon: RepeatIcon },
-                                          { id: 'recupero-crediti', name: 'Recupero Crediti', desc: 'Sollecito pagamento', icon: AlertCircle },
-                                          { id: 'checkin-cliente', name: 'Check-in Cliente', desc: 'Verifica soddisfazione', icon: CheckCircle },
-                                        ].map((tpl) => {
-                                          const isSelected = newTaskData.template_id === tpl.id;
-                                          return (
-                                            <button
-                                              key={tpl.id}
-                                              type="button"
-                                              onClick={() => {
-                                                if (isSelected) {
-                                                  setNewTaskData({...newTaskData, template_id: undefined});
-                                                } else {
-                                                  setNewTaskData({...newTaskData, template_id: tpl.id});
-                                                }
-                                              }}
-                                              className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 text-left ${
-                                                isSelected 
-                                                  ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-500' 
-                                                  : 'border-border hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-950/10'
-                                              }`}
-                                            >
-                                              <div className={`p-2 rounded-lg ${isSelected ? 'bg-rose-500 text-white' : 'bg-muted'}`}>
-                                                <tpl.icon className="h-4 w-4" />
+                                      {(() => {
+                                        const QUICK_TEMPLATES = [
+                                          { 
+                                            id: 'sales-orbitale', 
+                                            name: 'Sales Call Orbitale', 
+                                            desc: 'Qualifica lead e proponi appuntamento', 
+                                            icon: Target,
+                                            preview: `🎯 OBIETTIVO: Qualificare il lead e proporre appuntamento conoscitivo\n\n📞 FASI:\n1. Presentazione breve\n2. Domande di qualifica (budget, tempistiche, decisore)\n3. Proposta appuntamento\n4. Gestione obiezioni`
+                                          },
+                                          { 
+                                            id: 'follow-up-lead', 
+                                            name: 'Follow-up Lead', 
+                                            desc: 'Richiama lead che non ha risposto', 
+                                            icon: RepeatIcon,
+                                            preview: `🔄 OBIETTIVO: Ricontattare lead freddo e riqualificarlo\n\n📞 FASI:\n1. Ricorda contatto precedente\n2. Verifica se ha avuto modo di valutare\n3. Affronta nuove domande/dubbi\n4. Proponi prossimo step`
+                                          },
+                                          { 
+                                            id: 'recupero-crediti', 
+                                            name: 'Recupero Crediti', 
+                                            desc: 'Sollecito pagamento in sospeso', 
+                                            icon: AlertCircle,
+                                            preview: `💰 OBIETTIVO: Sollecitare pagamento in modo professionale\n\n📞 FASI:\n1. Verifica identità\n2. Ricorda fattura/importo\n3. Chiedi data pagamento\n4. Proponi piano rateale se necessario`
+                                          },
+                                          { 
+                                            id: 'checkin-cliente', 
+                                            name: 'Check-in Cliente', 
+                                            desc: 'Verifica soddisfazione cliente attivo', 
+                                            icon: CheckCircle,
+                                            preview: `✅ OBIETTIVO: Verificare soddisfazione e identificare opportunità\n\n📞 FASI:\n1. Saluto cordiale\n2. Domande su utilizzo servizio\n3. Raccolta feedback\n4. Proposta upsell se appropriato`
+                                          },
+                                        ];
+                                        
+                                        const selectedTpl = QUICK_TEMPLATES.find(t => t.id === newTaskData.template_id);
+                                        
+                                        return (
+                                          <>
+                                            <div className="grid grid-cols-2 gap-2">
+                                              {QUICK_TEMPLATES.map((tpl) => {
+                                                const isSelected = newTaskData.template_id === tpl.id;
+                                                return (
+                                                  <button
+                                                    key={tpl.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                      if (isSelected) {
+                                                        setNewTaskData({...newTaskData, template_id: undefined});
+                                                      } else {
+                                                        setNewTaskData({...newTaskData, template_id: tpl.id});
+                                                      }
+                                                    }}
+                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 text-left ${
+                                                      isSelected 
+                                                        ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-500' 
+                                                        : 'border-border hover:border-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-950/10'
+                                                    }`}
+                                                  >
+                                                    <div className={`p-2 rounded-lg ${isSelected ? 'bg-rose-500 text-white' : 'bg-muted'}`}>
+                                                      <tpl.icon className="h-4 w-4" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                      <div className={`text-sm font-medium ${isSelected ? 'text-rose-700 dark:text-rose-300' : ''}`}>{tpl.name}</div>
+                                                      <div className="text-xs text-muted-foreground truncate">{tpl.desc}</div>
+                                                    </div>
+                                                    {isSelected && <Check className="h-4 w-4 text-rose-500 flex-shrink-0" />}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                            
+                                            {/* ANTEPRIMA TEMPLATE */}
+                                            {selectedTpl && (
+                                              <div className="animate-in slide-in-from-top-2 duration-200 p-4 bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-950/30 dark:to-pink-950/30 rounded-xl border border-rose-200 dark:border-rose-800">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                  <Eye className="h-4 w-4 text-rose-500" />
+                                                  <span className="text-sm font-semibold text-rose-700 dark:text-rose-300">Anteprima: {selectedTpl.name}</span>
+                                                </div>
+                                                <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
+                                                  {selectedTpl.preview}
+                                                </pre>
+                                                <p className="mt-3 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                                                  <Sparkles className="h-3 w-3" />
+                                                  Il template verrà combinato con le tue istruzioni personalizzate
+                                                </p>
                                               </div>
-                                              <div className="flex-1 min-w-0">
-                                                <div className={`text-sm font-medium ${isSelected ? 'text-rose-700 dark:text-rose-300' : ''}`}>{tpl.name}</div>
-                                                <div className="text-xs text-muted-foreground truncate">{tpl.desc}</div>
-                                              </div>
-                                              {isSelected && <Check className="h-4 w-4 text-rose-500 flex-shrink-0" />}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
                                     </div>
                                   )}
 
