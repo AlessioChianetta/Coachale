@@ -704,6 +704,125 @@ function AgentPromptPreview({ prompt, agentName }: { prompt: string; agentName: 
   );
 }
 
+interface AgentBrandVoice {
+  businessName?: string;
+  businessDescription?: string;
+  whatWeDo?: string;
+  howWeDoIt?: string;
+  whoWeHelp?: string;
+  usp?: string;
+  servicesOffered?: string | any[];
+}
+
+function BrandVoicePreview({ agent, agentName }: { agent: AgentBrandVoice; agentName: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const hasAnyInfo = agent.businessName || agent.businessDescription || agent.whatWeDo || 
+                     agent.howWeDoIt || agent.whoWeHelp || agent.usp || agent.servicesOffered;
+
+  const services = (() => {
+    if (!agent.servicesOffered) return [];
+    try {
+      const parsed = typeof agent.servicesOffered === 'string' 
+        ? JSON.parse(agent.servicesOffered) 
+        : agent.servicesOffered;
+      return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
+    } catch { return []; }
+  })();
+
+  const infoCount = [
+    agent.businessName, agent.businessDescription, agent.whatWeDo, 
+    agent.howWeDoIt, agent.whoWeHelp, agent.usp, services.length > 0
+  ].filter(Boolean).length;
+
+  return (
+    <div className="mt-3 rounded-lg border bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 overflow-hidden">
+      <div 
+        className="flex items-center justify-between p-3 cursor-pointer hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-purple-600" />
+          <span className="font-medium text-sm">{agentName}</span>
+          <Badge variant="outline" className="text-xs bg-purple-100 dark:bg-purple-900/50">
+            {infoCount} info Business
+          </Badge>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </div>
+
+      {isExpanded && (
+        <div className="p-3 pt-0 space-y-2">
+          {!hasAnyInfo ? (
+            <p className="text-sm text-muted-foreground italic text-center py-4">
+              Nessuna info business configurata per questo agente
+            </p>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {agent.businessName && (
+                <div className="flex items-start gap-2">
+                  <Building2 className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                  <div><span className="font-medium">Business:</span> {agent.businessName}</div>
+                </div>
+              )}
+              {agent.businessDescription && (
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                  <div><span className="font-medium">Descrizione:</span> {agent.businessDescription}</div>
+                </div>
+              )}
+              {agent.whatWeDo && (
+                <div className="flex items-start gap-2">
+                  <Target className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
+                  <div><span className="font-medium">Cosa facciamo:</span> {agent.whatWeDo}</div>
+                </div>
+              )}
+              {agent.whoWeHelp && (
+                <div className="flex items-start gap-2">
+                  <Users className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                  <div><span className="font-medium">Chi aiutiamo:</span> {agent.whoWeHelp}</div>
+                </div>
+              )}
+              {agent.usp && (
+                <div className="flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                  <div><span className="font-medium">USP:</span> {agent.usp}</div>
+                </div>
+              )}
+              {services.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <Briefcase className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-medium">Servizi:</span>
+                    <ul className="mt-1 ml-2 space-y-0.5">
+                      {services.map((s: any, i: number) => (
+                        <li key={i} className="text-muted-foreground">
+                          • {typeof s === 'string' ? s : (s.name || s)}
+                          {s.price && <span className="text-green-600 ml-1">({s.price})</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="pt-2 border-t mt-3">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="h-3 w-3" />
+              Solo queste info verranno iniettate, non le istruzioni dell'agente
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ConsultantVoiceCallsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2490,9 +2609,9 @@ export default function ConsultantVoiceCallsPage() {
                                 </Select>
                                 {(() => {
                                   const selectedAgent = nonClientSettingsData?.availableAgents.find(a => a.id === inboundBrandVoiceAgentId);
-                                  if (selectedAgent?.prompt) {
+                                  if (selectedAgent) {
                                     return (
-                                      <AgentPromptPreview prompt={selectedAgent.prompt} agentName={selectedAgent.name} />
+                                      <BrandVoicePreview agent={selectedAgent} agentName={selectedAgent.name} />
                                     );
                                   }
                                   return null;
@@ -2721,9 +2840,9 @@ export default function ConsultantVoiceCallsPage() {
                                 </Select>
                                 {(() => {
                                   const selectedAgent = nonClientSettingsData?.availableAgents.find(a => a.id === outboundBrandVoiceAgentId);
-                                  if (selectedAgent?.prompt) {
+                                  if (selectedAgent) {
                                     return (
-                                      <AgentPromptPreview prompt={selectedAgent.prompt} agentName={selectedAgent.name} />
+                                      <BrandVoicePreview agent={selectedAgent} agentName={selectedAgent.name} />
                                     );
                                   }
                                   return null;
