@@ -2194,7 +2194,7 @@ router.post("/ai-tasks", authenticateToken, requireAnyRole(["consultant", "super
       ) VALUES (
         ${taskId}, ${consultantId}, ${contact_name || null}, ${contact_phone},
         ${task_type}, ${ai_instruction}, ${scheduled_at}, ${timezone},
-        ${recurrence_type}, ${recurrence_days ? JSON.stringify(recurrence_days) : null}::jsonb,
+        ${recurrence_type}, ${recurrence_days && recurrence_days.length > 0 ? sql`ARRAY[${sql.join(recurrence_days.map(d => sql`${d}`), sql`, `)}]::integer[]` : null},
         ${recurrence_end_date || null}, ${max_attempts}, ${retry_delay_minutes},
         ${voice_template_id || null}, 'scheduled'
       )
@@ -2246,13 +2246,18 @@ router.patch("/ai-tasks/:id", authenticateToken, requireAnyRole(["consultant", "
     for (const field of allowedFields) {
       if (updates[field] !== undefined) {
         if (field === 'recurrence_days') {
-          setClauses.push(`${field} = $${paramIndex}::jsonb`);
-          values.push(JSON.stringify(updates[field]));
+          const days = updates[field] as number[];
+          if (days && days.length > 0) {
+            setClauses.push(`${field} = ARRAY[${days.join(',')}]::integer[]`);
+          } else {
+            setClauses.push(`${field} = NULL`);
+          }
+          // No paramIndex increment - we're inlining the array
         } else {
           setClauses.push(`${field} = $${paramIndex}`);
           values.push(updates[field]);
+          paramIndex++;
         }
-        paramIndex++;
       }
     }
 
