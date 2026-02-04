@@ -6827,6 +6827,26 @@ ${compactFeedback}
           }
         }
         
+        // 🔄 ERROR 1011: Insufficient model resources - notify client to retry
+        if (code === 1011 || reasonText.includes('Insufficient model resources')) {
+          console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini risorse insufficienti - notifica al client per retry`);
+          console.log(`   Il modello è temporaneamente sovraccarico, il client può riprovare tra qualche secondo`);
+          try {
+            clientWs.send(JSON.stringify({
+              type: 'error',
+              errorType: 'RETRY_SUGGESTED',
+              retryable: true,
+              retryDelayMs: 5000, // 5 secondi
+              message: 'Gemini è temporaneamente sovraccarico. Riconnessione automatica tra 5 secondi...',
+              details: reasonText || 'Insufficient model resources'
+            }));
+            // Close with retryable code
+            clientWs.close(4011, 'RETRY_SUGGESTED');
+          } catch (e) {
+            // Client may already be closed
+          }
+        }
+        
         // ⏱️  CLEANUP: Stop time update interval
         if (timeUpdateInterval) {
           clearInterval(timeUpdateInterval);

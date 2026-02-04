@@ -1588,6 +1588,33 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
       case 'error':
         console.error('❌ Server error:', message.message || message.error);
+        
+        // 🔄 RETRY_SUGGESTED: Gemini risorse insufficienti - riconnessione automatica
+        if (message.errorType === 'RETRY_SUGGESTED' && message.retryable) {
+          console.log(`🔄 [RETRY_SUGGESTED] Gemini temporaneamente sovraccarico - riconnessione in ${message.retryDelayMs || 5000}ms`);
+          toast({
+            variant: 'default',
+            title: 'Riconnessione in corso...',
+            description: message.message || 'Gemini è temporaneamente sovraccarico. Riprovo automaticamente...',
+            duration: 5000,
+          });
+          // Il websocket onclose gestirà la riconnessione automatica
+          return;
+        }
+        
+        // 🚨 RESOURCE_EXHAUSTED: Troppe sessioni - non riconnettersi
+        if (message.errorType === 'RESOURCE_EXHAUSTED') {
+          toast({
+            variant: 'destructive',
+            title: 'Troppe sessioni attive',
+            description: message.message || 'Aspetta qualche minuto e riprova.',
+            duration: 10000,
+          });
+          setLiveState('idle');
+          return;
+        }
+        
+        // Altri errori generici
         toast({
           variant: 'destructive',
           title: 'Errore',
