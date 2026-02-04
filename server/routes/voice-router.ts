@@ -136,7 +136,12 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
           vc.id as voice_call_id,
           svc.id as svc_id,
           svc.instruction_type,
-          svc.call_instruction
+          svc.call_instruction,
+          svc.source_task_id,
+          svc.attempts,
+          svc.max_attempts,
+          svc.scheduled_at,
+          svc.status as svc_status
         FROM voice_calls vc
         INNER JOIN scheduled_voice_calls svc ON (
           svc.target_phone = vc.caller_id
@@ -153,11 +158,19 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
         COALESCE(svc_direct.instruction_type, closest.instruction_type) as instruction_type,
         COALESCE(svc_direct.call_instruction, closest.call_instruction) as call_instruction,
         svc_direct.id as svc_direct_match,
-        closest.svc_id as svc_phone_match
+        closest.svc_id as svc_phone_match,
+        COALESCE(svc_direct.source_task_id, closest.source_task_id) as source_task_id,
+        COALESCE(svc_direct.attempts, closest.attempts) as svc_attempts,
+        COALESCE(svc_direct.max_attempts, closest.max_attempts) as svc_max_attempts,
+        COALESCE(svc_direct.scheduled_at, closest.scheduled_at) as svc_scheduled_at,
+        COALESCE(svc_direct.status, closest.svc_status) as svc_status,
+        ast.task_type as ai_task_type,
+        ast.recurrence_type as ai_task_recurrence
       FROM voice_calls vc
       LEFT JOIN users u ON vc.client_id = u.id
       LEFT JOIN scheduled_voice_calls svc_direct ON svc_direct.voice_call_id = vc.id
       LEFT JOIN closest_svc closest ON closest.voice_call_id = vc.id
+      LEFT JOIN ai_scheduled_tasks ast ON ast.id = COALESCE(svc_direct.source_task_id, closest.source_task_id)
       ${whereClause}
       ORDER BY vc.started_at DESC
       LIMIT ${limitNum} OFFSET ${offset}

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
 import {
   Table,
@@ -133,6 +134,15 @@ interface VoiceCall {
   ai_cost_estimate: number | null;
   instruction_type: 'task' | 'reminder' | null;
   call_instruction: string | null;
+  source_task_id: string | null;
+  svc_attempts: number | null;
+  svc_max_attempts: number | null;
+  svc_scheduled_at: string | null;
+  svc_status: string | null;
+  ai_task_type: string | null;
+  ai_task_recurrence: string | null;
+  svc_direct_match: string | null;
+  svc_phone_match: string | null;
 }
 
 interface VoiceStats {
@@ -2044,6 +2054,7 @@ export default function ConsultantVoiceCallsPage() {
                           <TableHead>Chiamante</TableHead>
                           <TableHead>Cliente</TableHead>
                           <TableHead>Stato</TableHead>
+                          <TableHead>Origine</TableHead>
                           <TableHead>Tipo</TableHead>
                           <TableHead>Istruzione</TableHead>
                           <TableHead>Durata</TableHead>
@@ -2086,6 +2097,43 @@ export default function ConsultantVoiceCallsPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
+                                {call.source_task_id || call.ai_task_type ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <Bot className="h-3 w-3 text-purple-500" />
+                                      <span className="font-medium">AI Task</span>
+                                    </div>
+                                    {call.ai_task_recurrence && call.ai_task_recurrence !== 'once' && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {call.ai_task_recurrence === 'daily' ? '🔁 Giornaliero' : call.ai_task_recurrence === 'weekly' ? '🔁 Settimanale' : `🔁 ${call.ai_task_recurrence}`}
+                                      </span>
+                                    )}
+                                    {call.svc_attempts && call.svc_attempts > 1 && (
+                                      <span className="text-xs text-orange-600">
+                                        Tentativo {call.svc_attempts}/{call.svc_max_attempts || 5}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : call.svc_direct_match || call.svc_phone_match ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <Calendar className="h-3 w-3 text-blue-500" />
+                                      <span className="font-medium">Programmata</span>
+                                    </div>
+                                    {call.svc_attempts && call.svc_attempts > 1 && (
+                                      <span className="text-xs text-orange-600">
+                                        Tentativo {call.svc_attempts}/{call.svc_max_attempts || 5}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                    <PhoneIncoming className="h-3 w-3" />
+                                    <span>In entrata</span>
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 {call.instruction_type === 'task' ? (
                                   <div className="flex items-center gap-1 text-sm">
                                     <ClipboardList className="h-3 w-3 text-blue-500" />
@@ -2100,10 +2148,41 @@ export default function ConsultantVoiceCallsPage() {
                                   <span className="text-muted-foreground text-sm">-</span>
                                 )}
                               </TableCell>
-                              <TableCell className="max-w-[150px]">
-                                <p className="truncate text-sm text-muted-foreground" title={call.call_instruction || ''}>
-                                  {call.call_instruction || '-'}
-                                </p>
+                              <TableCell className="max-w-[200px]">
+                                {call.call_instruction ? (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button 
+                                        className="text-left w-full group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
+                                        aria-label={`Espandi istruzione: ${call.call_instruction.substring(0, 50)}...`}
+                                        title="Clicca per vedere l'istruzione completa"
+                                      >
+                                        <p className="truncate text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                                          {call.call_instruction}
+                                        </p>
+                                        <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
+                                          Clicca per espandere
+                                        </span>
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-80 max-h-60 overflow-auto">
+                                      <div className="space-y-2">
+                                        <h4 className="font-medium text-sm flex items-center gap-2">
+                                          {call.instruction_type === 'task' ? (
+                                            <><ClipboardList className="h-4 w-4 text-blue-500" /> Istruzione Task</>
+                                          ) : call.instruction_type === 'reminder' ? (
+                                            <><Bell className="h-4 w-4 text-orange-500" /> Istruzione Reminder</>
+                                          ) : (
+                                            <>Istruzione</>
+                                          )}
+                                        </h4>
+                                        <p className="text-sm whitespace-pre-wrap">{call.call_instruction}</p>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
                               </TableCell>
                               <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
                               <TableCell>
