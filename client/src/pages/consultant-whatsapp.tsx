@@ -144,7 +144,7 @@ import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import archieAvatar from "@assets/generated_images/archie_ai_builder_avatar.png";
 import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
-import alessiaAvatar from "@assets/avatars/alessia-avatar.png";
+import alessiaAvatar from "@assets/alessia-avatar.png";
 import ceoAvatar from "@assets/generated_images/realistic_ceo_businessman_headshot.png";
 import {
   Table,
