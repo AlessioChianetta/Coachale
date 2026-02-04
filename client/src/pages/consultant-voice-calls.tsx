@@ -3520,20 +3520,82 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="ai-tasks" className="space-y-6">
-                {/* HEADER */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold">AI Task Queue</h2>
-                    <p className="text-muted-foreground">Programma chiamate AI automatiche</p>
+              <TabsContent value="ai-tasks" className="space-y-4">
+                {/* GOOGLE CALENDAR STYLE HEADER */}
+                <div className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl border shadow-sm px-4 py-3">
+                  <div className="flex items-center gap-4">
+                    {/* Month/Year Navigation - Google Style */}
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-9 px-3 hover:bg-muted"
+                        onClick={() => setCalendarWeekStart(prev => addDays(prev, -7))}
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-9 px-3 hover:bg-muted"
+                        onClick={() => setCalendarWeekStart(prev => addDays(prev, 7))}
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </Button>
+                      <h2 className="text-xl font-normal text-foreground ml-2">
+                        {format(calendarWeekStart, 'MMMM yyyy', { locale: it })}
+                      </h2>
+                    </div>
+                    
+                    {/* Today button */}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 px-4 rounded-md border-muted-foreground/30"
+                      onClick={() => setCalendarWeekStart(startOfWeek(new Date(), {weekStartsOn: 1}))}
+                    >
+                      Oggi
+                    </Button>
+                    
+                    {/* Compact Legend */}
+                    <div className="hidden md:flex items-center gap-3 ml-4 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm bg-purple-500"></div>
+                        <span className="text-muted-foreground">AI Tasks</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm bg-blue-500"></div>
+                        <span className="text-muted-foreground">Chiamate</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant={aiTasksView === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setAITasksView('list')}>
-                      <List className="h-4 w-4 mr-2" />Lista
-                    </Button>
-                    <Button variant={aiTasksView === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setAITasksView('calendar')}>
-                      <Calendar className="h-4 w-4 mr-2" />Calendario
-                    </Button>
+                  
+                  {/* Segment Control Toggle - Google Style */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-muted/50 rounded-lg p-0.5">
+                      <button
+                        onClick={() => setAITasksView('list')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                          aiTasksView === 'list' 
+                            ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground' 
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <List className="h-4 w-4" />
+                        <span className="hidden sm:inline">Lista</span>
+                      </button>
+                      <button
+                        onClick={() => setAITasksView('calendar')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                          aiTasksView === 'calendar' 
+                            ? 'bg-white dark:bg-zinc-800 shadow-sm text-foreground' 
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Calendar className="h-4 w-4" />
+                        <span className="hidden sm:inline">Settimana</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -3699,18 +3761,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Calendario Settimanale</CardTitle>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => setCalendarWeekStart(prev => addDays(prev, -7))}><ChevronLeft className="h-4 w-4" /></Button>
-                          <Button variant="outline" size="sm" onClick={() => setCalendarWeekStart(startOfWeek(new Date(), {weekStartsOn: 1}))}>Oggi</Button>
-                          <Button variant="outline" size="sm" onClick={() => setCalendarWeekStart(prev => addDays(prev, 7))}><ChevronRight className="h-4 w-4" /></Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
+                  <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm overflow-hidden">
                       {(() => {
                         const HOUR_HEIGHT = 50;
                         const START_HOUR = 0;
@@ -3739,25 +3790,33 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
 
                         return (
                           <>
-                            {/* Header giorni */}
-                            <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0 mb-0 border-b">
-                              <div className="p-2"></div>
+                            {/* Header giorni - GOOGLE CALENDAR STYLE */}
+                            <div className="grid grid-cols-[56px_repeat(7,1fr)] gap-0 border-b border-muted/40">
+                              <div className="py-3"></div>
                               {[0,1,2,3,4,5,6].map(dayOffset => {
                                 const day = addDays(calendarWeekStart, dayOffset);
                                 const isToday = isSameDay(day, new Date());
                                 return (
-                                  <div key={dayOffset} className={`text-center p-2 font-medium text-sm border-l ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}>
-                                    <div className="text-xs font-medium uppercase">{format(day, 'EEE', { locale: it })}</div>
-                                    <div className={`text-sm ${isToday ? 'text-primary font-bold' : ''}`}>{format(day, 'dd/MM')}</div>
+                                  <div key={dayOffset} className="text-center py-3 border-l border-muted/30">
+                                    <div className={`text-xs font-medium uppercase tracking-wide ${isToday ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                                      {format(day, 'EEE', { locale: it })}
+                                    </div>
+                                    <div className={`mt-1 inline-flex items-center justify-center text-2xl font-normal ${
+                                      isToday 
+                                        ? 'w-11 h-11 rounded-full bg-blue-600 text-white' 
+                                        : 'text-foreground'
+                                    }`}>
+                                      {format(day, 'd')}
+                                    </div>
                                   </div>
                                 );
                               })}
                             </div>
 
-                            {/* Griglia oraria con scroll */}
+                            {/* Griglia oraria con scroll - GOOGLE CALENDAR STYLE */}
                             <div 
                               className="relative overflow-auto" 
-                              style={{ maxHeight: '600px' }}
+                              style={{ maxHeight: '650px' }}
                               onMouseLeave={() => {
                                 if (isDragging) {
                                   setIsDragging(false);
@@ -3766,13 +3825,13 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 }
                               }}
                             >
-                              <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0" style={{ minHeight: hours.length * HOUR_HEIGHT }}>
-                                {/* Colonna ore */}
-                                <div className="relative">
+                              <div className="grid grid-cols-[56px_repeat(7,1fr)] gap-0" style={{ minHeight: hours.length * HOUR_HEIGHT }}>
+                                {/* Colonna ore - Google Style */}
+                                <div className="relative border-r border-muted/20">
                                   {hours.map((hour) => (
                                     <div
                                       key={hour}
-                                      className="absolute w-full text-xs text-muted-foreground text-right pr-2 -translate-y-1/2"
+                                      className="absolute w-full text-[11px] text-muted-foreground text-right pr-2 -translate-y-1/2 font-normal"
                                       style={{ top: (hour - START_HOUR) * HOUR_HEIGHT }}
                                     >
                                       {hour.toString().padStart(2, '0')}:00
@@ -3786,14 +3845,48 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   const isToday = isSameDay(day, new Date());
                                   const dayTasks = calendarData?.aiTasks?.filter((t: AITask) => isSameDay(new Date(t.scheduled_at), day)) || [];
                                   const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
+                                  
+                                  // Combina tutti gli eventi per calcolare sovrapposizioni
+                                  const allEvents = [
+                                    ...dayTasks.map((t: AITask) => ({ 
+                                      ...t, 
+                                      type: 'task' as const, 
+                                      time: new Date(t.scheduled_at).getHours() + new Date(t.scheduled_at).getMinutes() / 60 
+                                    })),
+                                    ...dayCalls.map((c: any) => ({ 
+                                      ...c, 
+                                      type: 'call' as const, 
+                                      time: new Date(c.scheduled_at).getHours() + new Date(c.scheduled_at).getMinutes() / 60 
+                                    }))
+                                  ].sort((a, b) => a.time - b.time);
+                                  
+                                  // Calcola posizioni per eventi sovrapposti (stessa ora = fianco a fianco)
+                                  const eventPositions = new Map<string, { left: number; width: number }>();
+                                  const hourGroups = new Map<number, any[]>();
+                                  
+                                  allEvents.forEach(evt => {
+                                    const hourKey = Math.floor(evt.time);
+                                    if (!hourGroups.has(hourKey)) hourGroups.set(hourKey, []);
+                                    hourGroups.get(hourKey)!.push(evt);
+                                  });
+                                  
+                                  hourGroups.forEach((eventsInHour) => {
+                                    const count = eventsInHour.length;
+                                    eventsInHour.forEach((evt, idx) => {
+                                      eventPositions.set(evt.id, {
+                                        left: (idx / count) * 100,
+                                        width: 100 / count
+                                      });
+                                    });
+                                  });
 
                                   return (
-                                    <div key={dayOffset} className={`relative border-l ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}>
-                                      {/* Linee orizzontali per ogni ora */}
+                                    <div key={dayOffset} className={`relative border-l border-muted/20 ${isToday ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+                                      {/* Linee orizzontali per ogni ora - molto leggere */}
                                       {hours.map((hour) => (
                                         <div
                                           key={hour}
-                                          className="absolute w-full border-t border-dashed border-muted-foreground/20 cursor-pointer hover:bg-primary/5 transition-colors select-none"
+                                          className="absolute w-full border-t border-muted/15 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-colors select-none"
                                           style={{ top: (hour - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
                                           onMouseDown={(e) => {
                                             e.preventDefault();
@@ -3823,13 +3916,13 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         />
                                       ))}
 
-                                      {/* Drag preview - visibile durante drag e quando popup è aperto */}
+                                      {/* Drag preview - Google style */}
                                       {((isDragging || showQuickCreate) && dragStart && dragEnd) && isSameDay(dragStart.day, day) && (
                                         <div
-                                          className="absolute left-1 right-1 bg-purple-400/50 border-2 border-purple-500 border-dashed rounded z-20 pointer-events-none"
+                                          className="absolute left-1 right-1 bg-blue-100 dark:bg-blue-900/50 border-l-4 border-blue-600 rounded-r-lg z-20 pointer-events-none shadow-sm"
                                           style={{
-                                            top: (Math.min(dragStart.hour, dragEnd.hour) - START_HOUR) * HOUR_HEIGHT,
-                                            height: (Math.abs(dragEnd.hour - dragStart.hour) + 1) * HOUR_HEIGHT
+                                            top: (Math.min(dragStart.hour, dragEnd.hour) - START_HOUR) * HOUR_HEIGHT + 1,
+                                            height: (Math.abs(dragEnd.hour - dragStart.hour) + 1) * HOUR_HEIGHT - 2
                                           }}
                                         >
                                           <div className="text-xs text-purple-700 dark:text-purple-300 p-1 font-medium">
@@ -3838,54 +3931,72 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         </div>
                                       )}
 
-                                      {/* AI Tasks - viola */}
+                                      {/* AI Tasks - Google Calendar Style con sovrapposizioni */}
                                       {dayTasks.map((task: AITask) => {
                                         const taskDate = new Date(task.scheduled_at);
                                         const taskHour = taskDate.getHours() + taskDate.getMinutes() / 60;
                                         const top = (taskHour - START_HOUR) * HOUR_HEIGHT;
                                         if (taskHour < START_HOUR || taskHour > END_HOUR) return null;
+                                        const pos = eventPositions.get(task.id) || { left: 0, width: 100 };
                                         return (
                                           <div
                                             key={task.id}
-                                            className="absolute left-1 right-1 bg-purple-500 text-white text-xs p-1 rounded shadow-sm overflow-hidden z-10 cursor-pointer hover:bg-purple-600 transition-colors"
-                                            style={{ top, minHeight: 24 }}
+                                            className="absolute bg-purple-500 hover:bg-purple-600 text-white text-[11px] px-2 py-1 rounded-lg shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-md hover:z-30"
+                                            style={{ 
+                                              top: top + 1, 
+                                              minHeight: 28,
+                                              left: `calc(${pos.left}% + 2px)`,
+                                              width: `calc(${pos.width}% - 4px)`
+                                            }}
                                             title={`${task.contact_name || task.contact_phone} - ${task.ai_instruction}`}
                                           >
-                                            <div className="font-medium truncate">
-                                              {format(taskDate, 'HH:mm')} {task.contact_name || task.contact_phone}
+                                            <div className="font-medium truncate leading-tight">
+                                              {task.contact_name || task.contact_phone}
+                                            </div>
+                                            <div className="text-white/80 text-[10px] truncate">
+                                              {format(taskDate, 'HH:mm')}
                                             </div>
                                           </div>
                                         );
                                       })}
 
-                                      {/* Scheduled Calls - blu */}
+                                      {/* Scheduled Calls - Google Calendar Style con sovrapposizioni */}
                                       {dayCalls.map((call: any) => {
                                         const callDate = new Date(call.scheduled_at);
                                         const callHour = callDate.getHours() + callDate.getMinutes() / 60;
                                         const top = (callHour - START_HOUR) * HOUR_HEIGHT;
                                         if (callHour < START_HOUR || callHour > END_HOUR) return null;
+                                        const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
                                         return (
                                           <div
                                             key={call.id}
-                                            className="absolute left-1 right-1 bg-blue-500 text-white text-xs p-1 rounded shadow-sm overflow-hidden z-10 cursor-pointer hover:bg-blue-600 transition-colors"
-                                            style={{ top: top + 26, minHeight: 24 }}
+                                            className="absolute bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2 py-1 rounded-lg shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-md hover:z-30"
+                                            style={{ 
+                                              top: top + 1, 
+                                              minHeight: 28,
+                                              left: `calc(${pos.left}% + 2px)`,
+                                              width: `calc(${pos.width}% - 4px)`
+                                            }}
                                             title={call.call_instruction || 'Chiamata programmata'}
                                           >
-                                            <div className="font-medium truncate">
-                                              {format(callDate, 'HH:mm')} {call.target_phone}
+                                            <div className="font-medium truncate leading-tight">
+                                              {call.target_phone}
+                                            </div>
+                                            <div className="text-white/80 text-[10px] truncate">
+                                              {format(callDate, 'HH:mm')}
                                             </div>
                                           </div>
                                         );
                                       })}
 
-                                      {/* Indicatore ora corrente (solo nella colonna di oggi) */}
+                                      {/* Indicatore ora corrente - Google Style */}
                                       {showCurrentTime && dayOffset === todayColumnIndex && (
                                         <div
-                                          className="absolute left-0 right-0 z-20 pointer-events-none"
+                                          className="absolute left-0 right-0 z-30 pointer-events-none"
                                           style={{ top: currentTimeTop }}
                                         >
                                           <div className="relative flex items-center">
-                                            <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                                            <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-sm" />
                                             <div className="flex-1 h-[2px] bg-red-500" />
                                           </div>
                                         </div>
@@ -3896,21 +4007,6 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                               </div>
                             </div>
 
-                            {/* Legenda */}
-                            <div className="flex gap-4 mt-4 text-xs border-t pt-4">
-                              <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 rounded bg-purple-500"></div>
-                                <span>AI Tasks</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 rounded bg-blue-500"></div>
-                                <span>Chiamate Programmate</span>
-                              </div>
-                              <div className="flex items-center gap-1 ml-auto text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                <span>Trascina per selezionare un intervallo</span>
-                              </div>
-                            </div>
 
                             {/* Quick Create Sheet - Design Premium */}
                             <Sheet open={showQuickCreate} onOpenChange={(open) => {
@@ -4614,8 +4710,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                           </>
                         );
                       })()}
-                    </CardContent>
-                  </Card>
+                  </div>
                 )}
               </TabsContent>
             </Tabs>
