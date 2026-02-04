@@ -103,6 +103,7 @@ import {
   CalendarX,
   Circle,
   Timer,
+  Pencil,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -928,6 +929,8 @@ export default function ConsultantVoiceCallsPage() {
   const [quickCreateExpandedCategory, setQuickCreateExpandedCategory] = useState<string | null>(null);
   const [quickCreateSelectedTemplate, setQuickCreateSelectedTemplate] = useState<TemplateItem | null>(null);
   const [quickCreateTemplateValues, setQuickCreateTemplateValues] = useState<Record<string, string>>({});
+  const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call'; data: any } | null>(null);
+  const [showEventDetails, setShowEventDetails] = useState(false);
   const [newTaskData, setNewTaskData] = useState({
     contact_phone: '',
     contact_name: '',
@@ -1246,6 +1249,7 @@ export default function ConsultantVoiceCallsPage() {
         }),
         scheduledCalls: (callsData.calls || []).filter((c: any) => {
           if (!c.scheduled_at) return false;
+          if (c.status !== 'pending') return false; // Solo chiamate pending
           const callDate = new Date(c.scheduled_at);
           return callDate >= calendarWeekStart && callDate < addDays(calendarWeekStart, 7);
         })
@@ -3761,7 +3765,77 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm overflow-hidden">
+                  <div className="space-y-4">
+                    {/* Sezione Prossimi Invii */}
+                    {(() => {
+                      const now = new Date();
+                      const upcomingTasks = (calendarData?.aiTasks || [])
+                        .filter((t: AITask) => new Date(t.scheduled_at) > now && t.status === 'scheduled')
+                        .sort((a: AITask, b: AITask) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                        .slice(0, 5);
+                      const upcomingCalls = (calendarData?.scheduledCalls || [])
+                        .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && c.status === 'pending')
+                        .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                        .slice(0, 5);
+                      const allUpcoming = [...upcomingTasks.map((t: AITask) => ({ ...t, eventType: 'task' as const })), ...upcomingCalls.map((c: any) => ({ ...c, eventType: 'call' as const }))]
+                        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                        .slice(0, 5);
+                      
+                      if (allUpcoming.length === 0) return null;
+                      
+                      return (
+                        <Card className="border-l-4 border-l-violet-500">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-violet-500" />
+                              Prossimi Invii
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex gap-3 overflow-x-auto pb-2">
+                              {allUpcoming.map((event) => {
+                                const eventDate = new Date(event.scheduled_at);
+                                const isTask = event.eventType === 'task';
+                                return (
+                                  <div
+                                    key={event.id}
+                                    onClick={() => {
+                                      setSelectedEvent({ type: event.eventType, data: event });
+                                      setShowEventDetails(true);
+                                    }}
+                                    className={`flex-shrink-0 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
+                                      isTask 
+                                        ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800' 
+                                        : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 mb-1">
+                                      {isTask ? (
+                                        <Bot className="h-4 w-4 text-purple-500" />
+                                      ) : (
+                                        <Phone className="h-4 w-4 text-blue-500" />
+                                      )}
+                                      <span className="text-xs font-medium">
+                                        {format(eventDate, 'EEE d', { locale: it })}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm font-semibold truncate max-w-[120px]">
+                                      {isTask ? (event.contact_name || event.contact_phone) : event.target_phone}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(eventDate, 'HH:mm')}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+                    
+                    {/* Calendario */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm overflow-hidden">
                       {(() => {
                         const HOUR_HEIGHT = 60;
                         const START_HOUR = 0;
@@ -3956,6 +4030,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         return (
                                           <div
                                             key={task.id}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedEvent({ type: 'task', data: task });
+                                              setShowEventDetails(true);
+                                            }}
                                             className="absolute bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-purple-700"
                                             style={{ 
                                               top: top, 
@@ -3989,6 +4068,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         return (
                                           <div
                                             key={call.id}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedEvent({ type: 'call', data: call });
+                                              setShowEventDetails(true);
+                                            }}
                                             className="absolute bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-blue-700"
                                             style={{ 
                                               top: top, 
@@ -4053,7 +4137,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       <p className="text-white/70 text-sm">Programma una chiamata automatica</p>
                                     </div>
                                   </div>
-                                  {/* Badge data/ora */}
+                                  {/* Badge data + input ora precisa */}
                                   <div className="flex items-center gap-2 mt-4">
                                     <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
                                       <CalendarDays className="h-4 w-4" />
@@ -4061,12 +4145,14 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         {dragStart && format(dragStart.day, 'EEE d MMM', { locale: it })}
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
+                                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5">
                                       <Clock className="h-4 w-4" />
-                                      <span className="text-sm font-medium">
-                                        {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00 - 
-                                        {dragEnd && (Math.max(dragStart?.hour || 0, dragEnd.hour) + 1).toString().padStart(2,'0')}:00
-                                      </span>
+                                      <input
+                                        type="time"
+                                        value={newTaskData.scheduled_time}
+                                        onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})}
+                                        className="bg-transparent text-sm font-medium border-none outline-none w-20 text-white [color-scheme:dark]"
+                                      />
                                     </div>
                                   </div>
                                 </div>
@@ -4729,6 +4815,135 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 </div>
                               </SheetContent>
                             </Sheet>
+
+                            {/* Event Details Dialog */}
+                            <Dialog open={showEventDetails} onOpenChange={setShowEventDetails}>
+                              <DialogContent className="sm:max-w-lg">
+                                {selectedEvent && (
+                                  <>
+                                    <DialogHeader>
+                                      <div className="flex items-center gap-3">
+                                        <div className={`p-2.5 rounded-xl ${selectedEvent.type === 'task' ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+                                          {selectedEvent.type === 'task' ? (
+                                            <Bot className={`h-5 w-5 text-purple-600 dark:text-purple-400`} />
+                                          ) : (
+                                            <Phone className={`h-5 w-5 text-blue-600 dark:text-blue-400`} />
+                                          )}
+                                        </div>
+                                        <div>
+                                          <DialogTitle className="text-lg">
+                                            {selectedEvent.type === 'task' ? 'AI Task' : 'Chiamata Programmata'}
+                                          </DialogTitle>
+                                          <DialogDescription>
+                                            {selectedEvent.type === 'task' 
+                                              ? (selectedEvent.data.contact_name || selectedEvent.data.contact_phone)
+                                              : selectedEvent.data.target_phone
+                                            }
+                                          </DialogDescription>
+                                        </div>
+                                      </div>
+                                    </DialogHeader>
+                                    
+                                    <div className="space-y-4 py-4">
+                                      {/* Data e ora */}
+                                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                                        <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                                        <div>
+                                          <p className="font-medium">
+                                            {format(new Date(selectedEvent.data.scheduled_at), 'EEEE d MMMM yyyy', { locale: it })}
+                                          </p>
+                                          <p className="text-sm text-muted-foreground">
+                                            alle {format(new Date(selectedEvent.data.scheduled_at), 'HH:mm')}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Stato */}
+                                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                                        <div className={`w-3 h-3 rounded-full ${
+                                          selectedEvent.data.status === 'pending' || selectedEvent.data.status === 'scheduled' ? 'bg-amber-500' :
+                                          selectedEvent.data.status === 'completed' ? 'bg-green-500' :
+                                          selectedEvent.data.status === 'failed' ? 'bg-red-500' :
+                                          selectedEvent.data.status === 'calling' || selectedEvent.data.status === 'in_progress' ? 'bg-blue-500 animate-pulse' :
+                                          'bg-gray-400'
+                                        }`} />
+                                        <div>
+                                          <p className="font-medium capitalize">{selectedEvent.data.status}</p>
+                                          {selectedEvent.data.attempt_count && (
+                                            <p className="text-sm text-muted-foreground">
+                                              Tentativo {selectedEvent.data.attempt_count}/{selectedEvent.data.max_attempts || 3}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Istruzioni AI */}
+                                      {(selectedEvent.data.ai_instruction || selectedEvent.data.call_instruction) && (
+                                        <div className="p-3 bg-muted/50 rounded-lg">
+                                          <p className="text-xs font-medium text-muted-foreground mb-1">Istruzioni AI</p>
+                                          <p className="text-sm">
+                                            {selectedEvent.data.ai_instruction || selectedEvent.data.call_instruction}
+                                          </p>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Template */}
+                                      {(selectedEvent.data.template_id || selectedEvent.data.voice_template_id) && (
+                                        <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                                          <FileText className="h-4 w-4 text-muted-foreground" />
+                                          <div>
+                                            <p className="text-xs font-medium text-muted-foreground">Template</p>
+                                            <p className="text-sm">{selectedEvent.data.template_id || selectedEvent.data.voice_template_id}</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Ricorrenza */}
+                                      {selectedEvent.data.recurrence_type && selectedEvent.data.recurrence_type !== 'once' && (
+                                        <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                                          <RepeatIcon className="h-4 w-4 text-muted-foreground" />
+                                          <div>
+                                            <p className="text-xs font-medium text-muted-foreground">Ricorrenza</p>
+                                            <p className="text-sm capitalize">{selectedEvent.data.recurrence_type}</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex justify-between gap-2 pt-2">
+                                      <Button 
+                                        variant="outline" 
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() => {
+                                          if (confirm('Sei sicuro di voler cancellare questo evento?')) {
+                                            // TODO: Implement delete
+                                            setShowEventDetails(false);
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Elimina
+                                      </Button>
+                                      <div className="flex gap-2">
+                                        <Button variant="outline" onClick={() => setShowEventDetails(false)}>
+                                          Chiudi
+                                        </Button>
+                                        <Button 
+                                          className="bg-gradient-to-r from-violet-600 to-purple-600"
+                                          onClick={() => {
+                                            // TODO: Implement edit - populate form and open Quick Create
+                                            setShowEventDetails(false);
+                                          }}
+                                        >
+                                          <Pencil className="h-4 w-4 mr-2" />
+                                          Modifica
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </DialogContent>
+                            </Dialog>
                           </>
                         );
                       })()}
