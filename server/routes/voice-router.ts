@@ -131,24 +131,47 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
       : sql``;
 
     const calls = await db.execute(sql`
+      WITH closest_svc AS (
+        SELECT DISTINCT ON (vc.id)
+          vc.id as voice_call_id,
+          svc.id as svc_id,
+          svc.instruction_type,
+          svc.call_instruction
+        FROM voice_calls vc
+        INNER JOIN scheduled_voice_calls svc ON (
+          svc.target_phone = vc.caller_id
+          AND svc.created_at BETWEEN vc.started_at - INTERVAL '30 minutes' AND vc.started_at + INTERVAL '30 minutes'
+        )
+        ORDER BY vc.id, 
+          CASE WHEN svc.instruction_type IS NOT NULL THEN 0 ELSE 1 END,
+          ABS(EXTRACT(EPOCH FROM (svc.created_at - vc.started_at)))
+      )
       SELECT 
         vc.*,
         CONCAT(u.first_name, ' ', u.last_name) as client_name,
         u.phone_number as client_phone,
-        COALESCE(svc_direct.instruction_type, svc_phone.instruction_type) as instruction_type,
-        COALESCE(svc_direct.call_instruction, svc_phone.call_instruction) as call_instruction
+        COALESCE(svc_direct.instruction_type, closest.instruction_type) as instruction_type,
+        COALESCE(svc_direct.call_instruction, closest.call_instruction) as call_instruction,
+        svc_direct.id as svc_direct_match,
+        closest.svc_id as svc_phone_match
       FROM voice_calls vc
       LEFT JOIN users u ON vc.client_id = u.id
       LEFT JOIN scheduled_voice_calls svc_direct ON svc_direct.voice_call_id = vc.id
-      LEFT JOIN scheduled_voice_calls svc_phone ON (
-        svc_phone.voice_call_id IS NULL 
-        AND svc_phone.target_phone = vc.called_number
-        AND svc_phone.created_at BETWEEN vc.started_at - INTERVAL '5 minutes' AND vc.started_at + INTERVAL '5 minutes'
-      )
+      LEFT JOIN closest_svc closest ON closest.voice_call_id = vc.id
       ${whereClause}
       ORDER BY vc.started_at DESC
       LIMIT ${limitNum} OFFSET ${offset}
     `);
+
+    // Debug log per verificare le corrispondenze (solo in development)
+    if (process.env.NODE_ENV === 'development' && process.env.VOICE_HISTORY_DEBUG === 'true') {
+      console.log('[Voice History] Query results with SVC matches:');
+      for (const row of calls.rows as any[]) {
+        if (row.instruction_type || row.svc_direct_match || row.svc_phone_match) {
+          console.log(`  VC ${row.id}: caller=${row.caller_id}, type=${row.instruction_type || 'NULL'}, instruction=${(row.call_instruction || '').substring(0, 30)}, direct_match=${row.svc_direct_match || 'NULL'}, phone_match=${row.svc_phone_match || 'NULL'}`);
+        }
+      }
+    }
 
     const totalResult = await db.execute(sql`
       SELECT COUNT(*) as total FROM voice_calls vc ${whereClause}
