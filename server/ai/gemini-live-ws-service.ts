@@ -1413,6 +1413,13 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // 🔍 TASK 5: Track initial chunk tokens for comparison report
     let sessionInitialChunkTokens = 0; // Estimated tokens from initial chunks sent to Gemini
     
+    // 🔍 NEW: Track system instruction size for fresh token breakdown analysis
+    let sessionSystemInstructionTokens = 0; // Tokens in system_instruction (sent in setup)
+    let sessionSystemInstructionChars = 0; // Characters in system_instruction
+    
+    // 🔍 NEW: Track conversation history for breakdown analysis
+    let sessionTurnCount = 0; // Number of turns completed
+    
     // 🔍 DEBUG: Track all messages sent in current turn for "Fresh Text Input" analysis
     let currentTurnMessages: Array<{type: string; content: string; size: number; timestamp: Date}> = [];
 
@@ -4620,13 +4627,19 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         // 🔍 DEBUG: Track system instruction for "Fresh Text Input" analysis
         if (!validatedResumeHandle && setupMessage.setup.system_instruction) {
           const sysInstText = setupMessage.setup.system_instruction.parts[0].text;
+          
+          // 🔍 NEW: Save system instruction size for breakdown analysis
+          sessionSystemInstructionChars = sysInstText.length;
+          sessionSystemInstructionTokens = Math.round(sysInstText.length / 4);
+          
           currentTurnMessages.push({
             type: 'SETUP - System Instruction (NON-CACHED)',
             content: sysInstText.substring(0, 500) + '...',
             size: sysInstText.length,
             timestamp: new Date()
           });
-          console.log(`🔍 [FRESH INPUT TRACKING] System Instruction: ${sysInstText.length} chars (~${Math.round(sysInstText.length / 4)} tokens) - WILL BE COUNTED AS FRESH TEXT INPUT`);
+          console.log(`🔍 [FRESH INPUT TRACKING] System Instruction: ${sysInstText.length} chars (~${sessionSystemInstructionTokens} tokens) - WILL BE COUNTED AS FRESH TEXT INPUT`);
+          console.log(`🔍 [SESSION TRACKING] Saved sessionSystemInstructionTokens = ${sessionSystemInstructionTokens}`);
         }
         
         // 1. Send setup message
@@ -5155,11 +5168,82 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
             const audioInputSeconds = usage.audioInputSeconds || 0;
             const audioOutputSeconds = usage.audioOutputSeconds || 0;
             
+            // 🔍 NEW: Extract promptTokensDetails for breakdown analysis
+            const promptDetails = usage.promptTokensDetails || [];
+            let textInputTokens = 0;
+            let audioInputTokens = 0;
+            promptDetails.forEach((detail: { modality: string; tokenCount: number }) => {
+              if (detail.modality === 'TEXT') textInputTokens = detail.tokenCount;
+              if (detail.modality === 'AUDIO') audioInputTokens = detail.tokenCount;
+            });
+            
+            // 🔍 NEW: Increment turn count for tracking
+            sessionTurnCount++;
+            
+            // 🔍 NEW: Calculate conversation history tokens (estimate from saved messages)
+            const conversationHistoryTokens = conversationMessages.reduce((acc, msg) => {
+              return acc + Math.round(msg.transcript.length / 4);
+            }, 0);
+            
             // 🔍 TASK 3 & 4: Log detailed "Fresh Text Input" breakdown + Cache analysis
             if (inputTokens > 0 || cachedTokens > 0) {
               console.log(`\n🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🔍 [FRESH TEXT INPUT BREAKDOWN] - ${inputTokens.toLocaleString()} tokens ($0.50/1M)`);
+              console.log(`🔍 [FRESH TOKEN COMPOSITION ANALYSIS] - Turn #${sessionTurnCount}`);
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              
+              console.log(`\n📊 GEMINI promptTokensDetails BREAKDOWN:`);
+              console.log(`   ┌─────────────────────────────────────────────────────────────┐`);
+              console.log(`   │ TEXT tokens:  ${String(textInputTokens.toLocaleString()).padEnd(10)} (~${(textInputTokens / 1000).toFixed(1)}k)        │`);
+              console.log(`   │ AUDIO tokens: ${String(audioInputTokens.toLocaleString()).padEnd(10)} (user voice input)     │`);
+              console.log(`   │ TOTAL:        ${String(inputTokens.toLocaleString()).padEnd(10)} (promptTokenCount)     │`);
+              console.log(`   └─────────────────────────────────────────────────────────────┘`);
+              
+              console.log(`\n🧮 ESTIMATED TEXT TOKEN COMPOSITION:`);
+              console.log(`   ┌─────────────────────────────────────────────────────────────┐`);
+              console.log(`   │ 1. System Instruction:      ~${String(sessionSystemInstructionTokens.toLocaleString()).padEnd(8)} tokens            │`);
+              console.log(`   │    (${sessionSystemInstructionChars.toLocaleString()} chars, sent in setup)                      │`);
+              console.log(`   │                                                             │`);
+              console.log(`   │ 2. Conversation History:    ~${String(conversationHistoryTokens.toLocaleString()).padEnd(8)} tokens            │`);
+              console.log(`   │    (${conversationMessages.length} messages saved)                               │`);
+              console.log(`   │                                                             │`);
+              console.log(`   │ 3. Initial Chunks:          ~${String(sessionInitialChunkTokens.toLocaleString()).padEnd(8)} tokens            │`);
+              console.log(`   │    (sent at session start)                                  │`);
+              console.log(`   └─────────────────────────────────────────────────────────────┘`);
+              
+              const estimatedTotal = sessionSystemInstructionTokens + conversationHistoryTokens;
+              const unexplainedTokens = textInputTokens - estimatedTotal;
+              
+              console.log(`\n🎯 ANALYSIS:`);
+              console.log(`   • Actual TEXT tokens from Gemini: ${textInputTokens.toLocaleString()}`);
+              console.log(`   • Our estimate (sysInst + history): ${estimatedTotal.toLocaleString()}`);
+              console.log(`   • UNEXPLAINED tokens: ${unexplainedTokens.toLocaleString()} tokens`);
+              
+              if (unexplainedTokens > 1000) {
+                console.log(`\n   ⚠️  HIGH UNEXPLAINED TOKENS (${unexplainedTokens.toLocaleString()})!`);
+                console.log(`   Possible sources:`);
+                console.log(`   - Chunks being re-processed (not cached)`);
+                console.log(`   - Internal Gemini system overhead`);
+                console.log(`   - Context from previous turns (live session memory)`);
+                
+                if (sessionInitialChunkTokens > 0) {
+                  const chunkPercentInFresh = (unexplainedTokens / sessionInitialChunkTokens) * 100;
+                  console.log(`\n   📦 Chunk Analysis:`);
+                  console.log(`   - Initial chunks: ${sessionInitialChunkTokens.toLocaleString()} tokens`);
+                  console.log(`   - Unexplained as % of chunks: ${chunkPercentInFresh.toFixed(1)}%`);
+                  
+                  if (chunkPercentInFresh > 80) {
+                    console.log(`   ❌ Chunks are likely NOT being cached!`);
+                  } else if (chunkPercentInFresh > 10) {
+                    console.log(`   ⚠️  Partial chunk data may be in context`);
+                  } else {
+                    console.log(`   ✅ Chunks are likely being cached or ignored`);
+                  }
+                }
+              } else {
+                console.log(`\n   ✅ Token composition looks correct (sysInst + history)`);
+              }
+              
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
               
               if (currentTurnMessages.length > 0) {
                 console.log(`📋 Messages sent in this turn:`);
@@ -5168,14 +5252,12 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                 currentTurnMessages.forEach((msg, idx) => {
                   console.log(`   ${idx + 1}. ${msg.type}`);
                   console.log(`      Size: ${msg.size.toLocaleString()} chars (~${Math.round(msg.size / 4)} tokens)`);
-                  console.log(`      Preview: "${msg.content}"`);
-                  console.log(`      Sent at: ${msg.timestamp.toISOString()}`);
+                  console.log(`      Preview: "${msg.content.substring(0, 100)}..."`);
                   totalChars += msg.size;
                   if (msg.type.includes('CHUNK')) chunkCount++;
                 });
                 console.log(`\n   📊 TOTAL SENT: ${totalChars.toLocaleString()} chars (~${Math.round(totalChars / 4)} estimated tokens)`);
                 console.log(`   📊 ACTUAL FRESH INPUT TOKENS: ${inputTokens.toLocaleString()} tokens`);
-                console.log(`   💡 Difference: ~${inputTokens - Math.round(totalChars / 4)} tokens (due to encoding/system overhead)`);
                 
                 // 🔍 TASK 3: Chunk-specific cache analysis
                 if (chunkCount > 0) {
@@ -5185,8 +5267,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                   console.log(`      • If this is NOT the first turn, these should appear as CACHED tokens, not FRESH!`);
                 }
               } else {
-                console.log(`⚠️  No messages tracked in current turn`);
-                console.log(`   This might be audio-only input or system messages`);
+                console.log(`⚠️  No messages tracked in current turn (Turn #${sessionTurnCount})`);
+                console.log(`   This is normal for turns after the first - audio-only input`);
               }
               
               // 🔍 TASK 3: DETAILED CACHE ANALYSIS
