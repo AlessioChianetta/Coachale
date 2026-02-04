@@ -1689,8 +1689,8 @@ export default function ConsultantVoiceCallsPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
-        <main className="flex-1 p-6 lg:px-8 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+          <div className="w-full space-y-4">
             {/* Header moderna */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 text-white shadow-xl">
               <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.5))]" />
@@ -3763,7 +3763,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                 ) : (
                   <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm overflow-hidden">
                       {(() => {
-                        const HOUR_HEIGHT = 50;
+                        const HOUR_HEIGHT = 60;
                         const START_HOUR = 0;
                         const END_HOUR = 24;
                         const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
@@ -3816,7 +3816,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                             {/* Griglia oraria con scroll - GOOGLE CALENDAR STYLE */}
                             <div 
                               className="relative overflow-auto" 
-                              style={{ maxHeight: '650px' }}
+                              style={{ maxHeight: 'calc(100vh - 280px)', minHeight: '500px' }}
                               onMouseLeave={() => {
                                 if (isDragging) {
                                   setIsDragging(false);
@@ -3938,23 +3938,28 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         const top = (taskHour - START_HOUR) * HOUR_HEIGHT;
                                         if (taskHour < START_HOUR || taskHour > END_HOUR) return null;
                                         const pos = eventPositions.get(task.id) || { left: 0, width: 100 };
+                                        const isNarrow = pos.width < 50;
                                         return (
                                           <div
                                             key={task.id}
-                                            className="absolute bg-purple-500 hover:bg-purple-600 text-white text-[11px] px-2 py-1 rounded-lg shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-md hover:z-30"
+                                            className="absolute bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-4 border-purple-700"
                                             style={{ 
-                                              top: top + 1, 
-                                              minHeight: 28,
+                                              top: top + 2, 
+                                              height: HOUR_HEIGHT - 4,
                                               left: `calc(${pos.left}% + 2px)`,
                                               width: `calc(${pos.width}% - 4px)`
                                             }}
                                             title={`${task.contact_name || task.contact_phone} - ${task.ai_instruction}`}
                                           >
-                                            <div className="font-medium truncate leading-tight">
-                                              {task.contact_name || task.contact_phone}
-                                            </div>
-                                            <div className="text-white/80 text-[10px] truncate">
-                                              {format(taskDate, 'HH:mm')}
+                                            <div className="p-1.5 h-full flex flex-col justify-center">
+                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[10px]' : 'text-xs'}`}>
+                                                {task.contact_name || task.contact_phone}
+                                              </div>
+                                              {!isNarrow && (
+                                                <div className="text-white/80 text-[10px] truncate">
+                                                  {format(taskDate, 'HH:mm')}
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                         );
@@ -3967,23 +3972,28 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         const top = (callHour - START_HOUR) * HOUR_HEIGHT;
                                         if (callHour < START_HOUR || callHour > END_HOUR) return null;
                                         const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
+                                        const isNarrow = pos.width < 50;
                                         return (
                                           <div
                                             key={call.id}
-                                            className="absolute bg-blue-500 hover:bg-blue-600 text-white text-[11px] px-2 py-1 rounded-lg shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-md hover:z-30"
+                                            className="absolute bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-4 border-blue-700"
                                             style={{ 
-                                              top: top + 1, 
-                                              minHeight: 28,
+                                              top: top + 2, 
+                                              height: HOUR_HEIGHT - 4,
                                               left: `calc(${pos.left}% + 2px)`,
                                               width: `calc(${pos.width}% - 4px)`
                                             }}
                                             title={call.call_instruction || 'Chiamata programmata'}
                                           >
-                                            <div className="font-medium truncate leading-tight">
-                                              {call.target_phone}
-                                            </div>
-                                            <div className="text-white/80 text-[10px] truncate">
-                                              {format(callDate, 'HH:mm')}
+                                            <div className="p-1.5 h-full flex flex-col justify-center">
+                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[10px]' : 'text-xs'}`}>
+                                                {call.target_phone}
+                                              </div>
+                                              {!isNarrow && (
+                                                <div className="text-white/80 text-[10px] truncate">
+                                                  {format(callDate, 'HH:mm')}
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                         );
