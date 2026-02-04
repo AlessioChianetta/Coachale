@@ -101,6 +101,47 @@ async function verifyManagerToken(
       return next();
     }
     
+    // Handle Consultant Gold Preview token (consultant accessing as Gold client)
+    if (decoded.type === "gold" && decoded.isConsultantPreview && decoded.consultantId) {
+      console.log(`[PUBLIC AGENT] Consultant Gold preview token detected - consultantId: ${decoded.consultantId}, email: ${decoded.email}`);
+      
+      // For consultant preview, we don't need to check subscription - just verify the consultant exists
+      const [consultant] = await db.select()
+        .from(users)
+        .where(and(
+          eq(users.id, decoded.consultantId),
+          eq(users.role, "consultant"),
+          eq(users.isActive, true)
+        ))
+        .limit(1);
+
+      if (!consultant) {
+        console.log(`[PUBLIC AGENT] Consultant not found for preview: ${decoded.consultantId}`);
+        return res.status(403).json({ message: "Consultant not found" });
+      }
+
+      console.log(`[PUBLIC AGENT] Consultant Gold preview auth successful - consultant: ${consultant.firstName} ${consultant.lastName}`);
+
+      // Set silverGoldUser on request for Gold-level access
+      req.silverGoldUser = {
+        subscriptionId: decoded.subscriptionId,
+        consultantId: decoded.consultantId,
+        email: decoded.email,
+        level: "3",
+        type: "gold",
+      };
+      
+      // Also set a compatible manager object for shared endpoints
+      req.manager = {
+        managerId: decoded.subscriptionId,
+        consultantId: decoded.consultantId,
+        shareId: `gold-preview-${decoded.consultantId}`,
+        role: "gold",
+      };
+      
+      return next();
+    }
+    
     // Handle Silver/Gold token (type: "silver" or "gold")
     if ((decoded.type === "silver" || decoded.type === "gold") && decoded.subscriptionId) {
       console.log(`[PUBLIC AGENT] Silver/Gold token detected - type: ${decoded.type}, subscriptionId: ${decoded.subscriptionId}, email: ${decoded.email}`);
