@@ -250,13 +250,24 @@ async function loadShareAndAgent(
     }
 
     // Not found in shares - try to find by public_slug in consultantWhatsappConfig (Bronze/Level 1 system)
-    const [agentConfig] = await db.select()
+    let [agentConfig] = await db.select()
       .from(consultantWhatsappConfig)
       .where(and(
         eq(consultantWhatsappConfig.publicSlug, slug),
         eq(consultantWhatsappConfig.isActive, true)
       ))
       .limit(1);
+
+    // If not found by publicSlug, try to find by ID (for Gold preview access and agents without slug)
+    if (!agentConfig) {
+      [agentConfig] = await db.select()
+        .from(consultantWhatsappConfig)
+        .where(and(
+          eq(consultantWhatsappConfig.id, slug),
+          eq(consultantWhatsappConfig.isActive, true)
+        ))
+        .limit(1);
+    }
 
     if (!agentConfig) {
       return res.status(404).json({ message: "Agent not found" });
