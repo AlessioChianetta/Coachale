@@ -1,0 +1,99 @@
+Perfetto, la struttura mi piace ed è allineata alla direzione prodotto. Procediamo così con alcune linee guida operative per non over-engineerare la prima versione:
+
+MVP PRIORITY (ordine di implementazione)
+Per la prima release voglio:
+
+Tab “Coda AI” funzionante
+
+Drawer laterale per creare task
+
+Scheduling singolo + ricorrente base (giornaliero / settimanale)
+
+Retry automatici semplici (delay fisso, no backoff avanzato per ora)
+
+Esecuzione task → collegata al sistema chiamate già esistente
+
+La preview AI con Gemini la consideriamo feature fase 2, non bloccante per il go-live.
+
+UX SIMPLIFICATION (non voglio UI da gestionale)
+
+La UI deve restare:
+
+Molto pulita
+
+Pochi campi visibili per default
+
+“Avanzato” collapsabile
+
+In particolare:
+
+La sezione “Retry automatici” deve stare sotto un toggle “Avanzato”
+
+La ricorrenza avanzata (giorni custom) va nascosta dietro “Custom”
+
+L’utente base deve poter creare un task in meno di 15 secondi
+
+NAMING E COPY UI (importante per percezione SaaS)
+
+Nel frontend voglio questi testi:
+
+“Coda AI” → AI Task Queue
+
+“Nuova Task AI” → Programma Chiamata AI
+
+“Instruction” → Cosa deve fare l’AI
+
+Stato “retry_pending” → In attesa di riprovare
+
+La percezione deve essere “controllo AI operativo”, non backend tecnico.
+
+DATABASE — OK nuova tabella, ma con compatibilità
+
+La tabella ai_scheduled_tasks va bene.
+Requisiti:
+
+Deve poter generare chiamate usando il flusso esistente senza duplicare logica
+
+Le chiamate eseguite devono continuare ad apparire nelle tabelle storiche già presenti
+
+Non voglio doppio sistema di reporting
+
+Quindi:
+Task AI = layer di orchestrazione
+Voice_calls = resta la fonte di verità delle chiamate reali
+
+CRON & AFFIDABILITÀ
+
+Ok TaskSchedulerService ogni minuto.
+
+Vincoli:
+
+Lock per evitare doppia esecuzione
+
+Safe retry su crash
+
+Log strutturato per debug
+
+Tolleranza timezone Europe/Rome default
+
+MOBILE
+
+Confermo:
+
+Drawer → bottom sheet full screen
+
+Floating “+” per creare task
+
+Lista verticale semplice
+
+Mobile non deve essere una versione “castrata”.
+
+PERFORMANCE & SCALABILITÀ
+
+Obiettivi:
+
+Query AI Task Queue paginata
+
+Indici DB ok
+
+Nessuna chiamata Gemini bloccante lato UI

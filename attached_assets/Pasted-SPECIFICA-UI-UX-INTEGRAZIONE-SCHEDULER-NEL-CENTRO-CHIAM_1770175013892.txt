@@ -1,0 +1,245 @@
+SPECIFICA UI/UX — INTEGRAZIONE SCHEDULER NEL CENTRO CHIAMATE AI
+
+Lo Scheduler deve essere integrato direttamente nella sezione Centro Chiamate AI esistente.
+Non deve essere una pagina separata, ma un’estensione naturale delle funzionalità “Chiama Ora” e “Programma Chiamata”.
+
+L’obiettivo è trasformare il Centro Chiamate AI in un AI Call Control Center, dove l’utente può:
+
+Avviare chiamate immediate
+
+Programmare chiamate future
+
+Creare task AI ricorrenti
+
+Gestire una coda operativa visiva
+
+Controllare lo stato delle automazioni
+
+ENTRY POINT — Programma Chiamata
+
+Il bottone Programma Chiamata deve aprire un drawer laterale destro (non modal centrale).
+
+Motivi UX:
+
+Non blocca la vista principale
+
+Pattern SaaS moderno
+
+Migliore flusso operativo
+
+CONTENUTO DRAWER — CREAZIONE TASK AI
+SEZIONE 1 — Contatto
+
+Campi:
+
+Nome (se disponibile)
+
+Numero telefono
+
+Se l’utente clicca dalla rubrica → precompilazione automatica.
+
+SEZIONE 2 — Tipo Azione
+
+Switch a pillole:
+
+📞 Chiamata singola
+
+🔁 Follow-up automatico
+
+🤖 Task AI programmato
+
+SEZIONE 3 — Istruzione AI (CORE)
+
+Textarea grande.
+
+Label:
+
+"Cosa deve fare l’AI durante la chiamata?"
+
+Placeholder:
+
+"Ricorda la scadenza del contratto e proponi rinnovo annuale"
+
+Qui deve essere supportato linguaggio naturale (no JSON visibile).
+
+SEZIONE 4 — Scheduling
+
+Campi:
+
+Data
+
+Ora
+
+Frequenza:
+
+Dropdown:
+
+Una volta
+
+Giornaliero
+
+Settimanale
+
+Custom
+
+SEZIONE 5 — Tentativi Automatici
+
+Controlli:
+
+Tentativi massimi (1–5)
+
+Delay tra tentativi (5min, 15min, 1h)
+
+CTA Finale
+
+Bottone primario grande:
+
+"Programma Chiamata AI"
+
+TABELLA — CHIAMATE PROGRAMMATE → AI TASK QUEUE
+
+La tabella esistente deve diventare una coda operativa AI.
+
+Colonne:
+
+Numero
+
+Stato
+
+Tentativi
+
+Tipo
+
+Data/Ora
+
+Istruzione
+
+Azioni
+
+Stati con Badge Colorati
+
+Programmata → Verde
+
+In corso → Blu
+
+Retry in attesa → Giallo
+
+Errore → Rosso
+
+Completata → Grigio/Check
+
+Icone Tipo
+
+📞 Chiamata
+
+🔁 Follow-up
+
+🤖 Task AI
+
+Azioni Rapide per Riga
+
+Icone:
+
+Avvia ora
+
+Pausa
+
+Modifica
+
+Elimina
+
+FEATURE PREMIUM — PREVIEW AZIONE AI
+
+Click su riga → drawer laterale di preview.
+
+Deve mostrare:
+
+Numero chiamato
+
+Prompt AI completo
+
+Orario esecuzione
+
+Tentativi programmati
+
+Pulsante:
+
+"Simula Chiamata"
+
+Output testuale:
+
+"L’AI dirà:
+
+Saluto personalizzato
+
+Promemoria scadenza
+
+Proposta upsell"
+
+STILE UI
+
+Mantenere coerenza con UI attuale ma migliorare:
+
+Card con padding maggiore
+
+Border radius 12–16px
+
+Bottoni alti 48–56px
+
+Spaziatura verticale +20%
+
+Whitespace più generoso
+
+Palette:
+
+Primary blu/viola AI
+
+Verde successo
+
+Background chiaro o dark soft
+
+Font consigliati:
+
+Inter
+
+Plus Jakarta
+
+SF Pro style
+
+MICRO INTERAZIONI OBBLIGATORIE
+
+Toast feedback quando si programma una chiamata
+
+Animazione soft su stato "Chiamando…"
+
+Hover con azioni rapide
+
+Skeleton loader su caricamenti
+
+MOBILE
+
+Versione mobile obbligatoria:
+
+Lista verticale
+
+Bottone flottante "+"
+
+Drawer bottom per creare task
+
+Touch friendly spacing
+
+OBIETTIVO UX FINALE
+
+Il Centro Chiamate AI deve sembrare:
+
+Semplice
+
+Moderno
+
+Professionale
+
+Enterprise-ready
+
+L’utente deve percepire:
+
+"Sto controllando un sistema AI operativo, non un semplice CRM."
