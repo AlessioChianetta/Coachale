@@ -237,6 +237,33 @@ async function validateVisitorSession(
           return next();
         }
         
+        // Check for Consultant Gold Preview token (isConsultantPreview: true)
+        // This allows consultants to test their own agents with Gold-level access
+        if (decoded.type === 'gold' && decoded.isConsultantPreview && decoded.userId) {
+          console.log(`🎯 [VALIDATE-SESSION] Consultant Gold preview token detected, verifying consultant...`, { userId: decoded.userId, subscriptionId: decoded.subscriptionId });
+          // Verify the consultant exists and is active
+          const [consultant] = await db.select()
+            .from(schema.users)
+            .where(
+              and(
+                eq(schema.users.id, decoded.userId),
+                eq(schema.users.role, 'consultant'),
+                eq(schema.users.isActive, true)
+              )
+            )
+            .limit(1);
+          
+          if (consultant) {
+            // Consultant preview bypasses all access checks - they can access all their own agents
+            req.managerId = decoded.subscriptionId || `consultant-preview-${decoded.userId}`;
+            req.tokenType = 'gold';
+            console.log(`✅ [CONSULTANT PREVIEW] Valid consultant preview token for share ${share.slug}, consultantId: ${decoded.userId}`);
+            return next();
+          } else {
+            console.log(`❌ [VALIDATE-SESSION] Consultant not found or inactive`);
+          }
+        }
+        
         // Check for new Gold token format (with type: "gold" and subscriptionId)
         if (decoded.type === 'gold' && decoded.subscriptionId && decoded.userId) {
           console.log(`🏆 [VALIDATE-SESSION] Gold token with subscriptionId, verifying user...`, { userId: decoded.userId, subscriptionId: decoded.subscriptionId });

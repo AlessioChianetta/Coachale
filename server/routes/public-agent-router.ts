@@ -545,6 +545,35 @@ router.get(
       if (req.silverGoldUser) {
         console.log(`[PUBLIC AGENT] GET /manager/me - Silver/Gold user: ${req.silverGoldUser.email}, subscriptionId: ${req.silverGoldUser.subscriptionId}, type: ${req.silverGoldUser.type}`);
         
+        // Handle Consultant Gold Preview (synthetic subscriptionId starting with "consultant-gold-")
+        if (req.silverGoldUser.subscriptionId?.startsWith("consultant-gold-")) {
+          const consultantId = req.silverGoldUser.consultantId;
+          const [consultant] = await db.select()
+            .from(users)
+            .where(and(
+              eq(users.id, consultantId),
+              eq(users.role, "consultant")
+            ))
+            .limit(1);
+          
+          if (consultant) {
+            console.log(`[PUBLIC AGENT] Returning Consultant Gold Preview data - consultant: ${consultant.firstName} ${consultant.lastName}`);
+            return res.json({
+              id: req.silverGoldUser.subscriptionId,
+              name: `${consultant.firstName || ""} ${consultant.lastName || ""}`.trim() || "Consulente Preview",
+              email: req.silverGoldUser.email || consultant.email,
+              status: "active",
+              isBronze: false,
+              tier: "gold",
+              level: "3",
+              hasCompletedOnboarding: true,
+              consultantSlug: consultant.pricingPageSlug || null,
+              isConsultantPreview: true,
+            });
+          }
+          return res.status(404).json({ message: "Consultant not found for preview" });
+        }
+        
         // Check if this is a Gold client from users table (type came from verifyManagerToken)
         if (req.silverGoldUser.type === "gold" && req.silverGoldUser.level === "3") {
           // First try to find in clientLevelSubscriptions
