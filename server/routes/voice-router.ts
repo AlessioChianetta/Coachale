@@ -101,7 +101,7 @@ router.post("/gemini-connections/kill-all", authenticateToken, requireAnyRole(["
 // GET /api/voice/calls - Lista chiamate con filtri
 router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const { from, to, status, client_id, page = "1", limit = "20" } = req.query;
+    const { from, to, status, client_id, direction, page = "1", limit = "20" } = req.query;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
     
     const pageNum = parseInt(page as string, 10);
@@ -124,6 +124,9 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (client_id) {
       whereConditions.push(sql`vc.client_id = ${client_id}`);
+    }
+    if (direction && (direction === 'inbound' || direction === 'outbound')) {
+      whereConditions.push(sql`vc.direction = ${direction}`);
     }
 
     const whereClause = whereConditions.length > 0 
