@@ -58,7 +58,8 @@ import {
   ChevronDown,
   HelpCircle,
   Smartphone,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
@@ -291,6 +292,26 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [showShareManager, setShowShareManager] = useState(false);
+
+  // Query per ottenere lo slug dell'agente per accesso dipendente
+  const { data: agentShares } = useQuery<{ shares: Array<{ id: string; slug: string; publicUrl: string; isActive: boolean; revokedAt?: string | null; agent?: { id: string } }> }>({
+    queryKey: ["/api/whatsapp/agent-share", selectedAgent?.id],
+    queryFn: async () => {
+      const res = await fetch('/api/whatsapp/agent-share', {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error("Failed to fetch shares");
+      return res.json();
+    },
+    enabled: !!selectedAgent?.id,
+    staleTime: 60000,
+  });
+
+  // Trova share attivo per questo agente (per accesso dipendente)
+  const activeShare = agentShares?.shares?.find(s => 
+    s.agent?.id === selectedAgent?.id && s.isActive && !s.revokedAt
+  );
   
   // Instagram integration state
   const [selectedInstagramConfigId, setSelectedInstagramConfigId] = useState<string | null>(null);
@@ -1078,6 +1099,13 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
   const agentData = data?.agent;
   const features = agentData?.features;
+  
+  // URL per accesso dipendente: preferisci publicSlug (Level 1) altrimenti share attivo
+  const agentAccessUrl = agentData?.publicSlug 
+    ? `/ai/${agentData.publicSlug}` 
+    : activeShare?.slug 
+      ? `/agent/${activeShare.slug}` 
+      : null;
 
   const statusConfig = {
     active: { label: "Attivo", color: "bg-green-100 text-green-700" },
@@ -1220,6 +1248,30 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                     <div className="text-left">
                       <p className="text-xs font-semibold text-slate-800">Condividi Agente</p>
                       <p className="text-[10px] text-slate-500">Dai accesso ai tuoi clienti</p>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-3 px-3 bg-white hover:bg-cyan-50 border-blue-200 hover:border-cyan-400 justify-start gap-3 group"
+                    onClick={() => {
+                      if (agentAccessUrl) {
+                        window.open(agentAccessUrl, '_blank');
+                      } else {
+                        toast({
+                          title: "Nessun link disponibile",
+                          description: "Crea prima un link pubblico dalla sezione 'Condividi Agente'",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-cyan-100 group-hover:bg-cyan-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                      <ExternalLink className="h-4 w-4 text-cyan-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-semibold text-slate-800">Accedi al Dipendente</p>
+                      <p className="text-[10px] text-slate-500">Entra come collaboratore</p>
                     </div>
                   </Button>
                   <Button
