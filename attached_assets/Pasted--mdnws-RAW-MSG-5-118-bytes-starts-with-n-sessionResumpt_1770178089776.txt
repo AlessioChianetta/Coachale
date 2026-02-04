@@ -1,0 +1,164 @@
+
+📥 [mdnws] RAW MSG #5: 118 bytes, starts with: "{\n  "sessionResumpti"
+🔄 [mdnws] SESSION RESUMPTION UPDATE received
+   - New handle: 11287684-756f-41f0-b8aa-b694b6...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+   ✅ Handle saved to database with ownership metadata
+      → Mode: assistenza
+      → UserId: 7e40b56c-2cc8-4515-b843-dc105e478f38
+💾 [mdnws] Usage tracked → DB saved (Turn cost: $0.014464)
+✅ [mdnws] Turn complete
+🎙️ [mdnws] User started speaking - backup watchdog armed
+
+✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ [mdnws] PROSPECT SPOKE FIRST! Enabling AI audio output
+   → Transcript: "Pr"
+   → Dropped 0 audio chunks while waiting
+   → AI can now speak freely
+✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "Pr"
+   → Timestamp: 2026-02-04T04:07:30.265Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: "Pr" + "onto?" = "Pronto?"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "onto?"
+   → Timestamp: 2026-02-04T04:07:30.291Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 28981,
+  "candidatesTokenCount": 3,
+  "totalTokenCount": 28984,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 28930
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 51
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 3
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 28,981 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 28,981 tokens × $0.50/1M = $0.014490
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [mdnws] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 28,981 tokens → $0.014490 ($0.50/1M)
+   - Audio Output: 3 tokens → $0.000036 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.014526 USD
+
+📊 Session totals:
+   - Text Input: 57,908 tokens → $0.028954
+   - Audio Output: 3 tokens → $0.000036
+   - SESSION TOTAL: $0.028990 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 87,817 (~87.8k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 57,908 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 57,908 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (87,817 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~87,817 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 87,817 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 [mdnws] GEMINI WEBSOCKET CLOSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Close Code: 1011
+📝 Reason: Insufficient model resources to fulfill request.Please try again later.
+
+🔍 Close Code Meanings:
+   1000 = Normal Closure
+   1001 = Going Away
+   1002 = Protocol Error
+   1003 = Unsupported Data
+   1006 = Abnormal Closure (no close frame)
+   1007 = Invalid Frame Payload Data (INVALID ARGUMENT)
+   1008 = Policy Violation
+   1009 = Message Too Big
+   1011 = Internal Server Error
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔄 [mdnws] ERROR 1011: Gemini risorse insufficienti - notifica browser
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [mdnws] SESSION FINAL COST REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 Input (text): 57,908 tokens
+   → $0.0290 ($0.5/1M tokens)
+📤 Output (audio): 3 tokens
+   → $0.0000 ($12/1M tokens)
+
+💵 TOTAL SESSION COST: $0.0290 USD
+   (57,911 total tokens)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [mdnws] Usage tracked → DB saved (Turn cost: $0.014526)
+✅ [mdnws] Turn complete
+💾 [mdnws] Saved USER message: "Pronto?" (1 total)
+⚠️  [mdnws] Sales tracking: Fallback - committed user message without isFinal flag
+📝 [mdnws] Fallback: User message saved, NO watchdog needed (AI already responded)
+❌ [mdnws] Client disconnected - Code: 4011, Reason: RETRY_SUGGESTED
+💾 [mdnws] AUTO-SAVE: Saving 1 messages before closing...
+💾 Saving voice conversation for user 7e40b56c-2cc8-4515-b843-dc105e478f38 (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, callerPhone: none)...
+✅ Conversation saved: 1eea139f-2fda-4c9a-a4b5-a8f4c703bc8a with 1 messages
+✅ [mdnws] AUTO-SAVE: Conversation saved successfully
