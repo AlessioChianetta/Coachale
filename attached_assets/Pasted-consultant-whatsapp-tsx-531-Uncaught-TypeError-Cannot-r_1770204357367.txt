@@ -1,0 +1,43 @@
+consultant-whatsapp.tsx:531 Uncaught TypeError: Cannot read properties of undefined (reading 'border')
+    at TeamMemberCard (consultant-whatsapp.tsx:531:74)
+
+consultant-whatsapp.tsx:531 Uncaught TypeError: Cannot read properties of undefined (reading 'border')
+    at TeamMemberCard (consultant-whatsapp.tsx:531:74)
+injected.js:37 The above error occurred in the <TeamMemberCard> component:
+
+    at TeamMemberCard (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/pages/consultant-whatsapp.tsx:707:27)
+    at div
+    at div
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:230:13
+    at Presence (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-7QGJQHFX.js?v=98a5f318:24:11)
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=98a5f318:174:13
+    at _c5 (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:230:13
+    at Provider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=98a5f318:51:7
+    at div
+    at div
+    at main
+    at div
+    at div
+    at WhatsAppLayout (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/whatsapp/WhatsAppLayout.tsx:32:3)
+    at ConsultantWhatsAppPage (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/pages/consultant-whatsapp.tsx:934:24)
+    at AuthGuard (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:226:16)
+    at Switch (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:283:17)
+    at Suspense
+    at Router (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=kOZBEZD_5ZxB4rNxryTLv:314:35)
+    at Provider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at TooltipProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=98a5f318:158:5)
+    at TourProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=98a5f318:3096:3)
+    at V (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:44:25)
+    at J (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:42:18)
+    at App (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=kOZBEZD_5ZxB4rNxryTLv:1981:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=98a5f318:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'border')
+    at TeamMemberCard (consultant-whatsapp.tsx:531:74)

@@ -2060,7 +2060,7 @@ export default function ConsultantWhatsAppPage() {
                 role="Voice Consultant"
                 avatar={alessiaAvatar}
                 quote="Ti chiamo per supportarti e seguirti nel tuo percorso, proprio come farebbe una consulente umana."
-                accentColor="rose"
+                accentColor="pink"
                 features={[
                   { icon: Phone, label: "Chiamate AI Personalizzate" },
                   { icon: Calendar, label: "Programmazione Flessibile" },
