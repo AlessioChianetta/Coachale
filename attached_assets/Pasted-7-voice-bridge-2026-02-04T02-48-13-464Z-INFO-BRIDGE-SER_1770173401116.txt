@@ -1,0 +1,16 @@
+7|voice-bridge  | 2026-02-04T02:48:13.464Z [INFO ] [BRIDGE:SERVER] WebSocket closed (Session: fc21f741-266f-4db1-b110-1d05c21a9180)
+7|voice-bridge  | 2026-02-04T02:48:13.467Z [INFO ] [BRIDGE:SESSION] Session ended sessionId=fc21f741 callId=sc_1770173059303_841n7a6x6 reason=websocket_closed duration=3m 49s bytesIn=0 bytesOut=0 packetsIn=0 packetsOut=0
+7|voice-bridge  | 2026-02-04T02:48:25.818Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1770173305044_igrruidlf targetPhone=1007 aiMode=assistenza
+7|voice-bridge  | 2026-02-04T02:48:25.821Z [INFO ] [BRIDGE:OUTBOUND] Calling internal extension extension=1007
+7|voice-bridge  | 2026-02-04T02:48:25.821Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: sc_1770173305044_igrruidlf
+7|voice-bridge  | 2026-02-04T02:48:25.821Z [INFO ] [BRIDGE:OUTBOUND] 🎯 SET EXPECTED CALL ID callId=sc_1770173305044_igrruidlf timestamp=1770173305821
+7|voice-bridge  | 2026-02-04T02:48:25.822Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1770173305821-xv8l12 dialString=user/1007
+7|voice-bridge  | 2026-02-04T02:48:33.101Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=+OK outbound-1770173305821-xv8l12
+7|voice-bridge  | 
+7|voice-bridge  | 2026-02-04T02:48:33.103Z [INFO ] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1770173305044_igrruidlf uuid=outbound-1770173305821-xv8l12
+7|voice-bridge  | 2026-02-04T02:48:33.846Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=outbound-1770173305821-xv8l12 callerIdNumber=1007 callerIdName=Outbound Call
+7|voice-bridge  | 2026-02-04T02:48:33.847Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call - keeping existing scheduled call ID uuid=outbound-1770173305821-xv8l12
+7|voice-bridge  | 2026-02-04T02:48:33.848Z [INFO ] [BRIDGE:ESL] 🎵 Starting native background music uuid=outbound-1770173305821-xv8l12
+7|voice-bridge  | 2026-02-04T02:48:33.898Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=outbound-1770173305821-xv8l12
+7|voice-bridge  | 2026-02-04T02:48:33.900Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-bridge  | 2026-02-04T02:48:33.900Z [INFO ] [BRIDGE:SERVER] 🔍 PENDING CALL ID CHECK pendingCallId=null hasPending=false timestamp=1770173313900
