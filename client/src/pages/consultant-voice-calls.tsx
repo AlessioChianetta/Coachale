@@ -93,12 +93,13 @@ import {
   FileCheck,
   TrendingUp,
   Flag,
+  List,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, format, startOfWeek, addDays, isSameDay } from "date-fns";
 import { it } from "date-fns/locale";
 
 interface VoiceCall {
@@ -904,8 +905,11 @@ export default function ConsultantVoiceCallsPage() {
   // AI Task Queue state
   const [aiTasksFilter, setAITasksFilter] = useState("all");
   const [aiTasksPage, setAITasksPage] = useState(1);
-  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-  const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
+  const [aiTasksView, setAITasksView] = useState<'list' | 'calendar'>('list');
+  const [aiTaskExpandedCategory, setAITaskExpandedCategory] = useState<string | null>(null);
+  const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [aiTaskSelectedTemplate, setAITaskSelectedTemplate] = useState<TemplateItem | null>(null);
+  const [aiTaskTemplateValues, setAITaskTemplateValues] = useState<Record<string, string>>({});
   const [newTaskData, setNewTaskData] = useState({
     contact_name: "",
     contact_phone: "",
@@ -1153,6 +1157,33 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 15000,
   });
 
+  // Calendar data query (fetches both AI tasks and scheduled calls for calendar view)
+  const { data: calendarData } = useQuery({
+    queryKey: ["calendar-data", calendarWeekStart.toISOString()],
+    queryFn: async () => {
+      const [tasksRes, callsRes] = await Promise.all([
+        fetch(`/api/voice/ai-tasks?limit=100`, { headers: getAuthHeaders() }),
+        fetch(`/api/voice/outbound/scheduled`, { headers: getAuthHeaders() })
+      ]);
+      
+      const tasksData = await tasksRes.json();
+      const callsData = await callsRes.json();
+      
+      return {
+        aiTasks: (tasksData.tasks || []).filter((t: AITask) => {
+          const taskDate = new Date(t.scheduled_at);
+          return taskDate >= calendarWeekStart && taskDate < addDays(calendarWeekStart, 7);
+        }),
+        scheduledCalls: (callsData.calls || []).filter((c: any) => {
+          if (!c.scheduled_at) return false;
+          const callDate = new Date(c.scheduled_at);
+          return callDate >= calendarWeekStart && callDate < addDays(calendarWeekStart, 7);
+        })
+      };
+    },
+    enabled: aiTasksView === 'calendar'
+  });
+
   const { data: clientsData, isLoading: loadingClients } = useQuery<{ active: ClientWithPhone[]; inactive: ClientWithPhone[] }>({
     queryKey: ["/api/voice/clients-with-phone"],
     queryFn: async () => {
@@ -1191,6 +1222,30 @@ export default function ConsultantVoiceCallsPage() {
     setTemplateDialogOpen(false);
     setSelectedTemplate(null);
     setTemplateFieldValues({});
+  };
+
+  const handleAITaskSelectTemplate = (item: TemplateItem) => {
+    setAITaskSelectedTemplate(item);
+    setAITaskTemplateValues({});
+    
+    // Solo se NON ha campi, genera subito il testo
+    if (!item.fields?.length) {
+      if (item.generateText) {
+        setNewTaskData(prev => ({
+          ...prev,
+          ai_instruction: item.generateText!({}),
+          task_type: item.type === 'task' ? 'single_call' : 'follow_up'
+        }));
+      } else if (item.text) {
+        setNewTaskData(prev => ({
+          ...prev,
+          ai_instruction: item.text,
+          task_type: item.type === 'task' ? 'single_call' : 'follow_up'
+        }));
+      }
+      setAITaskSelectedTemplate(null); // Reset perché non serve UI
+    }
+    // Se ha campi, li mostrerà nella UI
   };
 
   const filteredClients = (clientTab === 'active' ? clientsData?.active : clientsData?.inactive)?.filter(c => 
@@ -1336,7 +1391,6 @@ export default function ConsultantVoiceCallsPage() {
         max_attempts: 3,
         retry_delay_minutes: 15,
       });
-      setIsCreateTaskOpen(false);
       refetchAITasks();
       toast({ title: "Task creato!", description: "La chiamata AI è stata programmata" });
     },
@@ -3408,352 +3462,458 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
               </TabsContent>
 
               <TabsContent value="ai-tasks" className="space-y-6">
-                <div className="flex items-center justify-between flex-wrap gap-4">
+                {/* HEADER */}
+                <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-bold">AI Task Queue</h2>
-                    <p className="text-muted-foreground">Gestisci e programma chiamate AI automatiche</p>
+                    <p className="text-muted-foreground">Programma chiamate AI automatiche</p>
                   </div>
-                  <Button onClick={() => setIsCreateTaskOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nuova Chiamata AI
-                  </Button>
-                </div>
-
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { value: "all", label: "Tutti" },
-                    { value: "scheduled", label: "Programmati" },
-                    { value: "in_progress", label: "In corso" },
-                    { value: "retry_pending", label: "Retry" },
-                    { value: "completed", label: "Completati" },
-                  ].map((filter) => (
-                    <Button
-                      key={filter.value}
-                      variant={aiTasksFilter === filter.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setAITasksFilter(filter.value);
-                        setAITasksPage(1);
-                      }}
-                    >
-                      {filter.label}
+                  <div className="flex gap-2">
+                    <Button variant={aiTasksView === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setAITasksView('list')}>
+                      <List className="h-4 w-4 mr-2" />Lista
                     </Button>
-                  ))}
-                </div>
-
-                {loadingAITasks ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                  </div>
-                ) : !aiTasksData?.tasks?.length ? (
-                  <div className="text-center py-12">
-                    <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium">Nessun task AI trovato</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Crea il tuo primo task per programmare chiamate AI automatiche
-                    </p>
-                    <Button onClick={() => setIsCreateTaskOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Crea Task
+                    <Button variant={aiTasksView === 'calendar' ? 'default' : 'outline'} size="sm" onClick={() => setAITasksView('calendar')}>
+                      <Calendar className="h-4 w-4 mr-2" />Calendario
                     </Button>
                   </div>
-                ) : (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {aiTasksData.tasks.map((task) => {
-                        const statusBadge = getAITaskStatusBadge(task.status);
-                        return (
-                          <Card key={task.id} className="hover:shadow-md transition-shadow">
-                            <CardContent className="pt-6">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  {getAITaskTypeIcon(task.task_type)}
-                                  <div>
-                                    <p className="font-medium">
-                                      {task.contact_name || "Contatto"}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground font-mono">
-                                      {task.contact_phone}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Badge className={statusBadge.className}>
-                                  {statusBadge.label}
-                                </Badge>
-                              </div>
+                </div>
 
-                              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                {task.ai_instruction}
-                              </p>
-
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                                <Calendar className="h-3 w-3" />
-                                {format(new Date(task.scheduled_at), "dd/MM/yyyy HH:mm", { locale: it })}
-                                {task.recurrence_type !== "once" && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {task.recurrence_type === "daily" ? "Giornaliero" : "Settimanale"}
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="flex gap-2 justify-end">
-                                {(task.status === "scheduled" || task.status === "paused" || task.status === "retry_pending") && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => executeAITaskMutation.mutate(task.id)}
-                                          disabled={executeAITaskMutation.isPending}
-                                        >
-                                          <Play className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Esegui ora</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                                {(task.status === "scheduled" || task.status === "in_progress") && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => pauseAITaskMutation.mutate(task.id)}
-                                          disabled={pauseAITaskMutation.isPending}
-                                        >
-                                          <Pause className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Pausa</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                        onClick={() => deleteAITaskMutation.mutate(task.id)}
-                                        disabled={deleteAITaskMutation.isPending}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Elimina</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-
-                    {aiTasksData.pagination.totalPages > 1 && (
-                      <div className="flex items-center justify-between mt-4">
-                        <p className="text-sm text-muted-foreground">
-                          {aiTasksData.pagination.total} task totali
-                        </p>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={aiTasksPage <= 1}
-                            onClick={() => setAITasksPage((p) => p - 1)}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <span className="flex items-center px-2 text-sm">
-                            {aiTasksPage} / {aiTasksData.pagination.totalPages}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={aiTasksPage >= aiTasksData.pagination.totalPages}
-                            onClick={() => setAITasksPage((p) => p + 1)}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                {/* GRIGLIA FORM + TEMPLATE */}
+                <div className="grid gap-6 lg:grid-cols-4">
+                  {/* COLONNA SINISTRA (75%): Form Creazione */}
+                  <div className="lg:col-span-3">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Programma Nuova Chiamata AI</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* RIGA 1: Contatto */}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-3">
+                            <Label>Numero telefono *</Label>
+                            <Input placeholder="+39 333 1234567" value={newTaskData.contact_phone} onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})} />
+                          </div>
+                          <div className="space-y-3">
+                            <Label>Nome (opzionale)</Label>
+                            <Input placeholder="Mario Rossi" value={newTaskData.contact_name} onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})} />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <Sheet open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-                  <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>Programma Chiamata AI</SheetTitle>
-                      <SheetDescription>
-                        Configura una nuova chiamata automatica gestita dall'AI
-                      </SheetDescription>
-                    </SheetHeader>
-
-                    <div className="space-y-6 mt-6">
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Contatto</h4>
+                        
+                        {/* RIGA 2: Tipo Azione (pillole) */}
                         <div className="space-y-3">
-                          <div>
-                            <Label htmlFor="contact_name">Nome (opzionale)</Label>
-                            <Input
-                              id="contact_name"
-                              placeholder="Mario Rossi"
-                              value={newTaskData.contact_name}
-                              onChange={(e) => setNewTaskData({ ...newTaskData, contact_name: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="contact_phone">Numero telefono *</Label>
-                            <Input
-                              id="contact_phone"
-                              placeholder="+39 333 1234567"
-                              value={newTaskData.contact_phone}
-                              onChange={(e) => setNewTaskData({ ...newTaskData, contact_phone: e.target.value })}
-                            />
+                          <Label>Tipo</Label>
+                          <div className="flex gap-2">
+                            {[
+                              { value: "single_call" as const, label: "Chiamata", icon: Phone },
+                              { value: "follow_up" as const, label: "Follow-up", icon: RepeatIcon },
+                              { value: "ai_task" as const, label: "Task AI", icon: Bot },
+                            ].map((type) => (
+                              <Button key={type.value} variant={newTaskData.task_type === type.value ? "default" : "outline"} size="sm"
+                                onClick={() => setNewTaskData({...newTaskData, task_type: type.value})}>
+                                <type.icon className="h-4 w-4 mr-1" />{type.label}
+                              </Button>
+                            ))}
                           </div>
                         </div>
-                      </div>
 
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Tipo Azione</h4>
-                        <div className="flex gap-2">
-                          {[
-                            { value: "single_call" as const, label: "Chiamata", icon: Phone },
-                            { value: "follow_up" as const, label: "Follow-up", icon: RepeatIcon },
-                            { value: "ai_task" as const, label: "Task AI", icon: Bot },
-                          ].map((type) => (
-                            <Button
-                              key={type.value}
-                              variant={newTaskData.task_type === type.value ? "default" : "outline"}
-                              className="flex-1"
-                              onClick={() => setNewTaskData({ ...newTaskData, task_type: type.value })}
-                            >
-                              <type.icon className="h-4 w-4 mr-2" />
-                              {type.label}
+                        {/* RIGA 3: Istruzione AI (grande) */}
+                        <div className="space-y-3">
+                          <Label>Istruzione AI</Label>
+                          <Textarea className="min-h-[150px]" placeholder="Descrivi cosa deve fare l'AI durante la chiamata..."
+                            value={newTaskData.ai_instruction} onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})} />
+                        </div>
+
+                        {/* RIGA 4: Quando + Opzioni */}
+                        <div className="grid gap-4 md:grid-cols-4">
+                          <div className="space-y-2">
+                            <Label>Data</Label>
+                            <Input type="date" value={newTaskData.scheduled_date} onChange={(e) => setNewTaskData({...newTaskData, scheduled_date: e.target.value})} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Ora</Label>
+                            <Input type="time" value={newTaskData.scheduled_time} onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Frequenza</Label>
+                            <Select value={newTaskData.recurrence_type} onValueChange={(v) => setNewTaskData({...newTaskData, recurrence_type: v as 'once' | 'daily' | 'weekly'})}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="once">Una volta</SelectItem>
+                                <SelectItem value="daily">Giornaliero</SelectItem>
+                                <SelectItem value="weekly">Settimanale</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tentativi</Label>
+                            <Select value={String(newTaskData.max_attempts)} onValueChange={(v) => setNewTaskData({...newTaskData, max_attempts: parseInt(v)})}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* BOTTONE */}
+                        <Button className="w-full" size="lg" onClick={() => createAITaskMutation.mutate(newTaskData)}
+                          disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}>
+                          {createAITaskMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creazione...</> : <><Phone className="h-4 w-4 mr-2" />Programma Chiamata AI</>}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* COLONNA DESTRA (25%): Template */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <FileText className="h-4 w-4" />Template
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-1 max-h-[400px] overflow-auto">
+                        {TEMPLATE_LIBRARY.map((category) => {
+                          const CategoryIcon = category.icon;
+                          const isExpanded = aiTaskExpandedCategory === category.category;
+                          return (
+                            <div key={category.category}>
+                              <button onClick={() => setAITaskExpandedCategory(isExpanded ? null : category.category)}
+                                className={`w-full flex items-center justify-between p-1.5 rounded text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}>
+                                <div className="flex items-center gap-1.5">
+                                  <CategoryIcon className={`h-3 w-3 ${category.color}`} />
+                                  <span className="text-xs font-medium">{category.label}</span>
+                                </div>
+                                <ChevronRight className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                              </button>
+                              {isExpanded && (
+                                <div className="ml-4 mt-1 space-y-0.5">
+                                  {category.items.map((item, idx) => (
+                                    <button key={idx} onClick={() => handleAITaskSelectTemplate(item)}
+                                      className="w-full flex items-center gap-1 p-1.5 text-left text-xs rounded hover:bg-primary/10 transition-colors">
+                                      {item.type === 'task' ? <ClipboardList className="h-3 w-3 text-blue-500 flex-shrink-0" /> : <Bell className="h-3 w-3 text-orange-500 flex-shrink-0" />}
+                                      <span className="truncate">{item.label}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Campi Template (se selezionato un template con fields) */}
+                  {aiTaskSelectedTemplate?.fields?.length ? (
+                    <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          {aiTaskSelectedTemplate.label}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {aiTaskSelectedTemplate.fields.map((field) => (
+                          <div key={field.name}>
+                            <Label className="text-xs">{field.label} {field.required && '*'}</Label>
+                            {field.type === 'select' && field.options ? (
+                              <Select
+                                value={aiTaskTemplateValues[field.name] || ''}
+                                onValueChange={(v) => {
+                                  const newValues = { ...aiTaskTemplateValues, [field.name]: v };
+                                  setAITaskTemplateValues(newValues);
+                                  const allRequiredFilled = aiTaskSelectedTemplate.fields!
+                                    .filter(f => f.required)
+                                    .every(f => newValues[f.name]);
+                                  if (allRequiredFilled && aiTaskSelectedTemplate.generateText) {
+                                    setNewTaskData(prev => ({
+                                      ...prev,
+                                      ai_instruction: aiTaskSelectedTemplate.generateText!(newValues),
+                                      task_type: aiTaskSelectedTemplate.type === 'task' ? 'single_call' : 'follow_up'
+                                    }));
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Seleziona..." /></SelectTrigger>
+                                <SelectContent>
+                                  {field.options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text'}
+                                className="h-8 text-xs"
+                                placeholder={field.placeholder}
+                                value={aiTaskTemplateValues[field.name] || ''}
+                                onChange={(e) => {
+                                  const newValues = { ...aiTaskTemplateValues, [field.name]: e.target.value };
+                                  setAITaskTemplateValues(newValues);
+                                  const allRequiredFilled = aiTaskSelectedTemplate.fields!
+                                    .filter(f => f.required)
+                                    .every(f => newValues[f.name]);
+                                  if (allRequiredFilled && aiTaskSelectedTemplate.generateText) {
+                                    setNewTaskData(prev => ({
+                                      ...prev,
+                                      ai_instruction: aiTaskSelectedTemplate.generateText!(newValues),
+                                      task_type: aiTaskSelectedTemplate.type === 'task' ? 'single_call' : 'follow_up'
+                                    }));
+                                  }
+                                }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setAITaskSelectedTemplate(null);
+                            setAITaskTemplateValues({});
+                          }}
+                        >
+                          Annulla template
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </div>
+
+                {/* SEZIONE SOTTO: Lista o Calendario */}
+                {aiTasksView === 'list' ? (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between flex-wrap gap-4">
+                        <CardTitle className="flex items-center gap-2">
+                          <ClipboardList className="h-5 w-5" />Task Programmati
+                          <Badge variant="secondary">{aiTasksData?.pagination?.total || 0}</Badge>
+                        </CardTitle>
+                        <div className="flex gap-2 flex-wrap">
+                          {["all","scheduled","in_progress","retry_pending","completed"].map(f => (
+                            <Button key={f} variant={aiTasksFilter===f?"default":"outline"} size="sm" 
+                              onClick={() => {setAITasksFilter(f); setAITasksPage(1);}}>
+                              {f==="all"?"Tutti":f==="scheduled"?"Programmati":f==="in_progress"?"In corso":f==="retry_pending"?"Retry":"Completati"}
                             </Button>
                           ))}
                         </div>
                       </div>
-
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Istruzione AI</h4>
-                        <Textarea
-                          placeholder="Descrivi cosa deve fare l'AI durante la chiamata. Es: Ricorda la scadenza del contratto e proponi il rinnovo..."
-                          className="min-h-[120px]"
-                          value={newTaskData.ai_instruction}
-                          onChange={(e) => setNewTaskData({ ...newTaskData, ai_instruction: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Quando</h4>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label htmlFor="scheduled_date">Data</Label>
-                            <Input
-                              id="scheduled_date"
-                              type="date"
-                              value={newTaskData.scheduled_date}
-                              onChange={(e) => setNewTaskData({ ...newTaskData, scheduled_date: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="scheduled_time">Ora</Label>
-                            <Input
-                              id="scheduled_time"
-                              type="time"
-                              value={newTaskData.scheduled_time}
-                              onChange={(e) => setNewTaskData({ ...newTaskData, scheduled_time: e.target.value })}
-                            />
-                          </div>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingAITasks ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="h-8 w-8 animate-spin" />
                         </div>
-                        <div>
-                          <Label>Frequenza</Label>
-                          <Select
-                            value={newTaskData.recurrence_type}
-                            onValueChange={(v) => setNewTaskData({ ...newTaskData, recurrence_type: v as 'once' | 'daily' | 'weekly' })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="once">Una volta</SelectItem>
-                              <SelectItem value="daily">Giornaliero</SelectItem>
-                              <SelectItem value="weekly">Settimanale</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      ) : !aiTasksData?.tasks?.length ? (
+                        <div className="text-center py-12">
+                          <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <h3 className="text-lg font-medium">Nessun task AI trovato</h3>
+                          <p className="text-muted-foreground">
+                            Usa il form sopra per programmare la tua prima chiamata AI
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {aiTasksData.tasks.map((task) => {
+                              const statusBadge = getAITaskStatusBadge(task.status);
+                              return (
+                                <Card key={task.id} className="hover:shadow-md transition-shadow">
+                                  <CardContent className="pt-6">
+                                    <div className="flex items-start justify-between mb-3">
+                                      <div className="flex items-center gap-2">
+                                        {getAITaskTypeIcon(task.task_type)}
+                                        <div>
+                                          <p className="font-medium">
+                                            {task.contact_name || "Contatto"}
+                                          </p>
+                                          <p className="text-sm text-muted-foreground font-mono">
+                                            {task.contact_phone}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <Badge className={statusBadge.className}>
+                                        {statusBadge.label}
+                                      </Badge>
+                                    </div>
+
+                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                      {task.ai_instruction}
+                                    </p>
+
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(task.scheduled_at), "dd/MM/yyyy HH:mm", { locale: it })}
+                                      {task.recurrence_type !== "once" && (
+                                        <Badge variant="outline" className="text-xs">
+                                          {task.recurrence_type === "daily" ? "Giornaliero" : "Settimanale"}
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    <div className="flex gap-2 justify-end">
+                                      {(task.status === "scheduled" || task.status === "paused" || task.status === "retry_pending") && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => executeAITaskMutation.mutate(task.id)}
+                                                disabled={executeAITaskMutation.isPending}
+                                              >
+                                                <Play className="h-4 w-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Esegui ora</TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+                                      {(task.status === "scheduled" || task.status === "in_progress") && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => pauseAITaskMutation.mutate(task.id)}
+                                                disabled={pauseAITaskMutation.isPending}
+                                              >
+                                                <Pause className="h-4 w-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Pausa</TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                              onClick={() => deleteAITaskMutation.mutate(task.id)}
+                                              disabled={deleteAITaskMutation.isPending}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Elimina</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+
+                          {aiTasksData.pagination.totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4">
+                              <p className="text-sm text-muted-foreground">
+                                {aiTasksData.pagination.total} task totali
+                              </p>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={aiTasksPage <= 1}
+                                  onClick={() => setAITasksPage((p) => p - 1)}
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="flex items-center px-2 text-sm">
+                                  {aiTasksPage} / {aiTasksData.pagination.totalPages}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={aiTasksPage >= aiTasksData.pagination.totalPages}
+                                  onClick={() => setAITasksPage((p) => p + 1)}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Calendario Settimanale</CardTitle>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setCalendarWeekStart(prev => addDays(prev, -7))}><ChevronLeft className="h-4 w-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => setCalendarWeekStart(startOfWeek(new Date(), {weekStartsOn: 1}))}>Oggi</Button>
+                          <Button variant="outline" size="sm" onClick={() => setCalendarWeekStart(prev => addDays(prev, 7))}><ChevronRight className="h-4 w-4" /></Button>
                         </div>
                       </div>
-
-                      <Collapsible open={advancedOptionsOpen} onOpenChange={setAdvancedOptionsOpen}>
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" className="w-full justify-between">
-                            Opzioni avanzate
-                            {advancedOptionsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="space-y-4 pt-4">
-                          <div>
-                            <Label>Tentativi max</Label>
-                            <Select
-                              value={String(newTaskData.max_attempts)}
-                              onValueChange={(v) => setNewTaskData({ ...newTaskData, max_attempts: parseInt(v) })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {[1, 2, 3, 4, 5].map((n) => (
-                                  <SelectItem key={n} value={String(n)}>{n} {n === 1 ? "tentativo" : "tentativi"}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Delay retry</Label>
-                            <Select
-                              value={String(newTaskData.retry_delay_minutes)}
-                              onValueChange={(v) => setNewTaskData({ ...newTaskData, retry_delay_minutes: parseInt(v) })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="5">5 minuti</SelectItem>
-                                <SelectItem value="15">15 minuti</SelectItem>
-                                <SelectItem value="60">60 minuti</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-
-                      <Button
-                        className="w-full"
-                        size="lg"
-                        onClick={() => createAITaskMutation.mutate(newTaskData)}
-                        disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
-                      >
-                        {createAITaskMutation.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Creazione...
-                          </>
-                        ) : (
-                          <>
-                            <Phone className="h-4 w-4 mr-2" />
-                            Programma Chiamata AI
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </SheetContent>
-                </Sheet>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Header giorni */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {[0,1,2,3,4,5,6].map(dayOffset => {
+                          const day = addDays(calendarWeekStart, dayOffset);
+                          const isToday = isSameDay(day, new Date());
+                          return (
+                            <div key={dayOffset} className={`text-center p-2 font-medium text-sm ${isToday ? 'bg-primary/10 rounded' : ''}`}>
+                              <div className="text-xs text-muted-foreground">{format(day, 'EEE', { locale: it })}</div>
+                              <div className={`text-lg ${isToday ? 'text-primary font-bold' : ''}`}>{format(day, 'd')}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Celle con task e chiamate */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {[0,1,2,3,4,5,6].map(dayOffset => {
+                          const day = addDays(calendarWeekStart, dayOffset);
+                          const dayTasks = calendarData?.aiTasks?.filter((t: AITask) => isSameDay(new Date(t.scheduled_at), day)) || [];
+                          const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
+                          
+                          return (
+                            <div key={dayOffset} className="min-h-[100px] border rounded p-1 space-y-1 bg-muted/20">
+                              {/* AI Tasks - viola */}
+                              {dayTasks.map((task: AITask) => (
+                                <div key={task.id} className="text-xs p-1 rounded bg-purple-100 border border-purple-300 truncate dark:bg-purple-950/50 dark:border-purple-700"
+                                  title={`${task.contact_name || task.contact_phone} - ${task.ai_instruction}`}
+                                >
+                                  {format(new Date(task.scheduled_at), 'HH:mm')} {task.contact_name || task.contact_phone}
+                                </div>
+                              ))}
+                              {/* Scheduled Calls - blu */}
+                              {dayCalls.map((call: any) => (
+                                <div key={call.id} className="text-xs p-1 rounded bg-blue-100 border border-blue-300 truncate dark:bg-blue-950/50 dark:border-blue-700"
+                                  title={call.call_instruction || 'Chiamata programmata'}
+                                >
+                                  {format(new Date(call.scheduled_at), 'HH:mm')} {call.target_phone}
+                                </div>
+                              ))}
+                              {dayTasks.length === 0 && dayCalls.length === 0 && (
+                                <p className="text-xs text-muted-foreground text-center py-4">-</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Legenda */}
+                      <div className="flex gap-4 mt-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-purple-100 border border-purple-300 dark:bg-purple-950/50 dark:border-purple-700"></div>
+                          <span>AI Tasks</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-blue-100 border border-blue-300 dark:bg-blue-950/50 dark:border-blue-700"></div>
+                          <span>Chiamate Programmate</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
             </Tabs>
           </div>
