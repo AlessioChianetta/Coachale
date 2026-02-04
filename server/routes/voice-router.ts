@@ -134,9 +134,12 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
       SELECT 
         vc.*,
         CONCAT(u.first_name, ' ', u.last_name) as client_name,
-        u.phone_number as client_phone
+        u.phone_number as client_phone,
+        svc.instruction_type,
+        svc.call_instruction
       FROM voice_calls vc
       LEFT JOIN users u ON vc.client_id = u.id
+      LEFT JOIN scheduled_voice_calls svc ON svc.voice_call_id = vc.id
       ${whereClause}
       ORDER BY vc.started_at DESC
       LIMIT ${limitNum} OFFSET ${offset}

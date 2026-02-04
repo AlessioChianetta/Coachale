@@ -131,6 +131,8 @@ interface VoiceCall {
   outcome: string | null;
   telephony_minutes: number | null;
   ai_cost_estimate: number | null;
+  instruction_type: 'task' | 'reminder' | null;
+  call_instruction: string | null;
 }
 
 interface VoiceStats {
@@ -2042,6 +2044,8 @@ export default function ConsultantVoiceCallsPage() {
                           <TableHead>Chiamante</TableHead>
                           <TableHead>Cliente</TableHead>
                           <TableHead>Stato</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Istruzione</TableHead>
                           <TableHead>Durata</TableHead>
                           <TableHead>Esito</TableHead>
                           <TableHead></TableHead>
@@ -2080,6 +2084,26 @@ export default function ConsultantVoiceCallsPage() {
                                   <StatusIcon className="h-3 w-3 mr-1" />
                                   {statusConfig.label}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {call.instruction_type === 'task' ? (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <ClipboardList className="h-3 w-3 text-blue-500" />
+                                    <span>Task</span>
+                                  </div>
+                                ) : call.instruction_type === 'reminder' ? (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Bell className="h-3 w-3 text-orange-500" />
+                                    <span>Reminder</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="max-w-[150px]">
+                                <p className="truncate text-sm text-muted-foreground" title={call.call_instruction || ''}>
+                                  {call.call_instruction || '-'}
+                                </p>
                               </TableCell>
                               <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
                               <TableCell>
