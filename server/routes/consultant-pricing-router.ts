@@ -6,7 +6,7 @@ import { users, bronzeUsers, clientLevelSubscriptions, consultantLicenses } from
 import { eq, and, ne, sql, ilike, or, count } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-secret-key";
 
 const router: Router = express.Router();
 
