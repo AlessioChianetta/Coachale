@@ -14,7 +14,7 @@ import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { consultantAvailabilitySettings, users } from "@shared/schema";
-import { getActiveVoiceCallsForConsultant } from "../ai/gemini-live-ws-service";
+import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections } from "../ai/gemini-live-ws-service";
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
@@ -46,6 +46,54 @@ router.get("/calls/active", authenticateToken, requireAnyRole(["consultant", "su
   } catch (error: any) {
     console.error("[VOICE] Error fetching active calls:", error);
     return res.status(500).json({ error: "Failed to fetch active calls" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// GEMINI CONNECTIONS - Monitoraggio e gestione connessioni WebSocket
+// ═══════════════════════════════════════════════════════════════════
+
+// GET /api/voice/gemini-connections - Lista connessioni Gemini attive
+router.get("/gemini-connections", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const connections = getActiveGeminiConnections();
+    const count = getActiveGeminiConnectionCount();
+    
+    return res.json({
+      success: true,
+      connections: connections.map(conn => ({
+        connectionId: conn.connectionId,
+        mode: conn.mode,
+        startedAt: conn.startedAt,
+        status: conn.status,
+        retryCount: conn.retryCount,
+        consultantId: conn.consultantId,
+        durationSeconds: Math.round((Date.now() - new Date(conn.startedAt).getTime()) / 1000)
+      })),
+      count,
+    });
+  } catch (error: any) {
+    console.error("[VOICE] Error fetching Gemini connections:", error);
+    return res.status(500).json({ error: "Failed to fetch Gemini connections" });
+  }
+});
+
+// POST /api/voice/gemini-connections/kill-all - Forza chiusura di tutte le connessioni (SUPER_ADMIN ONLY)
+router.post("/gemini-connections/kill-all", authenticateToken, requireAnyRole(["super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    console.log(`🔴 [VOICE API] Kill-all requested by super_admin ${req.user?.id}`);
+    
+    const result = forceCloseAllGeminiConnections();
+    
+    return res.json({
+      success: true,
+      message: `Chiuse ${result.closed} connessioni`,
+      closed: result.closed,
+      errors: result.errors,
+    });
+  } catch (error: any) {
+    console.error("[VOICE] Error killing Gemini connections:", error);
+    return res.status(500).json({ error: "Failed to kill Gemini connections" });
   }
 });
 

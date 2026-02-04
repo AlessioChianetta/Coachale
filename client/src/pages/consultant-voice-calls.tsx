@@ -94,11 +94,14 @@ import {
   TrendingUp,
   Flag,
   List,
+  Plug,
+  Zap,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { formatDistanceToNow, format, startOfWeek, addDays, isSameDay } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -847,6 +850,7 @@ function BrandVoicePreview({ prompt, agentName }: { prompt: string; agentName: s
 
 export default function ConsultantVoiceCallsPage() {
   const isMobile = useIsMobile();
+  const { currentRole } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -1112,6 +1116,54 @@ export default function ConsultantVoiceCallsPage() {
       return res.json();
     },
     refetchInterval: 30000,
+  });
+
+  // Gemini connections tracker
+  const { data: geminiConnectionsData, refetch: refetchGeminiConnections } = useQuery<{
+    success: boolean;
+    connections: Array<{
+      connectionId: string;
+      mode: string;
+      startedAt: string;
+      status: string;
+      retryCount: number;
+      consultantId?: string;
+      durationSeconds: number;
+    }>;
+    count: number;
+  }>({
+    queryKey: ["/api/voice/gemini-connections"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/gemini-connections", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento connessioni Gemini");
+      return res.json();
+    },
+    refetchInterval: 5000,
+  });
+
+  const killAllGeminiMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/gemini-connections/kill-all", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore nella chiusura connessioni");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Connessioni terminate",
+        description: `Chiuse ${data.closed} connessioni Gemini`,
+      });
+      refetchGeminiConnections();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: tokenStatusData, refetch: refetchTokenStatus } = useQuery<TokenStatus>({
@@ -1784,7 +1836,7 @@ export default function ConsultantVoiceCallsPage() {
               </TabsList>
 
               <TabsContent value="calls" className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
@@ -1848,6 +1900,79 @@ export default function ConsultantVoiceCallsPage() {
                     </div>
                     <div className={`p-3 rounded-full ${health?.overall === "healthy" ? "bg-green-100" : "bg-yellow-100"}`}>
                       <Settings className={`h-6 w-6 ${health?.overall === "healthy" ? "text-green-600" : "text-yellow-600"}`} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Gemini Connections Tracker */}
+              <Card className={geminiConnectionsData?.count && geminiConnectionsData.count > 0 ? "border-orange-300 bg-orange-50" : ""}>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">Connessioni Gemini</p>
+                        {geminiConnectionsData?.count && geminiConnectionsData.count > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {geminiConnectionsData.count} attive
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-3xl font-bold">{geminiConnectionsData?.count || 0}</p>
+                      {geminiConnectionsData?.connections && geminiConnectionsData.connections.length > 0 && (
+                        <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                          {geminiConnectionsData.connections.slice(0, 3).map((conn) => (
+                            <div key={conn.connectionId} className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${
+                                conn.status === 'active' ? 'bg-green-500' : 
+                                conn.status === 'reconnecting' ? 'bg-yellow-500' : 'bg-gray-400'
+                              }`} />
+                              <span>{conn.mode}</span>
+                              <span className="text-muted-foreground">
+                                {Math.floor(conn.durationSeconds / 60)}m {conn.durationSeconds % 60}s
+                              </span>
+                              {conn.retryCount > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  retry: {conn.retryCount}
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                          {geminiConnectionsData.connections.length > 3 && (
+                            <div className="text-muted-foreground">
+                              +{geminiConnectionsData.connections.length - 3} altre
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className={`p-3 rounded-full ${
+                        geminiConnectionsData?.count && geminiConnectionsData.count > 0 
+                          ? "bg-orange-100" 
+                          : "bg-gray-100"
+                      }`}>
+                        <Plug className={`h-6 w-6 ${
+                          geminiConnectionsData?.count && geminiConnectionsData.count > 0 
+                            ? "text-orange-600" 
+                            : "text-gray-400"
+                        }`} />
+                      </div>
+                      {geminiConnectionsData?.count && geminiConnectionsData.count > 0 && currentRole === 'super_admin' && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => killAllGeminiMutation.mutate()}
+                          disabled={killAllGeminiMutation.isPending}
+                        >
+                          {killAllGeminiMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <Zap className="h-3 w-3 mr-1" />
+                          )}
+                          Kill All
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

@@ -106,6 +106,76 @@ const activeSessionsCache = new Map<string, ActiveSessionEntry>();
 const activeVoiceCalls = new Map<string, ActiveVoiceCall>();
 const SESSION_TTL_MS = 3 * 60 * 1000; // 3 minuti
 
+/**
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 🔌 GEMINI WEBSOCKET CONNECTION TRACKER
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 
+ * Tracks all active WebSocket connections to Gemini to:
+ * - Prevent resource exhaustion from zombie connections
+ * - Enable monitoring via API endpoint
+ * - Allow force-kill of stale connections
+ */
+interface ActiveGeminiConnection {
+  connectionId: string;
+  mode: string;
+  startedAt: Date;
+  status: 'connecting' | 'active' | 'reconnecting' | 'closing';
+  retryCount: number;
+  websocket: WebSocket | null;
+  consultantId?: string;
+}
+
+const activeGeminiConnections = new Map<string, ActiveGeminiConnection>();
+
+export function getActiveGeminiConnections(): ActiveGeminiConnection[] {
+  return Array.from(activeGeminiConnections.values()).map(conn => ({
+    ...conn,
+    websocket: null // Don't expose WebSocket object
+  }));
+}
+
+export function getActiveGeminiConnectionCount(): number {
+  return activeGeminiConnections.size;
+}
+
+export function forceCloseAllGeminiConnections(): { closed: number; errors: string[] } {
+  const errors: string[] = [];
+  let closed = 0;
+  
+  console.log(`\n🔴 [FORCE CLOSE] Killing ${activeGeminiConnections.size} Gemini connections...`);
+  
+  for (const [connId, conn] of activeGeminiConnections.entries()) {
+    try {
+      if (conn.websocket && conn.websocket.readyState === WebSocket.OPEN) {
+        conn.websocket.close(1000, 'Force closed by admin');
+        closed++;
+        console.log(`   ✅ Closed: ${connId}`);
+      } else {
+        console.log(`   ⚠️  Already closed: ${connId}`);
+      }
+      activeGeminiConnections.delete(connId);
+    } catch (err: any) {
+      errors.push(`${connId}: ${err.message}`);
+      console.log(`   ❌ Error closing ${connId}: ${err.message}`);
+    }
+  }
+  
+  console.log(`🔴 [FORCE CLOSE] Done. Closed: ${closed}, Errors: ${errors.length}\n`);
+  return { closed, errors };
+}
+
+setInterval(() => {
+  const count = activeGeminiConnections.size;
+  if (count > 0) {
+    console.log(`🔌 [GEMINI TRACKER] Active connections: ${count}`);
+    for (const [connId, conn] of activeGeminiConnections.entries()) {
+      const duration = Math.round((Date.now() - conn.startedAt.getTime()) / 1000);
+      console.log(`   • ${connId}: ${conn.mode} - ${conn.status} - ${duration}s - retries: ${conn.retryCount}`);
+    }
+  }
+}, 30 * 1000);
+
 // Export function to get active voice calls
 export function getActiveVoiceCalls(): ActiveVoiceCall[] {
   return Array.from(activeVoiceCalls.values());
@@ -4231,6 +4301,18 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           'Content-Type': 'application/json',
         }
       });
+      
+      // 🔌 Track this connection in global tracker
+      activeGeminiConnections.set(connectionId, {
+        connectionId,
+        mode,
+        startedAt: new Date(),
+        status: 'connecting',
+        retryCount: 0,
+        websocket: geminiSession,
+        consultantId: msg.consultantId
+      });
+      console.log(`🔌 [${connectionId}] Added to connection tracker (total: ${activeGeminiConnections.size})`);
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // ⏱️  HELPER: Send time update to Gemini AI
@@ -4425,6 +4507,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       geminiSession.on('open', () => {
         console.log(`✅ [${connectionId}] Gemini Live WebSocket opened`);
         isSessionActive = true;
+        
+        // 🔌 Update connection tracker status
+        const trackedConn = activeGeminiConnections.get(connectionId);
+        if (trackedConn) {
+          trackedConn.status = 'active';
+          console.log(`🔌 [${connectionId}] Connection status updated to 'active'`);
+        }
         
         // ⏱️  VERIFY SESSION START TIME (già inizializzato PRIMA del socket open)
         if (sessionType === 'weekly_consultation') {
@@ -6827,78 +6916,37 @@ ${compactFeedback}
           }
         }
         
-        // 🔄 ERROR 1011: Insufficient model resources - auto-retry for VPS calls
+        // 🔄 ERROR 1011: Insufficient model resources - notify client to reconnect
+        // NOTE: We don't attempt server-side retry because it would require reattaching all
+        // event handlers which is complex and error-prone. Instead, we notify the client
+        // to initiate a fresh connection.
         if (code === 1011 || reasonText.includes('Insufficient model resources')) {
           const isVpsCall = mode === 'phone' || mode === 'phone_outbound' || mode === 'voice_call';
           
+          console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini risorse insufficienti`);
+          console.log(`   → Mode: ${mode}, isVpsCall: ${isVpsCall}`);
+          
+          // 🔧 FIX: Always clean up from tracker
+          activeGeminiConnections.delete(connectionId);
+          console.log(`   → Rimosso da connection tracker (remaining: ${activeGeminiConnections.size})`);
+          
+          // For VPS calls, send a special message that VPS can use to retry the call
           if (isVpsCall && clientWs.readyState === WebSocket.OPEN) {
-            // VPS call: retry server-side without closing the phone call
-            console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini sovraccarico - RETRY AUTOMATICO per chiamata VPS`);
-            console.log(`   → Tentativo di riconnessione a Gemini in 1.5 secondi...`);
-            console.log(`   → La chiamata telefonica rimane attiva`);
-            
-            // Notify VPS that we're reconnecting (optional audio feedback)
+            console.log(`   → Notifica VPS: richiesta nuova chiamata`);
             try {
               clientWs.send(JSON.stringify({
-                type: 'status',
-                status: 'reconnecting',
-                message: 'Riconnessione a Gemini in corso...'
+                type: 'error',
+                errorType: 'GEMINI_OVERLOADED',
+                retryable: true,
+                retryDelayMs: 3000,
+                message: 'Gemini temporaneamente sovraccarico. Riprova tra qualche secondo.',
+                details: reasonText || 'Insufficient model resources'
               }));
+              clientWs.close(4011, 'GEMINI_OVERLOADED');
             } catch (e) {}
-            
-            // Don't clean up - we'll reconnect
-            // The cleanup will happen if reconnection fails
-            setTimeout(async () => {
-              if (clientWs.readyState !== WebSocket.OPEN) {
-                console.log(`❌ [${connectionId}] Client disconnesso durante retry - annullo`);
-                return;
-              }
-              
-              console.log(`🔄 [${connectionId}] Tentativo riconnessione a Gemini...`);
-              try {
-                // Create new Gemini session
-                const newGeminiWs = new WebSocket(wsUrl, {
-                  headers: { Authorization: `Bearer ${accessToken}` }
-                });
-                
-                newGeminiWs.on('open', () => {
-                  console.log(`✅ [${connectionId}] Riconnessione a Gemini riuscita!`);
-                  // Update geminiSession reference
-                  (geminiSession as any) = newGeminiWs;
-                  isSessionActive = true;
-                  
-                  // Re-send setup message
-                  newGeminiWs.send(JSON.stringify(setupMessage));
-                  
-                  // Re-attach all event handlers (simplified)
-                  // Note: This is a basic implementation - full would need all handlers
-                  clientWs.send(JSON.stringify({
-                    type: 'status',
-                    status: 'reconnected',
-                    message: 'Riconnesso a Gemini'
-                  }));
-                });
-                
-                newGeminiWs.on('error', (err) => {
-                  console.log(`❌ [${connectionId}] Riconnessione fallita: ${err.message}`);
-                  clientWs.send(JSON.stringify({
-                    type: 'error',
-                    errorType: 'RECONNECT_FAILED',
-                    message: 'Riconnessione a Gemini fallita. Riprova la chiamata.'
-                  }));
-                  clientWs.close(4011, 'RECONNECT_FAILED');
-                });
-                
-              } catch (reconnectError) {
-                console.log(`❌ [${connectionId}] Errore riconnessione: ${reconnectError}`);
-                clientWs.close(4011, 'RECONNECT_FAILED');
-              }
-            }, 1500); // 1.5 secondi
-            
-            return; // Don't close client
           } else {
             // Browser call: notify client to retry
-            console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini risorse insufficienti - notifica browser`);
+            console.log(`   → Notifica browser: retry suggerito`);
             try {
               clientWs.send(JSON.stringify({
                 type: 'error',
@@ -6946,6 +6994,12 @@ ${compactFeedback}
           console.log(`\n💵 TOTAL SESSION COST: $${finalTotalCost.toFixed(4)} USD`);
           console.log(`   (${(totalInputTokens + totalOutputTokens).toLocaleString()} total tokens)`);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        }
+        
+        // 🔌 CLEANUP: Remove from connection tracker on normal close
+        if (activeGeminiConnections.has(connectionId)) {
+          activeGeminiConnections.delete(connectionId);
+          console.log(`🔌 [${connectionId}] Removed from connection tracker on Gemini close (remaining: ${activeGeminiConnections.size})`);
         }
         
         isSessionActive = false;
@@ -7714,6 +7768,12 @@ ${compactFeedback}
       clientWs.on('close', async (code, reason) => {
         console.log(`❌ [${connectionId}] Client disconnected - Code: ${code}, Reason: ${reason}`);
         isSessionActive = false;
+        
+        // 🔌 Remove from connection tracker
+        if (activeGeminiConnections.has(connectionId)) {
+          activeGeminiConnections.delete(connectionId);
+          console.log(`🔌 [${connectionId}] Removed from connection tracker (remaining: ${activeGeminiConnections.size})`);
+        }
         
         // 📞 VOICE CALL CLEANUP: Update voice_calls record if this was a phone call
         if (voiceCallId) {
