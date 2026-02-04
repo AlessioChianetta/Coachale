@@ -713,7 +713,7 @@ export interface IStorage {
 
 import { db } from "./db.js";
 import * as schema from "@shared/schema";
-import { eq, and, or, gte, lte, desc, asc, sql, like, count, sum, avg, isNull, isNotNull, inArray, notExists, ne } from "drizzle-orm";
+import { eq, and, or, gte, lte, desc, asc, sql, like, count, sum, avg, isNull, isNotNull, inArray, notExists, ne, not } from "drizzle-orm";
 import crypto from 'crypto';
 
 export class DatabaseStorage implements IStorage {
@@ -734,7 +734,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByPhoneNumber(phoneNumber: string, consultantId: string): Promise<User | undefined> {
+    if (!phoneNumber || phoneNumber === 'unknown' || phoneNumber.trim() === '') {
+      return undefined;
+    }
+    
     const digitsOnly = phoneNumber.replace(/[^\d+]/g, '');
+    if (digitsOnly.length < 5) {
+      return undefined;
+    }
+    
     const normalizedE164 = digitsOnly.startsWith('00') 
       ? '+' + digitsOnly.slice(2) 
       : digitsOnly.startsWith('+') 
@@ -747,6 +755,8 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(schema.users).where(
       and(
         eq(schema.users.consultantId, consultantId),
+        isNotNull(schema.users.phoneNumber),
+        not(eq(schema.users.phoneNumber, '')),
         or(
           eq(schema.users.phoneNumber, normalizedE164),
           eq(schema.users.phoneNumber, withoutPlus),

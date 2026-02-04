@@ -721,12 +721,13 @@ async function getUserIdFromRequest(req: any): Promise<{
         let callInstruction: string | null = null;
         let instructionType: 'task' | 'reminder' | null = null;
         let scheduledCallId: string | null = null;
+        let outboundTargetPhone: string | null = null;
         try {
           if (scheduledCallIdParam) {
             // Outbound call with specific scheduledCallId from VPS - lookup by ID
             console.log(`🔍 [PHONE SERVICE] Looking up scheduled call by ID: ${scheduledCallIdParam}`);
             const scheduledCallResult = await db.execute(sql`
-              SELECT id, call_instruction, instruction_type 
+              SELECT id, call_instruction, instruction_type, target_phone 
               FROM scheduled_voice_calls 
               WHERE id = ${scheduledCallIdParam}
                 AND consultant_id = ${decoded.consultantId}
@@ -739,16 +740,58 @@ async function getUserIdFromRequest(req: any): Promise<{
               callInstruction = scheduledCall.call_instruction;
               instructionType = scheduledCall.instruction_type;
               scheduledCallId = scheduledCall.id;
+              outboundTargetPhone = scheduledCall.target_phone;
               console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎯 [PHONE SERVICE] FOUND CALL INSTRUCTION (by ID)!`);
+              console.log(`🎯 [PHONE SERVICE] FOUND SCHEDULED OUTBOUND CALL!`);
               console.log(`🎯   Scheduled Call ID: ${scheduledCallId}`);
+              console.log(`🎯   Target Phone: ${outboundTargetPhone}`);
               console.log(`🎯   Type: ${instructionType || 'generic'}`);
               console.log(`🎯   Instruction: ${callInstruction || '(no instruction)'}`);
               console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              
+              // 🎯 For OUTBOUND calls: use target_phone from scheduled call for user lookup
+              // The VPS passes callerId as "unknown", so we need to lookup by target_phone
+              if (outboundTargetPhone) {
+                const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, decoded.consultantId);
+                if (userByTargetPhone) {
+                  userId = userByTargetPhone.id;
+                  userRole = userByTargetPhone.role;
+                  console.log(`✅ [PHONE SERVICE] OUTBOUND target recognized: ${userByTargetPhone.fullName || userByTargetPhone.email} (${userId})`);
+                } else {
+                  console.log(`📞 [PHONE SERVICE] OUTBOUND target ${outboundTargetPhone} is not a registered client`);
+                }
+              }
             } else {
-              // Scheduled call found but no instruction attached (normal outbound call)
+              // Scheduled call ID provided but not found with status 'calling'
+              // Try to fetch target_phone anyway (may be in different status)
               scheduledCallId = scheduledCallIdParam;
-              console.log(`📞 [PHONE SERVICE] Outbound call ${scheduledCallIdParam} has no instruction attached`);
+              console.log(`📞 [PHONE SERVICE] Outbound call ${scheduledCallIdParam} not found with status 'calling', trying fallback...`);
+              
+              const fallbackResult = await db.execute(sql`
+                SELECT target_phone FROM scheduled_voice_calls 
+                WHERE id = ${scheduledCallIdParam}
+                  AND consultant_id = ${decoded.consultantId}
+                LIMIT 1
+              `);
+              
+              if (fallbackResult.rows.length > 0) {
+                outboundTargetPhone = (fallbackResult.rows[0] as any).target_phone;
+                console.log(`🎯 [PHONE SERVICE] Fallback: found target_phone = ${outboundTargetPhone}`);
+                
+                // Lookup user by target_phone
+                if (outboundTargetPhone) {
+                  const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, decoded.consultantId);
+                  if (userByTargetPhone) {
+                    userId = userByTargetPhone.id;
+                    userRole = userByTargetPhone.role;
+                    console.log(`✅ [PHONE SERVICE] OUTBOUND target recognized (fallback): ${userByTargetPhone.fullName || userByTargetPhone.email} (${userId})`);
+                  } else {
+                    console.log(`📞 [PHONE SERVICE] OUTBOUND target ${outboundTargetPhone} is not a registered client`);
+                  }
+                }
+              } else {
+                console.log(`⚠️ [PHONE SERVICE] Fallback failed: scheduled call ${scheduledCallIdParam} not found at all`);
+              }
             }
           } else {
             // Inbound call - no scheduledCallId provided - DO NOT search for instructions
@@ -810,7 +853,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           inviteToken: null,
           testMode: null,
           isPhoneCall: true,
-          phoneCallerId: normalizedCallerId,
+          phoneCallerId: outboundTargetPhone || normalizedCallerId,
           voiceCallId: voiceCallId,
           // 🎯 Call instruction for outbound calls
           phoneCallInstruction: callInstruction,
