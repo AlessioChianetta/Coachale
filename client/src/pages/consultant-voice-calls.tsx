@@ -29,6 +29,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
   Phone,
@@ -70,8 +78,11 @@ import {
   Save,
   Trash2,
   Play,
+  Pause,
+  Plus,
   ClipboardList,
   Bell,
+  RepeatIcon,
   UserCheck,
   UserX,
   BookOpen,
@@ -161,6 +172,29 @@ interface ScheduledVoiceCall {
   next_retry_at: string | null;
   duration_seconds: number | null;
   hangup_cause: string | null;
+}
+
+interface AITask {
+  id: string;
+  consultant_id: string;
+  contact_name: string | null;
+  contact_phone: string;
+  task_type: 'single_call' | 'follow_up' | 'ai_task';
+  ai_instruction: string;
+  scheduled_at: string;
+  timezone: string;
+  recurrence_type: 'once' | 'daily' | 'weekly' | 'custom';
+  recurrence_days: number[] | null;
+  recurrence_end_date: string | null;
+  max_attempts: number;
+  current_attempt: number;
+  retry_delay_minutes: number;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'failed' | 'paused' | 'retry_pending' | 'cancelled';
+  result_summary: string | null;
+  voice_call_id: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
 }
 
 interface ClientWithPhone {
@@ -867,6 +901,23 @@ export default function ConsultantVoiceCallsPage() {
   const [retryMaxAttempts, setRetryMaxAttempts] = useState<number>(3);
   const [retryIntervalMinutes, setRetryIntervalMinutes] = useState<number>(5);
 
+  // AI Task Queue state
+  const [aiTasksFilter, setAITasksFilter] = useState("all");
+  const [aiTasksPage, setAITasksPage] = useState(1);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
+  const [newTaskData, setNewTaskData] = useState({
+    contact_name: "",
+    contact_phone: "",
+    task_type: "single_call" as 'single_call' | 'follow_up' | 'ai_task',
+    ai_instruction: "",
+    scheduled_date: "",
+    scheduled_time: "",
+    recurrence_type: "once" as 'once' | 'daily' | 'weekly',
+    max_attempts: 3,
+    retry_delay_minutes: 15,
+  });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -1087,6 +1138,21 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 10000,
   });
 
+  // AI Tasks query
+  const { data: aiTasksData, isLoading: loadingAITasks, refetch: refetchAITasks } = useQuery<{ tasks: AITask[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>({
+    queryKey: ["/api/voice/ai-tasks", aiTasksFilter, aiTasksPage],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(aiTasksPage), limit: "20" });
+      if (aiTasksFilter !== "all") params.set("status", aiTasksFilter);
+      const res = await fetch(`/api/voice/ai-tasks?${params}`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        return { tasks: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } };
+      }
+      return res.json();
+    },
+    refetchInterval: 15000,
+  });
+
   const { data: clientsData, isLoading: loadingClients } = useQuery<{ active: ClientWithPhone[]; inactive: ClientWithPhone[] }>({
     queryKey: ["/api/voice/clients-with-phone"],
     queryFn: async () => {
@@ -1230,6 +1296,139 @@ export default function ConsultantVoiceCallsPage() {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
     },
   });
+
+  // AI Task mutations
+  const createAITaskMutation = useMutation({
+    mutationFn: async (data: typeof newTaskData) => {
+      const scheduledAt = data.scheduled_date && data.scheduled_time 
+        ? new Date(`${data.scheduled_date}T${data.scheduled_time}`).toISOString()
+        : new Date().toISOString();
+      
+      const res = await fetch("/api/voice/ai-tasks", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact_name: data.contact_name || null,
+          contact_phone: data.contact_phone,
+          task_type: data.task_type,
+          ai_instruction: data.ai_instruction,
+          scheduled_at: scheduledAt,
+          recurrence_type: data.recurrence_type,
+          max_attempts: data.max_attempts,
+          retry_delay_minutes: data.retry_delay_minutes,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella creazione del task");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setNewTaskData({
+        contact_name: "",
+        contact_phone: "",
+        task_type: "single_call",
+        ai_instruction: "",
+        scheduled_date: "",
+        scheduled_time: "",
+        recurrence_type: "once",
+        max_attempts: 3,
+        retry_delay_minutes: 15,
+      });
+      setIsCreateTaskOpen(false);
+      refetchAITasks();
+      toast({ title: "Task creato!", description: "La chiamata AI è stata programmata" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const executeAITaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const res = await fetch(`/api/voice/ai-tasks/${taskId}/execute`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nell'esecuzione del task");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchAITasks();
+      toast({ title: "Task avviato!", description: "La chiamata è in corso" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const pauseAITaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const res = await fetch(`/api/voice/ai-tasks/${taskId}/pause`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella pausa del task");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchAITasks();
+      toast({ title: "Task in pausa" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAITaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const res = await fetch(`/api/voice/ai-tasks/${taskId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella cancellazione del task");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchAITasks();
+      toast({ title: "Task eliminato" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const getAITaskStatusBadge = (status: AITask['status']) => {
+    const config: Record<AITask['status'], { label: string; className: string }> = {
+      scheduled: { label: "Programmato", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+      in_progress: { label: "In corso", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+      retry_pending: { label: "Retry", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
+      completed: { label: "Completato", className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400" },
+      failed: { label: "Fallito", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+      paused: { label: "In pausa", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
+      cancelled: { label: "Annullato", className: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500" },
+    };
+    return config[status] || { label: status, className: "bg-gray-100 text-gray-700" };
+  };
+
+  const getAITaskTypeIcon = (type: AITask['task_type']) => {
+    switch (type) {
+      case 'single_call': return <Phone className="h-4 w-4" />;
+      case 'follow_up': return <RepeatIcon className="h-4 w-4" />;
+      case 'ai_task': return <Bot className="h-4 w-4" />;
+      default: return <Phone className="h-4 w-4" />;
+    }
+  };
 
   const handleTriggerCall = () => {
     if (!outboundPhone.trim()) {
@@ -1523,6 +1722,10 @@ export default function ConsultantVoiceCallsPage() {
                 <TabsTrigger value="vps" className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
                   Configurazione VPS
+                </TabsTrigger>
+                <TabsTrigger value="ai-tasks" className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  AI Task Queue
                 </TabsTrigger>
               </TabsList>
 
@@ -3202,6 +3405,355 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="ai-tasks" className="space-y-6">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold">AI Task Queue</h2>
+                    <p className="text-muted-foreground">Gestisci e programma chiamate AI automatiche</p>
+                  </div>
+                  <Button onClick={() => setIsCreateTaskOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuova Chiamata AI
+                  </Button>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "all", label: "Tutti" },
+                    { value: "scheduled", label: "Programmati" },
+                    { value: "in_progress", label: "In corso" },
+                    { value: "retry_pending", label: "Retry" },
+                    { value: "completed", label: "Completati" },
+                  ].map((filter) => (
+                    <Button
+                      key={filter.value}
+                      variant={aiTasksFilter === filter.value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setAITasksFilter(filter.value);
+                        setAITasksPage(1);
+                      }}
+                    >
+                      {filter.label}
+                    </Button>
+                  ))}
+                </div>
+
+                {loadingAITasks ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : !aiTasksData?.tasks?.length ? (
+                  <div className="text-center py-12">
+                    <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium">Nessun task AI trovato</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Crea il tuo primo task per programmare chiamate AI automatiche
+                    </p>
+                    <Button onClick={() => setIsCreateTaskOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crea Task
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {aiTasksData.tasks.map((task) => {
+                        const statusBadge = getAITaskStatusBadge(task.status);
+                        return (
+                          <Card key={task.id} className="hover:shadow-md transition-shadow">
+                            <CardContent className="pt-6">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  {getAITaskTypeIcon(task.task_type)}
+                                  <div>
+                                    <p className="font-medium">
+                                      {task.contact_name || "Contatto"}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground font-mono">
+                                      {task.contact_phone}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge className={statusBadge.className}>
+                                  {statusBadge.label}
+                                </Badge>
+                              </div>
+
+                              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                {task.ai_instruction}
+                              </p>
+
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(task.scheduled_at), "dd/MM/yyyy HH:mm", { locale: it })}
+                                {task.recurrence_type !== "once" && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {task.recurrence_type === "daily" ? "Giornaliero" : "Settimanale"}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2 justify-end">
+                                {(task.status === "scheduled" || task.status === "paused" || task.status === "retry_pending") && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => executeAITaskMutation.mutate(task.id)}
+                                          disabled={executeAITaskMutation.isPending}
+                                        >
+                                          <Play className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Esegui ora</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {(task.status === "scheduled" || task.status === "in_progress") && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => pauseAITaskMutation.mutate(task.id)}
+                                          disabled={pauseAITaskMutation.isPending}
+                                        >
+                                          <Pause className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Pausa</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                        onClick={() => deleteAITaskMutation.mutate(task.id)}
+                                        disabled={deleteAITaskMutation.isPending}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Elimina</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+
+                    {aiTasksData.pagination.totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <p className="text-sm text-muted-foreground">
+                          {aiTasksData.pagination.total} task totali
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={aiTasksPage <= 1}
+                            onClick={() => setAITasksPage((p) => p - 1)}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="flex items-center px-2 text-sm">
+                            {aiTasksPage} / {aiTasksData.pagination.totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={aiTasksPage >= aiTasksData.pagination.totalPages}
+                            onClick={() => setAITasksPage((p) => p + 1)}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <Sheet open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
+                  <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Programma Chiamata AI</SheetTitle>
+                      <SheetDescription>
+                        Configura una nuova chiamata automatica gestita dall'AI
+                      </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="space-y-6 mt-6">
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Contatto</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="contact_name">Nome (opzionale)</Label>
+                            <Input
+                              id="contact_name"
+                              placeholder="Mario Rossi"
+                              value={newTaskData.contact_name}
+                              onChange={(e) => setNewTaskData({ ...newTaskData, contact_name: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="contact_phone">Numero telefono *</Label>
+                            <Input
+                              id="contact_phone"
+                              placeholder="+39 333 1234567"
+                              value={newTaskData.contact_phone}
+                              onChange={(e) => setNewTaskData({ ...newTaskData, contact_phone: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Tipo Azione</h4>
+                        <div className="flex gap-2">
+                          {[
+                            { value: "single_call" as const, label: "Chiamata", icon: Phone },
+                            { value: "follow_up" as const, label: "Follow-up", icon: RepeatIcon },
+                            { value: "ai_task" as const, label: "Task AI", icon: Bot },
+                          ].map((type) => (
+                            <Button
+                              key={type.value}
+                              variant={newTaskData.task_type === type.value ? "default" : "outline"}
+                              className="flex-1"
+                              onClick={() => setNewTaskData({ ...newTaskData, task_type: type.value })}
+                            >
+                              <type.icon className="h-4 w-4 mr-2" />
+                              {type.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Istruzione AI</h4>
+                        <Textarea
+                          placeholder="Descrivi cosa deve fare l'AI durante la chiamata. Es: Ricorda la scadenza del contratto e proponi il rinnovo..."
+                          className="min-h-[120px]"
+                          value={newTaskData.ai_instruction}
+                          onChange={(e) => setNewTaskData({ ...newTaskData, ai_instruction: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Quando</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="scheduled_date">Data</Label>
+                            <Input
+                              id="scheduled_date"
+                              type="date"
+                              value={newTaskData.scheduled_date}
+                              onChange={(e) => setNewTaskData({ ...newTaskData, scheduled_date: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="scheduled_time">Ora</Label>
+                            <Input
+                              id="scheduled_time"
+                              type="time"
+                              value={newTaskData.scheduled_time}
+                              onChange={(e) => setNewTaskData({ ...newTaskData, scheduled_time: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Frequenza</Label>
+                          <Select
+                            value={newTaskData.recurrence_type}
+                            onValueChange={(v) => setNewTaskData({ ...newTaskData, recurrence_type: v as 'once' | 'daily' | 'weekly' })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="once">Una volta</SelectItem>
+                              <SelectItem value="daily">Giornaliero</SelectItem>
+                              <SelectItem value="weekly">Settimanale</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <Collapsible open={advancedOptionsOpen} onOpenChange={setAdvancedOptionsOpen}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between">
+                            Opzioni avanzate
+                            {advancedOptionsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-4 pt-4">
+                          <div>
+                            <Label>Tentativi max</Label>
+                            <Select
+                              value={String(newTaskData.max_attempts)}
+                              onValueChange={(v) => setNewTaskData({ ...newTaskData, max_attempts: parseInt(v) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                  <SelectItem key={n} value={String(n)}>{n} {n === 1 ? "tentativo" : "tentativi"}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Delay retry</Label>
+                            <Select
+                              value={String(newTaskData.retry_delay_minutes)}
+                              onValueChange={(v) => setNewTaskData({ ...newTaskData, retry_delay_minutes: parseInt(v) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="5">5 minuti</SelectItem>
+                                <SelectItem value="15">15 minuti</SelectItem>
+                                <SelectItem value="60">60 minuti</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={() => createAITaskMutation.mutate(newTaskData)}
+                        disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
+                      >
+                        {createAITaskMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Creazione...
+                          </>
+                        ) : (
+                          <>
+                            <Phone className="h-4 w-4 mr-2" />
+                            Programma Chiamata AI
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </TabsContent>
             </Tabs>
           </div>

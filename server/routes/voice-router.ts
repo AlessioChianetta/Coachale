@@ -2015,4 +2015,433 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// AI SCHEDULED TASKS - Task queue per chiamate AI programmate
+// ═══════════════════════════════════════════════════════════════════
+
+// GET /api/voice/ai-tasks - Lista task con paginazione e filtri
+router.get("/ai-tasks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { status, page = "1", limit = "20", sort = "scheduled_at", order = "asc" } = req.query;
+    const pageNum = Math.max(1, parseInt(page as string));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build query
+    let whereClause = sql`consultant_id = ${consultantId}`;
+    if (status && status !== 'all') {
+      whereClause = sql`${whereClause} AND status = ${status}`;
+    }
+
+    // Get total count
+    const countResult = await db.execute(sql`
+      SELECT COUNT(*) as total FROM ai_scheduled_tasks WHERE ${whereClause}
+    `);
+    const total = parseInt((countResult.rows[0] as any)?.total || "0");
+
+    // Get tasks with sorting
+    const orderDir = order === 'desc' ? sql`DESC` : sql`ASC`;
+    const tasks = await db.execute(sql`
+      SELECT * FROM ai_scheduled_tasks 
+      WHERE ${whereClause}
+      ORDER BY 
+        CASE WHEN status = 'in_progress' THEN 0
+             WHEN status = 'retry_pending' THEN 1
+             WHEN status = 'scheduled' THEN 2
+             WHEN status = 'paused' THEN 3
+             WHEN status = 'completed' THEN 4
+             WHEN status = 'failed' THEN 5
+             WHEN status = 'cancelled' THEN 6
+             ELSE 7 END,
+        scheduled_at ASC
+      LIMIT ${limitNum} OFFSET ${offset}
+    `);
+
+    return res.json({
+      tasks: tasks.rows,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error fetching tasks:", error);
+    return res.status(500).json({ error: "Failed to fetch AI tasks" });
+  }
+});
+
+// GET /api/voice/ai-tasks/:id - Dettaglio singolo task
+router.get("/ai-tasks/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      SELECT * FROM ai_scheduled_tasks 
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    return res.json({ task: result.rows[0] });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error fetching task:", error);
+    return res.status(500).json({ error: "Failed to fetch task" });
+  }
+});
+
+// POST /api/voice/ai-tasks - Crea nuovo task
+router.post("/ai-tasks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const {
+      contact_name,
+      contact_phone,
+      task_type = 'single_call',
+      ai_instruction,
+      scheduled_at,
+      timezone = 'Europe/Rome',
+      recurrence_type = 'once',
+      recurrence_days,
+      recurrence_end_date,
+      max_attempts = 1,
+      retry_delay_minutes = 15,
+      voice_template_id
+    } = req.body;
+
+    // Validation
+    if (!contact_phone) {
+      return res.status(400).json({ error: "contact_phone is required" });
+    }
+    if (!ai_instruction) {
+      return res.status(400).json({ error: "ai_instruction is required" });
+    }
+    if (!scheduled_at) {
+      return res.status(400).json({ error: "scheduled_at is required" });
+    }
+
+    // Generate ID
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+
+    // Insert task
+    const result = await db.execute(sql`
+      INSERT INTO ai_scheduled_tasks (
+        id, consultant_id, contact_name, contact_phone, task_type,
+        ai_instruction, scheduled_at, timezone, recurrence_type,
+        recurrence_days, recurrence_end_date, max_attempts,
+        retry_delay_minutes, voice_template_id, status
+      ) VALUES (
+        ${taskId}, ${consultantId}, ${contact_name || null}, ${contact_phone},
+        ${task_type}, ${ai_instruction}, ${scheduled_at}, ${timezone},
+        ${recurrence_type}, ${recurrence_days ? JSON.stringify(recurrence_days) : null}::jsonb,
+        ${recurrence_end_date || null}, ${max_attempts}, ${retry_delay_minutes},
+        ${voice_template_id || null}, 'scheduled'
+      )
+      RETURNING *
+    `);
+
+    console.log(`📅 [AI-TASKS] Created task ${taskId} for ${contact_phone} at ${scheduled_at}`);
+
+    return res.status(201).json({ 
+      success: true,
+      task: result.rows[0],
+      message: "Task AI programmato con successo"
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error creating task:", error);
+    return res.status(500).json({ error: "Failed to create AI task" });
+  }
+});
+
+// PATCH /api/voice/ai-tasks/:id - Modifica task
+router.patch("/ai-tasks/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Verify ownership
+    const existing = await db.execute(sql`
+      SELECT * FROM ai_scheduled_tasks 
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    // Build dynamic update
+    const allowedFields = [
+      'contact_name', 'contact_phone', 'task_type', 'ai_instruction',
+      'scheduled_at', 'timezone', 'recurrence_type', 'recurrence_days',
+      'recurrence_end_date', 'max_attempts', 'retry_delay_minutes',
+      'voice_template_id', 'status'
+    ];
+
+    const setClauses: string[] = ['updated_at = NOW()'];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        if (field === 'recurrence_days') {
+          setClauses.push(`${field} = $${paramIndex}::jsonb`);
+          values.push(JSON.stringify(updates[field]));
+        } else {
+          setClauses.push(`${field} = $${paramIndex}`);
+          values.push(updates[field]);
+        }
+        paramIndex++;
+      }
+    }
+
+    values.push(id, consultantId);
+
+    const updateQuery = `
+      UPDATE ai_scheduled_tasks 
+      SET ${setClauses.join(', ')}
+      WHERE id = $${paramIndex} AND consultant_id = $${paramIndex + 1}
+      RETURNING *
+    `;
+
+    const result = await db.execute(sql.raw(updateQuery, values));
+
+    console.log(`📝 [AI-TASKS] Updated task ${id}`);
+
+    return res.json({ 
+      success: true,
+      task: result.rows[0],
+      message: "Task aggiornato"
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error updating task:", error);
+    return res.status(500).json({ error: "Failed to update task" });
+  }
+});
+
+// DELETE /api/voice/ai-tasks/:id - Elimina task
+router.delete("/ai-tasks/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      DELETE FROM ai_scheduled_tasks 
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+      RETURNING id
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    console.log(`🗑️ [AI-TASKS] Deleted task ${id}`);
+
+    return res.json({ 
+      success: true,
+      message: "Task eliminato"
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error deleting task:", error);
+    return res.status(500).json({ error: "Failed to delete task" });
+  }
+});
+
+// POST /api/voice/ai-tasks/:id/execute - Esegui subito
+router.post("/ai-tasks/:id/execute", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    const { id } = req.params;
+
+    // Get task
+    const taskResult = await db.execute(sql`
+      SELECT * FROM ai_scheduled_tasks 
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    const task = taskResult.rows[0] as any;
+
+    // Update task to in_progress
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'in_progress',
+          current_attempt = current_attempt + 1,
+          last_attempt_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${id}
+    `);
+
+    // TODO: Integrate with voice outbound system
+    // For now, return success and let the scheduler handle it
+    console.log(`🚀 [AI-TASKS] Executing task ${id} immediately for ${task.contact_phone}`);
+
+    return res.json({ 
+      success: true,
+      message: "Task in esecuzione",
+      task_id: id
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error executing task:", error);
+    return res.status(500).json({ error: "Failed to execute task" });
+  }
+});
+
+// POST /api/voice/ai-tasks/:id/pause - Metti in pausa
+router.post("/ai-tasks/:id/pause", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'paused', updated_at = NOW()
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'retry_pending')
+      RETURNING *
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found or cannot be paused" });
+    }
+
+    console.log(`⏸️ [AI-TASKS] Paused task ${id}`);
+
+    return res.json({ 
+      success: true,
+      message: "Task in pausa",
+      task: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error pausing task:", error);
+    return res.status(500).json({ error: "Failed to pause task" });
+  }
+});
+
+// POST /api/voice/ai-tasks/:id/resume - Riprendi
+router.post("/ai-tasks/:id/resume", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'scheduled', updated_at = NOW()
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+        AND status = 'paused'
+      RETURNING *
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found or not paused" });
+    }
+
+    console.log(`▶️ [AI-TASKS] Resumed task ${id}`);
+
+    return res.json({ 
+      success: true,
+      message: "Task ripreso",
+      task: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error resuming task:", error);
+    return res.status(500).json({ error: "Failed to resume task" });
+  }
+});
+
+// POST /api/voice/ai-tasks/:id/cancel - Annulla
+router.post("/ai-tasks/:id/cancel", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'cancelled', updated_at = NOW(), completed_at = NOW()
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+        AND status NOT IN ('completed', 'cancelled', 'in_progress')
+      RETURNING *
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found or cannot be cancelled" });
+    }
+
+    console.log(`🚫 [AI-TASKS] Cancelled task ${id}`);
+
+    return res.json({ 
+      success: true,
+      message: "Task annullato",
+      task: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error cancelling task:", error);
+    return res.status(500).json({ error: "Failed to cancel task" });
+  }
+});
+
+// GET /api/voice/ai-tasks/stats - Statistiche task
+router.get("/ai-tasks-stats", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const stats = await db.execute(sql`
+      SELECT 
+        status,
+        COUNT(*) as count
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}
+      GROUP BY status
+    `);
+
+    const statsMap: Record<string, number> = {};
+    for (const row of stats.rows as any[]) {
+      statsMap[row.status] = parseInt(row.count);
+    }
+
+    // Get upcoming tasks (next 24h)
+    const upcoming = await db.execute(sql`
+      SELECT COUNT(*) as count FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}
+        AND status = 'scheduled'
+        AND scheduled_at <= NOW() + INTERVAL '24 hours'
+    `);
+
+    return res.json({
+      stats: {
+        scheduled: statsMap.scheduled || 0,
+        in_progress: statsMap.in_progress || 0,
+        retry_pending: statsMap.retry_pending || 0,
+        completed: statsMap.completed || 0,
+        failed: statsMap.failed || 0,
+        paused: statsMap.paused || 0,
+        cancelled: statsMap.cancelled || 0,
+        upcoming_24h: parseInt((upcoming.rows[0] as any)?.count || "0")
+      }
+    });
+  } catch (error: any) {
+    console.error("[AI-TASKS] Error fetching stats:", error);
+    return res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
 export default router;

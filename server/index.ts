@@ -27,6 +27,7 @@ import { startChannelRenewalScheduler } from "./cron/drive-channel-renewal";
 import { startDrivePendingSyncScheduler } from "./cron/drive-pending-sync";
 import { initDatasetSyncScheduler } from "./cron/dataset-sync-scheduler";
 import { startPendingBookingExpiryScheduler } from "./cron/pending-booking-expiry";
+import { initAITaskScheduler } from "./cron/ai-task-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -414,6 +415,11 @@ app.use((req, res, next) => {
   log("🎫 Starting pending booking expiry scheduler...");
   startPendingBookingExpiryScheduler();
   log("✅ Pending booking expiry scheduler started (every 2 minutes)");
+
+  // Start AI Task Scheduler for scheduled voice calls (always enabled)
+  log("🤖 Starting AI Task Scheduler...");
+  initAITaskScheduler();
+  log("✅ AI Task Scheduler started (every minute)");
 
   // Setup Instagram Window Cleanup Scheduler
   const instagramCleanupEnabled = schedulersMasterEnabled && process.env.INSTAGRAM_CLEANUP_ENABLED !== "false";

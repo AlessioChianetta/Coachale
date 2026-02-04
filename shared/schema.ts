@@ -9917,3 +9917,58 @@ export const voiceRateLimits = pgTable("voice_rate_limits", {
 
 export type VoiceRateLimit = typeof voiceRateLimits.$inferSelect;
 export type InsertVoiceRateLimit = typeof voiceRateLimits.$inferInsert;
+
+// AI Scheduled Tasks - Task queue for AI-powered outbound calls
+export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
+  id: varchar("id", { length: 100 }).primaryKey(),
+  consultantId: uuid("consultant_id").notNull(),
+  
+  // Contact info
+  contactName: varchar("contact_name", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 50 }).notNull(),
+  
+  // Task type: 'single_call', 'follow_up', 'ai_task'
+  taskType: varchar("task_type", { length: 20 }).notNull().default("single_call"),
+  
+  // AI instruction (natural language)
+  aiInstruction: text("ai_instruction").notNull(),
+  
+  // Scheduling
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+  timezone: varchar("timezone", { length: 50 }).default("Europe/Rome"),
+  
+  // Recurrence: 'once', 'daily', 'weekly', 'custom'
+  recurrenceType: varchar("recurrence_type", { length: 20 }).default("once"),
+  recurrenceDays: jsonb("recurrence_days").$type<number[]>(), // [1,2,3,4,5] = Mon-Fri
+  recurrenceEndDate: date("recurrence_end_date"),
+  
+  // Retry settings
+  maxAttempts: integer("max_attempts").default(1),
+  currentAttempt: integer("current_attempt").default(0),
+  retryDelayMinutes: integer("retry_delay_minutes").default(15),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+  
+  // Status: 'scheduled', 'in_progress', 'completed', 'failed', 'paused', 'retry_pending', 'cancelled'
+  status: varchar("status", { length: 20 }).notNull().default("scheduled"),
+  
+  // Result
+  resultSummary: text("result_summary"),
+  voiceCallId: varchar("voice_call_id", { length: 100 }),
+  
+  // Voice template (optional)
+  voiceTemplateId: varchar("voice_template_id", { length: 50 }),
+  voiceDirection: varchar("voice_direction", { length: 10 }).default("outbound"),
+  
+  // Metadata
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+}, (table) => ({
+  consultantIdx: index("idx_ai_tasks_consultant").on(table.consultantId),
+  statusIdx: index("idx_ai_tasks_status").on(table.status),
+  scheduledIdx: index("idx_ai_tasks_scheduled").on(table.scheduledAt),
+}));
+
+export type AIScheduledTask = typeof aiScheduledTasks.$inferSelect;
+export type InsertAIScheduledTask = typeof aiScheduledTasks.$inferInsert;
