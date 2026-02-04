@@ -3846,6 +3846,10 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   const dayTasks = calendarData?.aiTasks?.filter((t: AITask) => isSameDay(new Date(t.scheduled_at), day)) || [];
                                   const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
                                   
+                                  // Altezza fissa per eventi puntuali (non range)
+                                  const EVENT_HEIGHT = 32;
+                                  const OVERLAP_THRESHOLD = 0.5; // 30 minuti
+                                  
                                   // Combina tutti gli eventi per calcolare sovrapposizioni
                                   const allEvents = [
                                     ...dayTasks.map((t: AITask) => ({ 
@@ -3860,19 +3864,29 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     }))
                                   ].sort((a, b) => a.time - b.time);
                                   
-                                  // Calcola posizioni per eventi sovrapposti (stessa ora = fianco a fianco)
+                                  // Calcola posizioni per eventi sovrapposti (entro 30 minuti = fianco a fianco)
                                   const eventPositions = new Map<string, { left: number; width: number }>();
-                                  const hourGroups = new Map<number, any[]>();
                                   
+                                  // Raggruppa eventi che si sovrappongono (entro 30 min)
+                                  const overlapGroups: any[][] = [];
                                   allEvents.forEach(evt => {
-                                    const hourKey = Math.floor(evt.time);
-                                    if (!hourGroups.has(hourKey)) hourGroups.set(hourKey, []);
-                                    hourGroups.get(hourKey)!.push(evt);
+                                    let addedToGroup = false;
+                                    for (const group of overlapGroups) {
+                                      const lastInGroup = group[group.length - 1];
+                                      if (Math.abs(evt.time - lastInGroup.time) < OVERLAP_THRESHOLD) {
+                                        group.push(evt);
+                                        addedToGroup = true;
+                                        break;
+                                      }
+                                    }
+                                    if (!addedToGroup) {
+                                      overlapGroups.push([evt]);
+                                    }
                                   });
                                   
-                                  hourGroups.forEach((eventsInHour) => {
-                                    const count = eventsInHour.length;
-                                    eventsInHour.forEach((evt, idx) => {
+                                  overlapGroups.forEach((group) => {
+                                    const count = group.length;
+                                    group.forEach((evt, idx) => {
                                       eventPositions.set(evt.id, {
                                         left: (idx / count) * 100,
                                         width: 100 / count
@@ -3931,69 +3945,67 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         </div>
                                       )}
 
-                                      {/* AI Tasks - Google Calendar Style con sovrapposizioni */}
+                                      {/* AI Tasks - Posizionati al minuto esatto */}
                                       {dayTasks.map((task: AITask) => {
                                         const taskDate = new Date(task.scheduled_at);
                                         const taskHour = taskDate.getHours() + taskDate.getMinutes() / 60;
                                         const top = (taskHour - START_HOUR) * HOUR_HEIGHT;
                                         if (taskHour < START_HOUR || taskHour > END_HOUR) return null;
                                         const pos = eventPositions.get(task.id) || { left: 0, width: 100 };
-                                        const isNarrow = pos.width < 50;
+                                        const isNarrow = pos.width < 40;
                                         return (
                                           <div
                                             key={task.id}
-                                            className="absolute bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-4 border-purple-700"
+                                            className="absolute bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-purple-700"
                                             style={{ 
-                                              top: top + 2, 
-                                              height: HOUR_HEIGHT - 4,
+                                              top: top, 
+                                              height: EVENT_HEIGHT,
                                               left: `calc(${pos.left}% + 2px)`,
-                                              width: `calc(${pos.width}% - 4px)`
+                                              width: `calc(${pos.width}% - 4px)`,
+                                              minWidth: '60px'
                                             }}
-                                            title={`${task.contact_name || task.contact_phone} - ${task.ai_instruction}`}
+                                            title={`${task.contact_name || task.contact_phone} - ${format(taskDate, 'HH:mm')} - ${task.ai_instruction}`}
                                           >
-                                            <div className="p-1.5 h-full flex flex-col justify-center">
-                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[10px]' : 'text-xs'}`}>
+                                            <div className="px-1.5 py-0.5 h-full flex flex-col justify-center">
+                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[9px]' : 'text-[11px]'}`}>
                                                 {task.contact_name || task.contact_phone}
                                               </div>
-                                              {!isNarrow && (
-                                                <div className="text-white/80 text-[10px] truncate">
-                                                  {format(taskDate, 'HH:mm')}
-                                                </div>
-                                              )}
+                                              <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
+                                                {format(taskDate, 'HH:mm')}
+                                              </div>
                                             </div>
                                           </div>
                                         );
                                       })}
 
-                                      {/* Scheduled Calls - Google Calendar Style con sovrapposizioni */}
+                                      {/* Scheduled Calls - Posizionate al minuto esatto */}
                                       {dayCalls.map((call: any) => {
                                         const callDate = new Date(call.scheduled_at);
                                         const callHour = callDate.getHours() + callDate.getMinutes() / 60;
                                         const top = (callHour - START_HOUR) * HOUR_HEIGHT;
                                         if (callHour < START_HOUR || callHour > END_HOUR) return null;
                                         const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
-                                        const isNarrow = pos.width < 50;
+                                        const isNarrow = pos.width < 40;
                                         return (
                                           <div
                                             key={call.id}
-                                            className="absolute bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-4 border-blue-700"
+                                            className="absolute bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-blue-700"
                                             style={{ 
-                                              top: top + 2, 
-                                              height: HOUR_HEIGHT - 4,
+                                              top: top, 
+                                              height: EVENT_HEIGHT,
                                               left: `calc(${pos.left}% + 2px)`,
-                                              width: `calc(${pos.width}% - 4px)`
+                                              width: `calc(${pos.width}% - 4px)`,
+                                              minWidth: '60px'
                                             }}
-                                            title={call.call_instruction || 'Chiamata programmata'}
+                                            title={`${call.target_phone} - ${format(callDate, 'HH:mm')} - ${call.call_instruction || 'Chiamata programmata'}`}
                                           >
-                                            <div className="p-1.5 h-full flex flex-col justify-center">
-                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[10px]' : 'text-xs'}`}>
+                                            <div className="px-1.5 py-0.5 h-full flex flex-col justify-center">
+                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[9px]' : 'text-[11px]'}`}>
                                                 {call.target_phone}
                                               </div>
-                                              {!isNarrow && (
-                                                <div className="text-white/80 text-[10px] truncate">
-                                                  {format(callDate, 'HH:mm')}
-                                                </div>
-                                              )}
+                                              <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
+                                                {format(callDate, 'HH:mm')}
+                                              </div>
                                             </div>
                                           </div>
                                         );
