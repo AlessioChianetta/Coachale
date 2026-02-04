@@ -705,42 +705,44 @@ function AgentPromptPreview({ prompt, agentName }: { prompt: string; agentName: 
   );
 }
 
-interface AgentBrandVoice {
-  business_name?: string;
-  business_description?: string;
-  what_we_do?: string;
-  how_we_do_it?: string;
-  who_we_help?: string;
-  usp?: string;
-  services_offered?: string | any[];
-  vision?: string;
-  mission?: string;
-  years_experience?: string;
-  clients_helped?: string;
-}
-
-function BrandVoicePreview({ agent, agentName }: { agent: AgentBrandVoice; agentName: string }) {
+function BrandVoicePreview({ prompt, agentName }: { prompt: string; agentName: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  const hasAnyInfo = agent.business_name || agent.business_description || agent.what_we_do || 
-                     agent.how_we_do_it || agent.who_we_help || agent.usp || agent.services_offered ||
-                     agent.vision || agent.mission;
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
-  const services = (() => {
-    if (!agent.services_offered) return [];
-    try {
-      const parsed = typeof agent.services_offered === 'string' 
-        ? JSON.parse(agent.services_offered) 
-        : agent.services_offered;
-      return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
-    } catch { return []; }
-  })();
+  const parsePrompt = (text: string): PromptSection[] => {
+    const sectionPatterns = [
+      { pattern: /━+\n🏢 BUSINESS & IDENTITÀ\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Building2 className="h-4 w-4" />, title: "Business & Identità", color: "text-blue-500" },
+      { pattern: /━+\n🎯 POSIZIONAMENTO\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Target className="h-4 w-4" />, title: "Posizionamento", color: "text-purple-500" },
+      { pattern: /━+\n👥 TARGET\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Users className="h-4 w-4" />, title: "Target", color: "text-green-500" },
+      { pattern: /━+\n🔧 METODO\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Wrench className="h-4 w-4" />, title: "Metodo", color: "text-orange-500" },
+      { pattern: /━+\n🏆 CREDENZIALI\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Trophy className="h-4 w-4" />, title: "Credenziali", color: "text-yellow-500" },
+      { pattern: /━+\n💼 SERVIZI\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Briefcase className="h-4 w-4" />, title: "Servizi", color: "text-cyan-500" },
+      { pattern: /━+\n🤖 PERSONALITÀ AI\n━+\n([\s\S]*?)(?=\n━|$)/i, icon: <Sparkles className="h-4 w-4" />, title: "Personalità AI", color: "text-pink-500" },
+    ];
 
-  const infoCount = [
-    agent.business_name, agent.business_description, agent.what_we_do, 
-    agent.how_we_do_it, agent.who_we_help, agent.usp, services.length > 0,
-    agent.vision, agent.mission
-  ].filter(Boolean).length;
+    const sections: PromptSection[] = [];
+
+    for (const { pattern, icon, title, color } of sectionPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]?.trim()) {
+        sections.push({ icon, title, content: match[1].trim(), color });
+      }
+    }
+
+    return sections;
+  };
+
+  const sections = parsePrompt(prompt);
+  const hasSections = sections.length > 0;
 
   return (
     <div className="mt-3 rounded-lg border bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 overflow-hidden">
@@ -750,10 +752,12 @@ function BrandVoicePreview({ agent, agentName }: { agent: AgentBrandVoice; agent
       >
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-purple-600" />
-          <span className="font-medium text-sm">{agentName}</span>
-          <Badge variant="outline" className="text-xs bg-purple-100 dark:bg-purple-900/50">
-            {infoCount} info Business
-          </Badge>
+          <span className="text-sm font-medium">Anteprima: {agentName}</span>
+          {hasSections && (
+            <Badge variant="secondary" className="text-xs bg-purple-100 dark:bg-purple-900/50">
+              {sections.length} sezioni Brand Voice
+            </Badge>
+          )}
         </div>
         {isExpanded ? (
           <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -763,77 +767,41 @@ function BrandVoicePreview({ agent, agentName }: { agent: AgentBrandVoice; agent
       </div>
 
       {isExpanded && (
-        <div className="p-3 pt-0 space-y-2">
-          {!hasAnyInfo ? (
-            <p className="text-sm text-muted-foreground italic text-center py-4">
-              Nessuna info business configurata per questo agente
-            </p>
-          ) : (
-            <div className="space-y-2 text-sm">
-              {agent.business_name && (
-                <div className="flex items-start gap-2">
-                  <Building2 className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Business:</span> {agent.business_name}</div>
+        <div className="border-t p-3 space-y-3 max-h-[400px] overflow-auto">
+          {sections.map((section, idx) => (
+            <div key={idx} className="space-y-2">
+              <div 
+                className="flex items-center justify-between cursor-pointer group"
+                onClick={() => toggleSection(section.title)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={section.color}>{section.icon}</span>
+                  <span className="text-sm font-medium">{section.title}</span>
                 </div>
-              )}
-              {agent.business_description && (
-                <div className="flex items-start gap-2">
-                  <FileText className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Descrizione:</span> {agent.business_description}</div>
-                </div>
-              )}
-              {agent.vision && (
-                <div className="flex items-start gap-2">
-                  <Eye className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Vision:</span> {agent.vision}</div>
-                </div>
-              )}
-              {agent.mission && (
-                <div className="flex items-start gap-2">
-                  <Flag className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Mission:</span> {agent.mission}</div>
-                </div>
-              )}
-              {agent.what_we_do && (
-                <div className="flex items-start gap-2">
-                  <Target className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Cosa facciamo:</span> {agent.what_we_do}</div>
-                </div>
-              )}
-              {agent.who_we_help && (
-                <div className="flex items-start gap-2">
-                  <Users className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">Chi aiutiamo:</span> {agent.who_we_help}</div>
-                </div>
-              )}
-              {agent.usp && (
-                <div className="flex items-start gap-2">
-                  <Sparkles className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
-                  <div><span className="font-medium">USP:</span> {agent.usp}</div>
-                </div>
-              )}
-              {services.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <Briefcase className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
-                  <div>
-                    <span className="font-medium">Servizi:</span>
-                    <ul className="mt-1 ml-2 space-y-0.5">
-                      {services.map((s: any, i: number) => (
-                        <li key={i} className="text-muted-foreground">
-                          • {typeof s === 'string' ? s : (s.name || s)}
-                          {s.price && <span className="text-green-600 ml-1">({s.price})</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                {expandedSections.has(section.title) ? (
+                  <ChevronUp className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+                )}
+              </div>
+              {expandedSections.has(section.title) && (
+                <div className="ml-6 p-3 bg-white dark:bg-slate-950 rounded-md border text-xs leading-relaxed whitespace-pre-wrap">
+                  {section.content}
                 </div>
               )}
             </div>
+          ))}
+
+          {!hasSections && (
+            <p className="text-sm text-muted-foreground italic text-center py-4">
+              Nessuna info Brand Voice configurata per questo agente
+            </p>
           )}
+
           <div className="pt-2 border-t mt-3">
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Info className="h-3 w-3" />
-              Solo queste info verranno iniettate, non le istruzioni dell'agente
+              Solo queste sezioni verranno iniettate, non le istruzioni dell'agente
             </p>
           </div>
         </div>
@@ -2628,9 +2596,9 @@ export default function ConsultantVoiceCallsPage() {
                                 </Select>
                                 {(() => {
                                   const selectedAgent = nonClientSettingsData?.availableAgents.find(a => a.id === inboundBrandVoiceAgentId);
-                                  if (selectedAgent) {
+                                  if (selectedAgent?.prompt) {
                                     return (
-                                      <BrandVoicePreview agent={selectedAgent} agentName={selectedAgent.name} />
+                                      <BrandVoicePreview prompt={selectedAgent.prompt} agentName={selectedAgent.name} />
                                     );
                                   }
                                   return null;
@@ -2859,9 +2827,9 @@ export default function ConsultantVoiceCallsPage() {
                                 </Select>
                                 {(() => {
                                   const selectedAgent = nonClientSettingsData?.availableAgents.find(a => a.id === outboundBrandVoiceAgentId);
-                                  if (selectedAgent) {
+                                  if (selectedAgent?.prompt) {
                                     return (
-                                      <BrandVoicePreview agent={selectedAgent} agentName={selectedAgent.name} />
+                                      <BrandVoicePreview prompt={selectedAgent.prompt} agentName={selectedAgent.name} />
                                     );
                                   }
                                   return null;
