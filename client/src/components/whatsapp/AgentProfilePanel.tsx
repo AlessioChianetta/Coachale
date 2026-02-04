@@ -1100,10 +1100,47 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const agentData = data?.agent;
   const features = agentData?.features;
   
-  // URL per accesso dipendente: usa /agent/{slug}/chat (stessa pagina dipendenti Gold)
-  const agentAccessUrl = activeShare?.slug 
-    ? `/agent/${activeShare.slug}/chat` 
-    : null;
+  // State for Gold access loading
+  const [isLoadingGoldAccess, setIsLoadingGoldAccess] = useState(false);
+  
+  // Handle access as Gold employee
+  const handleAccessAsGold = async () => {
+    setIsLoadingGoldAccess(true);
+    try {
+      const res = await fetch('/api/consultant/gold-access', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore durante la generazione accesso');
+      }
+      
+      const data = await res.json();
+      
+      // Save token in localStorage for Gold auth
+      localStorage.setItem("bronzeAuthToken", data.token);
+      
+      // Open the select-agent page in new tab
+      window.open(data.accessUrl, '_blank');
+      
+      toast({
+        title: "Accesso Gold generato",
+        description: "Stai accedendo come cliente Gold",
+      });
+    } catch (error: any) {
+      console.error("[Gold Access] Error:", error);
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile generare l'accesso Gold",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingGoldAccess(false);
+    }
+  };
 
   const statusConfig = {
     active: { label: "Attivo", color: "bg-green-100 text-green-700" },
@@ -1252,24 +1289,19 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                     variant="outline"
                     size="sm"
                     className="h-auto py-3 px-3 bg-white hover:bg-cyan-50 border-blue-200 hover:border-cyan-400 justify-start gap-3 group"
-                    onClick={() => {
-                      if (agentAccessUrl) {
-                        window.open(agentAccessUrl, '_blank');
-                      } else {
-                        toast({
-                          title: "Nessun link disponibile",
-                          description: "Crea prima un link pubblico dalla sezione 'Condividi Agente'",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
+                    onClick={handleAccessAsGold}
+                    disabled={isLoadingGoldAccess}
                   >
                     <div className="w-8 h-8 rounded-lg bg-cyan-100 group-hover:bg-cyan-200 flex items-center justify-center flex-shrink-0 transition-colors">
-                      <ExternalLink className="h-4 w-4 text-cyan-600" />
+                      {isLoadingGoldAccess ? (
+                        <Loader2 className="h-4 w-4 text-cyan-600 animate-spin" />
+                      ) : (
+                        <ExternalLink className="h-4 w-4 text-cyan-600" />
+                      )}
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-semibold text-slate-800">Accedi al Dipendente</p>
-                      <p className="text-[10px] text-slate-500">Entra come collaboratore</p>
+                      <p className="text-xs font-semibold text-slate-800">Accedi come Gold</p>
+                      <p className="text-[10px] text-slate-500">Accedi come cliente Gold</p>
                     </div>
                   </Button>
                   <Button

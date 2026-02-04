@@ -1,9 +1,12 @@
 import express, { Router, Response } from "express";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { users, bronzeUsers, clientLevelSubscriptions, consultantLicenses } from "@shared/schema";
 import { eq, and, ne, sql, ilike, or, count } from "drizzle-orm";
 import { authenticateToken, AuthRequest, requireRole } from "../middleware/auth";
+
+const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-key";
 
 const router: Router = express.Router();
 
@@ -513,6 +516,80 @@ router.post("/consultant/pricing/users/silver/:id/reset-password", authenticateT
   } catch (error) {
     console.error("[Consultant Pricing] Reset silver password error:", error);
     res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Gold Access Token - Generate token for consultant to access as Gold client
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.post("/consultant/gold-access", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Get consultant data
+    const [consultant] = await db.select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      pricingPageSlug: users.pricingPageSlug,
+    })
+      .from(users)
+      .where(eq(users.id, consultantId));
+    
+    if (!consultant) {
+      return res.status(404).json({ error: "Consulente non trovato" });
+    }
+    
+    let slug = consultant.pricingPageSlug;
+    
+    // If no slug exists, generate one automatically
+    if (!slug) {
+      // Generate slug based on: name (sanitized) + random suffix
+      const baseName = consultant.name || consultant.email?.split("@")[0] || "consulente";
+      const sanitizedBase = baseName
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove accents
+        .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with dash
+        .replace(/^-+|-+$/g, "") // Trim dashes from start/end
+        .slice(0, 20); // Limit length
+      
+      // Add random suffix for uniqueness
+      const randomSuffix = Math.random().toString(36).substring(2, 6);
+      slug = `${sanitizedBase}-${randomSuffix}`;
+      
+      // Save the generated slug
+      await db.update(users)
+        .set({ pricingPageSlug: slug })
+        .where(eq(users.id, consultantId));
+      
+      console.log(`[Gold Access] Generated slug "${slug}" for consultant ${consultantId}`);
+    }
+    
+    // Generate Gold token (type: "gold" with userId pointing to consultant)
+    // This allows the consultant to access as if they were a Gold client
+    const token = jwt.sign({
+      type: "gold",
+      userId: consultantId, // Using consultant ID as user ID
+      subscriptionId: `consultant-gold-${consultantId}`, // Virtual subscription ID
+      email: consultant.email,
+      consultantId: consultantId,
+      level: "3",
+      isConsultantPreview: true, // Flag to identify this is a consultant preview
+    }, JWT_SECRET, { expiresIn: "24h" }); // Short expiry for security
+    
+    console.log(`[Gold Access] Generated token for consultant ${consultantId}, slug: ${slug}`);
+    
+    res.json({
+      success: true,
+      slug,
+      token,
+      accessUrl: `/c/${slug}/select-agent`,
+    });
+  } catch (error) {
+    console.error("[Consultant Pricing] Gold access error:", error);
+    res.status(500).json({ error: "Errore durante la generazione dell'accesso Gold" });
   }
 });
 

@@ -358,8 +358,44 @@ export default function SelectAgent() {
       const storedTier = localStorage.getItem("bronzeUserTier") || "";
       const storedSlug = localStorage.getItem("bronzePublicSlug") || "";
       
-      // Check if user is a Gold/Deluxe client (authenticated via normal token, not Bronze/Silver)
-      // PRIORITY: Check normal token FIRST - Gold clients take precedence over Bronze data
+      // PRIORITY 1: Check bronzeAuthToken for Gold preview token (consultant accessing as Gold)
+      const bronzeAuthToken = localStorage.getItem("bronzeAuthToken");
+      if (bronzeAuthToken) {
+        try {
+          // Decode JWT to check if it's a Gold preview token
+          const payload = JSON.parse(atob(bronzeAuthToken.split('.')[1]));
+          console.log("[SELECT-AGENT] bronzeAuthToken payload:", payload.type, payload.level, payload.isConsultantPreview);
+          
+          if (payload.type === "gold" && payload.level === "3") {
+            // This is a Gold token (either real Gold client or consultant preview)
+            const userName = payload.email?.split("@")[0] || "Utente";
+            console.log("[SELECT-AGENT] Gold token detected, user:", userName);
+            setUserName(userName);
+            setUserTier("3");
+            setIsAuthenticated(true);
+            setIsGoldClient(true);
+            return;
+          } else if (payload.type === "silver" && payload.level === "2") {
+            console.log("[SELECT-AGENT] Silver token detected");
+            setUserName(payload.email?.split("@")[0] || "Utente");
+            setUserTier("2");
+            setIsAuthenticated(true);
+            setIsGoldClient(false);
+            return;
+          } else if (payload.tier === "bronze" || payload.type === "bronze") {
+            console.log("[SELECT-AGENT] Bronze token detected");
+            setUserName(payload.email?.split("@")[0] || "Utente");
+            setUserTier("1");
+            setIsAuthenticated(true);
+            setIsGoldClient(false);
+            return;
+          }
+        } catch (e) {
+          console.error("[SELECT-AGENT] Failed to decode bronzeAuthToken:", e);
+        }
+      }
+      
+      // PRIORITY 2: Check if user is a Gold/Deluxe client (authenticated via normal token)
       const normalToken = localStorage.getItem("token");
       const authUserStr = localStorage.getItem("authUser");
       
@@ -465,15 +501,9 @@ export default function SelectAgent() {
     queryKey: ["/api/public/consultant", slug, "agents", userTier, isGoldClient],
     queryFn: async () => {
       const tier = userTier || "1";
-      // For Gold clients, use normal token; for Bronze/Silver, check all token locations
-      // Bronze can be saved as: bronzeAuthToken, manager_token, or token (from unified login)
-      let token: string | null = null;
-      if (isGoldClient) {
-        token = localStorage.getItem("token");
-      } else {
-        // Bronze/Silver: try all possible token storage locations
-        token = localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token") || localStorage.getItem("token");
-      }
+      // PRIORITY: bronzeAuthToken first (includes Gold preview tokens and Silver/Bronze tokens)
+      // Then fall back to manager_token and finally normal token
+      let token: string | null = localStorage.getItem("bronzeAuthToken") || localStorage.getItem("manager_token") || localStorage.getItem("token");
       const headers: HeadersInit = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
