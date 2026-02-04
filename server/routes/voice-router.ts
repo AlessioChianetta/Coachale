@@ -1824,16 +1824,43 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
       : sql``;
     
     // JOIN con voice_calls per ottenere lo stato reale della chiamata eseguita
+    // Usa la stessa logica di correlazione dello storico chiamate
     const result = await db.execute(sql`
+      WITH matched_voice_calls AS (
+        SELECT DISTINCT ON (svc.id)
+          svc.id as svc_id,
+          vc.id as voice_call_id,
+          vc.status as voice_call_status,
+          vc.outcome as voice_call_outcome,
+          vc.duration_seconds as voice_call_duration,
+          vc.started_at as voice_call_started_at,
+          vc.full_transcript,
+          vc.caller_id,
+          vc.called_number,
+          vc.direction,
+          CONCAT(u.first_name, ' ', u.last_name) as client_name
+        FROM scheduled_voice_calls svc
+        INNER JOIN voice_calls vc ON (
+          vc.caller_id = svc.target_phone
+          AND vc.started_at BETWEEN svc.scheduled_at - INTERVAL '30 minutes' AND svc.scheduled_at + INTERVAL '30 minutes'
+        )
+        LEFT JOIN users u ON vc.client_id = u.id
+        ORDER BY svc.id, ABS(EXTRACT(EPOCH FROM (vc.started_at - svc.scheduled_at)))
+      )
       SELECT 
         svc.*,
-        vc.id as voice_call_id_linked,
-        vc.status as voice_call_status,
-        vc.outcome as voice_call_outcome,
-        vc.duration_seconds as voice_call_duration,
-        vc.started_at as voice_call_started_at
+        mvc.voice_call_id,
+        mvc.voice_call_status,
+        mvc.voice_call_outcome,
+        mvc.voice_call_duration,
+        mvc.voice_call_started_at,
+        mvc.full_transcript,
+        mvc.caller_id as vc_caller_id,
+        mvc.called_number as vc_called_number,
+        mvc.direction as vc_direction,
+        mvc.client_name
       FROM scheduled_voice_calls svc
-      LEFT JOIN voice_calls vc ON vc.id = svc.voice_call_id
+      LEFT JOIN matched_voice_calls mvc ON mvc.svc_id = svc.id
       ${whereClause}
       ORDER BY 
         CASE WHEN svc.status = 'pending' THEN 0 ELSE 1 END,

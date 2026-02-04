@@ -5144,16 +5144,23 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       
                                       {/* Stato */}
                                       {(() => {
-                                        const statusConfig = selectedEvent.type === 'history' 
-                                          ? (STATUS_CONFIG[selectedEvent.data.status] || STATUS_CONFIG.ended)
-                                          : (OUTBOUND_STATUS_CONFIG[selectedEvent.data.status] || OUTBOUND_STATUS_CONFIG.pending);
-                                        const StatusIcon = selectedEvent.type === 'history' && 'icon' in statusConfig && typeof statusConfig.icon !== 'string' 
+                                        // Per le chiamate programmate, usa lo stato della voice_call se disponibile
+                                        const effectiveStatus = selectedEvent.type === 'call' && selectedEvent.data.voice_call_status
+                                          ? selectedEvent.data.voice_call_status
+                                          : selectedEvent.data.status;
+                                        
+                                        // Usa STATUS_CONFIG per voice_call_status, OUTBOUND per scheduled
+                                        const useVoiceCallConfig = selectedEvent.type === 'call' && selectedEvent.data.voice_call_status;
+                                        const statusConfig = selectedEvent.type === 'history' || useVoiceCallConfig
+                                          ? (STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.ended)
+                                          : (OUTBOUND_STATUS_CONFIG[effectiveStatus] || OUTBOUND_STATUS_CONFIG.pending);
+                                        const StatusIcon = (selectedEvent.type === 'history' || useVoiceCallConfig) && 'icon' in statusConfig && typeof statusConfig.icon !== 'string' 
                                           ? statusConfig.icon as React.ComponentType<{className?: string}>
                                           : null;
                                         return (
                                           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                                             <Badge className={`${statusConfig.color} text-white text-xs`}>
-                                              {selectedEvent.type === 'history' && StatusIcon ? (
+                                              {StatusIcon ? (
                                                 <StatusIcon className="h-3 w-3 mr-1" />
                                               ) : (
                                                 'icon' in statusConfig && typeof statusConfig.icon === 'string' && (
@@ -5162,6 +5169,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               )}
                                               {statusConfig.label}
                                             </Badge>
+                                            {selectedEvent.data.voice_call_outcome && (
+                                              <Badge variant="outline" className="text-xs">
+                                                {selectedEvent.data.voice_call_outcome}
+                                              </Badge>
+                                            )}
                                             {selectedEvent.type !== 'history' && selectedEvent.data.attempt_count && (
                                               <p className="text-sm text-muted-foreground">
                                                 Tentativo {selectedEvent.data.attempt_count}/{selectedEvent.data.max_attempts || 3}
@@ -5171,26 +5183,45 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         );
                                       })()}
                                       
-                                      {/* Dettagli chiamata per history */}
-                                      {selectedEvent.type === 'history' && (
+                                      {/* Dettagli chiamata per history O per scheduled con voice_call collegata */}
+                                      {(selectedEvent.type === 'history' || (selectedEvent.type === 'call' && selectedEvent.data.voice_call_id)) && (
                                         <div className="p-3 bg-muted/50 rounded-lg space-y-2">
                                           <p className="text-xs font-medium text-muted-foreground mb-1">Dettagli Chiamata</p>
                                           <div className="grid grid-cols-2 gap-2 text-sm">
                                             <div>
                                               <span className="text-muted-foreground">Da:</span>{' '}
-                                              <span className="font-medium">{selectedEvent.data.caller_id || 'N/A'}</span>
+                                              <span className="font-medium">{selectedEvent.data.vc_caller_id || selectedEvent.data.caller_id || 'N/A'}</span>
                                             </div>
                                             <div>
                                               <span className="text-muted-foreground">A:</span>{' '}
-                                              <span className="font-medium">{selectedEvent.data.called_number || 'N/A'}</span>
+                                              <span className="font-medium">{selectedEvent.data.vc_called_number || selectedEvent.data.called_number || 'N/A'}</span>
                                             </div>
-                                            {selectedEvent.data.direction && (
+                                            {(selectedEvent.data.vc_direction || selectedEvent.data.direction) && (
                                               <div className="col-span-2">
                                                 <span className="text-muted-foreground">Direzione:</span>{' '}
-                                                <span className="font-medium capitalize">{selectedEvent.data.direction}</span>
+                                                <span className="font-medium capitalize">{selectedEvent.data.vc_direction || selectedEvent.data.direction}</span>
+                                              </div>
+                                            )}
+                                            {(selectedEvent.data.voice_call_duration || selectedEvent.data.duration_seconds) && (
+                                              <div className="col-span-2">
+                                                <span className="text-muted-foreground">Durata:</span>{' '}
+                                                <span className="font-medium">
+                                                  {Math.floor((selectedEvent.data.voice_call_duration || selectedEvent.data.duration_seconds) / 60)}:{((selectedEvent.data.voice_call_duration || selectedEvent.data.duration_seconds) % 60).toString().padStart(2, '0')}
+                                                </span>
                                               </div>
                                             )}
                                           </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Transcript se disponibile */}
+                                      {(selectedEvent.data.full_transcript) && (
+                                        <div className="p-3 bg-muted/50 rounded-lg">
+                                          <p className="text-xs font-medium text-muted-foreground mb-1">Trascrizione</p>
+                                          <p className="text-sm whitespace-pre-wrap max-h-40 overflow-auto">
+                                            {selectedEvent.data.full_transcript.substring(0, 500)}
+                                            {selectedEvent.data.full_transcript.length > 500 && '...'}
+                                          </p>
                                         </div>
                                       )}
                                       
