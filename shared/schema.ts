@@ -3240,16 +3240,22 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   nonClientManualPrompt: text("non_client_manual_prompt"), // Manual prompt text if source is 'manual'
   
   // INBOUND: Non-client calls YOU (their phone → your phone)
-  inboundPromptSource: text("inbound_prompt_source").$type<"agent" | "manual" | "default">().default("default"),
+  inboundPromptSource: text("inbound_prompt_source").$type<"agent" | "manual" | "default" | "template">().default("template"),
   inboundTemplateId: text("inbound_template_id").default("mini-discovery"), // Template ID from voice-templates.ts
   inboundAgentId: varchar("inbound_agent_id"), // Reference to consultant_whatsapp_config if source is 'agent'
   inboundManualPrompt: text("inbound_manual_prompt"), // Manual prompt text if source is 'manual'
+  // Brand Voice for INBOUND (business context from WhatsApp agent - separate from instructions)
+  inboundBrandVoiceEnabled: boolean("inbound_brand_voice_enabled").default(false),
+  inboundBrandVoiceAgentId: varchar("inbound_brand_voice_agent_id"), // WhatsApp agent for business context only
   
   // OUTBOUND: YOU call non-client (your phone → their phone)
-  outboundPromptSource: text("outbound_prompt_source").$type<"agent" | "manual" | "default">().default("default"),
+  outboundPromptSource: text("outbound_prompt_source").$type<"agent" | "manual" | "default" | "template">().default("template"),
   outboundTemplateId: text("outbound_template_id").default("sales-orbitale"), // Template ID from voice-templates.ts
   outboundAgentId: varchar("outbound_agent_id"), // Reference to consultant_whatsapp_config if source is 'agent'
   outboundManualPrompt: text("outbound_manual_prompt"), // Manual prompt text if source is 'manual'
+  // Brand Voice for OUTBOUND (business context from WhatsApp agent - separate from instructions)
+  outboundBrandVoiceEnabled: boolean("outbound_brand_voice_enabled").default(false),
+  outboundBrandVoiceAgentId: varchar("outbound_brand_voice_agent_id"), // WhatsApp agent for business context only
 
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),

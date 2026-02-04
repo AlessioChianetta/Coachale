@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -730,6 +733,12 @@ export default function ConsultantVoiceCallsPage() {
   const [outboundAgentId, setOutboundAgentId] = useState<string | null>(null);
   const [outboundManualPrompt, setOutboundManualPrompt] = useState('');
 
+  // Brand Voice settings (separato dalle istruzioni)
+  const [inboundBrandVoiceEnabled, setInboundBrandVoiceEnabled] = useState(false);
+  const [inboundBrandVoiceAgentId, setInboundBrandVoiceAgentId] = useState<string | null>(null);
+  const [outboundBrandVoiceEnabled, setOutboundBrandVoiceEnabled] = useState(false);
+  const [outboundBrandVoiceAgentId, setOutboundBrandVoiceAgentId] = useState<string | null>(null);
+
   const [outboundPhone, setOutboundPhone] = useState("");
   const [outboundAiMode, setOutboundAiMode] = useState("assistenza");
   const [outboundScheduledDate, setOutboundScheduledDate] = useState("");
@@ -1159,6 +1168,11 @@ export default function ConsultantVoiceCallsPage() {
       setOutboundTemplateId(nonClientSettingsData.outboundTemplateId || 'sales-orbitale');
       setOutboundAgentId(nonClientSettingsData.outboundAgentId);
       setOutboundManualPrompt(nonClientSettingsData.outboundManualPrompt || '');
+      // Brand Voice settings
+      setInboundBrandVoiceEnabled(nonClientSettingsData.inboundBrandVoiceEnabled || false);
+      setInboundBrandVoiceAgentId(nonClientSettingsData.inboundBrandVoiceAgentId || null);
+      setOutboundBrandVoiceEnabled(nonClientSettingsData.outboundBrandVoiceEnabled || false);
+      setOutboundBrandVoiceAgentId(nonClientSettingsData.outboundBrandVoiceAgentId || null);
       setHasChanges(false);
     }
   }, [nonClientSettingsData]);
@@ -1178,6 +1192,10 @@ export default function ConsultantVoiceCallsPage() {
           outboundTemplateId,
           outboundAgentId,
           outboundManualPrompt,
+          inboundBrandVoiceEnabled,
+          inboundBrandVoiceAgentId,
+          outboundBrandVoiceEnabled,
+          outboundBrandVoiceAgentId,
         }),
       });
       if (!res.ok) {
@@ -2266,135 +2284,223 @@ export default function ConsultantVoiceCallsPage() {
                             Configurazione quando un non-cliente chiama te
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                          <RadioGroup
-                            value={inboundPromptSource}
-                            onValueChange={(value: 'agent' | 'manual' | 'template') => {
-                              setInboundPromptSource(value);
-                              setHasChanges(true);
-                            }}
-                            className="space-y-3"
-                          >
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                              <RadioGroupItem value="agent" id="inbound-agent" className="mt-1" />
-                              <div className="flex-1 space-y-2">
-                                <Label htmlFor="inbound-agent" className="flex items-center gap-2 cursor-pointer text-sm">
-                                  <Bot className="h-4 w-4" />
-                                  Importa da Agente WhatsApp
-                                </Label>
-                                {inboundPromptSource === 'agent' && (
-                                  <div className="pt-1">
-                                    <Select
-                                      value={inboundAgentId || ''}
-                                      onValueChange={(value) => {
-                                        setInboundAgentId(value || null);
+                        <CardContent className="space-y-6">
+                          {/* ISTRUZIONI CHIAMATA */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <ClipboardList className="h-4 w-4 text-green-600" />
+                              <h4 className="font-medium text-sm">Istruzioni Chiamata</h4>
+                            </div>
+                            <RadioGroup
+                              value={inboundPromptSource}
+                              onValueChange={(value: 'agent' | 'manual' | 'template') => {
+                                setInboundPromptSource(value);
+                                if (value === 'agent') {
+                                  setInboundBrandVoiceEnabled(false);
+                                  setInboundBrandVoiceAgentId(null);
+                                }
+                                setHasChanges(true);
+                              }}
+                              className="space-y-3"
+                            >
+                              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+                                <RadioGroupItem value="template" id="inbound-template" className="mt-1 shrink-0" />
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  <Label htmlFor="inbound-template" className="flex items-center gap-2 cursor-pointer text-sm">
+                                    <Settings className="h-4 w-4" />
+                                    Template Predefinito
+                                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">Consigliato</Badge>
+                                  </Label>
+                                  {inboundPromptSource === 'template' && (
+                                    <div className="pt-1 w-full">
+                                      <Select
+                                        value={inboundTemplateId}
+                                        onValueChange={(value) => {
+                                          setInboundTemplateId(value);
+                                          setHasChanges(true);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="Seleziona template..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {(nonClientSettingsData?.availableInboundTemplates || [
+                                            { id: 'mini-discovery', name: 'Mini Discovery', description: 'Scopri chi chiama e proponi appuntamento' },
+                                            { id: 'receptionist', name: 'Receptionist', description: 'Risposta professionale e smistamento' },
+                                            { id: 'support-basic', name: 'Supporto Base', description: 'Assistenza clienti generica' },
+                                          ]).map((template) => (
+                                            <SelectItem key={template.id} value={template.id}>
+                                              <div className="flex flex-col">
+                                                <span className="font-medium">{template.name}</span>
+                                                <span className="text-xs text-muted-foreground">{template.description}</span>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {(() => {
+                                        const selectedTemplate = nonClientSettingsData?.availableInboundTemplates?.find(t => t.id === inboundTemplateId);
+                                        if (selectedTemplate?.prompt) {
+                                          return (
+                                            <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <FileText className="h-4 w-4 text-green-600 shrink-0" />
+                                                <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
+                                              </div>
+                                              <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
+                                                {selectedTemplate.prompt}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <RadioGroupItem value="manual" id="inbound-manual" className="mt-1" />
+                                <div className="flex-1 space-y-2">
+                                  <Label htmlFor="inbound-manual" className="flex items-center gap-2 cursor-pointer text-sm">
+                                    <FileText className="h-4 w-4" />
+                                    Template Manuale
+                                  </Label>
+                                  {inboundPromptSource === 'manual' && (
+                                    <Textarea
+                                      value={inboundManualPrompt}
+                                      onChange={(e) => {
+                                        setInboundManualPrompt(e.target.value);
                                         setHasChanges(true);
                                       }}
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Seleziona un agente..." />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {nonClientSettingsData?.availableAgents.map((agent) => (
-                                          <SelectItem key={agent.id} value={agent.id}>
-                                            <div className="flex items-center gap-2">
-                                              <span>{agent.name}</span>
-                                              {agent.persona && (
-                                                <Badge variant="outline" className="text-xs">
-                                                  {agent.persona}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    {selectedInboundAgent?.prompt && (
-                                      <AgentPromptPreview prompt={selectedInboundAgent.prompt} agentName={selectedInboundAgent.name} />
-                                    )}
-                                  </div>
-                                )}
+                                      className="min-h-[150px] font-mono text-sm"
+                                      placeholder="Scrivi il tuo prompt personalizzato per chiamate in entrata..."
+                                    />
+                                  )}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                              <RadioGroupItem value="manual" id="inbound-manual" className="mt-1" />
-                              <div className="flex-1 space-y-2">
-                                <Label htmlFor="inbound-manual" className="flex items-center gap-2 cursor-pointer text-sm">
-                                  <FileText className="h-4 w-4" />
-                                  Template Manuale
-                                </Label>
-                                {inboundPromptSource === 'manual' && (
-                                  <Textarea
-                                    value={inboundManualPrompt}
-                                    onChange={(e) => {
-                                      setInboundManualPrompt(e.target.value);
-                                      setHasChanges(true);
-                                    }}
-                                    className="min-h-[150px] font-mono text-sm"
-                                    placeholder="Scrivi il tuo prompt personalizzato per chiamate in entrata..."
-                                  />
-                                )}
+                              {/* OPZIONE AGENTE WHATSAPP */}
+                              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <RadioGroupItem value="agent" id="inbound-agent" className="mt-1" />
+                                <div className="flex-1 space-y-2">
+                                  <Label htmlFor="inbound-agent" className="flex items-center gap-2 cursor-pointer text-sm">
+                                    <Bot className="h-4 w-4" />
+                                    Importa da Agente WhatsApp
+                                    <Badge variant="outline" className="text-xs">Tutto incluso</Badge>
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Usa istruzioni + brand voice dall'agente WhatsApp
+                                  </p>
+                                  {inboundPromptSource === 'agent' && (
+                                    <div className="pt-1">
+                                      <Select
+                                        value={inboundAgentId || ''}
+                                        onValueChange={(value) => {
+                                          setInboundAgentId(value || null);
+                                          setHasChanges(true);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="Seleziona un agente..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {nonClientSettingsData?.availableAgents.map((agent) => (
+                                            <SelectItem key={agent.id} value={agent.id}>
+                                              <div className="flex items-center gap-2">
+                                                <span>{agent.name}</span>
+                                                {agent.persona && (
+                                                  <Badge variant="outline" className="text-xs">
+                                                    {agent.persona}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {selectedInboundAgent?.prompt && (
+                                        <AgentPromptPreview prompt={selectedInboundAgent.prompt} agentName={selectedInboundAgent.name} />
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            </RadioGroup>
+                          </div>
 
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
-                              <RadioGroupItem value="template" id="inbound-template" className="mt-1 shrink-0" />
-                              <div className="flex-1 min-w-0 space-y-2">
-                                <Label htmlFor="inbound-template" className="flex items-center gap-2 cursor-pointer text-sm">
-                                  <Settings className="h-4 w-4" />
-                                  Template Predefinito
-                                </Label>
-                                {inboundPromptSource === 'template' && (
-                                  <div className="pt-1 w-full">
-                                    <Select
-                                      value={inboundTemplateId}
-                                      onValueChange={(value) => {
-                                        setInboundTemplateId(value);
-                                        setHasChanges(true);
-                                      }}
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Seleziona template..." />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {(nonClientSettingsData?.availableInboundTemplates || [
-                                          { id: 'mini-discovery', name: 'Mini Discovery', description: 'Scopri chi chiama e proponi appuntamento' },
-                                          { id: 'receptionist', name: 'Receptionist', description: 'Risposta professionale e smistamento' },
-                                          { id: 'support-basic', name: 'Supporto Base', description: 'Assistenza clienti generica' },
-                                        ]).map((template) => (
-                                          <SelectItem key={template.id} value={template.id}>
-                                            <div className="flex flex-col">
-                                              <span className="font-medium">{template.name}</span>
-                                              <span className="text-xs text-muted-foreground">{template.description}</span>
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    {/* Template Preview */}
-                                    {(() => {
-                                      const selectedTemplate = nonClientSettingsData?.availableInboundTemplates?.find(t => t.id === inboundTemplateId);
-                                      if (selectedTemplate?.prompt) {
-                                        return (
-                                          <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
-                                            <div className="flex items-center gap-2 mb-2">
-                                              <FileText className="h-4 w-4 text-green-600 shrink-0" />
-                                              <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
-                                            </div>
-                                            <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
-                                              {selectedTemplate.prompt}
-                                            </div>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-                                  </div>
-                                )}
+                          {/* CONTESTO BUSINESS - solo per template/manual */}
+                          {inboundPromptSource !== 'agent' && (
+                          <div className="p-4 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-purple-600" />
+                                <h4 className="font-medium text-sm">Contesto Business</h4>
+                                <Badge variant="outline" className="text-xs">Opzionale</Badge>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[300px]">
+                                      <p>Permette all'AI di conoscere il tuo business senza includere le istruzioni dell'agente WhatsApp. Usa solo le info del brand voice.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </div>
+                              <Switch
+                                checked={inboundBrandVoiceEnabled}
+                                onCheckedChange={(checked) => {
+                                  setInboundBrandVoiceEnabled(checked);
+                                  if (!checked) setInboundBrandVoiceAgentId(null);
+                                  setHasChanges(true);
+                                }}
+                              />
                             </div>
-                          </RadioGroup>
+                            <p className="text-xs text-muted-foreground">
+                              Includi info business da un agente WhatsApp
+                            </p>
+                            {inboundBrandVoiceEnabled && (
+                              <div className="space-y-3 pt-2">
+                                <Select
+                                  value={inboundBrandVoiceAgentId || ''}
+                                  onValueChange={(value) => {
+                                    setInboundBrandVoiceAgentId(value || null);
+                                    setHasChanges(true);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Seleziona un agente..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {nonClientSettingsData?.availableAgents.map((agent) => (
+                                      <SelectItem key={agent.id} value={agent.id}>
+                                        <div className="flex items-center gap-2">
+                                          <span>{agent.name}</span>
+                                          {agent.persona && (
+                                            <Badge variant="outline" className="text-xs">
+                                              {agent.persona}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {(() => {
+                                  const selectedAgent = nonClientSettingsData?.availableAgents.find(a => a.id === inboundBrandVoiceAgentId);
+                                  if (selectedAgent?.prompt) {
+                                    return (
+                                      <AgentPromptPreview prompt={selectedAgent.prompt} agentName={selectedAgent.name} />
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                          )}
                         </CardContent>
                       </Card>
 
@@ -2409,135 +2515,223 @@ export default function ConsultantVoiceCallsPage() {
                             Configurazione quando tu chiami un non-cliente
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                          <RadioGroup
-                            value={outboundPromptSource}
-                            onValueChange={(value: 'agent' | 'manual' | 'template') => {
-                              setOutboundPromptSource(value);
-                              setHasChanges(true);
-                            }}
-                            className="space-y-3"
-                          >
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                              <RadioGroupItem value="agent" id="outbound-agent" className="mt-1" />
-                              <div className="flex-1 space-y-2">
-                                <Label htmlFor="outbound-agent" className="flex items-center gap-2 cursor-pointer text-sm">
-                                  <Bot className="h-4 w-4" />
-                                  Importa da Agente WhatsApp
-                                </Label>
-                                {outboundPromptSource === 'agent' && (
-                                  <div className="pt-1">
-                                    <Select
-                                      value={outboundAgentId || ''}
-                                      onValueChange={(value) => {
-                                        setOutboundAgentId(value || null);
+                        <CardContent className="space-y-6">
+                          {/* ISTRUZIONI CHIAMATA */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <ClipboardList className="h-4 w-4 text-blue-600" />
+                              <h4 className="font-medium text-sm">Istruzioni Chiamata</h4>
+                            </div>
+                            <RadioGroup
+                              value={outboundPromptSource}
+                              onValueChange={(value: 'agent' | 'manual' | 'template') => {
+                                setOutboundPromptSource(value);
+                                if (value === 'agent') {
+                                  setOutboundBrandVoiceEnabled(false);
+                                  setOutboundBrandVoiceAgentId(null);
+                                }
+                                setHasChanges(true);
+                              }}
+                              className="space-y-3"
+                            >
+                              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+                                <RadioGroupItem value="template" id="outbound-template" className="mt-1 shrink-0" />
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  <Label htmlFor="outbound-template" className="flex items-center gap-2 cursor-pointer text-sm">
+                                    <Settings className="h-4 w-4" />
+                                    Template Predefinito
+                                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">Consigliato</Badge>
+                                  </Label>
+                                  {outboundPromptSource === 'template' && (
+                                    <div className="pt-1 w-full">
+                                      <Select
+                                        value={outboundTemplateId}
+                                        onValueChange={(value) => {
+                                          setOutboundTemplateId(value);
+                                          setHasChanges(true);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="Seleziona template..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {(nonClientSettingsData?.availableOutboundTemplates || [
+                                            { id: 'sales-orbitale', name: 'Sales Orbitale', description: 'Script vendita con metodo Orbitale' },
+                                            { id: 'lead-qualification', name: 'Qualifica Lead', description: 'Qualificazione e raccolta informazioni' },
+                                            { id: 'appointment-setter', name: 'Fissa Appuntamento', description: 'Focus su prenotazione meeting' },
+                                          ]).map((template) => (
+                                            <SelectItem key={template.id} value={template.id}>
+                                              <div className="flex flex-col">
+                                                <span className="font-medium">{template.name}</span>
+                                                <span className="text-xs text-muted-foreground">{template.description}</span>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {(() => {
+                                        const selectedTemplate = nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === outboundTemplateId);
+                                        if (selectedTemplate?.prompt) {
+                                          return (
+                                            <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                                                <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
+                                              </div>
+                                              <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
+                                                {selectedTemplate.prompt}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <RadioGroupItem value="manual" id="outbound-manual" className="mt-1" />
+                                <div className="flex-1 space-y-2">
+                                  <Label htmlFor="outbound-manual" className="flex items-center gap-2 cursor-pointer text-sm">
+                                    <FileText className="h-4 w-4" />
+                                    Template Manuale
+                                  </Label>
+                                  {outboundPromptSource === 'manual' && (
+                                    <Textarea
+                                      value={outboundManualPrompt}
+                                      onChange={(e) => {
+                                        setOutboundManualPrompt(e.target.value);
                                         setHasChanges(true);
                                       }}
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Seleziona un agente..." />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {nonClientSettingsData?.availableAgents.map((agent) => (
-                                          <SelectItem key={agent.id} value={agent.id}>
-                                            <div className="flex items-center gap-2">
-                                              <span>{agent.name}</span>
-                                              {agent.persona && (
-                                                <Badge variant="outline" className="text-xs">
-                                                  {agent.persona}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    {selectedOutboundAgent?.prompt && (
-                                      <AgentPromptPreview prompt={selectedOutboundAgent.prompt} agentName={selectedOutboundAgent.name} />
-                                    )}
-                                  </div>
-                                )}
+                                      className="min-h-[150px] font-mono text-sm"
+                                      placeholder="Scrivi il tuo prompt personalizzato per chiamate in uscita..."
+                                    />
+                                  )}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                              <RadioGroupItem value="manual" id="outbound-manual" className="mt-1" />
-                              <div className="flex-1 space-y-2">
-                                <Label htmlFor="outbound-manual" className="flex items-center gap-2 cursor-pointer text-sm">
-                                  <FileText className="h-4 w-4" />
-                                  Template Manuale
-                                </Label>
-                                {outboundPromptSource === 'manual' && (
-                                  <Textarea
-                                    value={outboundManualPrompt}
-                                    onChange={(e) => {
-                                      setOutboundManualPrompt(e.target.value);
-                                      setHasChanges(true);
-                                    }}
-                                    className="min-h-[150px] font-mono text-sm"
-                                    placeholder="Scrivi il tuo prompt personalizzato per chiamate in uscita..."
-                                  />
-                                )}
+                              {/* OPZIONE AGENTE WHATSAPP */}
+                              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <RadioGroupItem value="agent" id="outbound-agent" className="mt-1" />
+                                <div className="flex-1 space-y-2">
+                                  <Label htmlFor="outbound-agent" className="flex items-center gap-2 cursor-pointer text-sm">
+                                    <Bot className="h-4 w-4" />
+                                    Importa da Agente WhatsApp
+                                    <Badge variant="outline" className="text-xs">Tutto incluso</Badge>
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    Usa istruzioni + brand voice dall'agente WhatsApp
+                                  </p>
+                                  {outboundPromptSource === 'agent' && (
+                                    <div className="pt-1">
+                                      <Select
+                                        value={outboundAgentId || ''}
+                                        onValueChange={(value) => {
+                                          setOutboundAgentId(value || null);
+                                          setHasChanges(true);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full">
+                                          <SelectValue placeholder="Seleziona un agente..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {nonClientSettingsData?.availableAgents.map((agent) => (
+                                            <SelectItem key={agent.id} value={agent.id}>
+                                              <div className="flex items-center gap-2">
+                                                <span>{agent.name}</span>
+                                                {agent.persona && (
+                                                  <Badge variant="outline" className="text-xs">
+                                                    {agent.persona}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {selectedOutboundAgent?.prompt && (
+                                        <AgentPromptPreview prompt={selectedOutboundAgent.prompt} agentName={selectedOutboundAgent.name} />
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            </RadioGroup>
+                          </div>
 
-                            <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
-                              <RadioGroupItem value="template" id="outbound-template" className="mt-1 shrink-0" />
-                              <div className="flex-1 min-w-0 space-y-2">
-                                <Label htmlFor="outbound-template" className="flex items-center gap-2 cursor-pointer text-sm">
-                                  <Settings className="h-4 w-4" />
-                                  Template Predefinito
-                                </Label>
-                                {outboundPromptSource === 'template' && (
-                                  <div className="pt-1 w-full">
-                                    <Select
-                                      value={outboundTemplateId}
-                                      onValueChange={(value) => {
-                                        setOutboundTemplateId(value);
-                                        setHasChanges(true);
-                                      }}
-                                    >
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Seleziona template..." />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {(nonClientSettingsData?.availableOutboundTemplates || [
-                                          { id: 'sales-orbitale', name: 'Sales Orbitale', description: 'Script vendita con metodo Orbitale' },
-                                          { id: 'lead-qualification', name: 'Qualifica Lead', description: 'Qualificazione e raccolta informazioni' },
-                                          { id: 'appointment-setter', name: 'Fissa Appuntamento', description: 'Focus su prenotazione meeting' },
-                                        ]).map((template) => (
-                                          <SelectItem key={template.id} value={template.id}>
-                                            <div className="flex flex-col">
-                                              <span className="font-medium">{template.name}</span>
-                                              <span className="text-xs text-muted-foreground">{template.description}</span>
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    {/* Template Preview */}
-                                    {(() => {
-                                      const selectedTemplate = nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === outboundTemplateId);
-                                      if (selectedTemplate?.prompt) {
-                                        return (
-                                          <div className="mt-3 p-3 bg-muted rounded-md border w-full overflow-hidden">
-                                            <div className="flex items-center gap-2 mb-2">
-                                              <FileText className="h-4 w-4 text-blue-600 shrink-0" />
-                                              <span className="text-xs font-medium truncate">Anteprima Template: {selectedTemplate.name}</span>
-                                            </div>
-                                            <div className="text-xs whitespace-pre-wrap max-h-[200px] overflow-y-auto overflow-x-hidden text-muted-foreground break-all w-full">
-                                              {selectedTemplate.prompt}
-                                            </div>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-                                  </div>
-                                )}
+                          {/* CONTESTO BUSINESS - solo per template/manual */}
+                          {outboundPromptSource !== 'agent' && (
+                          <div className="p-4 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-purple-600" />
+                                <h4 className="font-medium text-sm">Contesto Business</h4>
+                                <Badge variant="outline" className="text-xs">Opzionale</Badge>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[300px]">
+                                      <p>Permette all'AI di conoscere il tuo business senza includere le istruzioni dell'agente WhatsApp. Usa solo le info del brand voice.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </div>
+                              <Switch
+                                checked={outboundBrandVoiceEnabled}
+                                onCheckedChange={(checked) => {
+                                  setOutboundBrandVoiceEnabled(checked);
+                                  if (!checked) setOutboundBrandVoiceAgentId(null);
+                                  setHasChanges(true);
+                                }}
+                              />
                             </div>
-                          </RadioGroup>
+                            <p className="text-xs text-muted-foreground">
+                              Includi info business da un agente WhatsApp
+                            </p>
+                            {outboundBrandVoiceEnabled && (
+                              <div className="space-y-3 pt-2">
+                                <Select
+                                  value={outboundBrandVoiceAgentId || ''}
+                                  onValueChange={(value) => {
+                                    setOutboundBrandVoiceAgentId(value || null);
+                                    setHasChanges(true);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Seleziona un agente..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {nonClientSettingsData?.availableAgents.map((agent) => (
+                                      <SelectItem key={agent.id} value={agent.id}>
+                                        <div className="flex items-center gap-2">
+                                          <span>{agent.name}</span>
+                                          {agent.persona && (
+                                            <Badge variant="outline" className="text-xs">
+                                              {agent.persona}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {(() => {
+                                  const selectedAgent = nonClientSettingsData?.availableAgents.find(a => a.id === outboundBrandVoiceAgentId);
+                                  if (selectedAgent?.prompt) {
+                                    return (
+                                      <AgentPromptPreview prompt={selectedAgent.prompt} agentName={selectedAgent.name} />
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                          )}
                         </CardContent>
                       </Card>
                     </div>
