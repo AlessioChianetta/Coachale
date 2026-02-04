@@ -1,0 +1,48 @@
+ncaught TypeError: Failed to fetch dynamically imported module: https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/pages/consultant-voice-calls.tsxUnderstand this error
+injected.js:37 The above error occurred in the <AuthGuard> component:
+
+    at AuthGuard (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:226:16)
+    at Switch (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:283:17)
+    at Suspense
+    at Router (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=KBETKJmBB4vtjiv2gkJ4U:314:35)
+    at Provider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at TooltipProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=98a5f318:158:5)
+    at TourProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=98a5f318:3096:3)
+    at V (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:44:25)
+    at J (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:42:18)
+    at App (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=KBETKJmBB4vtjiv2gkJ4U:1981:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+(anonymous) @ injected.js:37
+logCapturedError @ chunk-RPCDYKBN.js?v=98a5f318:14032
+update.callback @ chunk-RPCDYKBN.js?v=98a5f318:14052
+callCallback @ chunk-RPCDYKBN.js?v=98a5f318:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=98a5f318:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=98a5f318:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=98a5f318:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=98a5f318:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=98a5f318:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=98a5f318:19353
+commitRoot @ chunk-RPCDYKBN.js?v=98a5f318:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=98a5f318:18760
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=98a5f318:18718
+workLoop @ chunk-RPCDYKBN.js?v=98a5f318:197
+flushWork @ chunk-RPCDYKBN.js?v=98a5f318:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=98a5f318:384Understand this error
+chunk-RPCDYKBN.js?v=98a5f318:19413 Uncaught TypeError: Failed to fetch dynamically imported module: https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/pages/consultant-voice-calls.tsx
