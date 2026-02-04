@@ -4581,7 +4581,57 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     )}
                                   </div>
 
-                                  {/* SEZIONE 4: FREQUENZA AVANZATA - adattiva per tipo */}
+                                  {/* SEZIONE 4: DATA E ORA - Prominente */}
+                                  <div className="space-y-5 p-5 rounded-2xl border-2 border-violet-300 dark:border-violet-700 bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-950/30 dark:via-purple-950/20 dark:to-indigo-950/20">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-2 bg-violet-100 dark:bg-violet-900/40 rounded-xl">
+                                        <Clock className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                                      </div>
+                                      <h3 className="font-bold text-base text-violet-900 dark:text-violet-200">Quando chiamare</h3>
+                                    </div>
+                                    
+                                    {/* Data e Ora principali */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
+                                          <CalendarDays className="h-4 w-4" />
+                                          Data
+                                        </Label>
+                                        <Input 
+                                          type="date" 
+                                          value={newTaskData.scheduled_date}
+                                          onChange={(e) => setNewTaskData({...newTaskData, scheduled_date: e.target.value})}
+                                          className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-violet-200 dark:border-violet-700 focus:border-violet-500"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
+                                          <Clock className="h-4 w-4" />
+                                          Ora
+                                        </Label>
+                                        <Input 
+                                          type="time" 
+                                          value={newTaskData.scheduled_time}
+                                          onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})}
+                                          className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-violet-200 dark:border-violet-700 focus:border-violet-500 [color-scheme:light] dark:[color-scheme:dark]"
+                                        />
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Riepilogo visivo */}
+                                    <div className="flex items-center gap-3 p-3 bg-violet-100/70 dark:bg-violet-900/30 rounded-xl">
+                                      <Sparkles className="h-5 w-5 text-violet-600" />
+                                      <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+                                        {newTaskData.scheduled_date && newTaskData.scheduled_time ? (
+                                          <>Chiamata il <span className="font-bold">{format(new Date(newTaskData.scheduled_date), 'EEEE d MMMM yyyy', { locale: it })}</span> alle <span className="font-bold">{newTaskData.scheduled_time}</span></>
+                                        ) : (
+                                          'Seleziona data e ora'
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* SEZIONE 5: PROGRAMMAZIONE AVANZATA */}
                                   <div className={`space-y-5 p-5 rounded-2xl border ${
                                     newTaskData.task_type === 'single_call' 
                                       ? 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800/50'
@@ -4607,7 +4657,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                           }`} />
                                         </div>
                                         <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                                          {newTaskData.task_type === 'single_call' ? 'Quando chiamare' : 'Programmazione'}
+                                          Ripetizione
                                         </h3>
                                       </div>
                                       {newTaskData.task_type === 'single_call' && (
@@ -4617,54 +4667,39 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       )}
                                     </div>
                                     
-                                    {/* Tipo frequenza - Solo per follow_up e ai_task */}
-                                    {newTaskData.task_type !== 'single_call' && (
-                                      <div className="grid grid-cols-3 gap-2">
-                                        {[
-                                          { value: 'once', label: 'Una volta', icon: Circle, desc: 'Solo oggi' },
-                                          { value: 'daily', label: 'Giornaliero', icon: CalendarDays, desc: 'Ogni giorno' },
-                                          { value: 'weekly', label: 'Settimanale', icon: CalendarRange, desc: 'Giorni scelti' }
-                                        ].map((freq) => {
-                                          const isSelected = newTaskData.recurrence_type === freq.value;
-                                          const colorClass = newTaskData.task_type === 'follow_up' ? 'blue' : 'indigo';
-                                          return (
-                                            <button
-                                              key={freq.value}
-                                              type="button"
-                                              onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as 'once' | 'daily' | 'weekly'})}
-                                              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 ${
-                                                isSelected 
-                                                  ? `bg-${colorClass}-600 text-white shadow-lg shadow-${colorClass}-600/25` 
-                                                  : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600'
-                                              }`}
-                                            >
-                                              <freq.icon className={`h-5 w-5 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
-                                              <span className="text-xs font-semibold">{freq.label}</span>
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-
-                                    {/* Messaggio per single_call */}
-                                    {newTaskData.task_type === 'single_call' && (
-                                      <div className="flex items-center gap-3 p-3 bg-emerald-100/50 dark:bg-emerald-900/20 rounded-xl">
-                                        <Check className="h-5 w-5 text-emerald-600" />
-                                        <div>
-                                          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Chiamata programmata</p>
-                                          <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                                            {dragStart && format(dragStart.day, 'EEEE d MMMM', { locale: it })} alle {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
+                                    {/* Tipo frequenza */}
+                                    <div className="grid grid-cols-4 gap-2">
+                                      {[
+                                        { value: 'once', label: 'Una volta', icon: Circle },
+                                        { value: 'daily', label: 'Ogni giorno', icon: CalendarDays },
+                                        { value: 'weekly', label: 'Settimanale', icon: CalendarRange },
+                                        { value: 'specific_dates', label: 'Date specifiche', icon: CalendarCheck }
+                                      ].map((freq) => {
+                                        const isSelected = newTaskData.recurrence_type === freq.value;
+                                        return (
+                                          <button
+                                            key={freq.value}
+                                            type="button"
+                                            onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as any})}
+                                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 ${
+                                              isSelected 
+                                                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25' 
+                                                : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600'
+                                            }`}
+                                          >
+                                            <freq.icon className={`h-5 w-5 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
+                                            <span className="text-xs font-semibold text-center leading-tight">{freq.label}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
 
                                     {/* Giorni settimana (se weekly) */}
                                     {newTaskData.recurrence_type === 'weekly' && (
                                       <div className="space-y-3 pt-2 animate-in slide-in-from-top-2 duration-200">
                                         <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                                           <CalendarCheck className="h-3.5 w-3.5" />
-                                          Seleziona i giorni
+                                          Seleziona i giorni della settimana
                                         </Label>
                                         <div className="flex gap-2 justify-between">
                                           {[
@@ -4704,6 +4739,70 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                             );
                                           })}
                                         </div>
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                          La chiamata avverrà ogni settimana nei giorni selezionati alle <span className="font-semibold">{newTaskData.scheduled_time || '00:00'}</span>
+                                        </p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Date specifiche */}
+                                    {newTaskData.recurrence_type === 'specific_dates' && (
+                                      <div className="space-y-3 pt-2 animate-in slide-in-from-top-2 duration-200">
+                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                          <CalendarCheck className="h-3.5 w-3.5" />
+                                          Aggiungi date specifiche
+                                        </Label>
+                                        <div className="flex gap-2">
+                                          <Input 
+                                            type="date" 
+                                            id="add-specific-date"
+                                            className="flex-1 h-10 bg-white dark:bg-slate-700"
+                                            min={format(new Date(), 'yyyy-MM-dd')}
+                                          />
+                                          <Button 
+                                            type="button" 
+                                            variant="outline"
+                                            onClick={() => {
+                                              const input = document.getElementById('add-specific-date') as HTMLInputElement;
+                                              if (input?.value) {
+                                                const currentDates = (newTaskData as any).specific_dates || [];
+                                                if (!currentDates.includes(input.value)) {
+                                                  setNewTaskData({...newTaskData, specific_dates: [...currentDates, input.value].sort()} as any);
+                                                }
+                                                input.value = '';
+                                              }
+                                            }}
+                                            className="h-10"
+                                          >
+                                            <Plus className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                        {((newTaskData as any).specific_dates || []).length > 0 && (
+                                          <div className="flex flex-wrap gap-2 mt-2">
+                                            {((newTaskData as any).specific_dates || []).map((date: string, idx: number) => (
+                                              <Badge 
+                                                key={idx} 
+                                                variant="secondary" 
+                                                className="px-3 py-1.5 text-sm bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300"
+                                              >
+                                                {format(new Date(date), 'EEE d MMM', { locale: it })}
+                                                <button 
+                                                  type="button"
+                                                  onClick={() => {
+                                                    const updated = ((newTaskData as any).specific_dates || []).filter((_: any, i: number) => i !== idx);
+                                                    setNewTaskData({...newTaskData, specific_dates: updated} as any);
+                                                  }}
+                                                  className="ml-2 hover:text-red-500"
+                                                >
+                                                  <X className="h-3 w-3" />
+                                                </button>
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                        )}
+                                        <p className="text-xs text-muted-foreground">
+                                          Ogni data selezionata verrà chiamata alle <span className="font-semibold">{newTaskData.scheduled_time || '00:00'}</span>
+                                        </p>
                                       </div>
                                     )}
 
@@ -4737,7 +4836,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       <div className="space-y-2">
                                         <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                                           <Timer className="h-3.5 w-3.5" />
-                                          Intervallo
+                                          Intervallo retry
                                         </Label>
                                         <Select 
                                           value={String(newTaskData.retry_delay_minutes || 15)} 
@@ -4756,7 +4855,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         </Select>
                                       </div>
 
-                                      {/* Data fine */}
+                                      {/* Data fine (solo per daily/weekly) */}
                                       <div className="space-y-2">
                                         <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                                           <CalendarX className="h-3.5 w-3.5" />
@@ -4767,7 +4866,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                           value={newTaskData.recurrence_end_date || ''}
                                           onChange={(e) => setNewTaskData({...newTaskData, recurrence_end_date: e.target.value})}
                                           className="h-9 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600"
-                                          disabled={newTaskData.recurrence_type === 'once'}
+                                          disabled={newTaskData.recurrence_type === 'once' || newTaskData.recurrence_type === 'specific_dates'}
                                         />
                                       </div>
                                     </div>
