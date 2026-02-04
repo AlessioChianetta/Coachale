@@ -2948,6 +2948,7 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         const INBOUND_MAX_HISTORY_CHARS = 8000;
         let previousCallContext = '';
+        let extractedContactName = ''; // 🆕 Nome estratto dallo storico per le variabili del template
         if (phoneCallerId) {
           try {
             // Find previous conversations from this phone number
@@ -3011,7 +3012,51 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
               if (historyContent.length > 0) {
                 console.log(`📱 [${connectionId}] Included ${includedConvCount} conversations (${historyContent.length} chars) for inbound call`);
                 
-                previousCallContext = `
+                // 🆕 Estrai il nome del contatto dallo storico (cerca pattern "Ciao [Nome]" o "con [Nome]")
+                const namePatterns = [
+                  /Ciao\s+([A-Z][a-zàèéìòù]+)/,  // "Ciao Marco"
+                  /con\s+([A-Z][a-zàèéìòù]+)/,   // "con Marco"
+                  /(?:Chiamante|Tu):\s*(?:Sono|Mi chiamo)\s+([A-Z][a-zàèéìòù]+)/i  // "Sono Marco"
+                ];
+                
+                for (const pattern of namePatterns) {
+                  const match = historyContent.match(pattern);
+                  if (match && match[1]) {
+                    extractedContactName = match[1];
+                    console.log(`📛 [${connectionId}] Extracted contact name from history: "${extractedContactName}"`);
+                    break;
+                  }
+                }
+                
+                // 🆕 Costruisci istruzioni DIVERSE per OUTBOUND vs INBOUND
+                if (isOutbound) {
+                  // OUTBOUND: Lo storico è solo contesto, il COMPORTAMENTO viene dallo SCRIPT
+                  previousCallContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📛 NOME DEL CONTATTO: ${extractedContactName || '(sconosciuto)'}
+
+⚠️ IMPORTANTE PER CHIAMATE OUTBOUND:
+→ SEGUI LO SCRIPT DI CHIAMATA sopra per l'apertura e il flusso!
+→ Usa lo storico qui sotto SOLO per:
+  - Sapere il nome della persona
+  - Fare riferimenti a conversazioni passate SE pertinenti
+  - Personalizzare il tuo approccio
+
+❌ NON USARE il saluto "Ciao [Nome]! Che bello risentirti!"
+✅ USA L'APERTURA DELLO SCRIPT: "[Nome]? Ciao, ti chiamo da..."
+
+Ecco le conversazioni precedenti (per contesto):
+
+${historyContent}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+                } else {
+                  // INBOUND: Comportamento originale - saluto caloroso
+                  previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 STORICO CHIAMATE PRECEDENTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3047,6 +3092,7 @@ ${historyContent}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
+                }
               }
             } else {
               console.log(`📱 [${connectionId}] No previous conversations found for caller ${phoneCallerId}`);
@@ -3209,9 +3255,9 @@ ${brandVoicePrompt}` : ''}`;
                   consultantName: consultantName,
                   businessName: consultantBusinessName || '',
                   aiName: 'Alessia',
-                  contactName: '' // No name for anonymous callers
+                  contactName: extractedContactName || '' // 🆕 Usa nome estratto dallo storico
                 });
-                console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${contentPrompt.length} chars)`);
+                console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${contentPrompt.length} chars) - contactName: "${extractedContactName || '(none)'}"`);
               } else {
                 contentPrompt = interpolatePlaceholders(DEFAULT_NON_CLIENT_PROMPT + NON_CLIENT_PROMPT_SUFFIX);
               }
@@ -3231,9 +3277,10 @@ ${brandVoicePrompt}` : ''}`;
               consultantName: consultantName,
               businessName: consultantBusinessName || '',
               aiName: 'Alessia',
-              contactName: '' // No name for anonymous callers
+              contactName: extractedContactName || '' // 🆕 Usa nome estratto dallo storico
             });
-            console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${templateId}) - ${contentPrompt.length} chars`);
+            console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${templateId}) - ${contentPrompt.length} chars - contactName: "${extractedContactName || '(none)'}"`);
+
           } else {
             // Template not found, fall back to legacy default
             console.warn(`⚠️ [${connectionId}] Template '${templateId}' not found, using legacy default`);
