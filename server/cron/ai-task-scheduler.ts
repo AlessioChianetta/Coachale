@@ -406,6 +406,138 @@ function findNextWeekday(fromDate: Date, days: number[]): Date {
 }
 
 /**
+ * Clean up stuck 'calling' status calls that have been in that state for too long
+ * This handles cases where:
+ * - VPS callback was never received
+ * - Connection was lost during call
+ * - VPS returned success but call never completed
+ */
+async function cleanupStuckCallingCalls(): Promise<void> {
+  try {
+    // Find calls stuck in 'calling' for more than 5 minutes
+    const stuckCallsResult = await db.execute(sql`
+      SELECT id, target_phone, updated_at, attempts, max_attempts 
+      FROM scheduled_voice_calls 
+      WHERE status = 'calling' 
+        AND updated_at < NOW() - INTERVAL '5 minutes'
+    `);
+    
+    const stuckCalls = stuckCallsResult.rows as any[];
+    
+    if (stuckCalls.length === 0) {
+      return;
+    }
+    
+    console.log(`🧹 [AI-SCHEDULER] Found ${stuckCalls.length} calls stuck in 'calling' status`);
+    
+    for (const call of stuckCalls) {
+      // Check if there's a matching completed call in voice_calls
+      const voiceCallResult = await db.execute(sql`
+        SELECT id, status, duration_seconds, outcome 
+        FROM voice_calls 
+        WHERE called_number = ${call.target_phone}
+          AND created_at > ${call.updated_at} - INTERVAL '2 minutes'
+          AND created_at < ${call.updated_at} + INTERVAL '10 minutes'
+          AND status = 'completed'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `);
+      
+      // First get source_task_id for AI task sync
+      const callDetailResult = await db.execute(sql`
+        SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${call.id}
+      `);
+      const sourceTaskId = (callDetailResult.rows[0] as any)?.source_task_id;
+      
+      if (voiceCallResult.rows.length > 0) {
+        // Found matching completed call - sync status
+        const voiceCall = voiceCallResult.rows[0] as any;
+        console.log(`🔗 [AI-SCHEDULER] Syncing stuck call ${call.id} with voice_call ${voiceCall.id}`);
+        
+        await db.execute(sql`
+          UPDATE scheduled_voice_calls 
+          SET status = 'completed',
+              voice_call_id = ${voiceCall.id},
+              duration_seconds = ${voiceCall.duration_seconds || 0},
+              hangup_cause = ${voiceCall.outcome || 'synced_from_voice_calls'},
+              last_attempt_at = NOW(),
+              updated_at = NOW()
+          WHERE id = ${call.id}
+        `);
+        
+        // Sync AI Task if this call originated from one
+        if (sourceTaskId) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks 
+            SET status = 'completed',
+                result_summary = ${'Chiamata completata (sync automatico)' + (voiceCall.duration_seconds ? ` - ${voiceCall.duration_seconds}s` : '')},
+                voice_call_id = ${voiceCall.id},
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${sourceTaskId}
+          `);
+          console.log(`🔗 [AI-SCHEDULER] Synced AI Task ${sourceTaskId} -> completed`);
+        }
+      } else {
+        // No matching call found - check if should retry or fail
+        if (call.attempts < call.max_attempts) {
+          console.log(`🔄 [AI-SCHEDULER] Resetting stuck call ${call.id} for retry (attempt ${call.attempts + 1}/${call.max_attempts})`);
+          await db.execute(sql`
+            UPDATE scheduled_voice_calls 
+            SET status = 'pending',
+                scheduled_at = NOW() + INTERVAL '2 minutes',
+                attempts = attempts + 1,
+                last_attempt_at = NOW(),
+                error_message = 'Call stuck in calling state - retrying',
+                updated_at = NOW()
+            WHERE id = ${call.id}
+          `);
+          
+          // Also update AI task to retry_pending if applicable
+          if (sourceTaskId) {
+            await db.execute(sql`
+              UPDATE ai_scheduled_tasks 
+              SET status = 'retry_pending',
+                  current_attempt = current_attempt + 1,
+                  last_attempt_at = NOW(),
+                  next_retry_at = NOW() + INTERVAL '2 minutes',
+                  result_summary = 'Chiamata bloccata - tentativo di ripetizione',
+                  updated_at = NOW()
+              WHERE id = ${sourceTaskId}
+            `);
+          }
+        } else {
+          console.log(`❌ [AI-SCHEDULER] Marking stuck call ${call.id} as failed (max attempts reached)`);
+          await db.execute(sql`
+            UPDATE scheduled_voice_calls 
+            SET status = 'failed',
+                last_attempt_at = NOW(),
+                error_message = 'Call stuck in calling state - no callback received',
+                updated_at = NOW()
+            WHERE id = ${call.id}
+          `);
+          
+          // Also mark AI task as failed if applicable
+          if (sourceTaskId) {
+            await db.execute(sql`
+              UPDATE ai_scheduled_tasks 
+              SET status = 'failed',
+                  result_summary = 'Chiamata fallita - nessuna risposta dal VPS',
+                  completed_at = NOW(),
+                  updated_at = NOW()
+              WHERE id = ${sourceTaskId}
+            `);
+            console.log(`❌ [AI-SCHEDULER] Synced AI Task ${sourceTaskId} -> failed`);
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    console.error('❌ [AI-SCHEDULER] Error cleaning up stuck calls:', error.message);
+  }
+}
+
+/**
  * Initialize the AI Task Scheduler CRON job
  */
 export function initAITaskScheduler(): void {
@@ -415,6 +547,8 @@ export function initAITaskScheduler(): void {
   cron.schedule('* * * * *', async () => {
     try {
       await processAITasks();
+      // Also clean up stuck 'calling' calls
+      await cleanupStuckCallingCalls();
     } catch (error: any) {
       console.error('❌ [AI-SCHEDULER] Cron error:', error.message);
     }

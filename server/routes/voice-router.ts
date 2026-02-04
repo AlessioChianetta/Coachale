@@ -1488,6 +1488,20 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     const result = await response.json();
     console.log(`✅ [Outbound] VPS accepted call:`, result);
     
+    // CRITICAL FIX: Save the voice_call_id returned by VPS to link scheduled_voice_calls with voice_calls
+    // The VPS may return: { callId, uuid, success, ... }
+    const vpsCallId = result.callId || result.uuid || result.call_id || result.voiceCallId;
+    if (vpsCallId) {
+      console.log(`🔗 [Outbound] Linking scheduled call ${callId} to VPS call ${vpsCallId}`);
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET voice_call_id = ${vpsCallId}, updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+    } else {
+      console.warn(`⚠️ [Outbound] VPS did not return a callId for ${callId}. Callback may not work correctly.`);
+    }
+    
     return { success: true };
   } catch (error: any) {
     console.error(`❌ [Outbound] Failed to execute call ${callId}:`, error);
@@ -1918,13 +1932,51 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     console.log(`📞 [Callback] Received for call ${callId}: status=${status}, duration=${duration_seconds}s, cause=${hangup_cause}, sourceTaskId=${sourceTaskId || 'none'}, voiceCallId=${voiceCallId || 'none'}`);
     
     // Check if call exists and belongs to this consultant
-    const callResult = await db.execute(sql`
-      SELECT id, attempts, max_attempts, consultant_id, source_task_id FROM scheduled_voice_calls 
+    // First, try finding by scheduled call ID
+    let callResult = await db.execute(sql`
+      SELECT id, attempts, max_attempts, consultant_id, source_task_id, target_phone FROM scheduled_voice_calls 
       WHERE id = ${callId}
     `);
     
+    // FALLBACK 1: If not found by callId, try finding by voice_call_id
+    if (callResult.rows.length === 0 && voiceCallId) {
+      console.log(`📞 [Callback] Call ${callId} not found, trying by voice_call_id=${voiceCallId}`);
+      callResult = await db.execute(sql`
+        SELECT id, attempts, max_attempts, consultant_id, source_task_id, target_phone FROM scheduled_voice_calls 
+        WHERE voice_call_id = ${voiceCallId}
+      `);
+    }
+    
+    // FALLBACK 2: If still not found, try finding by sourceTaskId if provided
+    if (callResult.rows.length === 0 && sourceTaskId) {
+      console.log(`📞 [Callback] Call ${callId} not found, trying by sourceTaskId=${sourceTaskId}`);
+      callResult = await db.execute(sql`
+        SELECT id, attempts, max_attempts, consultant_id, source_task_id, target_phone FROM scheduled_voice_calls 
+        WHERE source_task_id = ${sourceTaskId}
+          AND status = 'calling'
+      `);
+    }
+    
+    // FALLBACK 3: Only as last resort - find by recent 'calling' status matching target_phone from voice_call
+    // This is more restrictive: must match the called_number from the VPS callback
+    if (callResult.rows.length === 0 && req.body.targetPhone) {
+      console.log(`📞 [Callback] Call ${callId} not found, trying by target_phone=${req.body.targetPhone} + recent 'calling'`);
+      callResult = await db.execute(sql`
+        SELECT id, attempts, max_attempts, consultant_id, source_task_id, target_phone FROM scheduled_voice_calls 
+        WHERE consultant_id = ${consultantId}
+          AND target_phone = ${req.body.targetPhone}
+          AND status = 'calling'
+          AND updated_at > NOW() - INTERVAL '10 minutes'
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `);
+      if (callResult.rows.length > 0) {
+        console.log(`📞 [Callback] Found recent 'calling' call by phone match: ${(callResult.rows[0] as any).id}`);
+      }
+    }
+    
     if (callResult.rows.length === 0) {
-      console.warn(`📞 [Callback] Call ${callId} not found`);
+      console.warn(`📞 [Callback] Call ${callId} not found after all fallbacks`);
       return res.status(404).json({ error: 'Call not found' });
     }
     
