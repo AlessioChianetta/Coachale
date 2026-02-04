@@ -1813,22 +1813,31 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
     
     let whereConditions = [];
     if (consultantId) {
-      whereConditions.push(sql`consultant_id = ${consultantId}`);
+      whereConditions.push(sql`svc.consultant_id = ${consultantId}`);
     }
     if (status) {
-      whereConditions.push(sql`status = ${status}`);
+      whereConditions.push(sql`svc.status = ${status}`);
     }
     
     const whereClause = whereConditions.length > 0 
       ? sql`WHERE ${sql.join(whereConditions, sql` AND `)}`
       : sql``;
     
+    // JOIN con voice_calls per ottenere lo stato reale della chiamata eseguita
     const result = await db.execute(sql`
-      SELECT * FROM scheduled_voice_calls
+      SELECT 
+        svc.*,
+        vc.id as voice_call_id_linked,
+        vc.status as voice_call_status,
+        vc.outcome as voice_call_outcome,
+        vc.duration_seconds as voice_call_duration,
+        vc.started_at as voice_call_started_at
+      FROM scheduled_voice_calls svc
+      LEFT JOIN voice_calls vc ON vc.id = svc.voice_call_id
       ${whereClause}
       ORDER BY 
-        CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
-        scheduled_at ASC
+        CASE WHEN svc.status = 'pending' THEN 0 ELSE 1 END,
+        svc.scheduled_at ASC
     `);
     
     res.json({

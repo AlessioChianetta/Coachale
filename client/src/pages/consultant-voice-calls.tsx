@@ -4142,17 +4142,27 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
                                         const isNarrow = pos.width < 40;
                                         
-                                        // Colori in base allo stato
+                                        // Usa lo stato della voice_call reale se disponibile, altrimenti lo stato della scheduled
+                                        const effectiveStatus = call.voice_call_status || call.status;
+                                        
+                                        // Colori in base allo stato (usa STATUS_CONFIG per voice_calls)
                                         const getCallStatusColor = (status: string) => {
                                           switch (status) {
                                             case 'pending':
                                             case 'retry_scheduled':
                                               return 'bg-blue-500 hover:bg-blue-600 border-blue-700'; // Blu = future
                                             case 'in_progress':
+                                            case 'ringing':
+                                            case 'active':
                                               return 'bg-amber-500 hover:bg-amber-600 border-amber-700'; // Giallo = in corso
                                             case 'completed':
+                                            case 'ended':
+                                            case 'normal_end':
                                               return 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700'; // Verde = completate
                                             case 'failed':
+                                            case 'error':
+                                            case 'no_answer':
+                                            case 'busy':
                                               return 'bg-red-400 hover:bg-red-500 border-red-600'; // Rosso = fallite
                                             case 'cancelled':
                                               return 'bg-gray-400 hover:bg-gray-500 border-gray-600'; // Grigio = cancellate
@@ -4160,7 +4170,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               return 'bg-blue-500 hover:bg-blue-600 border-blue-700';
                                           }
                                         };
-                                        const callStatusColor = getCallStatusColor(call.status);
+                                        const callStatusColor = getCallStatusColor(effectiveStatus);
                                         
                                         return (
                                           <div
