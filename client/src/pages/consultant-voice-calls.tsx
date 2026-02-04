@@ -1268,9 +1268,9 @@ export default function ConsultantVoiceCallsPage() {
           const taskDate = new Date(t.scheduled_at);
           return taskDate >= calendarWeekStart && taskDate < weekEnd;
         }),
+        // Mostra TUTTE le chiamate programmate (pending, failed, cancelled, completed)
         scheduledCalls: (scheduledData.calls || []).filter((c: any) => {
           if (!c.scheduled_at) return false;
-          if (!['pending', 'retry_scheduled'].includes(c.status)) return false;
           const callDate = new Date(c.scheduled_at);
           return callDate >= calendarWeekStart && callDate < weekEnd;
         }),
@@ -3547,11 +3547,27 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="w-2.5 h-2.5 rounded-sm bg-blue-500"></div>
-                        <span className="text-muted-foreground">Programmate</span>
+                        <span className="text-muted-foreground">Pending</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm bg-amber-500"></div>
+                        <span className="text-muted-foreground">In corso</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></div>
+                        <span className="text-muted-foreground">OK</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm bg-red-400"></div>
+                        <span className="text-muted-foreground">Failed</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm bg-gray-400"></div>
+                        <span className="text-muted-foreground">Annullate</span>
                       </div>
                       {(calendarContactFilter || calendarShowAllCalls) && (
                         <div className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-sm bg-gray-400"></div>
+                          <div className="w-2.5 h-2.5 rounded-sm bg-gray-600"></div>
                           <span className="text-muted-foreground">Storico</span>
                         </div>
                       )}
@@ -3801,9 +3817,9 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         .sort((a: AITask, b: AITask) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
                         .slice(0, 5);
                       
-                      // Chiamate PROGRAMMATE: sempre visibili (filtrate per contatto se c'è ricerca)
+                      // Chiamate FUTURE (solo pending/retry_scheduled)
                       const upcomingCalls = (calendarData?.scheduledCalls || [])
-                        .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && c.status === 'pending' && matchesContactFilter(c))
+                        .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && ['pending', 'retry_scheduled'].includes(c.status) && matchesContactFilter(c))
                         .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
                         .slice(0, 5);
                       
@@ -4125,6 +4141,27 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         if (callHour < START_HOUR || callHour > END_HOUR) return null;
                                         const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
                                         const isNarrow = pos.width < 40;
+                                        
+                                        // Colori in base allo stato
+                                        const getCallStatusColor = (status: string) => {
+                                          switch (status) {
+                                            case 'pending':
+                                            case 'retry_scheduled':
+                                              return 'bg-blue-500 hover:bg-blue-600 border-blue-700'; // Blu = future
+                                            case 'in_progress':
+                                              return 'bg-amber-500 hover:bg-amber-600 border-amber-700'; // Giallo = in corso
+                                            case 'completed':
+                                              return 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700'; // Verde = completate
+                                            case 'failed':
+                                              return 'bg-red-400 hover:bg-red-500 border-red-600'; // Rosso = fallite
+                                            case 'cancelled':
+                                              return 'bg-gray-400 hover:bg-gray-500 border-gray-600'; // Grigio = cancellate
+                                            default:
+                                              return 'bg-blue-500 hover:bg-blue-600 border-blue-700';
+                                          }
+                                        };
+                                        const callStatusColor = getCallStatusColor(call.status);
+                                        
                                         return (
                                           <div
                                             key={call.id}
@@ -4133,7 +4170,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               setSelectedEvent({ type: 'call', data: call });
                                               setShowEventDetails(true);
                                             }}
-                                            className="absolute bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-blue-700"
+                                            className={`absolute ${callStatusColor} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px]`}
                                             style={{ 
                                               top: top, 
                                               height: EVENT_HEIGHT,
