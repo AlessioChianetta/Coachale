@@ -1,0 +1,29 @@
+📞 [h8nczo] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt
+1:03:00 AM [express] GET /api/voice/outbound/scheduled 304 in 1042ms :: {"calls":[{"id":"sc_17700695…
+📞 [h8nczo] Consultant info: alessio chianetta
+1:03:00 AM [express] GET /api/voice/calls 200 in 404ms :: {"calls":[{"id":"vc_1770166979818_2ky8sidd…
+📞 [h8nczo] OUTBOUND non-client call - source=template, template=sales-orbitale, agentId=760bb513-098f-4722-b02a-a700160c2fc3
+📱 [h8nczo] Included 9 conversations (2915 chars) for inbound call
+📞 [h8nczo] OUTBOUND - Using template: Sales Call Orbitale (sales-orbitale) - 2600 chars
+
+┌─────────────────────────────────────────────────────────────────────┐
+│           📊 SCENARIO DETECTION: NON-CLIENT OUTBOUND              │
+├─────────────────────────────────────────────────────────────────────┤
+│ Parametro                    │ Valore                              │
+├─────────────────────────────────────────────────────────────────────┤
+│ È cliente registrato?        │ ❌ NO                                │
+│ Ha istruzione (task/remind)? │ ❌ NO                                │
+│ Conversazioni precedenti?    │ ✅ SÌ                               │
+│ Caller ID                    │ 1007                                 │
+│ Scheduled Call ID            │ sc_1770166968329_cmg                 │
+│ Direction                    │ OUTBOUND                             │
+│ Prompt Source                │ template                             │
+│ Template ID                  │ sales-orbitale                       │
+├─────────────────────────────────────────────────────────────────────┤
+│ 🎯 SCENARIO                  │ OUTBOUND NON-CLIENT (SCENARIO 3)    │
+├─────────────────────────────────────────────────────────────────────┤
+│ 💬 COMPORTAMENTO ATTESO:                                            │
+│   → Saluta il prospect (TU stai chiamando LUI)                       │
+│   → Usa il template OUTBOUND configurato                             │
+│   → Segui lo script di vendita/follow-up                             │
+└─────────────────────────────────────────────────────────────────────┘

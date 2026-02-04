@@ -3297,6 +3297,13 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
         
         userDataContext = ''; // No user data for unknown callers
         console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} non-client prompt built (${systemInstruction.length} chars) - Source: ${promptSource}, Template: ${templateId}${previousCallContext ? ' [WITH CALL HISTORY]' : ''}`);
+        
+        // 🔍 DEBUG: Full system prompt for non-client calls
+        console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`📞 [${connectionId}] FULL NON-CLIENT SYSTEM PROMPT (${isOutbound ? 'OUTBOUND' : 'INBOUND'}):`);
+        console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(systemInstruction);
+        console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         } // Close the else block for non-instruction flow
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
