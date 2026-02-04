@@ -1731,26 +1731,41 @@ export default function ConsultantVoiceCallsPage() {
             </div>
 
             <Tabs defaultValue="calls" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="calls" className="flex items-center gap-2">
+              <TabsList className="w-full h-auto p-1.5 bg-muted/50 backdrop-blur-sm border rounded-xl shadow-sm flex-wrap justify-start gap-1">
+                <TabsTrigger 
+                  value="calls" 
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-700 transition-all duration-200"
+                >
                   <Phone className="h-4 w-4" />
-                  Chiamate
+                  <span className="hidden sm:inline">Storico</span>
                 </TabsTrigger>
-                <TabsTrigger value="outbound" className="flex items-center gap-2">
+                <TabsTrigger 
+                  value="outbound" 
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-700 transition-all duration-200"
+                >
                   <PhoneOutgoing className="h-4 w-4" />
-                  Chiamate in Uscita
+                  <span className="hidden sm:inline">Chiama Ora</span>
                 </TabsTrigger>
-                <TabsTrigger value="non-client" className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Prompt Non-Clienti
-                </TabsTrigger>
-                <TabsTrigger value="vps" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Configurazione VPS
-                </TabsTrigger>
-                <TabsTrigger value="ai-tasks" className="flex items-center gap-2">
+                <TabsTrigger 
+                  value="ai-tasks" 
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-700 transition-all duration-200"
+                >
                   <ClipboardList className="h-4 w-4" />
-                  AI Task Queue
+                  <span className="hidden sm:inline">Calendario AI</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="non-client" 
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-700 transition-all duration-200"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Template</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="vps" 
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-700 transition-all duration-200"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Configurazione</span>
                 </TabsTrigger>
               </TabsList>
 
