@@ -940,7 +940,8 @@ export default function ConsultantVoiceCallsPage() {
     recurrence_end_date: '',
     max_attempts: 3,
     retry_delay_minutes: 15,
-    template_id: undefined as string | undefined
+    template_id: undefined as string | undefined,
+    voice_template_id: undefined as string | undefined
   });
 
   const { toast } = useToast();
@@ -1440,6 +1441,7 @@ export default function ConsultantVoiceCallsPage() {
           recurrence_type: data.recurrence_type,
           max_attempts: data.max_attempts,
           retry_delay_minutes: data.retry_delay_minutes,
+          voice_template_id: data.voice_template_id || null,
         }),
       });
       if (!res.ok) {
@@ -1460,7 +1462,9 @@ export default function ConsultantVoiceCallsPage() {
         recurrence_days: [],
         recurrence_end_date: '',
         max_attempts: 3,
-        retry_delay_minutes: 15
+        retry_delay_minutes: 15,
+        template_id: undefined,
+        voice_template_id: undefined
       });
       refetchAITasks();
       toast({ title: "Task creato!", description: "La chiamata AI è stata programmata" });
@@ -4356,7 +4360,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                                 <span>Seleziona un cliente ({allClientsWithPhone.length})</span>
                                               </div>
                                             </SelectTrigger>
-                                            <SelectContent className="max-h-[300px]">
+                                            <SelectContent className="max-h-[300px] z-[999]">
                                               {activeWithPhone.length > 0 && (
                                                 <>
                                                   <div className="px-2 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
@@ -4424,14 +4428,64 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     </div>
                                   </div>
 
-                                  {/* SEZIONE 2.5: TEMPLATE LIBRARY (categorie espandibili) - solo per single_call e follow_up */}
+                                  {/* SEZIONE 2.5: TEMPLATE VOCE OUTBOUND */}
+                                  <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                        <PhoneOutgoing className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                      </div>
+                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Template Voce</h3>
+                                      <Badge variant="outline" className="text-xs">Opzionale</Badge>
+                                    </div>
+                                    
+                                    <Select
+                                      value={newTaskData.voice_template_id || 'default'}
+                                      onValueChange={(value) => setNewTaskData({...newTaskData, voice_template_id: value === 'default' ? undefined : value})}
+                                    >
+                                      <SelectTrigger className="h-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+                                        <SelectValue placeholder="Usa template di default" />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-[999]">
+                                        <SelectItem value="default">
+                                          <div className="flex items-center gap-2">
+                                            <Settings className="h-4 w-4 text-muted-foreground" />
+                                            <span>Usa template di default</span>
+                                          </div>
+                                        </SelectItem>
+                                        {(nonClientSettingsData?.availableOutboundTemplates || []).map((template) => (
+                                          <SelectItem key={template.id} value={template.id}>
+                                            <div className="flex flex-col">
+                                              <span className="font-medium">{template.name}</span>
+                                              <span className="text-xs text-muted-foreground">{template.description}</span>
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    
+                                    {newTaskData.voice_template_id && (
+                                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <FileText className="h-4 w-4 text-blue-600" />
+                                          <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                            Template selezionato: {nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === newTaskData.voice_template_id)?.name}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                                          Questo template verrà usato al posto di quello configurato di default
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* SEZIONE 2.6: TEMPLATE LIBRARY (categorie espandibili) - solo per single_call e follow_up */}
                                   {(newTaskData.task_type === 'single_call' || newTaskData.task_type === 'follow_up') && (
                                   <div className="space-y-4">
                                     <div className="flex items-center gap-2">
                                       <div className="p-1.5 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
                                         <FileText className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                                       </div>
-                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Template</h3>
+                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Istruzione Specifica</h3>
                                       <Badge variant="outline" className="text-xs">Opzionale</Badge>
                                     </div>
                                     
