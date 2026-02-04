@@ -3607,7 +3607,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                 <div className="grid gap-6 lg:grid-cols-4">
                   {/* COLONNA SINISTRA (75%): Form Creazione */}
                   <div className="lg:col-span-3">
-                    <Card>
+                    <Card id="ai-task-form">
                       <CardHeader>
                         <CardTitle>Programma Nuova Chiamata AI</CardTitle>
                       </CardHeader>
@@ -3979,63 +3979,160 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {/* Header giorni */}
-                      <div className="grid grid-cols-7 gap-1 mb-2">
-                        {[0,1,2,3,4,5,6].map(dayOffset => {
-                          const day = addDays(calendarWeekStart, dayOffset);
-                          const isToday = isSameDay(day, new Date());
-                          return (
-                            <div key={dayOffset} className={`text-center p-2 font-medium text-sm ${isToday ? 'bg-primary/10 rounded' : ''}`}>
-                              <div className="text-xs text-muted-foreground">{format(day, 'EEE', { locale: it })}</div>
-                              <div className={`text-lg ${isToday ? 'text-primary font-bold' : ''}`}>{format(day, 'd')}</div>
+                      {(() => {
+                        const HOUR_HEIGHT = 60;
+                        const START_HOUR = 8;
+                        const END_HOUR = 20;
+                        const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+                        
+                        const handleCalendarSlotClick = (day: Date, hour: number) => {
+                          setNewTaskData({
+                            ...newTaskData,
+                            scheduled_date: format(day, 'yyyy-MM-dd'),
+                            scheduled_time: `${hour.toString().padStart(2, '0')}:00`
+                          });
+                          toast({
+                            title: "Slot selezionato",
+                            description: `Selezionato: ${format(day, 'EEEE d MMM', { locale: it })} alle ${hour.toString().padStart(2, '0')}:00`
+                          });
+                          document.getElementById('ai-task-form')?.scrollIntoView({ behavior: 'smooth' });
+                        };
+
+                        const now = new Date();
+                        const currentHour = now.getHours() + now.getMinutes() / 60;
+                        const currentTimeTop = (currentHour - START_HOUR) * HOUR_HEIGHT;
+                        const showCurrentTime = currentHour >= START_HOUR && currentHour <= END_HOUR && 
+                          [0,1,2,3,4,5,6].some(offset => isSameDay(addDays(calendarWeekStart, offset), now));
+                        const todayColumnIndex = [0,1,2,3,4,5,6].findIndex(offset => isSameDay(addDays(calendarWeekStart, offset), now));
+
+                        return (
+                          <>
+                            {/* Header giorni */}
+                            <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0 mb-0 border-b">
+                              <div className="p-2"></div>
+                              {[0,1,2,3,4,5,6].map(dayOffset => {
+                                const day = addDays(calendarWeekStart, dayOffset);
+                                const isToday = isSameDay(day, new Date());
+                                return (
+                                  <div key={dayOffset} className={`text-center p-2 font-medium text-sm border-l ${isToday ? 'bg-primary/10' : ''}`}>
+                                    <div className="text-xs text-muted-foreground">{format(day, 'EEE', { locale: it })}</div>
+                                    <div className={`text-lg ${isToday ? 'text-primary font-bold' : ''}`}>{format(day, 'd')}</div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
-                      </div>
-                      {/* Celle con task e chiamate */}
-                      <div className="grid grid-cols-7 gap-1">
-                        {[0,1,2,3,4,5,6].map(dayOffset => {
-                          const day = addDays(calendarWeekStart, dayOffset);
-                          const dayTasks = calendarData?.aiTasks?.filter((t: AITask) => isSameDay(new Date(t.scheduled_at), day)) || [];
-                          const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
-                          
-                          return (
-                            <div key={dayOffset} className="min-h-[100px] border rounded p-1 space-y-1 bg-muted/20">
-                              {/* AI Tasks - viola */}
-                              {dayTasks.map((task: AITask) => (
-                                <div key={task.id} className="text-xs p-1 rounded bg-purple-100 border border-purple-300 truncate dark:bg-purple-950/50 dark:border-purple-700"
-                                  title={`${task.contact_name || task.contact_phone} - ${task.ai_instruction}`}
-                                >
-                                  {format(new Date(task.scheduled_at), 'HH:mm')} {task.contact_name || task.contact_phone}
+
+                            {/* Griglia oraria con scroll */}
+                            <div className="relative overflow-auto" style={{ maxHeight: '600px' }}>
+                              <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0" style={{ minHeight: hours.length * HOUR_HEIGHT }}>
+                                {/* Colonna ore */}
+                                <div className="relative">
+                                  {hours.map((hour) => (
+                                    <div
+                                      key={hour}
+                                      className="absolute w-full text-xs text-muted-foreground text-right pr-2 -translate-y-1/2"
+                                      style={{ top: (hour - START_HOUR) * HOUR_HEIGHT }}
+                                    >
+                                      {hour.toString().padStart(2, '0')}:00
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                              {/* Scheduled Calls - blu */}
-                              {dayCalls.map((call: any) => (
-                                <div key={call.id} className="text-xs p-1 rounded bg-blue-100 border border-blue-300 truncate dark:bg-blue-950/50 dark:border-blue-700"
-                                  title={call.call_instruction || 'Chiamata programmata'}
-                                >
-                                  {format(new Date(call.scheduled_at), 'HH:mm')} {call.target_phone}
-                                </div>
-                              ))}
-                              {dayTasks.length === 0 && dayCalls.length === 0 && (
-                                <p className="text-xs text-muted-foreground text-center py-4">-</p>
-                              )}
+
+                                {/* Colonne giorni */}
+                                {[0,1,2,3,4,5,6].map(dayOffset => {
+                                  const day = addDays(calendarWeekStart, dayOffset);
+                                  const isToday = isSameDay(day, new Date());
+                                  const dayTasks = calendarData?.aiTasks?.filter((t: AITask) => isSameDay(new Date(t.scheduled_at), day)) || [];
+                                  const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
+
+                                  return (
+                                    <div key={dayOffset} className={`relative border-l ${isToday ? 'bg-primary/5' : ''}`}>
+                                      {/* Linee orizzontali per ogni ora */}
+                                      {hours.map((hour) => (
+                                        <div
+                                          key={hour}
+                                          className="absolute w-full border-t border-dashed border-muted-foreground/20 cursor-pointer hover:bg-primary/5 transition-colors"
+                                          style={{ top: (hour - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                                          onClick={() => handleCalendarSlotClick(day, hour)}
+                                        />
+                                      ))}
+
+                                      {/* AI Tasks - viola */}
+                                      {dayTasks.map((task: AITask) => {
+                                        const taskDate = new Date(task.scheduled_at);
+                                        const taskHour = taskDate.getHours() + taskDate.getMinutes() / 60;
+                                        const top = (taskHour - START_HOUR) * HOUR_HEIGHT;
+                                        if (taskHour < START_HOUR || taskHour > END_HOUR) return null;
+                                        return (
+                                          <div
+                                            key={task.id}
+                                            className="absolute left-1 right-1 bg-purple-500 text-white text-xs p-1 rounded shadow-sm overflow-hidden z-10 cursor-pointer hover:bg-purple-600 transition-colors"
+                                            style={{ top, minHeight: 24 }}
+                                            title={`${task.contact_name || task.contact_phone} - ${task.ai_instruction}`}
+                                          >
+                                            <div className="font-medium truncate">
+                                              {format(taskDate, 'HH:mm')} {task.contact_name || task.contact_phone}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+
+                                      {/* Scheduled Calls - blu */}
+                                      {dayCalls.map((call: any) => {
+                                        const callDate = new Date(call.scheduled_at);
+                                        const callHour = callDate.getHours() + callDate.getMinutes() / 60;
+                                        const top = (callHour - START_HOUR) * HOUR_HEIGHT;
+                                        if (callHour < START_HOUR || callHour > END_HOUR) return null;
+                                        return (
+                                          <div
+                                            key={call.id}
+                                            className="absolute left-1 right-1 bg-blue-500 text-white text-xs p-1 rounded shadow-sm overflow-hidden z-10 cursor-pointer hover:bg-blue-600 transition-colors"
+                                            style={{ top: top + 26, minHeight: 24 }}
+                                            title={call.call_instruction || 'Chiamata programmata'}
+                                          >
+                                            <div className="font-medium truncate">
+                                              {format(callDate, 'HH:mm')} {call.target_phone}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+
+                                      {/* Indicatore ora corrente (solo nella colonna di oggi) */}
+                                      {showCurrentTime && dayOffset === todayColumnIndex && (
+                                        <div
+                                          className="absolute left-0 right-0 z-20 pointer-events-none"
+                                          style={{ top: currentTimeTop }}
+                                        >
+                                          <div className="relative flex items-center">
+                                            <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                                            <div className="flex-1 h-[2px] bg-red-500" />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {/* Legenda */}
-                      <div className="flex gap-4 mt-4 text-xs">
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded bg-purple-100 border border-purple-300 dark:bg-purple-950/50 dark:border-purple-700"></div>
-                          <span>AI Tasks</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded bg-blue-100 border border-blue-300 dark:bg-blue-950/50 dark:border-blue-700"></div>
-                          <span>Chiamate Programmate</span>
-                        </div>
-                      </div>
+
+                            {/* Legenda */}
+                            <div className="flex gap-4 mt-4 text-xs border-t pt-4">
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 rounded bg-purple-500"></div>
+                                <span>AI Tasks</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 rounded bg-blue-500"></div>
+                                <span>Chiamate Programmate</span>
+                              </div>
+                              <div className="flex items-center gap-1 ml-auto text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                <span>Clicca su uno slot per programmare</span>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 )}
