@@ -5055,21 +5055,31 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   <>
                                     <DialogHeader>
                                       <div className="flex items-center gap-3">
-                                        <div className={`p-2.5 rounded-xl ${selectedEvent.type === 'task' ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+                                        <div className={`p-2.5 rounded-xl ${
+                                          selectedEvent.type === 'task' ? 'bg-purple-100 dark:bg-purple-900/30' : 
+                                          selectedEvent.type === 'history' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+                                          'bg-blue-100 dark:bg-blue-900/30'
+                                        }`}>
                                           {selectedEvent.type === 'task' ? (
                                             <Bot className={`h-5 w-5 text-purple-600 dark:text-purple-400`} />
+                                          ) : selectedEvent.type === 'history' ? (
+                                            <PhoneIncoming className={`h-5 w-5 text-emerald-600 dark:text-emerald-400`} />
                                           ) : (
                                             <Phone className={`h-5 w-5 text-blue-600 dark:text-blue-400`} />
                                           )}
                                         </div>
                                         <div>
                                           <DialogTitle className="text-lg">
-                                            {selectedEvent.type === 'task' ? 'AI Task' : 'Chiamata Programmata'}
+                                            {selectedEvent.type === 'task' ? 'AI Task' : 
+                                             selectedEvent.type === 'history' ? 'Chiamata Effettuata' : 
+                                             'Chiamata Programmata'}
                                           </DialogTitle>
                                           <DialogDescription>
                                             {selectedEvent.type === 'task' 
                                               ? (selectedEvent.data.contact_name || selectedEvent.data.contact_phone)
-                                              : selectedEvent.data.target_phone
+                                              : selectedEvent.type === 'history'
+                                                ? (selectedEvent.data.client_name || selectedEvent.data.called_number)
+                                                : selectedEvent.data.target_phone
                                             }
                                           </DialogDescription>
                                         </div>
@@ -5082,10 +5092,13 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         <CalendarDays className="h-5 w-5 text-muted-foreground" />
                                         <div>
                                           <p className="font-medium">
-                                            {format(new Date(selectedEvent.data.scheduled_at), 'EEEE d MMMM yyyy', { locale: it })}
+                                            {format(new Date(selectedEvent.type === 'history' ? selectedEvent.data.started_at : selectedEvent.data.scheduled_at), 'EEEE d MMMM yyyy', { locale: it })}
                                           </p>
                                           <p className="text-sm text-muted-foreground">
-                                            alle {format(new Date(selectedEvent.data.scheduled_at), 'HH:mm')}
+                                            alle {format(new Date(selectedEvent.type === 'history' ? selectedEvent.data.started_at : selectedEvent.data.scheduled_at), 'HH:mm')}
+                                            {selectedEvent.type === 'history' && selectedEvent.data.duration_seconds && (
+                                              <span className="ml-2">• Durata: {Math.floor(selectedEvent.data.duration_seconds / 60)}:{(selectedEvent.data.duration_seconds % 60).toString().padStart(2, '0')}</span>
+                                            )}
                                           </p>
                                         </div>
                                       </div>
@@ -5095,19 +5108,42 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         <div className={`w-3 h-3 rounded-full ${
                                           selectedEvent.data.status === 'pending' || selectedEvent.data.status === 'scheduled' ? 'bg-amber-500' :
                                           selectedEvent.data.status === 'completed' ? 'bg-green-500' :
-                                          selectedEvent.data.status === 'failed' ? 'bg-red-500' :
-                                          selectedEvent.data.status === 'calling' || selectedEvent.data.status === 'in_progress' ? 'bg-blue-500 animate-pulse' :
+                                          selectedEvent.data.status === 'failed' || selectedEvent.data.status === 'no_answer' || selectedEvent.data.status === 'busy' ? 'bg-red-500' :
+                                          selectedEvent.data.status === 'calling' || selectedEvent.data.status === 'in_progress' || selectedEvent.data.status === 'ringing' ? 'bg-blue-500 animate-pulse' :
                                           'bg-gray-400'
                                         }`} />
                                         <div>
                                           <p className="font-medium capitalize">{selectedEvent.data.status}</p>
-                                          {selectedEvent.data.attempt_count && (
+                                          {selectedEvent.type !== 'history' && selectedEvent.data.attempt_count && (
                                             <p className="text-sm text-muted-foreground">
                                               Tentativo {selectedEvent.data.attempt_count}/{selectedEvent.data.max_attempts || 3}
                                             </p>
                                           )}
                                         </div>
                                       </div>
+                                      
+                                      {/* Dettagli chiamata per history */}
+                                      {selectedEvent.type === 'history' && (
+                                        <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                                          <p className="text-xs font-medium text-muted-foreground mb-1">Dettagli Chiamata</p>
+                                          <div className="grid grid-cols-2 gap-2 text-sm">
+                                            <div>
+                                              <span className="text-muted-foreground">Da:</span>{' '}
+                                              <span className="font-medium">{selectedEvent.data.caller_id || 'N/A'}</span>
+                                            </div>
+                                            <div>
+                                              <span className="text-muted-foreground">A:</span>{' '}
+                                              <span className="font-medium">{selectedEvent.data.called_number || 'N/A'}</span>
+                                            </div>
+                                            {selectedEvent.data.direction && (
+                                              <div className="col-span-2">
+                                                <span className="text-muted-foreground">Direzione:</span>{' '}
+                                                <span className="font-medium capitalize">{selectedEvent.data.direction}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
                                       
                                       {/* Istruzioni AI */}
                                       {(selectedEvent.data.ai_instruction || selectedEvent.data.call_instruction) && (
