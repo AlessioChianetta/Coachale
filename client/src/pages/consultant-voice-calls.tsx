@@ -1691,146 +1691,42 @@ export default function ConsultantVoiceCallsPage() {
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
         <main className="flex-1 p-6 lg:px-8 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                  <Phone className="h-8 w-8" />
-                  Chiamate Voice
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Monitora e gestisci le chiamate in tempo reale
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {/* Voice Selector */}
-                <Dialog open={voiceDialogOpen} onOpenChange={setVoiceDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <Mic2 className="h-4 w-4 mr-2" />
-                      Voce: {VOICES.find(v => v.value === voiceSettings?.voiceId)?.label || 'Achernar'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Voce AI Telefonica</DialogTitle>
-                      <DialogDescription>
-                        Scegli la voce che Alessia userà durante le chiamate telefoniche.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-2 py-4">
-                      {VOICES.map((voice) => (
-                        <Button
-                          key={voice.value}
-                          variant={voiceSettings?.voiceId === voice.value ? "default" : "outline"}
-                          className="justify-start h-auto py-3"
-                          onClick={() => {
-                            updateVoiceMutation.mutate(voice.value);
-                            setVoiceDialogOpen(false);
-                          }}
-                          disabled={updateVoiceMutation.isPending}
-                        >
-                          <div className="flex flex-col items-start">
-                            <span className="font-semibold">{voice.label}</span>
-                            <span className="text-xs text-muted-foreground">{voice.description}</span>
-                          </div>
-                          {voiceSettings?.voiceId === voice.value && (
-                            <Check className="h-4 w-4 ml-auto" />
-                          )}
-                        </Button>
-                      ))}
+            {/* Header moderna */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 text-white shadow-xl">
+              <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.5))]" />
+              <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+              <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+              
+              <div className="relative flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg">
+                    <Phone className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Chiamate Voice</h1>
+                    <p className="text-white/70 text-sm mt-0.5">
+                      Monitora e gestisci le chiamate AI in tempo reale
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  {/* Status indicator */}
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 backdrop-blur-sm">
+                    <div className={`h-2.5 w-2.5 rounded-full ${health?.overall === 'healthy' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                    <span className="text-sm font-medium">
+                      {health?.overall === 'healthy' ? 'Sistema Online' : 'Verifica...'}
+                    </span>
+                  </div>
+                  
+                  {/* Active calls badge */}
+                  {activeCalls > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/30 backdrop-blur-sm border border-emerald-400/30">
+                      <Phone className="h-4 w-4 text-emerald-300" />
+                      <span className="text-sm font-semibold">{activeCalls} attiv{activeCalls === 1 ? 'a' : 'e'}</span>
                     </div>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog open={tokenDialogOpen} onOpenChange={setTokenDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <Key className="h-4 w-4 mr-2" />
-                      Token VPS
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Token di Servizio VPS</DialogTitle>
-                      <DialogDescription>
-                        Genera un token per connettere il VPS Voice Bridge a questa piattaforma.
-                        Il token non scade e rimane valido finché non ne generi uno nuovo.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      {!serviceToken ? (
-                        <Button
-                          onClick={() => generateTokenMutation.mutate()}
-                          disabled={generateTokenMutation.isPending}
-                          className="w-full"
-                        >
-                          {generateTokenMutation.isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Generazione...
-                            </>
-                          ) : (
-                            <>
-                              <Key className="h-4 w-4 mr-2" />
-                              Genera Token
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Token generato:</label>
-                            <div className="flex gap-2">
-                              <Input
-                                value={serviceToken}
-                                readOnly
-                                className="font-mono text-xs"
-                              />
-                              <Button onClick={copyToken} variant="outline" size="icon">
-                                {tokenCopied ? (
-                                  <Check className="h-4 w-4 text-green-500" />
-                                ) : (
-                                  <Copy className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="bg-muted p-3 rounded-md text-sm space-y-2">
-                            <p className="font-medium">Configurazione VPS:</p>
-                            <p className="text-muted-foreground">
-                              Aggiungi questo token al file <code className="bg-background px-1 rounded">.env</code> del VPS:
-                            </p>
-                            <code className="block bg-background p-2 rounded text-xs break-all">
-                              REPLIT_API_TOKEN={serviceToken.substring(0, 20)}...
-                            </code>
-                          </div>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setServiceToken(null);
-                              generateTokenMutation.mutate();
-                            }}
-                            disabled={generateTokenMutation.isPending}
-                            className="w-full"
-                          >
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Rigenera Token
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Link href="/consultant/voice-settings">
-                  <Button variant="outline">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Impostazioni
-                  </Button>
-                </Link>
-                <Button onClick={() => refetchCalls()} variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Aggiorna
-                </Button>
+                  )}
+                </div>
               </div>
             </div>
 
