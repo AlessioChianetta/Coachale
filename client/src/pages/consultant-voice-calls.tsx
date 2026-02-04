@@ -914,21 +914,22 @@ export default function ConsultantVoiceCallsPage() {
   const [dragStart, setDragStart] = useState<{day: Date, hour: number} | null>(null);
   const [dragEnd, setDragEnd] = useState<{day: Date, hour: number} | null>(null);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [quickCreatePosition, setQuickCreatePosition] = useState<{x: number, y: number} | null>(null);
   const [aiTaskExpandedCategory, setAITaskExpandedCategory] = useState<string | null>(null);
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [aiTaskSelectedTemplate, setAITaskSelectedTemplate] = useState<TemplateItem | null>(null);
   const [aiTaskTemplateValues, setAITaskTemplateValues] = useState<Record<string, string>>({});
   const [newTaskData, setNewTaskData] = useState({
-    contact_name: "",
-    contact_phone: "",
-    task_type: "single_call" as 'single_call' | 'follow_up' | 'ai_task',
-    ai_instruction: "",
-    scheduled_date: "",
-    scheduled_time: "",
-    recurrence_type: "once" as 'once' | 'daily' | 'weekly',
+    contact_phone: '',
+    contact_name: '',
+    task_type: 'single_call' as 'single_call' | 'follow_up' | 'ai_task',
+    ai_instruction: '',
+    scheduled_date: format(new Date(), 'yyyy-MM-dd'),
+    scheduled_time: '10:00',
+    recurrence_type: 'once' as 'once' | 'daily' | 'weekly',
+    recurrence_days: [] as number[],
+    recurrence_end_date: '',
     max_attempts: 3,
-    retry_delay_minutes: 15,
+    retry_delay_minutes: 15
   });
 
   const { toast } = useToast();
@@ -1438,15 +1439,17 @@ export default function ConsultantVoiceCallsPage() {
     },
     onSuccess: () => {
       setNewTaskData({
-        contact_name: "",
-        contact_phone: "",
-        task_type: "single_call",
-        ai_instruction: "",
-        scheduled_date: "",
-        scheduled_time: "",
-        recurrence_type: "once",
+        contact_phone: '',
+        contact_name: '',
+        task_type: 'single_call',
+        ai_instruction: '',
+        scheduled_date: format(new Date(), 'yyyy-MM-dd'),
+        scheduled_time: '10:00',
+        recurrence_type: 'once',
+        recurrence_days: [],
+        recurrence_end_date: '',
         max_attempts: 3,
-        retry_delay_minutes: 15,
+        retry_delay_minutes: 15
       });
       refetchAITasks();
       toast({ title: "Task creato!", description: "La chiamata AI è stata programmata" });
@@ -3985,10 +3988,10 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     </CardHeader>
                     <CardContent>
                       {(() => {
-                        const HOUR_HEIGHT = 60;
-                        const START_HOUR = 8;
-                        const END_HOUR = 20;
-                        const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+                        const HOUR_HEIGHT = 50;
+                        const START_HOUR = 0;
+                        const END_HOUR = 24;
+                        const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
                         
                         const handleCalendarSlotClick = (day: Date, hour: number) => {
                           setNewTaskData({
@@ -4019,9 +4022,9 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 const day = addDays(calendarWeekStart, dayOffset);
                                 const isToday = isSameDay(day, new Date());
                                 return (
-                                  <div key={dayOffset} className={`text-center p-2 font-medium text-sm border-l ${isToday ? 'bg-primary/10' : ''}`}>
-                                    <div className="text-xs text-muted-foreground">{format(day, 'EEE', { locale: it })}</div>
-                                    <div className={`text-lg ${isToday ? 'text-primary font-bold' : ''}`}>{format(day, 'd')}</div>
+                                  <div key={dayOffset} className={`text-center p-2 font-medium text-sm border-l ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}>
+                                    <div className="text-xs font-medium uppercase">{format(day, 'EEE', { locale: it })}</div>
+                                    <div className={`text-sm ${isToday ? 'text-primary font-bold' : ''}`}>{format(day, 'dd/MM')}</div>
                                   </div>
                                 );
                               })}
@@ -4061,7 +4064,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
 
                                   return (
-                                    <div key={dayOffset} className={`relative border-l ${isToday ? 'bg-primary/5' : ''}`}>
+                                    <div key={dayOffset} className={`relative border-l ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}>
                                       {/* Linee orizzontali per ogni ora */}
                                       {hours.map((hour) => (
                                         <div
@@ -4089,7 +4092,6 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                                 scheduled_date: format(dragStart.day, 'yyyy-MM-dd'),
                                                 scheduled_time: `${startH.toString().padStart(2, '0')}:00`
                                               });
-                                              setQuickCreatePosition({ x: e.clientX, y: e.clientY });
                                               setShowQuickCreate(true);
                                             }
                                             setIsDragging(false);
@@ -4097,8 +4099,8 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         />
                                       ))}
 
-                                      {/* Drag preview */}
-                                      {isDragging && dragStart && dragEnd && isSameDay(dragStart.day, day) && (
+                                      {/* Drag preview - visibile durante drag e quando popup è aperto */}
+                                      {((isDragging || showQuickCreate) && dragStart && dragEnd) && isSameDay(dragStart.day, day) && (
                                         <div
                                           className="absolute left-1 right-1 bg-purple-400/50 border-2 border-purple-500 border-dashed rounded z-20 pointer-events-none"
                                           style={{
@@ -4186,82 +4188,227 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                               </div>
                             </div>
 
-                            {/* Quick Create Popover */}
-                            {showQuickCreate && quickCreatePosition && (
-                              <div 
-                                className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border p-4 w-80"
-                                style={{ 
-                                  left: Math.max(8, Math.min(quickCreatePosition.x, window.innerWidth - 340)),
-                                  top: Math.max(8, Math.min(quickCreatePosition.y - 100, window.innerHeight - 400))
-                                }}
-                              >
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="font-semibold">Nuova Chiamata AI</h4>
-                                  <Button variant="ghost" size="sm" onClick={() => {
-                                    setShowQuickCreate(false);
-                                    setDragStart(null);
-                                    setDragEnd(null);
-                                  }}>
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                            {/* Quick Create Sheet */}
+                            <Sheet open={showQuickCreate} onOpenChange={(open) => {
+                              if (!open) {
+                                setShowQuickCreate(false);
+                                setDragStart(null);
+                                setDragEnd(null);
+                              }
+                            }}>
+                              <SheetContent className="sm:max-w-lg overflow-auto">
+                                <SheetHeader>
+                                  <SheetTitle className="flex items-center gap-2">
+                                    <Phone className="h-5 w-5 text-primary" />
+                                    Nuova Chiamata AI
+                                  </SheetTitle>
+                                  <SheetDescription>
+                                    {dragStart && format(dragStart.day, 'EEEE d MMMM yyyy', { locale: it })} • 
+                                    {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00 - 
+                                    {dragEnd && (Math.max(dragStart?.hour || 0, dragEnd.hour) + 1).toString().padStart(2,'0')}:00
+                                  </SheetDescription>
+                                </SheetHeader>
                                 
-                                <div className="text-sm text-muted-foreground mb-3">
-                                  {dragStart && format(dragStart.day, 'EEEE d MMMM', { locale: it })}
-                                  {' • '}
-                                  {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00
-                                  {' - '}
-                                  {dragEnd && (Math.max(dragStart?.hour || 0, dragEnd.hour) + 1).toString().padStart(2,'0')}:00
-                                </div>
+                                <div className="space-y-6 py-6">
+                                  {/* TIPO CHIAMATA - Pillole */}
+                                  <div className="space-y-3">
+                                    <Label className="text-sm font-medium">Tipo di chiamata *</Label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      {[
+                                        { value: 'single_call', label: 'Chiamata', icon: Phone, desc: 'Chiamata singola' },
+                                        { value: 'follow_up', label: 'Follow-up', icon: RepeatIcon, desc: 'Serie di chiamate' },
+                                        { value: 'ai_task', label: 'Task AI', icon: Bot, desc: 'Task automatico' }
+                                      ].map((type) => (
+                                        <button
+                                          key={type.value}
+                                          onClick={() => setNewTaskData({...newTaskData, task_type: type.value as 'single_call' | 'follow_up' | 'ai_task'})}
+                                          className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                                            newTaskData.task_type === type.value 
+                                              ? 'border-primary bg-primary/5' 
+                                              : 'border-border hover:border-primary/50'
+                                          }`}
+                                        >
+                                          <type.icon className={`h-5 w-5 ${newTaskData.task_type === type.value ? 'text-primary' : 'text-muted-foreground'}`} />
+                                          <span className="text-sm font-medium">{type.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
 
-                                <div className="space-y-3">
-                                  <Input 
-                                    placeholder="Numero telefono *" 
-                                    value={newTaskData.contact_phone}
-                                    onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})}
-                                  />
-                                  <Input 
-                                    placeholder="Nome (opzionale)" 
-                                    value={newTaskData.contact_name}
-                                    onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})}
-                                  />
-                                  <Textarea 
-                                    placeholder="Istruzione per l'AI..."
-                                    className="min-h-[80px]"
-                                    value={newTaskData.ai_instruction}
-                                    onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      variant="outline" 
-                                      className="flex-1"
-                                      onClick={() => {
-                                        setShowQuickCreate(false);
-                                        setDragStart(null);
-                                        setDragEnd(null);
-                                      }}
-                                    >
-                                      Annulla
-                                    </Button>
-                                    <Button 
-                                      className="flex-1"
-                                      disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
-                                      onClick={() => {
-                                        createAITaskMutation.mutate(newTaskData, {
-                                          onSuccess: () => {
-                                            setShowQuickCreate(false);
-                                            setDragStart(null);
-                                            setDragEnd(null);
-                                          }
-                                        });
-                                      }}
-                                    >
-                                      {createAITaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salva'}
-                                    </Button>
+                                  {/* CONTATTO */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <Label>Numero telefono *</Label>
+                                      <Input 
+                                        placeholder="+39 333 1234567" 
+                                        value={newTaskData.contact_phone}
+                                        onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Nome contatto</Label>
+                                      <Input 
+                                        placeholder="Mario Rossi" 
+                                        value={newTaskData.contact_name}
+                                        onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* ISTRUZIONE AI */}
+                                  <div className="space-y-2">
+                                    <Label>Istruzione per l'AI *</Label>
+                                    <Textarea 
+                                      placeholder="Descrivi cosa deve fare l'AI durante la chiamata..."
+                                      className="min-h-[100px]"
+                                      value={newTaskData.ai_instruction}
+                                      onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
+                                    />
+                                  </div>
+
+                                  {/* FREQUENZA AVANZATA */}
+                                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                                    <Label className="text-sm font-medium">Frequenza</Label>
+                                    
+                                    {/* Tipo frequenza - pillole */}
+                                    <div className="flex gap-2 flex-wrap">
+                                      {[
+                                        { value: 'once', label: 'Una volta' },
+                                        { value: 'daily', label: 'Ogni giorno' },
+                                        { value: 'weekly', label: 'Settimanale' }
+                                      ].map((freq) => (
+                                        <Button
+                                          key={freq.value}
+                                          type="button"
+                                          variant={newTaskData.recurrence_type === freq.value ? 'default' : 'outline'}
+                                          size="sm"
+                                          onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as 'once' | 'daily' | 'weekly'})}
+                                        >
+                                          {freq.label}
+                                        </Button>
+                                      ))}
+                                    </div>
+
+                                    {/* Giorni settimana (se weekly) */}
+                                    {newTaskData.recurrence_type === 'weekly' && (
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">Giorni della settimana</Label>
+                                        <div className="flex gap-1">
+                                          {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((dayLabel, idx) => {
+                                            const dayNum = idx + 1;
+                                            const isSelected = (newTaskData.recurrence_days || []).includes(dayNum);
+                                            return (
+                                              <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => {
+                                                  const current = newTaskData.recurrence_days || [];
+                                                  const updated = isSelected 
+                                                    ? current.filter(d => d !== dayNum)
+                                                    : [...current, dayNum].sort();
+                                                  setNewTaskData({...newTaskData, recurrence_days: updated});
+                                                }}
+                                                className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${
+                                                  isSelected 
+                                                    ? 'bg-primary text-primary-foreground' 
+                                                    : 'bg-muted hover:bg-muted/80'
+                                                }`}
+                                              >
+                                                {dayLabel}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Tentativi e Retry */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">Tentativi max</Label>
+                                        <div className="flex gap-1">
+                                          {[1, 2, 3, 4, 5].map((n) => (
+                                            <button
+                                              key={n}
+                                              type="button"
+                                              onClick={() => setNewTaskData({...newTaskData, max_attempts: n})}
+                                              className={`w-8 h-8 rounded text-sm font-medium transition-all ${
+                                                newTaskData.max_attempts === n 
+                                                  ? 'bg-primary text-primary-foreground' 
+                                                  : 'bg-muted hover:bg-muted/80'
+                                              }`}
+                                            >
+                                              {n}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">Intervallo retry</Label>
+                                        <Select 
+                                          value={String(newTaskData.retry_delay_minutes || 15)} 
+                                          onValueChange={(v) => setNewTaskData({...newTaskData, retry_delay_minutes: parseInt(v)})}
+                                        >
+                                          <SelectTrigger className="h-8">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="5">5 minuti</SelectItem>
+                                            <SelectItem value="10">10 minuti</SelectItem>
+                                            <SelectItem value="15">15 minuti</SelectItem>
+                                            <SelectItem value="30">30 minuti</SelectItem>
+                                            <SelectItem value="60">1 ora</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+
+                                    {/* Data fine (se non once) */}
+                                    {newTaskData.recurrence_type !== 'once' && (
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">Termina il (opzionale)</Label>
+                                        <Input 
+                                          type="date" 
+                                          value={newTaskData.recurrence_end_date || ''}
+                                          onChange={(e) => setNewTaskData({...newTaskData, recurrence_end_date: e.target.value})}
+                                        />
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                              </div>
-                            )}
+
+                                {/* FOOTER */}
+                                <div className="flex gap-3 pt-4 border-t">
+                                  <Button 
+                                    variant="outline" 
+                                    className="flex-1"
+                                    onClick={() => {
+                                      setShowQuickCreate(false);
+                                      setDragStart(null);
+                                      setDragEnd(null);
+                                    }}
+                                  >
+                                    Annulla
+                                  </Button>
+                                  <Button 
+                                    className="flex-1"
+                                    disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
+                                    onClick={() => {
+                                      createAITaskMutation.mutate(newTaskData, {
+                                        onSuccess: () => {
+                                          setShowQuickCreate(false);
+                                          setDragStart(null);
+                                          setDragEnd(null);
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    {createAITaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                                    Salva Task
+                                  </Button>
+                                </div>
+                              </SheetContent>
+                            </Sheet>
                           </>
                         );
                       })()}
