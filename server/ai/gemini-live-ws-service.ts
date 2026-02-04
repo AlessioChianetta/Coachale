@@ -120,10 +120,29 @@ interface ActiveGeminiConnection {
   connectionId: string;
   mode: string;
   startedAt: Date;
+  lastActivity: Date;  // 🆕 P0.1 - Per garbage collector anti-zombie
   status: 'connecting' | 'active' | 'reconnecting' | 'closing';
   retryCount: number;
   websocket: WebSocket | null;
   consultantId?: string;
+  callId?: string;      // 🆕 P0.1 - Per tracking voice calls
+  clientId?: string;    // 🆕 P0.1 - Per tracking client
+}
+
+// 🆕 P0.1 - Costanti per timeout anti-zombie
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;        // 30 minuti senza attività → kill
+const MAX_SESSION_DURATION_MS = 2 * 60 * 60 * 1000;  // 2 ore max sessione → kill
+const HEARTBEAT_TIMEOUT_MS = 60 * 1000;        // 60s senza heartbeat → kill
+
+/**
+ * 🆕 P0.1 - Aggiorna lastActivity nel tracker
+ * Chiamata su: audio chunk, text event, heartbeat
+ */
+function updateConnectionActivity(connectionId: string): void {
+  const conn = activeGeminiConnections.get(connectionId);
+  if (conn) {
+    conn.lastActivity = new Date();
+  }
 }
 
 const activeGeminiConnections = new Map<string, ActiveGeminiConnection>();
@@ -147,12 +166,21 @@ export function forceCloseAllGeminiConnections(): { closed: number; errors: stri
   
   for (const [connId, conn] of activeGeminiConnections.entries()) {
     try {
-      if (conn.websocket && conn.websocket.readyState === WebSocket.OPEN) {
-        conn.websocket.close(1000, 'Force closed by admin');
-        closed++;
-        console.log(`   ✅ Closed: ${connId}`);
+      if (conn.websocket) {
+        // 🆕 P0.4 - Usa terminate() per chiusura HARD (evita socket half-open)
+        if (typeof (conn.websocket as any).terminate === 'function') {
+          (conn.websocket as any).terminate();
+          closed++;
+          console.log(`   ✅ Terminated: ${connId}`);
+        } else if (conn.websocket.readyState === WebSocket.OPEN) {
+          conn.websocket.close(1000, 'Force closed by admin');
+          closed++;
+          console.log(`   ✅ Closed: ${connId}`);
+        } else {
+          console.log(`   ⚠️  Already closed: ${connId}`);
+        }
       } else {
-        console.log(`   ⚠️  Already closed: ${connId}`);
+        console.log(`   ⚠️  No websocket: ${connId}`);
       }
       activeGeminiConnections.delete(connId);
     } catch (err: any) {
@@ -165,16 +193,89 @@ export function forceCloseAllGeminiConnections(): { closed: number; errors: stri
   return { closed, errors };
 }
 
+// 🆕 P0.1 - Logging migliorato con lastActivity e durata inattività
 setInterval(() => {
   const count = activeGeminiConnections.size;
   if (count > 0) {
+    const now = Date.now();
     console.log(`🔌 [GEMINI TRACKER] Active connections: ${count}`);
     for (const [connId, conn] of activeGeminiConnections.entries()) {
-      const duration = Math.round((Date.now() - conn.startedAt.getTime()) / 1000);
-      console.log(`   • ${connId}: ${conn.mode} - ${conn.status} - ${duration}s - retries: ${conn.retryCount}`);
+      const durationSec = Math.round((now - conn.startedAt.getTime()) / 1000);
+      const idleSec = Math.round((now - conn.lastActivity.getTime()) / 1000);
+      const durationMin = Math.round(durationSec / 60);
+      const idleMin = Math.round(idleSec / 60);
+      console.log(`   • ${connId}: ${conn.mode} - ${conn.status} - durata: ${durationMin}min - idle: ${idleMin}min - retries: ${conn.retryCount}`);
     }
   }
 }, 30 * 1000);
+
+/**
+ * 🆕 P0.2 - GARBAGE COLLECTOR ANTI-ZOMBIE
+ * Ogni 60 secondi controlla tutte le connessioni e chiude:
+ * - Quelle inattive da più di 30 minuti (IDLE_TIMEOUT_MS)
+ * - Quelle attive da più di 2 ore (MAX_SESSION_DURATION_MS)
+ */
+setInterval(() => {
+  const now = Date.now();
+  let killedByIdle = 0;
+  let killedByMaxDuration = 0;
+  
+  for (const [connId, conn] of activeGeminiConnections.entries()) {
+    const idleMs = now - conn.lastActivity.getTime();
+    const durationMs = now - conn.startedAt.getTime();
+    
+    // 🔴 IDLE TIMEOUT: 30 minuti senza attività
+    if (idleMs > IDLE_TIMEOUT_MS) {
+      console.log(`\n🧹 [ZOMBIE KILLER] Connection ${connId} IDLE for ${Math.round(idleMs / 60000)}min → TERMINATING`);
+      forceCloseConnection(connId, 'idle_timeout');
+      killedByIdle++;
+      continue;
+    }
+    
+    // 🔴 MAX SESSION DURATION: 2 ore massimo
+    if (durationMs > MAX_SESSION_DURATION_MS) {
+      console.log(`\n🧹 [ZOMBIE KILLER] Connection ${connId} running for ${Math.round(durationMs / 3600000)}h → TERMINATING (max session)`);
+      forceCloseConnection(connId, 'max_session_reached');
+      killedByMaxDuration++;
+      continue;
+    }
+    
+    // ⚠️ WARNING: sessione vicina al limite (1h50 = 110 minuti)
+    if (durationMs > MAX_SESSION_DURATION_MS - 10 * 60 * 1000) {
+      const remainingMin = Math.round((MAX_SESSION_DURATION_MS - durationMs) / 60000);
+      console.log(`⚠️  [SESSION WARNING] ${connId} will be terminated in ${remainingMin} minutes`);
+    }
+  }
+  
+  if (killedByIdle > 0 || killedByMaxDuration > 0) {
+    console.log(`🧹 [ZOMBIE KILLER] Cleanup complete: ${killedByIdle} idle, ${killedByMaxDuration} max duration`);
+  }
+}, 60 * 1000);
+
+/**
+ * 🆕 P0.2/P0.4 - Chiude forzatamente una singola connessione
+ * Usa terminate() per evitare socket half-open
+ */
+function forceCloseConnection(connectionId: string, reason: string): void {
+  const conn = activeGeminiConnections.get(connectionId);
+  if (!conn) return;
+  
+  try {
+    if (conn.websocket) {
+      // 🆕 P0.4 - Usa terminate() invece di close() per chiusura HARD
+      if (typeof (conn.websocket as any).terminate === 'function') {
+        (conn.websocket as any).terminate();
+      } else {
+        conn.websocket.close(1000, reason);
+      }
+    }
+    activeGeminiConnections.delete(connectionId);
+    console.log(`   ✅ [${connectionId}] Terminated: ${reason}`);
+  } catch (err: any) {
+    console.error(`   ❌ [${connectionId}] Failed to terminate: ${err.message}`);
+    activeGeminiConnections.delete(connectionId);
+  }
+}
 
 // Export function to get active voice calls
 export function getActiveVoiceCalls(): ActiveVoiceCall[] {
@@ -4309,15 +4410,19 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         }
       });
       
-      // 🔌 Track this connection in global tracker
+      // 🔌 Track this connection in global tracker (P0.1 - con lastActivity per anti-zombie)
+      const now = new Date();
       activeGeminiConnections.set(connectionId, {
         connectionId,
         mode,
-        startedAt: new Date(),
+        startedAt: now,
+        lastActivity: now,  // 🆕 P0.1 - Inizializzato al momento della connessione
         status: 'connecting',
         retryCount: 0,
         websocket: geminiSession,
-        consultantId
+        consultantId,
+        callId: conversationId,  // 🆕 P0.1 - Per tracking voice calls
+        clientId: agentBusinessContext?.clientId  // 🆕 P0.1 - Per tracking client
       });
       console.log(`🔌 [${connectionId}] Added to connection tracker (total: ${activeGeminiConnections.size})`);
 
@@ -7183,6 +7288,9 @@ ${compactFeedback}
               // 🔬 DIAGNOSTIC: Track audio chunks sent to Gemini
               audioChunksSentSinceLastResponse++;
               lastActivityTimestamp = Date.now();
+              
+              // 🆕 P0.1 - Aggiorna tracker globale anti-zombie
+              updateConnectionActivity(connectionId);
             }
           }
           
@@ -7210,6 +7318,9 @@ ${compactFeedback}
               
               geminiSession.send(JSON.stringify(textPayload));
               console.log(`✅ [${connectionId}] Text input sent to Gemini`);
+              
+              // 🆕 P0.1 - Aggiorna tracker globale anti-zombie
+              updateConnectionActivity(connectionId);
               
               // 🆕 FIX: Start watchdog for text messages too!
               // Previously watchdog was only started for audio messages with isFinal=true
@@ -7240,6 +7351,17 @@ ${compactFeedback}
               
             } else {
               console.error(`❌ [${connectionId}] Cannot send text - Gemini session not active`);
+            }
+          }
+          
+          // 🆕 P0.3 - HEARTBEAT: Client manda ping ogni 30s
+          if (msg.type === 'ping') {
+            updateConnectionActivity(connectionId);
+            // Rispondi con pong per confermare che server è vivo
+            try {
+              clientWs.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+            } catch (e) {
+              // Client già disconnesso
             }
           }
           

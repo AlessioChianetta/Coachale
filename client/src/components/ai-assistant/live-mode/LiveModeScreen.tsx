@@ -101,6 +101,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
   const sessionResumeHandleRef = useRef<string | null>(null);
   const isReconnectingRef = useRef(false);
   const reconnectAttemptsRef = useRef<number>(0);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null); // 🆕 P0.3 - Heartbeat per anti-zombie
   const maxReconnectAttempts = Infinity; // Unlimited reconnections for infinite session duration
   const hasShown75MinWarningRef = useRef<boolean>(false);
   const hasShown85MinWarningRef = useRef<boolean>(false);
@@ -816,6 +817,20 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
         await loadBackgroundAudio();
         startBackgroundAudio();
 
+        // 🆕 P0.3 - Avvia heartbeat per anti-zombie (ping ogni 30s)
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+        }
+        heartbeatIntervalRef.current = setInterval(() => {
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            try {
+              wsRef.current.send(JSON.stringify({ type: 'ping' }));
+            } catch (e) {
+              console.warn('⚠️ Failed to send heartbeat ping');
+            }
+          }
+        }, 30000); // Ogni 30 secondi
+
         // Show different toast for resumed vs new session
         const isResuming = sessionResumeHandleRef.current !== null;
         toast({
@@ -853,6 +868,12 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
         // Stop audio when connection closes
         stopCurrentAudio();
+
+        // 🆕 P0.3 - Cancella heartbeat quando connessione chiude
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = null;
+        }
 
         // ===========================================================================
         // 1. GESTIONE PROACTIVE RESTART (Il riavvio tattico dei 7 minuti)
