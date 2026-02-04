@@ -1,0 +1,36 @@
+|voice-br | 
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN] Configuration loaded:
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   WebSocket Server: 0.0.0.0:9090
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   Auth Token: configured
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   Replit WS: wss://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/ws/ai-voice
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   Voice: Puck
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   ESL Connection: 127.0.0.1:8021
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   Max Concurrent Calls: 10
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   Session Timeout: 1800000ms
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN]   Log Level: debug
+7|voice-br | 2026-02-04T00:39:47.512Z [INFO ] [BRIDGE:MAIN] Starting Voice Bridge System...
+7|voice-br | 2026-02-04T00:39:47.516Z [INFO ] [BRIDGE:ESL] Connecting to FreeSWITCH ESL at 127.0.0.1:8021...
+7|voice-br | 2026-02-04T00:39:47.519Z [INFO ] [BRIDGE:SERVER] Voice Bridge Server started on port 9090
+7|voice-br | 2026-02-04T00:39:47.519Z [INFO ] [BRIDGE:SERVER] Outbound endpoint ready at POST /outbound/call
+7|voice-br | 2026-02-04T00:39:47.526Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+
+7|voice-bridge  | 2026-02-04T00:39:57.716Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1770165596945_6mzng0kli targetPhone=1007 aiMode=assistenza
+7|voice-bridge  | 2026-02-04T00:39:57.720Z [INFO ] [BRIDGE:OUTBOUND] Calling internal extension extension=1007
+7|voice-bridge  | 2026-02-04T00:39:57.720Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: sc_1770165596945_6mzng0kli
+7|voice-bridge  | 2026-02-04T00:39:57.720Z [INFO ] [BRIDGE:OUTBOUND] 🎯 SET EXPECTED CALL ID callId=sc_1770165596945_6mzng0kli timestamp=1770165597720
+7|voice-bridge  | 2026-02-04T00:39:57.720Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1770165597720-kedqp8 dialString=user/1007
+7|voice-bridge  | 2026-02-04T00:40:01.364Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=+OK outbound-1770165597720-kedqp8
+7|voice-bridge  | 
+7|voice-bridge  | 2026-02-04T00:40:01.366Z [INFO ] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1770165596945_6mzng0kli uuid=outbound-1770165597720-kedqp8
+7|voice-bridge  | 2026-02-04T00:40:02.081Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=outbound-1770165597720-kedqp8 callerIdNumber=1007 callerIdName=Outbound Call
+7|voice-bridge  | 2026-02-04T00:40:02.081Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call - keeping existing scheduled call ID uuid=outbound-1770165597720-kedqp8
+7|voice-bridge  | 2026-02-04T00:40:02.085Z [INFO ] [BRIDGE:ESL] 🎵 Starting native background music uuid=outbound-1770165597720-kedqp8
+7|voice-bridge  | 2026-02-04T00:40:02.145Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=outbound-1770165597720-kedqp8
+7|voice-bridge  | 2026-02-04T00:40:02.148Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-bridge  | 2026-02-04T00:40:02.148Z [INFO ] [BRIDGE:SERVER] 🔍 PENDING CALL ID CHECK pendingCallId=sc_1770165596945_6mzng0kli hasPending=true timestamp=1770165602148
+7|voice-bridge  | 2026-02-04T00:40:02.148Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=sc_1770165596945_6mzng0kli | CallerId=unknown | CallerName=
+7|voice-bridge  | 2026-02-04T00:40:02.149Z [INFO ] [BRIDGE:SESSION] Session created sessionId=a2716568 callId=sc_1770165596945_6mzng0kli callerId=unknown calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-bridge  | 2026-02-04T00:40:02.655Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=a2716568 url=wss://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/ws/ai-voice voice=Puck
+7|voice-bridge  | 2026-02-04T00:40:03.070Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=a2716568
+7|voice-bridge  | 2026-02-04T00:40:03.070Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=a2716568
+7|voice-bridge  | 2026-02-04T00:40:03.070Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=a2716568 from=connecting to=active

@@ -1,0 +1,20 @@
+|voice-bridge  | 2026-02-04T00:32:54.149Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1770165173352_6ym9pbkgt targetPhone=1007 aiMode=assistenza
+7|voice-bridge  | 2026-02-04T00:32:54.152Z [INFO ] [BRIDGE:OUTBOUND] Calling internal extension extension=1007
+7|voice-bridge  | 2026-02-04T00:32:54.152Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: sc_1770165173352_6ym9pbkgt
+7|voice-bridge  | 2026-02-04T00:32:54.152Z [INFO ] [BRIDGE:OUTBOUND] 🎯 SET EXPECTED CALL ID callId=sc_1770165173352_6ym9pbkgt timestamp=1770165174152
+7|voice-bridge  | 2026-02-04T00:32:54.152Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1770165174152-pypc6h dialString=user/1007
+7|voice-bridge  | 2026-02-04T00:32:56.029Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=+OK outbound-1770165174152-pypc6h
+7|voice-bridge  | 
+7|voice-bridge  | 2026-02-04T00:32:56.030Z [INFO ] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1770165173352_6ym9pbkgt uuid=outbound-1770165174152-pypc6h
+7|voice-bridge  | 2026-02-04T00:32:56.726Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=outbound-1770165174152-pypc6h callerIdNumber=1007 callerIdName=Outbound Call
+7|voice-bridge  | 2026-02-04T00:32:56.726Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: outbound-1770165174152-pypc6h
+7|voice-bridge  | 2026-02-04T00:32:56.726Z [INFO ] [BRIDGE:ESL] 🎵 Starting native background music uuid=outbound-1770165174152-pypc6h
+7|voice-bridge  | 2026-02-04T00:32:56.779Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-bridge  | 2026-02-04T00:32:56.779Z [INFO ] [BRIDGE:SERVER] 🔍 PENDING CALL ID CHECK pendingCallId=outbound-1770165174152-pypc6h hasPending=true timestamp=1770165176779
+7|voice-bridge  | 2026-02-04T00:32:56.779Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=outbound-1770165174152-pypc6h | CallerId=1007 | CallerName=Outbound Call
+7|voice-bridge  | 2026-02-04T00:32:56.779Z [INFO ] [BRIDGE:SESSION] Session created sessionId=87925516 callId=outbound-1770165174152-pypc6h callerId=1007 calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-bridge  | 2026-02-04T00:32:56.797Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=outbound-1770165174152-pypc6h
+7|voice-bridge  | 2026-02-04T00:32:56.908Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=87925516 url=wss://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/ws/ai-voice voice=Puck
+7|voice-bridge  | 2026-02-04T00:32:57.345Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=87925516
+7|voice-bridge  | 2026-02-04T00:32:57.345Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=87925516
+7|voice-bridge  | 2026-02-04T00:32:57.345Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=87925516 from=connecting to=active

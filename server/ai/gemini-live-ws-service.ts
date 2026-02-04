@@ -2719,8 +2719,10 @@ Una volta che hanno capito e confermato:
         let agentId: string | null = null;
         let manualPrompt = '';
         
-        // For INBOUND calls (no callInstruction), isOutbound = false
-        const isOutbound = false; // This block only handles INBOUND (no phoneCallInstruction)
+        // 🎯 FIX: Determine direction based on scheduledCallId presence
+        // If phoneScheduledCallId exists, this is an OUTBOUND call (we initiated it)
+        // Even without a specific instruction, the presence of scheduledCallId means OUTBOUND
+        const isOutbound = !!phoneScheduledCallId;
         
         if (consultantId) {
           try {
@@ -2749,16 +2751,28 @@ Una volta che hanno capito e confermato:
               const settings = settingsResult[0];
               voiceDirectives = settings.voiceDirectives || '';
               
-              // Use INBOUND-specific settings (since this is an INBOUND call - no callInstruction)
-              // Fall back to legacy fields if new fields are not set
-              promptSource = (settings.inboundPromptSource as 'agent' | 'manual' | 'default') 
-                || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
-                || 'default';
-              templateId = settings.inboundTemplateId || 'mini-discovery';
-              agentId = settings.inboundAgentId || settings.nonClientAgentId;
-              manualPrompt = settings.inboundManualPrompt || settings.nonClientManualPrompt || '';
-              
-              console.log(`📞 [${connectionId}] INBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}`);
+              // 🎯 FIX: Use direction-specific settings based on isOutbound
+              if (isOutbound) {
+                // OUTBOUND call - use outbound settings
+                promptSource = (settings.outboundPromptSource as 'agent' | 'manual' | 'default') 
+                  || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
+                  || 'default';
+                templateId = settings.outboundTemplateId || 'sales-call-orbitale';
+                agentId = settings.outboundAgentId || settings.nonClientAgentId;
+                manualPrompt = settings.outboundManualPrompt || settings.nonClientManualPrompt || '';
+                
+                console.log(`📞 [${connectionId}] OUTBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}`);
+              } else {
+                // INBOUND call - use inbound settings
+                promptSource = (settings.inboundPromptSource as 'agent' | 'manual' | 'default') 
+                  || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
+                  || 'default';
+                templateId = settings.inboundTemplateId || 'mini-discovery';
+                agentId = settings.inboundAgentId || settings.nonClientAgentId;
+                manualPrompt = settings.inboundManualPrompt || settings.nonClientManualPrompt || '';
+                
+                console.log(`📞 [${connectionId}] INBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}`);
+              }
             }
           } catch (err) {
             console.warn(`⚠️ [${connectionId}] Could not fetch non-client settings:`, err);
@@ -3195,10 +3209,12 @@ ${brandVoicePrompt}` : ''}`;
           minute: '2-digit'
         });
         
-        // 📊 LOG SCENARIO TABLE FOR NON-CLIENT WITHOUT INSTRUCTION (INBOUND)
+        // 📊 LOG SCENARIO TABLE FOR NON-CLIENT (INBOUND or OUTBOUND based on scheduledCallId)
         const nonClientHasPreviousConvs = previousCallContext ? true : false;
+        const directionLabel = isOutbound ? 'OUTBOUND' : 'INBOUND';
+        const scenarioLabel = isOutbound ? 'OUTBOUND NON-CLIENT (SCENARIO 3)' : 'INBOUND NON-CLIENT (SCENARIO 2)';
         console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
-        console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT INBOUND                 │`);
+        console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT ${directionLabel.padEnd(8)}              │`);
         console.log(`├─────────────────────────────────────────────────────────────────────┤`);
         console.log(`│ Parametro                    │ Valore                              │`);
         console.log(`├─────────────────────────────────────────────────────────────────────┤`);
@@ -3206,13 +3222,19 @@ ${brandVoicePrompt}` : ''}`;
         console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
         console.log(`│ Conversazioni precedenti?    │ ${nonClientHasPreviousConvs ? '✅ SÌ' : '❌ NO'}                               │`);
         console.log(`│ Caller ID                    │ ${(phoneCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+        console.log(`│ Scheduled Call ID            │ ${(phoneScheduledCallId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+        console.log(`│ Direction                    │ ${directionLabel.padEnd(20)}                 │`);
         console.log(`│ Prompt Source                │ ${promptSource.padEnd(20)}                 │`);
         console.log(`│ Template ID                  │ ${templateId.padEnd(20)}                 │`);
         console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-        console.log(`│ 🎯 SCENARIO                  │ INBOUND NON-CLIENT (SCENARIO 2)     │`);
+        console.log(`│ 🎯 SCENARIO                  │ ${scenarioLabel.padEnd(20)}    │`);
         console.log(`├─────────────────────────────────────────────────────────────────────┤`);
         console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
-        if (nonClientHasPreviousConvs) {
+        if (isOutbound) {
+          console.log(`│   → Saluta il prospect (TU stai chiamando LUI)                       │`);
+          console.log(`│   → Usa il template OUTBOUND configurato                             │`);
+          console.log(`│   → Segui lo script di vendita/follow-up                             │`);
+        } else if (nonClientHasPreviousConvs) {
           console.log(`│   → Saluto informale (già parlato prima!)                           │`);
           console.log(`│   → Chiede come può aiutare                                          │`);
           console.log(`│   → Propone appuntamento se appropriato                              │`);
@@ -3726,9 +3748,14 @@ ${historyContent}
             }
           }
           
-          // 📊 LOG SCENARIO TABLE FOR CLIENT INBOUND (SCENARIO 1)
+          // 🎯 FIX: Determine if this is an OUTBOUND call to a client
+          const isClientOutbound = !!phoneScheduledCallId;
+          const clientDirectionLabel = isClientOutbound ? 'OUTBOUND' : 'INBOUND';
+          const clientScenarioLabel = isClientOutbound ? 'OUTBOUND CLIENT (SCENARIO 4)' : 'INBOUND CLIENT (SCENARIO 1)';
+          
+          // 📊 LOG SCENARIO TABLE FOR CLIENT (INBOUND or OUTBOUND)
           console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
-          console.log(`│           📊 SCENARIO DETECTION: CLIENT INBOUND                     │`);
+          console.log(`│           📊 SCENARIO DETECTION: CLIENT ${clientDirectionLabel.padEnd(8)}                   │`);
           console.log(`├─────────────────────────────────────────────────────────────────────┤`);
           console.log(`│ Parametro                    │ Valore                              │`);
           console.log(`├─────────────────────────────────────────────────────────────────────┤`);
@@ -3737,11 +3764,17 @@ ${historyContent}
           console.log(`│ Conversazioni precedenti?    │ ${hasPreviousConversations ? '✅ SÌ' : '❌ NO'}                               │`);
           console.log(`│ Client User ID               │ ${(userId?.toString() || 'N/A').substring(0, 20).padEnd(20)}                 │`);
           console.log(`│ Nome Cliente                 │ ${(inboundClientName || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`│ Scheduled Call ID            │ ${(phoneScheduledCallId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`│ Direction                    │ ${clientDirectionLabel.padEnd(20)}                 │`);
           console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ 🎯 SCENARIO                  │ INBOUND CLIENT (SCENARIO 1)         │`);
+          console.log(`│ 🎯 SCENARIO                  │ ${clientScenarioLabel.padEnd(20)}   │`);
           console.log(`├─────────────────────────────────────────────────────────────────────┤`);
           console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
-          if (hasPreviousConversations) {
+          if (isClientOutbound) {
+            console.log(`│   → Saluta il cliente (TU stai chiamando LUI)                        │`);
+            console.log(`│   → Usa contesto cliente per personalizzare                          │`);
+            console.log(`│   → Segui obiettivo della chiamata schedulata                        │`);
+          } else if (hasPreviousConversations) {
             console.log(`│   → Saluto caloroso ("Ciao ${inboundClientName.substring(0, 15)}! Come stai?")`.padEnd(70) + `│`);
             console.log(`│   → NON si presenta (sa già chi è!)                                 │`);
             console.log(`│   → Chiede come può aiutare                                          │`);

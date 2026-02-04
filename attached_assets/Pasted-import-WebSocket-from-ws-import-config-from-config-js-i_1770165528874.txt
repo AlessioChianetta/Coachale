@@ -1,0 +1,165 @@
+import { WebSocket } from 'ws';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { base64ToPcm, pcmToBase64 } from './audio-converter.js';
+
+const log = logger.child('REPLIT-WS');
+
+export interface ReplitClientOptions {
+  sessionId: string;
+  callerId: string;
+scheduledCallId?: string;
+  mode?: string;
+  voice?: string;
+  onAudioResponse: (audioData: Buffer) => void;
+  onTextResponse?: (text: string) => void;
+  onError: (error: Error) => void;
+  onClose: () => void;
+}
+
+export class ReplitWSClient {
+  private ws: WebSocket | null = null;
+  private sessionId: string;
+  private callerId: string;
+private scheduledCallId?: string;
+  private options: ReplitClientOptions;
+  private isConnected = false;
+  private audioSequence = 0;
+
+  constructor(options: ReplitClientOptions) {
+    this.sessionId = options.sessionId;
+    this.callerId = options.callerId;
+options.scheduledCallId;
+    this.options = options;
+  }
+
+  async connect(): Promise<void> {
+    const mode = this.options.mode || 'phone_service';
+    const voice = this.options.voice || config.voice.voiceId;
+
+    let wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
+
+if (this.scheduledCallId) {
+    wsUrl += `&scheduledCallId=${encodeURIComponent(this.scheduledCallId)}`;
+  }
+
+    log.info(`Connecting to Replit WebSocket`, {
+      sessionId: this.sessionId.slice(0, 8),
+      url: config.replit.wsUrl,
+      voice,
+    });
+
+    return new Promise((resolve, reject) => {
+      this.ws = new WebSocket(wsUrl);
+
+      const connectionTimeout = setTimeout(() => {
+        if (!this.isConnected) {
+          this.ws?.close();
+          reject(new Error('Replit WebSocket connection timeout'));
+        }
+      }, 15000);
+
+      this.ws.on('open', () => {
+        log.info(`Replit WebSocket connected`, { sessionId: this.sessionId.slice(0, 8) });
+        this.isConnected = true;
+        clearTimeout(connectionTimeout);
+        resolve();
+      });
+
+      this.ws.on('message', (data: any, isBinary: boolean) => {
+        // Gestione messaggi in arrivo
+        this.handleMessage(data);
+      });
+
+      this.ws.on('error', (error) => {
+        log.error(`Replit WebSocket error`, {
+          sessionId: this.sessionId.slice(0, 8),
+          error: error.message,
+        });
+        clearTimeout(connectionTimeout);
+        this.options.onError(error);
+        if (!this.isConnected) {
+          reject(error);
+        }
+      });
+
+      this.ws.on('close', (code, reason) => {
+        log.info(`Replit WebSocket closed`, {
+          sessionId: this.sessionId.slice(0, 8),
+          code,
+          reason: reason.toString(),
+        });
+        this.isConnected = false;
+        this.options.onClose();
+      });
+    });
+  }
+
+  private handleMessage(data: any): void {
+    try {
+      const text = data.toString();
+      const message = JSON.parse(text);
+
+      // *** FIX CRITICO: Accettiamo sia 'audio' che 'audio_output' ***
+      if ((message.type === 'audio' || message.type === 'audio_output') && message.data) {
+        // Convertiamo l'audio base64 in PCM e lo mandiamo a FreeSWITCH
+        const audioData = base64ToPcm(message.data);
+        this.options.onAudioResponse(audioData);
+      }
+
+      // Gestione del testo e transcript per debug
+      if ((message.type === 'text' || message.type === 'ai_transcript') && (message.text || message.message)) {
+        const txt = message.text || message.message;
+        log.info(`[AI DICE]: ${txt}`);
+        this.options.onTextResponse?.(txt);
+      }
+
+      if (message.type === 'error') {
+        log.error(`[REPLIT ERROR]: ${message.error || message.message}`);
+      }
+
+    } catch (error) {
+      // Fallback per audio binario puro (se mai dovesse arrivare)
+      if (Buffer.isBuffer(data) && data.length > 0) {
+        try {
+          this.options.onAudioResponse(data);
+        } catch (e) {
+          log.error(`Error handling binary message`, { error: e instanceof Error ? e.message : 'Unknown' });
+        }
+      }
+    }
+  }
+
+  sendAudio(pcmData: Buffer): void {
+    if (!this.isConnected || !this.ws) return;
+
+    const message = {
+      type: 'audio',
+      data: pcmToBase64(pcmData),
+      sequence: this.audioSequence++,
+    };
+    this.send(message);
+  }
+
+  sendText(text: string): void {
+    if (!this.isConnected || !this.ws) return;
+    const message = { type: 'text', text };
+    this.send(message);
+  }
+
+  private send(message: object): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    }
+  }
+
+  close(): void {
+    if (this.ws) {
+      try {
+        this.ws.close(1000, 'Session ended');
+      } catch (e) {}
+      this.ws = null;
+    }
+    this.isConnected = false;
+  }
+}

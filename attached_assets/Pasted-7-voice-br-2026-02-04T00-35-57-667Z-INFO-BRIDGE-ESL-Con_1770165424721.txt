@@ -1,0 +1,72 @@
+7|voice-br | 2026-02-04T00:35:57.667Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+
+7|voice-bridge  | 2026-02-04T00:36:05.193Z [INFO ] [BRIDGE:OUTBOUND] Received outbound call request callId=sc_1770165364416_vuli24t6s targetPhone=1007 aiMode=assistenza
+7|voice-bridge  | 2026-02-04T00:36:05.196Z [INFO ] [BRIDGE:OUTBOUND] Calling internal extension extension=1007
+7|voice-bridge  | 2026-02-04T00:36:05.196Z [INFO ] [BRIDGE:SERVER] Expecting connection for Call ID: sc_1770165364416_vuli24t6s
+7|voice-bridge  | 2026-02-04T00:36:05.196Z [INFO ] [BRIDGE:OUTBOUND] 🎯 SET EXPECTED CALL ID callId=sc_1770165364416_vuli24t6s timestamp=1770165365196
+7|voice-bridge  | 2026-02-04T00:36:05.196Z [INFO ] [BRIDGE:OUTBOUND] Executing originate command uuid=outbound-1770165365196-utm1f4 dialString=user/1007
+7|voice-bridge  | 2026-02-04T00:36:06.467Z [INFO ] [BRIDGE:OUTBOUND] Originate result response=+OK outbound-1770165365196-utm1f4
+7|voice-bridge  | 
+7|voice-bridge  | 2026-02-04T00:36:06.468Z [INFO ] [BRIDGE:OUTBOUND] Call originated successfully callId=sc_1770165364416_vuli24t6s uuid=outbound-1770165365196-utm1f4
+7|voice-bridge  | 2026-02-04T00:36:07.189Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=outbound-1770165365196-utm1f4 callerIdNumber=1007 callerIdName=Outbound Call
+7|voice-bridge  | 2026-02-04T00:36:07.190Z [INFO ] [BRIDGE:ESL] 📞 OUTBOUND call - keeping existing scheduled call ID uuid=outbound-1770165365196-utm1f4
+7|voice-bridge  | 2026-02-04T00:36:07.190Z [INFO ] [BRIDGE:ESL] 🎵 Starting native background music uuid=outbound-1770165365196-utm1f4
+7|voice-bridge  | 2026-02-04T00:36:07.241Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=outbound-1770165365196-utm1f4
+7|voice-bridge  | 2026-02-04T00:36:07.244Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+7|voice-bridge  | 2026-02-04T00:36:07.244Z [INFO ] [BRIDGE:SERVER] 🔍 PENDING CALL ID CHECK pendingCallId=sc_1770165364416_vuli24t6s hasPending=true timestamp=1770165367244
+7|voice-bridge  | 2026-02-04T00:36:07.244Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=sc_1770165364416_vuli24t6s | CallerId=unknown | CallerName=
+7|voice-bridge  | 2026-02-04T00:36:07.247Z [INFO ] [BRIDGE:SESSION] Session created sessionId=8874b76b callId=sc_1770165364416_vuli24t6s callerId=unknown calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+7|voice-bridge  | 2026-02-04T00:36:07.759Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=8874b76b url=wss://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/ws/ai-voice voice=Puck
+7|voice-bridge  | 2026-02-04T00:36:08.200Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=8874b76b
+7|voice-bridge  | 2026-02-04T00:36:08.200Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=8874b76b
+7|voice-bridge  | 2026-02-04T00:36:08.201Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=8874b76b from=connecting to=active
+7|voice-bridge  | 2026-02-04T00:36:13.866Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao jax.stamile!
+7|voice-bridge  | 2026-02-04T00:36:13.867Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao jax.stamile!"
+7|voice-bridge  | 2026-02-04T00:36:14.214Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Sono
+7|voice-bridge  | 2026-02-04T00:36:14.214Z [INFO ] [BRIDGE:SERVER] [AI]: " Sono"
+7|voice-bridge  | 2026-02-04T00:36:14.262Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Alessia,
+7|voice-bridge  | 2026-02-04T00:36:14.262Z [INFO ] [BRIDGE:SERVER] [AI]: " Alessia,"
+7|voice-bridge  | 2026-02-04T00:36:14.405Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ti assisto
+7|voice-bridge  | 2026-02-04T00:36:14.405Z [INFO ] [BRIDGE:SERVER] [AI]: " ti assisto"
+7|voice-bridge  | 2026-02-04T00:36:14.670Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  per conto
+7|voice-bridge  | 2026-02-04T00:36:14.670Z [INFO ] [BRIDGE:SERVER] [AI]: " per conto"
+7|voice-bridge  | 2026-02-04T00:36:14.873Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di Alessio
+7|voice-bridge  | 2026-02-04T00:36:14.873Z [INFO ] [BRIDGE:SERVER] [AI]: " di Alessio"
+7|voice-bridge  | 2026-02-04T00:36:14.989Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Chianetta.
+7|voice-bridge  | 2026-02-04T00:36:14.989Z [INFO ] [BRIDGE:SERVER] [AI]: " Chianetta."
+7|voice-bridge  | 2026-02-04T00:36:15.188Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Dimmi
+7|voice-bridge  | 2026-02-04T00:36:15.188Z [INFO ] [BRIDGE:SERVER] [AI]: " Dimmi"
+7|voice-bridge  | 2026-02-04T00:36:15.387Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  pure,
+7|voice-bridge  | 2026-02-04T00:36:15.387Z [INFO ] [BRIDGE:SERVER] [AI]: " pure,"
+7|voice-bridge  | 2026-02-04T00:36:15.469Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  come posso
+7|voice-bridge  | 2026-02-04T00:36:15.469Z [INFO ] [BRIDGE:SERVER] [AI]: " come posso"
+7|voice-bridge  | 2026-02-04T00:36:15.635Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti?
+7|voice-bridge  | 2026-02-04T00:36:15.635Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti?"
+7|voice-bridge  | 2026-02-04T00:36:24.307Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ah, scusa!
+7|voice-bridge  | 2026-02-04T00:36:24.307Z [INFO ] [BRIDGE:SERVER] [AI]: "Ah, scusa!"
+7|voice-bridge  | 2026-02-04T00:36:24.803Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Ti dicevo,
+7|voice-bridge  | 2026-02-04T00:36:24.804Z [INFO ] [BRIDGE:SERVER] [AI]: " Ti dicevo,"
+7|voice-bridge  | 2026-02-04T00:36:24.915Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sono
+7|voice-bridge  | 2026-02-04T00:36:24.915Z [INFO ] [BRIDGE:SERVER] [AI]: " sono"
+7|voice-bridge  | 2026-02-04T00:36:24.938Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Alessia,
+7|voice-bridge  | 2026-02-04T00:36:24.938Z [INFO ] [BRIDGE:SERVER] [AI]: " Alessia,"
+7|voice-bridge  | 2026-02-04T00:36:25.020Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  l'assistente
+7|voice-bridge  | 2026-02-04T00:36:25.020Z [INFO ] [BRIDGE:SERVER] [AI]: " l'assistente"
+7|voice-bridge  | 2026-02-04T00:36:25.196Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  digitale
+7|voice-bridge  | 2026-02-04T00:36:25.197Z [INFO ] [BRIDGE:SERVER] [AI]: " digitale"
+7|voice-bridge  | 2026-02-04T00:36:25.234Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  del team
+7|voice-bridge  | 2026-02-04T00:36:25.235Z [INFO ] [BRIDGE:SERVER] [AI]: " del team"
+7|voice-bridge  | 2026-02-04T00:36:25.332Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di Alessio
+7|voice-bridge  | 2026-02-04T00:36:25.332Z [INFO ] [BRIDGE:SERVER] [AI]: " di Alessio"
+7|voice-bridge  | 2026-02-04T00:36:25.391Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Chianetta!
+7|voice-bridge  | 2026-02-04T00:36:25.391Z [INFO ] [BRIDGE:SERVER] [AI]: " Chianetta!"
+7|voice-bridge  | 2026-02-04T00:36:25.623Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Sono
+7|voice-bridge  | 2026-02-04T00:36:25.623Z [INFO ] [BRIDGE:SERVER] [AI]: " Sono"
+7|voice-bridge  | 2026-02-04T00:36:25.789Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  qui per
+7|voice-bridge  | 2026-02-04T00:36:25.790Z [INFO ] [BRIDGE:SERVER] [AI]: " qui per"
+7|voice-bridge  | 2026-02-04T00:36:25.905Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti.
+7|voice-bridge  | 2026-02-04T00:36:25.905Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti."
+7|voice-bridge  | 2026-02-04T00:36:26.169Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Cosa
+7|voice-bridge  | 2026-02-04T00:36:26.169Z [INFO ] [BRIDGE:SERVER] [AI]: " Cosa"
+7|voice-bridge  | 2026-02-04T00:36:26.400Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ti serve?
+7|voice-bridge  | 2026-02-04T00:36:26.400Z [INFO ] [BRIDGE:SERVER] [AI]: " ti serve?"
