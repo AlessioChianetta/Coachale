@@ -4745,12 +4745,12 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       </div>
                                     )}
                                     
-                                    {/* Date specifiche */}
+                                    {/* Date specifiche con data + ora */}
                                     {newTaskData.recurrence_type === 'specific_dates' && (
-                                      <div className="space-y-3 pt-2 animate-in slide-in-from-top-2 duration-200">
+                                      <div className="space-y-4 pt-2 animate-in slide-in-from-top-2 duration-200">
                                         <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                                           <CalendarCheck className="h-3.5 w-3.5" />
-                                          Aggiungi date specifiche
+                                          Aggiungi data e ora specifiche
                                         </Label>
                                         <div className="flex gap-2">
                                           <Input 
@@ -4759,50 +4759,76 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                             className="flex-1 h-10 bg-white dark:bg-slate-700"
                                             min={format(new Date(), 'yyyy-MM-dd')}
                                           />
+                                          <Input 
+                                            type="time" 
+                                            id="add-specific-time"
+                                            defaultValue="10:00"
+                                            className="w-24 h-10 bg-white dark:bg-slate-700 [color-scheme:light] dark:[color-scheme:dark]"
+                                          />
                                           <Button 
                                             type="button" 
-                                            variant="outline"
+                                            variant="default"
+                                            className="h-10 bg-violet-600 hover:bg-violet-700"
                                             onClick={() => {
-                                              const input = document.getElementById('add-specific-date') as HTMLInputElement;
-                                              if (input?.value) {
-                                                const currentDates = (newTaskData as any).specific_dates || [];
-                                                if (!currentDates.includes(input.value)) {
-                                                  setNewTaskData({...newTaskData, specific_dates: [...currentDates, input.value].sort()} as any);
+                                              const dateInput = document.getElementById('add-specific-date') as HTMLInputElement;
+                                              const timeInput = document.getElementById('add-specific-time') as HTMLInputElement;
+                                              if (dateInput?.value && timeInput?.value) {
+                                                const newEntry = { date: dateInput.value, time: timeInput.value };
+                                                const currentEntries = (newTaskData as any).specific_datetime || [];
+                                                const exists = currentEntries.some((e: any) => e.date === newEntry.date && e.time === newEntry.time);
+                                                if (!exists) {
+                                                  const updated = [...currentEntries, newEntry].sort((a: any, b: any) => {
+                                                    const dateCompare = a.date.localeCompare(b.date);
+                                                    return dateCompare !== 0 ? dateCompare : a.time.localeCompare(b.time);
+                                                  });
+                                                  setNewTaskData({...newTaskData, specific_datetime: updated} as any);
                                                 }
-                                                input.value = '';
+                                                dateInput.value = '';
                                               }
                                             }}
-                                            className="h-10"
                                           >
-                                            <Plus className="h-4 w-4" />
+                                            <Plus className="h-4 w-4 mr-1" />
+                                            Aggiungi
                                           </Button>
                                         </div>
-                                        {((newTaskData as any).specific_dates || []).length > 0 && (
-                                          <div className="flex flex-wrap gap-2 mt-2">
-                                            {((newTaskData as any).specific_dates || []).map((date: string, idx: number) => (
-                                              <Badge 
+                                        
+                                        {/* Lista date aggiunte */}
+                                        {((newTaskData as any).specific_datetime || []).length > 0 && (
+                                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                                            {((newTaskData as any).specific_datetime || []).map((entry: {date: string, time: string}, idx: number) => (
+                                              <div 
                                                 key={idx} 
-                                                variant="secondary" 
-                                                className="px-3 py-1.5 text-sm bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300"
+                                                className="flex items-center justify-between p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800"
                                               >
-                                                {format(new Date(date), 'EEE d MMM', { locale: it })}
+                                                <div className="flex items-center gap-3">
+                                                  <CalendarDays className="h-4 w-4 text-violet-600" />
+                                                  <span className="font-medium text-sm">
+                                                    {format(new Date(entry.date), 'EEEE d MMMM', { locale: it })}
+                                                  </span>
+                                                  <Badge variant="outline" className="border-violet-300 text-violet-700">
+                                                    {entry.time}
+                                                  </Badge>
+                                                </div>
                                                 <button 
                                                   type="button"
                                                   onClick={() => {
-                                                    const updated = ((newTaskData as any).specific_dates || []).filter((_: any, i: number) => i !== idx);
-                                                    setNewTaskData({...newTaskData, specific_dates: updated} as any);
+                                                    const updated = ((newTaskData as any).specific_datetime || []).filter((_: any, i: number) => i !== idx);
+                                                    setNewTaskData({...newTaskData, specific_datetime: updated} as any);
                                                   }}
-                                                  className="ml-2 hover:text-red-500"
+                                                  className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
                                                 >
-                                                  <X className="h-3 w-3" />
+                                                  <Trash2 className="h-4 w-4 text-red-500" />
                                                 </button>
-                                              </Badge>
+                                              </div>
                                             ))}
                                           </div>
                                         )}
-                                        <p className="text-xs text-muted-foreground">
-                                          Ogni data selezionata verrà chiamata alle <span className="font-semibold">{newTaskData.scheduled_time || '00:00'}</span>
-                                        </p>
+                                        
+                                        {((newTaskData as any).specific_datetime || []).length === 0 && (
+                                          <p className="text-xs text-muted-foreground text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                                            Nessuna data aggiunta. Seleziona data e ora sopra.
+                                          </p>
+                                        )}
                                       </div>
                                     )}
 
@@ -4838,21 +4864,17 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                           <Timer className="h-3.5 w-3.5" />
                                           Intervallo retry
                                         </Label>
-                                        <Select 
-                                          value={String(newTaskData.retry_delay_minutes || 15)} 
-                                          onValueChange={(v) => setNewTaskData({...newTaskData, retry_delay_minutes: parseInt(v)})}
+                                        <select
+                                          value={String(newTaskData.retry_delay_minutes || 15)}
+                                          onChange={(e) => setNewTaskData({...newTaskData, retry_delay_minutes: parseInt(e.target.value)})}
+                                          className="h-9 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 text-sm"
                                         >
-                                          <SelectTrigger className="h-9 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="5">5 min</SelectItem>
-                                            <SelectItem value="10">10 min</SelectItem>
-                                            <SelectItem value="15">15 min</SelectItem>
-                                            <SelectItem value="30">30 min</SelectItem>
-                                            <SelectItem value="60">1 ora</SelectItem>
-                                          </SelectContent>
-                                        </Select>
+                                          <option value="5">5 min</option>
+                                          <option value="10">10 min</option>
+                                          <option value="15">15 min</option>
+                                          <option value="30">30 min</option>
+                                          <option value="60">1 ora</option>
+                                        </select>
                                       </div>
 
                                       {/* Data fine (solo per daily/weekly) */}
