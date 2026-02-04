@@ -910,6 +910,11 @@ export default function ConsultantVoiceCallsPage() {
   const [aiTasksFilter, setAITasksFilter] = useState("all");
   const [aiTasksPage, setAITasksPage] = useState(1);
   const [aiTasksView, setAITasksView] = useState<'list' | 'calendar'>('list');
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{day: Date, hour: number} | null>(null);
+  const [dragEnd, setDragEnd] = useState<{day: Date, hour: number} | null>(null);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [quickCreatePosition, setQuickCreatePosition] = useState<{x: number, y: number} | null>(null);
   const [aiTaskExpandedCategory, setAITaskExpandedCategory] = useState<string | null>(null);
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [aiTaskSelectedTemplate, setAITaskSelectedTemplate] = useState<TemplateItem | null>(null);
@@ -4023,7 +4028,17 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                             </div>
 
                             {/* Griglia oraria con scroll */}
-                            <div className="relative overflow-auto" style={{ maxHeight: '600px' }}>
+                            <div 
+                              className="relative overflow-auto" 
+                              style={{ maxHeight: '600px' }}
+                              onMouseLeave={() => {
+                                if (isDragging) {
+                                  setIsDragging(false);
+                                  setDragStart(null);
+                                  setDragEnd(null);
+                                }
+                              }}
+                            >
                               <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0" style={{ minHeight: hours.length * HOUR_HEIGHT }}>
                                 {/* Colonna ore */}
                                 <div className="relative">
@@ -4051,11 +4066,51 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       {hours.map((hour) => (
                                         <div
                                           key={hour}
-                                          className="absolute w-full border-t border-dashed border-muted-foreground/20 cursor-pointer hover:bg-primary/5 transition-colors"
+                                          className="absolute w-full border-t border-dashed border-muted-foreground/20 cursor-pointer hover:bg-primary/5 transition-colors select-none"
                                           style={{ top: (hour - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                                          onClick={() => handleCalendarSlotClick(day, hour)}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            setShowQuickCreate(false);
+                                            setIsDragging(true);
+                                            setDragStart({ day, hour });
+                                            setDragEnd({ day, hour });
+                                          }}
+                                          onMouseMove={() => {
+                                            if (isDragging && dragStart && isSameDay(dragStart.day, day)) {
+                                              setDragEnd({ day, hour });
+                                            }
+                                          }}
+                                          onMouseUp={(e) => {
+                                            if (isDragging && dragStart) {
+                                              const startH = Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour);
+                                              const endH = Math.max(dragStart.hour, dragEnd?.hour || dragStart.hour) + 1;
+                                              setNewTaskData({
+                                                ...newTaskData,
+                                                scheduled_date: format(dragStart.day, 'yyyy-MM-dd'),
+                                                scheduled_time: `${startH.toString().padStart(2, '0')}:00`
+                                              });
+                                              setQuickCreatePosition({ x: e.clientX, y: e.clientY });
+                                              setShowQuickCreate(true);
+                                            }
+                                            setIsDragging(false);
+                                          }}
                                         />
                                       ))}
+
+                                      {/* Drag preview */}
+                                      {isDragging && dragStart && dragEnd && isSameDay(dragStart.day, day) && (
+                                        <div
+                                          className="absolute left-1 right-1 bg-purple-400/50 border-2 border-purple-500 border-dashed rounded z-20 pointer-events-none"
+                                          style={{
+                                            top: (Math.min(dragStart.hour, dragEnd.hour) - START_HOUR) * HOUR_HEIGHT,
+                                            height: (Math.abs(dragEnd.hour - dragStart.hour) + 1) * HOUR_HEIGHT
+                                          }}
+                                        >
+                                          <div className="text-xs text-purple-700 dark:text-purple-300 p-1 font-medium">
+                                            {Math.min(dragStart.hour, dragEnd.hour).toString().padStart(2,'0')}:00 - {(Math.max(dragStart.hour, dragEnd.hour) + 1).toString().padStart(2,'0')}:00
+                                          </div>
+                                        </div>
+                                      )}
 
                                       {/* AI Tasks - viola */}
                                       {dayTasks.map((task: AITask) => {
@@ -4127,9 +4182,86 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                               </div>
                               <div className="flex items-center gap-1 ml-auto text-muted-foreground">
                                 <Clock className="h-3 w-3" />
-                                <span>Clicca su uno slot per programmare</span>
+                                <span>Trascina per selezionare un intervallo</span>
                               </div>
                             </div>
+
+                            {/* Quick Create Popover */}
+                            {showQuickCreate && quickCreatePosition && (
+                              <div 
+                                className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border p-4 w-80"
+                                style={{ 
+                                  left: Math.max(8, Math.min(quickCreatePosition.x, window.innerWidth - 340)),
+                                  top: Math.max(8, Math.min(quickCreatePosition.y - 100, window.innerHeight - 400))
+                                }}
+                              >
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-semibold">Nuova Chiamata AI</h4>
+                                  <Button variant="ghost" size="sm" onClick={() => {
+                                    setShowQuickCreate(false);
+                                    setDragStart(null);
+                                    setDragEnd(null);
+                                  }}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                
+                                <div className="text-sm text-muted-foreground mb-3">
+                                  {dragStart && format(dragStart.day, 'EEEE d MMMM', { locale: it })}
+                                  {' • '}
+                                  {dragStart && Math.min(dragStart.hour, dragEnd?.hour || dragStart.hour).toString().padStart(2,'0')}:00
+                                  {' - '}
+                                  {dragEnd && (Math.max(dragStart?.hour || 0, dragEnd.hour) + 1).toString().padStart(2,'0')}:00
+                                </div>
+
+                                <div className="space-y-3">
+                                  <Input 
+                                    placeholder="Numero telefono *" 
+                                    value={newTaskData.contact_phone}
+                                    onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})}
+                                  />
+                                  <Input 
+                                    placeholder="Nome (opzionale)" 
+                                    value={newTaskData.contact_name}
+                                    onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})}
+                                  />
+                                  <Textarea 
+                                    placeholder="Istruzione per l'AI..."
+                                    className="min-h-[80px]"
+                                    value={newTaskData.ai_instruction}
+                                    onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      variant="outline" 
+                                      className="flex-1"
+                                      onClick={() => {
+                                        setShowQuickCreate(false);
+                                        setDragStart(null);
+                                        setDragEnd(null);
+                                      }}
+                                    >
+                                      Annulla
+                                    </Button>
+                                    <Button 
+                                      className="flex-1"
+                                      disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
+                                      onClick={() => {
+                                        createAITaskMutation.mutate(newTaskData, {
+                                          onSuccess: () => {
+                                            setShowQuickCreate(false);
+                                            setDragStart(null);
+                                            setDragEnd(null);
+                                          }
+                                        });
+                                      }}
+                                    >
+                                      {createAITaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salva'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </>
                         );
                       })()}
