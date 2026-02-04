@@ -929,7 +929,7 @@ export default function ConsultantVoiceCallsPage() {
   const [quickCreateExpandedCategory, setQuickCreateExpandedCategory] = useState<string | null>(null);
   const [quickCreateSelectedTemplate, setQuickCreateSelectedTemplate] = useState<TemplateItem | null>(null);
   const [quickCreateTemplateValues, setQuickCreateTemplateValues] = useState<Record<string, string>>({});
-  const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call'; data: any } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call' | 'history'; data: any } | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [newTaskData, setNewTaskData] = useState({
     contact_phone: '',
@@ -1230,28 +1230,38 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 15000,
   });
 
-  // Calendar data query (fetches both AI tasks and scheduled calls for calendar view)
+  // Calendar data query (fetches AI tasks, scheduled calls, and voice call history for unified calendar view)
   const { data: calendarData } = useQuery({
     queryKey: ["calendar-data", calendarWeekStart.toISOString()],
     queryFn: async () => {
-      const [tasksRes, callsRes] = await Promise.all([
+      const weekEnd = addDays(calendarWeekStart, 7);
+      const fromDate = calendarWeekStart.toISOString();
+      const toDate = weekEnd.toISOString();
+      
+      const [tasksRes, scheduledRes, historyRes] = await Promise.all([
         fetch(`/api/voice/ai-tasks?limit=100`, { headers: getAuthHeaders() }),
-        fetch(`/api/voice/outbound/scheduled`, { headers: getAuthHeaders() })
+        fetch(`/api/voice/outbound/scheduled`, { headers: getAuthHeaders() }),
+        fetch(`/api/voice/calls?from=${fromDate}&to=${toDate}&limit=100`, { headers: getAuthHeaders() })
       ]);
       
       const tasksData = await tasksRes.json();
-      const callsData = await callsRes.json();
+      const scheduledData = await scheduledRes.json();
+      const historyData = await historyRes.json();
       
       return {
         aiTasks: (tasksData.tasks || []).filter((t: AITask) => {
           const taskDate = new Date(t.scheduled_at);
-          return taskDate >= calendarWeekStart && taskDate < addDays(calendarWeekStart, 7);
+          return taskDate >= calendarWeekStart && taskDate < weekEnd;
         }),
-        scheduledCalls: (callsData.calls || []).filter((c: any) => {
+        scheduledCalls: (scheduledData.calls || []).filter((c: any) => {
           if (!c.scheduled_at) return false;
-          if (c.status !== 'pending') return false; // Solo chiamate pending
+          if (!['pending', 'retry_scheduled'].includes(c.status)) return false;
           const callDate = new Date(c.scheduled_at);
-          return callDate >= calendarWeekStart && callDate < addDays(calendarWeekStart, 7);
+          return callDate >= calendarWeekStart && callDate < weekEnd;
+        }),
+        voiceCallHistory: (historyData.calls || []).filter((c: any) => {
+          const callDate = new Date(c.started_at);
+          return callDate >= calendarWeekStart && callDate < weekEnd;
         })
       };
     },
@@ -3971,6 +3981,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   const isToday = isSameDay(day, new Date());
                                   const dayTasks = calendarData?.aiTasks?.filter((t: AITask) => isSameDay(new Date(t.scheduled_at), day)) || [];
                                   const dayCalls = calendarData?.scheduledCalls?.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day)) || [];
+                                  const dayHistory = calendarData?.voiceCallHistory?.filter((c: any) => c.started_at && isSameDay(new Date(c.started_at), day)) || [];
                                   
                                   // Altezza fissa per eventi puntuali (non range)
                                   const EVENT_HEIGHT = 32;
@@ -3987,6 +3998,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       ...c, 
                                       type: 'call' as const, 
                                       time: new Date(c.scheduled_at).getHours() + new Date(c.scheduled_at).getMinutes() / 60 
+                                    })),
+                                    ...dayHistory.map((c: any) => ({ 
+                                      ...c, 
+                                      type: 'history' as const, 
+                                      time: new Date(c.started_at).getHours() + new Date(c.started_at).getMinutes() / 60 
                                     }))
                                   ].sort((a, b) => a.time - b.time);
                                   
@@ -4141,6 +4157,49 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               </div>
                                               <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
                                                 {format(callDate, 'HH:mm')}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+
+                                      {/* Voice Call History - Chiamate effettuate (verde) */}
+                                      {dayHistory.map((call: any) => {
+                                        const callDate = new Date(call.started_at);
+                                        const callHour = callDate.getHours() + callDate.getMinutes() / 60;
+                                        const top = (callHour - START_HOUR) * HOUR_HEIGHT;
+                                        if (callHour < START_HOUR || callHour > END_HOUR) return null;
+                                        const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
+                                        const isNarrow = pos.width < 40;
+                                        const statusColor = call.status === 'completed' 
+                                          ? 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700' 
+                                          : call.status === 'failed' 
+                                            ? 'bg-red-500 hover:bg-red-600 border-red-700'
+                                            : 'bg-gray-500 hover:bg-gray-600 border-gray-700';
+                                        return (
+                                          <div
+                                            key={call.id}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedEvent({ type: 'history', data: call });
+                                              setShowEventDetails(true);
+                                            }}
+                                            className={`absolute ${statusColor} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px]`}
+                                            style={{ 
+                                              top: top, 
+                                              height: EVENT_HEIGHT,
+                                              left: `calc(${pos.left}% + 2px)`,
+                                              width: `calc(${pos.width}% - 4px)`,
+                                              minWidth: '60px'
+                                            }}
+                                            title={`${call.caller_id} → ${call.called_number} - ${format(callDate, 'HH:mm')} - ${call.duration_seconds ? `${Math.floor(call.duration_seconds / 60)}:${(call.duration_seconds % 60).toString().padStart(2, '0')}` : 'N/A'}`}
+                                          >
+                                            <div className="px-1.5 py-0.5 h-full flex flex-col justify-center">
+                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[9px]' : 'text-[11px]'}`}>
+                                                {call.client_name || call.called_number}
+                                              </div>
+                                              <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
+                                                {format(callDate, 'HH:mm')} {call.duration_seconds ? `(${Math.floor(call.duration_seconds / 60)}m)` : ''}
                                               </div>
                                             </div>
                                           </div>
