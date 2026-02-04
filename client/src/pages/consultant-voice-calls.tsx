@@ -1471,6 +1471,7 @@ export default function ConsultantVoiceCallsPage() {
         voice_template_id: undefined
       });
       refetchAITasks();
+      queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       toast({ title: "Task creato!", description: "La chiamata AI è stata programmata" });
     },
     onError: (err: Error) => {
@@ -1492,6 +1493,7 @@ export default function ConsultantVoiceCallsPage() {
     },
     onSuccess: () => {
       refetchAITasks();
+      queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       toast({ title: "Task avviato!", description: "La chiamata è in corso" });
     },
     onError: (err: Error) => {
@@ -1513,6 +1515,7 @@ export default function ConsultantVoiceCallsPage() {
     },
     onSuccess: () => {
       refetchAITasks();
+      queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       toast({ title: "Task in pausa" });
     },
     onError: (err: Error) => {
@@ -1534,6 +1537,7 @@ export default function ConsultantVoiceCallsPage() {
     },
     onSuccess: () => {
       refetchAITasks();
+      queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       toast({ title: "Task eliminato" });
     },
     onError: (err: Error) => {
