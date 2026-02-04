@@ -277,6 +277,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isLoadingGoldAccess, setIsLoadingGoldAccess] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
 
   const [enableInAIAssistant, setEnableInAIAssistant] = useState(false);
@@ -1099,9 +1100,6 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
   const agentData = data?.agent;
   const features = agentData?.features;
-  
-  // State for Gold access loading
-  const [isLoadingGoldAccess, setIsLoadingGoldAccess] = useState(false);
   
   // Handle access as Gold employee
   const handleAccessAsGold = async () => {

@@ -1,0 +1,213 @@
+injected.js:37 Warning: React has detected a change in the order of Hooks called by AgentProfilePanel. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useContext                 useContext
+2. useSyncExternalStore       useSyncExternalStore
+3. useRef                     useRef
+4. useInsertionEffect         useInsertionEffect
+5. useState                   useState
+6. useEffect                  useEffect
+7. useContext                 useContext
+8. useState                   useState
+9. useState                   useState
+10. useState                  useState
+11. useState                  useState
+12. useState                  useState
+13. useState                  useState
+14. useState                  useState
+15. useState                  useState
+16. useState                  useState
+17. useState                  useState
+18. useContext                useContext
+19. useContext                useContext
+20. useContext                useContext
+21. useEffect                 useEffect
+22. useState                  useState
+23. useCallback               useCallback
+24. useSyncExternalStore      useSyncExternalStore
+25. useEffect                 useEffect
+26. useState                  useState
+27. useState                  useState
+28. useState                  useState
+29. useState                  useState
+30. useState                  useState
+31. useState                  useState
+32. useState                  useState
+33. useState                  useState
+34. useState                  useState
+35. useState                  useState
+36. useState                  useState
+37. useState                  useState
+38. useContext                useContext
+39. useContext                useContext
+40. useContext                useContext
+41. useEffect                 useEffect
+42. useState                  useState
+43. useCallback               useCallback
+44. useSyncExternalStore      useSyncExternalStore
+45. useEffect                 useEffect
+46. useContext                useContext
+47. useContext                useContext
+48. useContext                useContext
+49. useEffect                 useEffect
+50. useState                  useState
+51. useCallback               useCallback
+52. useSyncExternalStore      useSyncExternalStore
+53. useEffect                 useEffect
+54. useEffect                 useEffect
+55. useEffect                 useEffect
+56. useEffect                 useEffect
+57. useContext                useContext
+58. useState                  useState
+59. useEffect                 useEffect
+60. useCallback               useCallback
+61. useSyncExternalStore      useSyncExternalStore
+62. useCallback               useCallback
+63. useContext                useContext
+64. useState                  useState
+65. useEffect                 useEffect
+66. useCallback               useCallback
+67. useSyncExternalStore      useSyncExternalStore
+68. useCallback               useCallback
+69. useContext                useContext
+70. useContext                useContext
+71. useContext                useContext
+72. useEffect                 useEffect
+73. useState                  useState
+74. useCallback               useCallback
+75. useSyncExternalStore      useSyncExternalStore
+76. useEffect                 useEffect
+77. useContext                useContext
+78. useState                  useState
+79. useEffect                 useEffect
+80. useCallback               useCallback
+81. useSyncExternalStore      useSyncExternalStore
+82. useCallback               useCallback
+83. useContext                useContext
+84. useContext                useContext
+85. useContext                useContext
+86. useEffect                 useEffect
+87. useState                  useState
+88. useCallback               useCallback
+89. useSyncExternalStore      useSyncExternalStore
+90. useEffect                 useEffect
+91. useContext                useContext
+92. useState                  useState
+93. useEffect                 useEffect
+94. useCallback               useCallback
+95. useSyncExternalStore      useSyncExternalStore
+96. useCallback               useCallback
+97. useContext                useContext
+98. useContext                useContext
+99. useContext                useContext
+100. useEffect                useEffect
+101. useState                 useState
+102. useCallback              useCallback
+103. useSyncExternalStore     useSyncExternalStore
+104. useEffect                useEffect
+105. useContext               useContext
+106. useContext               useContext
+107. useContext               useContext
+108. useEffect                useEffect
+109. useState                 useState
+110. useCallback              useCallback
+111. useSyncExternalStore     useSyncExternalStore
+112. useEffect                useEffect
+113. useEffect                useEffect
+114. useContext               useContext
+115. useState                 useState
+116. useEffect                useEffect
+117. useCallback              useCallback
+118. useSyncExternalStore     useSyncExternalStore
+119. useCallback              useCallback
+120. useEffect                useEffect
+121. useContext               useContext
+122. useContext               useContext
+123. useContext               useContext
+124. useEffect                useEffect
+125. useState                 useState
+126. useCallback              useCallback
+127. useSyncExternalStore     useSyncExternalStore
+128. useEffect                useEffect
+129. useEffect                useEffect
+130. undefined                useState
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    at AgentProfilePanel (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/whatsapp/AgentProfilePanel.tsx:337:37)
+    at div
+    at div
+    at div
+    at div
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:230:13
+    at Presence (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-7QGJQHFX.js?v=98a5f318:24:11)
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=98a5f318:174:13
+    at _c5 (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:230:13
+    at Provider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=98a5f318:51:7
+    at div
+    at div
+    at main
+    at div
+    at div
+    at WhatsAppLayout (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/whatsapp/WhatsAppLayout.tsx:32:3)
+    at ConsultantWhatsAppPage (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/pages/consultant-whatsapp.tsx:933:24)
+    at AuthGuard (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:226:16)
+    at Switch (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:283:17)
+    at Suspense
+    at Router (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=xo9oq8-_wsptXeN5fVckR:314:35)
+    at Provider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at TooltipProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=98a5f318:158:5)
+    at TourProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=98a5f318:3096:3)
+    at V (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:44:25)
+    at J (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:42:18)
+    at App (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=xo9oq8-_wsptXeN5fVckR:1981:22)
+
+2
+chunk-RPCDYKBN.js?v=98a5f318:11678 Uncaught Error: Rendered more hooks than during the previous render.
+    at AgentProfilePanel (AgentProfilePanel.tsx:1104:57)
+injected.js:37 The above error occurred in the <AgentProfilePanel> component:
+
+    at AgentProfilePanel (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/whatsapp/AgentProfilePanel.tsx:337:37)
+    at div
+    at div
+    at div
+    at div
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:230:13
+    at Presence (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-7QGJQHFX.js?v=98a5f318:24:11)
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=98a5f318:174:13
+    at _c5 (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:230:13
+    at Provider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=98a5f318:51:7
+    at div
+    at div
+    at main
+    at div
+    at div
+    at WhatsAppLayout (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/whatsapp/WhatsAppLayout.tsx:32:3)
+    at ConsultantWhatsAppPage (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/pages/consultant-whatsapp.tsx:933:24)
+    at AuthGuard (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:226:16)
+    at Switch (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=98a5f318:283:17)
+    at Suspense
+    at Router (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=xo9oq8-_wsptXeN5fVckR:314:35)
+    at Provider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=98a5f318:44:15)
+    at TooltipProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=98a5f318:158:5)
+    at TourProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=98a5f318:3096:3)
+    at V (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:44:25)
+    at J (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=98a5f318:42:18)
+    at App (https://15745b7c-9f35-480b-88be-b4fb3b4f0b47-00-27kbswqszlbtu.worf.replit.dev/src/App.tsx?v=xo9oq8-_wsptXeN5fVckR:1981:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=98a5f318:9129 Uncaught Error: Rendered more hooks than during the previous render.
+    at AgentProfilePanel (AgentProfilePanel.tsx:1104:57)
