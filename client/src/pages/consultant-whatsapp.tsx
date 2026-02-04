@@ -144,6 +144,7 @@ import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import archieAvatar from "@assets/generated_images/archie_ai_builder_avatar.png";
 import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
+import alessiaAvatar from "@assets/avatars/alessia-avatar.png";
 import ceoAvatar from "@assets/generated_images/realistic_ceo_businessman_headshot.png";
 import {
   Table,
@@ -2051,6 +2052,27 @@ export default function ConsultantWhatsAppPage() {
                 }}
                 ctaLabel="Gestisci Email Hub"
                 ctaHref="/consultant/email-hub"
+              />
+
+              {/* Card 8 - Alessia */}
+              <TeamMemberCard
+                name="Alessia"
+                role="Voice Consultant"
+                avatar={alessiaAvatar}
+                quote="Ti chiamo per supportarti e seguirti nel tuo percorso, proprio come farebbe una consulente umana."
+                accentColor="rose"
+                features={[
+                  { icon: Phone, label: "Chiamate AI Personalizzate" },
+                  { icon: Calendar, label: "Programmazione Flessibile" },
+                  { icon: Heart, label: "Supporto Proattivo" },
+                ]}
+                details={{
+                  audience: "Clienti che preferiscono il contatto telefonico e hanno bisogno di un supporto più personale e diretto nel loro percorso",
+                  whatIDo: "Ti chiamo quando hai bisogno o quando penso che ti serva una mano. Posso programmarmi per chiamarti quando vuoi tu, oppure contattarti proattivamente per fare il punto della situazione",
+                  howIDoIt: "Uso la voce AI per conversare naturalmente al telefono, mi collego al tuo calendario per programmare chiamate, e analizzo il tuo percorso per capire quando è il momento giusto per un check-in"
+                }}
+                ctaLabel="Gestisci Chiamate AI"
+                ctaHref="/consultant/whatsapp?tab=voice"
               />
             </div>
           </TabsContent>
