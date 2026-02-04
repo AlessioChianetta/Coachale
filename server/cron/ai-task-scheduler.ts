@@ -131,51 +131,102 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
 }
 
 /**
+ * Generate unique ID for scheduled calls
+ */
+function generateScheduledCallId(): string {
+  return `sc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
  * Initiate voice call through existing outbound system
+ * Now creates a scheduled_voice_call record first, so calls appear in "Chiamate Programmate"
  */
 async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: boolean; reason?: string; callId?: string }> {
   try {
-    // Get consultant's VPS settings
+    // Get consultant's VPS settings from availability settings (not voice_settings)
     const settingsResult = await db.execute(sql`
       SELECT 
-        voice_vps_host,
-        voice_vps_port,
-        voice_service_token
-      FROM consultant_voice_settings
+        vps_bridge_url
+      FROM consultant_availability_settings
       WHERE consultant_id = ${task.consultant_id}
     `);
     
-    const settings = settingsResult.rows[0] as any;
+    const vpsUrl = (settingsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
     
-    if (!settings?.voice_vps_host || !settings?.voice_service_token) {
+    if (!vpsUrl) {
       return { 
         success: false, 
-        reason: 'VPS not configured for this consultant' 
+        reason: 'VPS URL not configured for this consultant' 
       };
     }
     
-    // Create the outbound call via VPS
-    const vpsUrl = `http://${settings.voice_vps_host}:${settings.voice_vps_port || 3000}/outbound/call`;
+    // Get service token
+    const tokenResult = await db.execute(sql`
+      SELECT token FROM voice_service_tokens 
+      WHERE consultant_id = ${task.consultant_id} AND revoked_at IS NULL
+      ORDER BY created_at DESC LIMIT 1
+    `);
     
-    const response = await fetch(vpsUrl, {
+    const token = (tokenResult.rows[0] as any)?.token;
+    if (!token) {
+      return { 
+        success: false, 
+        reason: 'No service token configured' 
+      };
+    }
+    
+    // 1. Create a scheduled_voice_call record FIRST (so it appears in "Chiamate Programmate")
+    const scheduledCallId = generateScheduledCallId();
+    
+    await db.execute(sql`
+      INSERT INTO scheduled_voice_calls (
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode,
+        custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
+        priority, source_task_id, created_at, updated_at
+      ) VALUES (
+        ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone}, 
+        NOW(), 'calling', 'ai',
+        ${task.ai_instruction}, ${task.ai_instruction}, 
+        ${task.task_type === 'single_call' ? 'task' : 'reminder'},
+        1, ${task.max_attempts || 3},
+        1, ${task.id}, NOW(), NOW()
+      )
+    `);
+    
+    console.log(`📋 [AI-SCHEDULER] Created scheduled_voice_call ${scheduledCallId} for task ${task.id}`);
+    
+    // 2. Call VPS outbound endpoint with the scheduled call ID
+    const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
+    
+    const response = await fetch(outboundUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.voice_service_token}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        phone: task.contact_phone,
-        consultantId: task.consultant_id,
-        contactName: task.contact_name,
-        customInstruction: task.ai_instruction,
-        templateId: task.voice_template_id,
-        sourceTaskId: task.id
+        targetPhone: task.contact_phone,
+        callId: scheduledCallId,
+        aiMode: 'ai',
+        customPrompt: task.ai_instruction,
+        callInstruction: task.ai_instruction,
+        instructionType: task.task_type === 'single_call' ? 'task' : 'reminder',
+        sourceTaskId: task.id,
+        contactName: task.contact_name
       })
     });
     
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ [AI-SCHEDULER] VPS error: ${errorText}`);
+      
+      // Update scheduled_voice_call as failed
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'failed', error_message = ${`VPS error: ${response.status}`}, updated_at = NOW()
+        WHERE id = ${scheduledCallId}
+      `);
+      
       return { 
         success: false, 
         reason: `VPS error: ${response.status}` 
@@ -184,11 +235,11 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
     
     const result = await response.json();
     
-    console.log(`✅ [AI-SCHEDULER] Call initiated for task ${task.id}: ${result.callId}`);
+    console.log(`✅ [AI-SCHEDULER] Call initiated for task ${task.id} via scheduled call ${scheduledCallId}`);
     
     return { 
       success: true, 
-      callId: result.callId 
+      callId: scheduledCallId 
     };
     
   } catch (error: any) {
@@ -201,25 +252,23 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
 }
 
 /**
- * Handle successful task execution
+ * Handle successful task initiation (NOT completion - callback will handle final status)
  */
 async function handleSuccess(task: AIScheduledTask, result: { callId?: string }): Promise<void> {
-  console.log(`✅ [AI-SCHEDULER] Task ${task.id} completed successfully`);
+  console.log(`✅ [AI-SCHEDULER] Task ${task.id} call initiated successfully (callId: ${result.callId})`);
   
+  // Keep status as 'in_progress' - the callback will update to 'completed' or 'failed'
+  // Just save the callId reference so we can track it
   await db.execute(sql`
     UPDATE ai_scheduled_tasks 
-    SET status = 'completed',
-        result_summary = 'Chiamata avviata con successo',
+    SET result_summary = 'Chiamata in corso...',
         voice_call_id = ${result.callId || null},
-        completed_at = NOW(),
         updated_at = NOW()
     WHERE id = ${task.id}
   `);
   
-  // If recurrent, schedule next occurrence
-  if (task.recurrence_type !== 'once') {
-    await scheduleNextRecurrence(task);
-  }
+  // Note: recurrence scheduling now happens in callback when call actually completes
+  // This prevents creating next occurrence before current call finishes
 }
 
 /**
@@ -254,10 +303,9 @@ async function handleFailure(task: AIScheduledTask, reason: string): Promise<voi
       WHERE id = ${task.id}
     `);
     
-    // If recurrent, still schedule next occurrence even if this one failed
-    if (task.recurrence_type !== 'once') {
-      await scheduleNextRecurrence(task);
-    }
+    // NOTE: Recurrence is NOT scheduled here on failure
+    // The callback will handle recurrence when a call actually completes successfully
+    // This prevents duplicate recurrence scheduling
   }
 }
 
@@ -383,3 +431,8 @@ export function initAITaskScheduler(): void {
 export async function triggerAITaskProcessing(): Promise<void> {
   await processAITasks();
 }
+
+/**
+ * Export scheduleNextRecurrence for use by callback when call completes
+ */
+export { scheduleNextRecurrence, calculateNextDate };

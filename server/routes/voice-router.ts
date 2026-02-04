@@ -16,6 +16,7 @@ import jwt from "jsonwebtoken";
 import { consultantAvailabilitySettings, users } from "@shared/schema";
 import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections } from "../ai/gemini-live-ws-service";
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
+import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -1908,17 +1909,17 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     }
     
     const consultantId = decoded.consultantId;
-    const { callId, status, duration_seconds, hangup_cause } = req.body;
+    const { callId, status, duration_seconds, hangup_cause, sourceTaskId, voiceCallId } = req.body;
     
     if (!callId || !status) {
       return res.status(400).json({ error: 'callId and status are required' });
     }
     
-    console.log(`📞 [Callback] Received for call ${callId}: status=${status}, duration=${duration_seconds}s, cause=${hangup_cause}`);
+    console.log(`📞 [Callback] Received for call ${callId}: status=${status}, duration=${duration_seconds}s, cause=${hangup_cause}, sourceTaskId=${sourceTaskId || 'none'}, voiceCallId=${voiceCallId || 'none'}`);
     
     // Check if call exists and belongs to this consultant
     const callResult = await db.execute(sql`
-      SELECT id, attempts, max_attempts, consultant_id FROM scheduled_voice_calls 
+      SELECT id, attempts, max_attempts, consultant_id, source_task_id FROM scheduled_voice_calls 
       WHERE id = ${callId}
     `);
     
@@ -1938,6 +1939,9 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     const currentAttempts = call.attempts || 1;
     const maxAttempts = call.max_attempts || 3;
     
+    // Resolve task ID: use sourceTaskId from payload, or fallback to source_task_id from DB
+    const resolvedTaskId = sourceTaskId || call.source_task_id;
+    
     // Handle based on status
     const retryableStatuses = ['no_answer', 'busy', 'short_call'];
     
@@ -1948,10 +1952,41 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
         SET status = 'completed',
             duration_seconds = ${duration_seconds || 0},
             hangup_cause = ${hangup_cause || null},
+            voice_call_id = ${voiceCallId || null},
             last_attempt_at = NOW(),
             updated_at = NOW()
         WHERE id = ${callId}
       `);
+      
+      // Sync with AI Task if this call originated from one (use resolvedTaskId which includes fallback from DB)
+      if (resolvedTaskId) {
+        // Get task data first for recurrence handling
+        const taskResult = await db.execute(sql`
+          SELECT * FROM ai_scheduled_tasks WHERE id = ${resolvedTaskId}
+        `);
+        const task = taskResult.rows[0] as any;
+        
+        await db.execute(sql`
+          UPDATE ai_scheduled_tasks 
+          SET status = 'completed',
+              result_summary = ${'Chiamata completata con successo' + (duration_seconds ? ` (${duration_seconds}s)` : '')},
+              voice_call_id = ${voiceCallId || callId},
+              completed_at = NOW(),
+              updated_at = NOW()
+          WHERE id = ${resolvedTaskId}
+        `);
+        console.log(`🔗 [Callback] Synced AI Task ${resolvedTaskId} -> completed`);
+        
+        // Handle recurrence if applicable
+        if (task && task.recurrence_type && task.recurrence_type !== 'once') {
+          try {
+            await scheduleNextRecurrence(task);
+            console.log(`📅 [Callback] Scheduled next recurrence for task ${resolvedTaskId}`);
+          } catch (recErr: any) {
+            console.error(`⚠️ [Callback] Failed to schedule recurrence:`, recErr.message);
+          }
+        }
+      }
       
       console.log(`✅ [Callback] Call ${callId} completed successfully (duration: ${duration_seconds}s)`);
       return res.json({ success: true, message: 'Call marked as completed' });
@@ -1964,11 +1999,26 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
         SET status = 'failed',
             duration_seconds = ${duration_seconds || 0},
             hangup_cause = ${hangup_cause || null},
+            voice_call_id = ${voiceCallId || null},
             error_message = ${hangup_cause || 'Call failed'},
             last_attempt_at = NOW(),
             updated_at = NOW()
         WHERE id = ${callId}
       `);
+      
+      // Sync with AI Task if this call originated from one
+      if (resolvedTaskId) {
+        await db.execute(sql`
+          UPDATE ai_scheduled_tasks 
+          SET status = 'failed',
+              result_summary = ${'Chiamata fallita: ' + (hangup_cause || 'errore sconosciuto')},
+              voice_call_id = ${voiceCallId || callId},
+              completed_at = NOW(),
+              updated_at = NOW()
+          WHERE id = ${resolvedTaskId}
+        `);
+        console.log(`🔗 [Callback] Synced AI Task ${resolvedTaskId} -> failed`);
+      }
       
       console.log(`❌ [Callback] Call ${callId} failed permanently: ${hangup_cause}`);
       return res.json({ success: true, message: 'Call marked as failed' });
@@ -1997,11 +2047,26 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
               attempts = ${currentAttempts + 1},
               duration_seconds = ${duration_seconds || 0},
               hangup_cause = ${hangup_cause || null},
+              voice_call_id = ${voiceCallId || null},
               last_attempt_at = NOW(),
               next_retry_at = NOW() + INTERVAL '${sql.raw(String(retryDelaySeconds))} seconds',
               updated_at = NOW()
           WHERE id = ${callId}
         `);
+        
+        // Sync with AI Task if this call originated from one
+        if (resolvedTaskId) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks 
+            SET status = 'retry_pending',
+                current_attempt = current_attempt + 1,
+                result_summary = ${'Retry programmato: ' + status + '. Tentativo ' + (currentAttempts + 1) + '/' + maxAttempts},
+                next_retry_at = NOW() + INTERVAL '${sql.raw(String(retryDelaySeconds))} seconds',
+                updated_at = NOW()
+            WHERE id = ${resolvedTaskId}
+          `);
+          console.log(`🔗 [Callback] Synced AI Task ${resolvedTaskId} -> retry_pending`);
+        }
         
         // Schedule timer for retry
         const timer = setTimeout(() => {
@@ -2027,11 +2092,26 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
               retry_reason = ${status},
               duration_seconds = ${duration_seconds || 0},
               hangup_cause = ${hangup_cause || null},
+              voice_call_id = ${voiceCallId || null},
               error_message = ${'Max attempts reached: ' + status},
               last_attempt_at = NOW(),
               updated_at = NOW()
           WHERE id = ${callId}
         `);
+        
+        // Sync with AI Task if this call originated from one
+        if (resolvedTaskId) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks 
+            SET status = 'failed',
+                result_summary = ${'Fallito dopo ' + maxAttempts + ' tentativi: ' + status},
+                voice_call_id = ${voiceCallId || callId},
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${resolvedTaskId}
+          `);
+          console.log(`🔗 [Callback] Synced AI Task ${resolvedTaskId} -> failed (max attempts)`);
+        }
         
         console.log(`❌ [Callback] Call ${callId} failed after ${maxAttempts} attempts (reason: ${status})`);
         return res.json({ 
@@ -2049,10 +2129,29 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
       SET status = ${status},
           duration_seconds = ${duration_seconds || 0},
           hangup_cause = ${hangup_cause || null},
+          voice_call_id = ${voiceCallId || null},
           last_attempt_at = NOW(),
           updated_at = NOW()
       WHERE id = ${callId}
     `);
+    
+    // Sync with AI Task if this call originated from one
+    if (resolvedTaskId) {
+      // Map status to ai_scheduled_tasks status
+      let aiTaskStatus = status;
+      if (status === 'calling' || status === 'ringing' || status === 'talking') {
+        aiTaskStatus = 'in_progress';
+      }
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks 
+        SET status = ${aiTaskStatus},
+            result_summary = ${'Stato: ' + status},
+            voice_call_id = ${voiceCallId || callId},
+            updated_at = NOW()
+        WHERE id = ${resolvedTaskId}
+      `);
+      console.log(`🔗 [Callback] Synced AI Task ${resolvedTaskId} -> ${aiTaskStatus}`);
+    }
     
     console.log(`📞 [Callback] Call ${callId} updated with status: ${status}`);
     return res.json({ success: true, message: `Call updated with status: ${status}` });
@@ -2494,6 +2593,164 @@ router.get("/ai-tasks-stats", authenticateToken, requireAnyRole(["consultant", "
   } catch (error: any) {
     console.error("[AI-TASKS] Error fetching stats:", error);
     return res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
+// POST /api/voice/sync-call-states - Sincronizza stati tra scheduled_voice_calls e ai_scheduled_tasks
+router.post("/sync-call-states", authenticateToken, requireAnyRole(["super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    console.log("🔄 [SYNC] Starting manual state synchronization...");
+    
+    let synced = 0;
+    let errors = 0;
+    
+    // 1. Sync scheduled_voice_calls -> ai_scheduled_tasks (by source_task_id)
+    const callsWithTasks = await db.execute(sql`
+      SELECT svc.id as call_id, svc.status as call_status, svc.source_task_id,
+             ast.id as task_id, ast.status as task_status
+      FROM scheduled_voice_calls svc
+      INNER JOIN ai_scheduled_tasks ast ON svc.source_task_id = ast.id
+      WHERE svc.status != ast.status
+        AND svc.source_task_id IS NOT NULL
+        AND svc.status IN ('completed', 'failed', 'cancelled')
+    `);
+    
+    for (const row of callsWithTasks.rows as any[]) {
+      try {
+        await db.execute(sql`
+          UPDATE ai_scheduled_tasks 
+          SET status = ${row.call_status},
+              result_summary = ${'Sincronizzato da scheduled_voice_call ' + row.call_id},
+              updated_at = NOW()
+          WHERE id = ${row.task_id}
+        `);
+        console.log(`🔗 [SYNC] Synced task ${row.task_id} -> ${row.call_status}`);
+        synced++;
+      } catch (e: any) {
+        console.error(`❌ [SYNC] Failed to sync task ${row.task_id}:`, e.message);
+        errors++;
+      }
+    }
+    
+    // 2. Sync ai_scheduled_tasks -> scheduled_voice_calls (by voice_call_id)
+    const tasksWithCalls = await db.execute(sql`
+      SELECT ast.id as task_id, ast.status as task_status, ast.voice_call_id,
+             svc.id as call_id, svc.status as call_status
+      FROM ai_scheduled_tasks ast
+      INNER JOIN scheduled_voice_calls svc ON ast.voice_call_id = svc.id
+      WHERE ast.status != svc.status
+        AND ast.voice_call_id IS NOT NULL
+        AND ast.status IN ('completed', 'failed', 'cancelled')
+    `);
+    
+    for (const row of tasksWithCalls.rows as any[]) {
+      try {
+        await db.execute(sql`
+          UPDATE scheduled_voice_calls 
+          SET status = ${row.task_status},
+              updated_at = NOW()
+          WHERE id = ${row.call_id}
+        `);
+        console.log(`🔗 [SYNC] Synced call ${row.call_id} -> ${row.task_status}`);
+        synced++;
+      } catch (e: any) {
+        console.error(`❌ [SYNC] Failed to sync call ${row.call_id}:`, e.message);
+        errors++;
+      }
+    }
+    
+    // 3. Sync non-terminal statuses (in_progress, retry_pending) - use most recent updated_at as source of truth
+    const nonTerminalMismatches = await db.execute(sql`
+      SELECT svc.id as call_id, svc.status as call_status, svc.updated_at as call_updated,
+             ast.id as task_id, ast.status as task_status, ast.updated_at as task_updated
+      FROM scheduled_voice_calls svc
+      INNER JOIN ai_scheduled_tasks ast ON svc.source_task_id = ast.id
+      WHERE svc.status != ast.status
+        AND svc.source_task_id IS NOT NULL
+        AND (svc.status IN ('in_progress', 'retry_pending', 'calling', 'ringing', 'talking', 'pending', 'scheduled')
+             OR ast.status IN ('in_progress', 'retry_pending', 'scheduled'))
+    `);
+    
+    for (const row of nonTerminalMismatches.rows as any[]) {
+      try {
+        const callUpdated = new Date(row.call_updated).getTime();
+        const taskUpdated = new Date(row.task_updated).getTime();
+        
+        if (callUpdated > taskUpdated) {
+          // Call is more recent - update task
+          let mappedStatus = row.call_status;
+          if (['calling', 'ringing', 'talking'].includes(mappedStatus)) {
+            mappedStatus = 'in_progress';
+          }
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks 
+            SET status = ${mappedStatus},
+                result_summary = ${'Sincronizzato da chiamata (stato non-terminale)'},
+                updated_at = NOW()
+            WHERE id = ${row.task_id}
+          `);
+          console.log(`🔗 [SYNC] Synced task ${row.task_id} -> ${mappedStatus} (from call)`);
+        } else {
+          // Task is more recent - update call
+          await db.execute(sql`
+            UPDATE scheduled_voice_calls 
+            SET status = ${row.task_status},
+                updated_at = NOW()
+            WHERE id = ${row.call_id}
+          `);
+          console.log(`🔗 [SYNC] Synced call ${row.call_id} -> ${row.task_status} (from task)`);
+        }
+        synced++;
+      } catch (e: any) {
+        console.error(`❌ [SYNC] Failed to sync non-terminal mismatch:`, e.message);
+        errors++;
+      }
+    }
+    
+    // 4. Fix orphaned in_progress tasks (older than 30 min)
+    const orphanedTasks = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'failed',
+          result_summary = 'Timeout - nessun callback ricevuto',
+          updated_at = NOW()
+      WHERE status = 'in_progress'
+        AND updated_at < NOW() - INTERVAL '30 minutes'
+      RETURNING id
+    `);
+    
+    const orphanedCount = orphanedTasks.rows.length;
+    if (orphanedCount > 0) {
+      console.log(`⚠️ [SYNC] Marked ${orphanedCount} orphaned in_progress tasks as failed`);
+    }
+    
+    // 5. Fix orphaned in_progress scheduled_voice_calls (older than 30 min)
+    const orphanedCalls = await db.execute(sql`
+      UPDATE scheduled_voice_calls
+      SET status = 'failed',
+          error_message = 'Timeout - nessun callback ricevuto',
+          updated_at = NOW()
+      WHERE status IN ('in_progress', 'calling', 'ringing', 'talking')
+        AND updated_at < NOW() - INTERVAL '30 minutes'
+      RETURNING id
+    `);
+    
+    const orphanedCallsCount = orphanedCalls.rows.length;
+    if (orphanedCallsCount > 0) {
+      console.log(`⚠️ [SYNC] Marked ${orphanedCallsCount} orphaned in_progress calls as failed`);
+    }
+    
+    console.log(`✅ [SYNC] Synchronization complete: ${synced} synced, ${errors} errors, ${orphanedCount} orphaned tasks fixed, ${orphanedCallsCount} orphaned calls fixed`);
+    
+    return res.json({
+      success: true,
+      synced,
+      errors,
+      orphanedTasksFixed: orphanedCount,
+      orphanedCallsFixed: orphanedCallsCount
+    });
+  } catch (error: any) {
+    console.error("[SYNC] Error during sync:", error);
+    return res.status(500).json({ error: "Sync failed", details: error.message });
   }
 });
 
