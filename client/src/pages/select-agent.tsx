@@ -551,13 +551,18 @@ export default function SelectAgent() {
   }
 
   const handleSelectAgent = (agent: Agent) => {
-    if (agent.publicSlug) {
+    // Use publicSlug if available, otherwise fall back to agent id
+    const agentIdentifier = agent.publicSlug || agent.id;
+    
+    if (agentIdentifier) {
       // Store agent slug for auth-guard routing
-      localStorage.setItem('agentSlug', agent.publicSlug);
+      localStorage.setItem('agentSlug', agentIdentifier);
       
       // All users (Bronze/Silver/Gold) go to agent chat when selecting an agent
-      console.log("[SELECT-AGENT] Redirecting to agent chat:", agent.publicSlug);
-      navigate(`/agent/${agent.publicSlug}/chat`);
+      console.log("[SELECT-AGENT] Redirecting to agent chat:", agentIdentifier);
+      navigate(`/agent/${agentIdentifier}/chat`);
+    } else {
+      console.error("[SELECT-AGENT] No agent identifier available:", agent);
     }
   };
 
