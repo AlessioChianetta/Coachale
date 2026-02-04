@@ -1100,12 +1100,10 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const agentData = data?.agent;
   const features = agentData?.features;
   
-  // URL per accesso dipendente: preferisci publicSlug (Level 1) altrimenti share attivo
-  const agentAccessUrl = agentData?.publicSlug 
-    ? `/ai/${agentData.publicSlug}` 
-    : activeShare?.slug 
-      ? `/agent/${activeShare.slug}` 
-      : null;
+  // URL per accesso dipendente: usa /agent/{slug}/chat (stessa pagina dipendenti Gold)
+  const agentAccessUrl = activeShare?.slug 
+    ? `/agent/${activeShare.slug}/chat` 
+    : null;
 
   const statusConfig = {
     active: { label: "Attivo", color: "bg-green-100 text-green-700" },
