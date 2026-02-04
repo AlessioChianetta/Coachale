@@ -5104,23 +5104,33 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       </div>
                                       
                                       {/* Stato */}
-                                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                                        <div className={`w-3 h-3 rounded-full ${
-                                          selectedEvent.data.status === 'pending' || selectedEvent.data.status === 'scheduled' ? 'bg-amber-500' :
-                                          selectedEvent.data.status === 'completed' ? 'bg-green-500' :
-                                          selectedEvent.data.status === 'failed' || selectedEvent.data.status === 'no_answer' || selectedEvent.data.status === 'busy' ? 'bg-red-500' :
-                                          selectedEvent.data.status === 'calling' || selectedEvent.data.status === 'in_progress' || selectedEvent.data.status === 'ringing' ? 'bg-blue-500 animate-pulse' :
-                                          'bg-gray-400'
-                                        }`} />
-                                        <div>
-                                          <p className="font-medium capitalize">{selectedEvent.data.status}</p>
-                                          {selectedEvent.type !== 'history' && selectedEvent.data.attempt_count && (
-                                            <p className="text-sm text-muted-foreground">
-                                              Tentativo {selectedEvent.data.attempt_count}/{selectedEvent.data.max_attempts || 3}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
+                                      {(() => {
+                                        const statusConfig = selectedEvent.type === 'history' 
+                                          ? (STATUS_CONFIG[selectedEvent.data.status] || STATUS_CONFIG.ended)
+                                          : (OUTBOUND_STATUS_CONFIG[selectedEvent.data.status] || OUTBOUND_STATUS_CONFIG.pending);
+                                        const StatusIcon = selectedEvent.type === 'history' && 'icon' in statusConfig && typeof statusConfig.icon !== 'string' 
+                                          ? statusConfig.icon as React.ComponentType<{className?: string}>
+                                          : null;
+                                        return (
+                                          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                                            <Badge className={`${statusConfig.color} text-white text-xs`}>
+                                              {selectedEvent.type === 'history' && StatusIcon ? (
+                                                <StatusIcon className="h-3 w-3 mr-1" />
+                                              ) : (
+                                                'icon' in statusConfig && typeof statusConfig.icon === 'string' && (
+                                                  <span className="mr-1">{statusConfig.icon}</span>
+                                                )
+                                              )}
+                                              {statusConfig.label}
+                                            </Badge>
+                                            {selectedEvent.type !== 'history' && selectedEvent.data.attempt_count && (
+                                              <p className="text-sm text-muted-foreground">
+                                                Tentativo {selectedEvent.data.attempt_count}/{selectedEvent.data.max_attempts || 3}
+                                              </p>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
                                       
                                       {/* Dettagli chiamata per history */}
                                       {selectedEvent.type === 'history' && (
