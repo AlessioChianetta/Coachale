@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import {
   Users,
   UserCheck,
@@ -16,6 +17,9 @@ import {
   FileText,
   ArrowRight,
   Shield,
+  Plug,
+  Zap,
+  Loader2,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -35,6 +39,8 @@ interface AdminStats {
 export default function AdminDashboard() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: statsData, isLoading } = useQuery({
     queryKey: ["/api/admin/stats"],
@@ -44,6 +50,43 @@ export default function AdminDashboard() {
       });
       if (!response.ok) throw new Error("Failed to fetch admin stats");
       return response.json();
+    },
+  });
+
+  const { data: geminiConnectionsData } = useQuery({
+    queryKey: ["/api/voice/gemini-connections"],
+    queryFn: async () => {
+      const response = await fetch("/api/voice/gemini-connections", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { count: 0, connections: [] };
+      return response.json();
+    },
+    refetchInterval: 5000,
+  });
+
+  const killAllGeminiMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/voice/gemini-connections/kill-all", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to kill connections");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Connessioni terminate",
+        description: `Chiuse ${data.closed} connessioni Gemini`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/gemini-connections"] });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile terminare le connessioni",
+        variant: "destructive",
+      });
     },
   });
 
@@ -176,6 +219,60 @@ export default function AdminDashboard() {
               );
             })}
           </div>
+
+          {/* Gemini Connections Card */}
+          <Card className="border-0 shadow-lg mb-6 md:mb-8 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-xl ${
+                    geminiConnectionsData?.count && geminiConnectionsData.count > 0 
+                      ? "bg-orange-500" 
+                      : "bg-gray-400"
+                  }`}>
+                    <Plug className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Connessioni Gemini Attive
+                    </p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                      {geminiConnectionsData?.count || 0}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  size="default"
+                  onClick={() => killAllGeminiMutation.mutate()}
+                  disabled={killAllGeminiMutation.isPending}
+                >
+                  {killAllGeminiMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Zap className="h-4 w-4 mr-2" />
+                  )}
+                  Kill All
+                </Button>
+              </div>
+              {geminiConnectionsData?.connections && geminiConnectionsData.connections.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {geminiConnectionsData.connections.map((conn: any) => (
+                    <div key={conn.connectionId} className="flex items-center justify-between p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg text-sm">
+                      <span className="font-mono text-xs">{conn.connectionId}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{conn.mode}</Badge>
+                        <Badge variant={conn.status === 'active' ? 'default' : 'secondary'}>
+                          {conn.status}
+                        </Badge>
+                        <span className="text-gray-500">{conn.duration}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             <Card className="md:col-span-2 lg:col-span-2 border-0 shadow-lg">
