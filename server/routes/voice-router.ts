@@ -1005,10 +1005,14 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
         inbound_template_id,
         inbound_agent_id,
         inbound_manual_prompt,
+        inbound_brand_voice_enabled,
+        inbound_brand_voice_agent_id,
         outbound_prompt_source,
         outbound_template_id,
         outbound_agent_id,
-        outbound_manual_prompt
+        outbound_manual_prompt,
+        outbound_brand_voice_enabled,
+        outbound_brand_voice_agent_id
       FROM consultant_availability_settings 
       WHERE consultant_id = ${consultantId}
     `);
