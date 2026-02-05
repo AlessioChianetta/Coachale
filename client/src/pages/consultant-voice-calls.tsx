@@ -1028,6 +1028,11 @@ export default function ConsultantVoiceCallsPage() {
   const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call' | 'history'; data: any } | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  // Delete confirmation dialog states
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [deleteMode, setDeleteMode] = useState<'single' | 'all' | 'until_date'>('single');
+  const [deleteUntilDate, setDeleteUntilDate] = useState('');
   // Cluster state per eventi raggruppati
   const [showClusterPopover, setShowClusterPopover] = useState(false);
   const [clusterEvents, setClusterEvents] = useState<any[]>([]);
@@ -1796,8 +1801,14 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   const deleteAITaskMutation = useMutation({
-    mutationFn: async (taskId: string) => {
-      const res = await fetch(`/api/voice/ai-tasks/${taskId}`, {
+    mutationFn: async ({ taskId, mode, untilDate }: { taskId: string; mode?: 'single' | 'all' | 'until_date'; untilDate?: string }) => {
+      const params = new URLSearchParams();
+      if (mode) params.set('mode', mode);
+      if (untilDate) params.set('until_date', untilDate);
+      const queryString = params.toString();
+      const url = `/api/voice/ai-tasks/${taskId}${queryString ? `?${queryString}` : ''}`;
+      
+      const res = await fetch(url, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
@@ -1807,10 +1818,20 @@ export default function ConsultantVoiceCallsPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       refetchAITasks();
       queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
-      toast({ title: "Task eliminato" });
+      const modeLabels = {
+        single: "Ricorrenze future interrotte",
+        all: "Task eliminato completamente",
+        until_date: "Data di fine ricorrenza impostata"
+      };
+      toast({ title: modeLabels[variables.mode || 'all'] || "Task eliminato" });
+      // Reset delete dialog state
+      setShowDeleteDialog(false);
+      setDeleteTaskId(null);
+      setDeleteMode('single');
+      setDeleteUntilDate('');
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -4294,7 +4315,18 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               size="sm"
                                               variant="ghost"
                                               className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                              onClick={() => deleteAITaskMutation.mutate(task.id)}
+                                              onClick={() => {
+                                                setDeleteTaskId(task.id);
+                                                // Se è ricorrente, mostra il dialog con le opzioni
+                                                if (task.recurrence_type && task.recurrence_type !== 'once') {
+                                                  setDeleteMode('single');
+                                                  setDeleteUntilDate('');
+                                                  setShowDeleteDialog(true);
+                                                } else {
+                                                  // Se non è ricorrente, elimina direttamente
+                                                  deleteAITaskMutation.mutate({ taskId: task.id });
+                                                }
+                                              }}
                                               disabled={deleteAITaskMutation.isPending}
                                             >
                                               <Trash2 className="h-4 w-4" />
@@ -6498,8 +6530,17 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                               disabled={deleteAITaskMutation.isPending}
                                               onClick={() => {
-                                                if (confirm('Sei sicuro di voler cancellare questo evento?')) {
-                                                  deleteAITaskMutation.mutate(selectedEvent.data.id, {
+                                                const data = selectedEvent.data;
+                                                setDeleteTaskId(data.id);
+                                                // Se è ricorrente, mostra il dialog con le opzioni
+                                                if (data.recurrence_type && data.recurrence_type !== 'once') {
+                                                  setDeleteMode('single');
+                                                  setDeleteUntilDate('');
+                                                  setShowEventDetails(false);
+                                                  setShowDeleteDialog(true);
+                                                } else {
+                                                  // Se non è ricorrente, elimina direttamente
+                                                  deleteAITaskMutation.mutate({ taskId: data.id }, {
                                                     onSuccess: () => {
                                                       setShowEventDetails(false);
                                                       setSelectedEvent(null);
@@ -6558,6 +6599,128 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     })()}
                                   </>
                                 )}
+                              </DialogContent>
+                            </Dialog>
+                            
+                            {/* Delete Confirmation Dialog for Recurring Tasks */}
+                            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-900/30">
+                                      <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                    </div>
+                                    <div>
+                                      <DialogTitle className="text-lg">Elimina Evento Ricorrente</DialogTitle>
+                                      <DialogDescription>
+                                        Scegli cosa eliminare
+                                      </DialogDescription>
+                                    </div>
+                                  </div>
+                                </DialogHeader>
+                                
+                                <div className="space-y-4 py-4">
+                                  <div className="space-y-3">
+                                    <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+                                      <input 
+                                        type="radio" 
+                                        name="deleteMode" 
+                                        value="single" 
+                                        checked={deleteMode === 'single'}
+                                        onChange={() => setDeleteMode('single')}
+                                        className="mt-1"
+                                      />
+                                      <div>
+                                        <p className="font-medium">Interrompi da oggi</p>
+                                        <p className="text-sm text-muted-foreground">
+                                          Ferma le ricorrenze future a partire da oggi
+                                        </p>
+                                      </div>
+                                    </label>
+                                    
+                                    <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+                                      <input 
+                                        type="radio" 
+                                        name="deleteMode" 
+                                        value="all" 
+                                        checked={deleteMode === 'all'}
+                                        onChange={() => setDeleteMode('all')}
+                                        className="mt-1"
+                                      />
+                                      <div>
+                                        <p className="font-medium">Elimina completamente</p>
+                                        <p className="text-sm text-muted-foreground">
+                                          Rimuove l'intero task programmato e tutte le ricorrenze
+                                        </p>
+                                      </div>
+                                    </label>
+                                    
+                                    <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+                                      <input 
+                                        type="radio" 
+                                        name="deleteMode" 
+                                        value="until_date" 
+                                        checked={deleteMode === 'until_date'}
+                                        onChange={() => setDeleteMode('until_date')}
+                                        className="mt-1"
+                                      />
+                                      <div className="flex-1">
+                                        <p className="font-medium">Termina a una certa data</p>
+                                        <p className="text-sm text-muted-foreground mb-2">
+                                          Imposta una data di fine per le ricorrenze
+                                        </p>
+                                        {deleteMode === 'until_date' && (
+                                          <input
+                                            type="date"
+                                            value={deleteUntilDate}
+                                            onChange={(e) => setDeleteUntilDate(e.target.value)}
+                                            min={format(new Date(), 'yyyy-MM-dd')}
+                                            className="w-full p-2 rounded-md border bg-background text-sm"
+                                          />
+                                        )}
+                                      </div>
+                                    </label>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex justify-end gap-2 pt-2">
+                                  <Button 
+                                    variant="outline" 
+                                    onClick={() => {
+                                      setShowDeleteDialog(false);
+                                      setDeleteTaskId(null);
+                                      setDeleteMode('single');
+                                      setDeleteUntilDate('');
+                                    }}
+                                  >
+                                    Annulla
+                                  </Button>
+                                  <Button 
+                                    variant="destructive"
+                                    disabled={deleteAITaskMutation.isPending || (deleteMode === 'until_date' && !deleteUntilDate)}
+                                    onClick={() => {
+                                      if (deleteTaskId) {
+                                        deleteAITaskMutation.mutate({
+                                          taskId: deleteTaskId,
+                                          mode: deleteMode,
+                                          untilDate: deleteMode === 'until_date' ? deleteUntilDate : undefined
+                                        }, {
+                                          onSuccess: () => {
+                                            setShowEventDetails(false);
+                                            setSelectedEvent(null);
+                                          }
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {deleteAITaskMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                    )}
+                                    Elimina
+                                  </Button>
+                                </div>
                               </DialogContent>
                             </Dialog>
                           </>

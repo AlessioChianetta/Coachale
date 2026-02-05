@@ -2676,27 +2676,77 @@ router.patch("/ai-tasks/:id", authenticateToken, requireAnyRole(["consultant", "
 });
 
 // DELETE /api/voice/ai-tasks/:id - Elimina task
+// Query params:
+// - mode: 'single' | 'all' | 'until_date' (default: 'all' for non-recurring, 'single' for recurring)
+// - until_date: YYYY-MM-DD (required if mode='until_date')
 router.delete("/ai-tasks/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.id;
     const { id } = req.params;
+    const { mode, until_date } = req.query as { mode?: string; until_date?: string };
 
-    const result = await db.execute(sql`
-      DELETE FROM ai_scheduled_tasks 
+    // First, get the task to check if it's recurring
+    const taskResult = await db.execute(sql`
+      SELECT id, recurrence_type, recurrence_end_date 
+      FROM ai_scheduled_tasks 
       WHERE id = ${id} AND consultant_id = ${consultantId}
-      RETURNING id
     `);
 
-    if (result.rows.length === 0) {
+    if (taskResult.rows.length === 0) {
       return res.status(404).json({ error: "Task not found" });
     }
 
-    console.log(`🗑️ [AI-TASKS] Deleted task ${id}`);
+    const task = taskResult.rows[0] as any;
+    const isRecurring = task.recurrence_type && task.recurrence_type !== 'once';
+    const deleteMode = mode || (isRecurring ? 'single' : 'all');
 
-    return res.json({ 
-      success: true,
-      message: "Task eliminato"
-    });
+    if (deleteMode === 'all' || !isRecurring) {
+      // Delete the entire task
+      await db.execute(sql`
+        DELETE FROM ai_scheduled_tasks 
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+      `);
+      console.log(`🗑️ [AI-TASKS] Deleted task ${id} completely`);
+      return res.json({ 
+        success: true,
+        message: "Task eliminato completamente",
+        mode: 'all'
+      });
+    } else if (deleteMode === 'single') {
+      // For single: set recurrence_end_date to today to stop future occurrences
+      // Keep status unchanged - task remains completed/scheduled with past executions preserved
+      const today = new Date().toISOString().split('T')[0];
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks 
+        SET recurrence_end_date = ${today}
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+      `);
+      console.log(`🗑️ [AI-TASKS] Set recurrence end date to today for task ${id}`);
+      return res.json({ 
+        success: true,
+        message: "Ricorrenze future interrotte da oggi",
+        mode: 'single'
+      });
+    } else if (deleteMode === 'until_date') {
+      // Set recurrence_end_date to the specified date
+      if (!until_date) {
+        return res.status(400).json({ error: "until_date is required when mode is 'until_date'" });
+      }
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks 
+        SET recurrence_end_date = ${until_date}
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+      `);
+      console.log(`🗑️ [AI-TASKS] Set recurrence end date to ${until_date} for task ${id}`);
+      return res.json({ 
+        success: true,
+        message: `Ricorrenza terminerà il ${until_date}`,
+        mode: 'until_date',
+        until_date
+      });
+    }
+
+    return res.status(400).json({ error: "Invalid mode" });
   } catch (error: any) {
     console.error("[AI-TASKS] Error deleting task:", error);
     return res.status(500).json({ error: "Failed to delete task" });
