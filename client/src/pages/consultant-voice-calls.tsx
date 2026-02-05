@@ -4550,9 +4550,12 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     return name.includes(search) || phone.includes(search);
                                   };
                                   
-                                  // AI Tasks: sempre mostrati (filtrati per contatto se c'è ricerca)
+                                  // AI Tasks: mostrati SOLO se NON hanno ancora generato una chiamata
+                                  // (evita duplicati: task viola + chiamata blu allo stesso orario)
                                   const dayTasks = (calendarData?.aiTasks?.filter((t: AITask) => 
-                                    isSameDay(new Date(t.scheduled_at), day) && matchesContactFilter(t)
+                                    isSameDay(new Date(t.scheduled_at), day) && 
+                                    matchesContactFilter(t) &&
+                                    !t.voice_call_id // Nascondi task che hanno già creato una scheduled call
                                   ) || []);
                                   
                                   // Chiamate PROGRAMMATE: sempre visibili (filtrate per contatto se c'è ricerca)
