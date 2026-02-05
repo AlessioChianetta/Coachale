@@ -1019,6 +1019,7 @@ export default function ConsultantVoiceCallsPage() {
   const [quickCreateTemplateValues, setQuickCreateTemplateValues] = useState<Record<string, string>>({});
   const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call' | 'history'; data: any } | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   // Cluster state per eventi raggruppati
   const [showClusterPopover, setShowClusterPopover] = useState(false);
   const [clusterEvents, setClusterEvents] = useState<any[]>([]);
@@ -1351,6 +1352,22 @@ export default function ConsultantVoiceCallsPage() {
       return res.json();
     },
     refetchInterval: 15000,
+  });
+
+  // Query dedicata per task con problemi (failed/retry_pending) - sempre attiva, non paginata
+  const { data: failedTasksData } = useQuery<{ tasks: AITask[] }>({
+    queryKey: ["/api/voice/ai-tasks-failed"],
+    queryFn: async () => {
+      const res = await fetch(`/api/voice/ai-tasks?limit=50&status=retry_pending,failed`, { headers: getAuthHeaders() });
+      if (!res.ok) return { tasks: [] };
+      const data = await res.json();
+      // Filtra manualmente per retry_pending e failed dato che l'API potrebbe non supportare multi-status
+      const allTasks = data.tasks || [];
+      return { 
+        tasks: allTasks.filter((t: AITask) => t.status === 'failed' || t.status === 'retry_pending') 
+      };
+    },
+    refetchInterval: 30000,
   });
 
   // Calendar data query (fetches AI tasks, scheduled calls, and voice call history for unified calendar view)
@@ -1755,6 +1772,43 @@ export default function ConsultantVoiceCallsPage() {
       refetchAITasks();
       queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       toast({ title: "Task eliminato" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const updateAITaskMutation = useMutation({
+    mutationFn: async ({ taskId, data }: { taskId: string; data: Partial<typeof newTaskData> }) => {
+      const updates: Record<string, any> = {};
+      if (data.contact_name !== undefined) updates.contact_name = data.contact_name;
+      if (data.contact_phone !== undefined) updates.contact_phone = data.contact_phone;
+      if (data.task_type !== undefined) updates.task_type = data.task_type;
+      if (data.ai_instruction !== undefined) updates.ai_instruction = data.ai_instruction;
+      if (data.scheduled_date && data.scheduled_time) {
+        updates.scheduled_at = new Date(`${data.scheduled_date}T${data.scheduled_time}`).toISOString();
+      }
+      if (data.recurrence_type !== undefined) updates.recurrence_type = data.recurrence_type;
+      if (data.max_attempts !== undefined) updates.max_attempts = data.max_attempts;
+      if (data.retry_delay_minutes !== undefined) updates.retry_delay_minutes = data.retry_delay_minutes;
+      if (data.voice_template_id !== undefined) updates.voice_template_id = data.voice_template_id;
+      
+      const res = await fetch(`/api/voice/ai-tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella modifica del task");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setEditingTaskId(null);
+      refetchAITasks();
+      queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
+      toast({ title: "Task aggiornato!", description: "Le modifiche sono state salvate" });
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -3994,6 +4048,68 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                   </div>
                 </div>
 
+                {/* Alert Task con Problemi - usa query dedicata non paginata */}
+                {(() => {
+                  const failedTasks = failedTasksData?.tasks || [];
+                  if (failedTasks.length === 0) return null;
+                  return (
+                    <div className="mb-4 p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                          <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-orange-800 dark:text-orange-200">
+                              {failedTasks.length} {failedTasks.length === 1 ? 'Task con problemi' : 'Task con problemi'}
+                            </h4>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-orange-700 border-orange-300 hover:bg-orange-100"
+                              onClick={() => { setAITasksFilter('retry_pending'); setAITasksPage(1); }}
+                            >
+                              Vedi tutti
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {failedTasks.slice(0, 3).map((task: AITask) => (
+                              <div key={task.id} className="flex items-center justify-between text-sm p-2 bg-white dark:bg-slate-800 rounded border border-orange-200 dark:border-orange-700">
+                                <div className="flex items-center gap-2">
+                                  <Badge className={task.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}>
+                                    {task.status === 'failed' ? 'Fallito' : 'In retry'}
+                                  </Badge>
+                                  <span className="font-medium">{task.contact_name || task.contact_phone}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                    {task.result_summary || 'Errore sconosciuto'}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedEvent({ type: 'task', data: task });
+                                      setShowEventDetails(true);
+                                    }}
+                                  >
+                                    Dettagli
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                            {failedTasks.length > 3 && (
+                              <p className="text-xs text-orange-600 dark:text-orange-400 text-center">
+                                +{failedTasks.length - 3} altri task con problemi
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Lista o Calendario */}
                 {aiTasksView === 'list' ? (
                   <Card>
@@ -4535,14 +4651,33 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         const pos = eventPositions.get(task.id) || { left: 0, width: 100, isHidden: false };
                                         if (pos.isHidden) return null; // Nascosto nel cluster
                                         const isNarrow = pos.width < 50;
+                                        
+                                        // Colori in base al task_type
+                                        const getTaskTypeColors = () => {
+                                          switch (task.task_type) {
+                                            case 'single_call':
+                                              return { bg: 'bg-emerald-500 hover:bg-emerald-600', border: 'border-emerald-700', ring: 'ring-emerald-300' };
+                                            case 'follow_up':
+                                              return { bg: 'bg-blue-500 hover:bg-blue-600', border: 'border-blue-700', ring: 'ring-blue-300' };
+                                            case 'ai_task':
+                                            default:
+                                              return { bg: 'bg-purple-500 hover:bg-purple-600', border: 'border-purple-700', ring: 'ring-purple-300' };
+                                          }
+                                        };
+                                        const typeColors = getTaskTypeColors();
+                                        
                                         // Gerarchia visiva per stato
                                         const statusStyles = task.status === 'in_progress' 
-                                          ? 'ring-2 ring-purple-300 shadow-lg z-25' 
+                                          ? `ring-2 ${typeColors.ring} shadow-lg z-25` 
                                           : task.status === 'completed' 
                                             ? 'opacity-70' 
-                                            : task.status === 'failed'
+                                            : task.status === 'failed' || task.status === 'retry_pending'
                                               ? 'opacity-60 border-dashed'
                                               : '';
+                                        
+                                        // Etichetta tipo per tooltip
+                                        const typeLabel = task.task_type === 'single_call' ? 'Chiamata' : task.task_type === 'follow_up' ? 'Follow-up' : 'Task AI';
+                                        
                                         return (
                                           <div
                                             key={task.id}
@@ -4551,7 +4686,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               setSelectedEvent({ type: 'task', data: task });
                                               setShowEventDetails(true);
                                             }}
-                                            className={`absolute bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-purple-700 ${statusStyles}`}
+                                            className={`absolute ${typeColors.bg} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] ${typeColors.border} ${statusStyles}`}
                                             style={{ 
                                               top: top, 
                                               height: EVENT_HEIGHT,
@@ -4559,14 +4694,14 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               width: `calc(${pos.width}% - 4px)`,
                                               minWidth: '50px'
                                             }}
-                                            title={`${task.contact_name || task.contact_phone} - ${format(taskDate, 'HH:mm')} - ${task.ai_instruction}`}
+                                            title={`[${typeLabel}] ${task.contact_name || task.contact_phone} - ${format(taskDate, 'HH:mm')} - ${task.ai_instruction}${task.result_summary ? ` (${task.result_summary})` : ''}`}
                                           >
                                             <div className="px-1.5 py-0.5 h-full flex flex-col justify-center">
                                               <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[9px]' : 'text-[11px]'}`}>
                                                 {task.contact_name || task.contact_phone}
                                               </div>
                                               <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
-                                                {format(taskDate, 'HH:mm')}
+                                                {format(taskDate, 'HH:mm')} {!isNarrow && `• ${typeLabel}`}
                                               </div>
                                             </div>
                                           </div>
@@ -4732,6 +4867,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 setQuickCreateExpandedCategory(null);
                                 setQuickCreateSelectedTemplate(null);
                                 setQuickCreateTemplateValues({});
+                                setEditingTaskId(null);
                               }
                             }}>
                               <SheetContent className="sm:max-w-xl overflow-auto p-0 border-l-0">
@@ -4739,10 +4875,10 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-6 py-5 text-white">
                                   <div className="flex items-center gap-3 mb-4">
                                     <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
-                                      <Phone className="h-6 w-6" />
+                                      {editingTaskId ? <Pencil className="h-6 w-6" /> : <Phone className="h-6 w-6" />}
                                     </div>
                                     <div>
-                                      <h2 className="text-xl font-semibold">Nuova Chiamata AI</h2>
+                                      <h2 className="text-xl font-semibold">{editingTaskId ? 'Modifica Chiamata' : 'Nuova Chiamata AI'}</h2>
                                       <p className="text-white/70 text-sm">
                                         {wizardStep === 1 && "Chi vuoi chiamare?"}
                                         {wizardStep === 2 && "Cosa deve dire l'AI?"}
@@ -5868,24 +6004,36 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       <Button 
                                         size="lg"
                                         className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-600/25"
-                                        disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
+                                        disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending || updateAITaskMutation.isPending}
                                         onClick={() => {
-                                          createAITaskMutation.mutate(newTaskData, {
-                                            onSuccess: () => {
-                                              setShowQuickCreate(false);
-                                              setWizardStep(1);
-                                              setDragStart(null);
-                                              setDragEnd(null);
-                                            }
-                                          });
+                                          if (editingTaskId) {
+                                            updateAITaskMutation.mutate({ taskId: editingTaskId, data: newTaskData }, {
+                                              onSuccess: () => {
+                                                setShowQuickCreate(false);
+                                                setWizardStep(1);
+                                                setDragStart(null);
+                                                setDragEnd(null);
+                                                setEditingTaskId(null);
+                                              }
+                                            });
+                                          } else {
+                                            createAITaskMutation.mutate(newTaskData, {
+                                              onSuccess: () => {
+                                                setShowQuickCreate(false);
+                                                setWizardStep(1);
+                                                setDragStart(null);
+                                                setDragEnd(null);
+                                              }
+                                            });
+                                          }
                                         }}
                                       >
-                                        {createAITaskMutation.isPending ? (
+                                        {(createAITaskMutation.isPending || updateAITaskMutation.isPending) ? (
                                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                         ) : (
                                           <Sparkles className="h-4 w-4 mr-2" />
                                         )}
-                                        Programma Chiamata
+                                        {editingTaskId ? 'Salva Modifiche' : 'Programma Chiamata'}
                                       </Button>
                                     )}
                                   </div>
@@ -5957,24 +6105,33 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   <>
                                     <DialogHeader>
                                       <div className="flex items-center gap-3">
-                                        <div className={`p-2.5 rounded-xl ${
-                                          selectedEvent.type === 'task' ? 'bg-purple-100 dark:bg-purple-900/30' : 
-                                          selectedEvent.type === 'history' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
-                                          'bg-blue-100 dark:bg-blue-900/30'
-                                        }`}>
-                                          {selectedEvent.type === 'task' ? (
-                                            <Bot className={`h-5 w-5 text-purple-600 dark:text-purple-400`} />
-                                          ) : selectedEvent.type === 'history' ? (
-                                            <PhoneIncoming className={`h-5 w-5 text-emerald-600 dark:text-emerald-400`} />
-                                          ) : (
-                                            <Phone className={`h-5 w-5 text-blue-600 dark:text-blue-400`} />
-                                          )}
-                                        </div>
+                                        {(() => {
+                                          const taskType = selectedEvent.data?.task_type as 'single_call' | 'follow_up' | 'ai_task' | undefined;
+                                          const typeInfo = taskType ? CALL_TYPE_INFO[taskType] : null;
+                                          const TypeIcon = typeInfo?.icon || (selectedEvent.type === 'history' ? PhoneIncoming : Phone);
+                                          const bgColor = selectedEvent.type === 'task' && typeInfo
+                                            ? `bg-${typeInfo.color}-100 dark:bg-${typeInfo.color}-900/30`
+                                            : selectedEvent.type === 'history' 
+                                              ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                                              : 'bg-blue-100 dark:bg-blue-900/30';
+                                          const iconColor = selectedEvent.type === 'task' && typeInfo
+                                            ? `text-${typeInfo.color}-600 dark:text-${typeInfo.color}-400`
+                                            : selectedEvent.type === 'history'
+                                              ? 'text-emerald-600 dark:text-emerald-400'
+                                              : 'text-blue-600 dark:text-blue-400';
+                                          return (
+                                            <div className={`p-2.5 rounded-xl ${bgColor}`}>
+                                              <TypeIcon className={`h-5 w-5 ${iconColor}`} />
+                                            </div>
+                                          );
+                                        })()}
                                         <div>
                                           <DialogTitle className="text-lg">
-                                            {selectedEvent.type === 'task' ? 'AI Task' : 
-                                             selectedEvent.type === 'history' ? 'Chiamata Effettuata' : 
-                                             'Chiamata Programmata'}
+                                            {selectedEvent.type === 'task' 
+                                              ? (CALL_TYPE_INFO[selectedEvent.data?.task_type as keyof typeof CALL_TYPE_INFO]?.title || 'Task AI')
+                                              : selectedEvent.type === 'history' 
+                                                ? 'Chiamata Effettuata' 
+                                                : 'Chiamata Programmata'}
                                           </DialogTitle>
                                           <DialogDescription>
                                             {selectedEvent.type === 'task' 
@@ -6119,6 +6276,115 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                           </div>
                                         </div>
                                       )}
+                                      
+                                      {/* Cronologia Tentativi - per task con tentativi effettuati */}
+                                      {selectedEvent.type === 'task' && (selectedEvent.data.current_attempt > 0 || selectedEvent.data.result_summary) && (
+                                        <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                                          <div className="flex items-center justify-between mb-3">
+                                            <p className="text-xs font-medium text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                                              <RotateCcw className="h-3.5 w-3.5" />
+                                              Cronologia Tentativi
+                                            </p>
+                                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
+                                              {selectedEvent.data.current_attempt || 0}/{selectedEvent.data.max_attempts || 3} tentativi
+                                            </Badge>
+                                          </div>
+                                          
+                                          {/* Timeline dei tentativi */}
+                                          <div className="space-y-2 border-l-2 border-orange-200 dark:border-orange-700 pl-3 ml-1">
+                                            {/* Primo tentativo - data programmata originale */}
+                                            {selectedEvent.data.current_attempt >= 1 && (
+                                              <div className="relative">
+                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
+                                                <div className="text-sm">
+                                                  <p className="font-medium text-orange-700 dark:text-orange-400">
+                                                    Tentativo 1
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    {format(new Date(selectedEvent.data.scheduled_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                                                  </p>
+                                                  {selectedEvent.data.current_attempt === 1 && selectedEvent.data.result_summary && (
+                                                    <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                                      {selectedEvent.data.result_summary}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Tentativi successivi (approssimati dal retry_delay) */}
+                                            {selectedEvent.data.current_attempt >= 2 && (
+                                              <div className="relative">
+                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
+                                                <div className="text-sm">
+                                                  <p className="font-medium text-orange-700 dark:text-orange-400">
+                                                    Tentativo 2
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    +{selectedEvent.data.retry_delay_minutes || 15} min dal precedente
+                                                  </p>
+                                                  {selectedEvent.data.current_attempt === 2 && selectedEvent.data.result_summary && (
+                                                    <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                                      {selectedEvent.data.result_summary}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {selectedEvent.data.current_attempt >= 3 && (
+                                              <div className="relative">
+                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
+                                                <div className="text-sm">
+                                                  <p className="font-medium text-orange-700 dark:text-orange-400">
+                                                    Tentativo 3
+                                                  </p>
+                                                  {selectedEvent.data.last_attempt_at && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                      {format(new Date(selectedEvent.data.last_attempt_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                                                    </p>
+                                                  )}
+                                                  {selectedEvent.data.result_summary && (
+                                                    <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                                      {selectedEvent.data.result_summary}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Prossimo tentativo programmato */}
+                                            {selectedEvent.data.next_retry_at && selectedEvent.data.status === 'retry_pending' && (
+                                              <div className="relative">
+                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-blue-400 animate-pulse"></div>
+                                                <div className="text-sm">
+                                                  <p className="font-medium text-blue-600 dark:text-blue-400">
+                                                    Prossimo tentativo
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    {format(new Date(selectedEvent.data.next_retry_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Stato finale se fallito */}
+                                            {selectedEvent.data.status === 'failed' && (
+                                              <div className="relative">
+                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-red-500"></div>
+                                                <div className="text-sm">
+                                                  <p className="font-medium text-red-600 dark:text-red-400">
+                                                    Task fallito definitivamente
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground">
+                                                    Tentativi esauriti
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                     
                                     {/* Mostra azioni solo per eventi futuri (non history e non passati) */}
@@ -6128,7 +6394,8 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         : null;
                                       const isPast = eventDate ? eventDate < new Date() : true;
                                       const isHistory = selectedEvent?.type === 'history';
-                                      const canModify = !isPast && !isHistory;
+                                      const isTask = selectedEvent?.type === 'task';
+                                      const canModify = !isHistory && isTask;
                                       
                                       return (
                                         <div className="flex justify-between gap-2 pt-2">
@@ -6136,14 +6403,23 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                             <Button 
                                               variant="outline" 
                                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                              disabled={deleteAITaskMutation.isPending}
                                               onClick={() => {
                                                 if (confirm('Sei sicuro di voler cancellare questo evento?')) {
-                                                  // TODO: Implement delete
-                                                  setShowEventDetails(false);
+                                                  deleteAITaskMutation.mutate(selectedEvent.data.id, {
+                                                    onSuccess: () => {
+                                                      setShowEventDetails(false);
+                                                      setSelectedEvent(null);
+                                                    }
+                                                  });
                                                 }
                                               }}
                                             >
-                                              <Trash2 className="h-4 w-4 mr-2" />
+                                              {deleteAITaskMutation.isPending ? (
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                              ) : (
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                              )}
                                               Elimina
                                             </Button>
                                           )}
@@ -6155,8 +6431,28 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               <Button 
                                                 className="bg-gradient-to-r from-violet-600 to-purple-600"
                                                 onClick={() => {
-                                                  // TODO: Implement edit - populate form and open Quick Create
+                                                  const data = selectedEvent.data;
+                                                  const scheduledDate = data.scheduled_at ? new Date(data.scheduled_at) : new Date();
+                                                  setNewTaskData({
+                                                    contact_phone: data.contact_phone || '',
+                                                    contact_name: data.contact_name || '',
+                                                    task_type: data.task_type || 'single_call',
+                                                    ai_instruction: data.ai_instruction || '',
+                                                    scheduled_date: format(scheduledDate, 'yyyy-MM-dd'),
+                                                    scheduled_time: format(scheduledDate, 'HH:mm'),
+                                                    recurrence_type: data.recurrence_type || 'once',
+                                                    recurrence_days: data.recurrence_days || [],
+                                                    recurrence_end_date: data.recurrence_end_date || '',
+                                                    max_attempts: data.max_attempts || 3,
+                                                    retry_delay_minutes: data.retry_delay_minutes || 15,
+                                                    template_id: data.template_id,
+                                                    voice_template_id: data.voice_template_id,
+                                                    call_after_task: data.call_after_task || false
+                                                  });
+                                                  setEditingTaskId(data.id);
+                                                  setWizardStep(1);
                                                   setShowEventDetails(false);
+                                                  setShowQuickCreate(true);
                                                 }}
                                               >
                                                 <Pencil className="h-4 w-4 mr-2" />
