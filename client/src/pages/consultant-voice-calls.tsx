@@ -38,6 +38,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import {
   Phone,
@@ -5256,329 +5257,526 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     </div>
                                   )}
 
-                                  {/* ==================== STEP 3: QUANDO CHIAMARE ==================== */}
+                                  {/* ==================== STEP 3: QUANDO CHIAMARE - Dinamico per tipo ==================== */}
                                   {wizardStep === 3 && (
                                     <div className="space-y-6 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-                                      <div className="text-center py-2">
-                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 mb-4">
-                                          <Clock className="h-8 w-8 text-violet-600" />
-                                        </div>
-                                        <h3 className="text-xl font-bold">Quando effettuare la chiamata?</h3>
-                                        <p className="text-muted-foreground mt-1">Imposta data, ora e ricorrenza</p>
-                                      </div>
-
-                                  {/* DATA E ORA - Prominente */}
-                                  <div className="space-y-5 p-5 rounded-2xl border-2 border-violet-300 dark:border-violet-700 bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-950/30 dark:via-purple-950/20 dark:to-indigo-950/20">
-                                    <div className="flex items-center gap-2">
-                                      <div className="p-2 bg-violet-100 dark:bg-violet-900/40 rounded-xl">
-                                        <Clock className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                                      </div>
-                                      <h3 className="font-bold text-base text-violet-900 dark:text-violet-200">Quando chiamare</h3>
-                                    </div>
-                                    
-                                    {/* Data e Ora principali */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div className="space-y-2">
-                                        <Label className="text-sm font-medium text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
-                                          <CalendarDays className="h-4 w-4" />
-                                          Data
-                                        </Label>
-                                        <Input 
-                                          type="date" 
-                                          value={newTaskData.scheduled_date}
-                                          onChange={(e) => setNewTaskData({...newTaskData, scheduled_date: e.target.value})}
-                                          className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-violet-200 dark:border-violet-700 focus:border-violet-500"
-                                        />
-                                      </div>
-                                      <div className="space-y-2">
-                                        <Label className="text-sm font-medium text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
-                                          <Clock className="h-4 w-4" />
-                                          Ora
-                                        </Label>
-                                        <Input 
-                                          type="time" 
-                                          value={newTaskData.scheduled_time}
-                                          onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})}
-                                          className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-violet-200 dark:border-violet-700 focus:border-violet-500 [color-scheme:light] dark:[color-scheme:dark]"
-                                        />
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Riepilogo visivo */}
-                                    <div className="flex items-center gap-3 p-3 bg-violet-100/70 dark:bg-violet-900/30 rounded-xl">
-                                      <Sparkles className="h-5 w-5 text-violet-600" />
-                                      <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
-                                        {newTaskData.scheduled_date && newTaskData.scheduled_time ? (
-                                          <>Chiamata il <span className="font-bold">{format(new Date(newTaskData.scheduled_date), 'EEEE d MMMM yyyy', { locale: it })}</span> alle <span className="font-bold">{newTaskData.scheduled_time}</span></>
-                                        ) : (
-                                          'Seleziona data e ora'
-                                        )}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* SEZIONE 5: PROGRAMMAZIONE AVANZATA */}
-                                  <div className={`space-y-5 p-5 rounded-2xl border ${
-                                    newTaskData.task_type === 'single_call' 
-                                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800/50'
-                                      : newTaskData.task_type === 'follow_up'
-                                      ? 'bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800/50'
-                                      : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/30 border-slate-200 dark:border-slate-700/50'
-                                  }`}>
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <div className={`p-1.5 rounded-lg ${
-                                          newTaskData.task_type === 'single_call' 
-                                            ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                                            : newTaskData.task_type === 'follow_up'
-                                            ? 'bg-blue-100 dark:bg-blue-900/30'
-                                            : 'bg-indigo-100 dark:bg-indigo-900/30'
-                                        }`}>
-                                          <CalendarClock className={`h-4 w-4 ${
-                                            newTaskData.task_type === 'single_call' 
-                                              ? 'text-emerald-600 dark:text-emerald-400'
-                                              : newTaskData.task_type === 'follow_up'
-                                              ? 'text-blue-600 dark:text-blue-400'
-                                              : 'text-indigo-600 dark:text-indigo-400'
-                                          }`} />
-                                        </div>
-                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                                          Ripetizione
-                                        </h3>
-                                      </div>
-                                      {newTaskData.task_type === 'single_call' && (
-                                        <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-700 dark:text-emerald-400">
-                                          Chiamata singola
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Tipo frequenza */}
-                                    <div className="grid grid-cols-4 gap-2">
-                                      {[
-                                        { value: 'once', label: 'Una volta', icon: Circle },
-                                        { value: 'daily', label: 'Ogni giorno', icon: CalendarDays },
-                                        { value: 'weekly', label: 'Settimanale', icon: CalendarRange },
-                                        { value: 'specific_dates', label: 'Date specifiche', icon: CalendarCheck }
-                                      ].map((freq) => {
-                                        const isSelected = newTaskData.recurrence_type === freq.value;
+                                      {/* HEADER DINAMICO */}
+                                      {(() => {
+                                        const getStep3Header = () => {
+                                          if (newTaskData.task_type === 'single_call') {
+                                            return {
+                                              title: 'Quando chiamare',
+                                              subtitle: 'Scegli data e ora per la chiamata',
+                                              icon: Phone,
+                                              iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+                                              iconColor: 'text-emerald-600'
+                                            };
+                                          } else if (newTaskData.task_type === 'follow_up') {
+                                            return {
+                                              title: 'Pianifica follow-up',
+                                              subtitle: 'Imposta frequenza e durata della serie',
+                                              icon: RepeatIcon,
+                                              iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+                                              iconColor: 'text-blue-600'
+                                            };
+                                          } else {
+                                            return {
+                                              title: newTaskData.call_after_task 
+                                                ? 'Quando eseguire il task'
+                                                : 'Task pronto per l\'esecuzione',
+                                              subtitle: newTaskData.call_after_task
+                                                ? 'L\'AI chiamerà dopo aver completato il task'
+                                                : 'Il task verrà eseguito immediatamente dopo la conferma',
+                                              icon: Bot,
+                                              iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+                                              iconColor: 'text-purple-600'
+                                            };
+                                          }
+                                        };
+                                        const header = getStep3Header();
+                                        const HeaderIcon = header.icon;
                                         return (
-                                          <button
-                                            key={freq.value}
-                                            type="button"
-                                            onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as any})}
-                                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 ${
-                                              isSelected 
-                                                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25' 
-                                                : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600'
-                                            }`}
-                                          >
-                                            <freq.icon className={`h-5 w-5 ${isSelected ? 'text-white' : 'text-muted-foreground'}`} />
-                                            <span className="text-xs font-semibold text-center leading-tight">{freq.label}</span>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-
-                                    {/* Giorni settimana (se weekly) */}
-                                    {newTaskData.recurrence_type === 'weekly' && (
-                                      <div className="space-y-3 pt-2 animate-in slide-in-from-top-2 duration-200">
-                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                          <CalendarCheck className="h-3.5 w-3.5" />
-                                          Seleziona i giorni della settimana
-                                        </Label>
-                                        <div className="flex gap-2 justify-between">
-                                          {[
-                                            { short: 'L', full: 'Lunedì' },
-                                            { short: 'M', full: 'Martedì' },
-                                            { short: 'M', full: 'Mercoledì' },
-                                            { short: 'G', full: 'Giovedì' },
-                                            { short: 'V', full: 'Venerdì' },
-                                            { short: 'S', full: 'Sabato' },
-                                            { short: 'D', full: 'Domenica' }
-                                          ].map((day, idx) => {
-                                            const dayNum = idx + 1;
-                                            const isSelected = (newTaskData.recurrence_days || []).includes(dayNum);
-                                            const isWeekend = idx >= 5;
-                                            return (
-                                              <button
-                                                key={idx}
-                                                type="button"
-                                                title={day.full}
-                                                onClick={() => {
-                                                  const current = newTaskData.recurrence_days || [];
-                                                  const updated = isSelected 
-                                                    ? current.filter(d => d !== dayNum)
-                                                    : [...current, dayNum].sort();
-                                                  setNewTaskData({...newTaskData, recurrence_days: updated});
-                                                }}
-                                                className={`w-10 h-10 rounded-xl text-sm font-bold transition-all duration-200 ${
-                                                  isSelected 
-                                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 scale-110' 
-                                                    : isWeekend 
-                                                      ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100' 
-                                                      : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
-                                                }`}
-                                              >
-                                                {day.short}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                          La chiamata avverrà ogni settimana nei giorni selezionati alle <span className="font-semibold">{newTaskData.scheduled_time || '00:00'}</span>
-                                        </p>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Date specifiche con data + ora */}
-                                    {newTaskData.recurrence_type === 'specific_dates' && (
-                                      <div className="space-y-4 pt-2 animate-in slide-in-from-top-2 duration-200">
-                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                          <CalendarCheck className="h-3.5 w-3.5" />
-                                          Aggiungi data e ora specifiche
-                                        </Label>
-                                        <div className="flex gap-2">
-                                          <Input 
-                                            type="date" 
-                                            id="add-specific-date"
-                                            className="flex-1 h-10 bg-white dark:bg-slate-700"
-                                            min={format(new Date(), 'yyyy-MM-dd')}
-                                          />
-                                          <Input 
-                                            type="time" 
-                                            id="add-specific-time"
-                                            defaultValue="10:00"
-                                            className="w-24 h-10 bg-white dark:bg-slate-700 [color-scheme:light] dark:[color-scheme:dark]"
-                                          />
-                                          <Button 
-                                            type="button" 
-                                            variant="default"
-                                            className="h-10 bg-violet-600 hover:bg-violet-700"
-                                            onClick={() => {
-                                              const dateInput = document.getElementById('add-specific-date') as HTMLInputElement;
-                                              const timeInput = document.getElementById('add-specific-time') as HTMLInputElement;
-                                              if (dateInput?.value && timeInput?.value) {
-                                                const newEntry = { date: dateInput.value, time: timeInput.value };
-                                                const currentEntries = (newTaskData as any).specific_datetime || [];
-                                                const exists = currentEntries.some((e: any) => e.date === newEntry.date && e.time === newEntry.time);
-                                                if (!exists) {
-                                                  const updated = [...currentEntries, newEntry].sort((a: any, b: any) => {
-                                                    const dateCompare = a.date.localeCompare(b.date);
-                                                    return dateCompare !== 0 ? dateCompare : a.time.localeCompare(b.time);
-                                                  });
-                                                  setNewTaskData({...newTaskData, specific_datetime: updated} as any);
-                                                }
-                                                dateInput.value = '';
-                                              }
-                                            }}
-                                          >
-                                            <Plus className="h-4 w-4 mr-1" />
-                                            Aggiungi
-                                          </Button>
-                                        </div>
-                                        
-                                        {/* Lista date aggiunte */}
-                                        {((newTaskData as any).specific_datetime || []).length > 0 && (
-                                          <div className="space-y-2 max-h-40 overflow-y-auto">
-                                            {((newTaskData as any).specific_datetime || []).map((entry: {date: string, time: string}, idx: number) => (
-                                              <div 
-                                                key={idx} 
-                                                className="flex items-center justify-between p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800"
-                                              >
-                                                <div className="flex items-center gap-3">
-                                                  <CalendarDays className="h-4 w-4 text-violet-600" />
-                                                  <span className="font-medium text-sm">
-                                                    {format(new Date(entry.date), 'EEEE d MMMM', { locale: it })}
-                                                  </span>
-                                                  <Badge variant="outline" className="border-violet-300 text-violet-700">
-                                                    {entry.time}
-                                                  </Badge>
-                                                </div>
-                                                <button 
-                                                  type="button"
-                                                  onClick={() => {
-                                                    const updated = ((newTaskData as any).specific_datetime || []).filter((_: any, i: number) => i !== idx);
-                                                    setNewTaskData({...newTaskData, specific_datetime: updated} as any);
-                                                  }}
-                                                  className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
-                                                >
-                                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                                </button>
-                                              </div>
-                                            ))}
+                                          <div className="text-center py-2">
+                                            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${header.iconBg} mb-4`}>
+                                              <HeaderIcon className={`h-8 w-8 ${header.iconColor}`} />
+                                            </div>
+                                            <h3 className="text-xl font-bold">{header.title}</h3>
+                                            <p className="text-muted-foreground mt-1">{header.subtitle}</p>
                                           </div>
-                                        )}
-                                        
-                                        {((newTaskData as any).specific_datetime || []).length === 0 && (
-                                          <p className="text-xs text-muted-foreground text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                                            Nessuna data aggiunta. Seleziona data e ora sopra.
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
+                                        );
+                                      })()}
 
-                                    {/* Riga: Tentativi + Retry + Data fine */}
-                                    <div className="grid grid-cols-3 gap-4 pt-2">
-                                      {/* Tentativi */}
-                                      <div className="space-y-2">
-                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                          <RotateCcw className="h-3.5 w-3.5" />
-                                          Tentativi
-                                        </Label>
-                                        <div className="flex gap-1">
-                                          {[1, 2, 3, 4, 5].map((n) => (
-                                            <button
-                                              key={n}
-                                              type="button"
-                                              onClick={() => setNewTaskData({...newTaskData, max_attempts: n})}
-                                              className={`flex-1 h-9 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                                newTaskData.max_attempts === n 
-                                                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md' 
-                                                  : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
-                                              }`}
-                                            >
-                                              {n}
-                                            </button>
-                                          ))}
+                                      {/* ========== LAYOUT SINGLE_CALL ========== */}
+                                      {newTaskData.task_type === 'single_call' && (
+                                        <div className="space-y-6">
+                                          {/* Data e Ora - Card principale */}
+                                          <div className="space-y-5 p-5 rounded-2xl border-2 border-emerald-300 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20">
+                                            <div className="flex items-center gap-2">
+                                              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl">
+                                                <CalendarDays className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                              </div>
+                                              <h3 className="font-bold text-base text-emerald-900 dark:text-emerald-200">Data e Ora Chiamata</h3>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                                                  <CalendarDays className="h-4 w-4" />
+                                                  Data chiamata
+                                                </Label>
+                                                <Input 
+                                                  type="date" 
+                                                  value={newTaskData.scheduled_date}
+                                                  onChange={(e) => setNewTaskData({...newTaskData, scheduled_date: e.target.value})}
+                                                  className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-emerald-200 dark:border-emerald-700 focus:border-emerald-500"
+                                                />
+                                              </div>
+                                              <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                                                  <Clock className="h-4 w-4" />
+                                                  Ora
+                                                </Label>
+                                                <Input 
+                                                  type="time" 
+                                                  value={newTaskData.scheduled_time}
+                                                  onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})}
+                                                  className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-emerald-200 dark:border-emerald-700 focus:border-emerald-500 [color-scheme:light] dark:[color-scheme:dark]"
+                                                />
+                                              </div>
+                                            </div>
+                                            
+                                            {/* Riepilogo visivo */}
+                                            <div className="flex items-center gap-3 p-3 bg-emerald-100/70 dark:bg-emerald-900/30 rounded-xl">
+                                              <Sparkles className="h-5 w-5 text-emerald-600" />
+                                              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                                                {newTaskData.scheduled_date && newTaskData.scheduled_time ? (
+                                                  <>Chiamata il <span className="font-bold">{format(new Date(newTaskData.scheduled_date), 'EEEE d MMMM yyyy', { locale: it })}</span> alle <span className="font-bold">{newTaskData.scheduled_time}</span></>
+                                                ) : (
+                                                  'Seleziona data e ora'
+                                                )}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* Tentativi - Card secondaria */}
+                                          <div className="p-4 bg-muted/50 rounded-xl border">
+                                            <div className="flex items-center gap-2 mb-4">
+                                              <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                                              <Label className="font-medium">Tentativi in caso di mancata risposta</Label>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div className="space-y-2">
+                                                <Label className="text-xs font-medium text-muted-foreground">Numero tentativi</Label>
+                                                <div className="flex gap-1">
+                                                  {[1, 2, 3, 4, 5].map((n) => (
+                                                    <button
+                                                      key={n}
+                                                      type="button"
+                                                      onClick={() => setNewTaskData({...newTaskData, max_attempts: n})}
+                                                      className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                                        newTaskData.max_attempts === n 
+                                                          ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md' 
+                                                          : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
+                                                      }`}
+                                                    >
+                                                      {n}
+                                                    </button>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                              
+                                              <div className="space-y-2">
+                                                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                                  <Timer className="h-3.5 w-3.5" />
+                                                  Intervallo tra tentativi
+                                                </Label>
+                                                <select
+                                                  value={String(newTaskData.retry_delay_minutes || 15)}
+                                                  onChange={(e) => setNewTaskData({...newTaskData, retry_delay_minutes: parseInt(e.target.value)})}
+                                                  className="h-10 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 text-sm"
+                                                >
+                                                  <option value="5">5 minuti</option>
+                                                  <option value="10">10 minuti</option>
+                                                  <option value="15">15 minuti</option>
+                                                  <option value="30">30 minuti</option>
+                                                  <option value="60">1 ora</option>
+                                                </select>
+                                              </div>
+                                            </div>
+                                          </div>
                                         </div>
-                                      </div>
+                                      )}
 
-                                      {/* Intervallo retry */}
-                                      <div className="space-y-2">
-                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                          <Timer className="h-3.5 w-3.5" />
-                                          Intervallo retry
-                                        </Label>
-                                        <select
-                                          value={String(newTaskData.retry_delay_minutes || 15)}
-                                          onChange={(e) => setNewTaskData({...newTaskData, retry_delay_minutes: parseInt(e.target.value)})}
-                                          className="h-9 w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 text-sm"
-                                        >
-                                          <option value="5">5 min</option>
-                                          <option value="10">10 min</option>
-                                          <option value="15">15 min</option>
-                                          <option value="30">30 min</option>
-                                          <option value="60">1 ora</option>
-                                        </select>
-                                      </div>
+                                      {/* ========== LAYOUT FOLLOW_UP ========== */}
+                                      {newTaskData.task_type === 'follow_up' && (
+                                        <div className="space-y-6">
+                                          {/* Data inizio e Ora */}
+                                          <div className="space-y-4 p-5 rounded-2xl border-2 border-blue-300 dark:border-blue-700 bg-gradient-to-br from-blue-50 via-cyan-50 to-sky-50 dark:from-blue-950/30 dark:via-cyan-950/20 dark:to-sky-950/20">
+                                            <div className="flex items-center gap-2">
+                                              <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-xl">
+                                                <CalendarDays className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                              </div>
+                                              <h3 className="font-bold text-base text-blue-900 dark:text-blue-200">Inizio Serie</h3>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                                                  <CalendarDays className="h-4 w-4" />
+                                                  Data prima chiamata
+                                                </Label>
+                                                <Input 
+                                                  type="date" 
+                                                  value={newTaskData.scheduled_date}
+                                                  onChange={(e) => setNewTaskData({...newTaskData, scheduled_date: e.target.value})}
+                                                  className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-700 focus:border-blue-500"
+                                                />
+                                              </div>
+                                              <div className="space-y-2">
+                                                <Label className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                                                  <Clock className="h-4 w-4" />
+                                                  Ora
+                                                </Label>
+                                                <Input 
+                                                  type="time" 
+                                                  value={newTaskData.scheduled_time}
+                                                  onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})}
+                                                  className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-blue-200 dark:border-blue-700 focus:border-blue-500 [color-scheme:light] dark:[color-scheme:dark]"
+                                                />
+                                              </div>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* RICORRENZA - Card prominente BLU */}
+                                          <div className="p-5 bg-blue-50 dark:bg-blue-950/30 rounded-2xl border-2 border-blue-200 dark:border-blue-800">
+                                            <div className="flex items-center gap-2 mb-4">
+                                              <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-xl">
+                                                <RepeatIcon className="h-5 w-5 text-blue-600" />
+                                              </div>
+                                              <h4 className="font-bold text-lg text-blue-800 dark:text-blue-200">
+                                                Frequenza Follow-up
+                                              </h4>
+                                            </div>
+                                            
+                                            {/* Tipo frequenza */}
+                                            <div className="grid grid-cols-3 gap-3 mb-4">
+                                              {[
+                                                { value: 'daily', label: 'Giornaliera', icon: CalendarDays, desc: 'Ogni giorno' },
+                                                { value: 'weekly', label: 'Settimanale', icon: CalendarRange, desc: 'Giorni specifici' },
+                                                { value: 'specific_dates', label: 'Date specifiche', icon: CalendarCheck, desc: 'Scegli le date' }
+                                              ].map((freq) => {
+                                                const isSelected = newTaskData.recurrence_type === freq.value;
+                                                return (
+                                                  <button
+                                                    key={freq.value}
+                                                    type="button"
+                                                    onClick={() => setNewTaskData({...newTaskData, recurrence_type: freq.value as any})}
+                                                    className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-200 ${
+                                                      isSelected 
+                                                        ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/25' 
+                                                        : 'bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border border-blue-200 dark:border-slate-600'
+                                                    }`}
+                                                  >
+                                                    <freq.icon className={`h-6 w-6 ${isSelected ? 'text-white' : 'text-blue-600'}`} />
+                                                    <span className="text-sm font-semibold">{freq.label}</span>
+                                                    <span className={`text-xs ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>{freq.desc}</span>
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
 
-                                      {/* Data fine (solo per daily/weekly) */}
-                                      <div className="space-y-2">
-                                        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                          <CalendarX className="h-3.5 w-3.5" />
-                                          Termina il
-                                        </Label>
-                                        <Input 
-                                          type="date" 
-                                          value={newTaskData.recurrence_end_date || ''}
-                                          onChange={(e) => setNewTaskData({...newTaskData, recurrence_end_date: e.target.value})}
-                                          className="h-9 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600"
-                                          disabled={newTaskData.recurrence_type === 'once' || newTaskData.recurrence_type === 'specific_dates'}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
+                                            {/* Giorni settimana (se weekly) */}
+                                            {newTaskData.recurrence_type === 'weekly' && (
+                                              <div className="space-y-3 pt-3 border-t border-blue-200 dark:border-blue-700 animate-in slide-in-from-top-2 duration-200">
+                                                <Label className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                                                  <CalendarCheck className="h-4 w-4" />
+                                                  Seleziona i giorni della settimana
+                                                </Label>
+                                                <div className="flex gap-2 justify-between">
+                                                  {[
+                                                    { short: 'L', full: 'Lunedì' },
+                                                    { short: 'M', full: 'Martedì' },
+                                                    { short: 'M', full: 'Mercoledì' },
+                                                    { short: 'G', full: 'Giovedì' },
+                                                    { short: 'V', full: 'Venerdì' },
+                                                    { short: 'S', full: 'Sabato' },
+                                                    { short: 'D', full: 'Domenica' }
+                                                  ].map((day, idx) => {
+                                                    const dayNum = idx + 1;
+                                                    const isSelected = (newTaskData.recurrence_days || []).includes(dayNum);
+                                                    const isWeekend = idx >= 5;
+                                                    return (
+                                                      <button
+                                                        key={idx}
+                                                        type="button"
+                                                        title={day.full}
+                                                        onClick={() => {
+                                                          const current = newTaskData.recurrence_days || [];
+                                                          const updated = isSelected 
+                                                            ? current.filter(d => d !== dayNum)
+                                                            : [...current, dayNum].sort();
+                                                          setNewTaskData({...newTaskData, recurrence_days: updated});
+                                                        }}
+                                                        className={`w-11 h-11 rounded-xl text-sm font-bold transition-all duration-200 ${
+                                                          isSelected 
+                                                            ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/30 scale-110' 
+                                                            : isWeekend 
+                                                              ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100' 
+                                                              : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
+                                                        }`}
+                                                      >
+                                                        {day.short}
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
+                                                <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
+                                                  La chiamata avverrà ogni settimana nei giorni selezionati alle <span className="font-semibold">{newTaskData.scheduled_time || '00:00'}</span>
+                                                </p>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Date specifiche */}
+                                            {newTaskData.recurrence_type === 'specific_dates' && (
+                                              <div className="space-y-4 pt-3 border-t border-blue-200 dark:border-blue-700 animate-in slide-in-from-top-2 duration-200">
+                                                <Label className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                                                  <CalendarCheck className="h-4 w-4" />
+                                                  Aggiungi data e ora specifiche
+                                                </Label>
+                                                <div className="flex gap-2">
+                                                  <Input 
+                                                    type="date" 
+                                                    id="add-specific-date"
+                                                    className="flex-1 h-10 bg-white dark:bg-slate-700"
+                                                    min={format(new Date(), 'yyyy-MM-dd')}
+                                                  />
+                                                  <Input 
+                                                    type="time" 
+                                                    id="add-specific-time"
+                                                    defaultValue="10:00"
+                                                    className="w-24 h-10 bg-white dark:bg-slate-700 [color-scheme:light] dark:[color-scheme:dark]"
+                                                  />
+                                                  <Button 
+                                                    type="button" 
+                                                    variant="default"
+                                                    className="h-10 bg-blue-600 hover:bg-blue-700"
+                                                    onClick={() => {
+                                                      const dateInput = document.getElementById('add-specific-date') as HTMLInputElement;
+                                                      const timeInput = document.getElementById('add-specific-time') as HTMLInputElement;
+                                                      if (dateInput?.value && timeInput?.value) {
+                                                        const newEntry = { date: dateInput.value, time: timeInput.value };
+                                                        const currentEntries = (newTaskData as any).specific_datetime || [];
+                                                        const exists = currentEntries.some((e: any) => e.date === newEntry.date && e.time === newEntry.time);
+                                                        if (!exists) {
+                                                          const updated = [...currentEntries, newEntry].sort((a: any, b: any) => {
+                                                            const dateCompare = a.date.localeCompare(b.date);
+                                                            return dateCompare !== 0 ? dateCompare : a.time.localeCompare(b.time);
+                                                          });
+                                                          setNewTaskData({...newTaskData, specific_datetime: updated} as any);
+                                                        }
+                                                        dateInput.value = '';
+                                                      }
+                                                    }}
+                                                  >
+                                                    <Plus className="h-4 w-4 mr-1" />
+                                                    Aggiungi
+                                                  </Button>
+                                                </div>
+                                                
+                                                {/* Lista date aggiunte */}
+                                                {((newTaskData as any).specific_datetime || []).length > 0 && (
+                                                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                    {((newTaskData as any).specific_datetime || []).map((entry: {date: string, time: string}, idx: number) => (
+                                                      <div 
+                                                        key={idx} 
+                                                        className="flex items-center justify-between p-3 bg-blue-100/70 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800"
+                                                      >
+                                                        <div className="flex items-center gap-3">
+                                                          <CalendarDays className="h-4 w-4 text-blue-600" />
+                                                          <span className="font-medium text-sm">
+                                                            {format(new Date(entry.date), 'EEEE d MMMM', { locale: it })}
+                                                          </span>
+                                                          <Badge variant="outline" className="border-blue-300 text-blue-700">
+                                                            {entry.time}
+                                                          </Badge>
+                                                        </div>
+                                                        <button 
+                                                          type="button"
+                                                          onClick={() => {
+                                                            const updated = ((newTaskData as any).specific_datetime || []).filter((_: any, i: number) => i !== idx);
+                                                            setNewTaskData({...newTaskData, specific_datetime: updated} as any);
+                                                          }}
+                                                          className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                                                        >
+                                                          <Trash2 className="h-4 w-4 text-red-500" />
+                                                        </button>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                                
+                                                {((newTaskData as any).specific_datetime || []).length === 0 && (
+                                                  <p className="text-xs text-muted-foreground text-center py-4 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                                                    Nessuna data aggiunta. Seleziona data e ora sopra.
+                                                  </p>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
+                                          
+                                          {/* Data fine e Tentativi */}
+                                          <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2 p-4 rounded-xl border bg-card">
+                                              <Label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                                <CalendarX className="h-4 w-4" />
+                                                Data fine serie (opzionale)
+                                              </Label>
+                                              <Input 
+                                                type="date" 
+                                                value={newTaskData.recurrence_end_date || ''}
+                                                onChange={(e) => setNewTaskData({...newTaskData, recurrence_end_date: e.target.value})}
+                                                className="h-10 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600"
+                                                disabled={newTaskData.recurrence_type === 'specific_dates'}
+                                              />
+                                            </div>
+                                            
+                                            <div className="space-y-2 p-4 rounded-xl border bg-card">
+                                              <Label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                                <RotateCcw className="h-4 w-4" />
+                                                Tentativi per chiamata
+                                              </Label>
+                                              <div className="flex gap-1">
+                                                {[1, 2, 3, 4, 5].map((n) => (
+                                                  <button
+                                                    key={n}
+                                                    type="button"
+                                                    onClick={() => setNewTaskData({...newTaskData, max_attempts: n})}
+                                                    className={`flex-1 h-10 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                                      newTaskData.max_attempts === n 
+                                                        ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-md' 
+                                                        : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
+                                                    }`}
+                                                  >
+                                                    {n}
+                                                  </button>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* Intervallo retry */}
+                                          <div className="p-4 rounded-xl border bg-muted/30">
+                                            <div className="flex items-center justify-between">
+                                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                                <Timer className="h-4 w-4 text-muted-foreground" />
+                                                Intervallo tra tentativi
+                                              </Label>
+                                              <select
+                                                value={String(newTaskData.retry_delay_minutes || 15)}
+                                                onChange={(e) => setNewTaskData({...newTaskData, retry_delay_minutes: parseInt(e.target.value)})}
+                                                className="h-9 w-32 rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 text-sm"
+                                              >
+                                                <option value="5">5 minuti</option>
+                                                <option value="10">10 minuti</option>
+                                                <option value="15">15 minuti</option>
+                                                <option value="30">30 minuti</option>
+                                                <option value="60">1 ora</option>
+                                              </select>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* ========== LAYOUT AI_TASK ========== */}
+                                      {newTaskData.task_type === 'ai_task' && (
+                                        <div className="space-y-6">
+                                          {newTaskData.call_after_task ? (
+                                            <>
+                                              {/* Alert informativo */}
+                                              <Alert className="bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800">
+                                                <Bot className="h-4 w-4 text-purple-600" />
+                                                <AlertTitle className="text-purple-800 dark:text-purple-200">Flusso Task AI + Chiamata</AlertTitle>
+                                                <AlertDescription className="text-purple-700 dark:text-purple-300">
+                                                  L'AI eseguirà il task all'orario programmato. Una volta completato, 
+                                                  chiamerà il contatto per spiegare i risultati a voce.
+                                                </AlertDescription>
+                                              </Alert>
+                                              
+                                              {/* Data e Ora task */}
+                                              <div className="space-y-4 p-5 rounded-2xl border-2 border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50 via-pink-50 to-fuchsia-50 dark:from-purple-950/30 dark:via-pink-950/20 dark:to-fuchsia-950/20">
+                                                <div className="flex items-center gap-2">
+                                                  <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-xl">
+                                                    <CalendarClock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                                  </div>
+                                                  <h3 className="font-bold text-base text-purple-900 dark:text-purple-200">Esecuzione Task</h3>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 gap-4">
+                                                  <div className="space-y-2">
+                                                    <Label className="text-sm font-medium text-purple-800 dark:text-purple-300 flex items-center gap-1.5">
+                                                      <CalendarDays className="h-4 w-4" />
+                                                      Data esecuzione task
+                                                    </Label>
+                                                    <Input 
+                                                      type="date" 
+                                                      value={newTaskData.scheduled_date}
+                                                      onChange={(e) => setNewTaskData({...newTaskData, scheduled_date: e.target.value})}
+                                                      className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-700 focus:border-purple-500"
+                                                    />
+                                                  </div>
+                                                  <div className="space-y-2">
+                                                    <Label className="text-sm font-medium text-purple-800 dark:text-purple-300 flex items-center gap-1.5">
+                                                      <Clock className="h-4 w-4" />
+                                                      Ora
+                                                    </Label>
+                                                    <Input 
+                                                      type="time" 
+                                                      value={newTaskData.scheduled_time}
+                                                      onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})}
+                                                      className="h-12 text-lg font-semibold bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-700 focus:border-purple-500 [color-scheme:light] dark:[color-scheme:dark]"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              
+                                              {/* Nota timing chiamata */}
+                                              <div className="p-4 bg-purple-100/50 dark:bg-purple-900/20 rounded-xl flex items-center gap-3 border border-purple-200 dark:border-purple-800">
+                                                <div className="p-2 bg-purple-200 dark:bg-purple-800 rounded-lg">
+                                                  <Phone className="h-5 w-5 text-purple-700 dark:text-purple-300" />
+                                                </div>
+                                                <div>
+                                                  <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                                                    La chiamata avverrà circa 15 minuti dopo il completamento del task
+                                                  </p>
+                                                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                                                    L'AI avrà il tempo di elaborare i risultati prima di contattare
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            </>
+                                          ) : (
+                                            /* Nessuna chiamata - esecuzione immediata */
+                                            <div className="text-center py-10">
+                                              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 mx-auto flex items-center justify-center mb-5 shadow-lg shadow-purple-500/20">
+                                                <Zap className="h-10 w-10 text-purple-600" />
+                                              </div>
+                                              <h4 className="font-bold text-xl mb-2">Esecuzione Immediata</h4>
+                                              <p className="text-muted-foreground max-w-sm mx-auto">
+                                                Il task verrà avviato immediatamente dopo la conferma.
+                                                <br />
+                                                <span className="text-sm">Nessuna chiamata prevista.</span>
+                                              </p>
+                                              
+                                              {/* Badge IN SVILUPPO */}
+                                              <Badge className="mt-6 bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700">
+                                                <Construction className="h-3 w-3 mr-1" />
+                                                Funzionalità in sviluppo
+                                              </Badge>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
