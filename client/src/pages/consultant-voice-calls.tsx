@@ -5401,7 +5401,6 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       })()}
                     </div>
                   </div>
-                  </div>
                 </div>
                 )}
               </TabsContent>
