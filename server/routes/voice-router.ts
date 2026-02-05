@@ -250,8 +250,8 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
     const clientsResult = await db.execute(clientsQuery);
     
     // 2. NUMERI CHIAMATI NON IN RUBRICA (numeri sconosciuti)
-    // Rimuoviamo direction che non esiste nella tabella voice_calls
-    const callsWhereCondition = consultantId ? sql`WHERE vc.consultant_id = ${consultantId}` : sql``;
+    // Costruiamo la condizione per consultant_id come AND, non WHERE separato
+    const consultantCondition = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
     const unknownNumbersResult = await db.execute(sql`
       SELECT DISTINCT ON (phone)
         phone,
@@ -268,8 +268,8 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           COUNT(*) as call_count,
           MAX(vc.started_at) as last_call_at
         FROM voice_calls vc
-        ${callsWhereCondition}
         WHERE caller_id IS NOT NULL AND caller_id != ''
+          ${consultantCondition}
           AND NOT EXISTS (
             SELECT 1 FROM users WHERE phone_number = vc.caller_id
           )
@@ -283,9 +283,9 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           COUNT(*) as call_count,
           MAX(vc.started_at) as last_call_at
         FROM voice_calls vc
-        ${callsWhereCondition}
         WHERE called_number IS NOT NULL 
           AND called_number != ''
+          ${consultantCondition}
           AND NOT EXISTS (
             SELECT 1 FROM users WHERE phone_number = vc.called_number
           )
