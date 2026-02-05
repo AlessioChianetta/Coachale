@@ -17,6 +17,8 @@ import { consultantAvailabilitySettings, users } from "@shared/schema";
 import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections } from "../ai/gemini-live-ws-service";
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
+import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from '../ai/provider-factory';
+import { GoogleGenAI } from "@google/genai";
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -2986,6 +2988,74 @@ router.post("/sync-call-states", authenticateToken, requireAnyRole(["super_admin
   } catch (error: any) {
     console.error("[SYNC] Error during sync:", error);
     return res.status(500).json({ error: "Sync failed", details: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// AI INSTRUCTION IMPROVEMENT - Migliora le istruzioni con Gemini
+// ═══════════════════════════════════════════════════════════════════
+
+router.post("/improve-instruction", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { instruction, task_type } = req.body;
+    
+    if (!instruction || typeof instruction !== 'string' || instruction.trim().length < 5) {
+      return res.status(400).json({ error: "Istruzione troppo breve o mancante" });
+    }
+
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) {
+      console.error("[VOICE] No Gemini API key available for instruction improvement");
+      return res.status(503).json({ error: "Servizio AI non disponibile" });
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const taskTypeDescriptions: Record<string, string> = {
+      'single_call': 'una singola chiamata telefonica (es: promemoria, conferma appuntamento)',
+      'follow_up': 'una serie di chiamate di follow-up programmate (es: ricontattare un lead, verificare stato)',
+      'ai_task': 'un task AI automatizzato che non richiede chiamata telefonica'
+    };
+
+    const taskDescription = taskTypeDescriptions[task_type] || 'una chiamata telefonica';
+
+    const systemPrompt = `Sei un esperto nel migliorare istruzioni per assistenti AI telefonici.
+Il tuo compito è prendere un'istruzione scritta dall'utente e migliorarla per renderla più efficace per un'AI che effettuerà ${taskDescription}.
+
+REGOLE IMPORTANTI:
+1. MANTIENI l'intento originale - non cambiare lo scopo della chiamata
+2. Rendi l'istruzione più CHIARA e SPECIFICA
+3. Aggiungi PUNTI CHIAVE da trattare se mancano
+4. Suggerisci un TONO appropriato (professionale ma amichevole)
+5. Includi indicazioni su come GESTIRE OBIEZIONI comuni
+6. Se è un follow-up, includi come riferirsi a conversazioni precedenti
+7. L'istruzione deve essere in ITALIANO
+8. Non usare formattazione markdown, solo testo semplice
+9. Mantieni una lunghezza ragionevole (max 3-4 frasi chiave)
+
+OUTPUT: Restituisci SOLO l'istruzione migliorata, senza spiegazioni o prefissi.`;
+
+    const response = await ai.models.generateContent({
+      model: GEMINI_3_MODEL,
+      contents: [
+        { role: 'user', parts: [{ text: systemPrompt }] },
+        { role: 'model', parts: [{ text: 'Capito. Inviami l\'istruzione da migliorare.' }] },
+        { role: 'user', parts: [{ text: `Istruzione originale: "${instruction}"` }] }
+      ],
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 500
+      }
+    });
+
+    const improved = response.text?.trim() || instruction;
+    
+    console.log(`✨ [VOICE] Instruction improved for ${task_type}: "${instruction.substring(0, 50)}..." -> "${improved.substring(0, 50)}..."`);
+
+    return res.json({ improved });
+  } catch (error: any) {
+    console.error("[VOICE] Error improving instruction:", error);
+    return res.status(500).json({ error: "Errore durante il miglioramento dell'istruzione" });
   }
 });
 

@@ -105,6 +105,7 @@ import {
   Circle,
   Timer,
   Pencil,
+  Wand2,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -1125,6 +1126,28 @@ export default function ConsultantVoiceCallsPage() {
       setRetryMaxAttempts(data.voiceMaxRetryAttempts);
       setRetryIntervalMinutes(data.voiceRetryIntervalMinutes);
       toast({ title: "Salvato", description: "Impostazioni retry aggiornate" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const improveInstructionMutation = useMutation({
+    mutationFn: async (data: { instruction: string; task_type: string }) => {
+      const res = await fetch("/api/voice/improve-instruction", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel miglioramento dell'istruzione");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setNewTaskData(prev => ({...prev, ai_instruction: data.improved}));
+      toast({ title: "✨ Istruzione migliorata", description: "L'AI ha ottimizzato la tua istruzione" });
     },
     onError: (err: Error) => {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -5072,26 +5095,45 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   )}
 
                                   {/* SEZIONE 3: ISTRUZIONE AI - adattiva per tipo */}
-                                  <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className={`p-1.5 rounded-lg ${
-                                        newTaskData.task_type === 'ai_task' 
-                                          ? 'bg-purple-100 dark:bg-purple-900/30' 
-                                          : 'bg-amber-100 dark:bg-amber-900/30'
-                                      }`}>
-                                        {newTaskData.task_type === 'ai_task' 
-                                          ? <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                          : <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                        }
+                                  <div className="space-y-4 p-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`p-1.5 rounded-lg ${
+                                          newTaskData.task_type === 'ai_task' 
+                                            ? 'bg-purple-100 dark:bg-purple-900/30' 
+                                            : 'bg-amber-100 dark:bg-amber-900/30'
+                                        }`}>
+                                          {newTaskData.task_type === 'ai_task' 
+                                            ? <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                            : <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                          }
+                                        </div>
+                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+                                          {newTaskData.task_type === 'ai_task' ? 'Compito AI' : 'Istruzione per la chiamata'}
+                                        </h3>
+                                        {newTaskData.template_id && (
+                                          <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 text-xs">
+                                            Template attivo
+                                          </Badge>
+                                        )}
                                       </div>
-                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                                        {newTaskData.task_type === 'ai_task' ? 'Compito AI' : 'Istruzione per la chiamata'}
-                                      </h3>
-                                      {newTaskData.template_id && (
-                                        <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 text-xs">
-                                          Template attivo
-                                        </Badge>
-                                      )}
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={!newTaskData.ai_instruction || newTaskData.ai_instruction.trim().length < 5 || improveInstructionMutation.isPending}
+                                        onClick={() => improveInstructionMutation.mutate({ 
+                                          instruction: newTaskData.ai_instruction, 
+                                          task_type: newTaskData.task_type 
+                                        })}
+                                        className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 gap-2"
+                                      >
+                                        {improveInstructionMutation.isPending ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Wand2 className="h-4 w-4" />
+                                        )}
+                                        {improveInstructionMutation.isPending ? 'Migliorando...' : 'Genera con AI'}
+                                      </Button>
                                     </div>
                                     <div className="relative">
                                       <Textarea 
@@ -5102,7 +5144,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                             ? "Es: 'Ricontatta il lead per sapere se ha avuto modo di valutare la proposta'"
                                             : "Es: 'Invia un messaggio di follow-up, analizza la risposta e aggiorna il CRM'"
                                         }
-                                        className={`bg-muted/30 border-muted-foreground/20 focus:border-primary resize-none pr-12 ${
+                                        className={`bg-white dark:bg-slate-900/50 border-muted-foreground/20 focus:border-primary resize-none pr-12 ${
                                           newTaskData.task_type === 'ai_task' ? 'min-h-[160px]' : 'min-h-[100px]'
                                         }`}
                                         value={newTaskData.ai_instruction}
@@ -5110,6 +5152,10 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       />
                                       <Bot className="absolute right-4 bottom-4 h-5 w-5 text-muted-foreground/30" />
                                     </div>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                      <Wand2 className="h-3 w-3 text-violet-500" />
+                                      Scrivi un'istruzione di base e clicca "Genera con AI" per migliorarla automaticamente
+                                    </p>
                                     {newTaskData.task_type === 'ai_task' && (
                                       <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                                         <Sparkles className="h-3 w-3" />
