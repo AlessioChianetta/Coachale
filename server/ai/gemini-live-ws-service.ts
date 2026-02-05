@@ -3660,8 +3660,15 @@ ${brandVoicePrompt}` : ''}`;
           }
         }
         
-        // Combine: Voice Directives + Brand Voice + Current Time + Content Prompt + Previous Call Context
+        // 🎯 Direction context - clear indication of who called who
+        const directionContext = isOutbound 
+          ? `📲 DIREZIONE: OUTBOUND - TU stai chiamando questa persona. Puoi dire "ti chiamo perché..." o "ti stavo cercando..."`
+          : `📲 DIREZIONE: INBOUND - Questa persona TI STA CHIAMANDO. NON dire MAI "ti stavo chiamando", "ti richiamo", "ti stavo cercando". Rispondi alla loro chiamata!`;
+        
+        // Combine: Voice Directives + Direction Context + Brand Voice + Current Time + Content Prompt + Previous Call Context
         systemInstruction = `${finalVoiceDirectives}
+
+${directionContext}
 ${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}
 📅 Data e ora attuale: ${italianTime} (fuso orario Italia)
 
