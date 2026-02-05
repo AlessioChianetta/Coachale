@@ -239,10 +239,15 @@ export default function ConsultantVoiceCallDetailPage() {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div>
                       <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-4 w-4" /> Inizio
+                        <Calendar className="h-4 w-4" /> {call.started_at ? "Inizio" : "Programmata"}
                       </div>
                       <div className="font-medium">
-                        {format(new Date(call.started_at), "dd/MM/yyyy HH:mm:ss", { locale: it })}
+                        {call.started_at 
+                          ? format(new Date(call.started_at), "dd/MM/yyyy HH:mm:ss", { locale: it })
+                          : call.scheduled_at 
+                            ? format(new Date(call.scheduled_at), "dd/MM/yyyy HH:mm:ss", { locale: it })
+                            : "-"
+                        }
                       </div>
                     </div>
                     {call.answered_at && (
