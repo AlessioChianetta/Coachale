@@ -4550,17 +4550,18 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     return name.includes(search) || phone.includes(search);
                                   };
                                   
-                                  // AI Tasks: mostrati SOLO se NON hanno ancora generato una chiamata
-                                  // (evita duplicati: task viola + chiamata blu allo stesso orario)
+                                  // AI Tasks: sempre mostrati (le chiamate generate appaiono nella timeline interna)
                                   const dayTasks = (calendarData?.aiTasks?.filter((t: AITask) => 
-                                    isSameDay(new Date(t.scheduled_at), day) && 
-                                    matchesContactFilter(t) &&
-                                    !t.voice_call_id // Nascondi task che hanno già creato una scheduled call
+                                    isSameDay(new Date(t.scheduled_at), day) && matchesContactFilter(t)
                                   ) || []);
                                   
-                                  // Chiamate PROGRAMMATE: sempre visibili (filtrate per contatto se c'è ricerca)
+                                  // Chiamate PROGRAMMATE: nascondi quelle generate da AI tasks (hanno source_task_id)
+                                  // perché appaiono già nella timeline del task viola
                                   const dayCalls = (calendarData?.scheduledCalls?.filter((c: any) => 
-                                    c.scheduled_at && isSameDay(new Date(c.scheduled_at), day) && matchesContactFilter(c)
+                                    c.scheduled_at && 
+                                    isSameDay(new Date(c.scheduled_at), day) && 
+                                    matchesContactFilter(c) &&
+                                    !c.source_task_id // Nascondi chiamate generate da AI tasks
                                   ) || []);
                                   
                                   // STORICO chiamate: 
