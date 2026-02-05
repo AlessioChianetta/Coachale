@@ -5090,7 +5090,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               ? "Es: 'Ricontatta il lead per sapere se ha avuto modo di valutare la proposta'"
                                               : "Es: 'Analizza lo storico del cliente e prepara un report'"
                                           }
-                                          className="min-h-[100px] bg-muted/30 border-muted-foreground/20 focus:border-primary resize-none"
+                                          className="min-h-[160px] bg-muted/30 border-muted-foreground/20 focus:border-primary resize-y"
                                           value={newTaskData.ai_instruction}
                                           onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
                                         />

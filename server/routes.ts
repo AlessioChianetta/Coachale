@@ -3706,18 +3706,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/consultations/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      // Check if consultation exists and belongs to this consultant
-      const existingConsultation = await storage.getConsultation(req.params.id);
+      const consultantId = req.user!.id;
+      let consultationId = req.params.id;
+      
+      // Handle Google Calendar events (ID format: google-{timestamp}-{index})
+      // These don't exist in local DB, so we create a local record first, then apply updates
+      if (consultationId.startsWith('google-')) {
+        console.log(`📅 [CONSULTATIONS] Converting Google Calendar event to local: ${consultationId}`);
+        
+        // Validate request body using schema
+        const validatedData = updateConsultationSchema.parse(req.body);
+        
+        // scheduledAt is required for Google Calendar conversion
+        if (!validatedData.scheduledAt) {
+          return res.status(400).json({ message: "scheduledAt is required for Google Calendar event conversion" });
+        }
+        
+        // Parse and validate scheduledAt date
+        const scheduledDate = new Date(validatedData.scheduledAt);
+        if (isNaN(scheduledDate.getTime())) {
+          return res.status(400).json({ message: "Invalid scheduledAt date format" });
+        }
+        
+        // Verify client ownership if clientId is provided
+        if (validatedData.clientId) {
+          const clientUser = await storage.getUser(validatedData.clientId);
+          if (!clientUser) {
+            return res.status(400).json({ message: "Client not found" });
+          }
+          // Check ownership via users table or multi-profile system
+          const clientProfiles = await storage.getUserRoleProfiles(validatedData.clientId);
+          const ownsClient = clientUser.consultantId === consultantId || 
+                            clientProfiles.some(p => p.role === 'client' && p.consultantId === consultantId);
+          if (!ownsClient) {
+            return res.status(403).json({ message: "Cannot assign consultation to a client you don't manage" });
+          }
+        }
+        
+        // Create a new local consultation record with all validated data
+        const newConsultation = await storage.createConsultation({
+          consultantId,
+          clientId: validatedData.clientId || null,
+          scheduledAt: scheduledDate,
+          duration: validatedData.duration || 60,
+          notes: validatedData.notes || null,
+          status: validatedData.status || 'scheduled',
+          videoCallLink: validatedData.videoCallLink || null,
+          fathomRecordingLink: validatedData.fathomRecordingLink || null,
+          consultationSummary: validatedData.consultationSummary || null,
+        });
+        
+        console.log(`✅ [CONSULTATIONS] Created local consultation ${newConsultation.id} from Google event ${consultationId}`);
+        return res.json(newConsultation);
+      }
+      
+      // Standard flow for existing local consultations
+      const existingConsultation = await storage.getConsultation(consultationId);
       if (!existingConsultation) {
         return res.status(404).json({ message: "Consultation not found" });
       }
 
-      if (existingConsultation.consultantId !== req.user!.id) {
+      if (existingConsultation.consultantId !== consultantId) {
         return res.status(403).json({ message: "Access denied" });
       }
 
       const validatedData = updateConsultationSchema.parse(req.body);
-      const updatedConsultation = await storage.updateConsultation(req.params.id, validatedData);
+      const updatedConsultation = await storage.updateConsultation(consultationId, validatedData);
 
       if (!updatedConsultation) {
         return res.status(404).json({ message: "Consultation not found" });
@@ -3725,6 +3779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updatedConsultation);
     } catch (error: any) {
+      console.error('[CONSULTATIONS] Update error:', error);
       res.status(400).json({ message: error.message });
     }
   });

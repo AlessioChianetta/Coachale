@@ -3031,9 +3031,11 @@ REGOLE IMPORTANTI:
 6. Se è un follow-up, includi come riferirsi a conversazioni precedenti
 7. L'istruzione deve essere in ITALIANO
 8. Non usare formattazione markdown, solo testo semplice
-9. Mantieni una lunghezza ragionevole (max 3-4 frasi chiave)
+9. Mantieni una lunghezza tra 4-6 frasi complete
 
-OUTPUT: Restituisci SOLO l'istruzione migliorata, senza spiegazioni o prefissi.`;
+CRITICO: Completa SEMPRE ogni frase. Non lasciare mai frasi a metà o incomplete.
+
+OUTPUT: Restituisci SOLO l'istruzione migliorata, senza spiegazioni o prefissi. Assicurati che ogni frase sia completa.`;
 
     const response = await ai.models.generateContent({
       model: GEMINI_3_MODEL,
@@ -3044,7 +3046,7 @@ OUTPUT: Restituisci SOLO l'istruzione migliorata, senza spiegazioni o prefissi.`
       ],
       config: {
         temperature: 0.7,
-        maxOutputTokens: 500
+        maxOutputTokens: 1024
       }
     });
 
