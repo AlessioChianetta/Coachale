@@ -1975,7 +1975,39 @@ export default function ConsultantVoiceCallsPage() {
   const selectedInboundAgent = nonClientSettingsData?.availableAgents.find(a => a.id === inboundAgentId);
   const selectedOutboundAgent = nonClientSettingsData?.availableAgents.find(a => a.id === outboundAgentId);
 
-  const calls: VoiceCall[] = callsData?.calls || [];
+  const voiceCalls: VoiceCall[] = callsData?.calls || [];
+  
+  // Trasforma i callAttempts (scheduled_voice_calls con tentativi che NON hanno generato voice_call)
+  // La deduplicazione è già fatta nel backend (voice_call_id IS NULL)
+  const callAttempts = (callsData?.callAttempts || []).map((attempt: any) => ({
+    id: attempt.id,
+    caller_id: attempt.target_phone,
+    called_number: attempt.target_phone,
+    client_id: null,
+    client_name: attempt.contact_name || null,
+    consultant_id: attempt.consultant_id,
+    started_at: attempt.scheduled_at,
+    ended_at: attempt.updated_at,
+    duration_seconds: null,
+    status: attempt.status,
+    direction: 'outbound' as const,
+    hangup_cause: attempt.error_message,
+    instruction_type: attempt.instruction_type,
+    call_instruction: attempt.call_instruction,
+    source_task_id: attempt.source_task_id,
+    ai_task_type: attempt.ai_task_type,
+    ai_task_recurrence: attempt.ai_task_recurrence,
+    svc_attempts: attempt.attempts,
+    svc_max_attempts: attempt.max_attempts,
+    attempts_log: attempt.attempts_log,
+    is_attempt: true, // Flag per distinguere dai voice_calls reali
+  }));
+  
+  // Combina chiamate reali e tentativi, ordinando per data
+  const calls: VoiceCall[] = [...voiceCalls, ...callAttempts].sort((a, b) => 
+    new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+  );
+  
   const pagination = callsData?.pagination || { page: 1, totalPages: 1, total: 0 };
   const stats: VoiceStats | undefined = statsData?.stats;
   const activeCalls: number = statsData?.activeCalls || 0;
@@ -1989,9 +2021,9 @@ export default function ConsultantVoiceCallsPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const filteredCalls = calls.filter((c) => {
+  const filteredCalls = calls.filter((c: any) => {
     const matchesSearch = !search || 
-      c.caller_id.includes(search) ||
+      c.caller_id?.includes(search) ||
       c.client_name?.toLowerCase().includes(search.toLowerCase());
     
     const matchesClientType = 

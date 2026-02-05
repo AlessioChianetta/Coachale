@@ -196,8 +196,62 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
     `);
     const total = parseInt((totalResult.rows[0] as any)?.total || "0", 10);
 
+    // Fetch AI task call attempts (scheduled_voice_calls with attempts > 0)
+    // ONLY include attempts that did NOT result in a successful voice_call
+    // (voice_call_id is NULL means the call never connected)
+    let attemptWhereConditions = [];
+    if (consultantId) {
+      attemptWhereConditions.push(sql`svc.consultant_id = ${consultantId}`);
+    }
+    // Only include calls with actual attempts
+    attemptWhereConditions.push(sql`svc.attempts > 0`);
+    // Exclude attempts that successfully created a voice_call (shown in main calls list)
+    attemptWhereConditions.push(sql`svc.voice_call_id IS NULL`);
+    
+    if (from) {
+      attemptWhereConditions.push(sql`svc.scheduled_at >= ${from}::timestamp`);
+    }
+    if (to) {
+      attemptWhereConditions.push(sql`svc.scheduled_at <= ${to}::timestamp`);
+    }
+    if (status && status !== 'all') {
+      attemptWhereConditions.push(sql`svc.status = ${status}`);
+    }
+    
+    const attemptWhereClause = sql`WHERE ${sql.join(attemptWhereConditions, sql` AND `)}`;
+    
+    const callAttempts = await db.execute(sql`
+      SELECT 
+        svc.id,
+        svc.consultant_id,
+        svc.target_phone,
+        svc.scheduled_at,
+        svc.status,
+        svc.ai_mode,
+        svc.custom_prompt,
+        svc.call_instruction,
+        svc.instruction_type,
+        svc.attempts,
+        svc.max_attempts,
+        svc.attempts_log,
+        svc.error_message,
+        svc.source_task_id,
+        svc.voice_call_id,
+        svc.created_at,
+        svc.updated_at,
+        ast.task_type as ai_task_type,
+        ast.contact_name as contact_name,
+        ast.recurrence_type as ai_task_recurrence
+      FROM scheduled_voice_calls svc
+      LEFT JOIN ai_scheduled_tasks ast ON ast.id = svc.source_task_id
+      ${attemptWhereClause}
+      ORDER BY svc.scheduled_at DESC
+      LIMIT ${limitNum} OFFSET ${offset}
+    `);
+
     res.json({
       calls: calls.rows,
+      callAttempts: callAttempts.rows,
       pagination: {
         page: pageNum,
         limit: limitNum,
