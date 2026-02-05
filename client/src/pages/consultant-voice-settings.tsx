@@ -29,6 +29,10 @@ import {
   HelpCircle,
   Copy,
   Check,
+  BookOpen,
+  Server,
+  Layers,
+  Info,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
@@ -487,6 +491,233 @@ export default function ConsultantVoiceSettingsPage() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* GUIDA COMPLETA FREESWITCH */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      Guida: Configurazione Numeri e Limiti su FreeSWITCH
+                    </CardTitle>
+                    <CardDescription>
+                      Come configurare uno o piu numeri VoIP e impostare i limiti di chiamate simultanee
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+
+                    {/* TABELLA PIANI TARIFFARI */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold flex items-center gap-2 text-base">
+                        <Phone className="h-4 w-4" />
+                        Canali per Piano Tariffario
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Ogni provider VoIP ha un limite di chiamate simultanee (canali). Se superi il limite, il provider potrebbe bloccarti o addebitarti penali. Ecco i limiti piu comuni:
+                      </p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm border rounded-lg overflow-hidden">
+                          <thead>
+                            <tr className="bg-muted/50">
+                              <th className="text-left p-3 font-semibold">Provider / Piano</th>
+                              <th className="text-center p-3 font-semibold">Canali Simultanei</th>
+                              <th className="text-left p-3 font-semibold">Note</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            <tr>
+                              <td className="p-3 font-medium">SIM Iliad / Ho Mobile</td>
+                              <td className="p-3 text-center"><Badge variant="secondary">1</Badge></td>
+                              <td className="p-3 text-muted-foreground">Solo 1 chiamata alla volta, come un telefono fisico</td>
+                            </tr>
+                            <tr className="bg-muted/20">
+                              <td className="p-3 font-medium">Vodafone Casa / TIM Fisso</td>
+                              <td className="p-3 text-center"><Badge variant="secondary">1</Badge></td>
+                              <td className="p-3 text-muted-foreground">Linea tradizionale = 1 canale</td>
+                            </tr>
+                            <tr>
+                              <td className="p-3 font-medium">Messagenet Free</td>
+                              <td className="p-3 text-center"><Badge variant="secondary">2</Badge></td>
+                              <td className="p-3 text-muted-foreground">Piano gratuito con 2 canali inclusi</td>
+                            </tr>
+                            <tr className="bg-muted/20">
+                              <td className="p-3 font-medium">Messagenet Business</td>
+                              <td className="p-3 text-center"><Badge>5-10</Badge></td>
+                              <td className="p-3 text-muted-foreground">In base al piano scelto</td>
+                            </tr>
+                            <tr>
+                              <td className="p-3 font-medium">OVH VoIP / Clouditalia</td>
+                              <td className="p-3 text-center"><Badge>2-20</Badge></td>
+                              <td className="p-3 text-muted-foreground">Dipende dal trunk SIP acquistato</td>
+                            </tr>
+                            <tr className="bg-muted/20">
+                              <td className="p-3 font-medium">VoIP Business (Wildix, 3CX)</td>
+                              <td className="p-3 text-center"><Badge>10-100+</Badge></td>
+                              <td className="p-3 text-muted-foreground">Piani enterprise con molti canali</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          Se non sai quanti canali hai, contatta il tuo provider VoIP o controlla il contratto. Impostare un limite <strong>uguale o inferiore</strong> al numero di canali previene blocchi e penali.
+                        </p>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* 3 LIVELLI DI PROTEZIONE */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold flex items-center gap-2 text-base">
+                        <Layers className="h-4 w-4" />
+                        3 Livelli di Protezione
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Per una protezione completa, i limiti vanno configurati a 3 livelli. FreeSWITCH e il "buttafuori" finale: anche se il software si sbaglia, FreeSWITCH blocca fisicamente la chiamata in eccesso.
+                      </p>
+                      <div className="grid gap-3">
+                        <div className="p-4 rounded-lg border bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Server className="h-4 w-4 text-red-600" />
+                            <h5 className="font-semibold text-red-800 dark:text-red-200">Livello 1: Globale (Protezione Server)</h5>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Limita il numero totale di sessioni su tutta la VPS. Protegge da attacchi o sovraccarichi.
+                          </p>
+                          <div className="bg-zinc-900 text-zinc-100 p-3 rounded-md font-mono text-xs overflow-x-auto">
+                            <div className="text-zinc-500">&lt;!-- File: conf/autoload_configs/switch.conf.xml --&gt;</div>
+                            <div>&lt;param name=<span className="text-green-400">"max-sessions"</span> value=<span className="text-amber-400">"200"</span>/&gt;</div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Per VPS piccole (2-4 CPU) usa 100-200. Non lasciare il default 100000.
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Shield className="h-4 w-4 text-blue-600" />
+                            <h5 className="font-semibold text-blue-800 dark:text-blue-200">Livello 2: Per Gateway (Protezione Provider)</h5>
+                            <Badge variant="outline" className="text-xs">Fondamentale</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Questo e il punto chiave. Usa l'applicazione <code className="bg-muted px-1 rounded">limit</code> nel Dialplan per dire a FreeSWITCH:
+                            "Su questo gateway, fai passare massimo N chiamate alla volta".
+                          </p>
+                          <div className="bg-zinc-900 text-zinc-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre">
+                            <div className="text-zinc-500">&lt;!-- File: conf/dialplan/default.xml --&gt;</div>
+                            <div className="text-zinc-500">&lt;!-- Esempio: Vodafone Casa (1 canale) --&gt;</div>
+{`<extension name="chiamata_uscita_vodafone">
+  <condition field="destination_number" expression="^(\\d+)$">
+    `}<span className="text-amber-400">{`<action application="limit" data="hash gateway vodafone_casa 1 !USER_BUSY"/>`}</span>{`
+    <action application="bridge" data="sofia/gateway/vodafone_casa/$1"/>
+  </condition>
+</extension>`}
+                          </div>
+                          <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                            <p><strong>Come funziona:</strong></p>
+                            <p>1. Arriva la 1a chiamata &#8594; <code className="bg-muted px-1 rounded">limit</code> vede 0 attive, la fa passare. Contatore sale a 1.</p>
+                            <p>2. Arriva la 2a chiamata (mentre la 1a e attiva) &#8594; <code className="bg-muted px-1 rounded">limit</code> vede 1 su 1.</p>
+                            <p>3. Scatta <code className="bg-muted px-1 rounded">!USER_BUSY</code>: FreeSWITCH rifiuta subito con segnale "Occupato". La chiamata non parte.</p>
+                          </div>
+                        </div>
+
+                        <div className="p-4 rounded-lg border bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Settings className="h-4 w-4 text-green-600" />
+                            <h5 className="font-semibold text-green-800 dark:text-green-200">Livello 3: Software (Questo Pannello)</h5>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Il campo "Max Chiamate Simultanee" nel tab Numeri Inbound serve come controllo logico e per l'interfaccia utente.
+                            Mostra un errore prima di tentare la chiamata, ma FreeSWITCH resta il blocco finale.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* CONFIGURAZIONE MULTI-NUMERO */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold flex items-center gap-2 text-base">
+                        <PhoneOutgoing className="h-4 w-4" />
+                        Configurazione Multi-Numero (Piu Gateway)
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Se hai piu numeri o provider diversi, configura un gateway separato per ciascuno con il suo limite.
+                        Ogni gateway puo avere un limite diverso in base al piano tariffario.
+                      </p>
+                      <div className="bg-zinc-900 text-zinc-100 p-3 rounded-md font-mono text-xs overflow-x-auto whitespace-pre">
+                        <div className="text-zinc-500">&lt;!-- Gateway 1: SIM Iliad (1 canale) --&gt;</div>
+{`<extension name="uscita_iliad">
+  <condition field="destination_number" expression="^(\\d+)$">
+    <action application="limit" data="hash gateway iliad_sim 1 !USER_BUSY"/>
+    <action application="bridge" data="sofia/gateway/iliad_sim/$1"/>
+  </condition>
+</extension>
+
+`}<div className="text-zinc-500">&lt;!-- Gateway 2: Messagenet (2 canali) --&gt;</div>
+{`<extension name="uscita_messagenet">
+  <condition field="destination_number" expression="^(\\d+)$">
+    <action application="limit" data="hash gateway messagenet_trunk 2 !USER_BUSY"/>
+    <action application="bridge" data="sofia/gateway/messagenet_trunk/$1"/>
+  </condition>
+</extension>
+
+`}<div className="text-zinc-500">&lt;!-- Gateway 3: VoIP Business (10 canali) --&gt;</div>
+{`<extension name="uscita_business">
+  <condition field="destination_number" expression="^(\\d+)$">
+    <action application="limit" data="hash gateway voip_business 10 !USER_BUSY"/>
+    <action application="bridge" data="sofia/gateway/voip_business/$1"/>
+  </condition>
+</extension>`}
+                      </div>
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                        <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-blue-800 dark:text-blue-200">
+                          <p className="font-medium mb-1">Come scegliere il gateway attivo</p>
+                          <p className="text-muted-foreground">
+                            Il nome gateway che inserisci sopra nel campo "Nome Gateway SIP" determina quale trunk FreeSWITCH usera per le chiamate in uscita.
+                            Se cambi provider, aggiorna sia il gateway in FreeSWITCH che qui nel pannello.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* RIEPILOGO VELOCE */}
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border border-violet-200 dark:border-violet-800">
+                      <h4 className="font-semibold text-violet-800 dark:text-violet-200 mb-3 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Riepilogo: Cosa Fare
+                      </h4>
+                      <div className="grid gap-2 text-sm">
+                        <div className="flex items-start gap-2">
+                          <span className="font-bold text-violet-600 dark:text-violet-400 w-5 flex-shrink-0">1.</span>
+                          <span className="text-muted-foreground">Scopri quanti <strong>canali</strong> hai dal tuo provider (vedi tabella sopra)</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="font-bold text-violet-600 dark:text-violet-400 w-5 flex-shrink-0">2.</span>
+                          <span className="text-muted-foreground">Configura <code className="bg-muted px-1 rounded">limit</code> nel Dialplan di FreeSWITCH con quel numero</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="font-bold text-violet-600 dark:text-violet-400 w-5 flex-shrink-0">3.</span>
+                          <span className="text-muted-foreground">Imposta <code className="bg-muted px-1 rounded">max-sessions</code> in switch.conf.xml (es: 200 per VPS piccole)</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="font-bold text-violet-600 dark:text-violet-400 w-5 flex-shrink-0">4.</span>
+                          <span className="text-muted-foreground">Compila i campi sopra (Caller ID, Gateway SIP) e salva</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="font-bold text-violet-600 dark:text-violet-400 w-5 flex-shrink-0">5.</span>
+                          <span className="text-muted-foreground">Aggiorna il file <code className="bg-muted px-1 rounded">.env</code> sulla VPS (vai a Chiamate &#8594; Connessione VPS)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="numbers" className="space-y-4">
