@@ -946,6 +946,7 @@ export default function ConsultantVoiceCallsPage() {
   // Calendar filter states
   const [calendarContactFilter, setCalendarContactFilter] = useState("");
   const [calendarShowAllCalls, setCalendarShowAllCalls] = useState(false);
+  const [showContactsDropdown, setShowContactsDropdown] = useState(false);
   const [newTaskData, setNewTaskData] = useState({
     contact_phone: '',
     contact_name: '',
@@ -1279,6 +1280,17 @@ export default function ConsultantVoiceCallsPage() {
           return callDate >= calendarWeekStart && callDate < weekEnd;
         })
       };
+    },
+    enabled: aiTasksView === 'calendar'
+  });
+
+  // Voice contacts (rubrica) query
+  const { data: voiceContactsData } = useQuery<{ contacts: Array<{ phone: string; name: string; last_call_at: string; call_count: number; last_direction: string }> }>({
+    queryKey: ["voice-contacts"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/contacts", { headers: getAuthHeaders() });
+      if (!res.ok) return { contacts: [] };
+      return res.json();
     },
     enabled: aiTasksView === 'calendar'
   });
@@ -3503,111 +3515,197 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
               </TabsContent>
 
               <TabsContent value="ai-tasks" className="space-y-4">
+                {/* Layout con sidebar a sinistra */}
+                <div className="flex gap-4">
+                  {/* SIDEBAR SINISTRA */}
+                  {aiTasksView === 'calendar' && (
+                    <div className="w-72 flex-shrink-0 space-y-4">
+                      {/* Navigazione mese */}
+                      <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => setCalendarWeekStart(prev => addDays(prev, -7))}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm font-medium">
+                            {format(calendarWeekStart, 'MMMM yyyy', { locale: it })}
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => setCalendarWeekStart(prev => addDays(prev, 7))}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => setCalendarWeekStart(startOfWeek(new Date(), {weekStartsOn: 1}))}
+                        >
+                          Oggi
+                        </Button>
+                      </div>
+                      
+                      {/* Filtri */}
+                      <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm p-4 space-y-4">
+                        <h3 className="text-sm font-medium">Filtri</h3>
+                        
+                        {/* Toggle storico */}
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id="sidebar-show-all-calls"
+                            checked={calendarShowAllCalls}
+                            onCheckedChange={setCalendarShowAllCalls}
+                            className="data-[state=checked]:bg-blue-500"
+                          />
+                          <label htmlFor="sidebar-show-all-calls" className="text-sm text-muted-foreground cursor-pointer">
+                            Tutto lo storico
+                          </label>
+                        </div>
+                        
+                        {/* Legenda */}
+                        <div className="space-y-2 pt-2 border-t">
+                          <p className="text-xs text-muted-foreground mb-2">Legenda:</p>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 rounded bg-purple-500"></div>
+                            <span>AI Tasks</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 rounded bg-blue-500"></div>
+                            <span>Pending</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 rounded bg-emerald-500"></div>
+                            <span>Completate</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 rounded bg-red-400"></div>
+                            <span>Failed</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 rounded bg-gray-600"></div>
+                            <span>Con istruzioni AI</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Rubrica contatti */}
+                      <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm p-4">
+                        <h3 className="text-sm font-medium mb-3">Rubrica Chiamate</h3>
+                        
+                        {/* Search input */}
+                        <div className="relative mb-3">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Cerca contatto..."
+                            value={calendarContactFilter}
+                            onChange={(e) => setCalendarContactFilter(e.target.value)}
+                            className="pl-8 h-8 text-sm"
+                          />
+                          {calendarContactFilter && (
+                            <button
+                              onClick={() => setCalendarContactFilter("")}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        
+                        {/* Lista contatti */}
+                        <div className="max-h-64 overflow-y-auto space-y-1">
+                          {(voiceContactsData?.contacts || [])
+                            .filter(c => {
+                              if (!calendarContactFilter) return true;
+                              const search = calendarContactFilter.toLowerCase();
+                              return c.name.toLowerCase().includes(search) || c.phone.toLowerCase().includes(search);
+                            })
+                            .slice(0, 15)
+                            .map((contact, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => setCalendarContactFilter(contact.phone)}
+                                className={`w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-muted transition-colors ${
+                                  calendarContactFilter === contact.phone ? 'bg-muted' : ''
+                                }`}
+                              >
+                                <div className="font-medium truncate">
+                                  {contact.name !== contact.phone ? contact.name : 'Sconosciuto'}
+                                </div>
+                                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                  <span>{contact.phone}</span>
+                                  <span className="text-muted-foreground/50">({contact.call_count} chiamate)</span>
+                                </div>
+                              </button>
+                            ))}
+                          {(!voiceContactsData?.contacts?.length) && (
+                            <p className="text-xs text-muted-foreground text-center py-4">
+                              Nessun contatto trovato
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* CONTENUTO PRINCIPALE */}
+                  <div className="flex-1 min-w-0">
                 {/* GOOGLE CALENDAR STYLE HEADER */}
                 <div className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl border shadow-sm px-4 py-3">
                   <div className="flex items-center gap-4">
-                    {/* Month/Year Navigation - Google Style */}
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-9 px-3 hover:bg-muted"
-                        onClick={() => setCalendarWeekStart(prev => addDays(prev, -7))}
-                      >
-                        <ChevronLeft className="h-5 w-5" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-9 px-3 hover:bg-muted"
-                        onClick={() => setCalendarWeekStart(prev => addDays(prev, 7))}
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                      </Button>
-                      <h2 className="text-xl font-normal text-foreground ml-2">
-                        {format(calendarWeekStart, 'MMMM yyyy', { locale: it })}
-                      </h2>
-                    </div>
-                    
-                    {/* Today button */}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 px-4 rounded-md border-muted-foreground/30"
-                      onClick={() => setCalendarWeekStart(startOfWeek(new Date(), {weekStartsOn: 1}))}
-                    >
-                      Oggi
-                    </Button>
-                    
-                    {/* Compact Legend */}
-                    <div className="hidden md:flex items-center gap-3 ml-4 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm bg-purple-500"></div>
-                        <span className="text-muted-foreground">AI Tasks</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm bg-blue-500"></div>
-                        <span className="text-muted-foreground">Pending</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm bg-amber-500"></div>
-                        <span className="text-muted-foreground">In corso</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></div>
-                        <span className="text-muted-foreground">OK</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm bg-red-400"></div>
-                        <span className="text-muted-foreground">Failed</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm bg-gray-400"></div>
-                        <span className="text-muted-foreground">Annullate</span>
-                      </div>
-                      {(calendarContactFilter || calendarShowAllCalls) && (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-sm bg-gray-600"></div>
-                          <span className="text-muted-foreground">Storico</span>
+                    {/* Month/Year Navigation - Google Style (solo per lista) */}
+                    {aiTasksView === 'list' && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-9 px-3 hover:bg-muted"
+                            onClick={() => setCalendarWeekStart(prev => addDays(prev, -7))}
+                          >
+                            <ChevronLeft className="h-5 w-5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-9 px-3 hover:bg-muted"
+                            onClick={() => setCalendarWeekStart(prev => addDays(prev, 7))}
+                          >
+                            <ChevronRight className="h-5 w-5" />
+                          </Button>
+                          <h2 className="text-xl font-normal text-foreground ml-2">
+                            {format(calendarWeekStart, 'MMMM yyyy', { locale: it })}
+                          </h2>
                         </div>
-                      )}
-                    </div>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 px-4 rounded-md border-muted-foreground/30"
+                          onClick={() => setCalendarWeekStart(startOfWeek(new Date(), {weekStartsOn: 1}))}
+                        >
+                          Oggi
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Titolo per vista calendario */}
+                    {aiTasksView === 'calendar' && (
+                      <h2 className="text-xl font-normal text-foreground">
+                        Calendario AI Tasks
+                      </h2>
+                    )}
                   </div>
                   
                   {/* Filters and View Toggle */}
                   <div className="flex items-center gap-3">
-                    {/* Contact Search Filter */}
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Cerca cliente o numero..."
-                        value={calendarContactFilter}
-                        onChange={(e) => setCalendarContactFilter(e.target.value)}
-                        className="pl-8 h-8 w-[180px] text-sm"
-                      />
-                      {calendarContactFilter && (
-                        <button
-                          onClick={() => setCalendarContactFilter("")}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    
-                    {/* Show Call History Toggle */}
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="show-all-calls"
-                        checked={calendarShowAllCalls}
-                        onCheckedChange={setCalendarShowAllCalls}
-                        className="data-[state=checked]:bg-blue-500"
-                      />
-                      <label htmlFor="show-all-calls" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
-                        Storico chiamate
-                      </label>
-                    </div>
-                    
                     {/* Segment Control Toggle - Google Style */}
                     <div className="flex bg-muted/50 rounded-lg p-0.5">
                       <button
@@ -3983,13 +4081,19 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     c.scheduled_at && isSameDay(new Date(c.scheduled_at), day) && matchesContactFilter(c)
                                   ) || []);
                                   
-                                  // STORICO chiamate: visibile solo con toggle o filtro contatto
-                                  const showHistory = calendarShowAllCalls || calendarContactFilter;
-                                  const dayHistory = showHistory 
+                                  // STORICO chiamate: 
+                                  // - Con toggle attivo: mostra TUTTO lo storico
+                                  // - Senza toggle: mostra solo chiamate con istruzioni AI
+                                  const dayHistory = calendarShowAllCalls
                                     ? (calendarData?.voiceCallHistory?.filter((c: any) => 
                                         c.started_at && isSameDay(new Date(c.started_at), day) && matchesContactFilter(c)
                                       ) || [])
-                                    : [];
+                                    : (calendarData?.voiceCallHistory?.filter((c: any) => 
+                                        c.started_at && 
+                                        isSameDay(new Date(c.started_at), day) && 
+                                        matchesContactFilter(c) &&
+                                        (c.instruction_type || c.call_instruction)
+                                      ) || []);
                                   
                                   // Altezza fissa per eventi puntuali (non range)
                                   const EVENT_HEIGHT = 32;
@@ -5297,6 +5401,8 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       })()}
                     </div>
                   </div>
+                  </div>
+                </div>
                 )}
               </TabsContent>
             </Tabs>

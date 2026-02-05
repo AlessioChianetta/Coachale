@@ -209,6 +209,60 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
   }
 });
 
+// GET /api/voice/contacts - Rubrica contatti già chiamati
+router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    
+    let whereCondition = consultantId ? sql`WHERE consultant_id = ${consultantId}` : sql``;
+    
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (phone)
+        phone,
+        name,
+        last_call_at,
+        call_count,
+        last_direction
+      FROM (
+        SELECT 
+          caller_id as phone,
+          COALESCE(
+            (SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE phone_number = vc.caller_id LIMIT 1),
+            vc.caller_id
+          ) as name,
+          MAX(vc.started_at) as last_call_at,
+          COUNT(*) as call_count,
+          (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
+        FROM voice_calls vc
+        ${whereCondition}
+        GROUP BY caller_id
+        
+        UNION
+        
+        SELECT 
+          called_number as phone,
+          COALESCE(
+            (SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE phone_number = vc.called_number LIMIT 1),
+            vc.called_number
+          ) as name,
+          MAX(vc.started_at) as last_call_at,
+          COUNT(*) as call_count,
+          (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
+        FROM voice_calls vc
+        ${whereCondition}
+        WHERE called_number IS NOT NULL AND called_number != ''
+        GROUP BY called_number
+      ) combined
+      ORDER BY phone, last_call_at DESC
+    `);
+    
+    res.json({ contacts: result.rows });
+  } catch (error) {
+    console.error("[Voice] Error fetching contacts:", error);
+    res.status(500).json({ error: "Errore nel recupero dei contatti" });
+  }
+});
+
 // GET /api/voice/calls/:id - Dettaglio singola chiamata con eventi
 router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
