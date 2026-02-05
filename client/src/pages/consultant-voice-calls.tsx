@@ -3614,13 +3614,38 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                           />
                           {calendarContactFilter && (
                             <button
-                              onClick={() => setCalendarContactFilter("")}
+                              onClick={() => {
+                                setCalendarContactFilter("");
+                                setOutboundPhone("");
+                              }}
                               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
                           )}
                         </div>
+                        
+                        {/* Contatto selezionato per filtro calendario */}
+                        {outboundPhone && (
+                          <div className="mb-3 p-2 bg-violet-50 dark:bg-violet-950/30 rounded-lg border border-violet-200 dark:border-violet-800">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <User className="h-3.5 w-3.5 text-violet-600" />
+                                <span className="text-xs font-medium text-violet-700 dark:text-violet-300">Filtro attivo</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setOutboundPhone("");
+                                  setCalendarContactFilter("");
+                                }}
+                                className="text-violet-500 hover:text-violet-700"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <p className="text-xs font-mono text-violet-600 dark:text-violet-400 mt-1 truncate">{outboundPhone}</p>
+                          </div>
+                        )}
                         
                         {/* Lista contatti con categorie */}
                         <div className="max-h-80 overflow-y-auto space-y-3">
@@ -3645,10 +3670,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       key={`active-${idx}`}
                                       onClick={() => {
                                         setOutboundPhone(contact.phone);
+                                        setCalendarContactFilter(contact.phone);
                                         setSelectedClient(null);
                                       }}
                                       className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors ${
-                                        outboundPhone === contact.phone ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''
+                                        outboundPhone === contact.phone ? 'bg-emerald-100 dark:bg-emerald-950/50 ring-1 ring-emerald-400' : ''
                                       }`}
                                     >
                                       <div className="font-medium truncate text-xs">{contact.name}</div>
@@ -3681,10 +3707,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       key={`inactive-${idx}`}
                                       onClick={() => {
                                         setOutboundPhone(contact.phone);
+                                        setCalendarContactFilter(contact.phone);
                                         setSelectedClient(null);
                                       }}
                                       className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors opacity-70 ${
-                                        outboundPhone === contact.phone ? 'bg-gray-100 dark:bg-gray-900/50 opacity-100' : ''
+                                        outboundPhone === contact.phone ? 'bg-gray-200 dark:bg-gray-900/70 opacity-100 ring-1 ring-gray-400' : ''
                                       }`}
                                     >
                                       <div className="font-medium truncate text-xs">{contact.name}</div>
@@ -3717,10 +3744,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       key={`unknown-${idx}`}
                                       onClick={() => {
                                         setOutboundPhone(contact.phone);
+                                        setCalendarContactFilter(contact.phone);
                                         setSelectedClient(null);
                                       }}
                                       className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors ${
-                                        outboundPhone === contact.phone ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                                        outboundPhone === contact.phone ? 'bg-blue-100 dark:bg-blue-950/50 ring-1 ring-blue-400' : ''
                                       }`}
                                     >
                                       <div className="font-mono text-xs truncate">{contact.phone}</div>
