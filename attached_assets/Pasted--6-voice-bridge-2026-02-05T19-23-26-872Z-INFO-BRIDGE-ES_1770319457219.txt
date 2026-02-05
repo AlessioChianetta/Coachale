@@ -1,0 +1,41 @@
+
+6|voice-bridge  | 2026-02-05T19:23:26.872Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd callerIdNumber=1003 callerIdName=Alessio
+6|voice-bridge  | 2026-02-05T19:23:26.873Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd, uuid=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd
+6|voice-bridge  | 2026-02-05T19:23:26.873Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-02-05T19:23:26.873Z [INFO ] [BRIDGE:ESL] 📞 INBOUND call - setting UUID as call ID uuid=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd
+6|voice-bridge  | 2026-02-05T19:23:26.874Z [INFO ] [BRIDGE:ESL] 🎵 Starting native background music uuid=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd
+6|voice-bridge  | 2026-02-05T19:23:26.924Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd
+6|voice-bridge  | 2026-02-05T19:23:26.927Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-02-05T19:23:26.928Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd uuidFromUrl=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd pendingCallsCount=1 pendingIds=[{"uuid":"005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd","callId":"005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd"}] timestamp=1770319406928
+6|voice-bridge  | 2026-02-05T19:23:26.928Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd, uuid=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd
+6|voice-bridge  | 2026-02-05T19:23:26.928Z [INFO ] [BRIDGE:SERVER] 📞 INBOUND call matched: callId=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd (same as uuid)
+6|voice-bridge  | 2026-02-05T19:23:26.928Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd | CallerId=1003 | CallerName=Alessio
+6|voice-bridge  | 2026-02-05T19:23:26.928Z [INFO ] [BRIDGE:SESSION] Session created sessionId=5e9a4b0e callId=005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd callerId=1003 calledNumber=9999 codec=L16 sampleRate=16000 activeSessions=1
+6|voice-bridge  | 2026-02-05T19:23:27.444Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=5e9a4b0e url=wss://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/ws/ai-voice voice=Puck
+6|voice-bridge  | 2026-02-05T19:23:27.885Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=5e9a4b0e
+6|voice-bridge  | 2026-02-05T19:23:27.885Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=5e9a4b0e
+6|voice-bridge  | 2026-02-05T19:23:27.885Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=5e9a4b0e from=connecting to=active
+6|voice-bridge  | 2026-02-05T19:23:35.065Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Prontooo! Ciao!
+6|voice-bridge  | 2026-02-05T19:23:35.066Z [INFO ] [BRIDGE:SERVER] [AI]: "Prontooo! Ciao!"
+6|voice-bridge  | 2026-02-05T19:23:35.387Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Sono
+6|voice-bridge  | 2026-02-05T19:23:35.387Z [INFO ] [BRIDGE:SERVER] [AI]: " Sono"
+6|voice-bridge  | 2026-02-05T19:23:35.444Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Alessia
+6|voice-bridge  | 2026-02-05T19:23:35.445Z [INFO ] [BRIDGE:SERVER] [AI]: " Alessia"
+6|voice-bridge  | 2026-02-05T19:23:35.527Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  del Sistema
+6|voice-bridge  | 2026-02-05T19:23:35.527Z [INFO ] [BRIDGE:SERVER] [AI]: " del Sistema"
+6|voice-bridge  | 2026-02-05T19:23:35.646Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Orbitale!
+6|voice-bridge  | 2026-02-05T19:23:35.647Z [INFO ] [BRIDGE:SERVER] [AI]: " Orbitale!"
+6|voice-bridge  | 2026-02-05T19:23:35.867Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Ti richiamo
+6|voice-bridge  | 2026-02-05T19:23:35.867Z [INFO ] [BRIDGE:SERVER] [AI]: " Ti richiamo"
+6|voice-bridge  | 2026-02-05T19:23:36.047Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  come
+6|voice-bridge  | 2026-02-05T19:23:36.047Z [INFO ] [BRIDGE:SERVER] [AI]: " come"
+6|voice-bridge  | 2026-02-05T19:23:36.051Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ci eravamo
+6|voice-bridge  | 2026-02-05T19:23:36.051Z [INFO ] [BRIDGE:SERVER] [AI]: " ci eravamo"
+6|voice-bridge  | 2026-02-05T19:23:36.150Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  detti,
+6|voice-bridge  | 2026-02-05T19:23:36.150Z [INFO ] [BRIDGE:SERVER] [AI]: " detti,"
+6|voice-bridge  | 2026-02-05T19:23:36.233Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sei
+6|voice-bridge  | 2026-02-05T19:23:36.234Z [INFO ] [BRIDGE:SERVER] [AI]: " sei"
+6|voice-bridge  | 2026-02-05T19:23:36.282Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  più tranquillo
+6|voice-bridge  | 2026-02-05T19:23:36.283Z [INFO ] [BRIDGE:SERVER] [AI]: " più tranquillo"
+6|voice-bridge  | 2026-02-05T19:23:36.391Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  adesso?
+6|voice-bridge  | 2026-02-05T19:23:36.391Z [INFO ] [BRIDGE:SERVER] [AI]: " adesso?"
