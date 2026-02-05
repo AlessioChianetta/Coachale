@@ -109,8 +109,6 @@ import {
   Wand2,
   Construction,
   ExternalLink,
-  AlertTriangle,
-  CheckCircle,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";

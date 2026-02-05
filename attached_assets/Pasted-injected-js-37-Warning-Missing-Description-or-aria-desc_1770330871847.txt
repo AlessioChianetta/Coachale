@@ -1,0 +1,212 @@
+injected.js:37 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ VM150 injected.js:37
+(anonymous) @ VM245 chunk-RRZFOOTW.js:433
+commitHookEffectListMount @ VM161 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM161 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM161 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM161 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM161 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM161 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM161 chunk-RPCDYKBN.js:19447
+commitRootImpl @ VM161 chunk-RPCDYKBN.js:19416
+commitRoot @ VM161 chunk-RPCDYKBN.js:19277
+performSyncWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18895
+flushSyncCallbacks @ VM161 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM161 chunk-RPCDYKBN.js:18627Understand this warning
+App.tsx?v=o4_OQ0g4w8c082XKXEWlI:94  GET https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/pages/consultant-voice-calls.tsx net::ERR_ABORTED 502 (Bad Gateway)
+_c59 @ VM165 App.tsx:94
+lazyInitializer @ VM162 chunk-QCHXOAYK.js:869
+resolveLazy @ VM161 chunk-RPCDYKBN.js:9949
+reconcileSingleElement @ VM161 chunk-RPCDYKBN.js:10489
+reconcileChildFibers2 @ VM161 chunk-RPCDYKBN.js:10550
+reconcileChildren @ VM161 chunk-RPCDYKBN.js:14292
+updateFunctionComponent @ VM161 chunk-RPCDYKBN.js:14606
+beginWork @ VM161 chunk-RPCDYKBN.js:15924
+beginWork$1 @ VM161 chunk-RPCDYKBN.js:19753
+performUnitOfWork @ VM161 chunk-RPCDYKBN.js:19198
+workLoopSync @ VM161 chunk-RPCDYKBN.js:19137
+renderRootSync @ VM161 chunk-RPCDYKBN.js:19116
+performSyncWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18874
+flushSyncCallbacks @ VM161 chunk-RPCDYKBN.js:9119
+(anonymous) @ VM161 chunk-RPCDYKBN.js:18627Understand this error
+chunk-QCHXOAYK.js?v=ff93d6c1:903 Uncaught TypeError: Failed to fetch dynamically imported module: https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/pages/consultant-voice-calls.tsxUnderstand this error
+injected.js:214  GET https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/api/auth/my-profiles 502 (Bad Gateway)
+apply @ VM150 injected.js:214
+fetchProfiles @ VM231 navbar.tsx:50
+(anonymous) @ VM231 navbar.tsx:61
+commitHookEffectListMount @ VM161 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM161 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM161 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM161 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM161 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM161 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM161 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM161 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM161 chunk-RPCDYKBN.js:19432
+commitRoot @ VM161 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM161 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18718
+workLoop @ VM161 chunk-RPCDYKBN.js:197
+flushWork @ VM161 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM161 chunk-RPCDYKBN.js:384Understand this error
+injected.js:214  GET https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/api/university/stats/overview?activeOnly=false 502 (Bad Gateway)
+apply @ VM150 injected.js:214
+queryFn @ VM236 useClientPriorityScore.ts:61
+fetchFn @ VM168 @tanstack_react-query.js:1101
+run @ VM168 @tanstack_react-query.js:800
+start @ VM168 @tanstack_react-query.js:843
+fetch @ VM168 @tanstack_react-query.js:1148
+executeFetch_fn @ VM168 @tanstack_react-query.js:1651
+onSubscribe @ VM168 @tanstack_react-query.js:1344
+subscribe @ VM168 @tanstack_react-query.js:24
+(anonymous) @ VM168 @tanstack_react-query.js:3313
+subscribeToStore @ VM161 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM161 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM161 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM161 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM161 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM161 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM161 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM161 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM161 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM161 chunk-RPCDYKBN.js:19432
+commitRoot @ VM161 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM161 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18718
+workLoop @ VM161 chunk-RPCDYKBN.js:197
+flushWork @ VM161 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM161 chunk-RPCDYKBN.js:384Understand this error
+injected.js:214  GET https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/api/activity/clients 502 (Bad Gateway)
+apply @ VM150 injected.js:214
+queryFn @ VM236 useClientPriorityScore.ts:40
+fetchFn @ VM168 @tanstack_react-query.js:1101
+run @ VM168 @tanstack_react-query.js:800
+start @ VM168 @tanstack_react-query.js:843
+fetch @ VM168 @tanstack_react-query.js:1148
+executeFetch_fn @ VM168 @tanstack_react-query.js:1651
+onSubscribe @ VM168 @tanstack_react-query.js:1344
+subscribe @ VM168 @tanstack_react-query.js:24
+(anonymous) @ VM168 @tanstack_react-query.js:3313
+subscribeToStore @ VM161 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM161 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM161 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM161 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM161 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM161 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM161 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM161 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM161 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM161 chunk-RPCDYKBN.js:19432
+commitRoot @ VM161 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM161 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18718
+workLoop @ VM161 chunk-RPCDYKBN.js:197
+flushWork @ VM161 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM161 chunk-RPCDYKBN.js:384Understand this error
+injected.js:214  GET https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/api/email-journey-progress 502 (Bad Gateway)
+apply @ VM150 injected.js:214
+queryFn @ VM236 useClientPriorityScore.ts:51
+fetchFn @ VM168 @tanstack_react-query.js:1101
+run @ VM168 @tanstack_react-query.js:800
+start @ VM168 @tanstack_react-query.js:843
+fetch @ VM168 @tanstack_react-query.js:1148
+executeFetch_fn @ VM168 @tanstack_react-query.js:1651
+onSubscribe @ VM168 @tanstack_react-query.js:1344
+subscribe @ VM168 @tanstack_react-query.js:24
+(anonymous) @ VM168 @tanstack_react-query.js:3313
+subscribeToStore @ VM161 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM161 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM161 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM161 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM161 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM161 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM161 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM161 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM161 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM161 chunk-RPCDYKBN.js:19432
+commitRoot @ VM161 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM161 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18718
+workLoop @ VM161 chunk-RPCDYKBN.js:197
+flushWork @ VM161 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM161 chunk-RPCDYKBN.js:384Understand this error
+injected.js:214  GET https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/api/stats/consultant 502 (Bad Gateway)
+apply @ VM150 injected.js:214
+queryFn @ VM218 consultant-dashboard.tsx:99
+fetchFn @ VM168 @tanstack_react-query.js:1101
+run @ VM168 @tanstack_react-query.js:800
+start @ VM168 @tanstack_react-query.js:843
+fetch @ VM168 @tanstack_react-query.js:1148
+executeFetch_fn @ VM168 @tanstack_react-query.js:1651
+onSubscribe @ VM168 @tanstack_react-query.js:1344
+subscribe @ VM168 @tanstack_react-query.js:24
+(anonymous) @ VM168 @tanstack_react-query.js:3313
+subscribeToStore @ VM161 chunk-RPCDYKBN.js:11984
+commitHookEffectListMount @ VM161 chunk-RPCDYKBN.js:16915
+commitPassiveMountOnFiber @ VM161 chunk-RPCDYKBN.js:18156
+commitPassiveMountEffects_complete @ VM161 chunk-RPCDYKBN.js:18129
+commitPassiveMountEffects_begin @ VM161 chunk-RPCDYKBN.js:18119
+commitPassiveMountEffects @ VM161 chunk-RPCDYKBN.js:18109
+flushPassiveEffectsImpl @ VM161 chunk-RPCDYKBN.js:19490
+flushPassiveEffects @ VM161 chunk-RPCDYKBN.js:19447
+performSyncWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18868
+flushSyncCallbacks @ VM161 chunk-RPCDYKBN.js:9119
+commitRootImpl @ VM161 chunk-RPCDYKBN.js:19432
+commitRoot @ VM161 chunk-RPCDYKBN.js:19277
+finishConcurrentRender @ VM161 chunk-RPCDYKBN.js:18805
+performConcurrentWorkOnRoot @ VM161 chunk-RPCDYKBN.js:18718
+workLoop @ VM161 chunk-RPCDYKBN.js:197
+flushWork @ VM161 chunk-RPCDYKBN.js:176
+performWorkUntilDeadline @ VM161 chunk-RPCDYKBN.js:384Understand this error
+e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-QCHXOAYK.js?v=ff93d6c1:903 Uncaught TypeError: Failed to fetch dynamically imported module: https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/pages/consultant-voice-calls.tsxUnderstand this error
+e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37 The above error occurred in the <AuthGuard> component:
+
+    at AuthGuard (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ff93d6c1:226:16)
+    at Switch (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ff93d6c1:283:17)
+    at Suspense
+    at Router (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/App.tsx?v=o4_OQ0g4w8c082XKXEWlI:314:35)
+    at Provider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=ff93d6c1:44:15)
+    at TooltipProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=ff93d6c1:158:5)
+    at TourProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=ff93d6c1:3096:3)
+    at V (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=ff93d6c1:44:25)
+    at J (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=ff93d6c1:42:18)
+    at App (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/App.tsx?v=o4_OQ0g4w8c082XKXEWlI:1981:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+(anonymous) @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/__replco/static/devtools/injected.js:37
+logCapturedError @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:14032
+update.callback @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:14052
+callCallback @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:11248
+commitUpdateQueue @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:11265
+commitLayoutEffectOnFiber @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:17093
+commitLayoutMountEffects_complete @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:17980
+commitLayoutEffects_begin @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:17969
+commitLayoutEffects @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:17920
+commitRootImpl @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:19353
+commitRoot @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:19277
+finishConcurrentRender @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:18760
+performConcurrentWorkOnRoot @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:18718
+workLoop @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:197
+flushWork @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:176
+performWorkUntilDeadline @ e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:384Understand this error
+e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=ff93d6c1:19413 Uncaught TypeError: Failed to fetch dynamically imported module: https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/pages/consultant-voice-calls.tsx
