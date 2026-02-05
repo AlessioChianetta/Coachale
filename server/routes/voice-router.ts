@@ -125,9 +125,8 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
     if (client_id) {
       whereConditions.push(sql`vc.client_id = ${client_id}`);
     }
-    if (direction && (direction === 'inbound' || direction === 'outbound')) {
-      whereConditions.push(sql`vc.direction = ${direction}`);
-    }
+    // Note: direction column doesn't exist in voice_calls table
+    // Filter logic removed - direction is inferred from caller_id vs called_number
 
     const whereClause = whereConditions.length > 0 
       ? sql`WHERE ${sql.join(whereConditions, sql` AND `)}`
@@ -214,7 +213,8 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
   try {
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
     
-    // 1. CLIENTI DAL DATABASE (attivi e non attivi)
+    // 1. CLIENTI DAL DATABASE (utenti associati al consulente, attivi e non attivi)
+    // Usa la tabella users con consultant_id, non la tabella "clients" che non esiste
     const clientsQuery = consultantId 
       ? sql`
         SELECT 
@@ -222,16 +222,15 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           u.phone_number as phone,
           CONCAT(u.first_name, ' ', u.last_name) as name,
           u.role,
-          c.is_active,
+          u.is_active,
           'client' as source,
           (SELECT COUNT(*) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as call_count,
           (SELECT MAX(started_at) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as last_call_at
-        FROM clients c
-        JOIN users u ON u.id = c.client_id
-        WHERE c.consultant_id = ${consultantId}
+        FROM users u
+        WHERE u.consultant_id = ${consultantId}
           AND u.phone_number IS NOT NULL 
           AND u.phone_number != ''
-        ORDER BY c.is_active DESC, u.first_name
+        ORDER BY u.is_active DESC NULLS LAST, u.first_name
       `
       : sql`
         SELECT 
@@ -239,19 +238,19 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           u.phone_number as phone,
           CONCAT(u.first_name, ' ', u.last_name) as name,
           u.role,
-          c.is_active,
+          u.is_active,
           'client' as source,
           (SELECT COUNT(*) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as call_count,
           (SELECT MAX(started_at) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as last_call_at
-        FROM clients c
-        JOIN users u ON u.id = c.client_id
+        FROM users u
         WHERE u.phone_number IS NOT NULL AND u.phone_number != ''
-        ORDER BY c.is_active DESC, u.first_name
+        ORDER BY u.is_active DESC NULLS LAST, u.first_name
       `;
     
     const clientsResult = await db.execute(clientsQuery);
     
     // 2. NUMERI CHIAMATI NON IN RUBRICA (numeri sconosciuti)
+    // Rimuoviamo direction che non esiste nella tabella voice_calls
     const callsWhereCondition = consultantId ? sql`WHERE vc.consultant_id = ${consultantId}` : sql``;
     const unknownNumbersResult = await db.execute(sql`
       SELECT DISTINCT ON (phone)
@@ -259,22 +258,21 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
         name,
         call_count,
         last_call_at,
-        last_direction,
         'call_history' as source,
-        NULL as is_active,
+        NULL::boolean as is_active,
         NULL as role
       FROM (
         SELECT 
           caller_id as phone,
           caller_id as name,
           COUNT(*) as call_count,
-          MAX(vc.started_at) as last_call_at,
-          (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
+          MAX(vc.started_at) as last_call_at
         FROM voice_calls vc
         ${callsWhereCondition}
-        WHERE NOT EXISTS (
-          SELECT 1 FROM users WHERE phone_number = vc.caller_id
-        )
+        WHERE caller_id IS NOT NULL AND caller_id != ''
+          AND NOT EXISTS (
+            SELECT 1 FROM users WHERE phone_number = vc.caller_id
+          )
         GROUP BY caller_id
         
         UNION ALL
@@ -283,8 +281,7 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           called_number as phone,
           called_number as name,
           COUNT(*) as call_count,
-          MAX(vc.started_at) as last_call_at,
-          (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
+          MAX(vc.started_at) as last_call_at
         FROM voice_calls vc
         ${callsWhereCondition}
         WHERE called_number IS NOT NULL 
@@ -299,7 +296,7 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
     
     // Separa clienti attivi e non attivi
     const activeClients = (clientsResult.rows as any[]).filter(c => c.is_active === true);
-    const inactiveClients = (clientsResult.rows as any[]).filter(c => c.is_active === false);
+    const inactiveClients = (clientsResult.rows as any[]).filter(c => c.is_active === false || c.is_active === null);
     const unknownNumbers = unknownNumbersResult.rows as any[];
     
     res.json({ 
@@ -1943,7 +1940,6 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
           vc.full_transcript,
           vc.caller_id,
           vc.called_number,
-          vc.direction,
           CONCAT(u.first_name, ' ', u.last_name) as client_name
         FROM scheduled_voice_calls svc
         INNER JOIN voice_calls vc ON (
@@ -1963,7 +1959,6 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
         mvc.full_transcript,
         mvc.caller_id as vc_caller_id,
         mvc.called_number as vc_called_number,
-        mvc.direction as vc_direction,
         mvc.client_name
       FROM scheduled_voice_calls svc
       LEFT JOIN matched_voice_calls mvc ON mvc.svc_id = svc.id
