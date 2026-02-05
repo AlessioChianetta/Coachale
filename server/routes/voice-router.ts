@@ -1943,7 +1943,6 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
           vc.full_transcript,
           vc.caller_id,
           vc.called_number,
-          vc.direction,
           CONCAT(u.first_name, ' ', u.last_name) as client_name
         FROM scheduled_voice_calls svc
         INNER JOIN voice_calls vc ON (
@@ -1963,7 +1962,6 @@ router.get("/outbound/scheduled", authenticateToken, requireAnyRole(["consultant
         mvc.full_transcript,
         mvc.caller_id as vc_caller_id,
         mvc.called_number as vc_called_number,
-        mvc.direction as vc_direction,
         mvc.client_name
       FROM scheduled_voice_calls svc
       LEFT JOIN matched_voice_calls mvc ON mvc.svc_id = svc.id
