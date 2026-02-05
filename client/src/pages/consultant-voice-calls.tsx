@@ -115,7 +115,14 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { formatDistanceToNow, format, startOfWeek, addDays, isSameDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { it } from "date-fns/locale";
+
+const ITALY_TZ = "Europe/Rome";
+
+const toItalianTime = (date: Date | string): Date => {
+  return toZonedTime(new Date(date), ITALY_TZ);
+};
 
 interface VoiceCall {
   id: string;
@@ -2423,10 +2430,10 @@ export default function ConsultantVoiceCallsPage() {
                             <TableRow key={call.id}>
                               <TableCell>
                                 <div className="text-sm">
-                                  {format(new Date(call.started_at), "dd/MM HH:mm", { locale: it })}
+                                  {format(toItalianTime(call.started_at), "dd/MM HH:mm", { locale: it })}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(call.started_at), {
+                                  {formatDistanceToNow(toItalianTime(call.started_at), {
                                     addSuffix: true,
                                     locale: it,
                                   })}
@@ -4312,7 +4319,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
 
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                                       <Calendar className="h-3 w-3" />
-                                      {format(new Date(task.scheduled_at), "dd/MM/yyyy HH:mm", { locale: it })}
+                                      {format(toItalianTime(task.scheduled_at), "dd/MM/yyyy HH:mm", { locale: it })}
                                       {task.recurrence_type !== "once" && (
                                         <Badge variant="outline" className="text-xs">
                                           {task.recurrence_type === "daily" ? "Giornaliero" : "Settimanale"}
@@ -6329,10 +6336,10 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         <CalendarDays className="h-5 w-5 text-muted-foreground" />
                                         <div>
                                           <p className="font-medium">
-                                            {format(new Date(selectedEvent.type === 'history' ? selectedEvent.data.started_at : selectedEvent.data.scheduled_at), 'EEEE d MMMM yyyy', { locale: it })}
+                                            {format(toItalianTime(selectedEvent.type === 'history' ? selectedEvent.data.started_at : selectedEvent.data.scheduled_at), 'EEEE d MMMM yyyy', { locale: it })}
                                           </p>
                                           <p className="text-sm text-muted-foreground">
-                                            alle {format(new Date(selectedEvent.type === 'history' ? selectedEvent.data.started_at : selectedEvent.data.scheduled_at), 'HH:mm')}
+                                            alle {format(toItalianTime(selectedEvent.type === 'history' ? selectedEvent.data.started_at : selectedEvent.data.scheduled_at), 'HH:mm')}
                                             {selectedEvent.type === 'history' && selectedEvent.data.duration_seconds && (
                                               <span className="ml-2">• Durata: {Math.floor(selectedEvent.data.duration_seconds / 60)}:{(selectedEvent.data.duration_seconds % 60).toString().padStart(2, '0')}</span>
                                             )}
@@ -6492,7 +6499,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                                         {attemptLog.status === 'final_failure' && ' (FINALE)'}
                                                       </p>
                                                       <p className="text-xs text-muted-foreground">
-                                                        {format(new Date(attemptLog.timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: it })}
+                                                        {format(toItalianTime(attemptLog.timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: it })}
                                                       </p>
                                                       {attemptLog.error && (
                                                         <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
@@ -6515,7 +6522,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                                       </p>
                                                       {selectedEvent.data.last_attempt_at && (
                                                         <p className="text-xs text-muted-foreground">
-                                                          {format(new Date(selectedEvent.data.last_attempt_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                                                          {format(toItalianTime(selectedEvent.data.last_attempt_at), 'dd/MM/yyyy HH:mm', { locale: it })}
                                                         </p>
                                                       )}
                                                       {selectedEvent.data.result_summary && (
@@ -6538,7 +6545,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                                     Prossimo tentativo
                                                   </p>
                                                   <p className="text-xs text-muted-foreground">
-                                                    {format(new Date(selectedEvent.data.next_retry_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                                                    {format(toItalianTime(selectedEvent.data.next_retry_at), 'dd/MM/yyyy HH:mm', { locale: it })}
                                                   </p>
                                                 </div>
                                               </div>
