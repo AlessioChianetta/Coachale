@@ -2357,7 +2357,8 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     // Use call.id (from DB lookup) instead of callId (from request) to handle fallback scenarios
     const dbCallId = call.id;
     
-    if (status === 'completed') {
+    // Accept both 'completed' and 'normal_end' as successful completion
+    if (status === 'completed' || status === 'normal_end') {
       // Call completed successfully - no retry needed
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
