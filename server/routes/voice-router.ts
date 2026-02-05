@@ -259,7 +259,6 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
         name,
         call_count,
         last_call_at,
-        last_direction,
         'call_history' as source,
         NULL as is_active,
         NULL as role
@@ -268,8 +267,7 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           caller_id as phone,
           caller_id as name,
           COUNT(*) as call_count,
-          MAX(vc.started_at) as last_call_at,
-          (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
+          MAX(vc.started_at) as last_call_at
         FROM voice_calls vc
         ${callsWhereCondition}
         WHERE NOT EXISTS (
@@ -283,8 +281,7 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           called_number as phone,
           called_number as name,
           COUNT(*) as call_count,
-          MAX(vc.started_at) as last_call_at,
-          (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
+          MAX(vc.started_at) as last_call_at
         FROM voice_calls vc
         ${callsWhereCondition}
         WHERE called_number IS NOT NULL 

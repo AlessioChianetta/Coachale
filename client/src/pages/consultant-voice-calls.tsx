@@ -1288,15 +1288,14 @@ export default function ConsultantVoiceCallsPage() {
     enabled: aiTasksView === 'calendar'
   });
 
-  // Voice contacts (rubrica) query
-  const { data: voiceContactsData } = useQuery<{ contacts: Array<{ phone: string; name: string; last_call_at: string; call_count: number; last_direction: string }> }>({
+  // Voice contacts (rubrica) query - sempre attiva nel tab Chiama Ora
+  const { data: voiceContactsData } = useQuery<{ activeClients: any[]; inactiveClients: any[]; unknownNumbers: any[] }>({
     queryKey: ["voice-contacts"],
     queryFn: async () => {
       const res = await fetch("/api/voice/contacts", { headers: getAuthHeaders() });
-      if (!res.ok) return { contacts: [] };
+      if (!res.ok) return { activeClients: [], inactiveClients: [], unknownNumbers: [] };
       return res.json();
-    },
-    enabled: aiTasksView === 'calendar'
+    }
   });
 
   const { data: clientsData, isLoading: loadingClients } = useQuery<{ active: ClientWithPhone[]; inactive: ClientWithPhone[] }>({
@@ -3644,9 +3643,12 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   {activeClients.slice(0, 8).map((contact: any, idx: number) => (
                                     <button
                                       key={`active-${idx}`}
-                                      onClick={() => setCalendarContactFilter(contact.phone)}
+                                      onClick={() => {
+                                        setOutboundPhone(contact.phone);
+                                        setSelectedClient(null);
+                                      }}
                                       className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors ${
-                                        calendarContactFilter === contact.phone ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''
+                                        outboundPhone === contact.phone ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''
                                       }`}
                                     >
                                       <div className="font-medium truncate text-xs">{contact.name}</div>
@@ -3677,9 +3679,12 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   {inactiveClients.slice(0, 5).map((contact: any, idx: number) => (
                                     <button
                                       key={`inactive-${idx}`}
-                                      onClick={() => setCalendarContactFilter(contact.phone)}
+                                      onClick={() => {
+                                        setOutboundPhone(contact.phone);
+                                        setSelectedClient(null);
+                                      }}
                                       className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors opacity-70 ${
-                                        calendarContactFilter === contact.phone ? 'bg-gray-100 dark:bg-gray-900/50 opacity-100' : ''
+                                        outboundPhone === contact.phone ? 'bg-gray-100 dark:bg-gray-900/50 opacity-100' : ''
                                       }`}
                                     >
                                       <div className="font-medium truncate text-xs">{contact.name}</div>
@@ -3710,9 +3715,12 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   {unknownNumbers.slice(0, 6).map((contact: any, idx: number) => (
                                     <button
                                       key={`unknown-${idx}`}
-                                      onClick={() => setCalendarContactFilter(contact.phone)}
+                                      onClick={() => {
+                                        setOutboundPhone(contact.phone);
+                                        setSelectedClient(null);
+                                      }}
                                       className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors ${
-                                        calendarContactFilter === contact.phone ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                                        outboundPhone === contact.phone ? 'bg-blue-50 dark:bg-blue-950/30' : ''
                                       }`}
                                     >
                                       <div className="font-mono text-xs truncate">{contact.phone}</div>
