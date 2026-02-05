@@ -8043,6 +8043,63 @@ ${compactFeedback}
             activeVoiceCalls.delete(voiceCallId);
             
             console.log(`📞 [${connectionId}] Voice call ${voiceCallId} completed - Duration: ${durationSeconds}s`);
+            
+            // 🔗 SYNC: Update scheduled_voice_call if this was a scheduled outbound call
+            if (phoneScheduledCallId) {
+              try {
+                // Update scheduled_voice_call with completion info
+                await db.execute(sql`
+                  UPDATE scheduled_voice_calls 
+                  SET status = 'completed',
+                      voice_call_id = ${voiceCallId},
+                      duration_seconds = ${durationSeconds},
+                      hangup_cause = ${code === 1000 ? 'normal_end' : `disconnect_${code}`},
+                      last_attempt_at = NOW(),
+                      updated_at = NOW()
+                  WHERE id = ${phoneScheduledCallId}
+                `);
+                console.log(`🔗 [${connectionId}] Synced scheduled_voice_call ${phoneScheduledCallId} -> completed`);
+                
+                // Check if this call originated from an AI task
+                const svcResult = await db.execute(sql`
+                  SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${phoneScheduledCallId}
+                `);
+                const sourceTaskId = (svcResult.rows[0] as any)?.source_task_id;
+                
+                if (sourceTaskId) {
+                  // Get task data for recurrence handling
+                  const taskResult = await db.execute(sql`
+                    SELECT * FROM ai_scheduled_tasks WHERE id = ${sourceTaskId}
+                  `);
+                  const task = taskResult.rows[0] as any;
+                  
+                  // Update AI task status
+                  await db.execute(sql`
+                    UPDATE ai_scheduled_tasks 
+                    SET status = 'completed',
+                        result_summary = ${'Chiamata completata con successo (' + durationSeconds + 's)'},
+                        voice_call_id = ${voiceCallId},
+                        completed_at = NOW(),
+                        updated_at = NOW()
+                    WHERE id = ${sourceTaskId}
+                  `);
+                  console.log(`🔗 [${connectionId}] Synced AI Task ${sourceTaskId} -> completed`);
+                  
+                  // Handle recurrence if applicable
+                  if (task && task.recurrence_type && task.recurrence_type !== 'once') {
+                    try {
+                      const { scheduleNextRecurrence } = await import('../cron/ai-task-scheduler');
+                      await scheduleNextRecurrence(task);
+                      console.log(`📅 [${connectionId}] Scheduled next recurrence for task ${sourceTaskId}`);
+                    } catch (recErr: any) {
+                      console.error(`⚠️ [${connectionId}] Failed to schedule recurrence:`, recErr.message);
+                    }
+                  }
+                }
+              } catch (syncErr: any) {
+                console.error(`⚠️ [${connectionId}] Failed to sync scheduled_voice_call:`, syncErr.message);
+              }
+            }
           } catch (vcErr) {
             console.error(`❌ [${connectionId}] Failed to update voice call record:`, vcErr);
           }
