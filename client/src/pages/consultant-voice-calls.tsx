@@ -951,6 +951,10 @@ export default function ConsultantVoiceCallsPage() {
   const [calendarContactFilter, setCalendarContactFilter] = useState("");
   const [calendarShowAllCalls, setCalendarShowAllCalls] = useState(false);
   const [showContactsDropdown, setShowContactsDropdown] = useState(false);
+  
+  // Wizard step state (1: Chi, 2: Cosa, 3: Quando)
+  const [wizardStep, setWizardStep] = useState(1);
+  
   const [newTaskData, setNewTaskData] = useState({
     contact_phone: '',
     contact_name: '',
@@ -4584,6 +4588,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                             <Sheet open={showQuickCreate} onOpenChange={(open) => {
                               if (!open) {
                                 setShowQuickCreate(false);
+                                setWizardStep(1);
                                 setDragStart(null);
                                 setDragEnd(null);
                                 setQuickCreateExpandedCategory(null);
@@ -4592,48 +4597,245 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                               }
                             }}>
                               <SheetContent className="sm:max-w-xl overflow-auto p-0 border-l-0">
-                                {/* HEADER GRADIENT */}
+                                {/* HEADER CON PROGRESS BAR */}
                                 <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-6 py-5 text-white">
-                                  <div className="flex items-center gap-3 mb-3">
+                                  <div className="flex items-center gap-3 mb-4">
                                     <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
                                       <Phone className="h-6 w-6" />
                                     </div>
                                     <div>
                                       <h2 className="text-xl font-semibold">Nuova Chiamata AI</h2>
-                                      <p className="text-white/70 text-sm">Programma una chiamata automatica</p>
+                                      <p className="text-white/70 text-sm">
+                                        {wizardStep === 1 && "Chi vuoi chiamare?"}
+                                        {wizardStep === 2 && "Cosa deve dire l'AI?"}
+                                        {wizardStep === 3 && "Quando effettuare la chiamata?"}
+                                      </p>
                                     </div>
                                   </div>
-                                  {/* Badge data + input ora precisa */}
-                                  <div className="flex items-center gap-2 mt-4">
-                                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
-                                      <CalendarDays className="h-4 w-4" />
-                                      <span className="text-sm font-medium">
-                                        {dragStart && format(dragStart.day, 'EEE d MMM', { locale: it })}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5">
-                                      <Clock className="h-4 w-4" />
-                                      <input
-                                        type="time"
-                                        value={newTaskData.scheduled_time}
-                                        onChange={(e) => setNewTaskData({...newTaskData, scheduled_time: e.target.value})}
-                                        className="bg-transparent text-sm font-medium border-none outline-none w-20 text-white [color-scheme:dark]"
-                                      />
-                                    </div>
+                                  
+                                  {/* PROGRESS BAR */}
+                                  <div className="flex items-center justify-between px-2">
+                                    {[
+                                      { step: 1, label: 'Chi', icon: User },
+                                      { step: 2, label: 'Cosa', icon: MessageSquare },
+                                      { step: 3, label: 'Quando', icon: Clock }
+                                    ].map((item, idx) => {
+                                      const isActive = wizardStep === item.step;
+                                      const isCompleted = wizardStep > item.step;
+                                      const ItemIcon = item.icon;
+                                      return (
+                                        <div key={item.step} className="flex items-center flex-1">
+                                          <button
+                                            onClick={() => item.step < wizardStep && setWizardStep(item.step)}
+                                            className={`flex flex-col items-center gap-1 transition-all ${
+                                              isCompleted ? 'cursor-pointer' : 'cursor-default'
+                                            }`}
+                                          >
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                                              isActive 
+                                                ? 'bg-white text-violet-600 shadow-lg scale-110' 
+                                                : isCompleted 
+                                                  ? 'bg-white/30 text-white' 
+                                                  : 'bg-white/10 text-white/50'
+                                            }`}>
+                                              {isCompleted ? (
+                                                <Check className="h-5 w-5" />
+                                              ) : (
+                                                <ItemIcon className="h-5 w-5" />
+                                              )}
+                                            </div>
+                                            <span className={`text-xs font-medium ${isActive ? 'text-white' : 'text-white/60'}`}>
+                                              {item.label}
+                                            </span>
+                                          </button>
+                                          {idx < 2 && (
+                                            <div className={`flex-1 h-0.5 mx-2 rounded ${
+                                              isCompleted ? 'bg-white/50' : 'bg-white/20'
+                                            }`} />
+                                          )}
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                                 
-                                <div className="px-6 py-6 space-y-8">
-                                  {/* SEZIONE 1: TIPO CHIAMATA */}
-                                  <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="p-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
-                                        <Zap className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                                <div className="px-6 py-6 space-y-6 min-h-[400px]">
+                                  
+                                  {/* ==================== STEP 1: CHI CHIAMARE ==================== */}
+                                  {wizardStep === 1 && (
+                                    <div className="space-y-6 animate-in fade-in-0 slide-in-from-right-4 duration-300">
+                                      <div className="text-center py-4">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 mb-4">
+                                          <User className="h-8 w-8 text-violet-600" />
+                                        </div>
+                                        <h3 className="text-xl font-bold">Chi vuoi chiamare?</h3>
+                                        <p className="text-muted-foreground mt-1">Seleziona un cliente o inserisci un numero</p>
                                       </div>
-                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Tipo di chiamata</h3>
+                                      
+                                      {/* Selezione cliente */}
+                                      <div className="space-y-3">
+                                        <Label className="text-sm font-medium flex items-center gap-2">
+                                          <Users className="h-4 w-4 text-muted-foreground" />
+                                          Seleziona dalla rubrica
+                                        </Label>
+                                        {loadingClients ? (
+                                          <div className="flex items-center justify-center py-6 bg-muted/30 rounded-xl">
+                                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                            <span className="text-sm text-muted-foreground">Caricamento clienti...</span>
+                                          </div>
+                                        ) : (() => {
+                                          const allClientsWithPhone = [
+                                            ...(clientsData?.active?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || []),
+                                            ...(clientsData?.inactive?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [])
+                                          ];
+                                          const activeWithPhone = clientsData?.active?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [];
+                                          const inactiveWithPhone = clientsData?.inactive?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [];
+                                          
+                                          if (allClientsWithPhone.length === 0) {
+                                            return (
+                                              <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                                                <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                                                <div>
+                                                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Nessun cliente con telefono</p>
+                                                  <p className="text-xs text-amber-600 dark:text-amber-500">Aggiungi numeri ai tuoi clienti per selezionarli qui</p>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+                                          
+                                          return (
+                                            <Select
+                                              value=""
+                                              onValueChange={(clientId) => {
+                                                const client = allClientsWithPhone.find(c => c.id === clientId);
+                                                if (client) {
+                                                  const phone = client.phoneNumber.startsWith('+') ? client.phoneNumber : `+39${client.phoneNumber}`;
+                                                  setNewTaskData({
+                                                    ...newTaskData, 
+                                                    contact_phone: phone,
+                                                    contact_name: `${client.firstName} ${client.lastName}`
+                                                  });
+                                                }
+                                              }}
+                                            >
+                                              <SelectTrigger className="h-12 bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-violet-200 dark:border-violet-800">
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                  <Users className="h-4 w-4" />
+                                                  <span>Seleziona un cliente ({allClientsWithPhone.length} disponibili)</span>
+                                                </div>
+                                              </SelectTrigger>
+                                              <SelectContent className="max-h-[300px] z-[999]">
+                                                {activeWithPhone.length > 0 && (
+                                                  <>
+                                                    <div className="px-2 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
+                                                      Clienti Attivi ({activeWithPhone.length})
+                                                    </div>
+                                                    {activeWithPhone.map((client) => (
+                                                      <SelectItem key={client.id} value={client.id}>
+                                                        <div className="flex items-center gap-2">
+                                                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                          <span className="font-medium">{client.firstName} {client.lastName}</span>
+                                                          <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
+                                                        </div>
+                                                      </SelectItem>
+                                                    ))}
+                                                  </>
+                                                )}
+                                                {inactiveWithPhone.length > 0 && (
+                                                  <>
+                                                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-slate-950/30 mt-1">
+                                                      Clienti Inattivi ({inactiveWithPhone.length})
+                                                    </div>
+                                                    {inactiveWithPhone.map((client) => (
+                                                      <SelectItem key={client.id} value={client.id}>
+                                                        <div className="flex items-center gap-2">
+                                                          <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                                          <span>{client.firstName} {client.lastName}</span>
+                                                          <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
+                                                        </div>
+                                                      </SelectItem>
+                                                    ))}
+                                                  </>
+                                                )}
+                                              </SelectContent>
+                                            </Select>
+                                          );
+                                        })()}
+                                      </div>
+                                      
+                                      <div className="relative">
+                                        <div className="absolute inset-0 flex items-center">
+                                          <div className="w-full border-t border-muted" />
+                                        </div>
+                                        <div className="relative flex justify-center text-xs uppercase">
+                                          <span className="bg-background px-2 text-muted-foreground">oppure inserisci manualmente</span>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Input manuali */}
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                          <Label className="text-sm flex items-center gap-1.5">
+                                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                            Telefono <span className="text-red-500">*</span>
+                                          </Label>
+                                          <Input 
+                                            placeholder="+39 333 1234567" 
+                                            value={newTaskData.contact_phone}
+                                            onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})}
+                                            className="h-12 text-lg bg-muted/30 border-muted-foreground/20 focus:border-primary"
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label className="text-sm flex items-center gap-1.5">
+                                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                            Nome (opzionale)
+                                          </Label>
+                                          <Input 
+                                            placeholder="Mario Rossi" 
+                                            value={newTaskData.contact_name}
+                                            onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})}
+                                            className="h-12 text-lg bg-muted/30 border-muted-foreground/20 focus:border-primary"
+                                          />
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Anteprima contatto selezionato */}
+                                      {newTaskData.contact_phone && (
+                                        <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                                                <User className="h-6 w-6 text-emerald-600" />
+                                              </div>
+                                              <div>
+                                                <p className="font-semibold">{newTaskData.contact_name || 'Contatto'}</p>
+                                                <p className="text-sm text-muted-foreground font-mono">{newTaskData.contact_phone}</p>
+                                              </div>
+                                            </div>
+                                            <Check className="h-6 w-6 text-emerald-600" />
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                      {[
+                                  )}
+                                  
+                                  {/* ==================== STEP 2: COSA DIRE ==================== */}
+                                  {wizardStep === 2 && (
+                                    <div className="space-y-6 animate-in fade-in-0 slide-in-from-right-4 duration-300">
+                                      <div className="text-center py-2">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+                                          <MessageSquare className="h-8 w-8 text-blue-600" />
+                                        </div>
+                                        <h3 className="text-xl font-bold">Cosa deve dire l'AI?</h3>
+                                        <p className="text-muted-foreground mt-1">Scegli il tipo di chiamata e le istruzioni</p>
+                                      </div>
+                                      
+                                      {/* Tipo chiamata */}
+                                      <div className="space-y-3">
+                                        <Label className="text-sm font-medium">Tipo di chiamata</Label>
+                                        <div className="grid grid-cols-3 gap-3">
+                                          {[
                                         { value: 'single_call', label: 'Chiamata', icon: Phone, desc: 'Una singola chiamata', color: 'emerald', gradient: 'from-emerald-500 to-teal-600' },
                                         { value: 'follow_up', label: 'Follow-up', icon: RepeatIcon, desc: 'Serie programmata', color: 'blue', gradient: 'from-blue-500 to-cyan-600' },
                                         { value: 'ai_task', label: 'Task AI', icon: Bot, desc: 'Azione automatica', color: 'purple', gradient: 'from-purple-500 to-pink-600' }
@@ -4676,138 +4878,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     </div>
                                   </div>
 
-                                  {/* SEZIONE 2: CONTATTO con ricerca clienti */}
-                                  <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                          <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                        </div>
-                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Contatto</h3>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Ricerca clienti esistenti - usa filteredClients come nell'altra sezione */}
-                                    <div className="space-y-2">
-                                      <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                        <Search className="h-3.5 w-3.5" />
-                                        Cerca tra i clienti esistenti
-                                      </Label>
-                                      {loadingClients ? (
-                                        <div className="flex items-center justify-center py-3 bg-muted/30 rounded-lg">
-                                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                          <span className="text-xs text-muted-foreground">Caricamento clienti...</span>
-                                        </div>
-                                      ) : (() => {
-                                        const allClientsWithPhone = [
-                                          ...(clientsData?.active?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || []),
-                                          ...(clientsData?.inactive?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [])
-                                        ];
-                                        const activeWithPhone = clientsData?.active?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [];
-                                        const inactiveWithPhone = clientsData?.inactive?.filter(c => c.phoneNumber && c.phoneNumber.trim() !== '') || [];
-                                        
-                                        if (allClientsWithPhone.length === 0) {
-                                          return (
-                                            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                                              <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                                              <div>
-                                                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Nessun cliente con telefono</p>
-                                                <p className="text-xs text-amber-600 dark:text-amber-500">Aggiungi numeri ai tuoi clienti per selezionarli qui</p>
-                                              </div>
-                                            </div>
-                                          );
-                                        }
-                                        
-                                        return (
-                                          <Select
-                                            value=""
-                                            onValueChange={(clientId) => {
-                                              const client = allClientsWithPhone.find(c => c.id === clientId);
-                                              if (client) {
-                                                const phone = client.phoneNumber.startsWith('+') ? client.phoneNumber : `+39${client.phoneNumber}`;
-                                                setNewTaskData({
-                                                  ...newTaskData, 
-                                                  contact_phone: phone,
-                                                  contact_name: `${client.firstName} ${client.lastName}`
-                                                });
-                                              }
-                                            }}
-                                          >
-                                            <SelectTrigger className="h-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
-                                              <div className="flex items-center gap-2 text-muted-foreground">
-                                                <Users className="h-4 w-4" />
-                                                <span>Seleziona un cliente ({allClientsWithPhone.length})</span>
-                                              </div>
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-[300px] z-[999]">
-                                              {activeWithPhone.length > 0 && (
-                                                <>
-                                                  <div className="px-2 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
-                                                    Clienti Attivi ({activeWithPhone.length})
-                                                  </div>
-                                                  {activeWithPhone.map((client) => (
-                                                    <SelectItem key={client.id} value={client.id}>
-                                                      <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                        <span className="font-medium">{client.firstName} {client.lastName}</span>
-                                                        <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
-                                                      </div>
-                                                    </SelectItem>
-                                                  ))}
-                                                </>
-                                              )}
-                                              {inactiveWithPhone.length > 0 && (
-                                                <>
-                                                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-slate-950/30 mt-1">
-                                                    Clienti Inattivi ({inactiveWithPhone.length})
-                                                  </div>
-                                                  {inactiveWithPhone.map((client) => (
-                                                    <SelectItem key={client.id} value={client.id}>
-                                                      <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-slate-400" />
-                                                        <span>{client.firstName} {client.lastName}</span>
-                                                        <span className="text-xs text-muted-foreground">{client.phoneNumber}</span>
-                                                      </div>
-                                                    </SelectItem>
-                                                  ))}
-                                                </>
-                                              )}
-                                            </SelectContent>
-                                          </Select>
-                                        );
-                                      })()}
-                                    </div>
-                                    
-                                    {/* Input manuali */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div className="space-y-2">
-                                        <Label className="text-sm flex items-center gap-1.5">
-                                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                                          Telefono <span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input 
-                                          placeholder="+39 333 1234567" 
-                                          value={newTaskData.contact_phone}
-                                          onChange={(e) => setNewTaskData({...newTaskData, contact_phone: e.target.value})}
-                                          className="h-11 bg-muted/30 border-muted-foreground/20 focus:border-primary"
-                                        />
-                                      </div>
-                                      <div className="space-y-2">
-                                        <Label className="text-sm flex items-center gap-1.5">
-                                          <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                          Nome
-                                        </Label>
-                                        <Input 
-                                          placeholder="Mario Rossi" 
-                                          value={newTaskData.contact_name}
-                                          onChange={(e) => setNewTaskData({...newTaskData, contact_name: e.target.value})}
-                                          className="h-11 bg-muted/30 border-muted-foreground/20 focus:border-primary"
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* SEZIONE 2.5: TEMPLATE VOCE OUTBOUND */}
+                                  {/* TEMPLATE VOCE OUTBOUND */}
                                   <div className="space-y-4">
                                     <div className="flex items-center gap-2">
                                       <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -5046,8 +5117,21 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       </p>
                                     )}
                                   </div>
+                                    </div>
+                                  )}
 
-                                  {/* SEZIONE 4: DATA E ORA - Prominente */}
+                                  {/* ==================== STEP 3: QUANDO CHIAMARE ==================== */}
+                                  {wizardStep === 3 && (
+                                    <div className="space-y-6 animate-in fade-in-0 slide-in-from-right-4 duration-300">
+                                      <div className="text-center py-2">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900/30 mb-4">
+                                          <Clock className="h-8 w-8 text-violet-600" />
+                                        </div>
+                                        <h3 className="text-xl font-bold">Quando effettuare la chiamata?</h3>
+                                        <p className="text-muted-foreground mt-1">Imposta data, ora e ricorrenza</p>
+                                      </div>
+
+                                  {/* DATA E ORA - Prominente */}
                                   <div className="space-y-5 p-5 rounded-2xl border-2 border-violet-300 dark:border-violet-700 bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-950/30 dark:via-purple-950/20 dark:to-indigo-950/20">
                                     <div className="flex items-center gap-2">
                                       <div className="p-2 bg-violet-100 dark:bg-violet-900/40 rounded-xl">
@@ -5359,45 +5443,78 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       </div>
                                     </div>
                                   </div>
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* FOOTER STICKY */}
                                 <div className="sticky bottom-0 bg-background border-t px-6 py-4">
                                   <div className="flex gap-3">
-                                    <Button 
-                                      variant="outline" 
-                                      size="lg"
-                                      className="flex-1"
-                                      onClick={() => {
-                                        setShowQuickCreate(false);
-                                        setDragStart(null);
-                                        setDragEnd(null);
-                                      }}
-                                    >
-                                      <X className="h-4 w-4 mr-2" />
-                                      Annulla
-                                    </Button>
-                                    <Button 
-                                      size="lg"
-                                      className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-600/25"
-                                      disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
-                                      onClick={() => {
-                                        createAITaskMutation.mutate(newTaskData, {
-                                          onSuccess: () => {
-                                            setShowQuickCreate(false);
-                                            setDragStart(null);
-                                            setDragEnd(null);
-                                          }
-                                        });
-                                      }}
-                                    >
-                                      {createAITaskMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                      ) : (
-                                        <Sparkles className="h-4 w-4 mr-2" />
-                                      )}
-                                      Programma Chiamata
-                                    </Button>
+                                    {wizardStep > 1 && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="lg"
+                                        onClick={() => setWizardStep(wizardStep - 1)}
+                                      >
+                                        <ChevronLeft className="h-4 w-4 mr-1" />
+                                        Indietro
+                                      </Button>
+                                    )}
+                                    
+                                    {wizardStep === 1 && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="lg"
+                                        className="flex-1"
+                                        onClick={() => {
+                                          setShowQuickCreate(false);
+                                          setWizardStep(1);
+                                          setDragStart(null);
+                                          setDragEnd(null);
+                                        }}
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Annulla
+                                      </Button>
+                                    )}
+                                    
+                                    {wizardStep < 3 ? (
+                                      <Button 
+                                        size="lg"
+                                        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-600/25"
+                                        disabled={
+                                          (wizardStep === 1 && !newTaskData.contact_phone) ||
+                                          (wizardStep === 2 && !newTaskData.ai_instruction)
+                                        }
+                                        onClick={() => setWizardStep(wizardStep + 1)}
+                                      >
+                                        Avanti
+                                        <ChevronRight className="h-4 w-4 ml-2" />
+                                      </Button>
+                                    ) : (
+                                      <Button 
+                                        size="lg"
+                                        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-600/25"
+                                        disabled={!newTaskData.contact_phone || !newTaskData.ai_instruction || createAITaskMutation.isPending}
+                                        onClick={() => {
+                                          createAITaskMutation.mutate(newTaskData, {
+                                            onSuccess: () => {
+                                              setShowQuickCreate(false);
+                                              setWizardStep(1);
+                                              setDragStart(null);
+                                              setDragEnd(null);
+                                            }
+                                          });
+                                        }}
+                                      >
+                                        {createAITaskMutation.isPending ? (
+                                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        ) : (
+                                          <Sparkles className="h-4 w-4 mr-2" />
+                                        )}
+                                        Programma Chiamata
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               </SheetContent>
