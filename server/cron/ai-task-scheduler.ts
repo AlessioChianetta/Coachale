@@ -101,32 +101,36 @@ async function processAITasks(): Promise<void> {
  * Execute a single AI task
  */
 async function executeTask(task: AIScheduledTask): Promise<void> {
-  console.log(`📞 [AI-SCHEDULER] Executing task ${task.id} for ${task.contact_phone}`);
+  // Calcola il numero del tentativo PRIMA di incrementare nel DB
+  // così abbiamo un valore consistente da usare ovunque
+  const attemptNumber = task.current_attempt + 1;
   
-  // 1. Update status to in_progress
+  console.log(`📞 [AI-SCHEDULER] Executing task ${task.id} for ${task.contact_phone} (attempt ${attemptNumber}/${task.max_attempts})`);
+  
+  // 1. Update status to in_progress and increment attempt counter
   await db.execute(sql`
     UPDATE ai_scheduled_tasks 
     SET status = 'in_progress',
-        current_attempt = current_attempt + 1,
+        current_attempt = ${attemptNumber},
         last_attempt_at = NOW(),
         updated_at = NOW()
     WHERE id = ${task.id}
   `);
   
+  // Aggiorna l'oggetto task locale con il nuovo valore
+  const updatedTask = { ...task, current_attempt: attemptNumber };
+  
   try {
     // 2. Attempt to make the call
-    // For now, we simulate success - actual integration will be added
-    // TODO: Integrate with VPS voice bridge for actual call initiation
-    
-    const callSuccess = await initiateVoiceCall(task);
+    const callSuccess = await initiateVoiceCall(updatedTask);
     
     if (callSuccess.success) {
-      await handleSuccess(task, callSuccess);
+      await handleSuccess(updatedTask, callSuccess);
     } else {
-      await handleFailure(task, callSuccess.reason || 'Unknown error');
+      await handleFailure(updatedTask, callSuccess.reason || 'Unknown error');
     }
   } catch (error: any) {
-    await handleFailure(task, error.message);
+    await handleFailure(updatedTask, error.message);
   }
 }
 
@@ -139,7 +143,7 @@ function generateScheduledCallId(): string {
 
 /**
  * Initiate voice call through existing outbound system
- * Now creates a scheduled_voice_call record first, so calls appear in "Chiamate Programmate"
+ * RIUTILIZZA lo stesso scheduled_voice_call durante i retry invece di crearne uno nuovo
  */
 async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: boolean; reason?: string; callId?: string }> {
   try {
@@ -175,27 +179,74 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
       };
     }
     
-    // 1. Create a scheduled_voice_call record FIRST (so it appears in "Chiamate Programmate")
-    const scheduledCallId = generateScheduledCallId();
-    
-    await db.execute(sql`
-      INSERT INTO scheduled_voice_calls (
-        id, consultant_id, target_phone, scheduled_at, status, ai_mode,
-        custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
-        priority, source_task_id, created_at, updated_at
-      ) VALUES (
-        ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone}, 
-        NOW(), 'calling', 'ai',
-        ${task.ai_instruction}, ${task.ai_instruction}, 
-        ${task.task_type === 'single_call' ? 'task' : 'reminder'},
-        1, ${task.max_attempts || 3},
-        1, ${task.id}, NOW(), NOW()
-      )
+    // Check if a scheduled_voice_call already exists for this task (for retry reuse)
+    const existingCallResult = await db.execute(sql`
+      SELECT id FROM scheduled_voice_calls 
+      WHERE source_task_id = ${task.id}
+      ORDER BY created_at ASC
+      LIMIT 1
     `);
     
-    console.log(`📋 [AI-SCHEDULER] Created scheduled_voice_call ${scheduledCallId} for task ${task.id}`);
+    let scheduledCallId: string;
+    const isRetry = existingCallResult.rows.length > 0;
     
-    // 2. Call VPS outbound endpoint with the scheduled call ID
+    if (isRetry) {
+      // REUSE existing scheduled_voice_call for retries
+      scheduledCallId = (existingCallResult.rows[0] as any).id;
+      console.log(`🔄 [AI-SCHEDULER] Reusing existing scheduled_voice_call ${scheduledCallId} for retry attempt ${task.current_attempt}`);
+      
+      // Update attempts count and status
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'calling',
+            attempts = ${task.current_attempt},
+            error_message = NULL,
+            updated_at = NOW()
+        WHERE id = ${scheduledCallId}
+      `);
+    } else {
+      // FIRST ATTEMPT: Create new scheduled_voice_call
+      scheduledCallId = generateScheduledCallId();
+      
+      await db.execute(sql`
+        INSERT INTO scheduled_voice_calls (
+          id, consultant_id, target_phone, scheduled_at, status, ai_mode,
+          custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
+          priority, source_task_id, attempts_log, created_at, updated_at
+        ) VALUES (
+          ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone}, 
+          ${task.scheduled_at}, 'calling', 'ai',
+          ${task.ai_instruction}, ${task.ai_instruction}, 
+          ${task.task_type === 'single_call' ? 'task' : 'reminder'},
+          1, ${task.max_attempts || 3},
+          1, ${task.id}, '[]'::jsonb, NOW(), NOW()
+        )
+      `);
+      
+      console.log(`📋 [AI-SCHEDULER] Created scheduled_voice_call ${scheduledCallId} for task ${task.id}`);
+    }
+    
+    // Log this attempt in attempts_log
+    const attemptLogEntry = {
+      attempt: task.current_attempt,
+      timestamp: new Date().toISOString(),
+      status: 'initiated'
+    };
+    
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls 
+      SET attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${JSON.stringify(attemptLogEntry)}::jsonb
+      WHERE id = ${scheduledCallId}
+    `);
+    
+    // Also log in ai_scheduled_tasks
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${JSON.stringify(attemptLogEntry)}::jsonb
+      WHERE id = ${task.id}
+    `);
+    
+    // Call VPS outbound endpoint with the scheduled call ID
     const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
     
     const response = await fetch(outboundUrl, {
@@ -220,16 +271,42 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
       const errorText = await response.text();
       console.error(`❌ [AI-SCHEDULER] VPS error: ${errorText}`);
       
-      // Update scheduled_voice_call as failed
+      // Update the attempt log with failure
+      const failureLogUpdate = {
+        attempt: task.current_attempt,
+        timestamp: new Date().toISOString(),
+        status: 'failed',
+        error: `VPS error: ${response.status}`
+      };
+      
+      // Update last element in attempts_log with failure status
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
-        SET status = 'failed', error_message = ${`VPS error: ${response.status}`}, updated_at = NOW()
+        SET status = 'retry_pending',
+            error_message = ${`VPS error: ${response.status}`},
+            attempts_log = jsonb_set(
+              COALESCE(attempts_log, '[]'::jsonb),
+              ('{' || (jsonb_array_length(COALESCE(attempts_log, '[]'::jsonb)) - 1)::text || '}')::text[],
+              ${JSON.stringify(failureLogUpdate)}::jsonb
+            ),
+            updated_at = NOW()
         WHERE id = ${scheduledCallId}
+      `);
+      
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks 
+        SET attempts_log = jsonb_set(
+              COALESCE(attempts_log, '[]'::jsonb),
+              ('{' || (jsonb_array_length(COALESCE(attempts_log, '[]'::jsonb)) - 1)::text || '}')::text[],
+              ${JSON.stringify(failureLogUpdate)}::jsonb
+            )
+        WHERE id = ${task.id}
       `);
       
       return { 
         success: false, 
-        reason: `VPS error: ${response.status}` 
+        reason: `VPS error: ${response.status}`,
+        callId: scheduledCallId
       };
     }
     
@@ -291,16 +368,43 @@ async function handleFailure(task: AIScheduledTask, reason: string): Promise<voi
           updated_at = NOW()
       WHERE id = ${task.id}
     `);
+    
+    // Update associated scheduled_voice_call to retry_pending (NOT failed yet)
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls 
+      SET status = 'retry_pending',
+          updated_at = NOW()
+      WHERE source_task_id = ${task.id}
+    `);
   } else {
     console.log(`❌ [AI-SCHEDULER] Task ${task.id} failed after ${task.current_attempt} attempts`);
+    
+    // Add final failure to attempts_log
+    const finalFailureLog = {
+      attempt: task.current_attempt,
+      timestamp: new Date().toISOString(),
+      status: 'final_failure',
+      error: `Fallito dopo ${task.current_attempt} tentativi: ${reason}`
+    };
     
     await db.execute(sql`
       UPDATE ai_scheduled_tasks 
       SET status = 'failed',
           result_summary = ${`Fallito dopo ${task.current_attempt} tentativi: ${reason}`},
+          attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${JSON.stringify(finalFailureLog)}::jsonb,
           completed_at = NOW(),
           updated_at = NOW()
       WHERE id = ${task.id}
+    `);
+    
+    // Mark associated scheduled_voice_call as FAILED (definitively)
+    await db.execute(sql`
+      UPDATE scheduled_voice_calls 
+      SET status = 'failed',
+          error_message = ${`Fallito dopo ${task.current_attempt} tentativi: ${reason}`},
+          attempts_log = COALESCE(attempts_log, '[]'::jsonb) || ${JSON.stringify(finalFailureLog)}::jsonb,
+          updated_at = NOW()
+      WHERE source_task_id = ${task.id}
     `);
     
     // NOTE: Recurrence is NOT scheduled here on failure

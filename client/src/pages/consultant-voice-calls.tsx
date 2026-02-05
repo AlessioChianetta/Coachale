@@ -201,6 +201,13 @@ interface ScheduledVoiceCall {
   hangup_cause: string | null;
 }
 
+interface AttemptLogEntry {
+  attempt: number;
+  timestamp: string;
+  status: string;
+  error?: string;
+}
+
 interface AITask {
   id: string;
   consultant_id: string;
@@ -219,6 +226,7 @@ interface AITask {
   status: 'scheduled' | 'in_progress' | 'completed' | 'failed' | 'paused' | 'retry_pending' | 'cancelled';
   result_summary: string | null;
   voice_call_id: string | null;
+  attempts_log: AttemptLogEntry[] | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -1412,13 +1420,40 @@ export default function ConsultantVoiceCallsPage() {
           const dayIncrement = task.recurrence_type === 'daily' ? 1 : 7;
           
           while (currentDate <= endDate && currentDate < weekEnd) {
-            if (currentDate >= calendarWeekStart && currentDate >= now) {
-              // Crea una copia con la data dell'occorrenza
+            // Mostra occorrenze nella settimana corrente (sia passate che future)
+            // Le occorrenze passate mostrano lo stato reale, le future mostrano "scheduled"
+            if (currentDate >= calendarWeekStart) {
+              const isOriginalOccurrence = currentDate.getTime() === baseDate.getTime();
+              const isPastOccurrence = currentDate <= now;
+              const isFutureOccurrence = currentDate > now;
+              
+              // LOGICA:
+              // - Occorrenza ORIGINALE (baseDate): mantiene sempre lo stato reale del task
+              // - Occorrenze PASSATE (già eseguite o in esecuzione): mantengono lo stato reale
+              // - Occorrenze FUTURE (non ancora eseguite): mostrano "scheduled" senza cronologia
+              //
+              // Questo perché le occorrenze passate potrebbero aver fallito/completato,
+              // mentre le future sono ancora da eseguire
+              const shouldKeepRealState = isOriginalOccurrence || isPastOccurrence;
+              const occurrenceData = shouldKeepRealState
+                ? task
+                : {
+                    ...task,
+                    // Le occorrenze future sono sempre "scheduled" (programmate)
+                    status: 'scheduled' as const,
+                    // Non ereditare la cronologia tentativi del task originale
+                    attempts_log: null,
+                    current_attempt: 0,
+                    result_summary: null,
+                    next_retry_at: null,
+                    last_attempt_at: null,
+                  };
+              
               expanded.push({
-                ...task,
+                ...occurrenceData,
                 scheduled_at: currentDate.toISOString(),
                 // Mantieni l'ID originale ma aggiungi un suffisso per distinguere le occorrenze
-                id: currentDate.getTime() === baseDate.getTime() 
+                id: isOriginalOccurrence 
                   ? task.id 
                   : `${task.id}_occ_${currentDate.getTime()}`
               });
@@ -6277,8 +6312,8 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         </div>
                                       )}
                                       
-                                      {/* Cronologia Tentativi - per task con tentativi effettuati */}
-                                      {selectedEvent.type === 'task' && (selectedEvent.data.current_attempt > 0 || selectedEvent.data.result_summary) && (
+                                      {/* Cronologia Tentativi - usa attempts_log per dati REALI */}
+                                      {selectedEvent.type === 'task' && (selectedEvent.data.current_attempt > 0 || selectedEvent.data.result_summary || (selectedEvent.data.attempts_log && selectedEvent.data.attempts_log.length > 0)) && (
                                         <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
                                           <div className="flex items-center justify-between mb-3">
                                             <p className="text-xs font-medium text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
@@ -6286,71 +6321,69 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               Cronologia Tentativi
                                             </p>
                                             <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
-                                              {selectedEvent.data.current_attempt || 0}/{selectedEvent.data.max_attempts || 3} tentativi
+                                              {selectedEvent.data.current_attempt || (selectedEvent.data.attempts_log?.length || 0)}/{selectedEvent.data.max_attempts || 3} tentativi
                                             </Badge>
                                           </div>
                                           
-                                          {/* Timeline dei tentativi */}
+                                          {/* Timeline dei tentativi - da attempts_log REALE */}
                                           <div className="space-y-2 border-l-2 border-orange-200 dark:border-orange-700 pl-3 ml-1">
-                                            {/* Primo tentativo - data programmata originale */}
-                                            {selectedEvent.data.current_attempt >= 1 && (
-                                              <div className="relative">
-                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
-                                                <div className="text-sm">
-                                                  <p className="font-medium text-orange-700 dark:text-orange-400">
-                                                    Tentativo 1
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground">
-                                                    {format(new Date(selectedEvent.data.scheduled_at), 'dd/MM/yyyy HH:mm', { locale: it })}
-                                                  </p>
-                                                  {selectedEvent.data.current_attempt === 1 && selectedEvent.data.result_summary && (
-                                                    <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                                                      {selectedEvent.data.result_summary}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            )}
-                                            
-                                            {/* Tentativi successivi (approssimati dal retry_delay) */}
-                                            {selectedEvent.data.current_attempt >= 2 && (
-                                              <div className="relative">
-                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
-                                                <div className="text-sm">
-                                                  <p className="font-medium text-orange-700 dark:text-orange-400">
-                                                    Tentativo 2
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground">
-                                                    +{selectedEvent.data.retry_delay_minutes || 15} min dal precedente
-                                                  </p>
-                                                  {selectedEvent.data.current_attempt === 2 && selectedEvent.data.result_summary && (
-                                                    <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                                                      {selectedEvent.data.result_summary}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            )}
-                                            
-                                            {selectedEvent.data.current_attempt >= 3 && (
-                                              <div className="relative">
-                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
-                                                <div className="text-sm">
-                                                  <p className="font-medium text-orange-700 dark:text-orange-400">
-                                                    Tentativo 3
-                                                  </p>
-                                                  {selectedEvent.data.last_attempt_at && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                      {format(new Date(selectedEvent.data.last_attempt_at), 'dd/MM/yyyy HH:mm', { locale: it })}
-                                                    </p>
-                                                  )}
-                                                  {selectedEvent.data.result_summary && (
-                                                    <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                                                      {selectedEvent.data.result_summary}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              </div>
+                                            {/* Mostra tentativi da attempts_log se disponibile */}
+                                            {selectedEvent.data.attempts_log && selectedEvent.data.attempts_log.length > 0 ? (
+                                              <>
+                                                {(selectedEvent.data.attempts_log as Array<{attempt: number; timestamp: string; status: string; error?: string}>).map((attemptLog, idx) => (
+                                                  <div key={idx} className="relative">
+                                                    <div className={`absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full ${
+                                                      attemptLog.status === 'final_failure' ? 'bg-red-500' :
+                                                      attemptLog.status === 'failed' ? 'bg-orange-400' :
+                                                      attemptLog.status === 'success' ? 'bg-green-500' :
+                                                      'bg-blue-400'
+                                                    }`}></div>
+                                                    <div className="text-sm">
+                                                      <p className={`font-medium ${
+                                                        attemptLog.status === 'final_failure' ? 'text-red-600 dark:text-red-400' :
+                                                        attemptLog.status === 'failed' ? 'text-orange-700 dark:text-orange-400' :
+                                                        attemptLog.status === 'success' ? 'text-green-600 dark:text-green-400' :
+                                                        'text-blue-600 dark:text-blue-400'
+                                                      }`}>
+                                                        Tentativo {attemptLog.attempt}
+                                                        {attemptLog.status === 'final_failure' && ' (FINALE)'}
+                                                      </p>
+                                                      <p className="text-xs text-muted-foreground">
+                                                        {format(new Date(attemptLog.timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: it })}
+                                                      </p>
+                                                      {attemptLog.error && (
+                                                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                                          {attemptLog.error}
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </>
+                                            ) : (
+                                              <>
+                                                {/* Fallback: mostra info approssimate se non c'è attempts_log */}
+                                                {selectedEvent.data.current_attempt >= 1 && (
+                                                  <div className="relative">
+                                                    <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
+                                                    <div className="text-sm">
+                                                      <p className="font-medium text-orange-700 dark:text-orange-400">
+                                                        Tentativo {selectedEvent.data.current_attempt}
+                                                      </p>
+                                                      {selectedEvent.data.last_attempt_at && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                          {format(new Date(selectedEvent.data.last_attempt_at), 'dd/MM/yyyy HH:mm', { locale: it })}
+                                                        </p>
+                                                      )}
+                                                      {selectedEvent.data.result_summary && (
+                                                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                                          {selectedEvent.data.result_summary}
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </>
                                             )}
                                             
                                             {/* Prossimo tentativo programmato */}
@@ -6368,8 +6401,8 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               </div>
                                             )}
                                             
-                                            {/* Stato finale se fallito */}
-                                            {selectedEvent.data.status === 'failed' && (
+                                            {/* Stato finale se fallito (solo se non c'è già in attempts_log) */}
+                                            {selectedEvent.data.status === 'failed' && (!selectedEvent.data.attempts_log || selectedEvent.data.attempts_log.length === 0) && (
                                               <div className="relative">
                                                 <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-red-500"></div>
                                                 <div className="text-sm">
