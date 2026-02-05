@@ -1652,11 +1652,11 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   const scheduleOutboundMutation = useMutation({
-    mutationFn: async ({ targetPhone, scheduledAt, aiMode, callInstruction, instructionType }: { targetPhone: string; scheduledAt: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null }) => {
+    mutationFn: async ({ targetPhone, scheduledAt, aiMode, callInstruction, instructionType, useDefaultTemplate }: { targetPhone: string; scheduledAt: string; aiMode: string; callInstruction?: string; instructionType?: 'task' | 'reminder' | null; useDefaultTemplate?: boolean }) => {
       const res = await fetch("/api/voice/outbound/schedule", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ targetPhone, scheduledAt, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null }),
+        body: JSON.stringify({ targetPhone, scheduledAt, aiMode, callInstruction: callInstruction || null, instructionType: instructionType || null, useDefaultTemplate: useDefaultTemplate ?? false }),
       });
       if (!res.ok) {
         const err = await res.json();

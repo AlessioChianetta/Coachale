@@ -373,6 +373,82 @@ router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super
     const { id } = req.params;
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
 
+    // Check if this is a scheduled call ID (sc_*) or a voice call ID (vc_*)
+    const isScheduledCall = id.startsWith('sc_');
+    
+    if (isScheduledCall) {
+      // Look up in scheduled_voice_calls table
+      let whereClause = sql`WHERE svc.id = ${id}`;
+      if (consultantId) {
+        whereClause = sql`WHERE svc.id = ${id} AND svc.consultant_id = ${consultantId}`;
+      }
+      
+      const scheduledResult = await db.execute(sql`
+        SELECT 
+          svc.*,
+          vc.full_transcript,
+          vc.ai_conversation_id,
+          vc.status as voice_call_status,
+          vc.duration_seconds as actual_duration,
+          t.task_label as task_name,
+          t.ai_instruction as task_instruction
+        FROM scheduled_voice_calls svc
+        LEFT JOIN voice_calls vc ON svc.voice_call_id = vc.id
+        LEFT JOIN ai_scheduled_tasks t ON svc.source_task_id = t.id
+        ${whereClause}
+      `);
+      
+      if (scheduledResult.rows.length === 0) {
+        return res.status(404).json({ error: "Chiamata programmata non trovata" });
+      }
+      
+      const scheduled = scheduledResult.rows[0] as any;
+      
+      // If we have a linked voice_call_id, get transcript from there
+      if (scheduled.voice_call_id && !scheduled.full_transcript && scheduled.ai_conversation_id) {
+        try {
+          const messagesResult = await db.execute(sql`
+            SELECT role, content FROM ai_messages 
+            WHERE conversation_id = ${scheduled.ai_conversation_id}
+            ORDER BY created_at ASC
+          `);
+          if (messagesResult.rows.length > 0) {
+            scheduled.full_transcript = (messagesResult.rows as any[])
+              .map(m => `[${m.role === 'user' ? 'Utente' : 'Alessia'}] ${m.content}`)
+              .join('\n');
+          }
+        } catch (e) {
+          console.warn(`[Voice] Could not fetch transcript for scheduled call ${id}`);
+        }
+      }
+      
+      return res.json({
+        call: {
+          id: scheduled.id,
+          type: 'scheduled',
+          status: scheduled.status,
+          target_phone: scheduled.target_phone,
+          scheduled_at: scheduled.scheduled_at,
+          ai_mode: scheduled.ai_mode,
+          call_instruction: scheduled.call_instruction,
+          instruction_type: scheduled.instruction_type,
+          attempts: scheduled.attempts,
+          max_attempts: scheduled.max_attempts,
+          duration_seconds: scheduled.actual_duration || scheduled.duration_seconds,
+          hangup_cause: scheduled.hangup_cause,
+          voice_call_id: scheduled.voice_call_id,
+          source_task_id: scheduled.source_task_id,
+          task_name: scheduled.task_name,
+          task_instruction: scheduled.task_instruction,
+          full_transcript: scheduled.full_transcript,
+          created_at: scheduled.created_at,
+          updated_at: scheduled.updated_at
+        },
+        events: []
+      });
+    }
+
+    // Regular voice call lookup
     let whereClause = sql`WHERE vc.id = ${id}`;
     if (consultantId) {
       whereClause = sql`WHERE vc.id = ${id} AND vc.consultant_id = ${consultantId}`;
@@ -2236,6 +2312,9 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
     // Handle based on status
     const retryableStatuses = ['no_answer', 'busy', 'short_call'];
     
+    // Use call.id (from DB lookup) instead of callId (from request) to handle fallback scenarios
+    const dbCallId = call.id;
+    
     if (status === 'completed') {
       // Call completed successfully - no retry needed
       await db.execute(sql`
@@ -2246,7 +2325,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
             voice_call_id = ${voiceCallId || null},
             last_attempt_at = NOW(),
             updated_at = NOW()
-        WHERE id = ${callId}
+        WHERE id = ${dbCallId}
       `);
       
       // Sync with AI Task if this call originated from one (use resolvedTaskId which includes fallback from DB)
@@ -2294,7 +2373,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
             error_message = ${hangup_cause || 'Call failed'},
             last_attempt_at = NOW(),
             updated_at = NOW()
-        WHERE id = ${callId}
+        WHERE id = ${dbCallId}
       `);
       
       // Sync with AI Task if this call originated from one
@@ -2342,7 +2421,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
               last_attempt_at = NOW(),
               next_retry_at = NOW() + INTERVAL '${sql.raw(String(retryDelaySeconds))} seconds',
               updated_at = NOW()
-          WHERE id = ${callId}
+          WHERE id = ${dbCallId}
         `);
         
         // Sync with AI Task if this call originated from one
@@ -2359,13 +2438,13 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
           console.log(`🔗 [Callback] Synced AI Task ${resolvedTaskId} -> retry_pending`);
         }
         
-        // Schedule timer for retry
+        // Schedule timer for retry (use dbCallId for proper mapping)
         const timer = setTimeout(() => {
-          scheduledCallTimers.delete(callId);
-          console.log(`🔄 [Callback] Executing retry for call ${callId}`);
-          executeOutboundCall(callId, consultantId);
+          scheduledCallTimers.delete(dbCallId);
+          console.log(`🔄 [Callback] Executing retry for call ${dbCallId}`);
+          executeOutboundCall(dbCallId, consultantId);
         }, retryDelayMs);
-        scheduledCallTimers.set(callId, timer);
+        scheduledCallTimers.set(dbCallId, timer);
         
         console.log(`🔄 [Callback] Call ${callId} scheduled for retry in ${retryDelaySeconds}s (attempt ${currentAttempts + 1}/${maxAttempts})`);
         return res.json({ 
@@ -2387,7 +2466,7 @@ router.post("/outbound/callback", async (req: Request, res: Response) => {
               error_message = ${'Max attempts reached: ' + status},
               last_attempt_at = NOW(),
               updated_at = NOW()
-          WHERE id = ${callId}
+          WHERE id = ${dbCallId}
         `);
         
         // Sync with AI Task if this call originated from one

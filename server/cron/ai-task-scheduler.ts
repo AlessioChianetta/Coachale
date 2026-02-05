@@ -212,14 +212,14 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
         INSERT INTO scheduled_voice_calls (
           id, consultant_id, target_phone, scheduled_at, status, ai_mode,
           custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
-          priority, source_task_id, attempts_log, created_at, updated_at
+          priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
         ) VALUES (
           ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone}, 
-          ${task.scheduled_at}, 'calling', 'ai',
+          ${task.scheduled_at}, 'calling', 'assistenza',
           ${task.ai_instruction}, ${task.ai_instruction}, 
           ${task.task_type === 'single_call' ? 'task' : 'reminder'},
           1, ${task.max_attempts || 3},
-          1, ${task.id}, '[]'::jsonb, NOW(), NOW()
+          1, ${task.id}, '[]'::jsonb, true, NOW(), NOW()
         )
       `);
       
@@ -541,13 +541,22 @@ async function cleanupStuckCallingCalls(): Promise<void> {
     console.log(`🧹 [AI-SCHEDULER] Found ${stuckCalls.length} calls stuck in 'calling' status`);
     
     for (const call of stuckCalls) {
+      // Convert updated_at to proper timestamp for SQL comparison (with defensive check)
+      let updatedAtTimestamp: string;
+      try {
+        updatedAtTimestamp = call.updated_at ? new Date(call.updated_at).toISOString() : new Date().toISOString();
+      } catch (e) {
+        console.warn(`⚠️ [AI-SCHEDULER] Invalid updated_at for call ${call.id}, using current time`);
+        updatedAtTimestamp = new Date().toISOString();
+      }
+      
       // Check if there's a matching completed call in voice_calls
       const voiceCallResult = await db.execute(sql`
         SELECT id, status, duration_seconds, outcome 
         FROM voice_calls 
         WHERE called_number = ${call.target_phone}
-          AND created_at > ${call.updated_at} - INTERVAL '2 minutes'
-          AND created_at < ${call.updated_at} + INTERVAL '10 minutes'
+          AND created_at > ${updatedAtTimestamp}::timestamp - INTERVAL '2 minutes'
+          AND created_at < ${updatedAtTimestamp}::timestamp + INTERVAL '10 minutes'
           AND status = 'completed'
         ORDER BY created_at DESC
         LIMIT 1
