@@ -209,54 +209,106 @@ router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_adm
   }
 });
 
-// GET /api/voice/contacts - Rubrica contatti già chiamati
+// GET /api/voice/contacts - Rubrica completa: clienti + numeri chiamati
 router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
     
-    let whereCondition = consultantId ? sql`WHERE consultant_id = ${consultantId}` : sql``;
+    // 1. CLIENTI DAL DATABASE (attivi e non attivi)
+    const clientsQuery = consultantId 
+      ? sql`
+        SELECT 
+          u.id,
+          u.phone_number as phone,
+          CONCAT(u.first_name, ' ', u.last_name) as name,
+          u.role,
+          c.is_active,
+          'client' as source,
+          (SELECT COUNT(*) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as call_count,
+          (SELECT MAX(started_at) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as last_call_at
+        FROM clients c
+        JOIN users u ON u.id = c.client_id
+        WHERE c.consultant_id = ${consultantId}
+          AND u.phone_number IS NOT NULL 
+          AND u.phone_number != ''
+        ORDER BY c.is_active DESC, u.first_name
+      `
+      : sql`
+        SELECT 
+          u.id,
+          u.phone_number as phone,
+          CONCAT(u.first_name, ' ', u.last_name) as name,
+          u.role,
+          c.is_active,
+          'client' as source,
+          (SELECT COUNT(*) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as call_count,
+          (SELECT MAX(started_at) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as last_call_at
+        FROM clients c
+        JOIN users u ON u.id = c.client_id
+        WHERE u.phone_number IS NOT NULL AND u.phone_number != ''
+        ORDER BY c.is_active DESC, u.first_name
+      `;
     
-    const result = await db.execute(sql`
+    const clientsResult = await db.execute(clientsQuery);
+    
+    // 2. NUMERI CHIAMATI NON IN RUBRICA (numeri sconosciuti)
+    const callsWhereCondition = consultantId ? sql`WHERE vc.consultant_id = ${consultantId}` : sql``;
+    const unknownNumbersResult = await db.execute(sql`
       SELECT DISTINCT ON (phone)
         phone,
         name,
-        last_call_at,
         call_count,
-        last_direction
+        last_call_at,
+        last_direction,
+        'call_history' as source,
+        NULL as is_active,
+        NULL as role
       FROM (
         SELECT 
           caller_id as phone,
-          COALESCE(
-            (SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE phone_number = vc.caller_id LIMIT 1),
-            vc.caller_id
-          ) as name,
-          MAX(vc.started_at) as last_call_at,
+          caller_id as name,
           COUNT(*) as call_count,
+          MAX(vc.started_at) as last_call_at,
           (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
         FROM voice_calls vc
-        ${whereCondition}
+        ${callsWhereCondition}
+        WHERE NOT EXISTS (
+          SELECT 1 FROM users WHERE phone_number = vc.caller_id
+        )
         GROUP BY caller_id
         
-        UNION
+        UNION ALL
         
         SELECT 
           called_number as phone,
-          COALESCE(
-            (SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE phone_number = vc.called_number LIMIT 1),
-            vc.called_number
-          ) as name,
-          MAX(vc.started_at) as last_call_at,
+          called_number as name,
           COUNT(*) as call_count,
+          MAX(vc.started_at) as last_call_at,
           (array_agg(vc.direction ORDER BY vc.started_at DESC))[1] as last_direction
         FROM voice_calls vc
-        ${whereCondition}
-        WHERE called_number IS NOT NULL AND called_number != ''
+        ${callsWhereCondition}
+        WHERE called_number IS NOT NULL 
+          AND called_number != ''
+          AND NOT EXISTS (
+            SELECT 1 FROM users WHERE phone_number = vc.called_number
+          )
         GROUP BY called_number
       ) combined
       ORDER BY phone, last_call_at DESC
     `);
     
-    res.json({ contacts: result.rows });
+    // Separa clienti attivi e non attivi
+    const activeClients = (clientsResult.rows as any[]).filter(c => c.is_active === true);
+    const inactiveClients = (clientsResult.rows as any[]).filter(c => c.is_active === false);
+    const unknownNumbers = unknownNumbersResult.rows as any[];
+    
+    res.json({ 
+      activeClients,
+      inactiveClients,
+      unknownNumbers,
+      // Per retrocompatibilità
+      contacts: [...activeClients, ...inactiveClients, ...unknownNumbers]
+    });
   } catch (error) {
     console.error("[Voice] Error fetching contacts:", error);
     res.status(500).json({ error: "Errore nel recupero dei contatti" });

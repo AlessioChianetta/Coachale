@@ -943,6 +943,10 @@ export default function ConsultantVoiceCallsPage() {
   const [quickCreateTemplateValues, setQuickCreateTemplateValues] = useState<Record<string, string>>({});
   const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call' | 'history'; data: any } | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
+  // Cluster state per eventi raggruppati
+  const [showClusterPopover, setShowClusterPopover] = useState(false);
+  const [clusterEvents, setClusterEvents] = useState<any[]>([]);
+  const [clusterPosition, setClusterPosition] = useState<{ x: number; y: number } | null>(null);
   // Calendar filter states
   const [calendarContactFilter, setCalendarContactFilter] = useState("");
   const [calendarShowAllCalls, setCalendarShowAllCalls] = useState(false);
@@ -3596,9 +3600,9 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         </div>
                       </div>
                       
-                      {/* Rubrica contatti */}
+                      {/* Rubrica contatti con categorie */}
                       <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm p-4">
-                        <h3 className="text-sm font-medium mb-3">Rubrica Chiamate</h3>
+                        <h3 className="text-sm font-medium mb-3">Rubrica</h3>
                         
                         {/* Search input */}
                         <div className="relative mb-3">
@@ -3619,33 +3623,111 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                           )}
                         </div>
                         
-                        {/* Lista contatti */}
-                        <div className="max-h-64 overflow-y-auto space-y-1">
-                          {(voiceContactsData?.contacts || [])
-                            .filter(c => {
-                              if (!calendarContactFilter) return true;
-                              const search = calendarContactFilter.toLowerCase();
-                              return c.name.toLowerCase().includes(search) || c.phone.toLowerCase().includes(search);
-                            })
-                            .slice(0, 15)
-                            .map((contact, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => setCalendarContactFilter(contact.phone)}
-                                className={`w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-muted transition-colors ${
-                                  calendarContactFilter === contact.phone ? 'bg-muted' : ''
-                                }`}
-                              >
-                                <div className="font-medium truncate">
-                                  {contact.name !== contact.phone ? contact.name : 'Sconosciuto'}
+                        {/* Lista contatti con categorie */}
+                        <div className="max-h-80 overflow-y-auto space-y-3">
+                          {/* CLIENTI ATTIVI */}
+                          {(() => {
+                            const activeClients = (voiceContactsData?.activeClients || [])
+                              .filter((c: any) => {
+                                if (!calendarContactFilter) return true;
+                                const search = calendarContactFilter.toLowerCase();
+                                return c.name?.toLowerCase().includes(search) || c.phone?.toLowerCase().includes(search);
+                              });
+                            if (activeClients.length === 0) return null;
+                            return (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold mb-1 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  Clienti Attivi ({activeClients.length})
+                                </p>
+                                <div className="space-y-0.5">
+                                  {activeClients.slice(0, 8).map((contact: any, idx: number) => (
+                                    <button
+                                      key={`active-${idx}`}
+                                      onClick={() => setCalendarContactFilter(contact.phone)}
+                                      className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors ${
+                                        calendarContactFilter === contact.phone ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''
+                                      }`}
+                                    >
+                                      <div className="font-medium truncate text-xs">{contact.name}</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{contact.phone}</div>
+                                    </button>
+                                  ))}
                                 </div>
-                                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                  <span>{contact.phone}</span>
-                                  <span className="text-muted-foreground/50">({contact.call_count} chiamate)</span>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* CLIENTI NON ATTIVI */}
+                          {(() => {
+                            const inactiveClients = (voiceContactsData?.inactiveClients || [])
+                              .filter((c: any) => {
+                                if (!calendarContactFilter) return true;
+                                const search = calendarContactFilter.toLowerCase();
+                                return c.name?.toLowerCase().includes(search) || c.phone?.toLowerCase().includes(search);
+                              });
+                            if (inactiveClients.length === 0) return null;
+                            return (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                  Clienti Non Attivi ({inactiveClients.length})
+                                </p>
+                                <div className="space-y-0.5">
+                                  {inactiveClients.slice(0, 5).map((contact: any, idx: number) => (
+                                    <button
+                                      key={`inactive-${idx}`}
+                                      onClick={() => setCalendarContactFilter(contact.phone)}
+                                      className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors opacity-70 ${
+                                        calendarContactFilter === contact.phone ? 'bg-gray-100 dark:bg-gray-900/50 opacity-100' : ''
+                                      }`}
+                                    >
+                                      <div className="font-medium truncate text-xs">{contact.name}</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{contact.phone}</div>
+                                    </button>
+                                  ))}
                                 </div>
-                              </button>
-                            ))}
-                          {(!voiceContactsData?.contacts?.length) && (
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* NUMERI SCONOSCIUTI (dalla cronologia) */}
+                          {(() => {
+                            const unknownNumbers = (voiceContactsData?.unknownNumbers || [])
+                              .filter((c: any) => {
+                                if (!calendarContactFilter) return true;
+                                const search = calendarContactFilter.toLowerCase();
+                                return c.phone?.toLowerCase().includes(search);
+                              });
+                            if (unknownNumbers.length === 0) return null;
+                            return (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-blue-600 font-semibold mb-1 flex items-center gap-1">
+                                  <Phone className="w-2.5 h-2.5" />
+                                  Numeri Chiamati ({unknownNumbers.length})
+                                </p>
+                                <div className="space-y-0.5">
+                                  {unknownNumbers.slice(0, 6).map((contact: any, idx: number) => (
+                                    <button
+                                      key={`unknown-${idx}`}
+                                      onClick={() => setCalendarContactFilter(contact.phone)}
+                                      className={`w-full text-left px-2 py-1 rounded-md text-sm hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors ${
+                                        calendarContactFilter === contact.phone ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                                      }`}
+                                    >
+                                      <div className="font-mono text-xs truncate">{contact.phone}</div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        {contact.call_count} chiamate
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Messaggio se non ci sono contatti */}
+                          {(!voiceContactsData?.activeClients?.length && !voiceContactsData?.inactiveClients?.length && !voiceContactsData?.unknownNumbers?.length) && (
                             <p className="text-xs text-muted-foreground text-center py-4">
                               Nessun contatto trovato
                             </p>
@@ -4095,57 +4177,98 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         (c.instruction_type || c.call_instruction)
                                       ) || []);
                                   
-                                  // Altezza fissa per eventi puntuali (non range)
-                                  const EVENT_HEIGHT = 32;
-                                  const OVERLAP_THRESHOLD = 0.5; // 30 minuti
+                                  // CLUSTERING SYSTEM - Risolve il problema "muro verde"
+                                  const CLUSTER_THRESHOLD = 2; // Se > 2 eventi → cluster (mostra 1 + badge)
+                                  const SLOT_SIZE = 0.5; // 30 minuti = 0.5 ore
+                                  const EVENT_HEIGHT = 28; // Altezza unica per tutti gli eventi
                                   
-                                  // Combina tutti gli eventi per calcolare sovrapposizioni
+                                  // Helper: calcola slot bucket (ogni 30 min)
+                                  const getSlotBucket = (time: number) => Math.floor(time / SLOT_SIZE);
+                                  
+                                  // Combina tutti gli eventi con metadati per priorità/clustering
                                   const allEvents = [
                                     ...dayTasks.map((t: AITask) => ({ 
                                       ...t, 
-                                      type: 'task' as const, 
-                                      time: new Date(t.scheduled_at).getHours() + new Date(t.scheduled_at).getMinutes() / 60 
+                                      eventType: 'task' as const, 
+                                      time: new Date(t.scheduled_at).getHours() + new Date(t.scheduled_at).getMinutes() / 60,
+                                      priority: t.status === 'in_progress' ? 1 : t.status === 'scheduled' ? 2 : 3
                                     })),
                                     ...dayCalls.map((c: any) => ({ 
                                       ...c, 
-                                      type: 'call' as const, 
-                                      time: new Date(c.scheduled_at).getHours() + new Date(c.scheduled_at).getMinutes() / 60 
+                                      eventType: 'call' as const, 
+                                      time: new Date(c.scheduled_at).getHours() + new Date(c.scheduled_at).getMinutes() / 60,
+                                      priority: ['in_progress', 'ringing', 'active'].includes(c.voice_call_status || c.status) ? 1 : 
+                                                ['pending', 'retry_scheduled'].includes(c.voice_call_status || c.status) ? 2 : 3
                                     })),
                                     ...dayHistory.map((c: any) => ({ 
                                       ...c, 
-                                      type: 'history' as const, 
-                                      time: new Date(c.started_at).getHours() + new Date(c.started_at).getMinutes() / 60 
+                                      eventType: 'history' as const, 
+                                      time: new Date(c.started_at).getHours() + new Date(c.started_at).getMinutes() / 60,
+                                      priority: c.status === 'completed' ? 2 : 4
                                     }))
                                   ].sort((a, b) => a.time - b.time);
                                   
-                                  // Calcola posizioni per eventi sovrapposti (entro 30 minuti = fianco a fianco)
-                                  const eventPositions = new Map<string, { left: number; width: number }>();
-                                  
-                                  // Raggruppa eventi che si sovrappongono (entro 30 min)
-                                  const overlapGroups: any[][] = [];
+                                  // Raggruppa eventi per SLOT BUCKET deterministico (ogni 30 min)
+                                  const slotBuckets = new Map<number, any[]>();
                                   allEvents.forEach(evt => {
-                                    let addedToGroup = false;
-                                    for (const group of overlapGroups) {
-                                      const lastInGroup = group[group.length - 1];
-                                      if (Math.abs(evt.time - lastInGroup.time) < OVERLAP_THRESHOLD) {
-                                        group.push(evt);
-                                        addedToGroup = true;
-                                        break;
-                                      }
+                                    const bucket = getSlotBucket(evt.time);
+                                    if (!slotBuckets.has(bucket)) {
+                                      slotBuckets.set(bucket, []);
                                     }
-                                    if (!addedToGroup) {
-                                      overlapGroups.push([evt]);
-                                    }
+                                    slotBuckets.get(bucket)!.push(evt);
                                   });
                                   
+                                  // Converti in array di gruppi
+                                  const overlapGroups: any[][] = Array.from(slotBuckets.values());
+                                  
+                                  // Per ogni gruppo, determina quali eventi mostrare e quali clusterizzare
+                                  const eventPositions = new Map<string, { left: number; width: number; isHidden: boolean }>();
+                                  const clusterBadges: { time: number; count: number; events: any[]; slotBucket: number }[] = [];
+                                  
                                   overlapGroups.forEach((group) => {
-                                    const count = group.length;
-                                    group.forEach((evt, idx) => {
-                                      eventPositions.set(evt.id, {
-                                        left: (idx / count) * 100,
-                                        width: 100 / count
+                                    // Ordina per priorità (in_progress prima, poi pending, poi completati)
+                                    const sorted = [...group].sort((a, b) => a.priority - b.priority);
+                                    const slotBucket = getSlotBucket(sorted[0].time);
+                                    
+                                    if (sorted.length > CLUSTER_THRESHOLD) {
+                                      // CLUSTERING: mostra SOLO 1 evento + badge con conteggio totale
+                                      const visible = sorted.slice(0, 1); // Solo 1!
+                                      const hidden = sorted.slice(1);
+                                      
+                                      visible.forEach((evt) => {
+                                        eventPositions.set(evt.id, {
+                                          left: 0,
+                                          width: 55, // 55% per lasciare spazio al badge
+                                          isHidden: false
+                                        });
                                       });
-                                    });
+                                      
+                                      hidden.forEach((evt) => {
+                                        eventPositions.set(evt.id, {
+                                          left: 0,
+                                          width: 0,
+                                          isHidden: true
+                                        });
+                                      });
+                                      
+                                      // Crea badge cluster con conteggio TOTALE
+                                      clusterBadges.push({
+                                        time: sorted[0].time,
+                                        count: sorted.length, // Conteggio TOTALE
+                                        events: sorted,
+                                        slotBucket
+                                      });
+                                    } else {
+                                      // Normale: mostra tutti affiancati
+                                      const count = sorted.length;
+                                      sorted.forEach((evt, idx) => {
+                                        eventPositions.set(evt.id, {
+                                          left: (idx / count) * 100,
+                                          width: 100 / count,
+                                          isHidden: false
+                                        });
+                                      });
+                                    }
                                   });
 
                                   return (
@@ -4199,14 +4322,49 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         </div>
                                       )}
 
+                                      {/* CLUSTER BADGES - Badge prominente per eventi raggruppati */}
+                                      {clusterBadges.map((cluster, idx) => {
+                                        const top = (cluster.time - START_HOUR) * HOUR_HEIGHT;
+                                        return (
+                                          <button
+                                            key={`cluster-${idx}-${cluster.slotBucket}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setClusterEvents(cluster.events);
+                                              setShowClusterPopover(true);
+                                            }}
+                                            className="absolute right-1 bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 hover:from-indigo-500 hover:via-purple-500 hover:to-violet-600 text-white rounded-lg shadow-lg z-20 cursor-pointer transition-all hover:scale-105 flex items-center justify-center gap-1 font-semibold text-sm border border-white/20"
+                                            style={{
+                                              top: top + 2,
+                                              height: EVENT_HEIGHT - 4,
+                                              width: '40%',
+                                              right: 4
+                                            }}
+                                            title={`${cluster.count} eventi in questo slot - Clicca per vedere tutti`}
+                                          >
+                                            <span className="text-base">{cluster.count}</span>
+                                            <span className="text-[10px] opacity-80">eventi</span>
+                                          </button>
+                                        );
+                                      })}
+
                                       {/* AI Tasks - Posizionati al minuto esatto */}
                                       {dayTasks.map((task: AITask) => {
                                         const taskDate = new Date(task.scheduled_at);
                                         const taskHour = taskDate.getHours() + taskDate.getMinutes() / 60;
                                         const top = (taskHour - START_HOUR) * HOUR_HEIGHT;
                                         if (taskHour < START_HOUR || taskHour > END_HOUR) return null;
-                                        const pos = eventPositions.get(task.id) || { left: 0, width: 100 };
-                                        const isNarrow = pos.width < 40;
+                                        const pos = eventPositions.get(task.id) || { left: 0, width: 100, isHidden: false };
+                                        if (pos.isHidden) return null; // Nascosto nel cluster
+                                        const isNarrow = pos.width < 50;
+                                        // Gerarchia visiva per stato
+                                        const statusStyles = task.status === 'in_progress' 
+                                          ? 'ring-2 ring-purple-300 shadow-lg z-25' 
+                                          : task.status === 'completed' 
+                                            ? 'opacity-70' 
+                                            : task.status === 'failed'
+                                              ? 'opacity-60 border-dashed'
+                                              : '';
                                         return (
                                           <div
                                             key={task.id}
@@ -4215,13 +4373,13 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               setSelectedEvent({ type: 'task', data: task });
                                               setShowEventDetails(true);
                                             }}
-                                            className="absolute bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-purple-700"
+                                            className={`absolute bg-purple-500 hover:bg-purple-600 text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] border-purple-700 ${statusStyles}`}
                                             style={{ 
                                               top: top, 
                                               height: EVENT_HEIGHT,
                                               left: `calc(${pos.left}% + 2px)`,
                                               width: `calc(${pos.width}% - 4px)`,
-                                              minWidth: '60px'
+                                              minWidth: '50px'
                                             }}
                                             title={`${task.contact_name || task.contact_phone} - ${format(taskDate, 'HH:mm')} - ${task.ai_instruction}`}
                                           >
@@ -4243,38 +4401,39 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         const callHour = callDate.getHours() + callDate.getMinutes() / 60;
                                         const top = (callHour - START_HOUR) * HOUR_HEIGHT;
                                         if (callHour < START_HOUR || callHour > END_HOUR) return null;
-                                        const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
-                                        const isNarrow = pos.width < 40;
+                                        const pos = eventPositions.get(call.id) || { left: 0, width: 100, isHidden: false };
+                                        if (pos.isHidden) return null; // Nascosto nel cluster
+                                        const isNarrow = pos.width < 50;
                                         
                                         // Usa lo stato della voice_call reale se disponibile, altrimenti lo stato della scheduled
                                         const effectiveStatus = call.voice_call_status || call.status;
                                         
-                                        // Colori in base allo stato (usa STATUS_CONFIG per voice_calls)
-                                        const getCallStatusColor = (status: string) => {
+                                        // Colori + gerarchia visiva per stato
+                                        const getCallStatusStyles = (status: string) => {
                                           switch (status) {
-                                            case 'pending':
-                                            case 'retry_scheduled':
-                                              return 'bg-blue-500 hover:bg-blue-600 border-blue-700'; // Blu = future
                                             case 'in_progress':
                                             case 'ringing':
                                             case 'active':
-                                              return 'bg-amber-500 hover:bg-amber-600 border-amber-700'; // Giallo = in corso
+                                              return { color: 'bg-amber-500 hover:bg-amber-600 border-amber-700', extra: 'ring-2 ring-amber-300 shadow-lg z-25' };
+                                            case 'pending':
+                                            case 'retry_scheduled':
+                                              return { color: 'bg-blue-500 hover:bg-blue-600 border-blue-700', extra: '' };
                                             case 'completed':
                                             case 'ended':
                                             case 'normal_end':
-                                              return 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700'; // Verde = completate
+                                              return { color: 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700', extra: 'opacity-80' };
                                             case 'failed':
                                             case 'error':
                                             case 'no_answer':
                                             case 'busy':
-                                              return 'bg-red-400 hover:bg-red-500 border-red-600'; // Rosso = fallite
+                                              return { color: 'bg-red-400 hover:bg-red-500 border-red-600', extra: 'opacity-70' };
                                             case 'cancelled':
-                                              return 'bg-gray-400 hover:bg-gray-500 border-gray-600'; // Grigio = cancellate
+                                              return { color: 'bg-gray-400 hover:bg-gray-500 border-gray-600', extra: 'opacity-60' };
                                             default:
-                                              return 'bg-blue-500 hover:bg-blue-600 border-blue-700';
+                                              return { color: 'bg-blue-500 hover:bg-blue-600 border-blue-700', extra: '' };
                                           }
                                         };
-                                        const callStatusColor = getCallStatusColor(effectiveStatus);
+                                        const callStyles = getCallStatusStyles(effectiveStatus);
                                         
                                         return (
                                           <div
@@ -4284,13 +4443,13 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               setSelectedEvent({ type: 'call', data: call });
                                               setShowEventDetails(true);
                                             }}
-                                            className={`absolute ${callStatusColor} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px]`}
+                                            className={`absolute ${callStyles.color} ${callStyles.extra} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px]`}
                                             style={{ 
                                               top: top, 
                                               height: EVENT_HEIGHT,
                                               left: `calc(${pos.left}% + 2px)`,
                                               width: `calc(${pos.width}% - 4px)`,
-                                              minWidth: '60px'
+                                              minWidth: '50px'
                                             }}
                                             title={`${call.target_phone} - ${format(callDate, 'HH:mm')} - ${call.call_instruction || 'Chiamata programmata'}`}
                                           >
@@ -4306,19 +4465,36 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         );
                                       })}
 
-                                      {/* Voice Call History - Chiamate effettuate (verde) */}
+                                      {/* Voice Call History - Chiamate effettuate con gerarchia visiva */}
                                       {dayHistory.map((call: any) => {
                                         const callDate = new Date(call.started_at);
                                         const callHour = callDate.getHours() + callDate.getMinutes() / 60;
                                         const top = (callHour - START_HOUR) * HOUR_HEIGHT;
                                         if (callHour < START_HOUR || callHour > END_HOUR) return null;
-                                        const pos = eventPositions.get(call.id) || { left: 0, width: 100 };
-                                        const isNarrow = pos.width < 40;
-                                        const statusColor = call.status === 'completed' 
-                                          ? 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700' 
-                                          : call.status === 'failed' 
-                                            ? 'bg-red-500 hover:bg-red-600 border-red-700'
-                                            : 'bg-gray-500 hover:bg-gray-600 border-gray-700';
+                                        const pos = eventPositions.get(call.id) || { left: 0, width: 100, isHidden: false };
+                                        if (pos.isHidden) return null; // Nascosto nel cluster
+                                        const isNarrow = pos.width < 50;
+                                        
+                                        // Colori + gerarchia visiva per stato  
+                                        const getHistoryStyles = () => {
+                                          if (call.status === 'completed') {
+                                            return { 
+                                              color: 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700', 
+                                              extra: 'opacity-80'
+                                            };
+                                          } else if (call.status === 'failed') {
+                                            return { 
+                                              color: 'bg-red-400 hover:bg-red-500 border-red-600', 
+                                              extra: 'opacity-70 border-dashed'
+                                            };
+                                          }
+                                          return { 
+                                            color: 'bg-gray-500 hover:bg-gray-600 border-gray-700', 
+                                            extra: 'opacity-60'
+                                          };
+                                        };
+                                        const historyStyles = getHistoryStyles();
+                                        
                                         return (
                                           <div
                                             key={call.id}
@@ -4327,7 +4503,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               setSelectedEvent({ type: 'history', data: call });
                                               setShowEventDetails(true);
                                             }}
-                                            className={`absolute ${statusColor} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px]`}
+                                            className={`absolute ${historyStyles.color} ${historyStyles.extra} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px]`}
                                             style={{ 
                                               top: top, 
                                               height: EVENT_HEIGHT,
@@ -5190,6 +5366,63 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                 </div>
                               </SheetContent>
                             </Sheet>
+
+                            {/* Cluster Popover - Lista eventi raggruppati */}
+                            <Dialog open={showClusterPopover} onOpenChange={setShowClusterPopover}>
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2">
+                                    <div className="p-2 rounded-xl bg-gradient-to-r from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30">
+                                      <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <span>{clusterEvents.length} Eventi in questo slot</span>
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <div className="max-h-80 overflow-y-auto space-y-2 mt-4">
+                                  {clusterEvents.map((evt) => {
+                                    const eventDate = new Date(evt.scheduled_at || evt.started_at);
+                                    const eventType = evt.eventType;
+                                    const getTypeStyles = () => {
+                                      switch (eventType) {
+                                        case 'task': return { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', icon: <Bot className="h-4 w-4 text-purple-500" /> };
+                                        case 'call': return { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', icon: <Phone className="h-4 w-4 text-blue-500" /> };
+                                        case 'history': return { bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800', icon: <PhoneIncoming className="h-4 w-4 text-emerald-500" /> };
+                                        default: return { bg: 'bg-gray-50 dark:bg-gray-900/20', border: 'border-gray-200 dark:border-gray-800', icon: <Phone className="h-4 w-4 text-gray-500" /> };
+                                      }
+                                    };
+                                    const styles = getTypeStyles();
+                                    return (
+                                      <button
+                                        key={evt.id}
+                                        onClick={() => {
+                                          setShowClusterPopover(false);
+                                          setSelectedEvent({ 
+                                            type: eventType === 'task' ? 'task' : eventType === 'call' ? 'call' : 'history', 
+                                            data: evt 
+                                          });
+                                          setShowEventDetails(true);
+                                        }}
+                                        className={`w-full text-left p-3 rounded-lg border ${styles.bg} ${styles.border} hover:shadow-md transition-all`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          {styles.icon}
+                                          <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-sm truncate">
+                                              {evt.contact_name || evt.contact_phone || evt.target_phone || evt.caller_id || 'Sconosciuto'}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                              {format(eventDate, 'HH:mm')} - {eventType === 'task' ? 'AI Task' : eventType === 'call' ? 'Programmata' : 'Storico'}
+                                              {evt.duration_seconds ? ` (${Math.floor(evt.duration_seconds / 60)}m)` : ''}
+                                            </p>
+                                          </div>
+                                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
 
                             {/* Event Details Dialog */}
                             <Dialog open={showEventDetails} onOpenChange={setShowEventDetails}>

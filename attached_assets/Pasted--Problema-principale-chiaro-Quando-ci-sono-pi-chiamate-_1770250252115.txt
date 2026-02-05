@@ -1,0 +1,141 @@
+🎯 Problema principale (chiaro)
+
+Quando ci sono più chiamate ravvicinate o sovrapposte:
+
+diventano illeggibili
+
+sembrano “macchie verdi”
+
+l’utente non capisce quantità, stato, priorità
+
+Questo è un problema di densità + gerarchia visiva.
+
+✅ SOLUZIONE — cosa implementare (in ordine di impatto)
+1️⃣ Stack / Cluster intelligente (OBBLIGATORIO)
+
+Quando più eventi si sovrappongono nello stesso slot:
+
+Invece di disegnarli tutti:
+
+mostra 1 card principale
+
+badge tipo:
++5 chiamate
+
+al hover / click → popover / side panel con lista
+
+📌 Regola semplice:
+
+Se eventi > 3 nello stesso timeslot → cluster
+
+
+👉 Questo DA SOLO risolve il 60% del problema.
+
+2️⃣ Livelli di profondità (z-index + size)
+
+Non tutte le chiamate sono uguali.
+
+Chiedi al frontend di usare:
+
+altezza diversa
+
+opacity diversa
+
+bordo / glow solo per le importanti
+
+Esempio:
+
+In corso → più grande + glow
+
+Completata → più sottile
+
+Fallita → più piccola + tratteggio
+
+3️⃣ Timeline “compressa” per micro-eventi
+
+Quelle chiamate da 0–1 min NON devono occupare spazio pieno.
+
+📌 Soluzione:
+
+sotto i 3 minuti → diventano:
+
+linee sottili
+
+o puntini sulla timeline
+
+hover → tooltip con dettagli
+
+Questo evita il “muro verde” che vedi ora.
+
+4️⃣ Color system semantico (non solo stato)
+
+Ora usi:
+
+verde / viola / grigio → ok
+Ma manca una seconda dimensione.
+
+Suggerisci:
+
+colore = stato
+
+icona / pattern = tipo
+
+📞 inbound
+
+🤖 AI
+
+👤 umano
+
+🔁 retry
+
+Così anche a colpo d’occhio si capisce COSA sta succedendo.
+
+5️⃣ Vista alternativa “Densità” (killer feature)
+
+Aggiungi toggle:
+
+📊 Vista traffico
+
+Che mostra:
+
+heatmap oraria
+
+numero chiamate per slot
+
+non singole card
+
+È perfetta quando:
+
+l’utente vuole analisi
+
+non gestione puntuale
+
+6️⃣ Zoom temporale (molto importante)
+
+Deve poter:
+
+zoom OUT → overview (30 / 60 min)
+
+zoom IN → dettaglio (5 min)
+
+Tecnico ma fondamentale:
+
+stessa giornata, rendering diverso in base allo zoom
+
+7️⃣ Selezione intelligente
+
+Click su uno slot:
+
+se 1 chiamata → apri dettaglio
+
+se N chiamate → apri drawer laterale con:
+
+lista ordinata
+
+filtri rapidi
+
+azioni bulk
+
+🧠 Frase pronta da dire al frontend (copiala)
+
+“Il problema principale del calendario è la densità visiva quando ci sono molte chiamate sovrapposte. Dobbiamo introdurre clustering automatico degli eventi, micro-rendering per chiamate brevi, e una gerarchia visiva chiara (dimensione, opacity, z-index). Inoltre serve una vista alternativa di densità/heatmap e uno zoom temporale per evitare l’effetto ‘muro verde’.”
