@@ -3025,10 +3025,13 @@ Una volta che hanno capito e confermato:
         let outboundBrandVoiceEnabled = false;
         let outboundBrandVoiceAgentId: string | null = null;
         
-        // 🎯 FIX: Determine direction based on scheduledCallId presence
-        // If phoneScheduledCallId exists, this is an OUTBOUND call (we initiated it)
-        // Even without a specific instruction, the presence of scheduledCallId means OUTBOUND
-        const isOutbound = !!phoneScheduledCallId;
+        // 🎯 FIX: Determine direction based on scheduledCallId FORMAT
+        // OUTBOUND calls from Replit have scheduledCallId starting with "sc_" (e.g. sc_1770317815932_p4nhuqjl3)
+        // INBOUND calls use FreeSWITCH UUID format (e.g. 005ce2b3-cfd7-45ff-9b9b-ae0e979ec5dd)
+        // Only calls with "sc_" prefix are truly OUTBOUND (we initiated them from Replit)
+        const isOutbound = !!phoneScheduledCallId && phoneScheduledCallId.startsWith('sc_');
+        
+        console.log(`📞 [${connectionId}] DIRECTION DETECTION: scheduledCallId=${phoneScheduledCallId}, isOutbound=${isOutbound}`);
         
         if (consultantId) {
           try {
