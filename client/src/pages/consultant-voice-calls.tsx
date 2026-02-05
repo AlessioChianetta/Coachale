@@ -106,6 +106,7 @@ import {
   Timer,
   Pencil,
   Wand2,
+  Construction,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -630,6 +631,79 @@ const VOICES = [
   { value: 'Aoede', label: 'Aoede', description: '🇬🇧 Femminile Melodiosa' },
 ];
 
+const CALL_TYPE_INFO = {
+  single_call: {
+    title: 'Chiamata Singola',
+    subtitle: 'Una telefonata diretta al contatto',
+    description: 'L\'AI chiamerà il contatto una volta sola all\'orario programmato. Perfetta per comunicazioni puntuali.',
+    useCases: [
+      'Promemoria appuntamento',
+      'Conferma prenotazione', 
+      'Notifica urgente',
+      'Richiesta feedback'
+    ],
+    color: 'emerald',
+    gradient: 'from-emerald-500 to-teal-600',
+    bgLight: 'from-emerald-50 to-teal-50',
+    bgDark: 'from-emerald-950/30 to-teal-950/30',
+    icon: Phone
+  },
+  follow_up: {
+    title: 'Follow-up Programmato',
+    subtitle: 'Serie di chiamate a intervalli regolari',
+    description: 'L\'AI chiamerà il contatto più volte secondo la frequenza impostata. Ideale per mantenere il contatto nel tempo.',
+    useCases: [
+      'Nurturing lead',
+      'Check-in periodici clienti',
+      'Sollecito pagamenti',
+      'Aggiornamenti progetto'
+    ],
+    color: 'blue',
+    gradient: 'from-blue-500 to-cyan-600',
+    bgLight: 'from-blue-50 to-cyan-50',
+    bgDark: 'from-blue-950/30 to-cyan-950/30',
+    icon: RepeatIcon
+  },
+  ai_task: {
+    title: 'Task AI Autonomo',
+    subtitle: 'L\'AI esegue un compito e poi (opzionalmente) chiama',
+    description: 'L\'AI prima completa un\'attività autonoma, poi può chiamare il contatto per spiegare i risultati.',
+    useCases: [
+      'Ricerca informazioni',
+      'Analisi dati cliente',
+      'Preparazione proposta',
+      'Report automatico'
+    ],
+    color: 'purple',
+    gradient: 'from-purple-500 to-pink-600',
+    bgLight: 'from-purple-50 to-pink-50',
+    bgDark: 'from-purple-950/30 to-pink-950/30',
+    icon: Bot,
+    inDevelopment: true
+  }
+} as const;
+
+const QUICK_SUGGESTIONS = {
+  single_call: [
+    'Ricorda appuntamento di domani',
+    'Conferma disponibilità',
+    'Richiedi feedback sulla consulenza',
+    'Notifica cambio orario'
+  ],
+  follow_up: [
+    'Verifica interesse proposta',
+    'Check-in settimanale',
+    'Aggiornamento progetto',
+    'Sollecito gentile pagamento'
+  ],
+  ai_task: [
+    'Analizza storico cliente',
+    'Prepara riepilogo consulenze',
+    'Cerca opportunità cross-sell',
+    'Genera report mensile'
+  ]
+} as const;
+
 interface PromptSection {
   icon: React.ReactNode;
   title: string;
@@ -969,7 +1043,8 @@ export default function ConsultantVoiceCallsPage() {
     max_attempts: 3,
     retry_delay_minutes: 15,
     template_id: undefined as string | undefined,
-    voice_template_id: undefined as string | undefined
+    voice_template_id: undefined as string | undefined,
+    call_after_task: false
   });
 
   const { toast } = useToast();
@@ -4843,326 +4918,341 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     </div>
                                   )}
                                   
-                                  {/* ==================== STEP 2: COSA DIRE ==================== */}
+                                  {/* ==================== STEP 2: COSA DIRE - Layout D Card Hero ==================== */}
                                   {wizardStep === 2 && (
-                                    <div className="space-y-6 animate-in fade-in-0 slide-in-from-right-4 duration-300">
-                                      <div className="text-center py-2">
-                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
-                                          <MessageSquare className="h-8 w-8 text-blue-600" />
-                                        </div>
-                                        <h3 className="text-xl font-bold">Cosa deve dire l'AI?</h3>
-                                        <p className="text-muted-foreground mt-1">Scegli il tipo di chiamata e le istruzioni</p>
+                                    <div className="space-y-5 animate-in fade-in-0 slide-in-from-right-4 duration-300">
+                                      
+                                      {/* SELEZIONE TIPO - 3 Bottoni piccoli */}
+                                      <div className="flex gap-2">
+                                        {(['single_call', 'follow_up', 'ai_task'] as const).map((typeKey) => {
+                                          const typeInfo = CALL_TYPE_INFO[typeKey];
+                                          const isSelected = newTaskData.task_type === typeKey;
+                                          const TypeIcon = typeInfo.icon;
+                                          return (
+                                            <button
+                                              key={typeKey}
+                                              onClick={() => {
+                                                setNewTaskData({
+                                                  ...newTaskData, 
+                                                  task_type: typeKey,
+                                                  recurrence_type: typeKey === 'single_call' ? 'once' : newTaskData.recurrence_type,
+                                                  recurrence_days: typeKey === 'single_call' ? [] : newTaskData.recurrence_days,
+                                                  template_id: typeKey === 'ai_task' ? undefined : newTaskData.template_id,
+                                                  call_after_task: typeKey === 'ai_task' ? newTaskData.call_after_task : false
+                                                });
+                                              }}
+                                              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 transition-all duration-200 ${
+                                                isSelected 
+                                                  ? `bg-gradient-to-r ${typeInfo.gradient} text-white border-transparent shadow-lg` 
+                                                  : 'bg-card border-border hover:border-muted-foreground/30 hover:shadow-md'
+                                              }`}
+                                            >
+                                              <TypeIcon className={`h-4 w-4 ${isSelected ? 'text-white' : `text-${typeInfo.color}-600`}`} />
+                                              <span className="text-sm font-semibold">{typeInfo.title.split(' ')[0]}</span>
+                                              {typeKey === 'ai_task' && (
+                                                <Badge className={`text-[10px] px-1.5 py-0 ${isSelected ? 'bg-white/20 text-white border-white/30' : 'bg-amber-100 text-amber-700 border-amber-300'}`}>
+                                                  <Construction className="h-2.5 w-2.5 mr-0.5" />
+                                                  Beta
+                                                </Badge>
+                                              )}
+                                            </button>
+                                          );
+                                        })}
                                       </div>
                                       
-                                      {/* Tipo chiamata */}
-                                      <div className="space-y-3">
-                                        <Label className="text-sm font-medium">Tipo di chiamata</Label>
-                                        <div className="grid grid-cols-3 gap-3">
-                                          {[
-                                        { value: 'single_call', label: 'Chiamata', icon: Phone, desc: 'Una singola chiamata', color: 'emerald', gradient: 'from-emerald-500 to-teal-600' },
-                                        { value: 'follow_up', label: 'Follow-up', icon: RepeatIcon, desc: 'Serie programmata', color: 'blue', gradient: 'from-blue-500 to-cyan-600' },
-                                        { value: 'ai_task', label: 'Task AI', icon: Bot, desc: 'Azione automatica', color: 'purple', gradient: 'from-purple-500 to-pink-600' }
-                                      ].map((type) => {
-                                        const isSelected = newTaskData.task_type === type.value;
+                                      {/* CARD HERO - Descrizione tipo selezionato */}
+                                      {(() => {
+                                        const typeInfo = CALL_TYPE_INFO[newTaskData.task_type];
+                                        const TypeIcon = typeInfo.icon;
+                                        const isAiTask = newTaskData.task_type === 'ai_task';
                                         return (
-                                          <button
-                                            key={type.value}
-                                            onClick={() => {
-                                              const newType = type.value as 'single_call' | 'follow_up' | 'ai_task';
-                                              setNewTaskData({
-                                                ...newTaskData, 
-                                                task_type: newType,
-                                                recurrence_type: newType === 'single_call' ? 'once' : newTaskData.recurrence_type,
-                                                recurrence_days: newType === 'single_call' ? [] : newTaskData.recurrence_days,
-                                                template_id: newType === 'ai_task' ? undefined : newTaskData.template_id
-                                              });
-                                            }}
-                                            className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 ${
-                                              isSelected 
-                                                ? `border-${type.color}-500 bg-gradient-to-br ${type.gradient} text-white shadow-lg shadow-${type.color}-500/25 scale-[1.02]` 
-                                                : 'border-border bg-card hover:border-muted-foreground/30 hover:shadow-md'
-                                            }`}
+                                          <div className={`p-5 rounded-2xl bg-gradient-to-br ${typeInfo.bgLight} dark:${typeInfo.bgDark} border-2 border-${typeInfo.color}-200 dark:border-${typeInfo.color}-800/50 transition-all duration-300`}>
+                                            <div className="flex gap-4">
+                                              <div className={`shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br ${typeInfo.gradient} flex items-center justify-center shadow-lg shadow-${typeInfo.color}-500/30`}>
+                                                <TypeIcon className="h-7 w-7 text-white" />
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <h3 className={`text-lg font-bold text-${typeInfo.color}-900 dark:text-${typeInfo.color}-100`}>
+                                                    {typeInfo.title}
+                                                  </h3>
+                                                  {isAiTask && (
+                                                    <Badge className="bg-amber-100 text-amber-700 border-amber-300">
+                                                      <Construction className="h-3 w-3 mr-1" />
+                                                      In sviluppo
+                                                    </Badge>
+                                                  )}
+                                                </div>
+                                                <p className={`text-sm text-${typeInfo.color}-700 dark:text-${typeInfo.color}-300 mb-3`}>
+                                                  {typeInfo.description}
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                                  {typeInfo.useCases.map((useCase, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                      <div className={`w-1.5 h-1.5 rounded-full bg-${typeInfo.color}-500`} />
+                                                      {useCase}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </div>
+                                            
+                                            {/* Toggle per AI Task - Chiama dopo completamento */}
+                                            {isAiTask && (
+                                              <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-700/50">
+                                                <div className="flex items-center justify-between p-4 bg-purple-100/50 dark:bg-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700">
+                                                  <div className="flex items-center gap-3">
+                                                    <Phone className="h-5 w-5 text-purple-600" />
+                                                    <div>
+                                                      <p className="font-medium text-sm">Chiama dopo il completamento</p>
+                                                      <p className="text-xs text-muted-foreground">L'AI spiegherà i risultati a voce</p>
+                                                    </div>
+                                                  </div>
+                                                  <Switch 
+                                                    checked={newTaskData.call_after_task} 
+                                                    onCheckedChange={(v) => setNewTaskData({...newTaskData, call_after_task: v})}
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                      
+                                      {/* TEMPLATE VOCE - solo per single_call e follow_up */}
+                                      {(newTaskData.task_type === 'single_call' || newTaskData.task_type === 'follow_up') && (
+                                        <div className="space-y-3 p-4 rounded-xl border bg-card">
+                                          <div className="flex items-center gap-2">
+                                            <PhoneOutgoing className="h-4 w-4 text-blue-600" />
+                                            <h4 className="font-medium text-sm">Template Voce</h4>
+                                            <Badge variant="outline" className="text-xs">Opzionale</Badge>
+                                          </div>
+                                          <Select
+                                            value={newTaskData.voice_template_id || 'default'}
+                                            onValueChange={(value) => setNewTaskData({...newTaskData, voice_template_id: value === 'default' ? undefined : value})}
                                           >
-                                            {isSelected && (
-                                              <div className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-lg">
-                                                <Check className={`h-3.5 w-3.5 text-${type.color}-600`} />
-                                              </div>
-                                            )}
-                                            <div className={`p-3 rounded-xl ${isSelected ? 'bg-white/20' : `bg-${type.color}-100 dark:bg-${type.color}-900/20`}`}>
-                                              <type.icon className={`h-6 w-6 ${isSelected ? 'text-white' : `text-${type.color}-600 dark:text-${type.color}-400`}`} />
-                                            </div>
-                                            <div className="text-center">
-                                              <span className="text-sm font-semibold block">{type.label}</span>
-                                              <span className={`text-xs ${isSelected ? 'text-white/70' : 'text-muted-foreground'}`}>{type.desc}</span>
-                                            </div>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-
-                                  {/* TEMPLATE VOCE OUTBOUND */}
-                                  <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                        <PhoneOutgoing className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                      </div>
-                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Template Voce</h3>
-                                      <Badge variant="outline" className="text-xs">Opzionale</Badge>
-                                    </div>
-                                    
-                                    <Select
-                                      value={newTaskData.voice_template_id || 'default'}
-                                      onValueChange={(value) => setNewTaskData({...newTaskData, voice_template_id: value === 'default' ? undefined : value})}
-                                    >
-                                      <SelectTrigger className="h-10 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
-                                        <SelectValue placeholder="Usa template di default" />
-                                      </SelectTrigger>
-                                      <SelectContent className="z-[999]">
-                                        <SelectItem value="default">
-                                          <div className="flex items-center gap-2">
-                                            <Settings className="h-4 w-4 text-muted-foreground" />
-                                            <span>Usa template di default</span>
-                                          </div>
-                                        </SelectItem>
-                                        {(nonClientSettingsData?.availableOutboundTemplates || []).map((template) => (
-                                          <SelectItem key={template.id} value={template.id}>
-                                            <div className="flex flex-col">
-                                              <span className="font-medium">{template.name}</span>
-                                              <span className="text-xs text-muted-foreground">{template.description}</span>
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    
-                                    {newTaskData.voice_template_id && (
-                                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <FileText className="h-4 w-4 text-blue-600" />
-                                          <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                                            Template selezionato: {nonClientSettingsData?.availableOutboundTemplates?.find(t => t.id === newTaskData.voice_template_id)?.name}
-                                          </span>
+                                            <SelectTrigger className="h-10">
+                                              <SelectValue placeholder="Usa template di default" />
+                                            </SelectTrigger>
+                                            <SelectContent className="z-[999]">
+                                              <SelectItem value="default">
+                                                <div className="flex items-center gap-2">
+                                                  <Settings className="h-4 w-4 text-muted-foreground" />
+                                                  <span>Usa template di default</span>
+                                                </div>
+                                              </SelectItem>
+                                              {(nonClientSettingsData?.availableOutboundTemplates || []).map((template) => (
+                                                <SelectItem key={template.id} value={template.id}>
+                                                  <div className="flex flex-col">
+                                                    <span className="font-medium">{template.name}</span>
+                                                    <span className="text-xs text-muted-foreground">{template.description}</span>
+                                                  </div>
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
                                         </div>
-                                        <p className="text-xs text-blue-600 dark:text-blue-400">
-                                          Questo template verrà usato al posto di quello configurato di default
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* SEZIONE 2.6: TEMPLATE LIBRARY (categorie espandibili) - solo per single_call e follow_up */}
-                                  {(newTaskData.task_type === 'single_call' || newTaskData.task_type === 'follow_up') && (
-                                  <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="p-1.5 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
-                                        <FileText className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                                      </div>
-                                      <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Istruzione Specifica</h3>
-                                      <Badge variant="outline" className="text-xs">Opzionale</Badge>
-                                    </div>
-                                    
-                                    {/* Categorie Template espandibili */}
-                                    <div className="space-y-1 max-h-[200px] overflow-auto rounded-xl border bg-muted/20 p-2">
-                                      {TEMPLATE_LIBRARY.map((category) => {
-                                        const CategoryIcon = category.icon;
-                                        const isExpanded = quickCreateExpandedCategory === category.category;
-                                        return (
-                                          <div key={category.category}>
-                                            <button 
-                                              type="button"
-                                              onClick={() => setQuickCreateExpandedCategory(isExpanded ? null : category.category)}
-                                              className={`w-full flex items-center justify-between p-2 rounded-lg text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
-                                            >
-                                              <div className="flex items-center gap-2">
-                                                <CategoryIcon className={`h-4 w-4 ${category.color}`} />
-                                                <span className="text-sm font-medium">{category.label}</span>
-                                                <Badge variant="secondary" className="text-xs">{category.items.length}</Badge>
-                                              </div>
-                                              <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                                            </button>
-                                            {isExpanded && (
-                                              <div className="ml-6 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
-                                                {category.items.map((item, idx) => (
-                                                  <button
-                                                    key={idx}
-                                                    type="button"
-                                                    onClick={() => {
-                                                      if (item.fields && item.fields.length > 0) {
-                                                        setQuickCreateSelectedTemplate(item);
-                                                        setQuickCreateTemplateValues({});
-                                                      } else {
-                                                        setNewTaskData({
-                                                          ...newTaskData, 
-                                                          ai_instruction: item.text,
-                                                          template_id: item.label
-                                                        });
-                                                        setQuickCreateSelectedTemplate(null);
-                                                      }
-                                                    }}
-                                                    className="w-full flex items-center gap-2 p-2 text-left text-sm rounded-lg hover:bg-primary/10 transition-colors"
-                                                  >
-                                                    {item.type === 'task' ? (
-                                                      <ClipboardList className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                                    ) : (
-                                                      <Bell className="h-4 w-4 text-orange-500 flex-shrink-0" />
-                                                    )}
-                                                    <span className="truncate">{item.label}</span>
-                                                  </button>
-                                                ))}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                    
-                                    {/* Campi Template selezionato (se ha fields) */}
-                                    {quickCreateSelectedTemplate?.fields?.length ? (
-                                      <div className="animate-in slide-in-from-top-2 duration-200 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border-2 border-dashed border-primary/30">
-                                        <div className="flex items-center justify-between mb-3">
+                                      )}
+                                      
+                                      {/* ISTRUZIONE AI */}
+                                      <div className="space-y-3 p-4 rounded-xl border bg-card">
+                                        <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-2">
-                                            <Sparkles className="h-4 w-4 text-primary" />
-                                            <span className="text-sm font-semibold">{quickCreateSelectedTemplate.label}</span>
+                                            <MessageSquare className="h-4 w-4 text-amber-600" />
+                                            <h4 className="font-medium text-sm">
+                                              {newTaskData.task_type === 'ai_task' ? 'Compito AI' : 'Istruzione AI'}
+                                            </h4>
                                           </div>
                                           <Button
                                             type="button"
-                                            variant="ghost"
                                             size="sm"
-                                            onClick={() => {
-                                              setQuickCreateSelectedTemplate(null);
-                                              setQuickCreateTemplateValues({});
-                                            }}
+                                            disabled={!newTaskData.ai_instruction || newTaskData.ai_instruction.trim().length < 5 || improveInstructionMutation.isPending}
+                                            onClick={() => improveInstructionMutation.mutate({ 
+                                              instruction: newTaskData.ai_instruction, 
+                                              task_type: newTaskData.task_type 
+                                            })}
+                                            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 gap-2"
                                           >
-                                            <X className="h-4 w-4" />
+                                            {improveInstructionMutation.isPending ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Wand2 className="h-4 w-4" />
+                                            )}
+                                            {improveInstructionMutation.isPending ? 'Migliorando...' : 'Genera con AI'}
                                           </Button>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                          {quickCreateSelectedTemplate.fields.map((field) => (
-                                            <div key={field.name} className={field.type === 'text' ? 'col-span-2' : ''}>
-                                              <Label className="text-xs mb-1 block">{field.label} {field.required && <span className="text-red-500">*</span>}</Label>
-                                              {field.type === 'select' && field.options ? (
-                                                <Select
-                                                  value={quickCreateTemplateValues[field.name] || ''}
-                                                  onValueChange={(v) => {
-                                                    const newValues = { ...quickCreateTemplateValues, [field.name]: v };
-                                                    setQuickCreateTemplateValues(newValues);
-                                                    const allRequiredFilled = quickCreateSelectedTemplate.fields!
-                                                      .filter(f => f.required)
-                                                      .every(f => newValues[f.name]);
-                                                    if (allRequiredFilled && quickCreateSelectedTemplate.generateText) {
-                                                      setNewTaskData(prev => ({
-                                                        ...prev,
-                                                        ai_instruction: quickCreateSelectedTemplate.generateText!(newValues),
-                                                        template_id: quickCreateSelectedTemplate.label
-                                                      }));
-                                                    }
-                                                  }}
-                                                >
-                                                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Seleziona..." /></SelectTrigger>
-                                                  <SelectContent>
-                                                    {field.options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                                  </SelectContent>
-                                                </Select>
-                                              ) : (
-                                                <Input
-                                                  type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text'}
-                                                  className="h-9 text-sm"
-                                                  placeholder={field.placeholder}
-                                                  value={quickCreateTemplateValues[field.name] || ''}
-                                                  onChange={(e) => {
-                                                    const newValues = { ...quickCreateTemplateValues, [field.name]: e.target.value };
-                                                    setQuickCreateTemplateValues(newValues);
-                                                    const allRequiredFilled = quickCreateSelectedTemplate.fields!
-                                                      .filter(f => f.required)
-                                                      .every(f => newValues[f.name]);
-                                                    if (allRequiredFilled && quickCreateSelectedTemplate.generateText) {
-                                                      setNewTaskData(prev => ({
-                                                        ...prev,
-                                                        ai_instruction: quickCreateSelectedTemplate.generateText!(newValues),
-                                                        template_id: quickCreateSelectedTemplate.label
-                                                      }));
-                                                    }
-                                                  }}
-                                                />
-                                              )}
-                                            </div>
+                                        <Textarea 
+                                          placeholder={
+                                            newTaskData.task_type === 'single_call' 
+                                              ? "Es: 'Ricorda l'appuntamento di domani e conferma la disponibilità'"
+                                              : newTaskData.task_type === 'follow_up'
+                                              ? "Es: 'Ricontatta il lead per sapere se ha avuto modo di valutare la proposta'"
+                                              : "Es: 'Analizza lo storico del cliente e prepara un report'"
+                                          }
+                                          className="min-h-[100px] bg-muted/30 border-muted-foreground/20 focus:border-primary resize-none"
+                                          value={newTaskData.ai_instruction}
+                                          onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
+                                        />
+                                      </div>
+                                      
+                                      {/* SUGGERIMENTI RAPIDI */}
+                                      <div className="space-y-3 p-4 rounded-xl border bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/50">
+                                        <div className="flex items-center gap-2">
+                                          <Sparkles className="h-4 w-4 text-amber-600" />
+                                          <h4 className="font-medium text-sm">Suggerimenti Rapidi</h4>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {QUICK_SUGGESTIONS[newTaskData.task_type].map((suggestion, idx) => (
+                                            <Badge 
+                                              key={idx}
+                                              variant="outline" 
+                                              className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors py-1.5 px-3"
+                                              onClick={() => setNewTaskData({...newTaskData, ai_instruction: suggestion})}
+                                            >
+                                              {suggestion}
+                                            </Badge>
                                           ))}
                                         </div>
                                       </div>
-                                    ) : null}
-                                  </div>
-                                  )}
-
-                                  {/* SEZIONE 3: ISTRUZIONE AI - adattiva per tipo */}
-                                  <div className="space-y-4 p-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <div className={`p-1.5 rounded-lg ${
-                                          newTaskData.task_type === 'ai_task' 
-                                            ? 'bg-purple-100 dark:bg-purple-900/30' 
-                                            : 'bg-amber-100 dark:bg-amber-900/30'
-                                        }`}>
-                                          {newTaskData.task_type === 'ai_task' 
-                                            ? <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                            : <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                          }
+                                      
+                                      {/* TEMPLATE LIBRARY - solo per single_call e follow_up */}
+                                      {(newTaskData.task_type === 'single_call' || newTaskData.task_type === 'follow_up') && (
+                                        <div className="space-y-3 p-4 rounded-xl border bg-card">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-rose-600" />
+                                            <h4 className="font-medium text-sm">Template Avanzati</h4>
+                                            <Badge variant="outline" className="text-xs">Opzionale</Badge>
+                                          </div>
+                                          
+                                          <div className="space-y-1 max-h-[180px] overflow-auto rounded-lg border bg-muted/20 p-2">
+                                            {TEMPLATE_LIBRARY.map((category) => {
+                                              const CategoryIcon = category.icon;
+                                              const isExpanded = quickCreateExpandedCategory === category.category;
+                                              return (
+                                                <div key={category.category}>
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => setQuickCreateExpandedCategory(isExpanded ? null : category.category)}
+                                                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted' : ''}`}
+                                                  >
+                                                    <div className="flex items-center gap-2">
+                                                      <CategoryIcon className={`h-4 w-4 ${category.color}`} />
+                                                      <span className="text-sm font-medium">{category.label}</span>
+                                                      <Badge variant="secondary" className="text-xs">{category.items.length}</Badge>
+                                                    </div>
+                                                    <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                                  </button>
+                                                  {isExpanded && (
+                                                    <div className="ml-6 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                                                      {category.items.map((item, idx) => (
+                                                        <button
+                                                          key={idx}
+                                                          type="button"
+                                                          onClick={() => {
+                                                            if (item.fields && item.fields.length > 0) {
+                                                              setQuickCreateSelectedTemplate(item);
+                                                              setQuickCreateTemplateValues({});
+                                                            } else {
+                                                              setNewTaskData({
+                                                                ...newTaskData, 
+                                                                ai_instruction: item.text,
+                                                                template_id: item.label
+                                                              });
+                                                              setQuickCreateSelectedTemplate(null);
+                                                            }
+                                                          }}
+                                                          className="w-full flex items-center gap-2 p-2 text-left text-sm rounded-lg hover:bg-primary/10 transition-colors"
+                                                        >
+                                                          {item.type === 'task' ? (
+                                                            <ClipboardList className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                                          ) : (
+                                                            <Bell className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                                                          )}
+                                                          <span className="truncate">{item.label}</span>
+                                                        </button>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          
+                                          {quickCreateSelectedTemplate?.fields?.length ? (
+                                            <div className="animate-in slide-in-from-top-2 duration-200 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border-2 border-dashed border-primary/30">
+                                              <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2">
+                                                  <Sparkles className="h-4 w-4 text-primary" />
+                                                  <span className="text-sm font-semibold">{quickCreateSelectedTemplate.label}</span>
+                                                </div>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => {
+                                                    setQuickCreateSelectedTemplate(null);
+                                                    setQuickCreateTemplateValues({});
+                                                  }}
+                                                >
+                                                  <X className="h-4 w-4" />
+                                                </Button>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-3">
+                                                {quickCreateSelectedTemplate.fields.map((field) => (
+                                                  <div key={field.name} className={field.type === 'text' ? 'col-span-2' : ''}>
+                                                    <Label className="text-xs mb-1 block">{field.label} {field.required && <span className="text-red-500">*</span>}</Label>
+                                                    {field.type === 'select' && field.options ? (
+                                                      <Select
+                                                        value={quickCreateTemplateValues[field.name] || ''}
+                                                        onValueChange={(v) => {
+                                                          const newValues = { ...quickCreateTemplateValues, [field.name]: v };
+                                                          setQuickCreateTemplateValues(newValues);
+                                                          const allRequiredFilled = quickCreateSelectedTemplate.fields!
+                                                            .filter(f => f.required)
+                                                            .every(f => newValues[f.name]);
+                                                          if (allRequiredFilled && quickCreateSelectedTemplate.generateText) {
+                                                            setNewTaskData(prev => ({
+                                                              ...prev,
+                                                              ai_instruction: quickCreateSelectedTemplate.generateText!(newValues),
+                                                              template_id: quickCreateSelectedTemplate.label
+                                                            }));
+                                                          }
+                                                        }}
+                                                      >
+                                                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Seleziona..." /></SelectTrigger>
+                                                        <SelectContent>
+                                                          {field.options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                        </SelectContent>
+                                                      </Select>
+                                                    ) : (
+                                                      <Input
+                                                        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text'}
+                                                        className="h-9 text-sm"
+                                                        placeholder={field.placeholder}
+                                                        value={quickCreateTemplateValues[field.name] || ''}
+                                                        onChange={(e) => {
+                                                          const newValues = { ...quickCreateTemplateValues, [field.name]: e.target.value };
+                                                          setQuickCreateTemplateValues(newValues);
+                                                          const allRequiredFilled = quickCreateSelectedTemplate.fields!
+                                                            .filter(f => f.required)
+                                                            .every(f => newValues[f.name]);
+                                                          if (allRequiredFilled && quickCreateSelectedTemplate.generateText) {
+                                                            setNewTaskData(prev => ({
+                                                              ...prev,
+                                                              ai_instruction: quickCreateSelectedTemplate.generateText!(newValues),
+                                                              template_id: quickCreateSelectedTemplate.label
+                                                            }));
+                                                          }
+                                                        }}
+                                                      />
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          ) : null}
                                         </div>
-                                        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                                          {newTaskData.task_type === 'ai_task' ? 'Compito AI' : 'Istruzione per la chiamata'}
-                                        </h3>
-                                        {newTaskData.template_id && (
-                                          <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 text-xs">
-                                            Template attivo
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        disabled={!newTaskData.ai_instruction || newTaskData.ai_instruction.trim().length < 5 || improveInstructionMutation.isPending}
-                                        onClick={() => improveInstructionMutation.mutate({ 
-                                          instruction: newTaskData.ai_instruction, 
-                                          task_type: newTaskData.task_type 
-                                        })}
-                                        className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-500/25 gap-2"
-                                      >
-                                        {improveInstructionMutation.isPending ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <Wand2 className="h-4 w-4" />
-                                        )}
-                                        {improveInstructionMutation.isPending ? 'Migliorando...' : 'Genera con AI'}
-                                      </Button>
-                                    </div>
-                                    <div className="relative">
-                                      <Textarea 
-                                        placeholder={
-                                          newTaskData.task_type === 'single_call' 
-                                            ? "Es: 'Ricorda l'appuntamento di domani e conferma la disponibilità'"
-                                            : newTaskData.task_type === 'follow_up'
-                                            ? "Es: 'Ricontatta il lead per sapere se ha avuto modo di valutare la proposta'"
-                                            : "Es: 'Invia un messaggio di follow-up, analizza la risposta e aggiorna il CRM'"
-                                        }
-                                        className={`bg-white dark:bg-slate-900/50 border-muted-foreground/20 focus:border-primary resize-none pr-12 ${
-                                          newTaskData.task_type === 'ai_task' ? 'min-h-[160px]' : 'min-h-[100px]'
-                                        }`}
-                                        value={newTaskData.ai_instruction}
-                                        onChange={(e) => setNewTaskData({...newTaskData, ai_instruction: e.target.value})}
-                                      />
-                                      <Bot className="absolute right-4 bottom-4 h-5 w-5 text-muted-foreground/30" />
-                                    </div>
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                      <Wand2 className="h-3 w-3 text-violet-500" />
-                                      Scrivi un'istruzione di base e clicca "Genera con AI" per migliorarla automaticamente
-                                    </p>
-                                    {newTaskData.task_type === 'ai_task' && (
-                                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                        <Sparkles className="h-3 w-3" />
-                                        L'AI eseguirà automaticamente questo compito senza necessità di chiamata
-                                      </p>
-                                    )}
-                                  </div>
+                                      )}
                                     </div>
                                   )}
 
