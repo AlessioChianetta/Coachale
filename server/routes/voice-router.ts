@@ -1156,6 +1156,63 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
   }
 });
 
+// GET /api/voice/sip-settings - Ottieni configurazione SIP per chiamate in uscita
+router.get("/sip-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const result = await db.execute(sql`
+      SELECT sip_caller_id, sip_gateway, esl_password 
+      FROM users
+      WHERE id = ${consultantId}
+      LIMIT 1
+    `);
+
+    const row = result.rows[0] as any;
+    res.json({ 
+      sipCallerId: row?.sip_caller_id || '',
+      sipGateway: row?.sip_gateway || 'voip_trunk',
+      eslPassword: row?.esl_password || ''
+    });
+  } catch (error) {
+    console.error("[Voice] Error fetching SIP settings:", error);
+    res.status(500).json({ error: "Errore nel recupero delle impostazioni SIP" });
+  }
+});
+
+// PUT /api/voice/sip-settings - Salva configurazione SIP per chiamate in uscita
+router.put("/sip-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { sipCallerId, sipGateway, eslPassword } = req.body;
+
+    // Validazione numero telefono
+    const cleanNumber = (sipCallerId || '').trim();
+    if (cleanNumber && !/^\+?[0-9]{6,15}$/.test(cleanNumber.replace(/\s/g, ''))) {
+      return res.status(400).json({ error: "Formato numero non valido. Usa formato internazionale (es: +39 02 1234567)" });
+    }
+
+    await db.execute(sql`
+      UPDATE users
+      SET sip_caller_id = ${cleanNumber || null},
+          sip_gateway = ${sipGateway || 'voip_trunk'},
+          esl_password = ${eslPassword || null}
+      WHERE id = ${consultantId}
+    `);
+
+    console.log(`📞 [Voice] SIP settings updated for consultant ${consultantId}: ${cleanNumber || 'N/A'}`);
+    res.json({ 
+      success: true, 
+      sipCallerId: cleanNumber,
+      sipGateway: sipGateway || 'voip_trunk',
+      eslPassword: eslPassword || ''
+    });
+  } catch (error) {
+    console.error("[Voice] Error updating SIP settings:", error);
+    res.status(500).json({ error: "Errore nell'aggiornamento delle impostazioni SIP" });
+  }
+});
+
 // PUT /api/voice/retry-settings - Aggiorna impostazioni retry chiamate in uscita
 router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
@@ -1737,12 +1794,16 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       WHERE id = ${callId}
     `);
     
-    // Get VPS URL from database or environment variable
+    // Get VPS URL and SIP settings from database
     const vpsResult = await db.execute(sql`
-      SELECT vps_bridge_url FROM consultant_availability_settings 
-      WHERE consultant_id = ${consultantId}
+      SELECT cas.vps_bridge_url, u.sip_caller_id, u.sip_gateway
+      FROM consultant_availability_settings cas
+      JOIN users u ON u.id = cas.consultant_id
+      WHERE cas.consultant_id = ${consultantId}
     `);
     const vpsUrl = (vpsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
+    const sipCallerId = (vpsResult.rows[0] as any)?.sip_caller_id;
+    const sipGateway = (vpsResult.rows[0] as any)?.sip_gateway;
     if (!vpsUrl) {
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
@@ -1774,7 +1835,7 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
     console.log(`📞 [Outbound] Calling VPS: ${outboundUrl} for ${call.target_phone}`);
     
     // 🔍 DEBUG: Log the FULL payload being sent to VPS
-    const vpsPayload = {
+    const vpsPayload: Record<string, any> = {
       targetPhone: call.target_phone,
       callId: callId,
       aiMode: call.ai_mode,
@@ -1783,6 +1844,13 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       instructionType: call.instruction_type,
       useDefaultTemplate: call.use_default_template
     };
+    // Add SIP settings if configured by consultant
+    if (sipCallerId) {
+      vpsPayload.sipCallerId = sipCallerId;
+    }
+    if (sipGateway) {
+      vpsPayload.sipGateway = sipGateway;
+    }
     console.log(`📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`📋 [Outbound] FULL VPS PAYLOAD:`);
     console.log(`📋   targetPhone: ${vpsPayload.targetPhone}`);

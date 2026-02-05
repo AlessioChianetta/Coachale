@@ -147,15 +147,20 @@ function generateScheduledCallId(): string {
  */
 async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: boolean; reason?: string; callId?: string }> {
   try {
-    // Get consultant's VPS settings from availability settings (not voice_settings)
+    // Get consultant's VPS settings and SIP caller ID from database
     const settingsResult = await db.execute(sql`
       SELECT 
-        vps_bridge_url
-      FROM consultant_availability_settings
-      WHERE consultant_id = ${task.consultant_id}
+        cas.vps_bridge_url,
+        u.sip_caller_id,
+        u.sip_gateway
+      FROM consultant_availability_settings cas
+      JOIN users u ON u.id = cas.consultant_id
+      WHERE cas.consultant_id = ${task.consultant_id}
     `);
     
     const vpsUrl = (settingsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
+    const sipCallerId = (settingsResult.rows[0] as any)?.sip_caller_id;
+    const sipGateway = (settingsResult.rows[0] as any)?.sip_gateway;
     
     if (!vpsUrl) {
       return { 
@@ -250,7 +255,7 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
     const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
     
     // Build payload matching executeOutboundCall format for VPS compatibility
-    const vpsPayload = {
+    const vpsPayload: Record<string, any> = {
       targetPhone: task.contact_phone,
       callId: scheduledCallId,
       aiMode: 'assistenza', // Use 'assistenza' like executeOutboundCall (not 'ai')
@@ -261,6 +266,13 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
       sourceTaskId: task.id,
       contactName: task.contact_name
     };
+    // Add SIP settings if configured by consultant
+    if (sipCallerId) {
+      vpsPayload.sipCallerId = sipCallerId;
+    }
+    if (sipGateway) {
+      vpsPayload.sipGateway = sipGateway;
+    }
     
     console.log(`📋 [AI-SCHEDULER] VPS payload: aiMode=${vpsPayload.aiMode}, useDefaultTemplate=${vpsPayload.useDefaultTemplate}, instructionType=${vpsPayload.instructionType}`);
     

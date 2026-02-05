@@ -108,6 +108,9 @@ import {
   Pencil,
   Wand2,
   Construction,
+  ExternalLink,
+  AlertTriangle,
+  CheckCircle,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -1363,6 +1366,16 @@ export default function ConsultantVoiceCallsPage() {
     queryFn: async () => {
       const res = await fetch("/api/voice/service-token/status", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Errore nel caricamento stato token");
+      return res.json();
+    },
+  });
+
+  // Query per impostazioni SIP configurate nella pagina voice-settings
+  const { data: sipSettingsData } = useQuery<{ sipCallerId: string; sipGateway: string }>({
+    queryKey: ["/api/voice/sip-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/sip-settings", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento SIP settings");
       return res.json();
     },
   });
@@ -3516,6 +3529,32 @@ export default function ConsultantVoiceCallsPage() {
               </TabsContent>
 
               <TabsContent value="vps" className="space-y-6">
+                {/* Link rapido a pagina impostazioni numeri */}
+                <Card className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border-violet-200 dark:border-violet-800">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-full bg-violet-100 dark:bg-violet-900">
+                          <Phone className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">Configura Numeri VoIP</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Gestisci i tuoi numeri telefonici, orari di attività e impostazioni AI
+                          </p>
+                        </div>
+                      </div>
+                      <a href="/consultant/voice-settings">
+                        <Button variant="default" className="bg-violet-600 hover:bg-violet-700">
+                          <Phone className="h-4 w-4 mr-2" />
+                          Vai alle Impostazioni Numeri
+                          <ExternalLink className="h-4 w-4 ml-2" />
+                        </Button>
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -3778,11 +3817,23 @@ ESL_PORT=8021
 ESL_PASSWORD=LA_TUA_PASSWORD_ESL
 
 # SIP Trunk per chiamate in uscita
-SIP_GATEWAY=voip_trunk
-SIP_CALLER_ID=+39TUONUMERO
+SIP_GATEWAY=${sipSettingsData?.sipGateway || 'voip_trunk'}
+SIP_CALLER_ID=${sipSettingsData?.sipCallerId || '+39TUONUMERO'}
 
 # Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
 REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`}</pre>
+                      {sipSettingsData?.sipCallerId && (
+                        <div className="mt-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Numero VoIP configurato: {sipSettingsData.sipCallerId}
+                        </div>
+                      )}
+                      {!sipSettingsData?.sipCallerId && (
+                        <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Configura il numero VoIP nelle <a href="/consultant/voice-settings" className="underline">Impostazioni Numeri</a>
+                        </div>
+                      )}
                       </div>
                       <Button 
                         variant="outline" 
@@ -3811,8 +3862,8 @@ ESL_PORT=8021
 ESL_PASSWORD=LA_TUA_PASSWORD_ESL
 
 # SIP Trunk per chiamate in uscita
-SIP_GATEWAY=voip_trunk
-SIP_CALLER_ID=+39TUONUMERO
+SIP_GATEWAY=${sipSettingsData?.sipGateway || 'voip_trunk'}
+SIP_CALLER_ID=${sipSettingsData?.sipCallerId || '+39TUONUMERO'}
 
 # Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
 REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`;

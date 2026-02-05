@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Phone,
+  PhoneOutgoing,
   Clock,
   Shield,
   Settings,
@@ -25,6 +26,9 @@ import {
   RefreshCw,
   Volume2,
   ArrowLeft,
+  HelpCircle,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Link } from "wouter";
 import Navbar from "@/components/navbar";
@@ -88,9 +92,59 @@ export default function ConsultantVoiceSettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedNumber, setSelectedNumber] = useState<VoiceNumber | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  
+  // State per configurazione SIP
+  const [sipCallerId, setSipCallerId] = useState("");
+  const [sipGateway, setSipGateway] = useState("voip_trunk");
+  const [eslPassword, setEslPassword] = useState("");
+  const [sipSaved, setSipSaved] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Query per impostazioni SIP
+  const { data: sipData, isLoading: loadingSip } = useQuery({
+    queryKey: ["/api/voice/sip-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/sip-settings", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento impostazioni SIP");
+      return res.json();
+    },
+  });
+
+  // Popola i campi quando arrivano i dati
+  useEffect(() => {
+    if (sipData) {
+      setSipCallerId(sipData.sipCallerId || "");
+      setSipGateway(sipData.sipGateway || "voip_trunk");
+      setEslPassword(sipData.eslPassword || "");
+    }
+  }, [sipData]);
+
+  // Mutation per salvare impostazioni SIP
+  const saveSipMutation = useMutation({
+    mutationFn: async (data: { sipCallerId: string; sipGateway: string; eslPassword: string }) => {
+      const res = await fetch("/api/voice/sip-settings", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Salvato", description: "Configurazione SIP aggiornata" });
+      setSipSaved(true);
+      setTimeout(() => setSipSaved(false), 2000);
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/sip-settings"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
 
   const { data: numbersData, isLoading: loadingNumbers } = useQuery({
     queryKey: ["/api/voice/numbers"],
@@ -268,17 +322,172 @@ export default function ConsultantVoiceSettingsPage() {
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="numbers" className="w-full">
+            <Tabs defaultValue="outbound" className="w-full">
               <TabsList>
+                <TabsTrigger value="outbound" className="flex items-center gap-2">
+                  <PhoneOutgoing className="h-4 w-4" />
+                  Chiamate in Uscita
+                </TabsTrigger>
                 <TabsTrigger value="numbers" className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
-                  Numeri
+                  Numeri Inbound
                 </TabsTrigger>
                 <TabsTrigger value="security" className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
                   Anti-Abuso
                 </TabsTrigger>
               </TabsList>
+
+              {/* TAB CHIAMATE IN USCITA */}
+              <TabsContent value="outbound" className="space-y-6">
+                {/* GUIDA RAPIDA */}
+                <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-blue-200 dark:border-blue-800">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                      <HelpCircle className="h-5 w-5" />
+                      Guida Rapida: Configurazione Chiamate in Uscita
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-sm">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-3 rounded-lg bg-white/60 dark:bg-zinc-900/60">
+                        <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">1. Numero Caller ID</h4>
+                        <p className="text-muted-foreground">
+                          Il numero che appare sul telefono del destinatario quando l'AI chiama.
+                          Deve essere un numero VoIP registrato sul tuo trunk SIP.
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-white/60 dark:bg-zinc-900/60">
+                        <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">2. SIP Gateway</h4>
+                        <p className="text-muted-foreground">
+                          Il nome del gateway configurato in FreeSWITCH che instrada le chiamate
+                          verso il tuo provider VoIP (es: "voip_trunk", "sipgate").
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-white/60 dark:bg-zinc-900/60">
+                        <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">3. Password ESL</h4>
+                        <p className="text-muted-foreground">
+                          La password per connettersi all'Event Socket di FreeSWITCH.
+                          La trovi nel file /etc/freeswitch/autoload_configs/event_socket.conf.xml
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-white/60 dark:bg-zinc-900/60">
+                        <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">4. Configura anche il .env VPS</h4>
+                        <p className="text-muted-foreground">
+                          Vai alla pagina Chiamate → Tab "Connessione VPS" per copiare il template
+                          .env completo da usare sulla tua VPS.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* CONFIGURAZIONE SIP */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PhoneOutgoing className="h-5 w-5" />
+                      Configurazione Numero VoIP
+                    </CardTitle>
+                    <CardDescription>
+                      Inserisci i dati del tuo account VoIP per effettuare chiamate in uscita
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {loadingSip ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="sipCallerId">Numero Caller ID *</Label>
+                            <Input
+                              id="sipCallerId"
+                              value={sipCallerId}
+                              onChange={(e) => setSipCallerId(e.target.value)}
+                              placeholder="+39 02 1234567"
+                              className="font-mono"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Il numero che vedrà chi riceve la chiamata
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="sipGateway">Nome Gateway SIP</Label>
+                            <Input
+                              id="sipGateway"
+                              value={sipGateway}
+                              onChange={(e) => setSipGateway(e.target.value)}
+                              placeholder="voip_trunk"
+                              className="font-mono"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Il nome del gateway nel file sip_profiles di FreeSWITCH
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="eslPassword">Password ESL FreeSWITCH</Label>
+                          <Input
+                            id="eslPassword"
+                            type="password"
+                            value={eslPassword}
+                            onChange={(e) => setEslPassword(e.target.value)}
+                            placeholder="ClueCon (default FreeSWITCH)"
+                            className="font-mono"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Lascia vuoto per usare il valore nel .env della VPS
+                          </p>
+                        </div>
+
+                        <Separator />
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            onClick={() => saveSipMutation.mutate({ sipCallerId, sipGateway, eslPassword })}
+                            disabled={saveSipMutation.isPending || !sipCallerId}
+                          >
+                            {saveSipMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : sipSaved ? (
+                              <Check className="h-4 w-4 mr-2 text-green-500" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            {sipSaved ? "Salvato!" : "Salva Configurazione"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* VERIFICA CONFIGURAZIONE */}
+                {sipCallerId && (
+                  <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start gap-4">
+                        <CheckCircle className="h-6 w-6 text-green-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-green-800 dark:text-green-200">
+                            Configurazione Pronta
+                          </h4>
+                          <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                            Quando l'AI effettuerà una chiamata, il destinatario vedrà il numero: <strong className="font-mono">{sipCallerId}</strong>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Assicurati che lo stesso numero sia configurato nel trunk SIP del tuo provider VoIP.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
 
               <TabsContent value="numbers" className="space-y-4">
                 <div className="flex justify-between items-center">
