@@ -1371,11 +1371,50 @@ export default function ConsultantVoiceCallsPage() {
       const scheduledData = await scheduledRes.json();
       const historyData = await historyRes.json();
       
+      // Espande le task ricorrenti (daily/weekly) per mostrare le occorrenze future
+      const expandRecurringTasks = (tasks: AITask[]): AITask[] => {
+        const expanded: AITask[] = [];
+        const now = new Date();
+        
+        for (const task of tasks) {
+          const baseDate = new Date(task.scheduled_at);
+          const endDate = task.recurrence_end_date 
+            ? new Date(task.recurrence_end_date) 
+            : new Date(weekEnd.getTime() + 30 * 24 * 60 * 60 * 1000); // Max 30 giorni avanti
+          
+          // Se non è ricorrente, aggiungi solo se nella settimana
+          if (task.recurrence_type === 'once' || !task.recurrence_type) {
+            if (baseDate >= calendarWeekStart && baseDate < weekEnd) {
+              expanded.push(task);
+            }
+            continue;
+          }
+          
+          // Espandi ricorrenze
+          let currentDate = new Date(baseDate);
+          const dayIncrement = task.recurrence_type === 'daily' ? 1 : 7;
+          
+          while (currentDate <= endDate && currentDate < weekEnd) {
+            if (currentDate >= calendarWeekStart && currentDate >= now) {
+              // Crea una copia con la data dell'occorrenza
+              expanded.push({
+                ...task,
+                scheduled_at: currentDate.toISOString(),
+                // Mantieni l'ID originale ma aggiungi un suffisso per distinguere le occorrenze
+                id: currentDate.getTime() === baseDate.getTime() 
+                  ? task.id 
+                  : `${task.id}_occ_${currentDate.getTime()}`
+              });
+            }
+            currentDate = new Date(currentDate.getTime() + dayIncrement * 24 * 60 * 60 * 1000);
+          }
+        }
+        
+        return expanded;
+      };
+      
       return {
-        aiTasks: (tasksData.tasks || []).filter((t: AITask) => {
-          const taskDate = new Date(t.scheduled_at);
-          return taskDate >= calendarWeekStart && taskDate < weekEnd;
-        }),
+        aiTasks: expandRecurringTasks(tasksData.tasks || []),
         // Mostra TUTTE le chiamate programmate (pending, failed, cancelled, completed)
         scheduledCalls: (scheduledData.calls || []).filter((c: any) => {
           if (!c.scheduled_at) return false;
@@ -6082,36 +6121,52 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                       )}
                                     </div>
                                     
-                                    <div className="flex justify-between gap-2 pt-2">
-                                      <Button 
-                                        variant="outline" 
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        onClick={() => {
-                                          if (confirm('Sei sicuro di voler cancellare questo evento?')) {
-                                            // TODO: Implement delete
-                                            setShowEventDetails(false);
-                                          }
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Elimina
-                                      </Button>
-                                      <div className="flex gap-2">
-                                        <Button variant="outline" onClick={() => setShowEventDetails(false)}>
-                                          Chiudi
-                                        </Button>
-                                        <Button 
-                                          className="bg-gradient-to-r from-violet-600 to-purple-600"
-                                          onClick={() => {
-                                            // TODO: Implement edit - populate form and open Quick Create
-                                            setShowEventDetails(false);
-                                          }}
-                                        >
-                                          <Pencil className="h-4 w-4 mr-2" />
-                                          Modifica
-                                        </Button>
-                                      </div>
-                                    </div>
+                                    {/* Mostra azioni solo per eventi futuri (non history e non passati) */}
+                                    {(() => {
+                                      const eventDate = selectedEvent?.data?.scheduled_at 
+                                        ? new Date(selectedEvent.data.scheduled_at) 
+                                        : null;
+                                      const isPast = eventDate ? eventDate < new Date() : true;
+                                      const isHistory = selectedEvent?.type === 'history';
+                                      const canModify = !isPast && !isHistory;
+                                      
+                                      return (
+                                        <div className="flex justify-between gap-2 pt-2">
+                                          {canModify && (
+                                            <Button 
+                                              variant="outline" 
+                                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                              onClick={() => {
+                                                if (confirm('Sei sicuro di voler cancellare questo evento?')) {
+                                                  // TODO: Implement delete
+                                                  setShowEventDetails(false);
+                                                }
+                                              }}
+                                            >
+                                              <Trash2 className="h-4 w-4 mr-2" />
+                                              Elimina
+                                            </Button>
+                                          )}
+                                          <div className="flex gap-2 ml-auto">
+                                            <Button variant="outline" onClick={() => setShowEventDetails(false)}>
+                                              Chiudi
+                                            </Button>
+                                            {canModify && (
+                                              <Button 
+                                                className="bg-gradient-to-r from-violet-600 to-purple-600"
+                                                onClick={() => {
+                                                  // TODO: Implement edit - populate form and open Quick Create
+                                                  setShowEventDetails(false);
+                                                }}
+                                              >
+                                                <Pencil className="h-4 w-4 mr-2" />
+                                                Modifica
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
                                   </>
                                 )}
                               </DialogContent>
