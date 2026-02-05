@@ -249,22 +249,28 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
     // Call VPS outbound endpoint with the scheduled call ID
     const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
     
+    // Build payload matching executeOutboundCall format for VPS compatibility
+    const vpsPayload = {
+      targetPhone: task.contact_phone,
+      callId: scheduledCallId,
+      aiMode: 'assistenza', // Use 'assistenza' like executeOutboundCall (not 'ai')
+      customPrompt: task.ai_instruction,
+      callInstruction: task.ai_instruction,
+      instructionType: task.task_type === 'single_call' ? 'task' : 'reminder',
+      useDefaultTemplate: true, // Added: Required for VPS to use base template
+      sourceTaskId: task.id,
+      contactName: task.contact_name
+    };
+    
+    console.log(`📋 [AI-SCHEDULER] VPS payload: aiMode=${vpsPayload.aiMode}, useDefaultTemplate=${vpsPayload.useDefaultTemplate}, instructionType=${vpsPayload.instructionType}`);
+    
     const response = await fetch(outboundUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        targetPhone: task.contact_phone,
-        callId: scheduledCallId,
-        aiMode: 'ai',
-        customPrompt: task.ai_instruction,
-        callInstruction: task.ai_instruction,
-        instructionType: task.task_type === 'single_call' ? 'task' : 'reminder',
-        sourceTaskId: task.id,
-        contactName: task.contact_name
-      })
+      body: JSON.stringify(vpsPayload)
     });
     
     if (!response.ok) {
