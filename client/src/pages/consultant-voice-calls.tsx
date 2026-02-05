@@ -2433,7 +2433,7 @@ export default function ConsultantVoiceCallsPage() {
                                   {format(toItalianTime(call.started_at), "dd/MM HH:mm", { locale: it })}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(toItalianTime(call.started_at), {
+                                  {formatDistanceToNow(new Date(call.started_at), {
                                     addSuffix: true,
                                     locale: it,
                                   })}

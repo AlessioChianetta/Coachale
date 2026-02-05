@@ -2743,46 +2743,66 @@ router.patch("/ai-tasks/:id", authenticateToken, requireAnyRole(["consultant", "
       return res.status(404).json({ error: "Task not found" });
     }
 
-    // Build dynamic update
-    const allowedFields = [
-      'contact_name', 'contact_phone', 'task_type', 'ai_instruction',
-      'scheduled_at', 'timezone', 'recurrence_type', 'recurrence_days',
-      'recurrence_end_date', 'max_attempts', 'retry_delay_minutes',
-      'voice_template_id', 'status'
-    ];
-
-    const setClauses: string[] = ['updated_at = NOW()'];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    for (const field of allowedFields) {
-      if (updates[field] !== undefined) {
-        if (field === 'recurrence_days') {
-          const days = updates[field] as number[];
-          if (days && days.length > 0) {
-            setClauses.push(`${field} = ARRAY[${days.join(',')}]::integer[]`);
-          } else {
-            setClauses.push(`${field} = NULL`);
-          }
-          // No paramIndex increment - we're inlining the array
-        } else {
-          setClauses.push(`${field} = $${paramIndex}`);
-          values.push(updates[field]);
-          paramIndex++;
-        }
+    // Build dynamic update using drizzle sql template
+    const updateParts: any[] = [];
+    
+    // Always update updated_at
+    updateParts.push(sql`updated_at = NOW()`);
+    
+    if (updates.contact_name !== undefined) {
+      updateParts.push(sql`contact_name = ${updates.contact_name}`);
+    }
+    if (updates.contact_phone !== undefined) {
+      updateParts.push(sql`contact_phone = ${updates.contact_phone}`);
+    }
+    if (updates.task_type !== undefined) {
+      updateParts.push(sql`task_type = ${updates.task_type}`);
+    }
+    if (updates.ai_instruction !== undefined) {
+      updateParts.push(sql`ai_instruction = ${updates.ai_instruction}`);
+    }
+    if (updates.scheduled_at !== undefined) {
+      updateParts.push(sql`scheduled_at = ${updates.scheduled_at}`);
+    }
+    if (updates.timezone !== undefined) {
+      updateParts.push(sql`timezone = ${updates.timezone}`);
+    }
+    if (updates.recurrence_type !== undefined) {
+      updateParts.push(sql`recurrence_type = ${updates.recurrence_type}`);
+    }
+    if (updates.recurrence_days !== undefined) {
+      const days = updates.recurrence_days as number[] | null;
+      if (days && days.length > 0) {
+        updateParts.push(sql.raw(`recurrence_days = ARRAY[${days.join(',')}]::integer[]`));
+      } else {
+        updateParts.push(sql`recurrence_days = NULL`);
       }
     }
+    if (updates.recurrence_end_date !== undefined) {
+      updateParts.push(sql`recurrence_end_date = ${updates.recurrence_end_date}`);
+    }
+    if (updates.max_attempts !== undefined) {
+      updateParts.push(sql`max_attempts = ${updates.max_attempts}`);
+    }
+    if (updates.retry_delay_minutes !== undefined) {
+      updateParts.push(sql`retry_delay_minutes = ${updates.retry_delay_minutes}`);
+    }
+    if (updates.voice_template_id !== undefined) {
+      updateParts.push(sql`voice_template_id = ${updates.voice_template_id}`);
+    }
+    if (updates.status !== undefined) {
+      updateParts.push(sql`status = ${updates.status}`);
+    }
 
-    values.push(id, consultantId);
-
-    const updateQuery = `
+    // Build the SET clause by joining with commas
+    const setClause = sql.join(updateParts, sql.raw(', '));
+    
+    const result = await db.execute(sql`
       UPDATE ai_scheduled_tasks 
-      SET ${setClauses.join(', ')}
-      WHERE id = $${paramIndex} AND consultant_id = $${paramIndex + 1}
+      SET ${setClause}
+      WHERE id = ${id} AND consultant_id = ${consultantId}
       RETURNING *
-    `;
-
-    const result = await db.execute(sql.raw(updateQuery, values));
+    `);
 
     console.log(`📝 [AI-TASKS] Updated task ${id}`);
 
