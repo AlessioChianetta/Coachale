@@ -1389,12 +1389,23 @@ export default function ConsultantVoiceCallsPage() {
       const historyData = await historyRes.json();
       
       // Espande le task ricorrenti (daily/weekly) per mostrare le occorrenze future
+      // NOTA: Task falliti/completati NON vengono espansi - appaiono solo alla data originale
       const expandRecurringTasks = (tasks: AITask[]): AITask[] => {
         const expanded: AITask[] = [];
         const now = new Date();
         
         for (const task of tasks) {
           const baseDate = new Date(task.scheduled_at);
+          
+          // Task falliti, completati, o in retry: mostra SOLO alla data originale scheduled_at
+          // NON espandere per le date future
+          if (task.status === 'failed' || task.status === 'completed' || task.status === 'retry_pending') {
+            if (baseDate >= calendarWeekStart && baseDate < weekEnd) {
+              expanded.push(task);
+            }
+            continue;
+          }
+          
           const endDate = task.recurrence_end_date 
             ? new Date(task.recurrence_end_date) 
             : new Date(weekEnd.getTime() + 30 * 24 * 60 * 60 * 1000); // Max 30 giorni avanti
@@ -1407,7 +1418,7 @@ export default function ConsultantVoiceCallsPage() {
             continue;
           }
           
-          // Espandi ricorrenze
+          // Espandi ricorrenze SOLO per task scheduled (attivi)
           let currentDate = new Date(baseDate);
           const dayIncrement = task.recurrence_type === 'daily' ? 1 : 7;
           
