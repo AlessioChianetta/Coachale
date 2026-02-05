@@ -100,6 +100,48 @@ router.post("/gemini-connections/kill-all", authenticateToken, requireAnyRole(["
   }
 });
 
+// DELETE /api/voice/clear-history - Cancella storico chiamate, scheduled calls e AI tasks
+router.delete("/clear-history", authenticateToken, requireAnyRole(["consultant"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId || req.user?.role === 'super_admin') {
+      return res.status(403).json({ error: "Operazione non consentita per super admin" });
+    }
+
+    console.log(`🗑️ [Voice] Clearing history for consultant ${consultantId}`);
+
+    // Delete in order to respect foreign key constraints
+    // 1. Delete scheduled_voice_calls
+    const scheduledResult = await db.execute(sql`
+      DELETE FROM scheduled_voice_calls WHERE consultant_id = ${consultantId}
+    `);
+    
+    // 2. Delete ai_scheduled_tasks
+    const tasksResult = await db.execute(sql`
+      DELETE FROM ai_scheduled_tasks WHERE consultant_id = ${consultantId}
+    `);
+    
+    // 3. Delete voice_calls
+    const callsResult = await db.execute(sql`
+      DELETE FROM voice_calls WHERE consultant_id = ${consultantId}
+    `);
+
+    console.log(`✅ [Voice] Cleared history: ${callsResult.rowCount || 0} calls, ${scheduledResult.rowCount || 0} scheduled, ${tasksResult.rowCount || 0} tasks`);
+
+    res.json({ 
+      success: true, 
+      deleted: {
+        voice_calls: callsResult.rowCount || 0,
+        scheduled_voice_calls: scheduledResult.rowCount || 0,
+        ai_scheduled_tasks: tasksResult.rowCount || 0
+      }
+    });
+  } catch (error) {
+    console.error("[Voice] Error clearing history:", error);
+    res.status(500).json({ error: "Errore nella cancellazione dello storico" });
+  }
+});
+
 // GET /api/voice/calls - Lista chiamate con filtri
 router.get("/calls", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {

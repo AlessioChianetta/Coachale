@@ -1324,6 +1324,33 @@ export default function ConsultantVoiceCallsPage() {
     },
   });
 
+  const clearHistoryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/clear-history", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore nella cancellazione");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Storico cancellato",
+        description: `Eliminati: ${data.deleted.voice_calls} chiamate, ${data.deleted.scheduled_voice_calls} programmate, ${data.deleted.ai_scheduled_tasks} task AI`,
+      });
+      refetchCalls();
+      refetchScheduledCalls();
+      refetchAiTasks();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: tokenStatusData, refetch: refetchTokenStatus } = useQuery<TokenStatus>({
     queryKey: ["/api/voice/service-token/status"],
     queryFn: async () => {
@@ -2286,7 +2313,27 @@ export default function ConsultantVoiceCallsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
-                  <CardTitle>Storico Chiamate</CardTitle>
+                  <div className="flex items-center gap-3">
+                    <CardTitle>Storico Chiamate</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => {
+                        if (confirm("Sei sicuro di voler cancellare tutto lo storico chiamate, le chiamate programmate e i task AI?")) {
+                          clearHistoryMutation.mutate();
+                        }
+                      }}
+                      disabled={clearHistoryMutation.isPending}
+                    >
+                      {clearHistoryMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-1" />
+                      )}
+                      Pulisci
+                    </Button>
+                  </div>
                   <div className="flex gap-2 flex-wrap">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
