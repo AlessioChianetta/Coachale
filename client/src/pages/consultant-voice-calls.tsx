@@ -1467,9 +1467,13 @@ export default function ConsultantVoiceCallsPage() {
       
       return {
         aiTasks: expandRecurringTasks(tasksData.tasks || []),
-        // Mostra TUTTE le chiamate programmate (pending, failed, cancelled, completed)
+        // Mostra SOLO le chiamate programmate che NON sono associate a una AI task
+        // Le chiamate con source_task_id sono già rappresentate dalle aiTasks
         scheduledCalls: (scheduledData.calls || []).filter((c: any) => {
           if (!c.scheduled_at) return false;
+          // ESCLUDI le scheduled_voice_calls che sono generate da AI tasks
+          // per evitare duplicazioni nel calendario
+          if (c.source_task_id) return false;
           const callDate = new Date(c.scheduled_at);
           return callDate >= calendarWeekStart && callDate < weekEnd;
         }),
@@ -4687,28 +4691,52 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         if (pos.isHidden) return null; // Nascosto nel cluster
                                         const isNarrow = pos.width < 50;
                                         
-                                        // Colori in base al task_type
-                                        const getTaskTypeColors = () => {
+                                        // Colori in base al task_type E allo status
+                                        // Lo status ha precedenza: failed = rosso, completed = verde opaco
+                                        const getTaskColors = () => {
+                                          // STATUS HA PRECEDENZA SUL TIPO
+                                          if (task.status === 'failed') {
+                                            return { 
+                                              bg: 'bg-red-500 hover:bg-red-600', 
+                                              border: 'border-red-700', 
+                                              ring: 'ring-red-300',
+                                              statusExtra: 'border-dashed'
+                                            };
+                                          }
+                                          if (task.status === 'retry_pending') {
+                                            return { 
+                                              bg: 'bg-orange-500 hover:bg-orange-600', 
+                                              border: 'border-orange-700', 
+                                              ring: 'ring-orange-300',
+                                              statusExtra: ''
+                                            };
+                                          }
+                                          if (task.status === 'completed') {
+                                            return { 
+                                              bg: 'bg-emerald-500 hover:bg-emerald-600', 
+                                              border: 'border-emerald-700', 
+                                              ring: 'ring-emerald-300',
+                                              statusExtra: 'opacity-70'
+                                            };
+                                          }
+                                          
+                                          // Per altri stati, usa colore per tipo
                                           switch (task.task_type) {
                                             case 'single_call':
-                                              return { bg: 'bg-emerald-500 hover:bg-emerald-600', border: 'border-emerald-700', ring: 'ring-emerald-300' };
+                                              return { bg: 'bg-emerald-500 hover:bg-emerald-600', border: 'border-emerald-700', ring: 'ring-emerald-300', statusExtra: '' };
                                             case 'follow_up':
-                                              return { bg: 'bg-blue-500 hover:bg-blue-600', border: 'border-blue-700', ring: 'ring-blue-300' };
+                                              return { bg: 'bg-blue-500 hover:bg-blue-600', border: 'border-blue-700', ring: 'ring-blue-300', statusExtra: '' };
                                             case 'ai_task':
                                             default:
-                                              return { bg: 'bg-purple-500 hover:bg-purple-600', border: 'border-purple-700', ring: 'ring-purple-300' };
+                                              return { bg: 'bg-purple-500 hover:bg-purple-600', border: 'border-purple-700', ring: 'ring-purple-300', statusExtra: '' };
                                           }
                                         };
-                                        const typeColors = getTaskTypeColors();
+                                        const taskColors = getTaskColors();
                                         
-                                        // Gerarchia visiva per stato
+                                        // Stile extra per in_progress
                                         const statusStyles = task.status === 'in_progress' 
-                                          ? `ring-2 ${typeColors.ring} shadow-lg z-25` 
-                                          : task.status === 'completed' 
-                                            ? 'opacity-70' 
-                                            : task.status === 'failed' || task.status === 'retry_pending'
-                                              ? 'opacity-60 border-dashed'
-                                              : '';
+                                          ? `ring-2 ${taskColors.ring} shadow-lg z-25` 
+                                          : taskColors.statusExtra;
                                         
                                         // Etichetta tipo per tooltip
                                         const typeLabel = task.task_type === 'single_call' ? 'Chiamata' : task.task_type === 'follow_up' ? 'Follow-up' : 'Task AI';
@@ -4721,7 +4749,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               setSelectedEvent({ type: 'task', data: task });
                                               setShowEventDetails(true);
                                             }}
-                                            className={`absolute ${typeColors.bg} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] ${typeColors.border} ${statusStyles}`}
+                                            className={`absolute ${taskColors.bg} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] ${taskColors.border} ${statusStyles}`}
                                             style={{ 
                                               top: top, 
                                               height: EVENT_HEIGHT,
