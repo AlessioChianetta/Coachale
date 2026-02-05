@@ -390,7 +390,7 @@ router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super
           vc.ai_conversation_id,
           vc.status as voice_call_status,
           vc.duration_seconds as actual_duration,
-          t.task_label as task_name,
+          t.task_type as task_name,
           t.ai_instruction as task_instruction
         FROM scheduled_voice_calls svc
         LEFT JOIN voice_calls vc ON svc.voice_call_id = vc.id
