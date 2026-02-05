@@ -1,0 +1,61 @@
+ma il max connessioni insieme, devo metterlo su free switch oppure sul programma tipo il mio software che si collega a free switch
+
+La risposta breve è: Devi metterlo su FreeSWITCH.
+
+Il tuo software può fare un controllo "logico" (per mostrare un errore all'utente), ma FreeSWITCH deve essere il "buttafuori" finale. Se il tuo software si sbaglia o crasha, FreeSWITCH deve fisicamente impedire che parta la chiamata extra, altrimenti il provider (es. Vodafone o Iliad) potrebbe bannarti o farti pagare penali.
+
+Ecco dove e come si gestiscono i limiti ("max concurrency") nei vari livelli:
+
+1. Livello Globale (Protezione del Server)
+Questo serve per non far esplodere la VPS se arrivano 10.000 chiamate insieme per un attacco hacker.
+
+Dove: File conf/autoload_configs/switch.conf.xml
+
+Parametro: max-sessions
+
+Esempio: Se hai una VPS piccola, metti 100 o 200. Se lo lasci a 100000 e la CPU non regge, l'audio andrà a scatti per tutti.
+
+2. Livello Business/Provider (Quello che serve a te)
+Questo è il punto fondamentale. Se hai una SIM Iliad (1 canale) o una Vodafone Casa (1 canale), devi dire a FreeSWITCH: "Su questo gateway, fai passare massimo 1 chiamata alla volta".
+
+Si fa nel Dialplan, usando l'applicazione limit.
+
+Ecco l'esempio pratico. Mettiamo che tu voglia usare la linea Vodafone Casa che supporta solo 1 chiamata.
+
+Nel Dialplan di Uscita (default o simili):
+
+XML
+<extension name="chiamata_uscita_vodafone">
+  <condition field="destination_number" expression="^(\d+)$">
+    
+    <action application="limit" data="hash gateway vodafone_casa 1 !USER_BUSY"/>
+
+    <action application="bridge" data="sofia/gateway/vodafone_casa/$1"/>
+    
+  </condition>
+</extension>
+Cosa succede con questo codice?
+
+Arriva la prima chiamata -> limit vede che ci sono 0 chiamate attive. La fa passare. Il contatore sale a 1.
+
+Arriva la seconda chiamata (mentre la prima è attiva) -> limit vede che siamo a 1 su 1.
+
+Scatta l'azione !USER_BUSY: FreeSWITCH rifiuta subito la chiamata mandando il segnale di "Occupato" al tuo software/telefono. La chiamata non parte nemmeno verso Vodafone.
+
+3. Livello "Tuo Software" (Interfaccia)
+Se hai scritto tu un software (es. in PHP, Python, Node) che comanda FreeSWITCH (magari via ESL), puoi mettere un controllo anche lì, ma serve solo a fini estetici o di billing.
+
+Esempio: Se l'utente Mario ha pagato per 2 canali, il tuo software nel database legge "2". Se Mario prova a fare la 3° chiamata, il tuo software gli mostra un popup: "Hai raggiunto il limite, fai l'upgrade".
+
+Ma poi, quando mandi il comando a FreeSWITCH, FreeSWITCH deve comunque avere il suo limit configurato per sicurezza.
+
+Riassunto per il tuo test
+Visto che stai iniziando:
+
+Ignora il tuo software per ora.
+
+Usa l'applicazione limit dentro il XML di FreeSWITCH (come nell'esempio sopra).
+
+Imposta il limite a 1 se usi Vodafone Casa o SIM Iliad.
+
+Imposta il limite a 2 se usi Messagenet Free.
