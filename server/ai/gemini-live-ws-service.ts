@@ -196,11 +196,12 @@ export function forceCloseAllGeminiConnections(): { closed: number; errors: stri
 }
 
 // 🆕 P0.1 - Logging migliorato con lastActivity e durata inattività
+// 🔍 TEMP DEBUG: Log ogni 15s SEMPRE (anche quando 0) per verificare cleanup post-chiamata
 setInterval(() => {
   const count = activeGeminiConnections.size;
+  console.log(`🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: ${count}`);
   if (count > 0) {
     const now = Date.now();
-    console.log(`🔌 [GEMINI TRACKER] Active connections: ${count}`);
     for (const [connId, conn] of activeGeminiConnections.entries()) {
       const durationSec = Math.round((now - conn.startedAt.getTime()) / 1000);
       const idleSec = Math.round((now - conn.lastActivity.getTime()) / 1000);
@@ -209,7 +210,7 @@ setInterval(() => {
       console.log(`   • ${connId}: ${conn.mode} - ${conn.status} - durata: ${durationMin}min - idle: ${idleMin}min - retries: ${conn.retryCount}`);
     }
   }
-}, 30 * 1000);
+}, 15 * 1000);
 
 /**
  * 🆕 P0.2 - GARBAGE COLLECTOR ANTI-ZOMBIE

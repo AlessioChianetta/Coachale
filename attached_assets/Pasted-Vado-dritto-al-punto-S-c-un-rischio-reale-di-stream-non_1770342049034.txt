@@ -1,0 +1,162 @@
+Vado dritto al punto:
+👉 Sì, c’è un rischio reale di stream non chiusi correttamente.
+Non è disastroso, ma in certe condizioni può portare a 1011 / resource exhausted.
+
+Adesso ti spiego esattamente cosa ho trovato.
+
+🔍 1️⃣ C’è un registry delle connessioni?
+
+SÌ ✅
+
+Hai:
+
+activeGeminiConnections: Map<string, GeminiSession>
+
+
+Ottimo. Questo è fondamentale.
+
+🔥 2️⃣ Il problema potenziale
+
+Il punto delicato è questo:
+
+Lo stream Gemini viene chiuso SOLO in questi casi:
+
+onClose WebSocket
+
+onError
+
+kill-all endpoint
+
+alcune parti di cleanup
+
+⚠️ Ma non vedo una chiusura garantita e centralizzata nel momento in cui:
+
+FreeSWITCH manda hangup
+
+la chiamata termina lato voice bridge
+
+la sessione passa a stato finale
+
+In alcuni casi il codice si affida a eventi indiretti.
+
+Questo può lasciare sessioni vive se:
+
+il WebSocket non riceve close correttamente
+
+l’hangup non arriva come previsto
+
+c’è un errore silenzioso
+
+🧠 3️⃣ Cosa succede quando una chiamata finisce?
+
+Ho cercato:
+
+handleCallStop
+
+endSession
+
+sessionManager.endSession
+
+cleanup esplicito
+
+Il cleanup esiste, ma non è blindato in un finally globale.
+
+Questo significa:
+
+Se qualcosa va storto nel mezzo,
+lo stream può restare aperto.
+
+🚨 4️⃣ Mancano due protezioni fondamentali
+❌ Non vedo un MAX SESSION DURATION hard limit
+
+Se una chiamata resta aperta troppo a lungo, non c’è un kill automatico certo.
+
+❌ Non vedo un IDLE TIMEOUT forte
+
+Se:
+
+nessun audio
+
+nessun messaggio
+
+ma stream ancora aperto
+
+Non c’è un watchdog che lo chiude dopo X secondi.
+
+💣 5️⃣ Perché questo può causare 1011
+
+Scenario realistico:
+
+Fai 4–5 chiamate
+
+1–2 sessioni non si chiudono
+
+activeGeminiConnections cresce lentamente
+
+Arrivi al limite concorrente del modello
+
+Nuova sessione → 1011 resource exhausted
+
+Riavvio server → tutto torna a zero → sembra “magia”.
+
+🎯 6️⃣ Cosa manca per essere a prova di bomba
+
+Ti dico esattamente cosa aggiungerei.
+
+✅ Aggiungere MAX SESSION DURATION
+
+Dentro la creazione sessione:
+
+setTimeout(() => {
+  if (activeGeminiConnections.has(sessionId)) {
+    console.log("Force closing session (max duration)");
+    session.close();
+    activeGeminiConnections.delete(sessionId);
+  }
+}, 10 * 60 * 1000); // 10 minuti
+
+✅ Aggiungere IDLE WATCHDOG
+
+Ogni volta che ricevi audio o testo:
+
+session.lastActivity = Date.now();
+
+
+E un interval globale:
+
+setInterval(() => {
+  for (const [id, session] of activeGeminiConnections) {
+    if (Date.now() - session.lastActivity > 60000) {
+      console.log("Closing idle Gemini session:", id);
+      session.close();
+      activeGeminiConnections.delete(id);
+    }
+  }
+}, 30000);
+
+✅ Loggare sempre la size
+
+Aggiungi:
+
+setInterval(() => {
+  console.log("ACTIVE GEMINI SESSIONS:", activeGeminiConnections.size);
+}, 15000);
+
+
+Se dopo chiusura chiamate non torna a 0 → conferma leak.
+
+🧠 Verdetto finale
+
+Non vedo un errore clamoroso tipo:
+
+“mai chiuso”
+
+Ma vedo che:
+
+il lifecycle non è blindato
+
+manca un watchdog
+
+manca un hard timeout
+
+E questo è sufficiente per spiegare il tuo 1011.
