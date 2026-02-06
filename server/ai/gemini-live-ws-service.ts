@@ -1401,7 +1401,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
 
   wss.on('connection', async (clientWs, req) => {
     const connectionId = Math.random().toString(36).substring(7);
+    const wsArrivalTime = Date.now();
     console.log(`🎤 [${connectionId}] Client connected to Live API`);
+    console.log(`⏱️ [LATENCY-E2E] WebSocket arrival: ${new Date(wsArrivalTime).toISOString()}`);
     
     // 1. Autenticazione JWT ed estrazione parametri
     const authResult = await getUserIdFromRequest(req);
@@ -1410,6 +1412,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       clientWs.close(4401, 'Unauthorized - Valid JWT token required');
       return;
     }
+
+    const authDoneTime = Date.now();
+    console.log(`⏱️ [LATENCY-E2E] Auth completed: +${authDoneTime - wsArrivalTime}ms from WS arrival`);
 
     const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneInstructionType, phoneScheduledCallId } = authResult;
 
@@ -4458,6 +4463,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       console.log(`${'═'.repeat(70)}\n`);
 
       // 3. Build Vertex AI WebSocket URL
+      const dataLoadDoneTime = Date.now();
+      console.log(`⏱️ [LATENCY-E2E] Data loading + prompt build completed: +${dataLoadDoneTime - authDoneTime}ms from auth, total: +${dataLoadDoneTime - wsArrivalTime}ms from WS arrival`);
       const wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
       console.log(`🔗 [${connectionId}] Connecting to Vertex AI at ${vertexConfig.location}...`);
 
@@ -4676,6 +4683,9 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
 
       // 5. Setup WebSocket event handlers
       const latencyTracker = {
+        wsArrivalTime: wsArrivalTime,
+        authDoneTime: authDoneTime,
+        dataLoadDoneTime: dataLoadDoneTime,
         wsConnectionTime: Date.now(),
         geminiOpenTime: 0,
         setupSentTime: 0,
@@ -5040,8 +5050,15 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
           // Setup complete response
           if (response.setupComplete) {
             latencyTracker.setupCompleteTime = Date.now();
+            if (latencyTracker.primerSentTime === 0) {
+              latencyTracker.primerSentTime = latencyTracker.setupSentTime;
+              latencyTracker.chunksSentTime = latencyTracker.setupSentTime;
+            }
+            const fromPrimer = latencyTracker.primerSentTime > 0
+              ? `+${latencyTracker.setupCompleteTime - latencyTracker.primerSentTime}ms from primer sent`
+              : `(no primer sent)`;
             console.log(`✅ [${connectionId}] Gemini Live session ready`);
-            console.log(`⏱️ [LATENCY] setupComplete received: +${latencyTracker.setupCompleteTime - latencyTracker.primerSentTime}ms from primer sent, total: +${latencyTracker.setupCompleteTime - latencyTracker.wsConnectionTime}ms`);
+            console.log(`⏱️ [LATENCY] setupComplete received: ${fromPrimer}, total: +${latencyTracker.setupCompleteTime - latencyTracker.wsConnectionTime}ms`);
             clientWs.send(JSON.stringify({ 
               type: 'ready',
               message: 'Gemini Live session ready',
@@ -5833,24 +5850,28 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                   isAiSpeaking = true;
                   if (latencyTracker.firstAudioByteTime === 0) {
                     latencyTracker.firstAudioByteTime = Date.now();
-                    const fromTrigger = latencyTracker.greetingTriggered
-                      ? `${latencyTracker.firstAudioByteTime - latencyTracker.greetingTriggerTime}ms from greeting trigger`
-                      : `${latencyTracker.firstAudioByteTime - latencyTracker.setupCompleteTime}ms from setupComplete`;
                     console.log(`\n⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                     console.log(`⏱️ [LATENCY REPORT] FIRST AUDIO BYTE - ${connectionId}`);
                     console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                    console.log(`⏱️  1. Client → Gemini WS open:    +${latencyTracker.geminiOpenTime - latencyTracker.wsConnectionTime}ms`);
-                    console.log(`⏱️  2. WS open → Setup sent:       +${latencyTracker.setupSentTime - latencyTracker.geminiOpenTime}ms`);
-                    console.log(`⏱️  3. Setup → Chunks+Primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms`);
-                    console.log(`⏱️  4. Primer → setupComplete:     +${latencyTracker.setupCompleteTime - latencyTracker.primerSentTime}ms`);
+                    console.log(`⏱️  === REPLIT SERVER SIDE ===`);
+                    console.log(`⏱️  A. VPS WS arrival → Auth done:   +${latencyTracker.authDoneTime - latencyTracker.wsArrivalTime}ms`);
+                    console.log(`⏱️  B. Auth → Data load + prompt:    +${latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime}ms`);
+                    console.log(`⏱️  C. Data load → Gemini WS open:   +${latencyTracker.geminiOpenTime - latencyTracker.dataLoadDoneTime}ms`);
+                    console.log(`⏱️  D. Gemini WS open → Setup sent:  +${latencyTracker.setupSentTime - latencyTracker.geminiOpenTime}ms`);
+                    console.log(`⏱️  E. Setup → setupComplete:        +${latencyTracker.setupCompleteTime - latencyTracker.primerSentTime}ms`);
                     if (latencyTracker.greetingTriggered) {
-                      console.log(`⏱️  5. setupComplete → Greeting:    +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms`);
-                      console.log(`⏱️  6. Greeting → First audio:      +${latencyTracker.firstAudioByteTime - latencyTracker.greetingTriggerTime}ms`);
+                      console.log(`⏱️  F. setupComplete → Greeting:     +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms`);
+                      console.log(`⏱️  G. Greeting → First audio byte:  +${latencyTracker.firstAudioByteTime - latencyTracker.greetingTriggerTime}ms`);
                     } else {
-                      console.log(`⏱️  5. setupComplete → First audio:  +${latencyTracker.firstAudioByteTime - latencyTracker.setupCompleteTime}ms`);
+                      console.log(`⏱️  F. setupComplete → First audio:   +${latencyTracker.firstAudioByteTime - latencyTracker.setupCompleteTime}ms`);
                     }
                     console.log(`⏱️  ─────────────────────────────────────────`);
-                    console.log(`⏱️  TOTAL: ${latencyTracker.firstAudioByteTime - latencyTracker.wsConnectionTime}ms (client connection → first audio byte)`);
+                    console.log(`⏱️  REPLIT TOTAL: ${latencyTracker.firstAudioByteTime - latencyTracker.wsArrivalTime}ms (VPS WS arrival → first audio byte sent to VPS)`);
+                    console.log(`⏱️  ─ Breakdown ─`);
+                    console.log(`⏱️   Auth:        ${latencyTracker.authDoneTime - latencyTracker.wsArrivalTime}ms`);
+                    console.log(`⏱️   Data/Prompt: ${latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime}ms`);
+                    console.log(`⏱️   Gemini conn: ${latencyTracker.geminiOpenTime - latencyTracker.dataLoadDoneTime}ms`);
+                    console.log(`⏱️   Gemini proc: ${latencyTracker.firstAudioByteTime - latencyTracker.geminiOpenTime}ms`);
                     console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                   }
                   console.log(`🎤 [${connectionId}] AI started speaking (audio streaming)`);

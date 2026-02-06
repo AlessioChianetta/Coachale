@@ -1,0 +1,547 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# cat /opt/alessia-voice/vps-voice-bridge/src/esl-client.ts
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { setExpectedCallId } from './voice-bridge-server.js';
+import esl from 'modesl';
+
+const log = logger.child('ESL');
+
+// Mappa per memorizzare caller info per UUID
+export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string }>();
+
+export function startESLController(): void {
+  log.info(`Connecting to FreeSWITCH ESL at ${config.esl.host}:${config.esl.port}...`);
+
+  const conn = new esl.Connection(config.esl.host, config.esl.port, config.esl.password, () => {
+    log.info('✅ Connected to FreeSWITCH Event Socket!');
+    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_HANGUP']);
+  });
+
+  conn.on('esl::event::CHANNEL_PARK::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    const dest = event.getHeader('Caller-Destination-Number');
+
+    if (dest !== '9999') return;
+
+    const callerIdNumber = event.getHeader('Caller-Caller-ID-Number') || 'unknown';
+    const callerIdName = event.getHeader('Caller-Caller-ID-Name') || '';
+
+    log.info(`🅿️  Detected call to 9999 (Parked)`, { uuid, callerIdNumber, callerIdName });
+
+    // Salva metadata per questo UUID
+    callMetadata.set(uuid, { callerIdNumber, callerIdName });
+    
+    // 🎯 FIX: Per chiamate OUTBOUND, l'outbound-handler ha già impostato il callId corretto (sc_xxx)
+    // Per chiamate INBOUND, usiamo l'UUID come callId
+    if (uuid.startsWith('outbound-')) {
+      log.info(`📞 OUTBOUND call detected - using existing scheduled call ID`, { uuid });
+    } else {
+      // INBOUND: imposta l'UUID come pending call
+      setExpectedCallId(uuid);
+      log.info(`📞 INBOUND call - setting UUID as call ID`, { uuid });
+    }
+
+    // 1. Configurazione Audio Base
+    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_PLAYBACK true`);
+    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_SAMPLE_RATE 16000`);
+    (conn as any).bgapi(`uuid_setvar ${uuid} mod_audio_stream_bidirectional true`);
+
+    // 2. JITTERBUFFER (Elimina il packet loss iniziale e i "salti" audio)
+    (conn as any).bgapi(`uuid_setvar ${uuid} jitterbuffer_msec 60:120`);
+
+    // 3. MUSICA DI SOTTOFONDO (Nativa FreeSWITCH - Zero Latenza)
+    const bgFile = '/opt/sounds/background.wav';
+    log.info(`🎵 Starting native background music`, { uuid });
+    (conn as any).bgapi(`uuid_displace ${uuid} start '${bgFile}' 0 mux`);
+
+    // 4. 🎯 FIX: Passa l'UUID come PATH nell'URL WebSocket (non query param!)
+    const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
+    const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 16000`;
+
+    log.debug(`🚀 Executing stream command on PARKED call`, { cmd: streamCmd, wsUrl });
+
+    (conn as any).bgapi(streamCmd, (res: any) => {
+        const body = res.getBody();
+        if (body && body.includes('+OK')) {
+            log.info(`✅ Audio stream initiated successfully`, { uuid });
+        } else {
+            log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
+        }
+    });
+  });
+
+  conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    const dest = event.getHeader('Caller-Destination-Number');
+    if (dest === '9999') {
+      log.debug(`🛑 Call 9999 ended`, { uuid });
+      callMetadata.delete(uuid);
+    }
+  });
+
+  conn.on('error', (err: any) => {
+    log.error('❌ ESL Connection Error', { error: err?.message || err });
+    setTimeout(() => startESLController(), 5000);
+  });
+}
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# nano /src/voice-bridge-server.ts 
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# cd src
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# cat voice-bridge-server.ts 
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer, type IncomingMessage } from 'http';
+import express from 'express';
+import { parse as parseUrl } from 'url';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { sessionManager } from './session-manager.js';
+import { ReplitWSClient } from './replit-ws-client.js';
+import { convertForGemini, convertFromGemini } from './audio-converter.js';
+import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
+import { callMetadata } from './esl-client.js';
+import { handleOutboundCall } from './outbound-handler.js';
+
+const log = logger.child('SERVER');
+
+// 🎯 FIX: Usa una Map invece di una singola variabile
+const pendingCalls = new Map<string, { callId: string; timer: NodeJS.Timeout }>();
+
+export function setExpectedCallId(callId: string, freeswitchUuid?: string): void {
+  // Per chiamate INBOUND, l'UUID è anche il callId
+  const uuid = freeswitchUuid || callId;
+  
+  log.info(`📝 Setting expected call: callId=${callId}, uuid=${uuid}`);
+  
+  // Pulisci eventuali timer esistenti per questo UUID
+  const existing = pendingCalls.get(uuid);
+  if (existing) {
+    clearTimeout(existing.timer);
+    log.info(`🔄 Replacing existing pending call for uuid=${uuid}`);
+  }
+  
+  // Timer di 30 secondi
+  const timer = setTimeout(() => {
+    const deleted = pendingCalls.delete(uuid);
+    if (deleted) {
+      log.warn(`⏰ Pending call expired: callId=${callId}, uuid=${uuid}`);
+    }
+  }, 30000);
+  
+  pendingCalls.set(uuid, { callId, timer });
+  log.info(`✅ Pending calls count: ${pendingCalls.size}`);
+}
+
+// Funzione per consumare un pending call (rimuovendolo dalla Map)
+function consumePendingCall(freeswitchUuid: string): string | null {
+  const pending = pendingCalls.get(freeswitchUuid);
+  if (pending) {
+    clearTimeout(pending.timer);
+    pendingCalls.delete(freeswitchUuid);
+    log.info(`✅ Consumed pending call: callId=${pending.callId}, uuid=${freeswitchUuid}`);
+    return pending.callId;
+  }
+  return null;
+}
+
+interface AudioStreamStartMessage {
+  event: 'start';
+  call_id: string;
+  caller_id: string;
+  called_number: string;
+  codec: 'PCMU' | 'L16';
+  sample_rate: number;
+}
+
+interface AudioStreamStopMessage {
+  event: 'stop';
+  call_id: string;
+  reason: string;
+}
+
+type AudioStreamMessage = AudioStreamStartMessage | AudioStreamStopMessage;
+
+function firstQueryValue(v: unknown): string {
+  if (Array.isArray(v)) return typeof v[0] === 'string' ? v[0] : '';
+  return typeof v === 'string' ? v : '';
+}
+
+// Valida il service token (ricevuto da Replit)
+function validateServiceToken(token: string | undefined): boolean {
+  if (!token) return false;
+  const expectedToken = config.serviceToken || process.env.REPLIT_SERVICE_TOKEN;
+  return token === expectedToken;
+}
+
+export function startVoiceBridgeServer(): void {
+  const app = express();
+  app.use(express.json());
+
+  // =============================================
+  // ENDPOINT OUTBOUND: Riceve richieste da Replit
+  // =============================================
+  app.post('/outbound/call', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!validateServiceToken(token)) {
+      log.warn('Unauthorized outbound request');
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { targetPhone, callId, aiMode, customPrompt } = req.body;
+
+    if (!targetPhone || !callId) {
+      return res.status(400).json({ success: false, error: 'Missing targetPhone or callId' });
+    }
+
+    const result = await handleOutboundCall({ targetPhone, callId, aiMode, customPrompt });
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  });
+
+  // Health check
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      pendingCalls: pendingCalls.size 
+    });
+  });
+
+  const server = createServer(app);
+
+  const wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    log.info(`New WebSocket connection`, { clientIp });
+
+    let currentSessionId: string | null = null;
+    let callId: string | null = null;
+    
+    // 🎯 FIX: Leggi l'UUID dal PATH (es: /stream/uuid-here)
+    const parsedUrl = parseUrl(req.url || '', true);
+    const pathParts = (parsedUrl.pathname || '').split('/').filter(Boolean);
+    // Path format: /stream/{uuid}
+    const uuidFromUrl = pathParts.length >= 2 && pathParts[0] === 'stream' ? pathParts[1] : null;
+    
+    log.info('🔍 WEBSOCKET CONNECTION', { 
+      path: parsedUrl.pathname,
+      uuidFromUrl: uuidFromUrl || 'NOT PROVIDED',
+      pendingCallsCount: pendingCalls.size,
+      pendingIds: Array.from(pendingCalls.entries()).map(([uuid, p]) => ({ uuid, callId: p.callId })),
+      timestamp: Date.now() 
+    });
+
+    // 🎯 FIX: Cerca nella Map usando l'UUID dal path
+    if (uuidFromUrl) {
+      // Abbiamo l'UUID dal path - cerca nella Map
+      callId = consumePendingCall(uuidFromUrl);
+      
+      if (callId) {
+        // Determina se è INBOUND o OUTBOUND
+        if (uuidFromUrl.startsWith('outbound-')) {
+          log.info(`📞 OUTBOUND call matched: callId=${callId}, uuid=${uuidFromUrl}`);
+        } else {
+          log.info(`📞 INBOUND call matched: callId=${callId} (same as uuid)`);
+        }
+      } else {
+        log.warn(`⚠️ UUID ${uuidFromUrl} not found in pending calls - using UUID as callId`);
+        callId = uuidFromUrl; // Fallback: usa l'UUID stesso
+      }
+    } else {
+      // Fallback vecchio comportamento (FIFO) - per retrocompatibilità
+      log.warn('⚠️ No UUID in path - using FIFO fallback');
+      if (pendingCalls.size > 0) {
+        const firstEntry = pendingCalls.entries().next().value;
+        if (firstEntry) {
+          const [firstUuid] = firstEntry;
+          callId = consumePendingCall(firstUuid);
+          log.info(`📞 FIFO fallback: callId=${callId}, uuid=${firstUuid}`);
+        }
+      }
+    }
+
+    if (callId) {
+      const metadata = callMetadata.get(uuidFromUrl || callId);
+      const callerId = metadata?.callerIdNumber || 'unknown';
+      const callerName = metadata?.callerIdName || '';
+
+      log.info(`📞 Call detected: ID=${callId} | CallerId=${callerId} | CallerName=${callerName}`);
+
+      const startMsg: AudioStreamStartMessage = {
+        event: 'start',
+        call_id: callId,
+        caller_id: callerId,
+        called_number: '9999',
+        codec: 'L16',
+        sample_rate: 16000,
+      };
+
+      handleCallStart(ws, startMsg).then((sid) => {
+        currentSessionId = sid;
+      }).catch((e) => {
+        log.error(`Session init error: ${e.message}`);
+        ws.close(1011, 'Session init failed');
+      });
+    } else {
+      log.warn('⚠️ No pending call found for this WebSocket connection');
+    }
+
+    ws.on('message', (data: Buffer, isBinary: boolean) => {
+      if (isBinary && currentSessionId) {
+        handleAudioData(currentSessionId, data);
+      }
+    });
+
+    ws.on('close', () => {
+      if (currentSessionId) {
+        log.info(`WebSocket closed (Session: ${currentSessionId})`);
+        const session = sessionManager.getSession(currentSessionId);
+        if (session) handleCallStop(session.callId, 'websocket_closed');
+      }
+    });
+  });
+
+  server.listen(config.ws.port, config.ws.host, () => {
+    log.info(`Voice Bridge Server started on port ${config.ws.port}`);
+    log.info(`Outbound endpoint ready at POST /outbound/call`);
+  });
+}
+
+async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage): Promise<string> {
+  const session = sessionManager.createSession(
+    message.call_id, message.caller_id, message.called_number,
+    message.codec, message.sample_rate, ws
+  );
+
+  await notifyCallStart(session.id, message.caller_id, message.called_number);
+
+  const replitClient = new ReplitWSClient({
+    sessionId: session.id,
+    callerId: message.caller_id,
+    scheduledCallId: message.call_id,
+    onAudioResponse: (audio) => {
+      sendAudioToFreeSWITCH(session.id, audio);
+    },
+    onTextResponse: (text) => {
+      log.info(`[AI]: "${text}"`);
+    },
+    onError: (err) => {
+      log.error(`Replit Error: ${err.message}`);
+    },
+    onClose: () => log.info(`Replit connection closed`),
+  });
+
+  await replitClient.connect();
+  sessionManager.setReplitClient(session.id, replitClient);
+  sessionManager.updateSessionState(session.id, 'active');
+
+  return session.id;
+}
+
+function handleAudioData(sessionId: string, audioData: Buffer): void {
+  const session = sessionManager.getSession(sessionId);
+  if (!session || session.state !== 'active') return;
+
+  const pcm = convertForGemini(audioData, session.codec, session.sampleRate);
+  session.replitClient?.sendAudio(pcm);
+}
+
+function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
+  const session = sessionManager.getSession(sessionId);
+  if (!session?.fsWebSocket || session.fsWebSocket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  const fsAudio = convertFromGemini(audio, session.codec, session.sampleRate);
+
+  const CHUNK_SIZE = 640;
+  for (let i = 0; i < fsAudio.length; i += CHUNK_SIZE) {
+    const chunk = fsAudio.slice(i, i + CHUNK_SIZE);
+    session.fsWebSocket.send(chunk, { binary: true });
+  }
+}
+
+function handleCallStop(callId: string, reason: string): void {
+  const session = sessionManager.getSessionByCallId(callId);
+  if (!session) return;
+
+  const duration = Date.now() - session.startTime.getTime();
+  notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
+  sessionManager.endSession(session.id, reason);
+}
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# dir
+ùaudio-converter.ts  config.ts     index.ts   outbound-handler.ts  session-manager.ts
+caller-context.ts   esl-client.ts  logger.ts  replit-ws-client.ts  voice-bridge-server.ts
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# cat replit-ws-client.ts 
+import { WebSocket } from 'ws';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { base64ToPcm, pcmToBase64 } from './audio-converter.js';
+
+const log = logger.child('REPLIT-WS');
+
+export interface ReplitClientOptions {
+  sessionId: string;
+  callerId: string;
+scheduledCallId?: string;
+  mode?: string;
+  voice?: string;
+  onAudioResponse: (audioData: Buffer) => void;
+  onTextResponse?: (text: string) => void;
+  onError: (error: Error) => void;
+  onClose: () => void;
+}
+
+export class ReplitWSClient {
+  private ws: WebSocket | null = null;
+  private sessionId: string;
+  private callerId: string;
+private scheduledCallId?: string;
+  private options: ReplitClientOptions;
+  private isConnected = false;
+  private audioSequence = 0;
+
+  constructor(options: ReplitClientOptions) {
+    this.sessionId = options.sessionId;
+    this.callerId = options.callerId;
+
+this.scheduledCallId = options.scheduledCallId; 
+    this.options = options;
+  }
+
+  async connect(): Promise<void> {
+    const mode = this.options.mode || 'phone_service';
+    const voice = this.options.voice || config.voice.voiceId;
+
+    let wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
+
+if (this.scheduledCallId) {
+    wsUrl += `&scheduledCallId=${encodeURIComponent(this.scheduledCallId)}`;
+  }
+
+    log.info(`Connecting to Replit WebSocket`, {
+      sessionId: this.sessionId.slice(0, 8),
+      url: config.replit.wsUrl,
+      voice,
+    });
+
+    return new Promise((resolve, reject) => {
+      this.ws = new WebSocket(wsUrl);
+
+      const connectionTimeout = setTimeout(() => {
+        if (!this.isConnected) {
+          this.ws?.close();
+          reject(new Error('Replit WebSocket connection timeout'));
+        }
+      }, 15000);
+
+      this.ws.on('open', () => {
+        log.info(`Replit WebSocket connected`, { sessionId: this.sessionId.slice(0, 8) });
+        this.isConnected = true;
+        clearTimeout(connectionTimeout);
+        resolve();
+      });
+
+      this.ws.on('message', (data: any, isBinary: boolean) => {
+        // Gestione messaggi in arrivo
+        this.handleMessage(data);
+      });
+
+      this.ws.on('error', (error) => {
+        log.error(`Replit WebSocket error`, {
+          sessionId: this.sessionId.slice(0, 8),
+          error: error.message,
+        });
+        clearTimeout(connectionTimeout);
+        this.options.onError(error);
+        if (!this.isConnected) {
+          reject(error);
+        }
+      });
+
+      this.ws.on('close', (code, reason) => {
+        log.info(`Replit WebSocket closed`, {
+          sessionId: this.sessionId.slice(0, 8),
+          code,
+          reason: reason.toString(),
+        });
+        this.isConnected = false;
+        this.options.onClose();
+      });
+    });
+  }
+
+  private handleMessage(data: any): void {
+    try {
+      const text = data.toString();
+      const message = JSON.parse(text);
+
+      // *** FIX CRITICO: Accettiamo sia 'audio' che 'audio_output' ***
+      if ((message.type === 'audio' || message.type === 'audio_output') && message.data) {
+        // Convertiamo l'audio base64 in PCM e lo mandiamo a FreeSWITCH
+        const audioData = base64ToPcm(message.data);
+        this.options.onAudioResponse(audioData);
+      }
+
+      // Gestione del testo e transcript per debug
+      if ((message.type === 'text' || message.type === 'ai_transcript') && (message.text || message.message)) {
+        const txt = message.text || message.message;
+        log.info(`[AI DICE]: ${txt}`);
+        this.options.onTextResponse?.(txt);
+      }
+
+      if (message.type === 'error') {
+        log.error(`[REPLIT ERROR]: ${message.error || message.message}`);
+      }
+
+    } catch (error) {
+      // Fallback per audio binario puro (se mai dovesse arrivare)
+      if (Buffer.isBuffer(data) && data.length > 0) {
+        try {
+          this.options.onAudioResponse(data);
+        } catch (e) {
+          log.error(`Error handling binary message`, { error: e instanceof Error ? e.message : 'Unknown' });
+        }
+      }
+    }
+  }
+
+  sendAudio(pcmData: Buffer): void {
+    if (!this.isConnected || !this.ws) return;
+
+    const message = {
+      type: 'audio',
+      data: pcmToBase64(pcmData),
+      sequence: this.audioSequence++,
+    };
+    this.send(message);
+  }
+
+  sendText(text: string): void {
+    if (!this.isConnected || !this.ws) return;
+    const message = { type: 'text', text };
+    this.send(message);
+  }
+
+  private send(message: object): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    }
+  }
+
+  close(): void {
+    if (this.ws) {
+      try {
+        this.ws.close(1000, 'Session ended');
+      } catch (e) {}
+      this.ws = null;
+    }
+    this.isConnected = false;
+  }
+}
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# 
