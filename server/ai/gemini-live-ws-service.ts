@@ -1497,6 +1497,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // Initialize lastSessionHandle with validated handle
     // This ensures GO_AWAY always has a handle to share even before first update
     let lastSessionHandle: string | null = validatedResumeHandle;
+    let goAwayReceived = false;
+    let geminiReconnectAttempts = 0;
+    const MAX_GEMINI_RECONNECT_ATTEMPTS = 2;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 💰 VERTEX AI LIVE API - Official Pricing (Nov 2024)
@@ -4867,17 +4870,17 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             realtime_input_config: {
               automatic_activity_detection: {
                 disabled: false,
-                start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
-                end_of_speech_sensitivity: isPhoneCall ? 'END_SENSITIVITY_HIGH' : 'END_SENSITIVITY_LOW',
-                prefix_padding_ms: isPhoneCall ? 300 : 500,
+                start_of_speech_sensitivity: isPhoneCall ? 'START_SENSITIVITY_LOW' : 'START_SENSITIVITY_HIGH',
+                end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',
+                prefix_padding_ms: 20,
                 silence_duration_ms: isPhoneCall ? 500 : 700
               }
             },
-            // 🔊 PROACTIVE AUDIO: Available in Preview on gemini-live-2.5-flash-native-audio (GA Dec 2025)
-            // Uncomment to enable - model responds only when relevant
-            // proactivity: {
-            //   proactive_audio: true
-            // },
+            ...(isPhoneCall ? {
+              proactivity: {
+                proactive_audio: true
+              }
+            } : {}),
             // 💚 AFFECTIVE DIALOG: Built-in on gemini-live-2.5-flash-native-audio (GA Dec 2025)
             // No explicit configuration needed - model automatically understands emotional expressions
             // Enable session resumption for unlimited session duration
@@ -4893,6 +4896,14 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         
         console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
         console.log(`🤖 [${connectionId}] Model: ${vertexConfig.modelId} - Language: ITALIAN ONLY`);
+        if (isPhoneCall) {
+          console.log(`📞 [${connectionId}] PHONE CALL VAD CONFIG:`);
+          console.log(`   → start_of_speech_sensitivity: START_SENSITIVITY_LOW (reduces false positives from breaths/noise)`);
+          console.log(`   → end_of_speech_sensitivity: END_SENSITIVITY_LOW (natural pauses allowed)`);
+          console.log(`   → prefix_padding_ms: 20 (minimal buffer)`);
+          console.log(`   → silence_duration_ms: 500 (wait for user to finish)`);
+          console.log(`   → proactiveAudio: ENABLED (ignores background conversations & echo)`);
+        }
         if (validatedResumeHandle) {
           console.log(`🔄 [${connectionId}] RESUMING SESSION with handle: ${validatedResumeHandle.substring(0, 20)}...`);
         } else {
@@ -5479,12 +5490,18 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
 
           // goAway notification - Gemini avvisa 60s prima della chiusura (timeout 10 minuti)
           if (response.goAway) {
+            goAwayReceived = true;
             console.log(`\n⚠️━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             console.log(`⏰ [${connectionId}] GO AWAY NOTIFICATION RECEIVED`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             console.log(`Reason: ${JSON.stringify(response.goAway)}`);
             console.log(`⚠️  Session will close in ~60 seconds due to 10-minute timeout`);
-            console.log(`💡 User should see a notification to continue the conversation`);
+            if (isPhoneCall) {
+              console.log(`📞 AUTO-RECONNECT: Phone call detected - will auto-reconnect with session handle when Gemini closes`);
+              console.log(`   → lastSessionHandle available: ${!!lastSessionHandle}`);
+            } else {
+              console.log(`💡 User should see a notification to continue the conversation`);
+            }
             
             // PROACTIVE SESSION RESUMPTION: Send session handle immediately for seamless reconnect
             if (lastSessionHandle) {
@@ -7424,6 +7441,41 @@ ${compactFeedback}
         }
         
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        
+        // 📞 PHONE CALL SESSION RESUME: When Gemini closes after GoAway for a phone call,
+        // notify VPS to keep FreeSWITCH call alive and initiate a new WebSocket to Replit with resume handle.
+        // NOTE: Cleanup still runs below to release timers/trackers for THIS connection.
+        // The VPS bridge should open a NEW connection with the resume handle, creating a fresh session.
+        if (goAwayReceived && isPhoneCall && lastSessionHandle && clientWs.readyState === WebSocket.OPEN) {
+          geminiReconnectAttempts++;
+          console.log(`\n📞━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📞 [${connectionId}] PHONE CALL SESSION EXPIRED - SENDING RESUME HANDLE TO VPS`);
+          console.log(`   → GoAway was received, Gemini closed after 10-min timeout`);
+          console.log(`   → Attempt: ${geminiReconnectAttempts}/${MAX_GEMINI_RECONNECT_ATTEMPTS}`);
+          console.log(`   → Resume handle available: ${lastSessionHandle.substring(0, 20)}...`);
+          console.log(`   → VPS should open NEW WebSocket to Replit with resumeHandle param`);
+          console.log(`   → FreeSWITCH call should stay alive during reconnection gap`);
+          console.log(`   → This connection's cleanup will proceed normally below`);
+          console.log(`📞━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          
+          try {
+            clientWs.send(JSON.stringify({
+              type: 'gemini_reconnecting',
+              message: 'Gemini session timeout - reconnecting seamlessly',
+              resumeHandle: lastSessionHandle,
+              attempt: geminiReconnectAttempts,
+              maxAttempts: MAX_GEMINI_RECONNECT_ATTEMPTS,
+              action: 'KEEP_CALL_ALIVE_AND_RECONNECT'
+            }));
+          } catch (e) {
+            console.error(`❌ [${connectionId}] Failed to send reconnect message to VPS:`, e);
+          }
+          
+          goAwayReceived = false;
+          // NOTE: Cleanup continues below - this connection is done.
+          // VPS bridge must handle 'gemini_reconnecting' message by opening a new WS connection
+          // with the resumeHandle as query parameter. Do NOT close clientWs here.
+        }
         
         // 🚨 RESOURCE_EXHAUSTED: Propagate to client to stop reconnect loop
         if (reasonText.includes('RESOURCE_EXHAUSTED')) {
