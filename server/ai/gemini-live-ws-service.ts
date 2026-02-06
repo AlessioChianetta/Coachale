@@ -5057,7 +5057,10 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           const CHUNK_SIZE = 30 * 1024;
           const chunks: string[] = [];
           for (let i = 0; i < userDataContext.length; i += CHUNK_SIZE) {
-            chunks.push(userDataContext.substring(i, i + CHUNK_SIZE));
+            const chunkIndex = Math.floor(i / CHUNK_SIZE) + 1;
+            const totalExpectedChunks = Math.ceil(userDataContext.length / CHUNK_SIZE);
+            const marker = `\n[CHUNK_MARKER_${chunkIndex}_OF_${totalExpectedChunks}]\n`;
+            chunks.push(marker + userDataContext.substring(i, i + CHUNK_SIZE));
           }
           
           console.log(`   Total chunks to send: ${chunks.length}\n`);
