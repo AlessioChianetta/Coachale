@@ -57,9 +57,44 @@ export function pcmToMulaw(pcmData: Buffer): Buffer {
   return mulawData;
 }
 
+function upsample2x(input: Buffer): Buffer {
+  const inputSamples = input.length / 2;
+  const output = Buffer.alloc(inputSamples * 4);
+
+  for (let i = 0; i < inputSamples; i++) {
+    const s1 = input.readInt16LE(i * 2);
+    const s2 = i < inputSamples - 1 ? input.readInt16LE((i + 1) * 2) : s1;
+
+    output.writeInt16LE(s1, i * 4);
+    output.writeInt16LE(((s1 + s2) >> 1), i * 4 + 2);
+  }
+
+  return output;
+}
+
+function downsample3x(input: Buffer): Buffer {
+  const inputSamples = input.length / 2;
+  const outputSamples = Math.floor(inputSamples / 3);
+  const output = Buffer.alloc(outputSamples * 2);
+
+  for (let i = 0; i < outputSamples; i++) {
+    output.writeInt16LE(input.readInt16LE(i * 6), i * 2);
+  }
+
+  return output;
+}
+
 export function resample(input: Buffer, inputRate: number, outputRate: number): Buffer {
   if (inputRate === outputRate) {
     return input;
+  }
+
+  if (inputRate === 8000 && outputRate === 16000) {
+    return upsample2x(input);
+  }
+
+  if (inputRate === 24000 && outputRate === 8000) {
+    return downsample3x(input);
   }
 
   const inputSamples = input.length / 2;

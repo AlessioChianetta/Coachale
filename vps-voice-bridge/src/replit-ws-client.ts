@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 import { config } from './config.js';
 import { logger } from './logger.js';
-import { base64ToPcm, pcmToBase64 } from './audio-converter.js';
+import { base64ToPcm } from './audio-converter.js';
 
 const log = logger.child('REPLIT-WS');
 
@@ -132,14 +132,8 @@ if (this.scheduledCallId) {
   }
 
   sendAudio(pcmData: Buffer): void {
-    if (!this.isConnected || !this.ws) return;
-
-    const message = {
-      type: 'audio',
-      data: pcmToBase64(pcmData),
-      sequence: this.audioSequence++,
-    };
-    this.send(message);
+    if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(pcmData, { binary: true });
   }
 
   sendText(text: string): void {

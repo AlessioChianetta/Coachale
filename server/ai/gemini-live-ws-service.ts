@@ -7401,8 +7401,40 @@ ${compactFeedback}
       let audioChunkDiagCount = 0; // Counter for audio diagnostic logging
 
       // 4. Browser → Gemini relay
-      clientWs.on('message', async (data) => {
+      clientWs.on('message', async (data: any, isBinary?: boolean) => {
         try {
+          // FAST PATH: Binary messages from phone VPS = raw PCM audio (no JSON overhead)
+          if (isBinary && isPhoneCall && Buffer.isBuffer(data) && data.length > 0) {
+            if (geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
+              // Inject pending feedback before audio if needed
+              if (pendingFeedbackForAI) {
+                console.log(`🚀 [${connectionId}] INJECTING FEEDBACK (Pre-Flight Binary)`);
+                const feedbackPayload = {
+                  clientContent: {
+                    turns: [{ role: 'user', parts: [{ text: pendingFeedbackForAI }] }],
+                    turnComplete: false
+                  }
+                };
+                geminiSession.send(JSON.stringify(feedbackPayload));
+                pendingFeedbackForAI = null;
+              }
+
+              const audioMessage = {
+                realtime_input: {
+                  media_chunks: [{
+                    data: data.toString('base64'),
+                    mime_type: 'audio/pcm'
+                  }]
+                }
+              };
+              geminiSession.send(JSON.stringify(audioMessage));
+              audioChunksSentSinceLastResponse++;
+              lastActivityTimestamp = Date.now();
+              updateConnectionActivity(connectionId);
+            }
+            return;
+          }
+
           const msg: LiveMessage = JSON.parse(data.toString());
           
             if (msg.type === 'audio' && msg.data) {
