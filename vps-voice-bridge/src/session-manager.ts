@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+mport { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
 import { logger, formatBytes, formatDuration } from './logger.js';
 import { config } from './config.js';
@@ -23,7 +23,7 @@ export interface CallSession {
   codec: 'PCMU' | 'L16';
   sampleRate: number;
   startTime: Date;
-  state: 'connecting' | 'active' | 'reconnecting' | 'ending' | 'ended';
+  state: 'connecting' | 'active' | 'ending' | 'ended';
   fsWebSocket: WebSocket | null;
   replitClient: ReplitWSClient | null;
   clientContext: ClientContext | null;
@@ -205,23 +205,6 @@ class SessionManager {
 
     this.sessions.delete(sessionId);
     this.callIdToSessionId.delete(session.callId);
-  }
-
-  pauseInactivityTimeout(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
-    if (session && session.timeoutHandle) {
-      clearTimeout(session.timeoutHandle);
-      session.timeoutHandle = null;
-      log.info(`⏸️ Inactivity timeout paused (reconnecting)`, { sessionId: sessionId.slice(0, 8) });
-    }
-  }
-
-  resumeInactivityTimeout(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
-    if (session) {
-      this.startInactivityTimeout(session);
-      log.info(`▶️ Inactivity timeout resumed`, { sessionId: sessionId.slice(0, 8) });
-    }
   }
 
   private startInactivityTimeout(session: CallSession): void {
