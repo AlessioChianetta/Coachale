@@ -252,7 +252,7 @@ if (this.scheduledCallId) {
         this.isConnected = false;
         const handle = this.pendingResumeHandle;
         this.pendingResumeHandle = null;
-        this.executeReconnect(handle);
+        if (handle) this.executeReconnect(handle);
       }
     }
   }
