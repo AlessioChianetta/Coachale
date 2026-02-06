@@ -1,0 +1,59 @@
+
+6|voice-bridge  | 2026-02-06T04:01:10.748Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Forte e
+6|voice-bridge  | 2026-02-06T04:01:10.749Z [INFO ] [BRIDGE:SERVER] [AI]: "Forte e"
+6|voice-bridge  | 2026-02-06T04:01:10.958Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  chiaro!
+6|voice-bridge  | 2026-02-06T04:01:10.959Z [INFO ] [BRIDGE:SERVER] [AI]: " chiaro!"
+6|voice-bridge  | 2026-02-06T04:01:11.058Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Tu mi
+6|voice-bridge  | 2026-02-06T04:01:11.058Z [INFO ] [BRIDGE:SERVER] [AI]: " Tu mi"
+6|voice-bridge  | 2026-02-06T04:01:11.127Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  senti
+6|voice-bridge  | 2026-02-06T04:01:11.127Z [INFO ] [BRIDGE:SERVER] [AI]: " senti"
+6|voice-bridge  | 2026-02-06T04:01:11.185Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  bene?
+6|voice-bridge  | 2026-02-06T04:01:11.185Z [INFO ] [BRIDGE:SERVER] [AI]: " bene?"
+6|voice-bridge  | 2026-02-06T04:01:19.888Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Uh oh!
+6|voice-bridge  | 2026-02-06T04:01:19.888Z [INFO ] [BRIDGE:SERVER] [AI]: "Uh oh!"
+6|voice-bridge  | 2026-02-06T04:01:20.155Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Forse
+6|voice-bridge  | 2026-02-06T04:01:20.155Z [INFO ] [BRIDGE:SERVER] [AI]: " Forse"
+6|voice-bridge  | 2026-02-06T04:01:20.243Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  c'è qualche
+6|voice-bridge  | 2026-02-06T04:01:20.243Z [INFO ] [BRIDGE:SERVER] [AI]: " c'è qualche"
+6|voice-bridge  | 2026-02-06T04:01:20.357Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  problemino
+6|voice-bridge  | 2026-02-06T04:01:20.357Z [INFO ] [BRIDGE:SERVER] [AI]: " problemino"
+6|voice-bridge  | 2026-02-06T04:01:20.475Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di connessione!
+6|voice-bridge  | 2026-02-06T04:01:20.475Z [INFO ] [BRIDGE:SERVER] [AI]: " di connessione!"
+6|voice-bridge  | 2026-02-06T04:01:20.699Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Riprovo
+6|voice-bridge  | 2026-02-06T04:01:20.699Z [INFO ] [BRIDGE:SERVER] [AI]: " Riprovo"
+6|voice-bridge  | 2026-02-06T04:01:20.803Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  a parlare
+6|voice-bridge  | 2026-02-06T04:01:20.804Z [INFO ] [BRIDGE:SERVER] [AI]: " a parlare"
+6|voice-bridge  | 2026-02-06T04:01:20.895Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un po'
+6|voice-bridge  | 2026-02-06T04:01:20.895Z [INFO ] [BRIDGE:SERVER] [AI]: " un po'"
+6|voice-bridge  | 2026-02-06T04:01:20.929Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  più lentamente,
+6|voice-bridge  | 2026-02-06T04:01:20.929Z [INFO ] [BRIDGE:SERVER] [AI]: " più lentamente,"
+6|voice-bridge  | 2026-02-06T04:01:21.044Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  va meglio?
+6|voice-bridge  | 2026-02-06T04:01:21.044Z [INFO ] [BRIDGE:SERVER] [AI]: " va meglio?"
+6|voice-bridge  | 2026-02-06T04:01:39.902Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ok, ci
+6|voice-bridge  | 2026-02-06T04:01:39.902Z [INFO ] [BRIDGE:SERVER] [AI]: "Ok, ci"
+6|voice-bridge  | 2026-02-06T04:01:40.374Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  riprovo!
+6|voice-bridge  | 2026-02-06T04:01:40.374Z [INFO ] [BRIDGE:SERVER] [AI]: " riprovo!"
+6|voice-bridge  | 2026-02-06T04:01:40.698Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Mi stavi
+6|voice-bridge  | 2026-02-06T04:01:40.698Z [INFO ] [BRIDGE:SERVER] [AI]: " Mi stavi"
+6|voice-bridge  | 2026-02-06T04:01:41.011Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  dicendo
+6|voice-bridge  | 2026-02-06T04:01:41.011Z [INFO ] [BRIDGE:SERVER] [AI]: " dicendo"
+6|voice-bridge  | 2026-02-06T04:01:41.123Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  che tipo
+6|voice-bridge  | 2026-02-06T04:01:41.123Z [INFO ] [BRIDGE:SERVER] [AI]: " che tipo"
+6|voice-bridge  | 2026-02-06T04:01:41.286Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di azienda
+6|voice-bridge  | 2026-02-06T04:01:41.286Z [INFO ] [BRIDGE:SERVER] [AI]: " di azienda"
+6|voice-bridge  | 2026-02-06T04:01:41.435Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  hai,
+6|voice-bridge  | 2026-02-06T04:01:41.435Z [INFO ] [BRIDGE:SERVER] [AI]: " hai,"
+6|voice-bridge  | 2026-02-06T04:01:41.550Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  giusto?
+6|voice-bridge  | 2026-02-06T04:01:41.551Z [INFO ] [BRIDGE:SERVER] [AI]: " giusto?"
+6|voice-bridge  | 2026-02-06T04:01:41.733Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Così
+6|voice-bridge  | 2026-02-06T04:01:41.734Z [INFO ] [BRIDGE:SERVER] [AI]: " Così"
+6|voice-bridge  | 2026-02-06T04:01:41.948Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  capisco
+6|voice-bridge  | 2026-02-06T04:01:41.948Z [INFO ] [BRIDGE:SERVER] [AI]: " capisco"
+6|voice-bridge  | 2026-02-06T04:01:42.087Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  meglio
+6|voice-bridge  | 2026-02-06T04:01:42.087Z [INFO ] [BRIDGE:SERVER] [AI]: " meglio"
+6|voice-bridge  | 2026-02-06T04:01:42.130Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  come
+6|voice-bridge  | 2026-02-06T04:01:42.130Z [INFO ] [BRIDGE:SERVER] [AI]: " come"
+6|voice-bridge  | 2026-02-06T04:01:42.187Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  possiamo
+6|voice-bridge  | 2026-02-06T04:01:42.187Z [INFO ] [BRIDGE:SERVER] [AI]: " possiamo"
+6|voice-bridge  | 2026-02-06T04:01:42.255Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti!
+6|voice-bridge  | 2026-02-06T04:01:42.255Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti!"
