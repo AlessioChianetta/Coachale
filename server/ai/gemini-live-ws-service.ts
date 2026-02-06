@@ -4899,14 +4899,12 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         if (liveApiBackend === 'google_ai_studio') {
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           // 🔵 GOOGLE AI STUDIO: camelCase parameters, models/{id} path
-          // ✅ FIX: Include user data context in systemInstruction (not as clientContent)
-          // Google AI Studio has a clientContent size limit that rejects large payloads (error 1007)
-          // By putting user data in systemInstruction, we avoid the limit entirely
+          // ✅ NEW STRATEGY: Send ONLY system instruction in setup (lightweight)
+          // Then send user data as chunked clientContent AFTER setupComplete
+          // This avoids error 1007 (WebSocket frame size limit) while keeping full context
+          // Same approach as Vertex AI — proven to work with 88K+ tokens
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          const fullSystemInstruction = userDataContext 
-            ? systemInstruction + '\n\n' + userDataContext
-            : systemInstruction;
-          console.log(`🔵 [${connectionId}] AI Studio systemInstruction: ${systemInstruction.length} chars (prompt) + ${userDataContext ? userDataContext.length : 0} chars (user data) = ${fullSystemInstruction.length} chars (~${Math.round(fullSystemInstruction.length / 4)} tokens)`);
+          console.log(`🔵 [${connectionId}] AI Studio CHUNKED strategy: systemInstruction=${systemInstruction.length} chars (prompt only), user data=${userDataContext ? userDataContext.length : 0} chars (will be sent as chunks after setupComplete)`);
           
           setupMessage = {
             setup: {
@@ -4931,7 +4929,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 systemInstruction: {
                   parts: [
                     {
-                      text: fullSystemInstruction
+                      text: systemInstruction
                     }
                   ]
                 }
@@ -5232,17 +5230,34 @@ Solo DOPO che il cliente ha parlato, puoi iniziare con il benvenuto.
 Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi senti?"
 MA NON iniziare con lo script completo finché il cliente non risponde!`;
             
+            // ✅ UNIFIED CHUNKED STRATEGY: Both Google AI Studio and Vertex AI use the same approach
+            // Send all data chunks FIRST (turnComplete: false), then primer LAST (turnComplete: true)
+            const backendLabel = liveApiBackend === 'google_ai_studio' ? '🔵 GOOGLE AI STUDIO' : '🟢 VERTEX AI';
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🎯 ${backendLabel} - CHUNKED MESSAGES`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`   💡 Strategy: Send all ${chunks.length} data chunks FIRST`);
+            console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            
             if (liveApiBackend === 'google_ai_studio') {
-              // ✅ Google AI Studio: user data context is already in systemInstruction
-              // Only send the primer as a small clientContent to trigger the greeting
-              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎯 GOOGLE AI STUDIO - CONTEXT IN SYSTEM INSTRUCTION`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`   ✅ User data (${chunks.length} chunks, ~${Math.round(chunks.join('').length / 4).toLocaleString()} tokens) already in systemInstruction`);
-              console.log(`   ✅ Avoids clientContent size limit (error 1007 fix)`);
-              console.log(`   💡 Sending ONLY primer as clientContent (${primerContent.length} chars)`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+              // 🔵 Google AI Studio: camelCase clientContent
+              for (let i = 0; i < chunks.length; i++) {
+                const chunkTokens = Math.round(chunks[i].length / 4);
+                const chunkMessage = {
+                  clientContent: {
+                    turns: [{
+                      role: 'user',
+                      parts: [{ text: chunks[i] }]
+                    }],
+                    turnComplete: false
+                  }
+                };
+                geminiSession.send(JSON.stringify(chunkMessage));
+                console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
+              }
               
+              const primerTokens = Math.round(primerContent.length / 4);
               const primerMessage = {
                 clientContent: {
                   turns: [{
@@ -5253,20 +5268,12 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                 }
               };
               geminiSession.send(JSON.stringify(primerMessage));
-              
               latencyTracker.primerSentTime = Date.now();
               latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
-              console.log(`   ✅ Primer sent - ${primerContent.length} chars (~${Math.round(primerContent.length / 4)} tokens)`);
-              console.log(`   ✅ turnComplete: true`);
+              console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
+              console.log(`   ✅ Turn complete with primer at END`);
             } else {
-              // Vertex AI: keep existing chunked behavior (works fine)
-              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎯 VERTEX AI - CHUNKED MESSAGES`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`   💡 Strategy: Send all ${chunks.length} data chunks FIRST`);
-              console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-              
+              // 🟢 Vertex AI: same chunked approach (already working)
               for (let i = 0; i < chunks.length; i++) {
                 const chunkTokens = Math.round(chunks[i].length / 4);
                 const chunkMessage = {
@@ -5307,14 +5314,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
             }
             
             currentTurnMessages.push({
-              type: liveApiBackend === 'google_ai_studio' ? 'CONSOLIDATED chunks+primer (AI Studio)' : 'PRIMER CHUNK at END - Cache Optimization',
+              type: 'PRIMER CHUNK at END - Cache Optimization',
               content: primerContent,
               size: primerContent.length,
               timestamp: new Date()
             });
             
             console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED (${liveApiBackend === 'google_ai_studio' ? 'consolidated' : 'chunked'})`);
+            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED (chunked)`);
             console.log(`   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)`);
             console.log(`   🎙️ AI can now speak (has complete context: ${Math.round(userDataContext!.length / 4)} tokens)`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
