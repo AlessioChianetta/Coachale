@@ -3391,7 +3391,7 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
   - Fare riferimenti a conversazioni passate SE pertinenti
   - Personalizzare il tuo approccio
 
-❌ NON USARE il saluto "Ciao [Nome]! Che bello risentirti!"
+
 ✅ USA L'APERTURA DELLO SCRIPT: "[Nome]? Ciao, ti chiamo da..."
 
 Ecco le conversazioni precedenti (per contesto):
@@ -3417,7 +3417,7 @@ ${historyContent}
   - Fare riferimenti a conversazioni passate SE pertinenti durante la conversazione
   - Personalizzare il tuo approccio DENTRO le fasi del template
 
-❌ NON USARE il saluto "Ciao [Nome]! Che bello risentirti!" - segui l'apertura del template!
+
 ❌ NON INVENTARE un flusso libero - segui le FASI del template!
 ✅ USA IL FLUSSO DEFINITO DAL TEMPLATE con le sue fasi numerate
 
