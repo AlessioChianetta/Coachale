@@ -4571,27 +4571,53 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       const googleStudioConfig = await googleStudioConfigPromise;
       const vertexConfig = await vertexConfigPromise;
       
-      // Determine which backend to use: Google AI Studio (priority) → Vertex AI (fallback)
+      // Determine which backend to use based on LIVE_API_PROVIDER env var
+      const liveApiProviderEnv = (process.env.LIVE_API_PROVIDER || 'auto').toLowerCase().trim();
       let liveApiBackend: 'google_ai_studio' | 'vertex_ai';
       let wsUrl: string;
       let liveModelId: string;
       
-      if (googleStudioConfig) {
+      console.log(`🔧 [${connectionId}] LIVE_API_PROVIDER env var: "${liveApiProviderEnv}"`);
+      
+      if (liveApiProviderEnv === 'ai_studio') {
+        if (!googleStudioConfig) {
+          throw new Error('LIVE_API_PROVIDER=ai_studio but Google AI Studio credentials are not available');
+        }
         liveApiBackend = 'google_ai_studio';
         liveModelId = googleStudioConfig.modelId;
         wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
-        console.log(`🔵 [${connectionId}] Using GOOGLE AI STUDIO for Live API`);
+        console.log(`🔵 [${connectionId}] Using GOOGLE AI STUDIO for Live API (forced by LIVE_API_PROVIDER=ai_studio)`);
         console.log(`   Model: ${liveModelId}`);
         console.log(`   Endpoint: generativelanguage.googleapis.com`);
-      } else if (vertexConfig) {
+      } else if (liveApiProviderEnv === 'vertex_ai') {
+        if (!vertexConfig) {
+          throw new Error('LIVE_API_PROVIDER=vertex_ai but Vertex AI credentials are not available');
+        }
         liveApiBackend = 'vertex_ai';
         liveModelId = vertexConfig.modelId;
         wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
-        console.log(`🟢 [${connectionId}] Using VERTEX AI for Live API`);
+        console.log(`🟢 [${connectionId}] Using VERTEX AI for Live API (forced by LIVE_API_PROVIDER=vertex_ai)`);
         console.log(`   Model: ${liveModelId}`);
         console.log(`   Location: ${vertexConfig.location}`);
       } else {
-        throw new Error('Failed to get Live API credentials - neither Google AI Studio nor Vertex AI available');
+        // auto mode: Google AI Studio first, Vertex AI fallback
+        if (googleStudioConfig) {
+          liveApiBackend = 'google_ai_studio';
+          liveModelId = googleStudioConfig.modelId;
+          wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
+          console.log(`🔵 [${connectionId}] Using GOOGLE AI STUDIO for Live API (auto: Studio available)`);
+          console.log(`   Model: ${liveModelId}`);
+          console.log(`   Endpoint: generativelanguage.googleapis.com`);
+        } else if (vertexConfig) {
+          liveApiBackend = 'vertex_ai';
+          liveModelId = vertexConfig.modelId;
+          wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+          console.log(`🟢 [${connectionId}] Using VERTEX AI for Live API (auto: Studio unavailable, Vertex fallback)`);
+          console.log(`   Model: ${liveModelId}`);
+          console.log(`   Location: ${vertexConfig.location}`);
+        } else {
+          throw new Error('Failed to get Live API credentials - neither Google AI Studio nor Vertex AI available');
+        }
       }
 
       const dataLoadDoneTime = Date.now();
@@ -5101,29 +5127,6 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             console.log(`⏳ Sending chunks to Gemini Live API...`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
             
-            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`🎯 CACHE OPTIMIZATION - Primer Chunk at END`);
-            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`   💡 Strategy: Send all ${chunks.length} data chunks FIRST`);
-            console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
-            console.log(`   💡 Backend: ${liveApiBackend} (${liveApiBackend === 'google_ai_studio' ? 'DEFERRED after setupComplete' : 'IMMEDIATE'})`);
-            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-            
-            for (let i = 0; i < chunks.length; i++) {
-              const chunkTokens = Math.round(chunks[i].length / 4);
-              const chunkMessage = {
-                clientContent: {
-                  turns: [{
-                    role: 'user',
-                    parts: [{ text: chunks[i] }]
-                  }],
-                  turnComplete: false
-                }
-              };
-              geminiSession.send(JSON.stringify(chunkMessage));
-              console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
-            }
-            
             const primerContent = shouldSpeakFirst
               ? `📋 CONTEXT_END - All user data loaded and ready.
 
@@ -5142,21 +5145,76 @@ Solo DOPO che il cliente ha parlato, puoi iniziare con il benvenuto.
 Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi senti?"
 MA NON iniziare con lo script completo finché il cliente non risponde!`;
             
-            const primerTokens = Math.round(primerContent.length / 4);
-            const primerMessage = {
-              clientContent: {
-                turns: [{
-                  role: 'user',
-                  parts: [{ text: primerContent }]
-                }],
-                turnComplete: true
+            if (liveApiBackend === 'google_ai_studio') {
+              // Google AI Studio: consolidate ALL chunks + primer into a SINGLE clientContent message
+              // to avoid error 1007 from multiple separate clientContent messages
+              const consolidatedText = chunks.join('\n') + '\n' + primerContent;
+              const consolidatedTokens = Math.round(consolidatedText.length / 4);
+              
+              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`🎯 GOOGLE AI STUDIO - CONSOLIDATED SINGLE MESSAGE`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`   💡 Strategy: Consolidate ${chunks.length} chunks + primer into ONE message`);
+              console.log(`   💡 Reason: AI Studio rejects multiple clientContent messages (error 1007)`);
+              console.log(`   💡 Total size: ${consolidatedText.length.toLocaleString()} chars (~${consolidatedTokens.toLocaleString()} tokens)`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+              
+              const consolidatedMessage = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: consolidatedText }]
+                  }],
+                  turnComplete: true
+                }
+              };
+              geminiSession.send(JSON.stringify(consolidatedMessage));
+              
+              latencyTracker.primerSentTime = Date.now();
+              latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
+              console.log(`   ✅ Single consolidated message sent - ${consolidatedText.length.toLocaleString()} chars (~${consolidatedTokens.toLocaleString()} tokens)`);
+              console.log(`   ✅ turnComplete: true (single message, no chunking)`);
+            } else {
+              // Vertex AI: keep existing chunked behavior (works fine)
+              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`🎯 VERTEX AI - CHUNKED MESSAGES`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`   💡 Strategy: Send all ${chunks.length} data chunks FIRST`);
+              console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+              
+              for (let i = 0; i < chunks.length; i++) {
+                const chunkTokens = Math.round(chunks[i].length / 4);
+                const chunkMessage = {
+                  clientContent: {
+                    turns: [{
+                      role: 'user',
+                      parts: [{ text: chunks[i] }]
+                    }],
+                    turnComplete: false
+                  }
+                };
+                geminiSession.send(JSON.stringify(chunkMessage));
+                console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
               }
-            };
-            geminiSession.send(JSON.stringify(primerMessage));
-            latencyTracker.primerSentTime = Date.now();
-            latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
-            console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
-            console.log(`   ✅ Turn complete with primer at END`);
+              
+              const primerTokens = Math.round(primerContent.length / 4);
+              const primerMessage = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: primerContent }]
+                  }],
+                  turnComplete: true
+                }
+              };
+              geminiSession.send(JSON.stringify(primerMessage));
+              latencyTracker.primerSentTime = Date.now();
+              latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
+              console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
+              console.log(`   ✅ Turn complete with primer at END`);
+            }
+            
             console.log(`⏱️ [LATENCY] All chunks + primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms from setup sent, total: +${latencyTracker.primerSentTime - latencyTracker.wsConnectionTime}ms`);
             if (shouldSpeakFirst) {
               console.log(`   🎬 AI primed to SPEAK FIRST with greeting (mode: ${mode})\n`);
@@ -5165,14 +5223,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
             }
             
             currentTurnMessages.push({
-              type: 'PRIMER CHUNK at END - Cache Optimization',
+              type: liveApiBackend === 'google_ai_studio' ? 'CONSOLIDATED chunks+primer (AI Studio)' : 'PRIMER CHUNK at END - Cache Optimization',
               content: primerContent,
               size: primerContent.length,
               timestamp: new Date()
             });
             
             console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED`);
+            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED (${liveApiBackend === 'google_ai_studio' ? 'consolidated' : 'chunked'})`);
             console.log(`   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)`);
             console.log(`   🎙️ AI can now speak (has complete context: ${Math.round(userDataContext!.length / 4)} tokens)`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
