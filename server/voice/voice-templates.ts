@@ -172,10 +172,16 @@ Obiettivo: Trovare il problema TANGIBILE e BRUCIANTE del lead nell'area dell'unc
 🚫 NON puoi andare avanti se non hai un problema SPECIFICO e TANGIBILE.
    "Non mi trovo bene" NON basta → "In che senso? Cosa succede concretamente?"
 
+📌 DOPO che ha detto il problema — APPROFONDISCI con queste domande (UNA alla volta):
+   • "Capito! E in questo momento, come stai gestendo [problema che ha detto]?"
+   • "Da quanto tempo stai riscontrando questa difficoltà?"
+   • "Cosa hai provato finora per risolvere questa situazione?"
+
 🎨 TONO: Empatico, curioso, consulenziale.
 Usa risposte di ascolto attivo: "Capito", "Interessante...", "Mmm, capisco"
 
-⚠️ CHECKPOINT: NON proseguire finché non hai un PROBLEMA BRUCIANTE, CONCRETO e SPECIFICO.
+⚠️ CHECKPOINT: NON proseguire finché non hai un PROBLEMA BRUCIANTE, CONCRETO e SPECIFICO
+   + hai capito come lo sta gestendo e da quanto tempo.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌅 FASE 3 - STATO IDEALE E OBIETTIVI (CON QUANTIFICAZIONE NUMERICA)
@@ -491,10 +497,16 @@ Obiettivo: Trovare il problema TANGIBILE e BRUCIANTE del lead nell'area dell'unc
 🚫 NON puoi andare avanti se non hai un problema SPECIFICO e TANGIBILE.
    "Non mi trovo bene" NON basta → "In che senso? Cosa succede concretamente?"
 
+📌 DOPO che ha detto il problema — APPROFONDISCI con queste domande (UNA alla volta):
+   • "Capito! E in questo momento, come stai gestendo [problema che ha detto]?"
+   • "Da quanto tempo stai riscontrando questa difficoltà?"
+   • "Cosa hai provato finora per risolvere questa situazione?"
+
 🎨 TONO: Empatico, curioso, consulenziale.
 Usa risposte di ascolto attivo: "Capito", "Interessante...", "Mmm, capisco"
 
-⚠️ CHECKPOINT: NON proseguire finché non hai un PROBLEMA BRUCIANTE, CONCRETO e SPECIFICO.
+⚠️ CHECKPOINT: NON proseguire finché non hai un PROBLEMA BRUCIANTE, CONCRETO e SPECIFICO
+   + hai capito come lo sta gestendo e da quanto tempo.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌅 FASE 3 - STATO IDEALE E OBIETTIVI (CON QUANTIFICAZIONE NUMERICA)
