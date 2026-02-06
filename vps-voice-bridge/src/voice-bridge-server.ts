@@ -6,7 +6,7 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { sessionManager } from './session-manager.js';
 import { ReplitWSClient } from './replit-ws-client.js';
-import { convertForGemini, convertFromGemini, pcmToMulaw } from './audio-converter.js';
+import { convertForGemini, convertFromGemini } from './audio-converter.js';
 import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
 import { callMetadata } from './esl-client.js';
 import { handleOutboundCall } from './outbound-handler.js';
@@ -259,8 +259,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
       if (now - lastAI >= 20) {
         const bgChunk = generateBackgroundChunk(session.id, 320);
         if (bgChunk) {
-          const mulawChunk = pcmToMulaw(bgChunk);
-          s.fsWebSocket.send(mulawChunk, { binary: true });
+          s.fsWebSocket.send(bgChunk, { binary: true });
         }
       }
     }, 20);
@@ -317,13 +316,11 @@ function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
     pcmAudio = mixWithBackground(pcmAudio, sessionId);
   }
 
-  const mulawAudio = pcmToMulaw(pcmAudio);
-
   bgLastAISend.set(sessionId, Date.now());
 
-  const CHUNK_SIZE = 160;
-  for (let i = 0; i < mulawAudio.length; i += CHUNK_SIZE) {
-    const chunk = mulawAudio.slice(i, i + CHUNK_SIZE);
+  const CHUNK_SIZE = 320;
+  for (let i = 0; i < pcmAudio.length; i += CHUNK_SIZE) {
+    const chunk = pcmAudio.slice(i, i + CHUNK_SIZE);
     session.fsWebSocket.send(chunk, { binary: true });
   }
 }
