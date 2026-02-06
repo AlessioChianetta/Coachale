@@ -912,8 +912,39 @@ async function getUserIdFromRequest(req: any): Promise<{
 
         let userId: string | null = null;
         let userRole = 'anonymous_caller';
+        let consultantVoice = 'Achernar';
+        let callInstruction: string | null = null;
+        let instructionType: 'task' | 'reminder' | null = null;
+        let scheduledCallId: string | null = null;
+        let outboundTargetPhone: string | null = null;
 
-        const userByPhone = await storage.getUserByPhoneNumber(normalizedCallerId, decoded.consultantId);
+        // ⚡ PARALLEL AUTH: Run 3 independent DB queries simultaneously instead of sequentially
+        // Before: ~1163ms (3 sequential awaits ~400ms each)
+        // After:  ~400ms (1 parallel await = slowest query)
+        const parallelStart = Date.now();
+        const [userByPhone, voiceSettingsRows, scheduledCallResult] = await Promise.all([
+          storage.getUserByPhoneNumber(normalizedCallerId, decoded.consultantId)
+            .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Caller lookup failed:`, err.message); return null; }),
+
+          db.select({ voiceId: consultantAvailabilitySettings.voiceId })
+            .from(consultantAvailabilitySettings)
+            .where(eq(consultantAvailabilitySettings.consultantId, decoded.consultantId))
+            .limit(1)
+            .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Voice settings failed, using default:`, err.message); return [] as any[]; }),
+
+          scheduledCallIdParam
+            ? db.execute(sql`
+                SELECT id, call_instruction, instruction_type, target_phone 
+                FROM scheduled_voice_calls 
+                WHERE id = ${scheduledCallIdParam}
+                  AND consultant_id = ${decoded.consultantId}
+                  AND status = 'calling'
+                LIMIT 1
+              `).catch(err => { console.warn(`⚠️ [PHONE SERVICE] Scheduled call lookup failed:`, err.message); return { rows: [] }; })
+            : Promise.resolve(null)
+        ]);
+        console.log(`⚡ [PHONE SERVICE] Parallel auth queries completed in ${Date.now() - parallelStart}ms`);
+
         if (userByPhone) {
           userId = userByPhone.id;
           userRole = userByPhone.role;
@@ -922,75 +953,44 @@ async function getUserIdFromRequest(req: any): Promise<{
           console.log(`📞 [PHONE SERVICE] Unknown caller - using anonymous mode`);
         }
 
-        // Fetch voice preference from consultant settings
-        let consultantVoice = 'Achernar'; // Default to Italian professional voice
-        try {
-          const [settings] = await db
-            .select({ voiceId: consultantAvailabilitySettings.voiceId })
-            .from(consultantAvailabilitySettings)
-            .where(eq(consultantAvailabilitySettings.consultantId, decoded.consultantId))
-            .limit(1);
-          
-          if (settings?.voiceId) {
-            consultantVoice = settings.voiceId;
-            console.log(`🎤 [PHONE SERVICE] Using consultant voice: ${consultantVoice}`);
-          }
-        } catch (voiceErr) {
-          console.warn(`⚠️ [PHONE SERVICE] Could not fetch voice settings, using default: ${consultantVoice}`);
+        const voiceSettings = voiceSettingsRows?.[0] as any;
+        if (voiceSettings?.voiceId) {
+          consultantVoice = voiceSettings.voiceId;
+          console.log(`🎤 [PHONE SERVICE] Using consultant voice: ${consultantVoice}`);
         }
 
-        // 🎯 Check for active scheduled call with instruction
-        // IMPORTANT: Only lookup by specific scheduledCallId if provided by VPS
-        // This prevents loading OLD call instructions from previous calls to the same number
-        let callInstruction: string | null = null;
-        let instructionType: 'task' | 'reminder' | null = null;
-        let scheduledCallId: string | null = null;
-        let outboundTargetPhone: string | null = null;
-        try {
-          if (scheduledCallIdParam) {
-            // Outbound call with specific scheduledCallId from VPS - lookup by ID
-            console.log(`🔍 [PHONE SERVICE] Looking up scheduled call by ID: ${scheduledCallIdParam}`);
-            const scheduledCallResult = await db.execute(sql`
-              SELECT id, call_instruction, instruction_type, target_phone 
-              FROM scheduled_voice_calls 
-              WHERE id = ${scheduledCallIdParam}
-                AND consultant_id = ${decoded.consultantId}
-                AND status = 'calling'
-              LIMIT 1
-            `);
+        if (scheduledCallIdParam) {
+          console.log(`🔍 [PHONE SERVICE] Looking up scheduled call by ID: ${scheduledCallIdParam}`);
+          
+          if (scheduledCallResult && scheduledCallResult.rows.length > 0) {
+            const scheduledCall = scheduledCallResult.rows[0] as any;
+            callInstruction = scheduledCall.call_instruction;
+            instructionType = scheduledCall.instruction_type;
+            scheduledCallId = scheduledCall.id;
+            outboundTargetPhone = scheduledCall.target_phone;
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🎯 [PHONE SERVICE] FOUND SCHEDULED OUTBOUND CALL!`);
+            console.log(`🎯   Scheduled Call ID: ${scheduledCallId}`);
+            console.log(`🎯   Target Phone: ${outboundTargetPhone}`);
+            console.log(`🎯   Type: ${instructionType || 'generic'}`);
+            console.log(`🎯   Instruction: ${callInstruction || '(no instruction)'}`);
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             
-            if (scheduledCallResult.rows.length > 0) {
-              const scheduledCall = scheduledCallResult.rows[0] as any;
-              callInstruction = scheduledCall.call_instruction;
-              instructionType = scheduledCall.instruction_type;
-              scheduledCallId = scheduledCall.id;
-              outboundTargetPhone = scheduledCall.target_phone;
-              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎯 [PHONE SERVICE] FOUND SCHEDULED OUTBOUND CALL!`);
-              console.log(`🎯   Scheduled Call ID: ${scheduledCallId}`);
-              console.log(`🎯   Target Phone: ${outboundTargetPhone}`);
-              console.log(`🎯   Type: ${instructionType || 'generic'}`);
-              console.log(`🎯   Instruction: ${callInstruction || '(no instruction)'}`);
-              console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              
-              // 🎯 For OUTBOUND calls: use target_phone from scheduled call for user lookup
-              // The VPS passes callerId as "unknown", so we need to lookup by target_phone
-              if (outboundTargetPhone) {
-                const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, decoded.consultantId);
-                if (userByTargetPhone) {
-                  userId = userByTargetPhone.id;
-                  userRole = userByTargetPhone.role;
-                  console.log(`✅ [PHONE SERVICE] OUTBOUND target recognized: ${userByTargetPhone.fullName || userByTargetPhone.email} (${userId})`);
-                } else {
-                  console.log(`📞 [PHONE SERVICE] OUTBOUND target ${outboundTargetPhone} is not a registered client`);
-                }
+            if (outboundTargetPhone) {
+              const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, decoded.consultantId);
+              if (userByTargetPhone) {
+                userId = userByTargetPhone.id;
+                userRole = userByTargetPhone.role;
+                console.log(`✅ [PHONE SERVICE] OUTBOUND target recognized: ${userByTargetPhone.fullName || userByTargetPhone.email} (${userId})`);
+              } else {
+                console.log(`📞 [PHONE SERVICE] OUTBOUND target ${outboundTargetPhone} is not a registered client`);
               }
-            } else {
-              // Scheduled call ID provided but not found with status 'calling'
-              // Try to fetch target_phone anyway (may be in different status)
-              scheduledCallId = scheduledCallIdParam;
-              console.log(`📞 [PHONE SERVICE] Outbound call ${scheduledCallIdParam} not found with status 'calling', trying fallback...`);
-              
+            }
+          } else {
+            scheduledCallId = scheduledCallIdParam;
+            console.log(`📞 [PHONE SERVICE] Outbound call ${scheduledCallIdParam} not found with status 'calling', trying fallback...`);
+            
+            try {
               const fallbackResult = await db.execute(sql`
                 SELECT target_phone FROM scheduled_voice_calls 
                 WHERE id = ${scheduledCallIdParam}
@@ -1002,7 +1002,6 @@ async function getUserIdFromRequest(req: any): Promise<{
                 outboundTargetPhone = (fallbackResult.rows[0] as any).target_phone;
                 console.log(`🎯 [PHONE SERVICE] Fallback: found target_phone = ${outboundTargetPhone}`);
                 
-                // Lookup user by target_phone
                 if (outboundTargetPhone) {
                   const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, decoded.consultantId);
                   if (userByTargetPhone) {
@@ -1016,47 +1015,43 @@ async function getUserIdFromRequest(req: any): Promise<{
               } else {
                 console.log(`⚠️ [PHONE SERVICE] Fallback failed: scheduled call ${scheduledCallIdParam} not found at all`);
               }
+            } catch (fallbackErr) {
+              console.warn(`⚠️ [PHONE SERVICE] Fallback query failed:`, fallbackErr);
             }
-          } else {
-            // Inbound call - no scheduledCallId provided - DO NOT search for instructions
-            // This prevents loading OLD outbound call instructions for inbound calls
-            console.log(`📞 [PHONE SERVICE] Inbound call from ${normalizedCallerId} - no scheduled call instruction (by design)`);
           }
-        } catch (scheduledErr) {
-          console.warn(`⚠️ [PHONE SERVICE] Could not fetch scheduled call instruction:`, scheduledErr);
+        } else {
+          console.log(`📞 [PHONE SERVICE] Inbound call from ${normalizedCallerId} - no scheduled call instruction (by design)`);
         }
 
-        // Create voice call record in database
+        // ⚡ FIRE-AND-FORGET: Voice call record creation doesn't block auth completion
         const voiceCallId = `vc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const freeswitchUuid = url.searchParams.get('uuid') || `ws_${Date.now()}`;
         
-        try {
-          await db.insert(voiceCalls).values({
-            id: voiceCallId,
-            callerId: normalizedCallerId,
-            calledNumber: '9999', // Extension for assistenza
-            clientId: userId || null,
-            consultantId: decoded.consultantId,
-            freeswitchUuid: freeswitchUuid,
-            status: 'talking', // Use 'talking' for frontend "In Corso" display
-            startedAt: new Date(),
-            answeredAt: new Date(), // Mark as answered immediately
-            aiMode: 'assistenza',
-          });
+        db.insert(voiceCalls).values({
+          id: voiceCallId,
+          callerId: normalizedCallerId,
+          calledNumber: '9999',
+          clientId: userId || null,
+          consultantId: decoded.consultantId,
+          freeswitchUuid: freeswitchUuid,
+          status: 'talking',
+          startedAt: new Date(),
+          answeredAt: new Date(),
+          aiMode: 'assistenza',
+        }).then(() => {
           console.log(`📞 [PHONE SERVICE] Voice call record created: ${voiceCallId}`);
-          
-          // Track active call
-          activeVoiceCalls.set(voiceCallId, {
-            id: voiceCallId,
-            callerId: normalizedCallerId,
-            consultantId: decoded.consultantId,
-            clientId: userId,
-            startedAt: new Date(),
-            status: 'talking',
-          });
-        } catch (dbErr) {
+        }).catch(dbErr => {
           console.error(`❌ [PHONE SERVICE] Failed to create voice call record:`, dbErr);
-        }
+        });
+
+        activeVoiceCalls.set(voiceCallId, {
+          id: voiceCallId,
+          callerId: normalizedCallerId,
+          consultantId: decoded.consultantId,
+          clientId: userId,
+          startedAt: new Date(),
+          status: 'talking',
+        });
 
         console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
 
