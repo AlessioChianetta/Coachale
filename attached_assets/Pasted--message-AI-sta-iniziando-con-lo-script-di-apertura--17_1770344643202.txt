@@ -1,0 +1,42 @@
+       message: 'AI sta iniziando con lo script di apertura'
+              }));
+            }
+            
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 🎬 START AI IMMEDIATELY WITH GREETING (assistenza/consulente/phone_service)
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // For NEW assistenza/consulente/phone_service sessions (not resume),
+            // tell the AI to start speaking immediately with a natural greeting.
+            // If the AI knows the user's name (from system prompt), it uses it:
+            //   "Marco? Sì ciao, sono [AI name] da [business]..."
+            // If not, a simple greeting:
+            //   "Ciao, sono [AI name] da [business]..."
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            const isNewAssistantOrPhoneSession = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
+            
+            if (isNewAssistantOrPhoneSession) {
+              console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`[${connectionId}] STARTING AI WITH IMMEDIATE GREETING`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`   Mode: ${mode}`);
+              console.log(`   Is Resume: NO (new session)`);
+              console.log(`   Action: AI will speak first with natural greeting`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+              
+              const startGreetingMessage = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente.' }]
+                  }],
+                  turnComplete: true
+                }
+              };
+              
+              geminiSession.send(JSON.stringify(startGreetingMessage));
+              console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode})`);
+              
+              clientWs.send(JSON.stringify({
+                type: 'ai_starting',
+                message: 'AI sta iniziando con il saluto'
+              }));
