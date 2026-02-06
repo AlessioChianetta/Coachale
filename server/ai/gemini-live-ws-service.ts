@@ -5131,6 +5131,82 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`      • 🔍 Saved to sessionInitialChunkTokens for comparison report`);
           console.log(`   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           
+          // 🔍 CONTEXT WINDOW ANALYSIS: Show exactly where the ~27K token cutoff falls
+          const VERTEX_CONTEXT_WINDOW = 27000; // ~27K text tokens observed from usageMetadata
+          const contextWindowChars = VERTEX_CONTEXT_WINDOW * 4; // ~108K chars
+          const systemInstructionChars = systemInstruction.length;
+          const availableForContext = contextWindowChars - systemInstructionChars;
+          
+          console.log(`\n🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🔬 CONTEXT WINDOW ANALYSIS - What the AI actually "sees"`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`   📐 Estimated context window: ~${VERTEX_CONTEXT_WINDOW.toLocaleString()} text tokens (~${contextWindowChars.toLocaleString()} chars)`);
+          console.log(`   📝 System instruction: ${systemInstructionChars.toLocaleString()} chars (~${Math.round(systemInstructionChars / 4).toLocaleString()} tokens)`);
+          console.log(`   📦 Available for user context: ~${availableForContext.toLocaleString()} chars (~${Math.round(availableForContext / 4).toLocaleString()} tokens)`);
+          console.log(`   📦 Total user context sent: ${userDataContext.length.toLocaleString()} chars (~${Math.round(userDataContext.length / 4).toLocaleString()} tokens)`);
+          console.log(`   ${userDataContext.length > availableForContext ? '⚠️  OVERFLOW: ' + (userDataContext.length - availableForContext).toLocaleString() + ' chars TRUNCATED by Live API' : '✅ Fits in context window'}`);
+          console.log(``);
+          
+          // Scan the raw userDataContext for section markers
+          const sectionMarkers = [
+            { name: '⏰ DATA/ORA', pattern: '⏰ DATA E ORA' },
+            { name: '🚨 DATI FINANZIARI', pattern: '🚨 DATI FINANZIARI REALI' },
+            { name: '👤 INFO UTENTE', pattern: '👤 INFO UTENTE' },
+            { name: '📚 ESERCIZI', pattern: '📚 ESERCIZI' },
+            { name: '📖 DOCUMENTI BIBLIOTECA', pattern: '📖 DOCUMENTI BIBLIOTECA' },
+            { name: '📊 STATISTICHE MOMENTUM', pattern: '📊 STATISTICHE MOMENTUM' },
+            { name: '📅 EVENTI CALENDARIO', pattern: '📅 EVENTI CALENDARIO' },
+            { name: '📞 CONSULENZE', pattern: '📞 CONSULENZE' },
+            { name: '🔜 CONSULENZE IN PROGRAMMA', pattern: '🔜 CONSULENZE IN PROGRAMMA' },
+            { name: '✅ CONSULENZE RECENTI', pattern: '✅ CONSULENZE RECENTI COMPLETATE' },
+            { name: '📧 RIEPILOGO EMAIL', pattern: '📧 RIEPILOGO EMAIL CONSULENZA' },
+            { name: '🎙️ TRASCRIZIONE FATHOM', pattern: '🎙️ TRASCRIZIONE FATHOM' },
+            { name: '✅ FINE DATI UTENTE', pattern: '✅ FINE DATI UTENTE' },
+            { name: '📋 TASK CONSULENZE', pattern: 'TASK' },
+          ];
+          
+          console.log(`   📋 SECTION MAP (position in context):`);
+          console.log(`   ${'─'.repeat(70)}`);
+          
+          const foundSections: { name: string; pos: number; tokens: number }[] = [];
+          for (const marker of sectionMarkers) {
+            const pos = userDataContext.indexOf(marker.pattern);
+            if (pos >= 0) {
+              foundSections.push({ name: marker.name, pos, tokens: Math.round(pos / 4) });
+            }
+          }
+          foundSections.sort((a, b) => a.pos - b.pos);
+          
+          for (const section of foundSections) {
+            const inWindow = section.pos < availableForContext;
+            const icon = inWindow ? '✅' : '❌';
+            console.log(`   ${icon} ${section.name.padEnd(30)} @ char ${section.pos.toLocaleString().padStart(8)} (~${section.tokens.toLocaleString().padStart(6)} tokens) ${!inWindow ? '← FUORI DAL CONTEXT WINDOW' : ''}`);
+          }
+          
+          console.log(`   ${'─'.repeat(70)}`);
+          console.log(`   ✂️  CUTOFF LINE: char ${availableForContext.toLocaleString()} (~${Math.round(availableForContext / 4).toLocaleString()} tokens)`);
+          console.log(`   📦 Total context: char ${userDataContext.length.toLocaleString()} (~${Math.round(userDataContext.length / 4).toLocaleString()} tokens)`);
+          
+          // Show what percentage of each section is visible
+          const cutoffPos = availableForContext;
+          let prevPos = 0;
+          console.log(`\n   📊 SECTION SIZES & VISIBILITY:`);
+          console.log(`   ${'─'.repeat(70)}`);
+          for (let i = 0; i < foundSections.length; i++) {
+            const section = foundSections[i];
+            const nextPos = i < foundSections.length - 1 ? foundSections[i + 1].pos : userDataContext.length;
+            const sectionSize = nextPos - section.pos;
+            const sectionTokens = Math.round(sectionSize / 4);
+            const visibleChars = Math.max(0, Math.min(nextPos, cutoffPos) - section.pos);
+            const visiblePct = sectionSize > 0 ? Math.round((visibleChars / sectionSize) * 100) : 0;
+            const bar = visiblePct === 100 ? '████████████████████' : 
+                        visiblePct > 0 ? '████████████████████'.substring(0, Math.round(visiblePct / 5)) + '░░░░░░░░░░░░░░░░░░░░'.substring(0, 20 - Math.round(visiblePct / 5)) : 
+                        '░░░░░░░░░░░░░░░░░░░░';
+            console.log(`   ${visiblePct === 100 ? '✅' : visiblePct > 0 ? '⚠️' : '❌'} ${section.name.padEnd(30)} ${sectionTokens.toLocaleString().padStart(6)} tok  [${bar}] ${visiblePct}%`);
+          }
+          console.log(`   ${'─'.repeat(70)}`);
+          console.log(`🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          
           const shouldSpeakFirst = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !isResuming;
           
           const sendChunksAndPrimer = () => {
