@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
-import { getVertexAITokenForLive, getAIProvider } from './provider-factory';
+import { getVertexAITokenForLive, getGoogleAIStudioKeyForLive, getAIProvider } from './provider-factory';
 import { 
   convertWebMToPCM, 
   convertPCMToWAV, 
@@ -2206,8 +2206,10 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     }
 
     try {
-      // 2. Get OAuth2 token for Vertex AI Live API (⚡ deferred await - runs in parallel with data loading)
-      console.log(`🔑 [${connectionId}] Starting OAuth2 token generation for Vertex AI Live API...`);
+      // 2. Get Live API credentials (⚡ deferred await - runs in parallel with data loading)
+      // Try Google AI Studio first (has preview-12-2025 with thinking + better quality), fallback to Vertex AI
+      console.log(`🔑 [${connectionId}] Starting Live API credential resolution (Google AI Studio → Vertex AI fallback)...`);
+      const googleStudioConfigPromise = getGoogleAIStudioKeyForLive(consultantId);
       const vertexConfigPromise = getVertexAITokenForLive(
         (mode === 'sales_agent' || mode === 'consultation_invite') ? null : userId, 
         consultantId
@@ -4565,24 +4567,49 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       console.log(`\n🎁 TOTAL TOKENS INVIATI (setup): ${totalTokens.toLocaleString()} tokens`);
       console.log(`${'═'.repeat(70)}\n`);
 
-      // 3. Await Vertex AI token (⚡ was deferred - may already be resolved from parallel execution)
+      // 3. Await Live API credentials (⚡ deferred - try Google AI Studio first, fallback to Vertex AI)
+      const googleStudioConfig = await googleStudioConfigPromise;
       const vertexConfig = await vertexConfigPromise;
-      if (!vertexConfig) {
-        throw new Error('Failed to get Vertex AI token for Live API - no valid configuration found');
+      
+      // Determine which backend to use: Google AI Studio (priority) → Vertex AI (fallback)
+      let liveApiBackend: 'google_ai_studio' | 'vertex_ai';
+      let wsUrl: string;
+      let liveModelId: string;
+      
+      if (googleStudioConfig) {
+        liveApiBackend = 'google_ai_studio';
+        liveModelId = googleStudioConfig.modelId;
+        wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
+        console.log(`🔵 [${connectionId}] Using GOOGLE AI STUDIO for Live API`);
+        console.log(`   Model: ${liveModelId}`);
+        console.log(`   Endpoint: generativelanguage.googleapis.com`);
+      } else if (vertexConfig) {
+        liveApiBackend = 'vertex_ai';
+        liveModelId = vertexConfig.modelId;
+        wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+        console.log(`🟢 [${connectionId}] Using VERTEX AI for Live API`);
+        console.log(`   Model: ${liveModelId}`);
+        console.log(`   Location: ${vertexConfig.location}`);
+      } else {
+        throw new Error('Failed to get Live API credentials - neither Google AI Studio nor Vertex AI available');
       }
 
       const dataLoadDoneTime = Date.now();
       console.log(`⏱️ [LATENCY-E2E] Data loading + prompt build completed: +${dataLoadDoneTime - authDoneTime}ms from auth, total: +${dataLoadDoneTime - wsArrivalTime}ms from WS arrival`);
-      const wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
-      console.log(`🔗 [${connectionId}] Connecting to Vertex AI at ${vertexConfig.location}...`);
 
-      // 4. Create raw WebSocket connection with OAuth2 Bearer token
-      geminiSession = new WebSocket(wsUrl, {
-        headers: {
-          'Authorization': `Bearer ${vertexConfig.accessToken}`,
-          'Content-Type': 'application/json',
-        }
-      });
+      // 4. Create raw WebSocket connection
+      if (liveApiBackend === 'google_ai_studio') {
+        // Google AI Studio: API key in URL query param, no auth headers needed
+        geminiSession = new WebSocket(wsUrl);
+      } else {
+        // Vertex AI: OAuth2 Bearer token in header
+        geminiSession = new WebSocket(wsUrl, {
+          headers: {
+            'Authorization': `Bearer ${vertexConfig!.accessToken}`,
+            'Content-Type': 'application/json',
+          }
+        });
+      }
       
       // 🔌 Track this connection in global tracker (P0.1 - con lastActivity per anti-zombie)
       const now = new Date();
@@ -4833,67 +4860,109 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         
         // Send setup message to Gemini Live API
         // ✅ FIX RESUME: Omit system_instruction field entirely when resuming
-        // Using conditional object spread to avoid sending undefined/null
-        const setupMessage: any = {
-          setup: {
-            model: `projects/${vertexConfig.projectId}/locations/${vertexConfig.location}/publishers/google/models/${vertexConfig.modelId}`,
-            generation_config: {
-              response_modalities: ["AUDIO"],
-              speech_config: {
-                language_code: "it-IT",
-                voice_config: {
-                  prebuilt_voice_config: {
-                    voice_name: voiceName
+        // ✅ DUAL BACKEND: camelCase for Google AI Studio, snake_case for Vertex AI
+        let setupMessage: any;
+        
+        if (liveApiBackend === 'google_ai_studio') {
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // 🔵 GOOGLE AI STUDIO: camelCase parameters, models/{id} path
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          setupMessage = {
+            setup: {
+              model: `models/${liveModelId}`,
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  languageCode: "it-IT",
+                  voiceConfig: {
+                    prebuiltVoiceConfig: {
+                      voiceName: voiceName
+                    }
                   }
+                },
+                temperature: 1.0,
+                topP: 0.95,
+                topK: 40,
+                maxOutputTokens: 8192
+              },
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+              ...(!validatedResumeHandle && {
+                systemInstruction: {
+                  parts: [
+                    {
+                      text: systemInstruction
+                    }
+                  ]
+                }
+              }),
+              realtimeInputConfig: {
+                automaticActivityDetection: {
+                  disabled: false,
+                  startOfSpeechSensitivity: isPhoneCall ? 'START_SENSITIVITY_LOW' : 'START_SENSITIVITY_HIGH',
+                  endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+                  prefixPaddingMs: 20,
+                  silenceDurationMs: isPhoneCall ? 500 : 700
                 }
               },
-              temperature: 1.0,
-              top_p: 0.95,
-              top_k: 40,
-              max_output_tokens: 8192  // Permetti risposte più lunghe per monologhi/spiegazioni dettagliate
-            },
-            // 🧠 NOTE: thinking_config is NOT supported by Vertex AI Live API native audio models
-            // (gemini-live-2.5-flash-native-audio GA - December 2025)
-            // Thinking is only available on Gemini API (Google AI Studio), not Vertex AI
-            input_audio_transcription: {},
-            output_audio_transcription: {},
-            // Conditionally include system_instruction ONLY on new sessions
-            ...(!validatedResumeHandle && {
-              system_instruction: {
-                parts: [
-                  {
-                    text: systemInstruction
+              proactivity: {
+                proactiveAudio: true
+              },
+              sessionResumption: { handle: validatedResumeHandle || null }
+            }
+          };
+        } else {
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // 🟢 VERTEX AI: snake_case parameters, projects/.../models/{id} path
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          setupMessage = {
+            setup: {
+              model: `projects/${vertexConfig!.projectId}/locations/${vertexConfig!.location}/publishers/google/models/${liveModelId}`,
+              generation_config: {
+                response_modalities: ["AUDIO"],
+                speech_config: {
+                  language_code: "it-IT",
+                  voice_config: {
+                    prebuilt_voice_config: {
+                      voice_name: voiceName
+                    }
                   }
-                ]
-              }
-            }),
-            realtime_input_config: {
-              automatic_activity_detection: {
-                disabled: false,
-                start_of_speech_sensitivity: isPhoneCall ? 'START_SENSITIVITY_LOW' : 'START_SENSITIVITY_HIGH',
-                end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',
-                prefix_padding_ms: 20,
-                silence_duration_ms: isPhoneCall ? 500 : 700
-              }
-            },
-            proactivity: {
-              proactive_audio: true
-            },
-            // 💚 AFFECTIVE DIALOG: Built-in on gemini-live-2.5-flash-native-audio (GA Dec 2025)
-            // No explicit configuration needed - model automatically understands emotional expressions
-            // Enable session resumption for unlimited session duration
-            // CRITICAL: Always pass { handle: value } - null for new sessions, token for resuming
-            session_resumption: { handle: validatedResumeHandle || null }
-            // 📦 CONTEXT WINDOW COMPRESSION: May be available on gemini-live-2.5-flash-native-audio (GA Dec 2025)
-            // Uncomment to test - enables sliding window for longer conversations
-            // context_window_compression: {
-            //   sliding_window: {}
-            // }
-          }
-        };
+                },
+                temperature: 1.0,
+                top_p: 0.95,
+                top_k: 40,
+                max_output_tokens: 8192
+              },
+              input_audio_transcription: {},
+              output_audio_transcription: {},
+              ...(!validatedResumeHandle && {
+                system_instruction: {
+                  parts: [
+                    {
+                      text: systemInstruction
+                    }
+                  ]
+                }
+              }),
+              realtime_input_config: {
+                automatic_activity_detection: {
+                  disabled: false,
+                  start_of_speech_sensitivity: isPhoneCall ? 'START_SENSITIVITY_LOW' : 'START_SENSITIVITY_HIGH',
+                  end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',
+                  prefix_padding_ms: 20,
+                  silence_duration_ms: isPhoneCall ? 500 : 700
+                }
+              },
+              proactivity: {
+                proactive_audio: true
+              },
+              session_resumption: { handle: validatedResumeHandle || null }
+            }
+          };
+        }
         
         console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
-        console.log(`🤖 [${connectionId}] Model: ${vertexConfig.modelId} - Language: ITALIAN ONLY`);
+        console.log(`🤖 [${connectionId}] Model: ${liveModelId} [${liveApiBackend}] - Language: ITALIAN ONLY`);
         if (isPhoneCall) {
           console.log(`📞 [${connectionId}] PHONE CALL VAD CONFIG:`);
           console.log(`   → start_of_speech_sensitivity: START_SENSITIVITY_LOW (reduces false positives from breaths/noise)`);
@@ -4913,17 +4982,19 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         console.log(setupMessageStr.substring(0, 1000) + (setupMessageStr.length > 1000 ? '...' : ''));
         console.log(`\n📊 Setup Message Stats:`);
+        console.log(`   - Backend: ${liveApiBackend === 'google_ai_studio' ? '🔵 Google AI Studio' : '🟢 Vertex AI'}`);
         console.log(`   - Model path: ${setupMessage.setup.model}`);
         console.log(`   - System instruction length: ${systemInstruction.length} chars (always minimal)`);
         console.log(`   - Prompt mode: ${useFullPrompt ? 'FULL (complete prompt in chunks)' : 'MINIMAL (user data in chunks)'}`);
-        console.log(`   - Response modalities: ${setupMessage.setup.generation_config.response_modalities.join(', ')}`);
-        console.log(`   - Voice: ${setupMessage.setup.generation_config.speech_config.voice_config.prebuilt_voice_config.voice_name}`);
-        console.log(`   - Language: ${setupMessage.setup.generation_config.speech_config.language_code}`);
+        console.log(`   - Response modalities: AUDIO`);
+        console.log(`   - Voice: ${voiceName}`);
+        console.log(`   - Language: it-IT`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
         // 🔍 DEBUG: Track system instruction for "Fresh Text Input" analysis
-        if (!validatedResumeHandle && setupMessage.setup.system_instruction) {
-          const sysInstText = setupMessage.setup.system_instruction.parts[0].text;
+        const sysInstField = setupMessage.setup.system_instruction || setupMessage.setup.systemInstruction;
+        if (!validatedResumeHandle && sysInstField) {
+          const sysInstText = sysInstField.parts[0].text;
           
           // 🔍 NEW: Save system instruction size for breakdown analysis
           sessionSystemInstructionChars = sysInstText.length;
@@ -7412,7 +7483,8 @@ ${compactFeedback}
           console.log(`   4. Invalid WebSocket frame or protocol violation`);
           console.log(`   5. Proxy/firewall interference`);
           console.log(`\n🔧 Debugging info:`);
-          console.log(`   - Model ID: ${vertexConfig.modelId}`);
+          console.log(`   - Backend: ${liveApiBackend}`);
+          console.log(`   - Model ID: ${liveModelId}`);
           console.log(`   - Voice: ${voiceName}`);
           console.log(`   - System instruction length: ${systemInstruction?.length || 0} chars`);
           console.log(`   - Reason buffer length: ${reason.length} bytes`);
@@ -7425,17 +7497,18 @@ ${compactFeedback}
         
         if (code === 1007) {
           console.log(`\n⚠️  ERROR 1007: Request contains an invalid argument`);
+          console.log(`   Backend: ${liveApiBackend}`);
           console.log(`   Possible causes:`);
           console.log(`   1. Invalid model path format`);
           console.log(`   2. Unsupported voice name for the model`);
-          console.log(`   3. Invalid generation_config parameters`);
+          console.log(`   3. Invalid parameter naming (camelCase vs snake_case)`);
           console.log(`   4. System instruction too long or malformed`);
-          console.log(`   5. Invalid response_modalities configuration`);
+          console.log(`   5. Invalid response modalities configuration`);
           console.log(`\n🔧 Troubleshooting steps:`);
-          console.log(`   - Check if model ID is correct: ${vertexConfig.modelId}`);
+          console.log(`   - Check if model ID is correct: ${liveModelId}`);
+          console.log(`   - Backend is: ${liveApiBackend} (${liveApiBackend === 'google_ai_studio' ? 'camelCase params' : 'snake_case params'})`);
           console.log(`   - Verify voice "${voiceName}" is supported by this model`);
           console.log(`   - Check system instruction length: ${systemInstruction?.length || 0} chars`);
-          console.log(`   - Validate all generation_config parameters`);
         }
         
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
@@ -7607,14 +7680,9 @@ ${compactFeedback}
                 pendingFeedbackForAI = null;
               }
 
-              const audioMessage = {
-                realtime_input: {
-                  media_chunks: [{
-                    data: data.toString('base64'),
-                    mime_type: 'audio/pcm'
-                  }]
-                }
-              };
+              const audioMessage = liveApiBackend === 'google_ai_studio' 
+                ? { realtimeInput: { mediaChunks: [{ data: data.toString('base64'), mimeType: 'audio/pcm' }] } }
+                : { realtime_input: { media_chunks: [{ data: data.toString('base64'), mime_type: 'audio/pcm' }] } };
               geminiSession.send(JSON.stringify(audioMessage));
               audioChunksSentSinceLastResponse++;
               lastActivityTimestamp = Date.now();
@@ -7696,14 +7764,9 @@ ${compactFeedback}
             
             // Send to Gemini Live API using raw WebSocket protocol
             if (geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
-              const audioMessage = {
-                realtime_input: {
-                  media_chunks: [{
-                    data: msg.data,  // base64 PCM16
-                    mime_type: 'audio/pcm'
-                  }]
-                }
-              };
+              const audioMessage = liveApiBackend === 'google_ai_studio'
+                ? { realtimeInput: { mediaChunks: [{ data: msg.data, mimeType: 'audio/pcm' }] } }
+                : { realtime_input: { media_chunks: [{ data: msg.data, mime_type: 'audio/pcm' }] } };
               geminiSession.send(JSON.stringify(audioMessage));
               
               // 🔬 DIAGNOSTIC: Track audio chunks sent to Gemini

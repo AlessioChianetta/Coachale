@@ -1120,6 +1120,76 @@ export async function getVertexAITokenForLive(
 }
 
 /**
+ * Get Google AI Studio API key for Live API (native audio)
+ * Uses 3-tier priority: SuperAdmin keys → Consultant's own keys → Environment variable
+ * Returns API key + model ID for Google AI Studio endpoint
+ */
+export async function getGoogleAIStudioKeyForLive(
+  consultantId: string
+): Promise<{ apiKey: string; modelId: string } | null> {
+  try {
+    console.log(`🔍 Getting Google AI Studio key for Live API - consultant ${consultantId}...`);
+
+    let apiKey: string | undefined;
+    let keySource: 'superadmin' | 'user' | 'env' = 'env';
+
+    const [user] = await db
+      .select({
+        id: users.id,
+        geminiApiKeys: users.geminiApiKeys,
+        geminiApiKeyIndex: users.geminiApiKeyIndex,
+        useSuperadminGemini: users.useSuperadminGemini,
+      })
+      .from(users)
+      .where(eq(users.id, consultantId))
+      .limit(1);
+
+    if (user) {
+      if (user.useSuperadminGemini !== false) {
+        const superAdminKeys = await getSuperAdminGeminiKeys();
+        if (superAdminKeys && superAdminKeys.keys.length > 0) {
+          const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+          apiKey = superAdminKeys.keys[index];
+          keySource = 'superadmin';
+          console.log(`🔑 [Live API] Using SuperAdmin Gemini key (${index + 1}/${superAdminKeys.keys.length})`);
+        }
+      }
+
+      if (!apiKey) {
+        const userApiKeys = user.geminiApiKeys || [];
+        const currentIndex = user.geminiApiKeyIndex || 0;
+        if (userApiKeys.length > 0) {
+          const validIndex = currentIndex % userApiKeys.length;
+          apiKey = userApiKeys[validIndex];
+          keySource = 'user';
+          console.log(`🔑 [Live API] Using consultant's Gemini key (${validIndex + 1}/${userApiKeys.length})`);
+        }
+      }
+    }
+
+    if (!apiKey) {
+      apiKey = process.env.GEMINI_API_KEY || "";
+      if (!apiKey) {
+        console.log(`⚠️ No Google AI Studio API key available for Live API`);
+        return null;
+      }
+      keySource = 'env';
+      console.log(`🔑 [Live API] Using environment GEMINI_API_KEY`);
+    }
+
+    console.log(`✅ Got Google AI Studio key for Live API [source: ${keySource}]`);
+
+    return {
+      apiKey,
+      modelId: 'gemini-2.5-flash-native-audio-preview-12-2025',
+    };
+  } catch (error: any) {
+    console.error(`❌ Failed to get Google AI Studio key for Live API:`, error.message);
+    return null;
+  }
+}
+
+/**
  * Get AI provider using 3-tier priority system with client preference
  * 
  * Priority (respecting client's preferredAiProvider):
