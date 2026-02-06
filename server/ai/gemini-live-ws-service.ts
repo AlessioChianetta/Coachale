@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
-import { getVertexAITokenForLive } from './provider-factory';
+import { getVertexAITokenForLive, getAIProvider } from './provider-factory';
 import { 
   convertWebMToPCM, 
   convertPCMToWAV, 
@@ -21,6 +21,8 @@ import { SalesManagerAgent } from './sales-manager-agent';
 import { generateDiscoveryRec, type DiscoveryRec } from './discovery-rec-generator';
 import type { SalesManagerParams, SalesManagerAnalysis, BusinessContext } from './sales-manager-agent';
 import { getTemplateById, resolveTemplateVariables, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
+import { VoiceBookingSupervisor, ConversationMessage as BookingMessage, AvailableSlot } from '../voice/voice-booking-supervisor';
+import { executeConsultationTool } from './consultation-tool-executor';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
@@ -1558,6 +1560,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // Instead of injecting with role: 'model' (which Gemini ignores), we append the
     // feedback to the next user message so it gets processed naturally.
     let pendingFeedbackForAI: string | null = null;
+    let bookingSupervisor: VoiceBookingSupervisor | null = null;
+    let bookingAvailableSlots: AvailableSlot[] = [];
     
     // 📞 VOICE CALL TRANSCRIPT UPDATE: Debounced function to update transcript in DB
     let transcriptUpdateTimeout: NodeJS.Timeout | null = null;
@@ -4330,7 +4334,43 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`🗓️ [${connectionId}] CONSULENZA SETTIMANALE - Prefix aggiunto al prompt`);
         }
       }
-      
+
+        if (isPhoneCall && consultantId) {
+          try {
+            const slotsResult = await executeConsultationTool(
+              "getAvailableSlots",
+              { startDate: new Date().toISOString().slice(0, 10) },
+              userId || 'voice_anonymous',
+              consultantId
+            );
+            if (slotsResult.success && slotsResult.result?.availableSlots) {
+              bookingAvailableSlots = slotsResult.result.availableSlots.map((s: any) => ({
+                date: s.date,
+                dayOfWeek: s.dayOfWeek,
+                time: s.time,
+                dateFormatted: s.dateFormatted,
+                duration: s.duration || 60,
+              }));
+              console.log(`📅 [${connectionId}] Pre-loaded ${bookingAvailableSlots.length} available slots for booking supervisor`);
+            }
+          } catch (slotErr: any) {
+            console.warn(`⚠️ [${connectionId}] Could not pre-load slots for booking:`, slotErr.message);
+          }
+
+          bookingSupervisor = new VoiceBookingSupervisor({
+            consultantId,
+            clientId: userId || null,
+            voiceCallId: voiceCallId || '',
+            outboundTargetPhone: phoneCallerId || null,
+            availableSlots: bookingAvailableSlots,
+          });
+          console.log(`📋 [${connectionId}] VoiceBookingSupervisor initialized (isClient: ${!!userId}, slots: ${bookingAvailableSlots.length})`);
+
+          const bookingPromptSection = bookingSupervisor.getBookingPromptSection();
+          systemInstruction = systemInstruction + '\n\n' + bookingPromptSection;
+          console.log(`📋 [${connectionId}] Booking prompt section appended (${bookingPromptSection.length} chars)`);
+        }
+
       // Log the system prompt (FULL for sales_agent minimal, truncated otherwise)
       if (customPrompt) {
         console.log(`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -6251,6 +6291,63 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               
               // 📞 Update voice call transcript in real-time
               scheduleTranscriptUpdate();
+
+              if (bookingSupervisor && isPhoneCall) {
+                (async () => {
+                  try {
+                    const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    try {
+                      const bookingMessages: BookingMessage[] = conversationMessages.map(m => ({
+                        role: m.role,
+                        transcript: m.transcript,
+                        timestamp: m.timestamp,
+                      }));
+                      const result = await bookingSupervisor!.analyzeTranscript(bookingMessages, aiClient);
+                      
+                      if (result.action === 'booking_created' && result.notifyMessage) {
+                        console.log(`\n📅 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`📅 [${connectionId}] BOOKING CONFIRMED! Injecting notification to Gemini`);
+                        console.log(`📅   Booking ID: ${result.bookingId}`);
+                        console.log(`📅   Type: ${result.bookingType}`);
+                        console.log(`📅   Meet Link: ${result.googleMeetLink || 'N/A'}`);
+                        console.log(`📅 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                        
+                        if (geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
+                          const bookingNotification = {
+                            clientContent: {
+                              turns: [{
+                                role: 'user',
+                                parts: [{ text: result.notifyMessage }]
+                              }],
+                              turnComplete: true
+                            }
+                          };
+                          geminiSession.send(JSON.stringify(bookingNotification));
+                          console.log(`📅 [${connectionId}] Booking confirmation injected to Gemini Live`);
+                        }
+                      } else if (result.action === 'booking_failed' && result.errorMessage) {
+                        console.log(`❌ [${connectionId}] Booking failed: ${result.errorMessage}`);
+                        if (geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
+                          const errorNotification = {
+                            clientContent: {
+                              turns: [{
+                                role: 'user',
+                                parts: [{ text: `[BOOKING_FAILED] Errore nella prenotazione: ${result.errorMessage}. Comunica al chiamante che c'è stato un problema e proponi di riprovare con un altro orario.` }]
+                              }],
+                              turnComplete: true
+                            }
+                          };
+                          geminiSession.send(JSON.stringify(errorNotification));
+                        }
+                      }
+                    } finally {
+                      if (cleanup) cleanup();
+                    }
+                  } catch (bookingErr: any) {
+                    console.error(`❌ [${connectionId}] Booking supervisor error:`, bookingErr.message);
+                  }
+                })();
+              }
               
               // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
               // 🎯 SALES SCRIPT TRACKING - Track AI message

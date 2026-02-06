@@ -28,6 +28,8 @@ import {
   AlertCircle,
   Ban,
   Volume2,
+  CalendarCheck,
+  ExternalLink,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -519,12 +521,43 @@ export default function ConsultantVoiceCallDetailPage() {
                     {call.metadata && Object.keys(call.metadata).length > 0 && (
                       <>
                         <Separator className="my-4" />
-                        <div>
-                          <div className="text-sm text-muted-foreground mb-2">Metadata</div>
-                          <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
-                            {JSON.stringify(call.metadata, null, 2)}
-                          </pre>
-                        </div>
+                        {call.metadata.bookingCreated ? (
+                          <div className="border border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <CalendarCheck className="h-5 w-5 text-green-600" />
+                              <span className="font-semibold text-green-700 dark:text-green-400">Appuntamento Creato</span>
+                              <Badge variant="default" className="bg-green-600 text-white text-[10px] ml-auto">
+                                {call.metadata.bookingType === 'consultation' ? 'Consulenza' : 'Appuntamento'}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">ID Prenotazione:</span>
+                                <span className="ml-2 font-mono text-xs">{call.metadata.bookingId}</span>
+                              </div>
+                              {call.metadata.googleMeetLink && (
+                                <div>
+                                  <span className="text-muted-foreground">Google Meet:</span>
+                                  <a
+                                    href={call.metadata.googleMeetLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="ml-2 text-blue-600 hover:underline inline-flex items-center gap-1"
+                                  >
+                                    Apri link <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="text-sm text-muted-foreground mb-2">Metadata</div>
+                            <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                              {JSON.stringify(call.metadata, null, 2)}
+                            </pre>
+                          </div>
+                        )}
                       </>
                     )}
                   </CardContent>

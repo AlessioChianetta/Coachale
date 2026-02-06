@@ -898,7 +898,7 @@ export async function createBookingRecord(
   consultantId: string,
   conversationId: string | null,
   data: BookingData,
-  source: 'whatsapp' | 'public_link' | 'instagram',
+  source: 'whatsapp' | 'public_link' | 'instagram' | 'voice_call',
   publicConversationId?: string | null,
   instagramData?: { instagramUserId?: string | null; instagramConversationId?: string | null; agentConfigId?: string | null }
 ): Promise<typeof appointmentBookings.$inferSelect | null> {
@@ -1040,8 +1040,8 @@ export async function processFullBooking(
   consultantId: string,
   conversationId: string | null,
   data: BookingData,
-  source: 'whatsapp' | 'public_link',
-  agentConfigId?: string  // NEW: Optional agent ID to use agent's calendar
+  source: 'whatsapp' | 'public_link' | 'voice_call',
+  agentConfigId?: string
 ): Promise<BookingCreationResult> {
   console.log(`\n🚀 [BOOKING SERVICE] Processing full booking`);
   console.log(`   Source: ${source}`);

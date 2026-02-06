@@ -154,6 +154,13 @@ interface VoiceCall {
   ai_task_recurrence: string | null;
   svc_direct_match: string | null;
   svc_phone_match: string | null;
+  metadata: {
+    bookingCreated?: boolean;
+    bookingId?: string;
+    bookingType?: 'consultation' | 'appointment';
+    googleMeetLink?: string;
+    [key: string]: any;
+  } | null;
 }
 
 interface VoiceStats {
@@ -2557,11 +2564,19 @@ export default function ConsultantVoiceCallsPage() {
                               </TableCell>
                               <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
                               <TableCell>
-                                {call.outcome ? (
-                                  <Badge variant="outline">{call.outcome}</Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {call.outcome ? (
+                                    <Badge variant="outline">{call.outcome}</Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                  {call.metadata?.bookingCreated && (
+                                    <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white text-[10px] px-1.5 py-0 gap-1">
+                                      <CalendarCheck className="h-3 w-3" />
+                                      Appuntamento
+                                    </Badge>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell>
                                 <Link href={`/consultant/voice-calls/${call.id}`}>
