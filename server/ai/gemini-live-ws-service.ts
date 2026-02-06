@@ -4832,6 +4832,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         greetingTriggered: false,
       };
       
+      let pendingChunksSend: (() => void) | null = null;
+      
       geminiSession.on('open', () => {
         latencyTracker.geminiOpenTime = Date.now();
         console.log(`✅ [${connectionId}] Gemini Live WebSocket opened`);
@@ -5010,7 +5012,6 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         console.log(`✅ [${connectionId}] Setup message SENT to Gemini WebSocket - awaiting response...`);
         console.log(`⏱️ [LATENCY] Setup sent: +${latencyTracker.setupSentTime - latencyTracker.geminiOpenTime}ms from WS open`);
         
-        let pendingChunksSend: (() => void) | null = null;
         const isResuming = !!validatedResumeHandle;
         
         if (userDataContext && !isResuming) {
