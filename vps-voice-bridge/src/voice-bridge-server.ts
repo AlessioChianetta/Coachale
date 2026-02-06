@@ -235,27 +235,41 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
   audioOutputQueues.set(session.id, []);
 
+  let lastTickNs = process.hrtime.bigint();
+  const FRAME_NS = BigInt(20_000_000);
+
   const pacedInterval = setInterval(() => {
     const s = sessionManager.getSession(session.id);
     if (!s || s.state !== 'active' || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    const queue = audioOutputQueues.get(session.id);
+    const now = process.hrtime.bigint();
+    const elapsed = now - lastTickNs;
+    const framesToSend = Number(elapsed / FRAME_NS);
 
-    if (queue && queue.length > 0) {
-      const chunk = queue.shift()!;
-      s.fsWebSocket.send(chunk, { binary: true });
-    } else if (isBackgroundLoaded()) {
-      const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
-      if (bgChunk) {
-        s.fsWebSocket.send(bgChunk, { binary: true });
+    if (framesToSend < 1) return;
+
+    lastTickNs += FRAME_NS * BigInt(framesToSend);
+
+    const queue = audioOutputQueues.get(session.id);
+    const maxCatchUp = Math.min(framesToSend, 3);
+
+    for (let f = 0; f < maxCatchUp; f++) {
+      if (queue && queue.length > 0) {
+        const chunk = queue.shift()!;
+        s.fsWebSocket.send(chunk, { binary: true });
+      } else if (isBackgroundLoaded()) {
+        const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
+        if (bgChunk) {
+          s.fsWebSocket.send(bgChunk, { binary: true });
+        }
       }
     }
-  }, 20);
+  }, 15);
 
   bgTimers.set(session.id, pacedInterval);
-  log.info(`🎵 Paced audio timer started (jitter buffer)`, { sessionId: session.id.slice(0, 8) });
+  log.info(`🎵 Precision-paced audio timer started`, { sessionId: session.id.slice(0, 8) });
 
   try {
     const replitClient = new ReplitWSClient({
