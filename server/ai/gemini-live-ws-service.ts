@@ -4721,18 +4721,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 ]
               }
             }),
-            // 🎙️ BARGE-IN: Automatic Voice Activity Detection (VAD) for natural interruptions
-            // Documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#automaticactivitydetection
-            // When user speaks while AI is talking, Gemini sends `interrupted: true` in serverContent
-            // ⚙️ OPTIMIZED: Balanced sensitivity for natural speech without excessive fragmentation
-            // NOTE: Valid values are only HIGH or LOW (MEDIUM does not exist!)
             realtime_input_config: {
               automatic_activity_detection: {
-                disabled: false,  // Enable automatic VAD
-                start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',  // HIGH = instant barge-in when user starts speaking
-                end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',       // LOW = less fragmentation, waits longer before ending speech detection
-                prefix_padding_ms: 500,        // 500ms buffer before speech (balanced: not too long = latency, not too short = cuts onset)
-                silence_duration_ms: 700       // 700ms silence = end of utterance (faster than 1000ms but still complete phrases)
+                disabled: false,
+                start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
+                end_of_speech_sensitivity: isPhoneCall ? 'END_SENSITIVITY_HIGH' : 'END_SENSITIVITY_LOW',
+                prefix_padding_ms: isPhoneCall ? 300 : 500,
+                silence_duration_ms: isPhoneCall ? 500 : 700
               }
             },
             // 🔊 PROACTIVE AUDIO: Available in Preview on gemini-live-2.5-flash-native-audio (GA Dec 2025)
