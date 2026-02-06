@@ -1464,6 +1464,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
 
     const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneInstructionType, phoneScheduledCallId } = authResult;
 
+    const reqUrl = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const incomingSilentStreak = parseInt(reqUrl.searchParams.get('silentStreak') || '0', 10) || 0;
+
     // Validazione: consultantId è obbligatorio per Live Mode (except sales_agent and consultation_invite)
     if (!consultantId && mode !== 'sales_agent' && mode !== 'consultation_invite') {
       console.error(`❌ [${connectionId}] Client ${userId} has no consultant assigned`);
@@ -1551,6 +1554,13 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let goAwayReceived = false;
     let geminiReconnectAttempts = 0;
     const MAX_GEMINI_RECONNECT_ATTEMPTS = 8;
+    
+    let turnsInCurrentSegment = 0;
+    let consecutiveSilentResumes = incomingSilentStreak;
+    const MAX_CONSECUTIVE_SILENT_RESUMES = 2;
+    if (incomingSilentStreak > 0) {
+      console.log(`🔇 [${connectionId}] Inherited silent streak from previous session: ${incomingSilentStreak}`);
+    }
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 💰 VERTEX AI LIVE API - Official Pricing (Nov 2024)
@@ -6554,7 +6564,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 userFinishedSpeakingTime = Date.now(); // ⏱️ TURN LATENCY: mark when user stopped
                 turnLatencyMeasured = false; // Reset for this turn
                 turnCount++;
-                console.log(`✅ [${connectionId}] isFinal received - user finished speaking (turn #${turnCount})`);
+                turnsInCurrentSegment++;
+                console.log(`✅ [${connectionId}] isFinal received - user finished speaking (turn #${turnCount}, segment turn #${turnsInCurrentSegment})`);
                 
                 // Reset VAD buffer on final
                 vadConcatBuffer = '';
@@ -7769,11 +7780,45 @@ ${compactFeedback}
         // The VPS bridge should open a NEW connection with the resume handle, creating a fresh session.
         if (goAwayReceived && isPhoneCall && lastSessionHandle && clientWs.readyState === WebSocket.OPEN) {
           geminiReconnectAttempts++;
+          
+          if (turnsInCurrentSegment === 0) {
+            consecutiveSilentResumes++;
+            console.log(`🔇 [${connectionId}] Silent segment detected (no user speech in last ~10 min) - consecutive: ${consecutiveSilentResumes}/${MAX_CONSECUTIVE_SILENT_RESUMES}`);
+          } else {
+            consecutiveSilentResumes = 0;
+          }
+          
+          if (consecutiveSilentResumes >= MAX_CONSECUTIVE_SILENT_RESUMES) {
+            console.log(`\n🚫━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🚫 [${connectionId}] CALL TERMINATED - ${MAX_CONSECUTIVE_SILENT_RESUMES} consecutive silent resumes`);
+            console.log(`   → No user speech detected for ~${MAX_CONSECUTIVE_SILENT_RESUMES * 10} minutes`);
+            console.log(`   → Likely abandoned call - closing to save API costs`);
+            console.log(`🚫━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            
+            try {
+              clientWs.send(JSON.stringify({
+                type: 'call_terminated',
+                reason: 'no_user_activity',
+                message: 'Call ended due to prolonged inactivity',
+                silentMinutes: MAX_CONSECUTIVE_SILENT_RESUMES * 10
+              }));
+              clientWs.close(1000, 'No user activity detected');
+            } catch (e) {
+              console.error(`❌ [${connectionId}] Failed to send termination message:`, e);
+            }
+            
+            goAwayReceived = false;
+          } else {
+          
+          const segmentTurns = turnsInCurrentSegment;
+          turnsInCurrentSegment = 0;
+          
           console.log(`\n📞━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           console.log(`📞 [${connectionId}] PHONE CALL SESSION EXPIRED - SENDING RESUME HANDLE TO VPS`);
           console.log(`   → GoAway was received, Gemini closed after 10-min timeout`);
           console.log(`   → Attempt: ${geminiReconnectAttempts}/${MAX_GEMINI_RECONNECT_ATTEMPTS}`);
           console.log(`   → Resume handle available: ${lastSessionHandle.substring(0, 20)}...`);
+          console.log(`   → User spoke ${segmentTurns} times in last segment (silent streak: ${consecutiveSilentResumes})`);
           console.log(`   → VPS should open NEW WebSocket to Replit with resumeHandle param`);
           console.log(`   → FreeSWITCH call should stay alive during reconnection gap`);
           console.log(`   → This connection's cleanup will proceed normally below`);
@@ -7786,6 +7831,7 @@ ${compactFeedback}
               resumeHandle: lastSessionHandle,
               attempt: geminiReconnectAttempts,
               maxAttempts: MAX_GEMINI_RECONNECT_ATTEMPTS,
+              silentStreak: consecutiveSilentResumes,
               action: 'KEEP_CALL_ALIVE_AND_RECONNECT'
             }));
           } catch (e) {
@@ -7793,6 +7839,7 @@ ${compactFeedback}
           }
           
           goAwayReceived = false;
+          }
           // NOTE: Cleanup continues below - this connection is done.
           // VPS bridge must handle 'gemini_reconnecting' message by opening a new WS connection
           // with the resumeHandle as query parameter. Do NOT close clientWs here.

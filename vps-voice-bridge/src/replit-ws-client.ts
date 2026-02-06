@@ -31,6 +31,7 @@ private scheduledCallId?: string;
 
   private _isReconnecting = false;
   private pendingResumeHandle: string | null = null;
+  private pendingSilentStreak = 0;
   private reconnectAttempt = 0;
 
   constructor(options: ReplitClientOptions) {
@@ -49,7 +50,7 @@ this.scheduledCallId = options.scheduledCallId;
     return this._isReconnecting;
   }
 
-  async connect(resumeHandle?: string): Promise<void> {
+  async connect(resumeHandle?: string, silentStreak?: number): Promise<void> {
     const mode = this.options.mode || 'phone_service';
     const voice = this.options.voice || config.voice.voiceId;
 
@@ -61,9 +62,13 @@ if (this.scheduledCallId) {
 
     if (resumeHandle) {
       wsUrl += `&resumeHandle=${encodeURIComponent(resumeHandle)}`;
+      if (silentStreak && silentStreak > 0) {
+        wsUrl += `&silentStreak=${silentStreak}`;
+      }
       log.info(`🔄 Connecting with resumeHandle for session resume`, {
         sessionId: this.sessionId.slice(0, 8),
         handlePreview: resumeHandle.substring(0, 20) + '...',
+        silentStreak: silentStreak || 0,
       });
     }
 
@@ -173,6 +178,17 @@ if (this.scheduledCallId) {
         return;
       }
 
+      if (message.type === 'call_terminated') {
+        log.info(`\n🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        log.info(`🚫 [CALL TERMINATED] ${message.reason}: ${message.message}`);
+        log.info(`🚫  Silent for ~${message.silentMinutes} minutes - abandoned call detected`);
+        log.info(`🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        this.pendingResumeHandle = null;
+        this._isReconnecting = false;
+        this.options.onClose();
+        return;
+      }
+
       if (message.type === 'gemini_reconnecting') {
         this.handleGeminiReconnecting(message);
         return;
@@ -199,7 +215,8 @@ if (this.scheduledCallId) {
   }
 
   private handleGeminiReconnecting(message: any): void {
-    const { resumeHandle, attempt, maxAttempts } = message;
+    const { resumeHandle, attempt, maxAttempts, silentStreak } = message;
+    this.pendingSilentStreak = silentStreak || 0;
 
     log.info(`\n🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     log.info(`🔄 [SESSION RESUME] Gemini session timeout - reconnecting`);
@@ -244,13 +261,14 @@ if (this.scheduledCallId) {
     log.info(`🔄 Executing reconnect with resume handle...`, {
       sessionId: this.sessionId.slice(0, 8),
       attempt: this.reconnectAttempt,
+      silentStreak: this.pendingSilentStreak,
     });
 
     const RECONNECT_DELAY_MS = 500;
     await new Promise(resolve => setTimeout(resolve, RECONNECT_DELAY_MS));
 
     try {
-      await this.connect(resumeHandle);
+      await this.connect(resumeHandle, this.pendingSilentStreak);
     } catch (error) {
       log.error(`❌ Reconnect failed`, {
         sessionId: this.sessionId.slice(0, 8),
