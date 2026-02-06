@@ -4930,7 +4930,10 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 temperature: 1.0,
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 8192
+                maxOutputTokens: 8192,
+                thinkingConfig: {
+                  thinkingBudget: 128
+                }
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
