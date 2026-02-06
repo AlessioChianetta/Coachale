@@ -3282,7 +3282,8 @@ export const appointmentBookings = pgTable("appointment_bookings", {
   conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }),
   publicConversationId: varchar("public_conversation_id"), // For public link bookings (references whatsappAgentConsultantConversations)
   instagramConversationId: varchar("instagram_conversation_id"), // For Instagram DM bookings
-  source: text("source").$type<"whatsapp" | "public_link" | "instagram" | "public_page">().default("whatsapp").notNull(), // Booking source
+  source: text("source").$type<"whatsapp" | "public_link" | "instagram" | "public_page" | "voice_call">().default("whatsapp").notNull(),
+  voiceCallId: varchar("voice_call_id"),
   instagramUserId: text("instagram_user_id"), // Instagram user ID (IGSID) for cross-channel booking detection
   clientPhone: text("client_phone"), // Nullable for public link/Instagram bookings
   clientName: text("client_name"),
