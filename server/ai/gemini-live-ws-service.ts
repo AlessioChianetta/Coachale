@@ -4346,8 +4346,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               agentId || undefined
             );
             console.log(`📅 [${connectionId}] Slot loading: agentId=${agentId || 'none (using consultant global settings)'}`);
-            if (slotsResult.success && slotsResult.result?.availableSlots) {
-              bookingAvailableSlots = slotsResult.result.availableSlots.map((s: any) => ({
+            if (slotsResult.success && slotsResult.result?.slots) {
+              bookingAvailableSlots = slotsResult.result.slots.map((s: any) => ({
                 date: s.date,
                 dayOfWeek: s.dayOfWeek,
                 time: s.time,
