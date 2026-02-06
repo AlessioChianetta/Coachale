@@ -4355,6 +4355,11 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 duration: s.duration || 60,
               }));
               console.log(`📅 [${connectionId}] Pre-loaded ${bookingAvailableSlots.length} available slots for booking supervisor`);
+              if (bookingAvailableSlots.length > 0) {
+                console.log(`📅 [${connectionId}] First slot: ${bookingAvailableSlots[0].dayOfWeek} ${bookingAvailableSlots[0].date} ${bookingAvailableSlots[0].time}`);
+              }
+            } else {
+              console.warn(`⚠️ [${connectionId}] Slot loading returned 0 slots: success=${slotsResult.success}, error=${slotsResult.error || 'none'}, resultKeys=${slotsResult.result ? Object.keys(slotsResult.result).join(',') : 'null'}`);
             }
           } catch (slotErr: any) {
             console.warn(`⚠️ [${connectionId}] Could not pre-load slots for booking:`, slotErr.message);

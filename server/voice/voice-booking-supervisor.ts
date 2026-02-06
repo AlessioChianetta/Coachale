@@ -274,7 +274,18 @@ export class VoiceBookingSupervisor {
       ? `data=${lastProposedSlot.date}, ora=${lastProposedSlot.time} (proposto al turno ${lastProposedSlot.proposedAtTurn})`
       : "nessuno";
 
+    const now = new Date();
+    const dayNames = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+    const todayFormatted = now.toISOString().slice(0, 10);
+    const todayDayName = dayNames[now.getDay()];
+
     return `Sei un analizzatore di trascrizioni vocali per un sistema di prenotazione appuntamenti.
+
+DATA ODIERNA: ${todayFormatted} (${todayDayName})
+Usa questa data per risolvere riferimenti relativi come "domani", "dopodomani", "lunedì prossimo", "la settimana prossima", ecc.
+- "domani" = il giorno dopo ${todayFormatted}
+- "dopodomani" = due giorni dopo ${todayFormatted}
+- "lunedì prossimo" = il prossimo lunedì dopo oggi
 
 STATO ATTUALE:
 - Fase: ${stage}
@@ -460,7 +471,14 @@ REGOLE CRITICHE:
     const confirmStep = isClient ? "3" : "4";
     const waitStep = isClient ? "4" : "5";
 
+    const now = new Date();
+    const dayNames = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+    const todayFormatted = now.toISOString().slice(0, 10);
+    const todayDayName = dayNames[now.getDay()];
+
     return `## GESTIONE APPUNTAMENTI
+
+Data odierna: ${todayFormatted} (${todayDayName})
 
 Se il chiamante desidera prenotare un appuntamento, segui queste istruzioni:
 
