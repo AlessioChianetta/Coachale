@@ -4917,8 +4917,10 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 topK: 40,
                 maxOutputTokens: 8192
               },
-              inputAudioTranscription: {},
-              outputAudioTranscription: {},
+              // ⚠️ TEST A: Removed inputAudioTranscription & outputAudioTranscription
+              // Known bug #1212: transcription + native-audio model = 1007 error
+              // inputAudioTranscription: {},
+              // outputAudioTranscription: {},
               ...(!validatedResumeHandle && {
                 systemInstruction: {
                   parts: [
