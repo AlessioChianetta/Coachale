@@ -1,0 +1,85 @@
+Sì: quello che hai scritto è già la “nuova architettura” giusta per la voce. E, cosa importante, non rompe WhatsApp: WhatsApp resta com’è (Sistema B), la voce aggiunge un layer in mezzo.
+
+Ti dico come la vedo io “in versione finale”, e le 6 cose che sistemerei nella spec per evitare bug/UX brutta in chiamata.
+
+Nuova architettura (definitiva) in 1 schema
+WhatsApp (rimane uguale)
+WA message -> message-processor -> booking-intent-detector
+          -> extract/accumulator/validate (booking-service)
+          -> createBookingRecord + GoogleCalendar
+
+Voce (nuovo flusso)
+Telefono -> FreeSWITCH/Bridge -> gemini-live-ws-service (conversazione live)
+                           -> (dopo ogni turno AI finito)
+                           -> VoiceBookingSupervisor (analisi + state machine)
+                           -> BookingExecutor (side-effects)
+                                - clienti: consultation-tool-executor (Sistema A)
+                                - lead: booking-service createBookingRecord (Sistema B)
+                           -> ritorno esito -> "system injection" a Gemini Live
+
+
+Regola d’oro: Gemini Live non prenota mai. Parla soltanto.
+Il booking lo fa solo il server tramite Supervisor+Executor.
+
+6 cose che aggiungerei/modificherei nella tua RDP (per farla “blindata”)
+1) “AI non deve MAI dire ‘ho prenotato’ finché non arriva il segnale server”
+
+Nel prompt di Gemini Live aggiungi una regola durissima tipo:
+
+“Non affermare che l’appuntamento è confermato finché non ricevi un messaggio di sistema BOOKING_CONFIRMED dal server.”
+
+Sennò succede questo:
+
+AI: “Perfetto ho confermato”
+
+server: errore calendario / slot occupato
+
+UX: perdita fiducia totale
+
+2) Stato “BOOKING_IN_PROGRESS” (manca)
+
+Nel supervisor aggiungi uno stato intermedio o flag:
+
+bookingInProgress: true
+
+Così eviti:
+
+2 trigger se arrivano due turni consecutivi “sì confermo”
+
+retry incontrollati durante lag
+
+3) “Confirmed = true” deve dipendere da ultimo slot proposto
+
+La tua regola è buona (“sì” dopo che l’AI ripete data/ora), ma in voce serve ancora più robusto:
+
+Salva in state:
+
+lastProposedSlot: {date,time}
+
+E consideri “conferma” valida solo se:
+
+l’utente conferma quel lastProposedSlot
+
+e non c’è “anzi / aspetta” dopo
+
+Questo elimina il bug classico:
+
+si parla di altro, utente dice “sì”
+
+supervisor prende “sì” come conferma booking
+
+4) Pre-caricare tutti gli slot nel system prompt: occhio al token bloat
+
+Funziona, ma rischi:
+
+prompt enorme
+
+Gemini Live meno reattivo
+
+costi/latenza
+
+Meglio:
+
+iniettare solo un “catalogo breve”: 6–12 slot top
+
+e tenere la lista completa lato server (supervisor), non nel prompt

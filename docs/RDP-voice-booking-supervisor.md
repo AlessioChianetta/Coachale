@@ -12,14 +12,16 @@
 1. [Analisi dei Due Sistemi di Booking Esistenti](#1-analisi-dei-due-sistemi-di-booking-esistenti)
 2. [Perché NON Tool Function Real-Time](#2-perché-non-tool-function-real-time)
 3. [Architettura LLM Supervisore](#3-architettura-llm-supervisore)
-4. [State Machine del Supervisore](#4-state-machine-del-supervisore)
-5. [Tabella Componenti Riusati](#5-tabella-componenti-riusati)
-6. [Diagrammi di Flusso](#6-diagrammi-di-flusso)
-7. [Casistiche Complete](#7-casistiche-complete)
-8. [Modifiche per File](#8-modifiche-per-file)
-9. [Schema Database](#9-schema-database)
-10. [Frontend UI](#10-frontend-ui)
-11. [Step di Implementazione](#11-step-di-implementazione)
+4. [Regole Architetturali Blindate](#4-regole-architetturali-blindate)
+5. [State Machine del Supervisore](#5-state-machine-del-supervisore)
+6. [Tabella Componenti Riusati](#6-tabella-componenti-riusati)
+7. [Diagrammi di Flusso](#7-diagrammi-di-flusso)
+8. [Casistiche Complete](#8-casistiche-complete)
+9. [Logging Audit Obbligatorio](#9-logging-audit-obbligatorio)
+10. [Modifiche per File](#10-modifiche-per-file)
+11. [Schema Database](#11-schema-database)
+12. [Frontend UI](#12-frontend-ui)
+13. [Step di Implementazione](#13-step-di-implementazione)
 
 ---
 
@@ -227,9 +229,200 @@ validateBookingData() → createBookingRecord() → createGoogleCalendarBooking(
 
 ---
 
-## 4. STATE MACHINE DEL SUPERVISORE
+## 4. REGOLE ARCHITETTURALI BLINDATE
 
-### 4.1 Stati
+Queste 6 regole sono non-negoziabili. Violarne una = bug in produzione.
+
+### REGOLA 1: L'AI non deve MAI dire "ho prenotato" prima del segnale server
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  REGOLA DURISSIMA NEL SYSTEM PROMPT DI GEMINI LIVE                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  "NON affermare MAI che l'appuntamento è confermato, creato,           │
+│   prenotato, o fissato. Non dire 'ho confermato', 'è prenotato',      │
+│   'ti mando l'invito'. Puoi dire 'sto verificando', 'un momento'.    │
+│   Dirai la conferma SOLO quando riceverai un messaggio di sistema     │
+│   [BOOKING_CONFIRMED] dal server."                                     │
+│                                                                         │
+│  PERCHÉ:                                                                │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │  SENZA questa regola:                                          │    │
+│  │  AI: "Perfetto, ho confermato l'appuntamento!"                │    │
+│  │  Server: errore calendario / slot occupato                     │    │
+│  │  → Utente crede di avere un appuntamento che NON ESISTE        │    │
+│  │  → Perdita fiducia totale nel servizio                         │    │
+│  │                                                                │    │
+│  │  CON questa regola:                                            │    │
+│  │  AI: "Perfetto, sto verificando la disponibilità..."          │    │
+│  │  Server: crea booking → inietta [BOOKING_CONFIRMED]            │    │
+│  │  AI: "Confermato! Hai l'appuntamento martedì alle 14!"        │    │
+│  │  → Zero rischio di false conferme                              │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                                                         │
+│  IMPLEMENTAZIONE:                                                       │
+│  - Nel system prompt: regola esplicita in grassetto                    │
+│  - Nel supervisor: dopo booking riuscito, inietta via clientContent:   │
+│    "[BOOKING_CONFIRMED] Appuntamento creato per {data} alle {ora}.    │
+│     Comunica la conferma al chiamante con entusiasmo."                │
+│  - Gemini Live legge il messaggio di sistema e lo comunica a voce     │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### REGOLA 2: Stato BOOKING_IN_PROGRESS (anti-doppio-trigger)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  PROBLEMA: Due turni consecutivi "sì confermo" + lag di rete           │
+│  → Il supervisor potrebbe triggerare il booking DUE VOLTE               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  SOLUZIONE: Flag bookingInProgress nel supervisor state                 │
+│                                                                         │
+│  analyzeTranscript() {                                                  │
+│    if (this.state.bookingInProgress) {                                 │
+│      console.log('⏳ Booking già in corso, skip analisi');             │
+│      return { action: 'none' };                                        │
+│    }                                                                    │
+│                                                                         │
+│    if (newStage === 'confermato') {                                     │
+│      this.state.bookingInProgress = true;  // LOCK                     │
+│      try {                                                              │
+│        const result = await this.executeBooking();                     │
+│        this.state.bookingInProgress = false;                           │
+│        return result;                                                   │
+│      } catch (err) {                                                   │
+│        this.state.bookingInProgress = false;                           │
+│        return { action: 'booking_failed', errorMessage: err.message }; │
+│      }                                                                  │
+│    }                                                                    │
+│  }                                                                      │
+│                                                                         │
+│  PROTEGGE DA:                                                           │
+│  - 2 "sì" consecutivi → solo il primo triggera                        │
+│  - Retry incontrollati durante lag API/calendario                      │
+│  - Race condition se analyzeTranscript() è chiamato in parallelo       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### REGOLA 3: Conferma valida solo su lastProposedSlot
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  PROBLEMA: L'utente dice "sì" in un contesto non-booking               │
+│  → Il supervisor lo interpreta come conferma appuntamento               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  SOLUZIONE: Tracciare lastProposedSlot nel state                        │
+│                                                                         │
+│  extractedData: {                                                       │
+│    ...                                                                  │
+│    lastProposedSlot: {                                                  │
+│      date: string;    // "2026-02-12"                                  │
+│      time: string;    // "15:00"                                       │
+│      proposedAtTurn: number;  // indice del turno                      │
+│    } | null;                                                            │
+│  }                                                                      │
+│                                                                         │
+│  REGOLA PER IL PROMPT DI ANALISI:                                       │
+│  "confirmed = true SOLO SE:                                             │
+│   1. L'AI ha proposto esplicitamente uno slot nella sua ultima         │
+│      risposta (es: 'Mercoledì 12 alle 15:00, confermi?')              │
+│   2. L'utente ha risposto affermativamente SUBITO DOPO                 │
+│   3. NON c'è 'anzi', 'aspetta', 'no' dopo il 'sì'                    │
+│   4. Lo slot confermato corrisponde a lastProposedSlot"                 │
+│                                                                         │
+│  ESEMPIO BUG EVITATO:                                                   │
+│  AI: "Ti piace il nostro servizio?"                                    │
+│  Utente: "Sì, molto!"                                                 │
+│  → SENZA lastProposedSlot: supervisor interpreta come conferma!        │
+│  → CON lastProposedSlot: no slot proposto in questo turno → skip      │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### REGOLA 4: Slot nel prompt = catalogo breve (max 6-12)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  PROBLEMA: Iniettare TUTTI gli slot disponibili nel system prompt       │
+│  → Prompt enorme, Gemini Live più lento, costi token, latenza          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  SOLUZIONE: "Catalogo breve" di 6-12 slot nel prompt                   │
+│                                                                         │
+│  NEL SYSTEM PROMPT:                                                     │
+│  "Ecco i prossimi slot disponibili:                                    │
+│   - Lun 10 Feb: 10:00, 14:00                                          │
+│   - Mar 11 Feb: 09:00, 11:00, 15:00                                   │
+│   - Mer 12 Feb: 10:00, 15:00, 17:00                                   │
+│   - Gio 13 Feb: 11:00, 14:00                                          │
+│   Se il chiamante chiede un orario non in lista,                       │
+│   di' che verificherai e proponi quelli disponibili."                   │
+│                                                                         │
+│  NEL SUPERVISOR (lato server): lista COMPLETA                          │
+│  - Il supervisor ha TUTTI gli slot                                      │
+│  - Se l'utente propone una data non in lista breve ma presente         │
+│    nella lista completa server-side → il supervisor la accetta         │
+│  - Se l'utente propone una data non in NESSUNA lista → il supervisor  │
+│    può fare un check real-time (validateBookingData)                    │
+│                                                                         │
+│  IMPLEMENTAZIONE:                                                       │
+│  getAvailableSlotsForPrompt(): string {                                │
+│    // Prende i prossimi 7 giorni, max 12 slot                          │
+│    const topSlots = this.availableSlots                                 │
+│      .sort((a, b) => a.dateTime - b.dateTime)                          │
+│      .slice(0, 12);                                                    │
+│    return formatSlotsForPrompt(topSlots);                              │
+│  }                                                                      │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### REGOLA 5: Architettura definitiva - WhatsApp non viene toccato
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  REGOLA D'ORO: Gemini Live non prenota mai. Parla soltanto.            │
+│  Il booking lo fa solo il server tramite Supervisor + Executor.         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  WhatsApp (RIMANE UGUALE - ZERO modifiche al message-processor):       │
+│                                                                         │
+│  WA message → message-processor → booking-intent-detector              │
+│            → extract/accumulator/validate (booking-service)             │
+│            → createBookingRecord + GoogleCalendar                       │
+│                                                                         │
+│  ─────────────────────────────────────────────────────────              │
+│                                                                         │
+│  Voce (NUOVO flusso - layer aggiuntivo):                               │
+│                                                                         │
+│  Telefono → FreeSWITCH/Bridge → gemini-live-ws-service                 │
+│    (conversazione live naturale)                                        │
+│           → (dopo ogni turno AI finito)                                 │
+│           → VoiceBookingSupervisor (analisi + state machine)            │
+│           → BookingExecutor (side-effects)                              │
+│               ├── clienti: consultation-tool-executor (Sistema A)       │
+│               └── lead: booking-service createBookingRecord (Sistema B) │
+│           → ritorno esito → "system injection" a Gemini Live           │
+│                                                                         │
+│  La voce aggiunge un layer IN MEZZO. Non rompe WhatsApp.               │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### REGOLA 6: Logging Audit Obbligatorio
+
+Trattato in dettaglio nella [Sezione 9](#9-logging-audit-obbligatorio).
+
+---
+
+## 5. STATE MACHINE DEL SUPERVISORE
+
+### 5.1 Stati
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -309,11 +502,13 @@ validateBookingData() → createBookingRecord() → createGoogleCalendarBooking(
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Struttura Dati Stato
+### 5.2 Struttura Dati Stato
 
 ```typescript
 interface VoiceBookingSupervisorState {
   stage: 'nessun_intento' | 'raccolta_dati' | 'dati_completi' | 'confermato' | 'completato' | 'errore';
+  
+  bookingInProgress: boolean;  // 🔒 MUTEX: previene doppio trigger (REGOLA 2)
   
   extractedData: {
     date: string | null;       // "2026-02-12" formato YYYY-MM-DD
@@ -326,8 +521,15 @@ interface VoiceBookingSupervisorState {
     notes: string | null;      // note dalla conversazione
   };
   
+  lastProposedSlot: {           // 🎯 REGOLA 3: conferma valida solo su questo slot
+    date: string;               // "2026-02-12"
+    time: string;               // "15:00"
+    proposedAtTurn: number;     // indice turno in cui l'AI l'ha proposto
+  } | null;
+  
   metadata: {
     turnsInCurrentState: number;    // contatore turni nello stato attuale
+    totalTurns: number;             // contatore turni totali della chiamata
     lastAnalyzedMessageIndex: number; // ultimo messaggio analizzato
     bookingAttempts: number;        // tentativi di booking (per retry)
     createdBookingId: string | null; // ID del booking creato
@@ -340,7 +542,7 @@ interface VoiceBookingSupervisorState {
 
 ---
 
-## 5. TABELLA COMPONENTI RIUSATI
+## 6. TABELLA COMPONENTI RIUSATI
 
 ### Cosa riusiamo dal codebase esistente
 
@@ -437,9 +639,9 @@ interface VoiceBookingSupervisorState {
 
 ---
 
-## 6. DIAGRAMMI DI FLUSSO
+## 7. DIAGRAMMI DI FLUSSO
 
-### 6.1 Flusso Principale - Chiamata con Booking
+### 7.1 Flusso Principale - Chiamata con Booking
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -583,7 +785,7 @@ interface VoiceBookingSupervisorState {
  └──────────────────────────────────────┘
 ```
 
-### 6.2 Flusso Supervisore - Analisi Trascrizione
+### 7.2 Flusso Supervisore - Analisi Trascrizione
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -661,7 +863,7 @@ interface VoiceBookingSupervisorState {
  └──────────────────────────────┘
 ```
 
-### 6.3 Flusso Correzione Utente
+### 7.3 Flusso Correzione Utente
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -708,9 +910,9 @@ interface VoiceBookingSupervisorState {
 
 ---
 
-## 7. CASISTICHE COMPLETE
+## 8. CASISTICHE COMPLETE
 
-### 7.1 Matrice Scenari
+### 8.1 Matrice Scenari
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
@@ -749,7 +951,7 @@ interface VoiceBookingSupervisorState {
 └───────────────────────────┴──────────┴───────────┴─────────────────┴────────────────┘
 ```
 
-### 7.2 Dettaglio per Scenario
+### 8.2 Dettaglio per Scenario
 
 **SCENARIO A - Cliente registrato chiama per appuntamento**
 ```
@@ -812,9 +1014,178 @@ Utente: "Confermo"
 
 ---
 
-## 8. MODIFICHE PER FILE
+## 9. LOGGING AUDIT OBBLIGATORIO
 
-### 8.1 FILE NUOVI
+Quando qualcosa va storto in produzione, questi log sono la differenza tra "fix in 10 minuti" e "giorni di caos".
+
+### 9.1 Formato Log Standard
+
+Ogni chiamata a `analyzeTranscript()` produce un blocco audit completo:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [VOICE-BOOKING-SUPERVISOR] Analisi turno #{turnNumber}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 Call ID: {voiceCallId}
+👤 Caller: {isClient ? `Cliente ${clientId}` : `Non-cliente ${callerId}`}
+🎯 Consultant: {consultantId}
+
+┌─────────────── TRANSIZIONE DI STATO ───────────────┐
+│ PRIMA:  {stageBefore}                               │
+│ DOPO:   {stageAfter}                                │
+│ CAMBIO: {stageBefore === stageAfter ? '⏸️ Nessuno' : '🔄 Transizione'} │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────── DELTA DATI ESTRATTI ────────────────┐
+│ date:      {dateBefore || 'null'} → {dateAfter || 'null'}  {changed ? '🆕' : ''}  │
+│ time:      {timeBefore || 'null'} → {timeAfter || 'null'}  {changed ? '🆕' : ''}  │
+│ confirmed: {confirmedBefore} → {confirmedAfter}   {changed ? '🆕' : ''}  │
+│ phone:     {phoneBefore || 'null'} → {phoneAfter || 'null'}  {changed ? '🆕' : ''}  │
+│ email:     {emailBefore || 'null'} → {emailAfter || 'null'}  {changed ? '🆕' : ''}  │
+│ name:      {nameBefore || 'null'} → {nameAfter || 'null'}  {changed ? '🆕' : ''}  │
+│ lastProposedSlot: {slotBefore || 'null'} → {slotAfter || 'null'}  │
+└─────────────────────────────────────────────────────┘
+
+💭 REASONING: {llmReasoning}
+⚡ CORRECTION: {correction ? '⚠️ SÌ - utente ha corretto un dato' : '❌ No'}
+🎬 ACTION: {action}
+
+{action === 'booking_created' ?
+  '┌─────────────── BOOKING RESULT ──────────────────┐\n' +
+  '│ ✅ BOOKING CREATO CON SUCCESSO                   │\n' +
+  '│ ID: {bookingId}                                  │\n' +
+  '│ Tipo: {bookingType}                              │\n' +
+  '│ Data: {date} alle {time}                         │\n' +
+  '│ Google Meet: {meetLink || "N/A"}                 │\n' +
+  '└─────────────────────────────────────────────────┘'
+: action === 'booking_failed' ?
+  '┌─────────────── BOOKING FALLITO ─────────────────┐\n' +
+  '│ ❌ ERRORE DURANTE CREAZIONE                      │\n' +
+  '│ Motivo: {errorMessage}                           │\n' +
+  '│ Tentativi: {bookingAttempts}                     │\n' +
+  '└─────────────────────────────────────────────────┘'
+: '📝 Nessuna azione di booking'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### 9.2 Cosa Logga
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ DATO                  │ PERCHÉ                    │ QUANDO               │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ stage_before →        │ Tracciare ogni transizione │ Ogni analyzeTranscr  │
+│ stage_after           │ per debug retroattivo      │ ipt()                │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ delta_extractedData   │ Vedere cosa è cambiato     │ Ogni analyzeTranscr  │
+│ (before → after)      │ in quel turno specifico    │ ipt()                │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ reasoning (dal LLM)   │ Capire PERCHÉ il LLM ha   │ Ogni analyzeTranscr  │
+│                       │ preso quella decisione     │ ipt()                │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ action                │ Cosa è stato fatto         │ Ogni analyzeTranscr  │
+│                       │ (none/booking_created/     │ ipt()                │
+│                       │  booking_failed/notify_ai) │                      │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ booking result        │ Esito creazione booking:   │ Solo quando action   │
+│ (id, tipo, meet link, │ successo o errore con      │ = booking_created    │
+│  errore)              │ dettagli                   │ o booking_failed     │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ bookingInProgress     │ Se il mutex era attivo     │ Se skip per mutex    │
+│ flag                  │ e ha bloccato un trigger   │                      │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ lastProposedSlot      │ Quale slot era "attivo"    │ Quando confirmed =   │
+│                       │ al momento della conferma  │ true                 │
+├───────────────────────┼───────────────────────────┼──────────────────────┤
+│ skip reason           │ Perché l'analisi è stata   │ Quando shouldSkip    │
+│                       │ saltata (nessun nuovo msg, │ Analysis() = true    │
+│                       │ già completato, etc.)      │                      │
+└───────────────────────┴───────────────────────────┴──────────────────────┘
+```
+
+### 9.3 Implementazione nel Codice
+
+```typescript
+private logAudit(params: {
+  turnNumber: number;
+  stageBefore: string;
+  stageAfter: string;
+  dataBefore: ExtractedData;
+  dataAfter: ExtractedData;
+  reasoning: string;
+  correction: boolean;
+  action: string;
+  bookingResult?: { id: string; type: string; meetLink?: string } | null;
+  error?: string | null;
+}) {
+  const { turnNumber, stageBefore, stageAfter, dataBefore, dataAfter,
+          reasoning, correction, action, bookingResult, error } = params;
+
+  const delta = (field: string, before: any, after: any) => {
+    const changed = before !== after;
+    return `${field}: ${before ?? 'null'} → ${after ?? 'null'} ${changed ? '🆕' : ''}`;
+  };
+
+  console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`📋 [VOICE-BOOKING-SUPERVISOR] Analisi turno #${turnNumber}`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`🔗 Call ID: ${this.voiceCallId}`);
+  console.log(`👤 Caller: ${this.clientId ? `Cliente ${this.clientId}` : `Non-cliente`}`);
+  console.log(`\n┌─── TRANSIZIONE DI STATO ───┐`);
+  console.log(`│ PRIMA: ${stageBefore}`);
+  console.log(`│ DOPO:  ${stageAfter}`);
+  console.log(`│ ${stageBefore === stageAfter ? '⏸️  Nessun cambio' : '🔄 TRANSIZIONE'}`);
+  console.log(`└────────────────────────────┘`);
+  console.log(`\n┌─── DELTA DATI ESTRATTI ────┐`);
+  console.log(`│ ${delta('date', dataBefore.date, dataAfter.date)}`);
+  console.log(`│ ${delta('time', dataBefore.time, dataAfter.time)}`);
+  console.log(`│ ${delta('confirmed', dataBefore.confirmed, dataAfter.confirmed)}`);
+  console.log(`│ ${delta('phone', dataBefore.phone, dataAfter.phone)}`);
+  console.log(`│ ${delta('email', dataBefore.email, dataAfter.email)}`);
+  console.log(`└────────────────────────────┘`);
+  console.log(`\n💭 REASONING: ${reasoning}`);
+  console.log(`⚡ CORRECTION: ${correction ? '⚠️ SÌ' : '❌ No'}`);
+  console.log(`🎬 ACTION: ${action}`);
+
+  if (bookingResult) {
+    console.log(`\n┌─── ✅ BOOKING RESULT ──────┐`);
+    console.log(`│ ID: ${bookingResult.id}`);
+    console.log(`│ Tipo: ${bookingResult.type}`);
+    console.log(`│ Meet: ${bookingResult.meetLink || 'N/A'}`);
+    console.log(`└────────────────────────────┘`);
+  }
+
+  if (error) {
+    console.log(`\n┌─── ❌ ERRORE ──────────────┐`);
+    console.log(`│ ${error}`);
+    console.log(`└────────────────────────────┘`);
+  }
+
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+}
+```
+
+### 9.4 Log Extra: Skip e Mutex
+
+```typescript
+// Quando il mutex blocca un doppio trigger:
+console.log(`⏳ [VOICE-BOOKING-SUPERVISOR] Call ${this.voiceCallId}: ` +
+  `bookingInProgress=true, SKIP analisi turno #${turnNumber}. ` +
+  `Booking già in esecuzione.`);
+
+// Quando shouldSkipAnalysis() blocca:
+console.log(`⏭️  [VOICE-BOOKING-SUPERVISOR] Call ${this.voiceCallId}: ` +
+  `Skip turno #${turnNumber}. Motivo: ${skipReason}`);
+// skipReasons: "completato", "nessun_nuovo_messaggio", "errore_terminale"
+```
+
+---
+
+## 10. MODIFICHE PER FILE
+
+### 10.1 FILE NUOVI
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -865,7 +1236,7 @@ Utente: "Confermo"
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 8.2 FILE MODIFICATI
+### 10.2 FILE MODIFICATI
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -929,9 +1300,9 @@ Utente: "Confermo"
 
 ---
 
-## 9. SCHEMA DATABASE
+## 11. SCHEMA DATABASE
 
-### 9.1 Modifiche Schema
+### 11.1 Modifiche Schema
 
 ```
 TABELLA: appointment_bookings
@@ -949,7 +1320,7 @@ TABELLA: voice_calls
   → NESSUNA modifica schema necessaria (metadata è già jsonb)
 ```
 
-### 9.2 Relazioni
+### 11.2 Relazioni
 
 ```
 voice_calls.metadata.bookingId ──────▶ consultations.id (se cliente)
@@ -961,7 +1332,7 @@ appointment_bookings.voiceCallId ────▶ voice_calls.id (nuovo campo opz
 
 ---
 
-## 10. FRONTEND UI
+## 12. FRONTEND UI
 
 ### Badge nella lista chiamate
 
@@ -984,7 +1355,7 @@ appointment_bookings.voiceCallId ────▶ voice_calls.id (nuovo campo opz
 
 ---
 
-## 11. STEP DI IMPLEMENTAZIONE
+## 13. STEP DI IMPLEMENTAZIONE
 
 ### Step 1: Schema DB
 - Aggiungere `'voice_call'` al tipo source in `appointmentBookings` (schema.ts)
@@ -1038,6 +1409,7 @@ Determina se c'è un intento di prenotazione appuntamento.
 STATO ATTUALE: {currentStage}
 DATI GIÀ ESTRATTI: {currentData}
 TIPO CHIAMANTE: {isClient ? "CLIENTE REGISTRATO" : "NON-CLIENTE"}
+ULTIMO SLOT PROPOSTO DALL'AI: {lastProposedSlot || "nessuno"}
 
 TRASCRIZIONE RECENTE:
 {last N messages formatted}
@@ -1052,21 +1424,37 @@ RISPONDI SOLO con un oggetto JSON:
   "email": "email" o null (solo se non-cliente e lo dice),
   "name": "nome" o null,
   "correction": true/false (se l'utente ha corretto un dato),
+  "aiProposedSlot": true/false (se l'AI ha proposto/ripetuto
+    uno slot specifico nella sua ultima risposta),
   "reasoning": "spiegazione breve della decisione"
 }
 
-REGOLE:
-1. confirmed = true SOLO se l'utente ha detto esplicitamente
-   "sì", "confermo", "va bene", "ok prenota" DOPO che l'AI
-   ha ripetuto data e ora
-2. Se l'utente dice "anzi no", "aspetta", "cambiamo" →
+REGOLE CRITICHE:
+1. confirmed = true SOLO SE tutte queste condizioni sono vere:
+   a) L'AI ha proposto/ripetuto uno slot specifico (aiProposedSlot=true)
+      nella sua ULTIMA risposta (es: "Mercoledì 12 alle 15, confermi?")
+   b) L'utente ha risposto affermativamente SUBITO DOPO
+      (es: "sì", "confermo", "va bene", "ok prenota", "perfetto")
+   c) NON c'è "anzi", "aspetta", "no", "cambiamo" DOPO il "sì"
+   d) Lo slot confermato CORRISPONDE a quello proposto dall'AI
+
+2. Se l'utente dice "sì" ma l'AI NON aveva proposto uno slot
+   → confirmed = false (è un "sì" generico, non una conferma booking)
+
+3. Se l'utente dice "anzi no", "aspetta", "cambiamo" →
    correction = true, reset i campi corretti
-3. Se la conversazione non parla di appuntamenti →
+
+4. Se la conversazione non parla di appuntamenti →
    newStage = "nessun_intento"
-4. Estrai la data dall'AI response se il lead è abbreviato
-   (es: "mercoledì" → guarda cosa dice l'AI per la data esatta)
-5. Per non-clienti: confermato = true SOLO se hai ANCHE
+
+5. Estrai la data dall'AI response se il lead usa riferimenti
+   relativi (es: "mercoledì" → guarda cosa dice l'AI per data esatta)
+
+6. Per non-clienti: confermato = true SOLO se hai ANCHE
    phone e email
+
+7. aiProposedSlot = true SOLO se l'AI ha menzionato
+   esplicitamente data+ora nella sua ultima risposta
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -1079,14 +1467,24 @@ REGOLE:
 - Viene chiamato SOLO dopo che l'AI ha completato un turno di risposta
 - Usa Gemini 2.5 Flash Lite (veloce, economico, sufficiente per analisi JSON)
 - Skip automatico se la conversazione non ha menzionato nulla di booking-related
+- Slot nel prompt: max 6-12 (catalogo breve), lista completa solo lato server (REGOLA 4)
 
 ### Sicurezza Anti-Duplicato
-- Il supervisore ha un mutex interno: una volta in stato `confermato`, non può essere ri-triggerato
-- `bookingAttempts` traccia i tentativi per evitare loop
+- `bookingInProgress` flag mutex: impedisce doppio trigger anche con lag (REGOLA 2)
+- `lastProposedSlot` tracking: conferma valida solo sullo slot appena proposto dall'AI (REGOLA 3)
+- `bookingAttempts` traccia i tentativi per evitare loop infiniti
 - Dopo `completato`, il supervisore ignora tutti i messaggi successivi sul booking
+- L'AI non dice MAI "ho prenotato" prima del segnale `[BOOKING_CONFIRMED]` dal server (REGOLA 1)
+
+### Logging Audit
+- Ogni turno produce un blocco audit completo con stage_before → stage_after (REGOLA 6)
+- Delta dei dati estratti visibile campo per campo
+- Reasoning del LLM sempre loggato per debug retroattivo
+- Skip e mutex loggati separatamente per tracciare anche i "non-eventi"
 
 ### Compatibilità
 - Funziona con tutti i 4 scenari vocali (inbound/outbound × client/non-client)
 - Non interferisce con il flusso vocale esistente
-- Non modifica la conversazione Gemini (solo inietta messaggi di conferma)
+- Non modifica la conversazione Gemini (solo inietta messaggi di conferma post-booking)
 - Riusa al 100% i booking services esistenti senza modificarli
+- WhatsApp message-processor: ZERO modifiche (REGOLA 5)
