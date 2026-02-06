@@ -337,51 +337,64 @@ async function executeGetAvailableSlots(
   
   console.log(`🔒 [SLOTS] Found ${pendingBookingsData.length} pending bookings to exclude`);
 
-  // Try to get Google Calendar events if connected
+  // Try to get Google Calendar events if connected (using listEvents for proper filtering)
   let calendarBusy: Array<{ start: Date; end: Date }> = [];
   try {
-    const accessToken = await getValidAccessToken(consultantId);
-    if (accessToken) {
-      const { google } = await import("googleapis");
-      const oauth2Client = new google.auth.OAuth2();
-      oauth2Client.setCredentials({ access_token: accessToken });
-      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-      
-      const calendarEvents = await calendar.events.list({
-        calendarId: 'primary',
-        timeMin: effectiveStartDate.toISOString(),
-        timeMax: effectiveEndDate.toISOString(),
-        singleEvents: true,
-        orderBy: 'startTime',
+    const { listEvents } = await import("../google-calendar-service");
+    const calendarEvents = await listEvents(consultantId, effectiveStartDate, effectiveEndDate);
+    for (const event of calendarEvents) {
+      calendarBusy.push({
+        start: event.start,
+        end: event.end
       });
+    }
+    console.log(`📅 [SLOTS] Loaded ${calendarBusy.length} events from Google Calendar (filtered: transparent/free excluded)`);
+  } catch (error) {
+    try {
+      const accessToken = await getValidAccessToken(consultantId);
+      if (accessToken) {
+        const { google } = await import("googleapis");
+        const oauth2Client = new google.auth.OAuth2();
+        oauth2Client.setCredentials({ access_token: accessToken });
+        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+        
+        const calendarEvents = await calendar.events.list({
+          calendarId: 'primary',
+          timeMin: effectiveStartDate.toISOString(),
+          timeMax: effectiveEndDate.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+        });
 
-      if (calendarEvents.data.items) {
-        for (const event of calendarEvents.data.items) {
-          if (event.start?.dateTime && event.end?.dateTime) {
-            calendarBusy.push({
-              start: new Date(event.start.dateTime),
-              end: new Date(event.end.dateTime)
-            });
+        if (calendarEvents.data.items) {
+          for (const event of calendarEvents.data.items) {
+            if (event.start?.dateTime && event.end?.dateTime) {
+              if (event.transparency === 'transparent') continue;
+              calendarBusy.push({
+                start: new Date(event.start.dateTime),
+                end: new Date(event.end.dateTime)
+              });
+            }
           }
         }
+        console.log(`📅 [SLOTS] Loaded ${calendarBusy.length} events from Google Calendar (fallback API)`);
       }
-      console.log(`📅 [SLOTS] Loaded ${calendarBusy.length} events from Google Calendar`);
+    } catch (fallbackError) {
+      console.log(`⚠️ [SLOTS] Could not load Google Calendar (not connected or error):`, fallbackError);
     }
-  } catch (error) {
-    console.log(`⚠️ [SLOTS] Could not load Google Calendar (not connected or error):`, error);
   }
 
   // Merge all busy ranges (consultations + pending bookings + calendar)
   const allBusyRanges = [...busyRanges, ...pendingBusyRanges, ...calendarBusy];
 
   // Helper to check if a slot conflicts with busy ranges
-  const isSlotBusy = (slotStart: Date, slotEnd: Date): boolean => {
+  const isSlotBusy = (slotStart: Date, slotEnd: Date): { busy: boolean; reason?: string } => {
     for (const busy of allBusyRanges) {
       if (slotStart < busy.end && slotEnd > busy.start) {
-        return true;
+        return { busy: true, reason: `conflict ${busy.start.toISOString().slice(11,16)}-${busy.end.toISOString().slice(11,16)}` };
       }
     }
-    return false;
+    return { busy: false };
   };
 
   const workingHours = {
@@ -400,29 +413,39 @@ async function executeGetAvailableSlots(
     duration: number;
   }> = [];
 
+  // Timezone helper - convert consultant local time to UTC for comparison
+  const getTimezoneOffset = (date: Date, tz: string): number => {
+    try {
+      const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+      return (utcDate.getTime() - tzDate.getTime()) / (60 * 1000);
+    } catch {
+      return -60;
+    }
+  };
+
   const current = new Date(effectiveStartDate);
   current.setHours(0, 0, 0, 0);
+
+  let totalCandidates = 0;
+  let blockedByBusy = 0;
+  let blockedByFuture = 0;
+  const blockedDetails: string[] = [];
 
   while (current <= effectiveEndDate && availableSlots.length < 20) {
     const dayOfWeek = current.getDay();
     const dayName = dayNames[dayOfWeek];
     const dayConfig = availabilityConfig[dayOfWeek.toString()];
 
-    // Only process enabled days
     if (dayConfig?.enabled) {
-      // Check if this day matches preferred day filter
       if (!args.preferredDayOfWeek || args.preferredDayOfWeek.toLowerCase() === dayName) {
-        // Iterate through all time slots for this day
         for (const timeSlot of dayConfig.slots) {
-          // Parse slot's available hours
           const [startHour, startMin] = (timeSlot.start || "09:00").split(':').map(Number);
           const [endHour, endMin] = (timeSlot.end || "18:00").split(':').map(Number);
           
-          // Generate slots based on appointment duration
           let slotStartHour = startHour;
           let slotStartMin = startMin;
           
-          // Apply preferred time range filter
           if (args.preferredTimeRange) {
             const range = workingHours[args.preferredTimeRange as keyof typeof workingHours];
             if (range) {
@@ -431,27 +454,30 @@ async function executeGetAvailableSlots(
           }
 
           while (slotStartHour < endHour || (slotStartHour === endHour && slotStartMin < endMin)) {
-            const slotStart = new Date(current);
-            slotStart.setHours(slotStartHour, slotStartMin, 0, 0);
+            totalCandidates++;
+            
+            const dateStr = current.toISOString().slice(0, 10);
+            const timeStr = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}:00`;
+            const localSlotStart = new Date(`${dateStr}T${timeStr}`);
+            const tzOffset = getTimezoneOffset(localSlotStart, timezone);
+            const slotStart = new Date(localSlotStart.getTime() + tzOffset * 60 * 1000);
             
             const slotEnd = new Date(slotStart.getTime() + appointmentDuration * 60 * 1000);
             
-            // Check slot ends within working hours for this time slot
-            const slotEndHour = slotEnd.getHours();
-            const slotEndMin = slotEnd.getMinutes();
-            if (slotEndHour > endHour || (slotEndHour === endHour && slotEndMin > endMin)) {
+            const slotEndLocalHour = slotStartHour + Math.floor((slotStartMin + appointmentDuration) / 60);
+            const slotEndLocalMin = (slotStartMin + appointmentDuration) % 60;
+            if (slotEndLocalHour > endHour || (slotEndLocalHour === endHour && slotEndLocalMin > endMin)) {
               break;
             }
             
-            // Check slot is in the future and respects minHoursNotice
             if (slotStart > minStartTime) {
-              // Check against busy ranges (with buffer)
               const bufferedStart = new Date(slotStart.getTime() - bufferBefore * 60 * 1000);
               const bufferedEnd = new Date(slotEnd.getTime() + bufferAfter * 60 * 1000);
               
-              if (!isSlotBusy(bufferedStart, bufferedEnd)) {
+              const busyCheck = isSlotBusy(bufferedStart, bufferedEnd);
+              if (!busyCheck.busy) {
                 availableSlots.push({
-                  date: slotStart.toISOString().slice(0, 10),
+                  date: dateStr,
                   dayOfWeek: dayName,
                   time: `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`,
                   dateFormatted: slotStart.toLocaleDateString('it-IT', {
@@ -463,10 +489,16 @@ async function executeGetAvailableSlots(
                 });
 
                 if (availableSlots.length >= 20) break;
+              } else {
+                blockedByBusy++;
+                if (blockedDetails.length < 5) {
+                  blockedDetails.push(`${dateStr} ${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')} → ${busyCheck.reason}`);
+                }
               }
+            } else {
+              blockedByFuture++;
             }
             
-            // Move to next slot (every hour by default, or every 30 min for shorter appointments)
             const slotIncrement = appointmentDuration <= 30 ? 30 : 60;
             slotStartMin += slotIncrement;
             if (slotStartMin >= 60) {
@@ -475,7 +507,6 @@ async function executeGetAvailableSlots(
             }
           }
           
-          // Stop if we have enough slots
           if (availableSlots.length >= 20) break;
         }
       }
@@ -483,6 +514,32 @@ async function executeGetAvailableSlots(
 
     current.setDate(current.getDate() + 1);
   }
+
+  console.log(`\n📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`📊 [SLOTS] DISPONIBILITÀ DEBUG - Consultant ${consultantId.slice(0, 8)}`);
+  console.log(`   Timezone: ${timezone}`);
+  console.log(`   Range: ${effectiveStartDate.toISOString().slice(0, 10)} → ${effectiveEndDate.toISOString().slice(0, 10)}`);
+  console.log(`   Durata consulenza: ${appointmentDuration}min | Buffer: ${bufferBefore}min/${bufferAfter}min | Preavviso: ${minHoursNotice}h`);
+  console.log(`   Giorni attivi: ${Object.entries(availabilityConfig).filter(([_, c]) => c.enabled).map(([d, c]) => `${dayNames[parseInt(d)]}(${c.slots.map(s => `${s.start}-${s.end}`).join(',')})`).join(', ')}`);
+  console.log(`   ─────────────────────────────────────────────────────`);
+  console.log(`   Consulenze DB occupate: ${existingConsultations.length}`);
+  console.log(`   Prenotazioni pendenti: ${pendingBookingsData.length}`);
+  console.log(`   Eventi Google Calendar: ${calendarBusy.length}`);
+  console.log(`   Totale fasce busy: ${allBusyRanges.length}`);
+  console.log(`   ─────────────────────────────────────────────────────`);
+  console.log(`   Slot candidati generati: ${totalCandidates}`);
+  console.log(`   Bloccati (troppo vicini): ${blockedByFuture}`);
+  console.log(`   Bloccati (occupati): ${blockedByBusy}`);
+  console.log(`   ✅ SLOT DISPONIBILI: ${availableSlots.length}`);
+  if (blockedDetails.length > 0) {
+    console.log(`   Esempi bloccati:`);
+    blockedDetails.forEach(d => console.log(`     ❌ ${d}`));
+  }
+  if (availableSlots.length > 0) {
+    console.log(`   Primi slot liberi:`);
+    availableSlots.slice(0, 5).forEach(s => console.log(`     ✅ ${s.date} ${s.time} (${s.dayOfWeek})`));
+  }
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
   const calendarConnected = !!(settings?.googleRefreshToken);
   
