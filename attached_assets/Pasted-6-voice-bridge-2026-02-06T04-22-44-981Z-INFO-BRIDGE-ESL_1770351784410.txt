@@ -1,0 +1,49 @@
+6|voice-bridge  | 2026-02-06T04:22:44.981Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=8ee05751-f392-45cf-98f7-610320abf0cd callerIdNumber=1003 callerIdName=Alessio
+6|voice-bridge  | 2026-02-06T04:22:44.982Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=8ee05751-f392-45cf-98f7-610320abf0cd, uuid=8ee05751-f392-45cf-98f7-610320abf0cd
+6|voice-bridge  | 2026-02-06T04:22:44.982Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-02-06T04:22:44.982Z [INFO ] [BRIDGE:ESL] 📞 INBOUND call - setting UUID as call ID uuid=8ee05751-f392-45cf-98f7-610320abf0cd
+6|voice-bridge  | 2026-02-06T04:22:45.032Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=8ee05751-f392-45cf-98f7-610320abf0cd
+6|voice-bridge  | 2026-02-06T04:22:45.033Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-02-06T04:22:45.034Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/8ee05751-f392-45cf-98f7-610320abf0cd uuidFromUrl=8ee05751-f392-45cf-98f7-610320abf0cd pendingCallsCount=1 pendingIds=[{"uuid":"8ee05751-f392-45cf-98f7-610320abf0cd","callId":"8ee05751-f392-45cf-98f7-610320abf0cd"}] timestamp=1770351765034
+6|voice-bridge  | 2026-02-06T04:22:45.034Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=8ee05751-f392-45cf-98f7-610320abf0cd, uuid=8ee05751-f392-45cf-98f7-610320abf0cd
+6|voice-bridge  | 2026-02-06T04:22:45.034Z [INFO ] [BRIDGE:SERVER] 📞 INBOUND call matched: callId=8ee05751-f392-45cf-98f7-610320abf0cd (same as uuid)
+6|voice-bridge  | 2026-02-06T04:22:45.034Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=8ee05751-f392-45cf-98f7-610320abf0cd | CallerId=1003 | CallerName=Alessio
+6|voice-bridge  | 2026-02-06T04:22:45.034Z [INFO ] [BRIDGE:SESSION] Session created sessionId=5347c1dc callId=8ee05751-f392-45cf-98f7-610320abf0cd callerId=1003 calledNumber=9999 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-02-06T04:22:45.455Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=5347c1dc url=wss://eccd94e9-7ab4-4aa3-b041-908fb28891d6-00-3vyudda9y3x6w.janeway.replit.dev/ws/ai-voice voice=Puck
+6|voice-bridge  | 2026-02-06T04:22:45.892Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=5347c1dc
+6|voice-bridge  | 2026-02-06T04:22:45.893Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=5347c1dc
+6|voice-bridge  | 2026-02-06T04:22:45.893Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=5347c1dc from=connecting to=active
+6|voice-bridge  | 2026-02-06T04:22:49.214Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Prontooo! Ciao
+6|voice-bridge  | 2026-02-06T04:22:49.215Z [INFO ] [BRIDGE:SERVER] [AI]: "Prontooo! Ciao"
+6|voice-bridge  | 2026-02-06T04:22:49.544Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Alessio!
+6|voice-bridge  | 2026-02-06T04:22:49.544Z [INFO ] [BRIDGE:SERVER] [AI]: " Alessio!"
+6|voice-bridge  | 2026-02-06T04:22:49.585Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che bello
+6|voice-bridge  | 2026-02-06T04:22:49.585Z [INFO ] [BRIDGE:SERVER] [AI]: " Che bello"
+6|voice-bridge  | 2026-02-06T04:22:49.682Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sentirti
+6|voice-bridge  | 2026-02-06T04:22:49.682Z [INFO ] [BRIDGE:SERVER] [AI]: " sentirti"
+6|voice-bridge  | 2026-02-06T04:22:49.823Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di nuovo!
+6|voice-bridge  | 2026-02-06T04:22:49.823Z [INFO ] [BRIDGE:SERVER] [AI]: " di nuovo!"
+6|voice-bridge  | 2026-02-06T04:22:49.925Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Allora,
+6|voice-bridge  | 2026-02-06T04:22:49.925Z [INFO ] [BRIDGE:SERVER] [AI]: " Allora,"
+6|voice-bridge  | 2026-02-06T04:22:50.114Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  l'ultima
+6|voice-bridge  | 2026-02-06T04:22:50.114Z [INFO ] [BRIDGE:SERVER] [AI]: " l'ultima"
+6|voice-bridge  | 2026-02-06T04:22:50.252Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  volta
+6|voice-bridge  | 2026-02-06T04:22:50.253Z [INFO ] [BRIDGE:SERVER] [AI]: " volta"
+6|voice-bridge  | 2026-02-06T04:22:50.331Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  stavamo
+6|voice-bridge  | 2026-02-06T04:22:50.331Z [INFO ] [BRIDGE:SERVER] [AI]: " stavamo"
+6|voice-bridge  | 2026-02-06T04:22:50.423Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  parlando
+6|voice-bridge  | 2026-02-06T04:22:50.424Z [INFO ] [BRIDGE:SERVER] [AI]: " parlando"
+6|voice-bridge  | 2026-02-06T04:22:50.518Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  degli
+6|voice-bridge  | 2026-02-06T04:22:50.518Z [INFO ] [BRIDGE:SERVER] [AI]: " degli"
+6|voice-bridge  | 2026-02-06T04:22:50.542Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  appuntamenti,
+6|voice-bridge  | 2026-02-06T04:22:50.542Z [INFO ] [BRIDGE:SERVER] [AI]: " appuntamenti,"
+6|voice-bridge  | 2026-02-06T04:22:50.710Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  giusto?
+6|voice-bridge  | 2026-02-06T04:22:50.710Z [INFO ] [BRIDGE:SERVER] [AI]: " giusto?"
+6|voice-bridge  | 2026-02-06T04:22:50.824Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Come
+6|voice-bridge  | 2026-02-06T04:22:50.824Z [INFO ] [BRIDGE:SERVER] [AI]: " Come"
+6|voice-bridge  | 2026-02-06T04:22:50.916Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  posso
+6|voice-bridge  | 2026-02-06T04:22:50.916Z [INFO ] [BRIDGE:SERVER] [AI]: " posso"
+6|voice-bridge  | 2026-02-06T04:22:50.965Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti
+6|voice-bridge  | 2026-02-06T04:22:50.966Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti"
+6|voice-bridge  | 2026-02-06T04:22:51.056Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  oggi?
+6|voice-bridge  | 2026-02-06T04:22:51.056Z [INFO ] [BRIDGE:SERVER] [AI]: " oggi?"

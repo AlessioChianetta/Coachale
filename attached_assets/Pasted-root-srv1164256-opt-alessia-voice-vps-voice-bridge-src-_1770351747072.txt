@@ -1,0 +1,612 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# cat esl-client.ts 
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { setExpectedCallId } from './voice-bridge-server.js';
+import esl from 'modesl';
+
+const log = logger.child('ESL');
+
+// Mappa per memorizzare caller info per UUID
+export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string }>();
+
+export function startESLController(): void {
+  log.info(`Connecting to FreeSWITCH ESL at ${config.esl.host}:${config.esl.port}...`);
+
+  const conn = new esl.Connection(config.esl.host, config.esl.port, config.esl.password, () => {
+    log.info('✅ Connected to FreeSWITCH Event Socket!');
+    conn.subscribe(['CHANNEL_PARK', 'CHANNEL_HANGUP']);
+  });
+
+  conn.on('esl::event::CHANNEL_PARK::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    const dest = event.getHeader('Caller-Destination-Number');
+
+    if (dest !== '9999') return;
+
+    const callerIdNumber = event.getHeader('Caller-Caller-ID-Number') || 'unknown';
+    const callerIdName = event.getHeader('Caller-Caller-ID-Name') || '';
+
+    log.info(`🅿️  Detected call to 9999 (Parked)`, { uuid, callerIdNumber, callerIdName });
+
+    // Salva metadata per questo UUID
+    callMetadata.set(uuid, { callerIdNumber, callerIdName });
+
+    // 🎯 FIX: Per chiamate OUTBOUND, l'outbound-handler ha già impostato il callId corretto (sc_xxx)
+    // Per chiamate INBOUND, usiamo l'UUID come callId
+    if (uuid.startsWith('outbound-')) {
+      log.info(`📞 OUTBOUND call detected - using existing scheduled call ID`, { uuid });
+    } else {
+      // INBOUND: imposta l'UUID come pending call
+      setExpectedCallId(uuid);
+      log.info(`📞 INBOUND call - setting UUID as call ID`, { uuid });
+    }
+
+    // 1. Configurazione Audio Base
+    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_PLAYBACK true`);
+    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_SAMPLE_RATE 8000`);
+    (conn as any).bgapi(`uuid_setvar ${uuid} mod_audio_stream_bidirectional true`);
+
+    // 2. JITTERBUFFER (Elimina il packet loss iniziale e i "salti" audio)
+    (conn as any).bgapi(`uuid_setvar ${uuid} jitterbuffer_msec 60:120`);
+
+    // 3. Background audio: gestito da Node.js background-mixer (NON da FreeSWITCH)
+    // uuid_displace rimosso: causava 30% packet loss per conflitto media bug con mod_audio_stream
+
+    // 4. 🎯 FIX: Passa l'UUID come PATH nell'URL WebSocket (non query param!)
+    const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
+    const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
+
+    log.debug(`🚀 Executing stream command on PARKED call`, { cmd: streamCmd, wsUrl });
+
+    (conn as any).bgapi(streamCmd, (res: any) => {
+        const body = res.getBody();
+        if (body && body.includes('+OK')) {
+            log.info(`✅ Audio stream initiated successfully`, { uuid });
+        } else {
+            log.error(`❌ Failed to start audio stream`, { uuid, error: body || 'Unknown error' });
+        }
+    });
+  });
+
+  conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
+    const uuid = event.getHeader('Unique-ID');
+    const dest = event.getHeader('Caller-Destination-Number');
+    if (dest === '9999') {
+      log.debug(`🛑 Call 9999 ended`, { uuid });
+      callMetadata.delete(uuid);
+    }
+  });
+
+  conn.on('error', (err: any) => {
+    log.error('❌ ESL Connection Error', { error: err?.message || err });
+    setTimeout(() => startESLController(), 5000);
+  });
+}
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# cat voice-bridge-server.ts 
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer, type IncomingMessage } from 'http';
+import express from 'express';
+import { parse as parseUrl } from 'url';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { sessionManager } from './session-manager.js';
+import { ReplitWSClient } from './replit-ws-client.js';
+import { convertForGemini, convertFromGemini, pcmToMulaw } from './audio-converter.js';
+import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
+import { callMetadata } from './esl-client.js';
+import { handleOutboundCall } from './outbound-handler.js';
+import {
+  loadBackgroundAudio,
+  isBackgroundLoaded,
+  initSession as bgInitSession,
+  destroySession as bgDestroySession,
+  mixWithBackground,
+  generateBackgroundChunk,
+} from './background-mixer.js';
+
+const log = logger.child('SERVER');
+
+const bgTimers = new Map<string, NodeJS.Timeout>();
+const bgLastAISend = new Map<string, number>();
+
+loadBackgroundAudio();
+
+// 🎯 FIX: Usa una Map invece di una singola variabile
+const pendingCalls = new Map<string, { callId: string; timer: NodeJS.Timeout }>();
+
+export function setExpectedCallId(callId: string, freeswitchUuid?: string): void {
+  // Per chiamate INBOUND, l'UUID è anche il callId
+  const uuid = freeswitchUuid || callId;
+
+  log.info(`📝 Setting expected call: callId=${callId}, uuid=${uuid}`);
+
+  // Pulisci eventuali timer esistenti per questo UUID
+  const existing = pendingCalls.get(uuid);
+  if (existing) {
+    clearTimeout(existing.timer);
+    log.info(`🔄 Replacing existing pending call for uuid=${uuid}`);
+  }
+
+  // Timer di 30 secondi
+  const timer = setTimeout(() => {
+    const deleted = pendingCalls.delete(uuid);
+    if (deleted) {
+      log.warn(`⏰ Pending call expired: callId=${callId}, uuid=${uuid}`);
+    }
+  }, 30000);
+
+  pendingCalls.set(uuid, { callId, timer });
+  log.info(`✅ Pending calls count: ${pendingCalls.size}`);
+}
+
+// Funzione per consumare un pending call (rimuovendolo dalla Map)
+function consumePendingCall(freeswitchUuid: string): string | null {
+  const pending = pendingCalls.get(freeswitchUuid);
+  if (pending) {
+    clearTimeout(pending.timer);
+    pendingCalls.delete(freeswitchUuid);
+    log.info(`✅ Consumed pending call: callId=${pending.callId}, uuid=${freeswitchUuid}`);
+    return pending.callId;
+  }
+  return null;
+}
+
+interface AudioStreamStartMessage {
+  event: 'start';
+  call_id: string;
+  caller_id: string;
+  called_number: string;
+  codec: 'PCMU' | 'L16';
+  sample_rate: number;
+}
+
+interface AudioStreamStopMessage {
+  event: 'stop';
+  call_id: string;
+  reason: string;
+}
+
+type AudioStreamMessage = AudioStreamStartMessage | AudioStreamStopMessage;
+
+function firstQueryValue(v: unknown): string {
+  if (Array.isArray(v)) return typeof v[0] === 'string' ? v[0] : '';
+  return typeof v === 'string' ? v : '';
+}
+
+// Valida il service token (ricevuto da Replit)
+function validateServiceToken(token: string | undefined): boolean {
+  if (!token) return false;
+  const expectedToken = config.serviceToken || process.env.REPLIT_SERVICE_TOKEN;
+  return token === expectedToken;
+}
+
+export function startVoiceBridgeServer(): void {
+  const app = express();
+  app.use(express.json());
+
+  // =============================================
+  // ENDPOINT OUTBOUND: Riceve richieste da Replit
+  // =============================================
+  app.post('/outbound/call', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!validateServiceToken(token)) {
+      log.warn('Unauthorized outbound request');
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { targetPhone, callId, aiMode, customPrompt } = req.body;
+
+    if (!targetPhone || !callId) {
+      return res.status(400).json({ success: false, error: 'Missing targetPhone or callId' });
+    }
+
+    const result = await handleOutboundCall({ targetPhone, callId, aiMode, customPrompt });
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  });
+
+  // Health check
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      pendingCalls: pendingCalls.size 
+    });
+  });
+
+  const server = createServer(app);
+
+  const wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    log.info(`New WebSocket connection`, { clientIp });
+
+    let currentSessionId: string | null = null;
+    let callId: string | null = null;
+
+    // 🎯 FIX: Leggi l'UUID dal PATH (es: /stream/uuid-here)
+    const parsedUrl = parseUrl(req.url || '', true);
+    const pathParts = (parsedUrl.pathname || '').split('/').filter(Boolean);
+    // Path format: /stream/{uuid}
+    const uuidFromUrl = pathParts.length >= 2 && pathParts[0] === 'stream' ? pathParts[1] : null;
+
+    log.info('🔍 WEBSOCKET CONNECTION', { 
+      path: parsedUrl.pathname,
+      uuidFromUrl: uuidFromUrl || 'NOT PROVIDED',
+      pendingCallsCount: pendingCalls.size,
+      pendingIds: Array.from(pendingCalls.entries()).map(([uuid, p]) => ({ uuid, callId: p.callId })),
+      timestamp: Date.now() 
+    });
+
+    // 🎯 FIX: Cerca nella Map usando l'UUID dal path
+    if (uuidFromUrl) {
+      // Abbiamo l'UUID dal path - cerca nella Map
+      callId = consumePendingCall(uuidFromUrl);
+
+      if (callId) {
+        // Determina se è INBOUND o OUTBOUND
+        if (uuidFromUrl.startsWith('outbound-')) {
+          log.info(`📞 OUTBOUND call matched: callId=${callId}, uuid=${uuidFromUrl}`);
+        } else {
+          log.info(`📞 INBOUND call matched: callId=${callId} (same as uuid)`);
+        }
+      } else {
+        log.warn(`⚠️ UUID ${uuidFromUrl} not found in pending calls - using UUID as callId`);
+        callId = uuidFromUrl; // Fallback: usa l'UUID stesso
+      }
+    } else {
+      // Fallback vecchio comportamento (FIFO) - per retrocompatibilità
+      log.warn('⚠️ No UUID in path - using FIFO fallback');
+      if (pendingCalls.size > 0) {
+        const firstEntry = pendingCalls.entries().next().value;
+        if (firstEntry) {
+          const [firstUuid] = firstEntry;
+          callId = consumePendingCall(firstUuid);
+          log.info(`📞 FIFO fallback: callId=${callId}, uuid=${firstUuid}`);
+        }
+      }
+    }
+
+    if (callId) {
+      const metadata = callMetadata.get(uuidFromUrl || callId);
+      const callerId = metadata?.callerIdNumber || 'unknown';
+      const callerName = metadata?.callerIdName || '';
+
+      log.info(`📞 Call detected: ID=${callId} | CallerId=${callerId} | CallerName=${callerName}`);
+
+      const startMsg: AudioStreamStartMessage = {
+        event: 'start',
+        call_id: callId,
+        caller_id: callerId,
+        called_number: '9999',
+        codec: 'L16',
+        sample_rate: 8000,
+      };
+
+      handleCallStart(ws, startMsg).then((sid) => {
+        currentSessionId = sid;
+      }).catch((e) => {
+        log.error(`Session init error: ${e.message}`);
+        ws.close(1011, 'Session init failed');
+      });
+    } else {
+      log.warn('⚠️ No pending call found for this WebSocket connection');
+    }
+
+    ws.on('message', (data: Buffer, isBinary: boolean) => {
+      if (isBinary && currentSessionId) {
+        handleAudioData(currentSessionId, data);
+      }
+    });
+
+    ws.on('close', () => {
+      if (currentSessionId) {
+        log.info(`WebSocket closed (Session: ${currentSessionId})`);
+        const session = sessionManager.getSession(currentSessionId);
+        if (session) handleCallStop(session.callId, 'websocket_closed');
+      }
+    });
+  });
+
+  server.listen(config.ws.port, config.ws.host, () => {
+    log.info(`Voice Bridge Server started on port ${config.ws.port}`);
+    log.info(`Outbound endpoint ready at POST /outbound/call`);
+  });
+}
+
+async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage): Promise<string> {
+  const session = sessionManager.createSession(
+    message.call_id, message.caller_id, message.called_number,
+    message.codec, message.sample_rate, ws
+  );
+
+  await notifyCallStart(session.id, message.caller_id, message.called_number);
+
+  bgInitSession(session.id);
+
+  if (isBackgroundLoaded()) {
+    const bgInterval = setInterval(() => {
+      const s = sessionManager.getSession(session.id);
+      if (!s || s.state !== 'active' || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
+      const now = Date.now();
+      const lastAI = bgLastAISend.get(session.id) || 0;
+
+      if (now - lastAI >= 20) {
+        const bgChunk = generateBackgroundChunk(session.id, 320);
+        if (bgChunk) {
+          const mulawChunk = pcmToMulaw(bgChunk);
+          s.fsWebSocket.send(mulawChunk, { binary: true });
+        }
+      }
+    }, 20);
+
+    bgTimers.set(session.id, bgInterval);
+    log.info(`🎵 Background audio timer started`, { sessionId: session.id.slice(0, 8) });
+  }
+
+  try {
+    const replitClient = new ReplitWSClient({
+      sessionId: session.id,
+      callerId: message.caller_id,
+      scheduledCallId: message.call_id,
+      onAudioResponse: (audio) => {
+        sendAudioToFreeSWITCH(session.id, audio);
+      },
+      onTextResponse: (text) => {
+        log.info(`[AI]: "${text}"`);
+      },
+      onError: (err) => {
+        log.error(`Replit Error: ${err.message}`);
+      },
+      onClose: () => log.info(`Replit connection closed`),
+    });
+
+    await replitClient.connect();
+    sessionManager.setReplitClient(session.id, replitClient);
+    sessionManager.updateSessionState(session.id, 'active');
+
+    return session.id;
+  } catch (error) {
+    cleanupBackgroundTimer(session.id);
+    throw error;
+  }
+}
+
+function handleAudioData(sessionId: string, audioData: Buffer): void {
+  const session = sessionManager.getSession(sessionId);
+  if (!session || session.state !== 'active') return;
+
+  const pcm = convertForGemini(audioData, session.codec, session.sampleRate);
+  session.replitClient?.sendAudio(pcm);
+}
+
+function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
+  const session = sessionManager.getSession(sessionId);
+  if (!session?.fsWebSocket || session.fsWebSocket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  let pcmAudio = convertFromGemini(audio, 'L16', session.sampleRate);
+
+  if (isBackgroundLoaded()) {
+    pcmAudio = mixWithBackground(pcmAudio, sessionId);
+  }
+
+  const mulawAudio = pcmToMulaw(pcmAudio);
+
+  bgLastAISend.set(sessionId, Date.now());
+
+  const CHUNK_SIZE = 160;
+  for (let i = 0; i < mulawAudio.length; i += CHUNK_SIZE) {
+    const chunk = mulawAudio.slice(i, i + CHUNK_SIZE);
+    session.fsWebSocket.send(chunk, { binary: true });
+  }
+}
+
+function cleanupBackgroundTimer(sessionId: string): void {
+  const timer = bgTimers.get(sessionId);
+  if (timer) {
+    clearInterval(timer);
+    bgTimers.delete(sessionId);
+  }
+  bgLastAISend.delete(sessionId);
+  bgDestroySession(sessionId);
+}
+
+function handleCallStop(callId: string, reason: string): void {
+  const session = sessionManager.getSessionByCallId(callId);
+  if (!session) return;
+
+  cleanupBackgroundTimer(session.id);
+
+  const duration = Date.now() - session.startTime.getTime();
+  notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
+  sessionManager.endSession(session.id, reason);
+}
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# dir
+audio-converter.ts   caller-context.ts  esl-client.ts  logger.ts            replit-ws-client.ts  voice-bridge-server.ts
+background-mixer.ts  config.ts          index.ts       outbound-handler.ts  session-manager.ts
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# cat background-mixer.ts 
+import * as fs from 'fs';
+import { logger } from './logger.js';
+
+const log = logger.child('BG-MIXER');
+
+const sessionCursors = new Map<string, number>();
+
+let bgPcmBuffer: Buffer | null = null;
+let bgLoaded = false;
+
+const BG_FILE_PATH = '/opt/sounds/background.wav';
+const EXPECTED_SAMPLE_RATE = 16000;
+const EXPECTED_CHANNELS = 1;
+const EXPECTED_BIT_DEPTH = 16;
+
+function parseWavHeader(buffer: Buffer): {
+  dataOffset: number;
+  dataSize: number;
+  sampleRate: number;
+  channels: number;
+  bitDepth: number;
+} {
+  const riff = buffer.toString('ascii', 0, 4);
+  if (riff !== 'RIFF') throw new Error('Not a valid WAV file: missing RIFF header');
+
+  const wave = buffer.toString('ascii', 8, 12);
+  if (wave !== 'WAVE') throw new Error('Not a valid WAV file: missing WAVE format');
+
+  let offset = 12;
+  let sampleRate = 0;
+  let channels = 0;
+  let bitDepth = 0;
+  let dataOffset = 0;
+  let dataSize = 0;
+
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString('ascii', offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+
+    if (offset + 8 + chunkSize > buffer.length) {
+      log.warn(`WAV chunk '${chunkId}' extends beyond file (offset=${offset}, size=${chunkSize}, fileLen=${buffer.length})`);
+      break;
+    }
+
+    if (chunkId === 'fmt ' && chunkSize >= 16) {
+      const audioFormat = buffer.readUInt16LE(offset + 8);
+      if (audioFormat !== 1) {
+        throw new Error(`Unsupported audio format: ${audioFormat} (only PCM/1 supported)`);
+      }
+      channels = buffer.readUInt16LE(offset + 10);
+      sampleRate = buffer.readUInt32LE(offset + 12);
+      bitDepth = buffer.readUInt16LE(offset + 22);
+    } else if (chunkId === 'data') {
+      dataOffset = offset + 8;
+      dataSize = Math.min(chunkSize, buffer.length - dataOffset);
+      break;
+    }
+
+    offset += 8 + chunkSize;
+    if (chunkSize % 2 !== 0) offset++;
+  }
+
+  if (dataOffset === 0) throw new Error('No data chunk found in WAV file');
+
+  return { dataOffset, dataSize, sampleRate, channels, bitDepth };
+}
+
+export function loadBackgroundAudio(filePath?: string): boolean {
+  const targetPath = filePath || BG_FILE_PATH;
+
+  try {
+    if (!fs.existsSync(targetPath)) {
+      log.warn(`Background audio file not found: ${targetPath}`);
+      return false;
+    }
+
+    const fileBuffer = fs.readFileSync(targetPath);
+    const header = parseWavHeader(fileBuffer);
+
+    const durationSec = header.dataSize / (header.sampleRate * header.channels * (header.bitDepth / 8));
+
+    log.info(`WAV file parsed`, {
+      sampleRate: header.sampleRate,
+      channels: header.channels,
+      bitDepth: header.bitDepth,
+      dataSize: header.dataSize,
+      durationSec: durationSec.toFixed(1),
+    });
+
+    if (header.sampleRate !== EXPECTED_SAMPLE_RATE) {
+      log.error(`Wrong sample rate: ${header.sampleRate}Hz (expected ${EXPECTED_SAMPLE_RATE}Hz)`);
+      log.error(`Convert with: ffmpeg -i input.wav -ar 16000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
+      return false;
+    }
+    if (header.channels !== EXPECTED_CHANNELS) {
+      log.error(`Wrong channel count: ${header.channels} (expected mono)`);
+      log.error(`Convert with: ffmpeg -i input.wav -ar 16000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
+      return false;
+    }
+    if (header.bitDepth !== EXPECTED_BIT_DEPTH) {
+      log.error(`Wrong bit depth: ${header.bitDepth} (expected 16-bit)`);
+      log.error(`Convert with: ffmpeg -i input.wav -ar 16000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
+      return false;
+    }
+
+    bgPcmBuffer = fileBuffer.slice(header.dataOffset, header.dataOffset + header.dataSize);
+    bgLoaded = true;
+
+    log.info(`✅ Background audio loaded: ${(bgPcmBuffer.length / 1024).toFixed(1)}KB, ${durationSec.toFixed(1)}s loop`);
+
+    return true;
+  } catch (error: any) {
+    log.error(`Failed to load background audio: ${error.message}`);
+    return false;
+  }
+}
+
+export function isBackgroundLoaded(): boolean {
+  return bgLoaded && bgPcmBuffer !== null;
+}
+
+export function initSession(sessionId: string): void {
+  sessionCursors.set(sessionId, 0);
+  log.debug(`Background session initialized`, { sessionId: sessionId.slice(0, 8) });
+}
+
+export function destroySession(sessionId: string): void {
+  sessionCursors.delete(sessionId);
+  log.debug(`Background session destroyed`, { sessionId: sessionId.slice(0, 8) });
+}
+
+export function mixWithBackground(audio: Buffer, sessionId: string, volume: number = 0.08): Buffer {
+  if (!bgPcmBuffer || !bgLoaded) return audio;
+
+  let cursor = sessionCursors.get(sessionId) || 0;
+  const mixed = Buffer.alloc(audio.length);
+  const bgLen = bgPcmBuffer.length;
+
+  for (let i = 0; i < audio.length - 1; i += 2) {
+    const aiSample = audio.readInt16LE(i);
+    const bgSample = bgPcmBuffer.readInt16LE(cursor % bgLen);
+
+    const mixedSample = Math.max(-32768, Math.min(32767,
+      aiSample + Math.round(bgSample * volume)
+    ));
+
+    mixed.writeInt16LE(mixedSample, i);
+    cursor = (cursor + 2) % bgLen;
+  }
+
+  sessionCursors.set(sessionId, cursor);
+  return mixed;
+}
+
+export function generateBackgroundChunk(sessionId: string, bytes: number = 640, volume: number = 0.08): Buffer | null {
+  if (!bgPcmBuffer || !bgLoaded) return null;
+
+  let cursor = sessionCursors.get(sessionId) || 0;
+  const chunk = Buffer.alloc(bytes);
+  const bgLen = bgPcmBuffer.length;
+
+  for (let i = 0; i < bytes - 1; i += 2) {
+    const bgSample = bgPcmBuffer.readInt16LE(cursor % bgLen);
+    const scaled = Math.max(-32768, Math.min(32767, Math.round(bgSample * volume)));
+
+    chunk.writeInt16LE(scaled, i);
+    cursor = (cursor + 2) % bgLen;
+  }
+
+  sessionCursors.set(sessionId, cursor);
+  return chunk;
+}
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge/src# 
