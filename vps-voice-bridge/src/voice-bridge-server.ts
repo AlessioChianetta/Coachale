@@ -10,8 +10,21 @@ import { convertForGemini, convertFromGemini } from './audio-converter.js';
 import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
 import { callMetadata } from './esl-client.js';
 import { handleOutboundCall } from './outbound-handler.js';
+import {
+  loadBackgroundAudio,
+  isBackgroundLoaded,
+  initSession as bgInitSession,
+  destroySession as bgDestroySession,
+  mixWithBackground,
+  generateBackgroundChunk,
+} from './background-mixer.js';
 
 const log = logger.child('SERVER');
+
+const bgTimers = new Map<string, NodeJS.Timeout>();
+const bgLastAISend = new Map<string, number>();
+
+loadBackgroundAudio();
 
 // 🎯 FIX: Usa una Map invece di una singola variabile
 const pendingCalls = new Map<string, { callId: string; timer: NodeJS.Timeout }>();
@@ -231,27 +244,56 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
   await notifyCallStart(session.id, message.caller_id, message.called_number);
 
-  const replitClient = new ReplitWSClient({
-    sessionId: session.id,
-    callerId: message.caller_id,
-    scheduledCallId: message.call_id,
-    onAudioResponse: (audio) => {
-      sendAudioToFreeSWITCH(session.id, audio);
-    },
-    onTextResponse: (text) => {
-      log.info(`[AI]: "${text}"`);
-    },
-    onError: (err) => {
-      log.error(`Replit Error: ${err.message}`);
-    },
-    onClose: () => log.info(`Replit connection closed`),
-  });
+  bgInitSession(session.id);
 
-  await replitClient.connect();
-  sessionManager.setReplitClient(session.id, replitClient);
-  sessionManager.updateSessionState(session.id, 'active');
+  if (isBackgroundLoaded()) {
+    const bgInterval = setInterval(() => {
+      const s = sessionManager.getSession(session.id);
+      if (!s || s.state !== 'active' || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
+        return;
+      }
 
-  return session.id;
+      const now = Date.now();
+      const lastAI = bgLastAISend.get(session.id) || 0;
+
+      if (now - lastAI >= 20) {
+        const bgChunk = generateBackgroundChunk(session.id, 640);
+        if (bgChunk) {
+          s.fsWebSocket.send(bgChunk, { binary: true });
+        }
+      }
+    }, 20);
+
+    bgTimers.set(session.id, bgInterval);
+    log.info(`🎵 Background audio timer started`, { sessionId: session.id.slice(0, 8) });
+  }
+
+  try {
+    const replitClient = new ReplitWSClient({
+      sessionId: session.id,
+      callerId: message.caller_id,
+      scheduledCallId: message.call_id,
+      onAudioResponse: (audio) => {
+        sendAudioToFreeSWITCH(session.id, audio);
+      },
+      onTextResponse: (text) => {
+        log.info(`[AI]: "${text}"`);
+      },
+      onError: (err) => {
+        log.error(`Replit Error: ${err.message}`);
+      },
+      onClose: () => log.info(`Replit connection closed`),
+    });
+
+    await replitClient.connect();
+    sessionManager.setReplitClient(session.id, replitClient);
+    sessionManager.updateSessionState(session.id, 'active');
+
+    return session.id;
+  } catch (error) {
+    cleanupBackgroundTimer(session.id);
+    throw error;
+  }
 }
 
 function handleAudioData(sessionId: string, audioData: Buffer): void {
@@ -268,7 +310,13 @@ function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
     return;
   }
 
-  const fsAudio = convertFromGemini(audio, session.codec, session.sampleRate);
+  let fsAudio = convertFromGemini(audio, session.codec, session.sampleRate);
+
+  if (session.codec === 'L16' && isBackgroundLoaded()) {
+    fsAudio = mixWithBackground(fsAudio, sessionId);
+  }
+
+  bgLastAISend.set(sessionId, Date.now());
 
   const CHUNK_SIZE = 640;
   for (let i = 0; i < fsAudio.length; i += CHUNK_SIZE) {
@@ -277,9 +325,21 @@ function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
   }
 }
 
+function cleanupBackgroundTimer(sessionId: string): void {
+  const timer = bgTimers.get(sessionId);
+  if (timer) {
+    clearInterval(timer);
+    bgTimers.delete(sessionId);
+  }
+  bgLastAISend.delete(sessionId);
+  bgDestroySession(sessionId);
+}
+
 function handleCallStop(callId: string, reason: string): void {
   const session = sessionManager.getSessionByCallId(callId);
   if (!session) return;
+
+  cleanupBackgroundTimer(session.id);
 
   const duration = Date.now() - session.startTime.getTime();
   notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
