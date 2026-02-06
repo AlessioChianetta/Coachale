@@ -5244,7 +5244,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               // 🔵 Google AI Studio: camelCase clientContent
               // ⚠️ LIMIT: Send only first 4 chunks to test (~30K tokens)
               // Google AI Studio may have stricter limits on clientContent size
-              const maxChunksForAIStudio = 8;
+              const maxChunksForAIStudio = 7;
               const chunksToSend = Math.min(chunks.length, maxChunksForAIStudio);
               console.log(`   ⚠️ Google AI Studio: limiting to first ${chunksToSend}/${chunks.length} chunks (~${Math.round(chunksToSend * 30 * 1024 / 4).toLocaleString()} tokens)`);
               
