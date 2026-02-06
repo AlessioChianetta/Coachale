@@ -4900,19 +4900,9 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                   ]
                 }
               }),
-              realtimeInputConfig: {
-                automaticActivityDetection: {
-                  disabled: false,
-                  startOfSpeechSensitivity: isPhoneCall ? 'START_SENSITIVITY_LOW' : 'START_SENSITIVITY_HIGH',
-                  endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
-                  prefixPaddingMs: 20,
-                  silenceDurationMs: isPhoneCall ? 500 : 700
-                }
-              },
-              proactivity: {
-                proactiveAudio: true
-              },
-              sessionResumption: { handle: validatedResumeHandle || undefined }
+              ...(validatedResumeHandle && {
+                sessionResumption: { handle: validatedResumeHandle }
+              })
             }
           };
         } else {
