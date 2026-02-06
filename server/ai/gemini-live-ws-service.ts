@@ -4863,6 +4863,11 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         // ✅ DUAL BACKEND: camelCase for Google AI Studio, snake_case for Vertex AI
         let setupMessage: any;
         
+        const effectiveVoice = liveApiBackend === 'google_ai_studio' 
+          ? (voiceName === 'Achernar' ? 'Kore' : voiceName) 
+          : voiceName;
+        console.log(`🎙️ [${connectionId}] Voice selection: requested="${voiceName}" → effective="${effectiveVoice}" (backend: ${liveApiBackend})`);
+        
         if (liveApiBackend === 'google_ai_studio') {
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           // 🔵 GOOGLE AI STUDIO: camelCase parameters, models/{id} path
@@ -4875,7 +4880,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 speechConfig: {
                   voiceConfig: {
                     prebuiltVoiceConfig: {
-                      voiceName: voiceName
+                      voiceName: effectiveVoice
                     }
                   }
                 },
