@@ -2202,16 +2202,12 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     }
 
     try {
-      // 2. Get OAuth2 token for Vertex AI Live API
-      console.log(`🔑 [${connectionId}] Getting OAuth2 token for Vertex AI Live API...`);
-      const vertexConfig = await getVertexAITokenForLive(
+      // 2. Get OAuth2 token for Vertex AI Live API (⚡ deferred await - runs in parallel with data loading)
+      console.log(`🔑 [${connectionId}] Starting OAuth2 token generation for Vertex AI Live API...`);
+      const vertexConfigPromise = getVertexAITokenForLive(
         (mode === 'sales_agent' || mode === 'consultation_invite') ? null : userId, 
         consultantId
       );
-      
-      if (!vertexConfig) {
-        throw new Error('Failed to get Vertex AI token for Live API - no valid configuration found');
-      }
 
       // 2b. Build prompts based on mode
       let systemInstruction: string;
@@ -2681,22 +2677,84 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         
         console.log(`\n📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
-        // Get consultant info FIRST (needed for both instruction and normal flow)
+        // ⚡ PARALLEL OPTIMIZATION: Start all independent queries simultaneously
+        // Each query runs in background and is awaited at its original location
+        const _ncParallelStart = Date.now();
+        
+        const _consultantInfoPromise = consultantId 
+          ? storage.getUser(consultantId).catch((err: any) => {
+              console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
+              return null;
+            })
+          : Promise.resolve(null);
+        
+        const _settingsPromise = consultantId
+          ? db.select({
+              voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+              outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
+              outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
+              outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
+              outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
+              outboundBrandVoiceEnabled: consultantAvailabilitySettings.outboundBrandVoiceEnabled,
+              outboundBrandVoiceAgentId: consultantAvailabilitySettings.outboundBrandVoiceAgentId,
+              inboundPromptSource: consultantAvailabilitySettings.inboundPromptSource,
+              inboundTemplateId: consultantAvailabilitySettings.inboundTemplateId,
+              inboundAgentId: consultantAvailabilitySettings.inboundAgentId,
+              inboundManualPrompt: consultantAvailabilitySettings.inboundManualPrompt,
+              inboundBrandVoiceEnabled: consultantAvailabilitySettings.inboundBrandVoiceEnabled,
+              inboundBrandVoiceAgentId: consultantAvailabilitySettings.inboundBrandVoiceAgentId,
+              nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
+              nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
+              nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
+            })
+            .from(consultantAvailabilitySettings)
+            .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+            .catch((err: any) => {
+              console.warn(`⚠️ [${connectionId}] Could not fetch non-client settings:`, err);
+              return [] as any[];
+            })
+          : Promise.resolve([] as any[]);
+        
+        const _previousConversationsPromise = phoneCallerId
+          ? db.execute(sql`
+              SELECT 
+                ac.id,
+                ac.title,
+                ac.created_at,
+                (
+                  SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
+                  FROM (
+                    SELECT json_build_object(
+                      'role', am.role,
+                      'content', am.content,
+                      'created_at', am.created_at
+                    ) as msg_data
+                    FROM ai_messages am
+                    WHERE am.conversation_id = ac.id
+                    ORDER BY am.created_at ASC
+                  ) sub
+                ) as messages
+              FROM ai_conversations ac
+              WHERE ac.caller_phone = ${phoneCallerId}
+              ORDER BY ac.created_at DESC
+              LIMIT 100
+            `).catch((err: any) => {
+              console.warn(`⚠️ [${connectionId}] Could not load previous caller conversations:`, err);
+              return { rows: [] as any[] };
+            })
+          : Promise.resolve({ rows: [] as any[] });
+        
+        // ⚡ Await consultant info (started in parallel above)
         let consultantName = 'il consulente';
         let consultantBusinessName = '';
-        if (consultantId) {
-          try {
-            const consultant = await storage.getUser(consultantId);
-            if (consultant) {
-              const fullName = [consultant.firstName, consultant.lastName].filter(Boolean).join(' ').trim();
-              consultantName = fullName || consultant.email?.split('@')[0] || 'il consulente';
-              consultantBusinessName = consultant.businessName || '';
-              console.log(`📞 [${connectionId}] Consultant info: ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}`);
-            }
-          } catch (err) {
-            console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
-          }
+        const _consultantResult = await _consultantInfoPromise;
+        if (_consultantResult) {
+          const fullName = [(_consultantResult as any).firstName, (_consultantResult as any).lastName].filter(Boolean).join(' ').trim();
+          consultantName = fullName || (_consultantResult as any).email?.split('@')[0] || 'il consulente';
+          consultantBusinessName = (_consultantResult as any).businessName || '';
+          console.log(`📞 [${connectionId}] Consultant info: ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}`);
         }
+        console.log(`⚡ [PHONE SERVICE] Non-client parallel queries launched in ${Date.now() - _ncParallelStart}ms (consultant resolved, settings+history running)`)
         
         // 🎯 PRIORITY CHECK: If there's a specific call instruction, use ONLY that
         if (phoneCallInstruction) {
@@ -2719,7 +2777,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             minute: '2-digit'
           });
           
-          // 🎙️ Fetch voice directives and outbound settings from database for this consultant
+          // ⚡ Await pre-started settings promise (runs in parallel with other queries)
           let consultantVoiceDirectives = '';
           let outboundPromptSource: 'agent' | 'manual' | 'default' = 'default';
           let outboundTemplateId = 'sales-orbitale';
@@ -2728,39 +2786,20 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           let outboundBrandVoiceEnabled = false;
           let outboundBrandVoiceAgentId: string | null = null;
           
-          if (consultantId) {
-            try {
-              const settingsResult = await db
-                .select({
-                  voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
-                  outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
-                  outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
-                  outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
-                  outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
-                  outboundBrandVoiceEnabled: consultantAvailabilitySettings.outboundBrandVoiceEnabled,
-                  outboundBrandVoiceAgentId: consultantAvailabilitySettings.outboundBrandVoiceAgentId,
-                })
-                .from(consultantAvailabilitySettings)
-                .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
-              
-              if (settingsResult.length > 0) {
-                const settings = settingsResult[0];
-                if (settings.voiceDirectives) {
-                  consultantVoiceDirectives = settings.voiceDirectives;
-                  console.log(`🎙️ [${connectionId}] Using consultant voice directives (${consultantVoiceDirectives.length} chars)`);
-                }
-                // Load outbound settings
-                outboundPromptSource = (settings.outboundPromptSource as 'agent' | 'manual' | 'default') || 'default';
-                outboundTemplateId = settings.outboundTemplateId || 'sales-orbitale';
-                outboundAgentId = settings.outboundAgentId;
-                outboundManualPrompt = settings.outboundManualPrompt || '';
-                outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
-                outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
-                console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}`);
-              }
-            } catch (err) {
-              console.warn(`⚠️ [${connectionId}] Could not fetch voice directives and outbound settings:`, err);
+          const settingsResult = await _settingsPromise;
+          if (settingsResult.length > 0) {
+            const settings = settingsResult[0] as any;
+            if (settings.voiceDirectives) {
+              consultantVoiceDirectives = settings.voiceDirectives;
+              console.log(`🎙️ [${connectionId}] Using consultant voice directives (${consultantVoiceDirectives.length} chars)`);
             }
+            outboundPromptSource = (settings.outboundPromptSource as 'agent' | 'manual' | 'default') || 'default';
+            outboundTemplateId = settings.outboundTemplateId || 'sales-orbitale';
+            outboundAgentId = settings.outboundAgentId;
+            outboundManualPrompt = settings.outboundManualPrompt || '';
+            outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
+            outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
+            console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}`);
           }
           
           // Use consultant's voice directives or fallback to default
@@ -2805,36 +2844,13 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
-          // 📞 LOAD PREVIOUS CONVERSATIONS FOR CONTEXT (max 8000 chars ≈ 2k tokens)
+          // ⚡ LOAD PREVIOUS CONVERSATIONS (pre-started in parallel)
           const MAX_HISTORY_CHARS = 8000;
           let instructionPreviousCallContext = '';
           let instructionHasPreviousConversations = false;
           if (phoneCallerId) {
             try {
-              // Fetch more conversations to allow character-based limiting
-              const previousConversations = await db.execute(sql`
-                SELECT 
-                  ac.id,
-                  ac.title,
-                  ac.created_at,
-                  (
-                    SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
-                    FROM (
-                      SELECT json_build_object(
-                        'role', am.role,
-                        'content', am.content,
-                        'created_at', am.created_at
-                      ) as msg_data
-                      FROM ai_messages am
-                      WHERE am.conversation_id = ac.id
-                      ORDER BY am.created_at ASC
-                    ) sub
-                  ) as messages
-                FROM ai_conversations ac
-                WHERE ac.caller_phone = ${phoneCallerId}
-                ORDER BY ac.created_at DESC
-                LIMIT 100
-              `);
+              const previousConversations = await _previousConversationsPromise;
               
               if (previousConversations.rows.length > 0) {
                 instructionHasPreviousConversations = true;
@@ -3038,68 +3054,37 @@ Una volta che hanno capito e confermato:
         
         console.log(`📞 [${connectionId}] DIRECTION DETECTION: scheduledCallId=${phoneScheduledCallId}, isOutbound=${isOutbound}`);
         
-        if (consultantId) {
-          try {
-            const settingsResult = await db
-              .select({
-                voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
-                // INBOUND direction-specific fields
-                inboundPromptSource: consultantAvailabilitySettings.inboundPromptSource,
-                inboundTemplateId: consultantAvailabilitySettings.inboundTemplateId,
-                inboundAgentId: consultantAvailabilitySettings.inboundAgentId,
-                inboundManualPrompt: consultantAvailabilitySettings.inboundManualPrompt,
-                inboundBrandVoiceEnabled: consultantAvailabilitySettings.inboundBrandVoiceEnabled,
-                inboundBrandVoiceAgentId: consultantAvailabilitySettings.inboundBrandVoiceAgentId,
-                // OUTBOUND direction-specific fields
-                outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
-                outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
-                outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
-                outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
-                outboundBrandVoiceEnabled: consultantAvailabilitySettings.outboundBrandVoiceEnabled,
-                outboundBrandVoiceAgentId: consultantAvailabilitySettings.outboundBrandVoiceAgentId,
-                // Legacy fields (fallback)
-                nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
-                nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
-                nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
-              })
-              .from(consultantAvailabilitySettings)
-              .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
+        // ⚡ Await pre-started settings promise (runs in parallel with other queries)
+        {
+          const settingsResult = await _settingsPromise;
+          if (settingsResult.length > 0) {
+            const settings = settingsResult[0] as any;
+            voiceDirectives = settings.voiceDirectives || '';
             
-            if (settingsResult.length > 0) {
-              const settings = settingsResult[0];
-              voiceDirectives = settings.voiceDirectives || '';
+            inboundBrandVoiceEnabled = settings.inboundBrandVoiceEnabled || false;
+            inboundBrandVoiceAgentId = settings.inboundBrandVoiceAgentId || null;
+            outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
+            outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
+            
+            if (isOutbound) {
+              promptSource = (settings.outboundPromptSource as 'agent' | 'manual' | 'default') 
+                || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
+                || 'default';
+              templateId = settings.outboundTemplateId || 'sales-call-orbitale';
+              agentId = settings.outboundAgentId || settings.nonClientAgentId;
+              manualPrompt = settings.outboundManualPrompt || settings.nonClientManualPrompt || '';
               
-              // Load brand voice settings for both directions
-              inboundBrandVoiceEnabled = settings.inboundBrandVoiceEnabled || false;
-              inboundBrandVoiceAgentId = settings.inboundBrandVoiceAgentId || null;
-              outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
-              outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
+              console.log(`📞 [${connectionId}] OUTBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}, brandVoice=${outboundBrandVoiceEnabled}`);
+            } else {
+              promptSource = (settings.inboundPromptSource as 'agent' | 'manual' | 'default') 
+                || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
+                || 'default';
+              templateId = settings.inboundTemplateId || 'mini-discovery';
+              agentId = settings.inboundAgentId || settings.nonClientAgentId;
+              manualPrompt = settings.inboundManualPrompt || settings.nonClientManualPrompt || '';
               
-              // 🎯 FIX: Use direction-specific settings based on isOutbound
-              if (isOutbound) {
-                // OUTBOUND call - use outbound settings
-                promptSource = (settings.outboundPromptSource as 'agent' | 'manual' | 'default') 
-                  || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
-                  || 'default';
-                templateId = settings.outboundTemplateId || 'sales-call-orbitale';
-                agentId = settings.outboundAgentId || settings.nonClientAgentId;
-                manualPrompt = settings.outboundManualPrompt || settings.nonClientManualPrompt || '';
-                
-                console.log(`📞 [${connectionId}] OUTBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}, brandVoice=${outboundBrandVoiceEnabled}`);
-              } else {
-                // INBOUND call - use inbound settings
-                promptSource = (settings.inboundPromptSource as 'agent' | 'manual' | 'default') 
-                  || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
-                  || 'default';
-                templateId = settings.inboundTemplateId || 'mini-discovery';
-                agentId = settings.inboundAgentId || settings.nonClientAgentId;
-                manualPrompt = settings.inboundManualPrompt || settings.nonClientManualPrompt || '';
-                
-                console.log(`📞 [${connectionId}] INBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}, brandVoice=${inboundBrandVoiceEnabled}`);
-              }
+              console.log(`📞 [${connectionId}] INBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}, brandVoice=${inboundBrandVoiceEnabled}`);
             }
-          } catch (err) {
-            console.warn(`⚠️ [${connectionId}] Could not fetch non-client settings:`, err);
           }
         }
         
@@ -3260,37 +3245,14 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         let contentPrompt = '';
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // LOAD PREVIOUS CONVERSATIONS FOR RETURNING CALLERS (max 8000 chars ≈ 2k tokens)
+        // ⚡ LOAD PREVIOUS CONVERSATIONS (pre-started in parallel)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         const INBOUND_MAX_HISTORY_CHARS = 8000;
         let previousCallContext = '';
-        let extractedContactName = ''; // 🆕 Nome estratto dallo storico per le variabili del template
+        let extractedContactName = '';
         if (phoneCallerId) {
           try {
-            // Find previous conversations from this phone number
-            const previousConversations = await db.execute(sql`
-              SELECT 
-                ac.id,
-                ac.title,
-                ac.created_at,
-                (
-                  SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
-                  FROM (
-                    SELECT json_build_object(
-                      'role', am.role,
-                      'content', am.content,
-                      'created_at', am.created_at
-                    ) as msg_data
-                    FROM ai_messages am
-                    WHERE am.conversation_id = ac.id
-                    ORDER BY am.created_at ASC
-                  ) sub
-                ) as messages
-              FROM ai_conversations ac
-              WHERE ac.caller_phone = ${phoneCallerId}
-              ORDER BY ac.created_at DESC
-              LIMIT 100
-            `);
+            const previousConversations = await _previousConversationsPromise;
             
             if (previousConversations.rows.length > 0) {
               let historyContent = '';
@@ -4457,7 +4419,12 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       console.log(`\n🎁 TOTAL TOKENS INVIATI (setup): ${totalTokens.toLocaleString()} tokens`);
       console.log(`${'═'.repeat(70)}\n`);
 
-      // 3. Build Vertex AI WebSocket URL
+      // 3. Await Vertex AI token (⚡ was deferred - may already be resolved from parallel execution)
+      const vertexConfig = await vertexConfigPromise;
+      if (!vertexConfig) {
+        throw new Error('Failed to get Vertex AI token for Live API - no valid configuration found');
+      }
+
       const dataLoadDoneTime = Date.now();
       console.log(`⏱️ [LATENCY-E2E] Data loading + prompt build completed: +${dataLoadDoneTime - authDoneTime}ms from auth, total: +${dataLoadDoneTime - wsArrivalTime}ms from WS arrival`);
       const wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
