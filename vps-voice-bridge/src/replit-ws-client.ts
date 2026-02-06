@@ -16,6 +16,8 @@ scheduledCallId?: string;
   onInterrupted?: () => void;
   onError: (error: Error) => void;
   onClose: () => void;
+  onReconnecting?: () => void;
+  onReconnected?: () => void;
 }
 
 export class ReplitWSClient {
@@ -27,6 +29,10 @@ private scheduledCallId?: string;
   private isConnected = false;
   private audioSequence = 0;
 
+  private _isReconnecting = false;
+  private pendingResumeHandle: string | null = null;
+  private reconnectAttempt = 0;
+
   constructor(options: ReplitClientOptions) {
     this.sessionId = options.sessionId;
     this.callerId = options.callerId;
@@ -35,7 +41,15 @@ this.scheduledCallId = options.scheduledCallId;
     this.options = options;
   }
 
-  async connect(): Promise<void> {
+  get connected(): boolean {
+    return this.isConnected;
+  }
+
+  get reconnecting(): boolean {
+    return this._isReconnecting;
+  }
+
+  async connect(resumeHandle?: string): Promise<void> {
     const mode = this.options.mode || 'phone_service';
     const voice = this.options.voice || config.voice.voiceId;
 
@@ -45,10 +59,19 @@ if (this.scheduledCallId) {
     wsUrl += `&scheduledCallId=${encodeURIComponent(this.scheduledCallId)}`;
   }
 
+    if (resumeHandle) {
+      wsUrl += `&resumeHandle=${encodeURIComponent(resumeHandle)}`;
+      log.info(`🔄 Connecting with resumeHandle for session resume`, {
+        sessionId: this.sessionId.slice(0, 8),
+        handlePreview: resumeHandle.substring(0, 20) + '...',
+      });
+    }
+
     log.info(`Connecting to Replit WebSocket`, {
       sessionId: this.sessionId.slice(0, 8),
       url: config.replit.wsUrl,
       voice,
+      isResume: !!resumeHandle,
     });
 
     return new Promise((resolve, reject) => {
@@ -62,8 +85,19 @@ if (this.scheduledCallId) {
       }, 15000);
 
       this.ws.on('open', () => {
-        log.info(`Replit WebSocket connected`, { sessionId: this.sessionId.slice(0, 8) });
+        log.info(`Replit WebSocket connected`, {
+          sessionId: this.sessionId.slice(0, 8),
+          resumed: !!resumeHandle,
+        });
         this.isConnected = true;
+        if (this._isReconnecting) {
+          this._isReconnecting = false;
+          this.options.onReconnected?.();
+          log.info(`✅ Session resumed successfully!`, {
+            sessionId: this.sessionId.slice(0, 8),
+            attempt: this.reconnectAttempt,
+          });
+        }
         clearTimeout(connectionTimeout);
         resolve();
       });
@@ -76,6 +110,7 @@ if (this.scheduledCallId) {
         log.error(`Replit WebSocket error`, {
           sessionId: this.sessionId.slice(0, 8),
           error: error.message,
+          isReconnecting: this._isReconnecting,
         });
         clearTimeout(connectionTimeout);
         this.options.onError(error);
@@ -89,8 +124,23 @@ if (this.scheduledCallId) {
           sessionId: this.sessionId.slice(0, 8),
           code,
           reason: reason.toString(),
+          hasPendingResume: !!this.pendingResumeHandle,
         });
         this.isConnected = false;
+
+        if (this.pendingResumeHandle) {
+          const handle = this.pendingResumeHandle;
+          this.pendingResumeHandle = null;
+          log.info(`🔄 Old connection closed → executing reconnect with resume handle`, { sessionId: this.sessionId.slice(0, 8) });
+          this.executeReconnect(handle);
+          return;
+        }
+
+        if (this._isReconnecting) {
+          log.warn(`🔄 Connection closed during reconnect flow - will retry via executeReconnect`, { sessionId: this.sessionId.slice(0, 8) });
+          return;
+        }
+
         this.options.onClose();
       });
     });
@@ -123,7 +173,17 @@ if (this.scheduledCallId) {
         return;
       }
 
+      if (message.type === 'gemini_reconnecting') {
+        this.handleGeminiReconnecting(message);
+        return;
+      }
+
       if (message.type === 'error') {
+        if (message.errorType === 'RESOURCE_EXHAUSTED') {
+          log.error(`🚨 RESOURCE_EXHAUSTED - stopping reconnect attempts`);
+          this.pendingResumeHandle = null;
+          this._isReconnecting = false;
+        }
         log.error(`[REPLIT ERROR]: ${message.error || message.message}`);
       }
 
@@ -135,6 +195,70 @@ if (this.scheduledCallId) {
           log.error(`Error handling binary message`, { error: e instanceof Error ? e.message : 'Unknown' });
         }
       }
+    }
+  }
+
+  private handleGeminiReconnecting(message: any): void {
+    const { resumeHandle, attempt, maxAttempts } = message;
+
+    log.info(`\n🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    log.info(`🔄 [SESSION RESUME] Gemini session timeout - reconnecting`);
+    log.info(`🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    log.info(`🔄  Session: ${this.sessionId.slice(0, 8)}`);
+    log.info(`🔄  Resume handle: ${resumeHandle?.substring(0, 30)}...`);
+    log.info(`🔄  Attempt: ${attempt}/${maxAttempts}`);
+    log.info(`🔄  Action: Keep FreeSWITCH call alive, open new Replit WebSocket`);
+    log.info(`🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
+    if (!resumeHandle) {
+      log.error(`🔄 No resume handle provided - cannot reconnect`);
+      return;
+    }
+
+    if (attempt > maxAttempts) {
+      log.error(`🔄 Max reconnect attempts exceeded (${attempt}/${maxAttempts})`);
+      return;
+    }
+
+    this._isReconnecting = true;
+    this.reconnectAttempt = attempt;
+    this.pendingResumeHandle = resumeHandle;
+    this.options.onReconnecting?.();
+
+    log.info(`🔄 Closing old WebSocket, will reconnect on close event...`, { sessionId: this.sessionId.slice(0, 8) });
+    if (this.ws) {
+      try {
+        this.ws.close(1000, 'Reconnecting with resume handle');
+      } catch (e) {
+        log.warn(`🔄 Error closing old WS, forcing reconnect directly`, { sessionId: this.sessionId.slice(0, 8) });
+        this.ws = null;
+        this.isConnected = false;
+        const handle = this.pendingResumeHandle;
+        this.pendingResumeHandle = null;
+        this.executeReconnect(handle);
+      }
+    }
+  }
+
+  private async executeReconnect(resumeHandle: string): Promise<void> {
+    log.info(`🔄 Executing reconnect with resume handle...`, {
+      sessionId: this.sessionId.slice(0, 8),
+      attempt: this.reconnectAttempt,
+    });
+
+    const RECONNECT_DELAY_MS = 500;
+    await new Promise(resolve => setTimeout(resolve, RECONNECT_DELAY_MS));
+
+    try {
+      await this.connect(resumeHandle);
+    } catch (error) {
+      log.error(`❌ Reconnect failed`, {
+        sessionId: this.sessionId.slice(0, 8),
+        error: error instanceof Error ? error.message : 'Unknown',
+        attempt: this.reconnectAttempt,
+      });
+      this._isReconnecting = false;
+      this.options.onClose();
     }
   }
 
@@ -156,6 +280,8 @@ if (this.scheduledCallId) {
   }
 
   close(): void {
+    this.pendingResumeHandle = null;
+    this._isReconnecting = false;
     if (this.ws) {
       try {
         this.ws.close(1000, 'Session ended');

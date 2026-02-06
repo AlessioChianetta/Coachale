@@ -241,7 +241,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
   function audioTick() {
     const s = sessionManager.getSession(session.id);
-    if (!s || s.state !== 'active' || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
+    if (!s || (s.state !== 'active' && s.state !== 'reconnecting') || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
       bgTimers.set(session.id, setTimeout(audioTick, 10));
       return;
     }
@@ -300,7 +300,24 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
       onError: (err) => {
         log.error(`Replit Error: ${err.message}`);
       },
-      onClose: () => log.info(`Replit connection closed`),
+      onReconnecting: () => {
+        log.info(`🔄 Gemini session expired - entering reconnect state, keeping FreeSWITCH call alive`, { sessionId: session.id.slice(0, 8) });
+        sessionManager.updateSessionState(session.id, 'reconnecting');
+        sessionManager.pauseInactivityTimeout(session.id);
+      },
+      onReconnected: () => {
+        log.info(`✅ Gemini session resumed - returning to active state`, { sessionId: session.id.slice(0, 8) });
+        sessionManager.updateSessionState(session.id, 'active');
+        sessionManager.resumeInactivityTimeout(session.id);
+      },
+      onClose: () => {
+        log.info(`Replit connection closed`, { sessionId: session.id.slice(0, 8) });
+        const s = sessionManager.getSession(session.id);
+        if (s && (s.state === 'active' || s.state === 'reconnecting')) {
+          log.info(`📞 Replit closed permanently - ending call`, { sessionId: session.id.slice(0, 8) });
+          handleCallStop(session.callId, 'replit_disconnected');
+        }
+      },
     });
 
     await replitClient.connect();
@@ -316,7 +333,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
 function handleAudioData(sessionId: string, audioData: Buffer): void {
   const session = sessionManager.getSession(sessionId);
-  if (!session || session.state !== 'active') return;
+  if (!session || (session.state !== 'active' && session.state !== 'reconnecting')) return;
 
   const pcm = convertForGemini(audioData, session.codec, session.sampleRate);
   session.replitClient?.sendAudio(pcm);
