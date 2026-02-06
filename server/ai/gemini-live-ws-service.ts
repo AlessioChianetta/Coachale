@@ -4675,8 +4675,22 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       };
 
       // 5. Setup WebSocket event handlers
+      const latencyTracker = {
+        wsConnectionTime: Date.now(),
+        geminiOpenTime: 0,
+        setupSentTime: 0,
+        chunksSentTime: 0,
+        primerSentTime: 0,
+        setupCompleteTime: 0,
+        greetingTriggerTime: 0,
+        firstAudioByteTime: 0,
+        greetingTriggered: false,
+      };
+      
       geminiSession.on('open', () => {
+        latencyTracker.geminiOpenTime = Date.now();
         console.log(`✅ [${connectionId}] Gemini Live WebSocket opened`);
+        console.log(`⏱️ [LATENCY] Gemini WS open: +${latencyTracker.geminiOpenTime - latencyTracker.wsConnectionTime}ms from client connection`);
         isSessionActive = true;
         
         // 🔌 Update connection tracker status
@@ -4807,8 +4821,10 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         }
         
         // 1. Send setup message
+        latencyTracker.setupSentTime = Date.now();
         geminiSession.send(JSON.stringify(setupMessage));
         console.log(`✅ [${connectionId}] Setup message SENT to Gemini WebSocket - awaiting response...`);
+        console.log(`⏱️ [LATENCY] Setup sent: +${latencyTracker.setupSentTime - latencyTracker.geminiOpenTime}ms from WS open`);
         
         // ✅ FIX CACHE OPTIMIZATION: Send dynamic context IMMEDIATELY after setup
         // Not after setupComplete - this ensures cache stays warm and timing is deterministic
@@ -4957,8 +4973,11 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
             }
           };
           geminiSession.send(JSON.stringify(primerMessage));
+          latencyTracker.primerSentTime = Date.now();
+          latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
           console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
           console.log(`   ✅ Turn complete with primer at END`);
+          console.log(`⏱️ [LATENCY] All chunks + primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms from setup sent, total: +${latencyTracker.primerSentTime - latencyTracker.wsConnectionTime}ms`);
           if (shouldSpeakFirst) {
             console.log(`   🎬 AI primed to SPEAK FIRST with greeting (mode: ${mode}) - trigger will fire after setupComplete\n`);
           } else {
@@ -5020,7 +5039,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
           
           // Setup complete response
           if (response.setupComplete) {
+            latencyTracker.setupCompleteTime = Date.now();
             console.log(`✅ [${connectionId}] Gemini Live session ready`);
+            console.log(`⏱️ [LATENCY] setupComplete received: +${latencyTracker.setupCompleteTime - latencyTracker.primerSentTime}ms from primer sent, total: +${latencyTracker.setupCompleteTime - latencyTracker.wsConnectionTime}ms`);
             clientWs.send(JSON.stringify({ 
               type: 'ready',
               message: 'Gemini Live session ready',
@@ -5259,7 +5280,10 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               };
               
               geminiSession.send(JSON.stringify(startGreetingMessage));
+              latencyTracker.greetingTriggerTime = Date.now();
+              latencyTracker.greetingTriggered = true;
               console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode})`);
+              console.log(`⏱️ [LATENCY] Greeting trigger sent: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
               
               clientWs.send(JSON.stringify({
                 type: 'ai_starting',
@@ -5807,6 +5831,28 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                 // 🔒 Track AI speaking (audio streaming) - MANTIENI true su OGNI chunk
                 if (!isAiSpeaking) {
                   isAiSpeaking = true;
+                  if (latencyTracker.firstAudioByteTime === 0) {
+                    latencyTracker.firstAudioByteTime = Date.now();
+                    const fromTrigger = latencyTracker.greetingTriggered
+                      ? `${latencyTracker.firstAudioByteTime - latencyTracker.greetingTriggerTime}ms from greeting trigger`
+                      : `${latencyTracker.firstAudioByteTime - latencyTracker.setupCompleteTime}ms from setupComplete`;
+                    console.log(`\n⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`⏱️ [LATENCY REPORT] FIRST AUDIO BYTE - ${connectionId}`);
+                    console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`⏱️  1. Client → Gemini WS open:    +${latencyTracker.geminiOpenTime - latencyTracker.wsConnectionTime}ms`);
+                    console.log(`⏱️  2. WS open → Setup sent:       +${latencyTracker.setupSentTime - latencyTracker.geminiOpenTime}ms`);
+                    console.log(`⏱️  3. Setup → Chunks+Primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms`);
+                    console.log(`⏱️  4. Primer → setupComplete:     +${latencyTracker.setupCompleteTime - latencyTracker.primerSentTime}ms`);
+                    if (latencyTracker.greetingTriggered) {
+                      console.log(`⏱️  5. setupComplete → Greeting:    +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms`);
+                      console.log(`⏱️  6. Greeting → First audio:      +${latencyTracker.firstAudioByteTime - latencyTracker.greetingTriggerTime}ms`);
+                    } else {
+                      console.log(`⏱️  5. setupComplete → First audio:  +${latencyTracker.firstAudioByteTime - latencyTracker.setupCompleteTime}ms`);
+                    }
+                    console.log(`⏱️  ─────────────────────────────────────────`);
+                    console.log(`⏱️  TOTAL: ${latencyTracker.firstAudioByteTime - latencyTracker.wsConnectionTime}ms (client connection → first audio byte)`);
+                    console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                  }
                   console.log(`🎤 [${connectionId}] AI started speaking (audio streaming)`);
                 } else {
                   // Assicurati che rimanga true durante tutto lo streaming
