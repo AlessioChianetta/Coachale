@@ -27,6 +27,56 @@ import { executeConsultationTool } from './consultation-tool-executor';
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
 /**
+ * Strip AI thinking/reasoning content from message text.
+ * Gemini with thinking enabled produces text like:
+ *   **Bold Header**\n\nReasoning paragraph...\n\n**Another Header**\n\nMore reasoning...\n\nActual spoken text
+ * This function removes all the thinking blocks and returns only the spoken content.
+ */
+function stripAiThinking(text: string): string {
+  if (!text) return text;
+  
+  // Pattern: **Bold Title** followed by reasoning paragraphs
+  // The actual spoken text is what remains after removing all **...** blocks and their following paragraphs
+  let cleaned = text;
+  
+  // Remove blocks that start with **Title** and their content until next **Title** or actual speech
+  // These thinking blocks follow the pattern: **Title**\n\nReasoning text that describes what AI is doing
+  cleaned = cleaned.replace(/\*\*[^*]+\*\*\s*\n+[^]*?(?=\n\n(?:[^*\n])|$)/g, '');
+  
+  // Simpler approach: Remove all lines that are **Bold Headers** and lines that describe AI internal reasoning
+  // Split by double newline to get paragraphs
+  const paragraphs = text.split(/\n\n+/);
+  const spokenParagraphs: string[] = [];
+  
+  let skipNext = false;
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i].trim();
+    if (!p) continue;
+    
+    // Skip **Bold Title** paragraphs (these are thinking headers)
+    if (/^\*\*[^*]+\*\*$/.test(p)) {
+      skipNext = true;
+      continue;
+    }
+    
+    // Skip reasoning paragraphs that follow a bold header
+    // These typically describe what the AI is doing/thinking
+    if (skipNext) {
+      // Check if this looks like reasoning (starts with "I'm", "I've", "I need", "I want", "I understand", "I realize", etc.)
+      if (/^(I'm |I've |I need |I want |I understand |I realize |I detect |I should |My |The |This |Now |Based on |Following |Maintaining |Keeping |Focusing )/i.test(p)) {
+        continue; // Skip this reasoning paragraph
+      }
+      skipNext = false;
+    }
+    
+    spokenParagraphs.push(p);
+  }
+  
+  const result = spokenParagraphs.join('\n').trim();
+  return result || text; // Fallback to original if stripping removed everything
+}
+
+/**
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * 🏢 BUILD BRAND VOICE FROM WHATSAPP AGENT
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -535,9 +585,10 @@ async function loadConversationHistory(
     console.log(`├─ STEP 3: Transforming messages...`);
     
     result.history = existingMessages.map((msg, index) => {
+      const cleanedContent = msg.role === 'assistant' ? stripAiThinking(msg.content) : msg.content;
       const transformed = {
         role: msg.role as 'user' | 'assistant',
-        content: msg.content,
+        content: cleanedContent,
         timestamp: msg.createdAt
       };
       
@@ -1544,7 +1595,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     
     // Accumulatori per trascrizioni in tempo reale
     let currentUserTranscript = '';
-    let currentAiTranscript = '';
+    let currentAiTranscript = ''; // Full transcript including thinking (for logging/debug)
+    let currentAiSpokenText = ''; // ONLY actual spoken words (outputTranscription) - used for saving to DB
     let currentAiAudioChunks: string[] = [];
     
     // 🎯 User transcript buffering for sales tracking (with isFinal flag)
@@ -2938,7 +2990,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
                   if (conv.messages && Array.isArray(conv.messages)) {
                     for (const msg of conv.messages) {
                       const roleLabel = msg.role === 'user' ? '👤 Loro' : '🤖 Tu';
-                      convText += `${roleLabel}: ${msg.content}\n`;
+                      const msgContent = msg.role === 'assistant' ? stripAiThinking(msg.content) : msg.content;
+                      convText += `${roleLabel}: ${msgContent}\n`;
                     }
                   }
                   convText += '\n---\n\n';
@@ -3347,7 +3400,8 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
                 if (conv.messages && Array.isArray(conv.messages)) {
                   for (const msg of conv.messages) {
                     const roleLabel = msg.role === 'user' ? '👤 Chiamante' : '🤖 Tu';
-                    convText += `${roleLabel}: ${msg.content}\n`;
+                    const msgContent = msg.role === 'assistant' ? stripAiThinking(msg.content) : msg.content;
+                    convText += `${roleLabel}: ${msgContent}\n`;
                   }
                 }
                 convText += '\n---\n\n';
@@ -3935,7 +3989,8 @@ ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
                   if (conv.messages && Array.isArray(conv.messages)) {
                     for (const msg of conv.messages) {
                       const roleLabel = msg.role === 'user' ? `👤 ${clientName}` : '🤖 Tu';
-                      convText += `${roleLabel}: ${msg.content}\n`;
+                      const msgContent = msg.role === 'assistant' ? stripAiThinking(msg.content) : msg.content;
+                      convText += `${roleLabel}: ${msgContent}\n`;
                     }
                   }
                   convText += '\n---\n\n';
@@ -4250,7 +4305,8 @@ ${clientInstructionCallHistory}
                   if (conv.messages && Array.isArray(conv.messages)) {
                     for (const msg of conv.messages) {
                       const roleLabel = msg.role === 'user' ? `👤 ${inboundClientName}` : '🤖 Tu';
-                      convText += `${roleLabel}: ${msg.content}\n`;
+                      const msgContent = msg.role === 'assistant' ? stripAiThinking(msg.content) : msg.content;
+                      convText += `${roleLabel}: ${msgContent}\n`;
                     }
                   }
                   convText += '\n---\n\n';
@@ -6288,6 +6344,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             
             // Accumula per tracciamento server-side
             currentAiTranscript += transcriptText;
+            currentAiSpokenText += transcriptText; // ONLY actual spoken words (no thinking)
             
             // 🔒 Check for greetings if we're in closing flow
             if (closingState === 'waiting_saluto' || closingState === 'waiting_ai_finish') {
@@ -6664,6 +6721,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             // Salva il messaggio AI completo se ha trascritto qualcosa
             if (currentAiTranscript.trim()) {
               const trimmedTranscript = currentAiTranscript.trim();
+              // 🎯 USE SPOKEN TEXT ONLY for saving to DB (strips thinking/reasoning)
+              const spokenOnly = currentAiSpokenText.trim() || trimmedTranscript; // Fallback to full if no outputTranscription
               
               // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
               // 🆕 LOOP DETECTION: Controlla se l'AI sta ripetendo la stessa risposta
@@ -6768,10 +6827,13 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               
               conversationMessages.push({
                 role: 'assistant',
-                transcript: trimmedTranscript,
+                transcript: spokenOnly,
                 duration: 0, // Calcolato dal client
                 timestamp: new Date().toISOString()
               });
+              if (spokenOnly !== trimmedTranscript) {
+                console.log(`🧹 [${connectionId}] Stripped thinking from AI message: ${trimmedTranscript.length} chars → ${spokenOnly.length} chars (spoken only)`);
+              }
               console.log(`💾 [${connectionId}] Saved AI message (server-side): ${conversationMessages.length} total messages`);
               
               // 📞 Update voice call transcript in real-time
@@ -7542,6 +7604,7 @@ ${compactFeedback}
               }
               
               currentAiTranscript = ''; // Reset per prossimo turno
+              currentAiSpokenText = ''; // Reset spoken text too
             }
             
             clientWs.send(JSON.stringify({
@@ -8496,14 +8559,16 @@ ${compactFeedback}
               
               // PERSIST PENDING AI TRANSCRIPT: save any in-flight AI message
               if (currentAiTranscript.trim()) {
+                const pendingSpoken = currentAiSpokenText.trim() || currentAiTranscript.trim();
                 conversationMessages.push({
                   role: 'assistant',
-                  transcript: currentAiTranscript.trim(),
+                  transcript: pendingSpoken,
                   duration: 0,
                   timestamp: new Date().toISOString()
                 });
-                console.log(`   💬 Added pending AI message to flush queue: "${currentAiTranscript.substring(0, 50)}..."`);
+                console.log(`   💬 Added pending AI message to flush queue: "${pendingSpoken.substring(0, 50)}..."`);
                 currentAiTranscript = '';
+                currentAiSpokenText = '';
               }
 
               if (conversationMessages.length === 0) {
@@ -8810,14 +8875,16 @@ ${compactFeedback}
         
         // PERSIST PENDING AI TRANSCRIPT: se c'è un messaggio AI in-flight, salvalo prima di chiudere
         if (currentAiTranscript.trim()) {
+          const closeSpoken = currentAiSpokenText.trim() || currentAiTranscript.trim();
           conversationMessages.push({
             role: 'assistant',
-            transcript: currentAiTranscript.trim(),
+            transcript: closeSpoken,
             duration: 0,
             timestamp: new Date().toISOString()
           });
-          console.log(`💾 [${connectionId}] Saved pending AI message on close: "${currentAiTranscript.substring(0, 50)}..."`);
+          console.log(`💾 [${connectionId}] Saved pending AI message on close: "${closeSpoken.substring(0, 50)}..."`);
           currentAiTranscript = '';
+          currentAiSpokenText = '';
         }
         
         // AUTO-SAVE: Salva conversazione se non già salvata e ci sono messaggi
