@@ -5010,8 +5010,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         console.log(`✅ [${connectionId}] Setup message SENT to Gemini WebSocket - awaiting response...`);
         console.log(`⏱️ [LATENCY] Setup sent: +${latencyTracker.setupSentTime - latencyTracker.geminiOpenTime}ms from WS open`);
         
-        // ✅ FIX CACHE OPTIMIZATION: Send dynamic context IMMEDIATELY after setup
-        // Not after setupComplete - this ensures cache stays warm and timing is deterministic
+        let pendingChunksSend: (() => void) | null = null;
         const isResuming = !!validatedResumeHandle;
         
         if (userDataContext && !isResuming) {
@@ -5094,42 +5093,38 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`      • 🔍 Saved to sessionInitialChunkTokens for comparison report`);
           console.log(`   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           
-          console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`⏳ Sending chunks to Gemini Live API...`);
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-          
-          // 🔍 TASK 7: Send data chunks FIRST, then primer chunk LAST
-          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`🎯 TASK 7: CACHE OPTIMIZATION EXPERIMENT - Primer Chunk at END`);
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`   💡 Strategy: Send all ${chunks.length} data chunks FIRST`);
-          console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
-          console.log(`   💡 Goal: Test if this order enables better caching`);
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-          
-          // Send all content chunks FIRST (all with turnComplete: false)
-          for (let i = 0; i < chunks.length; i++) {
-            const chunkTokens = Math.round(chunks[i].length / 4);
-            const chunkMessage = {
-              clientContent: {
-                turns: [{
-                  role: 'user',
-                  parts: [{ text: chunks[i] }]
-                }],
-                turnComplete: false // NOT the last chunk
-              }
-            };
-            geminiSession.send(JSON.stringify(chunkMessage));
-            console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
-          }
-          
-          // Send primer chunk LAST with turnComplete: true
-          // Mode-aware: assistenza/consulente/phone_service → SPEAK FIRST
-          //             sales_agent/consultation_invite → WAIT (they have their own greeting trigger after history restore)
           const shouldSpeakFirst = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !isResuming;
           
-          const primerContent = shouldSpeakFirst
-            ? `📋 CONTEXT_END - All user data loaded and ready.
+          const sendChunksAndPrimer = () => {
+            console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`⏳ Sending chunks to Gemini Live API...`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🎯 CACHE OPTIMIZATION - Primer Chunk at END`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`   💡 Strategy: Send all ${chunks.length} data chunks FIRST`);
+            console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
+            console.log(`   💡 Backend: ${liveApiBackend} (${liveApiBackend === 'google_ai_studio' ? 'DEFERRED after setupComplete' : 'IMMEDIATE'})`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            
+            for (let i = 0; i < chunks.length; i++) {
+              const chunkTokens = Math.round(chunks[i].length / 4);
+              const chunkMessage = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: chunks[i] }]
+                  }],
+                  turnComplete: false
+                }
+              };
+              geminiSession.send(JSON.stringify(chunkMessage));
+              console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
+            }
+            
+            const primerContent = shouldSpeakFirst
+              ? `📋 CONTEXT_END - All user data loaded and ready.
 
 🎬 REGOLA CRITICA - PARTI SUBITO:
 La sessione è iniziata. L'utente è in linea e ti sta ascoltando.
@@ -5137,7 +5132,7 @@ Inizia SUBITO a parlare con un saluto naturale e breve.
 Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]...").
 Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]...").
 NON aspettare che l'utente parli per primo. Parti tu immediatamente.`
-            : `📋 CONTEXT_END - All user data loaded and ready.
+              : `📋 CONTEXT_END - All user data loaded and ready.
 
 🚨 REGOLA CRITICA - ASPETTA IL CLIENTE:
 NON iniziare a parlare tu per primo!
@@ -5145,42 +5140,49 @@ ASPETTA che il cliente dica qualcosa (anche solo "pronto" o "ciao").
 Solo DOPO che il cliente ha parlato, puoi iniziare con il benvenuto.
 Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi senti?"
 MA NON iniziare con lo script completo finché il cliente non risponde!`;
-          
-          const primerTokens = Math.round(primerContent.length / 4);
-          const primerMessage = {
-            clientContent: {
-              turns: [{
-                role: 'user',
-                parts: [{ text: primerContent }]
-              }],
-              turnComplete: true // FINAL chunk completes the turn
+            
+            const primerTokens = Math.round(primerContent.length / 4);
+            const primerMessage = {
+              clientContent: {
+                turns: [{
+                  role: 'user',
+                  parts: [{ text: primerContent }]
+                }],
+                turnComplete: true
+              }
+            };
+            geminiSession.send(JSON.stringify(primerMessage));
+            latencyTracker.primerSentTime = Date.now();
+            latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
+            console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
+            console.log(`   ✅ Turn complete with primer at END`);
+            console.log(`⏱️ [LATENCY] All chunks + primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms from setup sent, total: +${latencyTracker.primerSentTime - latencyTracker.wsConnectionTime}ms`);
+            if (shouldSpeakFirst) {
+              console.log(`   🎬 AI primed to SPEAK FIRST with greeting (mode: ${mode})\n`);
+            } else {
+              console.log(`   🚨 AI instructed to WAIT for client to speak first\n`);
             }
+            
+            currentTurnMessages.push({
+              type: 'PRIMER CHUNK at END - Cache Optimization',
+              content: primerContent,
+              size: primerContent.length,
+              timestamp: new Date()
+            });
+            
+            console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED`);
+            console.log(`   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)`);
+            console.log(`   🎙️ AI can now speak (has complete context: ${Math.round(userDataContext!.length / 4)} tokens)`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           };
-          geminiSession.send(JSON.stringify(primerMessage));
-          latencyTracker.primerSentTime = Date.now();
-          latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
-          console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
-          console.log(`   ✅ Turn complete with primer at END`);
-          console.log(`⏱️ [LATENCY] All chunks + primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms from setup sent, total: +${latencyTracker.primerSentTime - latencyTracker.wsConnectionTime}ms`);
-          if (shouldSpeakFirst) {
-            console.log(`   🎬 AI primed to SPEAK FIRST with greeting (mode: ${mode}) - trigger will fire after setupComplete\n`);
+          
+          if (liveApiBackend === 'google_ai_studio') {
+            console.log(`⏳ [${connectionId}] Google AI Studio: deferring chunks until setupComplete (protocol requirement)...`);
+            pendingChunksSend = sendChunksAndPrimer;
           } else {
-            console.log(`   🚨 AI instructed to WAIT for client to speak first\n`);
+            sendChunksAndPrimer();
           }
-          
-          // Track primer in currentTurnMessages
-          currentTurnMessages.push({
-            type: 'PRIMER CHUNK at END - Cache Optimization (TASK 7 v2)',
-            content: primerContent,
-            size: primerContent.length,
-            timestamp: new Date()
-          });
-          
-          console.log(`\n🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`✅ [${connectionId}] ALL ${chunks.length} CHUNKS SENT & LOADED`);
-          console.log(`   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)`);
-          console.log(`   🎙️ AI can now speak (has complete context: ${Math.round(userDataContext.length / 4)} tokens)`);
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         } else if (isResuming) {
           console.log(`\n⏩ [${connectionId}] RESUMING - Skipping dynamic context (preserved in session)`);
         }
@@ -5238,6 +5240,12 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               message: 'Gemini Live session ready',
               voice: voiceName
             }));
+            
+            if (pendingChunksSend) {
+              console.log(`\n📤 [${connectionId}] Google AI Studio: setupComplete received, NOW sending deferred chunks...`);
+              pendingChunksSend();
+              pendingChunksSend = null;
+            }
             
             // ⏱️  SYNC TIMER: Send session start time to client (for weekly consultations)
             // This ensures frontend timer shows correct elapsed time after browser reload
@@ -5452,29 +5460,41 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
             const isNewAssistantOrPhoneSession = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
             
             if (isNewAssistantOrPhoneSession) {
-              console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`[${connectionId}] STARTING AI WITH IMMEDIATE GREETING`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`   Mode: ${mode}`);
-              console.log(`   Is Resume: NO (new session)`);
-              console.log(`   Action: AI will speak first with natural greeting`);
-              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-              
-              const startGreetingMessage = {
-                clientContent: {
-                  turns: [{
-                    role: 'user',
-                    parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente.' }]
-                  }],
-                  turnComplete: true
-                }
-              };
-              
-              geminiSession.send(JSON.stringify(startGreetingMessage));
-              latencyTracker.greetingTriggerTime = Date.now();
-              latencyTracker.greetingTriggered = true;
-              console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode})`);
-              console.log(`⏱️ [LATENCY] Greeting trigger sent: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
+              if (liveApiBackend === 'google_ai_studio') {
+                console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`[${connectionId}] GREETING HANDLED BY PRIMER (Google AI Studio)`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`   Mode: ${mode}`);
+                console.log(`   Primer already sent with turnComplete:true and greeting instructions`);
+                console.log(`   Skipping separate greeting to avoid double-turn issue`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                latencyTracker.greetingTriggerTime = Date.now();
+                latencyTracker.greetingTriggered = true;
+              } else {
+                console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`[${connectionId}] STARTING AI WITH IMMEDIATE GREETING`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`   Mode: ${mode}`);
+                console.log(`   Is Resume: NO (new session)`);
+                console.log(`   Action: AI will speak first with natural greeting`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                
+                const startGreetingMessage = {
+                  clientContent: {
+                    turns: [{
+                      role: 'user',
+                      parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente.' }]
+                    }],
+                    turnComplete: true
+                  }
+                };
+                
+                geminiSession.send(JSON.stringify(startGreetingMessage));
+                latencyTracker.greetingTriggerTime = Date.now();
+                latencyTracker.greetingTriggered = true;
+                console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode})`);
+                console.log(`⏱️ [LATENCY] Greeting trigger sent: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
+              }
               
               clientWs.send(JSON.stringify({
                 type: 'ai_starting',
