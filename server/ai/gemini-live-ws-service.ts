@@ -1599,6 +1599,11 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let currentAiSpokenText = ''; // ONLY actual spoken words (outputTranscription) - used for saving to DB
     let currentAiAudioChunks: string[] = [];
     
+    // ⏱️ PER-TURN LATENCY TRACKING
+    let userFinishedSpeakingTime: number = 0; // Timestamp when isFinal received
+    let turnLatencyMeasured: boolean = false; // Reset each turn to measure first audio byte per turn
+    let turnCount: number = 0; // Counts user→AI exchanges
+    
     // 🎯 User transcript buffering for sales tracking (with isFinal flag)
     let pendingUserTranscript: { text: string; hasFinalChunk: boolean } = {
       text: '',
@@ -3435,7 +3440,7 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
                 
                 // 🆕 Costruisci istruzioni DIVERSE per OUTBOUND vs INBOUND
                 if (isOutbound) {
-                  // OUTBOUND: Lo storico è solo contesto, il COMPORTAMENTO viene dallo SCRIPT
+                  // OUTBOUND: storico per continuità + contesto
                   previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 STORICO CHIAMATE PRECEDENTI
@@ -3443,24 +3448,27 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
 
 📛 NOME DEL CONTATTO: ${extractedContactName || '(sconosciuto)'}
 
-⚠️ IMPORTANTE PER CHIAMATE OUTBOUND:
-→ SEGUI LO SCRIPT DI CHIAMATA sopra per l'apertura e il flusso!
-→ Usa lo storico qui sotto SOLO per:
-  - Sapere il nome della persona
-  - Fare riferimenti a conversazioni passate SE pertinenti
-  - Personalizzare il tuo approccio
+🔄 USA LO STORICO PER DECIDERE COME INIZIARE:
+→ Lo script ha una sezione "CONTINUITÀ CONVERSAZIONE" - SEGUILA!
+→ Analizza lo storico qui sotto per capire:
+  1. Se c'è già un appuntamento preso → menzionalo e offri gestione (modifica/sposta/aggiungi email)
+  2. A che punto eravate arrivati → riprendi da lì, NON ricominciare da zero
+  3. Il nome della persona → usalo nel saluto
+  4. Argomenti già discussi → non ripetere domande già fatte
 
+⚠️ REGOLA: Se lo storico mostra conversazioni precedenti → adatta il saluto!
+→ Con persona già conosciuta: "Ciao [Nome]! Come stai? Ti richiamo perché..."
+→ Con appuntamento esistente: "Ciao [Nome]! Tutto confermato per [DATA]?"
+→ SOLO se prima volta → usa l'apertura standard dello script
 
-✅ USA L'APERTURA DELLO SCRIPT: "[Nome]? Ciao, ti chiamo da..."
-
-Ecco le conversazioni precedenti (per contesto):
+Ecco le conversazioni precedenti:
 
 ${historyContent}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
                 } else if (promptSource === 'template') {
-                  // INBOUND + TEMPLATE: Lo storico è solo contesto, il COMPORTAMENTO viene dal TEMPLATE
+                  // INBOUND + TEMPLATE: storico per continuità + contesto
                   previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 STORICO CHIAMATE PRECEDENTI
@@ -3468,19 +3476,21 @@ ${historyContent}
 
 📛 NOME DEL CONTATTO: ${extractedContactName || '(sconosciuto)'}
 
-⚠️ IMPORTANTE - TEMPLATE HA LA PRIORITÀ:
-→ SEGUI LO SCRIPT/TEMPLATE sopra per l'apertura e il flusso della chiamata!
-→ Il template definisce FASI, CHECKPOINT e COMPORTAMENTO da seguire
-→ Usa lo storico qui sotto SOLO per:
-  - Sapere il nome della persona (puoi usarlo nel saluto del template)
-  - Fare riferimenti a conversazioni passate SE pertinenti durante la conversazione
-  - Personalizzare il tuo approccio DENTRO le fasi del template
+🔄 USA LO STORICO PER DECIDERE DA DOVE PARTIRE:
+→ Il template ha una sezione "CONTINUITÀ CONVERSAZIONE" - SEGUILA!
+→ Analizza lo storico qui sotto per capire:
+  1. Se c'è già un appuntamento preso → offri gestione (modifica/sposta/aggiungi email)
+  2. A che FASE eravamo arrivati → riprendi da lì, NON da FASE 1
+  3. Il nome della persona → saluta per nome
+  4. Argomenti già discussi → non ripetere domande già fatte
 
+⚠️ REGOLA FONDAMENTALE:
+→ Se lo storico mostra che conoscete già questa persona → NON ricominciare da zero!
+→ Se c'è un appuntamento → chiedi se serve modificare qualcosa
+→ Se eravate a metà conversazione → riprendi da dove eravate rimasti
+→ SOLO se non c'è storico → parti da FASE 1
 
-❌ NON INVENTARE un flusso libero - segui le FASI del template!
-✅ USA IL FLUSSO DEFINITO DAL TEMPLATE con le sue fasi numerate
-
-Ecco le conversazioni precedenti (per contesto):
+Ecco le conversazioni precedenti:
 
 ${historyContent}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -6284,6 +6294,13 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                   }
                   console.log(`🎤 [${connectionId}] AI started speaking (audio streaming)`);
+                  
+                  // ⏱️ PER-TURN LATENCY: Measure time from user finished speaking to AI first audio
+                  if (userFinishedSpeakingTime > 0 && !turnLatencyMeasured) {
+                    turnLatencyMeasured = true;
+                    const turnLatencyMs = Date.now() - userFinishedSpeakingTime;
+                    console.log(`⏱️ [TURN LATENCY] Turn #${turnCount} | User→AI: ${turnLatencyMs}ms (${(turnLatencyMs / 1000).toFixed(1)}s)`);
+                  }
                 } else {
                   // Assicurati che rimanga true durante tutto lo streaming
                   isAiSpeaking = true;
@@ -6534,7 +6551,10 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 // 🔬 DIAGNOSTIC: Mark isFinal received for this turn
                 isFinalReceivedForCurrentTurn = true;
                 userSpeakingStartTime = null; // Reset - user finished speaking
-                console.log(`✅ [${connectionId}] isFinal received - user finished speaking`);
+                userFinishedSpeakingTime = Date.now(); // ⏱️ TURN LATENCY: mark when user stopped
+                turnLatencyMeasured = false; // Reset for this turn
+                turnCount++;
+                console.log(`✅ [${connectionId}] isFinal received - user finished speaking (turn #${turnCount})`);
                 
                 // Reset VAD buffer on final
                 vadConcatBuffer = '';
