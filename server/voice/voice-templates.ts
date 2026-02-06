@@ -149,33 +149,39 @@ Concetto: Saluta calorosamente riflettendo la personalità del brand, poi SGANCI
 ⚠️ CHECKPOINT: NON proseguire finché non capisci la MOTIVAZIONE iniziale.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-❓ FASE 2 - DIAGNOSI STATO ATTUALE
-Obiettivo: Scoprire problemi, blocchi, difficoltà attuali.
+❓ FASE 2 - DIAGNOSI STATO ATTUALE (collegata all'uncino)
+Obiettivo: Approfondire il problema emerso dalla motivazione iniziale, restando nell'area dell'uncino.
 
-Domande (UNA alla volta, aspetta risposta dopo ciascuna — scegli quelle pertinenti):
-• "Capito! Di cosa ti occupi esattamente?"
-• "Qual è il problema principale che stai avendo in questo momento?"
-• "Dove senti più margine di miglioramento oggi?"
-• "Quali difficoltà o blocchi senti più forti in questo periodo?"
+🔗 IMPORTANTE: Le domande devono riferirsi a ciò che il lead ha detto in FASE 1.
+   Se ha chiamato per [area dell'uncino], scava in QUELLA direzione specifica.
+
+Domande (UNA alla volta, aspetta risposta dopo ciascuna — collegate all'uncino):
+• "Capito! E in questo momento, come stai gestendo [area del problema emerso]?"
+• "Da quanto tempo stai riscontrando questa difficoltà con [tema dell'uncino]?"
+• "Qual è l'aspetto di [area dell'uncino] che ti sta dando più problemi?"
+• "Cosa hai provato finora per risolvere questa situazione?"
 
 🎨 TONO: Empatico, curioso, consulenziale.
 Usa risposte di ascolto attivo: "Capito", "Interessante...", "Mmm, capisco"
 
-⚠️ CHECKPOINT: NON proseguire finché non hai chiaro il PROBLEMA/SITUAZIONE ATTUALE.
+⚠️ CHECKPOINT: NON proseguire finché non hai chiaro il PROBLEMA/SITUAZIONE ATTUALE legato all'uncino.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌅 FASE 3 - STATO IDEALE E OBIETTIVI (CON QUANTIFICAZIONE NUMERICA)
-Obiettivo: Far emergere risultati desiderati con NUMERI PRECISI.
+Obiettivo: Far emergere dove vorrebbe arrivare il lead nell'area dell'uncino, con NUMERI PRECISI.
 
-🎯 IMPORTANTE: Se il lead dice obiettivi vaghi (es. "libertà finanziaria", "crescere", "stare meglio"), 
+🔗 IMPORTANTE: Gli obiettivi devono essere collegati al problema emerso in FASE 2 
+   e all'area dell'uncino. Non chiedere obiettivi generici scollegati.
+
+🎯 Se il lead dice obiettivi vaghi (es. "libertà finanziaria", "crescere", "stare meglio"), 
    DEVI QUANTIFICARE con numeri concreti!
 
-Domande (scegli in base al contesto):
-- "Se potessi sistemare questa situazione, che risultato concreto ti aspetteresti? Quanto impatto avrebbe?"
-- "Che obiettivo numerico ti sei dato per i prossimi mesi?"
-- "Quanto vorresti arrivare a [fatturare/risparmiare/investire/guadagnare] per sentirti soddisfatto?"
+Domande (scegli in base al contesto, sempre collegate all'uncino):
+- "Se potessi risolvere [problema emerso in FASE 2], che risultato concreto ti aspetteresti? A che numeri vorresti arrivare?"
+- "Che obiettivo numerico ti sei dato per [area dell'uncino] nei prossimi mesi?"
+- "Quanto vorresti arrivare a [risultato specifico legato all'uncino] per sentirti soddisfatto?"
 
-🎨 TONO: Visionario, aiuta il lead a immaginare il futuro CON NUMERI.
+🎨 TONO: Visionario, aiuta il lead a immaginare il futuro CON NUMERI nell'area dell'uncino.
 
 ⚠️ CHECKPOINT CRITICO: 
 - Obiettivo vago → CHIEDI NUMERI prima di andare avanti
@@ -445,32 +451,39 @@ Obiettivo: Catturare attenzione SUBITO — il lead NON ti ha chiamato, devi gius
 ⚠️ CHECKPOINT: Se il lead non è disponibile o chiede di richiamare, proponi un momento specifico e chiudi gentilmente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-❓ FASE 2 - DIAGNOSI STATO ATTUALE
-Obiettivo: Approfondire i problemi emersi dall'uncino.
+❓ FASE 2 - DIAGNOSI STATO ATTUALE (collegata all'uncino)
+Obiettivo: Approfondire il problema che il lead ha descritto in risposta all'uncino.
 
-Domande (UNA alla volta, aspetta risposta dopo ciascuna — scegli quelle pertinenti):
-• "Di cosa ti occupi esattamente?"
-• "Da quanto tempo stai riscontrando questo problema?"
-• "Dove senti più margine di miglioramento oggi?"
+🔗 IMPORTANTE: Le domande devono approfondire ciò che il lead ha risposto in FASE 1.
+   Resta nell'area dell'uncino, scava nel problema specifico che ha menzionato.
+
+Domande (UNA alla volta, aspetta risposta dopo ciascuna — collegate all'uncino):
+• "Capito! E in questo momento, come stai gestendo [area del problema emerso]?"
+• "Da quanto tempo stai riscontrando questa difficoltà con [tema dell'uncino]?"
+• "Qual è l'aspetto di [area dell'uncino] che ti sta dando più problemi?"
+• "Cosa hai provato finora per risolvere questa situazione?"
 
 🎨 TONO: Empatico, curioso, consulenziale.
 Usa risposte di ascolto attivo: "Capito", "Interessante...", "Mmm, capisco"
 
-⚠️ CHECKPOINT: NON proseguire finché non hai chiaro il PROBLEMA/SITUAZIONE ATTUALE.
+⚠️ CHECKPOINT: NON proseguire finché non hai chiaro il PROBLEMA/SITUAZIONE ATTUALE legato all'uncino.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌅 FASE 3 - STATO IDEALE E OBIETTIVI (CON QUANTIFICAZIONE NUMERICA)
-Obiettivo: Far emergere risultati desiderati con NUMERI PRECISI.
+Obiettivo: Far emergere dove vorrebbe arrivare il lead nell'area dell'uncino, con NUMERI PRECISI.
 
-🎯 IMPORTANTE: Se il lead dice obiettivi vaghi (es. "crescere", "guadagnare di più", "stare meglio"), 
+🔗 IMPORTANTE: Gli obiettivi devono essere collegati al problema emerso in FASE 2 
+   e all'area dell'uncino. Non chiedere obiettivi generici scollegati.
+
+🎯 Se il lead dice obiettivi vaghi (es. "crescere", "guadagnare di più", "stare meglio"), 
    DEVI QUANTIFICARE con numeri concreti!
 
-Domande (scegli in base al contesto):
-- "Se potessi risolvere questa situazione, che risultato concreto ti aspetteresti? Quanto impatto avrebbe?"
-- "Che obiettivo numerico ti sei dato per i prossimi mesi?"
-- "Quanto vorresti arrivare a [fatturare/risparmiare/investire/guadagnare] per sentirti soddisfatto?"
+Domande (scegli in base al contesto, sempre collegate all'uncino):
+- "Se potessi risolvere [problema emerso in FASE 2], che risultato concreto ti aspetteresti? A che numeri vorresti arrivare?"
+- "Che obiettivo numerico ti sei dato per [area dell'uncino] nei prossimi mesi?"
+- "Quanto vorresti arrivare a [risultato specifico legato all'uncino] per sentirti soddisfatto?"
 
-🎨 TONO: Visionario, aiuta il lead a immaginare il futuro CON NUMERI.
+🎨 TONO: Visionario, aiuta il lead a immaginare il futuro CON NUMERI nell'area dell'uncino.
 
 ⚠️ CHECKPOINT CRITICO: 
 - Obiettivo vago → CHIEDI NUMERI prima di andare avanti
