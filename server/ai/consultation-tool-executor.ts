@@ -256,7 +256,7 @@ async function executeGetAvailableSlots(
       if (agentConfig.availabilityWorkingHours && typeof agentConfig.availabilityWorkingHours === 'object') {
         rawAvailabilityData = agentConfig.availabilityWorkingHours as Record<string, any>;
       }
-      console.log(`🤖 [SLOTS] Using AGENT config (${agentConfigId.slice(0, 8)}): duration=${appointmentDuration}, timezone=${timezone}`);
+      console.log(`🤖 [SLOTS] Using AGENT config (${agentConfigId.slice(0, 8)}): duration=${appointmentDuration}, timezone=${timezone}, calendarEmail=${agentConfig.googleCalendarEmail || 'N/A'}, calendarId=${agentConfig.googleCalendarId || 'primary'}`);
     } else {
       console.log(`⚠️ [SLOTS] Agent config ${agentConfigId} not found, falling back to consultant settings`);
     }

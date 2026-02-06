@@ -985,9 +985,13 @@ export async function listEvents(
       if (agentCalendar) {
         calendar = agentCalendar;
         calendarId = await getAgentCalendarId(agentConfigId);
-        console.log(`✅ [LIST EVENTS] Using AGENT's calendar: ${calendarId}`);
+        const [agentCfg] = await db
+          .select({ email: consultantWhatsappConfig.googleCalendarEmail, calId: consultantWhatsappConfig.googleCalendarId })
+          .from(consultantWhatsappConfig)
+          .where(eq(consultantWhatsappConfig.id, agentConfigId))
+          .limit(1);
+        console.log(`✅ [LIST EVENTS] Using AGENT's calendar: ${calendarId} (email: ${agentCfg?.email || 'N/A'})`);
       } else {
-        // NO FALLBACK: Return empty array if agent has no calendar
         console.log(`⚠️ [LIST EVENTS] Agent ${agentConfigId} has no calendar connected - returning empty`);
         return [];
       }
