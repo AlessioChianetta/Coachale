@@ -3400,8 +3400,35 @@ ${historyContent}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
+                } else if (promptSource === 'template') {
+                  // INBOUND + TEMPLATE: Lo storico è solo contesto, il COMPORTAMENTO viene dal TEMPLATE
+                  previousCallContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 STORICO CHIAMATE PRECEDENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📛 NOME DEL CONTATTO: ${extractedContactName || '(sconosciuto)'}
+
+⚠️ IMPORTANTE - TEMPLATE HA LA PRIORITÀ:
+→ SEGUI LO SCRIPT/TEMPLATE sopra per l'apertura e il flusso della chiamata!
+→ Il template definisce FASI, CHECKPOINT e COMPORTAMENTO da seguire
+→ Usa lo storico qui sotto SOLO per:
+  - Sapere il nome della persona (puoi usarlo nel saluto del template)
+  - Fare riferimenti a conversazioni passate SE pertinenti durante la conversazione
+  - Personalizzare il tuo approccio DENTRO le fasi del template
+
+❌ NON USARE il saluto "Ciao [Nome]! Che bello risentirti!" - segui l'apertura del template!
+❌ NON INVENTARE un flusso libero - segui le FASI del template!
+✅ USA IL FLUSSO DEFINITO DAL TEMPLATE con le sue fasi numerate
+
+Ecco le conversazioni precedenti (per contesto):
+
+${historyContent}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
                 } else {
-                  // INBOUND: Comportamento originale - saluto caloroso
+                  // INBOUND + NO TEMPLATE (default/assistenza): saluto caloroso per returning caller
                   previousCallContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 STORICO CHIAMATE PRECEDENTI
@@ -3675,6 +3702,10 @@ ${brandVoicePrompt}` : ''}`;
           console.log(`│   → Saluta il prospect (TU stai chiamando LUI)                       │`);
           console.log(`│   → Usa il template OUTBOUND configurato                             │`);
           console.log(`│   → Segui lo script di vendita/follow-up                             │`);
+        } else if (nonClientHasPreviousConvs && promptSource === 'template') {
+          console.log(`│   → ⚡ TEMPLATE HA PRIORITÀ (storico = solo contesto)                │`);
+          console.log(`│   → Segue script template: ${templateId.padEnd(30)}       │`);
+          console.log(`│   → Nome contatto noto: ${(extractedContactName || 'no').padEnd(15)}                        │`);
         } else if (nonClientHasPreviousConvs) {
           console.log(`│   → Saluto informale (già parlato prima!)                           │`);
           console.log(`│   → Chiede come può aiutare                                          │`);
