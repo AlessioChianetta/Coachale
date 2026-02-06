@@ -4876,11 +4876,9 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 silence_duration_ms: isPhoneCall ? 500 : 700
               }
             },
-            ...(isPhoneCall ? {
-              proactivity: {
-                proactive_audio: true
-              }
-            } : {}),
+            proactivity: {
+              proactive_audio: true
+            },
             // 💚 AFFECTIVE DIALOG: Built-in on gemini-live-2.5-flash-native-audio (GA Dec 2025)
             // No explicit configuration needed - model automatically understands emotional expressions
             // Enable session resumption for unlimited session duration
