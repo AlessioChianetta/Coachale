@@ -4579,7 +4579,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       if (googleStudioConfig) {
         liveApiBackend = 'google_ai_studio';
         liveModelId = googleStudioConfig.modelId;
-        wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
+        wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
         console.log(`🔵 [${connectionId}] Using GOOGLE AI STUDIO for Live API`);
         console.log(`   Model: ${liveModelId}`);
         console.log(`   Endpoint: generativelanguage.googleapis.com`);
@@ -4873,7 +4873,6 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               generationConfig: {
                 responseModalities: ["AUDIO"],
                 speechConfig: {
-                  languageCode: "it-IT",
                   voiceConfig: {
                     prebuiltVoiceConfig: {
                       voiceName: voiceName
@@ -4905,7 +4904,10 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                   silenceDurationMs: isPhoneCall ? 500 : 700
                 }
               },
-              sessionResumption: { handle: validatedResumeHandle || null }
+              proactivity: {
+                proactiveAudio: true
+              },
+              sessionResumption: { handle: validatedResumeHandle || undefined }
             }
           };
         } else {
