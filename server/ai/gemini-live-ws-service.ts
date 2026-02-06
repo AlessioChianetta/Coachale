@@ -4899,7 +4899,15 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         if (liveApiBackend === 'google_ai_studio') {
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           // 🔵 GOOGLE AI STUDIO: camelCase parameters, models/{id} path
+          // ✅ FIX: Include user data context in systemInstruction (not as clientContent)
+          // Google AI Studio has a clientContent size limit that rejects large payloads (error 1007)
+          // By putting user data in systemInstruction, we avoid the limit entirely
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          const fullSystemInstruction = userDataContext 
+            ? systemInstruction + '\n\n' + userDataContext
+            : systemInstruction;
+          console.log(`🔵 [${connectionId}] AI Studio systemInstruction: ${systemInstruction.length} chars (prompt) + ${userDataContext ? userDataContext.length : 0} chars (user data) = ${fullSystemInstruction.length} chars (~${Math.round(fullSystemInstruction.length / 4)} tokens)`);
+          
           setupMessage = {
             setup: {
               model: `models/${liveModelId}`,
@@ -4917,15 +4925,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 topK: 40,
                 maxOutputTokens: 8192
               },
-              // ⚠️ TEST A: Removed inputAudioTranscription & outputAudioTranscription
-              // Known bug #1212: transcription + native-audio model = 1007 error
-              // inputAudioTranscription: {},
-              // outputAudioTranscription: {},
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
               ...(!validatedResumeHandle && {
                 systemInstruction: {
                   parts: [
                     {
-                      text: systemInstruction
+                      text: fullSystemInstruction
                     }
                   ]
                 }
@@ -5148,36 +5154,31 @@ Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi sent
 MA NON iniziare con lo script completo finché il cliente non risponde!`;
             
             if (liveApiBackend === 'google_ai_studio') {
-              // 🧪 TEST B: Send ONLY first chunk + primer to test size limits
-              // Previous test: consolidated 88K tokens → 1007 error
-              // This test: only first chunk (~7.5K tokens) + primer → see if size is the issue
-              const testText = chunks[0] + '\n' + primerContent;
-              const testTokens = Math.round(testText.length / 4);
-              
+              // ✅ Google AI Studio: user data context is already in systemInstruction
+              // Only send the primer as a small clientContent to trigger the greeting
               console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎯 GOOGLE AI STUDIO - TEST B: FIRST CHUNK ONLY`);
+              console.log(`🎯 GOOGLE AI STUDIO - CONTEXT IN SYSTEM INSTRUCTION`);
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`   🧪 TEST: Sending ONLY chunk 1/${chunks.length} + primer`);
-              console.log(`   🧪 Skipping ${chunks.length - 1} chunks (${Math.round((chunks.slice(1).join('').length) / 4).toLocaleString()} tokens)`);
-              console.log(`   💡 Total size: ${testText.length.toLocaleString()} chars (~${testTokens.toLocaleString()} tokens)`);
-              console.log(`   💡 Full size was: ${chunks.join('').length.toLocaleString()} chars (~${Math.round(chunks.join('').length / 4).toLocaleString()} tokens)`);
+              console.log(`   ✅ User data (${chunks.length} chunks, ~${Math.round(chunks.join('').length / 4).toLocaleString()} tokens) already in systemInstruction`);
+              console.log(`   ✅ Avoids clientContent size limit (error 1007 fix)`);
+              console.log(`   💡 Sending ONLY primer as clientContent (${primerContent.length} chars)`);
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
               
-              const consolidatedMessage = {
+              const primerMessage = {
                 clientContent: {
                   turns: [{
                     role: 'user',
-                    parts: [{ text: testText }]
+                    parts: [{ text: primerContent }]
                   }],
                   turnComplete: true
                 }
               };
-              geminiSession.send(JSON.stringify(consolidatedMessage));
+              geminiSession.send(JSON.stringify(primerMessage));
               
               latencyTracker.primerSentTime = Date.now();
               latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
-              console.log(`   ✅ Single message sent - ${testText.length.toLocaleString()} chars (~${testTokens.toLocaleString()} tokens)`);
-              console.log(`   ✅ turnComplete: true (single message, no chunking)`);
+              console.log(`   ✅ Primer sent - ${primerContent.length} chars (~${Math.round(primerContent.length / 4)} tokens)`);
+              console.log(`   ✅ turnComplete: true`);
             } else {
               // Vertex AI: keep existing chunked behavior (works fine)
               console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
