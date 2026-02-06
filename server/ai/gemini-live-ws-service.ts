@@ -1550,7 +1550,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let lastSessionHandle: string | null = validatedResumeHandle;
     let goAwayReceived = false;
     let geminiReconnectAttempts = 0;
-    const MAX_GEMINI_RECONNECT_ATTEMPTS = 2;
+    const MAX_GEMINI_RECONNECT_ATTEMPTS = 8;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 💰 VERTEX AI LIVE API - Official Pricing (Nov 2024)
