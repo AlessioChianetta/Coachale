@@ -8,7 +8,7 @@ import {
   bufferToBase64 
 } from './audio-converter';
 import { db } from '../db';
-import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings, voiceCalls, consultantWhatsappConfig } from '@shared/schema';
+import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings, voiceCalls, consultantWhatsappConfig, proactiveLeads } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
@@ -1563,6 +1563,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let pendingFeedbackForAI: string | null = null;
     let bookingSupervisor: VoiceBookingSupervisor | null = null;
     let bookingAvailableSlots: AvailableSlot[] = [];
+    let phoneLeadContactData: { name: string | null; email: string | null; phone: string | null; leadId: string | null; category: string | null } | null = null;
     
     // 📞 VOICE CALL TRANSCRIPT UPDATE: Debounced function to update transcript in DB
     let transcriptUpdateTimeout: NodeJS.Timeout | null = null;
@@ -2744,6 +2745,32 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             })
           : Promise.resolve({ rows: [] as any[] });
         
+        // ⚡ PROACTIVE LEAD LOOKUP - Query proactive_leads by phone number for pre-populated booking data
+        const _proactiveLeadPromise = (phoneCallerId && consultantId)
+          ? db.execute(sql`
+              SELECT 
+                id,
+                first_name,
+                last_name,
+                phone_number,
+                lead_info,
+                lead_category,
+                status
+              FROM proactive_leads
+              WHERE consultant_id = ${consultantId}
+                AND (
+                  phone_number = ${phoneCallerId}
+                  OR phone_number = ${phoneCallerId.replace(/^\+/, '')}
+                  OR ('+' || phone_number) = ${phoneCallerId}
+                )
+              ORDER BY created_at DESC
+              LIMIT 1
+            `).catch((err: any) => {
+              console.warn(`⚠️ [${connectionId}] Could not lookup proactive lead:`, err.message);
+              return { rows: [] as any[] };
+            })
+          : Promise.resolve({ rows: [] as any[] });
+        
         // ⚡ Await consultant info (started in parallel above)
         let consultantName = 'il consulente';
         let consultantBusinessName = '';
@@ -2755,6 +2782,39 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           console.log(`📞 [${connectionId}] Consultant info: ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}`);
         }
         console.log(`⚡ [PHONE SERVICE] Non-client parallel queries launched in ${Date.now() - _ncParallelStart}ms (consultant resolved, settings+history running)`)
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // ⚡ PROACTIVE LEAD DATA - Await lead lookup (used by BOTH instruction and non-instruction paths)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        let leadContactData: { name: string | null; email: string | null; phone: string | null; leadId: string | null; category: string | null } = {
+          name: null, email: null, phone: phoneCallerId || null, leadId: null, category: null
+        };
+        
+        try {
+          const proactiveLeadResult = await _proactiveLeadPromise;
+          if (proactiveLeadResult.rows.length > 0) {
+            const lead = proactiveLeadResult.rows[0] as any;
+            const leadName = [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim();
+            const leadInfo = typeof lead.lead_info === 'string' ? JSON.parse(lead.lead_info) : lead.lead_info;
+            const leadEmail = leadInfo?.email || null;
+            
+            leadContactData = {
+              name: leadName || null,
+              email: leadEmail,
+              phone: lead.phone_number || phoneCallerId || null,
+              leadId: lead.id,
+              category: lead.lead_category || null,
+            };
+            
+            console.log(`📋 [${connectionId}] Proactive lead FOUND: ${leadName || '(no name)'} | email: ${leadEmail || '(none)'} | category: ${lead.lead_category || '(none)'} | id: ${lead.id}`);
+          } else {
+            console.log(`📋 [${connectionId}] No proactive lead found for ${phoneCallerId}`);
+          }
+        } catch (err) {
+          console.warn(`⚠️ [${connectionId}] Proactive lead lookup error:`, err);
+        }
+        
+        phoneLeadContactData = leadContactData;
         
         // 🎯 PRIORITY CHECK: If there's a specific call instruction, use ONLY that
         if (phoneCallInstruction) {
@@ -3011,6 +3071,14 @@ ${instructionGreetingSection}
 
 Data e ora: ${italianTime} (Italia)
 Tipo chiamata: OUTBOUND con ${instructionHasPreviousConversations ? 'persona già conosciuta' : 'nuova persona'}
+${leadContactData.leadId ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 DATI CHIAMANTE (dal CRM)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Telefono: ${leadContactData.phone || phoneCallerId}${leadContactData.name ? `\n• Nome: ${leadContactData.name}` : ''}${leadContactData.email ? `\n• Email: ${leadContactData.email}` : ''}${leadContactData.category ? `\n• Categoria: ${leadContactData.category}` : ''}
+
+⚡ Se proponi appuntamento, usa questi dati e chiedi conferma (NON chiedere dati che hai già!)` : phoneCallerId ? `
+📱 Telefono chiamante: ${phoneCallerId}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 DOPO CHE L'ISTRUZIONE È COMPLETATA
@@ -3380,6 +3448,11 @@ ${historyContent}
           }
         }
         
+        // Use leadContactData to populate extractedContactName if not already set from call history
+        if (!extractedContactName && leadContactData.name) {
+          extractedContactName = leadContactData.name;
+        }
+        
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // BUILD CONTENT PROMPT (after extracting caller name)
         // Uses direction-specific settings: promptSource, templateId, agentId, manualPrompt
@@ -3632,11 +3705,45 @@ ${brandVoicePrompt}` : ''}`;
           ? `📲 DIREZIONE: OUTBOUND - TU stai chiamando questa persona. Puoi dire "ti chiamo perché..." o "ti stavo cercando..."`
           : `📲 DIREZIONE: INBOUND - Questa persona TI STA CHIAMANDO. NON dire MAI "ti stavo chiamando", "ti richiamo", "ti stavo cercando". Rispondi alla loro chiamata!`;
         
-        // Combine: Voice Directives + Direction Context + Brand Voice + Current Time + Content Prompt + Previous Call Context
+        // 📱 Build caller contact data section for system instruction
+        let callerContactSection = '';
+        if (phoneCallerId) {
+          callerContactSection = `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 DATI CHIAMANTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Numero telefono: ${phoneCallerId}`;
+          
+          if (leadContactData.leadId) {
+            if (leadContactData.name) {
+              callerContactSection += `\n• Nome: ${leadContactData.name}`;
+            }
+            if (leadContactData.email) {
+              callerContactSection += `\n• Email: ${leadContactData.email}`;
+            }
+            if (leadContactData.category) {
+              callerContactSection += `\n• Categoria lead: ${leadContactData.category}`;
+            }
+            callerContactSection += `\n
+⚡ ISTRUZIONE: Hai GIÀ queste informazioni di contatto dal CRM.
+Quando si parla di prenotare un appuntamento:
+- Proponi i dati che hai: "Ho il tuo numero ${phoneCallerId}${leadContactData.email ? `, e come email risulta ${leadContactData.email}` : ''}. Vanno bene per l'invito?"
+- Se il chiamante conferma, usa quei dati
+- Se il chiamante vuole dati diversi, accetta la correzione
+- NON chiedere telefono o email se li hai già — proponili e chiedi conferma!`;
+          } else {
+            callerContactSection += `\n
+📝 NOTA: Hai il numero di telefono del chiamante. Per la prenotazione:
+- Il telefono è già noto (${phoneCallerId}), chiedi solo conferma
+- Dovrai chiedere email e nome se non emergono dalla conversazione`;
+          }
+          callerContactSection += '\n';
+        }
+        
+        // Combine: Voice Directives + Direction Context + Brand Voice + Caller Data + Current Time + Content Prompt + Previous Call Context
         systemInstruction = `${finalVoiceDirectives}
 
 ${directionContext}
-${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}
+${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}${callerContactSection}
 📅 Data e ora attuale: ${italianTime} (fuso orario Italia)
 
 ${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
@@ -4334,8 +4441,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             voiceCallId: voiceCallId || '',
             outboundTargetPhone: phoneCallerId || null,
             availableSlots: bookingAvailableSlots,
+            prePopulatedData: phoneLeadContactData ? {
+              phone: phoneLeadContactData.phone,
+              email: phoneLeadContactData.email,
+              name: phoneLeadContactData.name,
+            } : undefined,
           });
-          console.log(`📋 [${connectionId}] VoiceBookingSupervisor initialized (isClient: ${!!userId}, slots: ${bookingAvailableSlots.length})`);
+          console.log(`📋 [${connectionId}] VoiceBookingSupervisor initialized (isClient: ${!!userId}, slots: ${bookingAvailableSlots.length}${phoneLeadContactData?.leadId ? `, leadData: phone=${phoneLeadContactData.phone}, email=${phoneLeadContactData.email}, name=${phoneLeadContactData.name}` : ''})`);
 
           const bookingPromptSection = bookingSupervisor.getBookingPromptSection();
           systemInstruction = systemInstruction + '\n\n' + bookingPromptSection;

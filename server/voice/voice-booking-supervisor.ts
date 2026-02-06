@@ -88,6 +88,11 @@ export class VoiceBookingSupervisor {
     voiceCallId: string;
     outboundTargetPhone: string | null;
     availableSlots: AvailableSlot[];
+    prePopulatedData?: {
+      phone: string | null;
+      email: string | null;
+      name: string | null;
+    };
   }) {
     this.consultantId = params.consultantId;
     this.clientId = params.clientId;
@@ -102,9 +107,9 @@ export class VoiceBookingSupervisor {
         date: null,
         time: null,
         confirmed: false,
-        phone: params.outboundTargetPhone || null,
-        email: null,
-        name: null,
+        phone: params.prePopulatedData?.phone || params.outboundTargetPhone || null,
+        email: params.prePopulatedData?.email || null,
+        name: params.prePopulatedData?.name || null,
         duration: 60,
         notes: null,
       },
@@ -464,17 +469,47 @@ REGOLE CRITICHE:
     const slotsFormatted = this.getAvailableSlotsForPrompt();
     const isClient = this.clientId !== null;
 
-    const collectDataStep = isClient
-      ? ""
-      : "\n3. Chiedi telefono e email per l'invito calendario";
-
-    const confirmStep = isClient ? "3" : "4";
-    const waitStep = isClient ? "4" : "5";
+    const { phone, email, name } = this.state.extractedData;
+    const hasPrePopulatedPhone = !!phone;
+    const hasPrePopulatedEmail = !!email;
+    const hasPrePopulatedName = !!name;
+    const hasAllContactData = hasPrePopulatedPhone && hasPrePopulatedEmail;
+    
+    let collectDataStep: string;
+    let confirmStep: string;
+    let waitStep: string;
+    
+    if (isClient) {
+      collectDataStep = "";
+      confirmStep = "3";
+      waitStep = "4";
+    } else if (hasAllContactData) {
+      collectDataStep = `\n3. Conferma i dati di contatto: "${hasPrePopulatedName ? `${name}, c` : 'C'}onfermo: numero ${phone}${hasPrePopulatedEmail ? ` e email ${email}` : ''}. Vanno bene per l'invito?"`;
+      confirmStep = "4";
+      waitStep = "5";
+    } else if (hasPrePopulatedPhone) {
+      collectDataStep = `\n3. Conferma il numero (${phone}) e chiedi email per l'invito calendario`;
+      confirmStep = "4";
+      waitStep = "5";
+    } else {
+      collectDataStep = "\n3. Chiedi telefono e email per l'invito calendario";
+      confirmStep = "4";
+      waitStep = "5";
+    }
 
     const now = new Date();
     const dayNames = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
     const todayFormatted = now.toISOString().slice(0, 10);
     const todayDayName = dayNames[now.getDay()];
+
+    let prePopulatedNote = '';
+    if (!isClient && (hasPrePopulatedPhone || hasPrePopulatedEmail || hasPrePopulatedName)) {
+      prePopulatedNote = `\n\n📋 DATI GIÀ NOTI:`;
+      if (hasPrePopulatedName) prePopulatedNote += `\n• Nome: ${name}`;
+      if (hasPrePopulatedPhone) prePopulatedNote += `\n• Telefono: ${phone}`;
+      if (hasPrePopulatedEmail) prePopulatedNote += `\n• Email: ${email}`;
+      prePopulatedNote += `\n→ Proponi questi dati e chiedi conferma. Se il chiamante vuole usare dati diversi, accetta la correzione.`;
+    }
 
     return `## GESTIONE APPUNTAMENTI
 
@@ -489,7 +524,7 @@ PROCEDURA:
 1. Proponi gli slot disponibili in modo naturale
 2. Raccogli data e ora preferite${collectDataStep}
 ${confirmStep}. Ripeti i dati per conferma: "Allora [giorno] [data] alle [ora], confermi?"
-${waitStep}. Attendi conferma esplicita ("sì", "confermo", "va bene")
+${waitStep}. Attendi conferma esplicita ("sì", "confermo", "va bene")${prePopulatedNote}
 
 ⚠️ REGOLA FONDAMENTALE:
 NON affermare MAI che l'appuntamento è "confermato", "creato", "prenotato" o "fissato".
