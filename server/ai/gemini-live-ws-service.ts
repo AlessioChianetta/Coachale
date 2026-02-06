@@ -4905,9 +4905,6 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                   silenceDurationMs: isPhoneCall ? 500 : 700
                 }
               },
-              proactivity: {
-                proactiveAudio: true
-              },
               sessionResumption: { handle: validatedResumeHandle || null }
             }
           };
