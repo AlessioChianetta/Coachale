@@ -5273,14 +5273,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     role: 'user',
                     parts: [{ text: primerContent }]
                   }],
-                  turnComplete: true
+                  turnComplete: shouldSpeakFirst ? false : true
                 }
               };
               geminiSession.send(JSON.stringify(primerMessage));
               latencyTracker.primerSentTime = Date.now();
               latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
-              console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
-              console.log(`   ✅ Turn complete with primer at END`);
+              console.log(`\n   🎯 Primer chunk sent - ${primerContent.length} chars (~${primerTokens} tokens)`);
+              console.log(`   ${shouldSpeakFirst ? '⏳ turnComplete: false (greeting message will trigger response)' : '✅ turnComplete: true (AI waits for client)'}`);
             } else {
               // 🟢 Vertex AI: same chunked approach (already working)
               for (let i = 0; i < chunks.length; i++) {
@@ -5305,14 +5305,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     role: 'user',
                     parts: [{ text: primerContent }]
                   }],
-                  turnComplete: true
+                  turnComplete: shouldSpeakFirst ? false : true
                 }
               };
               geminiSession.send(JSON.stringify(primerMessage));
               latencyTracker.primerSentTime = Date.now();
               latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
-              console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
-              console.log(`   ✅ Turn complete with primer at END`);
+              console.log(`\n   🎯 Primer chunk sent - ${primerContent.length} chars (~${primerTokens} tokens)`);
+              console.log(`   ${shouldSpeakFirst ? '⏳ turnComplete: false (greeting message will trigger response)' : '✅ turnComplete: true (AI waits for client)'}`);
             }
             
             console.log(`⏱️ [LATENCY] All chunks + primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms from setup sent, total: +${latencyTracker.primerSentTime - latencyTracker.wsConnectionTime}ms`);
