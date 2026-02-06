@@ -5180,39 +5180,27 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               console.log(`   ✅ Primer sent - ${primerContent.length} chars (~${Math.round(primerContent.length / 4)} tokens)`);
               console.log(`   ✅ turnComplete: true`);
             } else {
-              // Vertex AI: Limited to first 4 chunks (~25K tokens)
-              // Live API context window is ~29K tokens - Vertex AI silently truncates excess
-              // Sending all 12 chunks (~88K tokens) wastes 67% - only first ~29K are used
-              const MAX_CHUNKS = 4;
-              const chunksToSend = chunks.slice(0, MAX_CHUNKS);
-              const skippedChunks = chunks.length - chunksToSend.length;
-              const sentTokens = Math.round(chunksToSend.reduce((sum, c) => sum + c.length, 0) / 4);
-              const skippedTokens = Math.round(chunks.slice(MAX_CHUNKS).reduce((sum, c) => sum + c.length, 0) / 4);
-              
+              // Vertex AI: keep existing chunked behavior (works fine)
               console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎯 VERTEX AI - OPTIMIZED CHUNKED MESSAGES`);
+              console.log(`🎯 VERTEX AI - CHUNKED MESSAGES`);
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`   💡 Strategy: Send first ${MAX_CHUNKS} of ${chunks.length} data chunks (Live API ~29K token window)`);
-              console.log(`   📊 Sending: ${chunksToSend.length} chunks (~${sentTokens.toLocaleString()} tokens)`);
-              if (skippedChunks > 0) {
-                console.log(`   ⏭️  Skipped: ${skippedChunks} chunks (~${skippedTokens.toLocaleString()} tokens) - would be truncated by Vertex AI anyway`);
-              }
+              console.log(`   💡 Strategy: Send all ${chunks.length} data chunks FIRST`);
               console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
               
-              for (let i = 0; i < chunksToSend.length; i++) {
-                const chunkTokens = Math.round(chunksToSend[i].length / 4);
+              for (let i = 0; i < chunks.length; i++) {
+                const chunkTokens = Math.round(chunks[i].length / 4);
                 const chunkMessage = {
                   clientContent: {
                     turns: [{
                       role: 'user',
-                      parts: [{ text: chunksToSend[i] }]
+                      parts: [{ text: chunks[i] }]
                     }],
                     turnComplete: false
                   }
                 };
                 geminiSession.send(JSON.stringify(chunkMessage));
-                console.log(`   ✅ Chunk ${i + 1}/${chunksToSend.length} sent - ${chunksToSend[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
+                console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
               }
               
               const primerTokens = Math.round(primerContent.length / 4);
