@@ -5242,7 +5242,13 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
             
             if (liveApiBackend === 'google_ai_studio') {
               // 🔵 Google AI Studio: camelCase clientContent
-              for (let i = 0; i < chunks.length; i++) {
+              // ⚠️ LIMIT: Send only first 4 chunks to test (~30K tokens)
+              // Google AI Studio may have stricter limits on clientContent size
+              const maxChunksForAIStudio = 4;
+              const chunksToSend = Math.min(chunks.length, maxChunksForAIStudio);
+              console.log(`   ⚠️ Google AI Studio: limiting to first ${chunksToSend}/${chunks.length} chunks (~${Math.round(chunksToSend * 30 * 1024 / 4).toLocaleString()} tokens)`);
+              
+              for (let i = 0; i < chunksToSend; i++) {
                 const chunkTokens = Math.round(chunks[i].length / 4);
                 const chunkMessage = {
                   clientContent: {
@@ -5254,7 +5260,10 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                   }
                 };
                 geminiSession.send(JSON.stringify(chunkMessage));
-                console.log(`   ✅ Chunk ${i + 1}/${chunks.length} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
+                console.log(`   ✅ Chunk ${i + 1}/${chunksToSend} sent - ${chunks[i].length} chars (~${chunkTokens.toLocaleString()} tokens)`);
+              }
+              if (chunksToSend < chunks.length) {
+                console.log(`   ⏭️ Skipped chunks ${chunksToSend + 1}-${chunks.length} (Google AI Studio limit test)`);
               }
               
               const primerTokens = Math.round(primerContent.length / 4);
