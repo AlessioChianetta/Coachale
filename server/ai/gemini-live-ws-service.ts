@@ -5148,24 +5148,26 @@ Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi sent
 MA NON iniziare con lo script completo finché il cliente non risponde!`;
             
             if (liveApiBackend === 'google_ai_studio') {
-              // Google AI Studio: consolidate ALL chunks + primer into a SINGLE clientContent message
-              // to avoid error 1007 from multiple separate clientContent messages
-              const consolidatedText = chunks.join('\n') + '\n' + primerContent;
-              const consolidatedTokens = Math.round(consolidatedText.length / 4);
+              // 🧪 TEST B: Send ONLY first chunk + primer to test size limits
+              // Previous test: consolidated 88K tokens → 1007 error
+              // This test: only first chunk (~7.5K tokens) + primer → see if size is the issue
+              const testText = chunks[0] + '\n' + primerContent;
+              const testTokens = Math.round(testText.length / 4);
               
               console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎯 GOOGLE AI STUDIO - CONSOLIDATED SINGLE MESSAGE`);
+              console.log(`🎯 GOOGLE AI STUDIO - TEST B: FIRST CHUNK ONLY`);
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`   💡 Strategy: Consolidate ${chunks.length} chunks + primer into ONE message`);
-              console.log(`   💡 Reason: AI Studio rejects multiple clientContent messages (error 1007)`);
-              console.log(`   💡 Total size: ${consolidatedText.length.toLocaleString()} chars (~${consolidatedTokens.toLocaleString()} tokens)`);
+              console.log(`   🧪 TEST: Sending ONLY chunk 1/${chunks.length} + primer`);
+              console.log(`   🧪 Skipping ${chunks.length - 1} chunks (${Math.round((chunks.slice(1).join('').length) / 4).toLocaleString()} tokens)`);
+              console.log(`   💡 Total size: ${testText.length.toLocaleString()} chars (~${testTokens.toLocaleString()} tokens)`);
+              console.log(`   💡 Full size was: ${chunks.join('').length.toLocaleString()} chars (~${Math.round(chunks.join('').length / 4).toLocaleString()} tokens)`);
               console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
               
               const consolidatedMessage = {
                 clientContent: {
                   turns: [{
                     role: 'user',
-                    parts: [{ text: consolidatedText }]
+                    parts: [{ text: testText }]
                   }],
                   turnComplete: true
                 }
@@ -5174,7 +5176,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               
               latencyTracker.primerSentTime = Date.now();
               latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
-              console.log(`   ✅ Single consolidated message sent - ${consolidatedText.length.toLocaleString()} chars (~${consolidatedTokens.toLocaleString()} tokens)`);
+              console.log(`   ✅ Single message sent - ${testText.length.toLocaleString()} chars (~${testTokens.toLocaleString()} tokens)`);
               console.log(`   ✅ turnComplete: true (single message, no chunking)`);
             } else {
               // Vertex AI: keep existing chunked behavior (works fine)
