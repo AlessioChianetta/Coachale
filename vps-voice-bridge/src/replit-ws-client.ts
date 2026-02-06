@@ -13,6 +13,7 @@ scheduledCallId?: string;
   voice?: string;
   onAudioResponse: (audioData: Buffer) => void;
   onTextResponse?: (text: string) => void;
+  onInterrupted?: () => void;
   onError: (error: Error) => void;
   onClose: () => void;
 }
@@ -114,6 +115,12 @@ if (this.scheduledCallId) {
         const txt = message.text || message.message;
         log.info(`[AI DICE]: ${txt}`);
         this.options.onTextResponse?.(txt);
+      }
+
+      if (message.type === 'barge_in_detected') {
+        log.info(`🛑 BARGE-IN received from Replit`, { sessionId: this.sessionId.slice(0, 8) });
+        this.options.onInterrupted?.();
+        return;
       }
 
       if (message.type === 'error') {

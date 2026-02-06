@@ -291,6 +291,12 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
       onTextResponse: (text) => {
         log.info(`[AI]: "${text}"`);
       },
+      onInterrupted: () => {
+        const queue = audioOutputQueues.get(session.id);
+        const flushed = queue?.length || 0;
+        if (queue) queue.length = 0;
+        log.info(`🛑 BARGE-IN: flushed ${flushed} chunks (${flushed * 20}ms audio)`, { sessionId: session.id.slice(0, 8) });
+      },
       onError: (err) => {
         log.error(`Replit Error: ${err.message}`);
       },
