@@ -1,4 +1,4 @@
-mport { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
 import { logger, formatBytes, formatDuration } from './logger.js';
 import { config } from './config.js';
@@ -169,6 +169,23 @@ class SessionManager {
       session.audioStats.bytesOut += bytes;
       session.audioStats.packetsOut++;
       session.audioStats.lastActivityTime = new Date();
+    }
+  }
+
+  pauseInactivityTimeout(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session && session.timeoutHandle) {
+      clearTimeout(session.timeoutHandle);
+      session.timeoutHandle = null;
+      log.info(`Inactivity timeout paused (session resume)`, { sessionId: sessionId.slice(0, 8) });
+    }
+  }
+
+  resumeInactivityTimeout(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      this.startInactivityTimeout(session);
+      log.info(`Inactivity timeout resumed`, { sessionId: sessionId.slice(0, 8) });
     }
   }
 
