@@ -5022,9 +5022,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                   ]
                 }
               }),
-              ...(validatedResumeHandle && {
-                sessionResumption: { handle: validatedResumeHandle }
-              })
+              sessionResumption: { handle: validatedResumeHandle || null }
             }
           };
         } else {
@@ -7867,10 +7865,10 @@ ${compactFeedback}
         // event handlers which is complex and error-prone. Instead, we notify the client
         // to initiate a fresh connection.
         if (code === 1011 || reasonText.includes('Insufficient model resources')) {
-          const isVpsCall = mode === 'phone' || mode === 'phone_outbound' || mode === 'voice_call';
+          const isVpsCall = mode === 'phone' || mode === 'phone_outbound' || mode === 'voice_call' || isPhoneCall;
           
           console.log(`\n🔄 [${connectionId}] ERROR 1011: Gemini risorse insufficienti`);
-          console.log(`   → Mode: ${mode}, isVpsCall: ${isVpsCall}`);
+          console.log(`   → Mode: ${mode}, isPhoneCall: ${isPhoneCall}, isVpsCall: ${isVpsCall}`);
           
           // 🔧 FIX: Always clean up from tracker
           activeGeminiConnections.delete(connectionId);
