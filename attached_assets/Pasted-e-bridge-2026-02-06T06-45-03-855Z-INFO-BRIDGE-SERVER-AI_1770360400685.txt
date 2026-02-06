@@ -1,0 +1,21 @@
+e-bridge  | 2026-02-06T06:45:03.855Z [INFO ] [BRIDGE:SERVER] [AI]: " direttamente"
+6|voice-bridge  | 2026-02-06T06:45:03.998Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  con il
+6|voice-bridge  | 2026-02-06T06:45:03.999Z [INFO ] [BRIDGE:SERVER] [AI]: " con il"
+6|voice-bridge  | RangeError: start offset of Int16Array should be a multiple of 2
+6|voice-bridge  |     at new Int16Array (<anonymous>)
+6|voice-bridge  |     at downsample3x (file:///opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts:75:15)
+6|voice-bridge  |     at resample (file:///opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts:119:58)
+6|voice-bridge  |     at convertFromGemini (file:///opt/alessia-voice/vps-voice-bridge/src/audio-converter.ts:142:11)
+6|voice-bridge  |     at queueAudioForFreeSWITCH (file:///opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts:331:18)
+6|voice-bridge  |     at Object.onAudioResponse (file:///opt/alessia-voice/vps-voice-bridge/src/voice-bridge-server.ts:289:9)
+6|voice-bridge  |     at ReplitWSClient.handleMessage (file:///opt/alessia-voice/vps-voice-bridge/src/replit-ws-client.ts:101:20)
+6|voice-bridge  |     at WebSocket.<anonymous> (file:///opt/alessia-voice/vps-voice-bridge/src/replit-ws-client.ts:72:14)
+6|voice-bridge  |     at WebSocket.emit (node:events:524:28)
+6|voice-bridge  |     at Receiver.receiverOnMessage (/opt/alessia-voice/vps-voice-bridge/node_modules/ws/lib/websocket.js:1225:20)
+6|voice-bridge  | 2026-02-06T06:45:04.484Z [INFO ] [BRIDGE:AUDIO] Audio converter initialized
+6|voice-bridge  | 2026-02-06T06:45:04.615Z [INFO ] [BRIDGE:BG-MIXER] WAV file parsed sampleRate=8000 channels=1 bitDepth=16 dataSize=4800278 durationSec=300.0
+6|voice-bridge  | 2026-02-06T06:45:04.615Z [INFO ] [BRIDGE:BG-MIXER] ✅ Background audio loaded: 4687.8KB, 300.0s loop
+6|voice-bridge  | ╔═══════════════════════════════════════════════════════════════╗
+6|voice-bridge  | ║                                                               ║
+6|voice-bridge  | ║     █████╗ ██╗     ███████╗███████╗███████╗██╗ █████╗         ║
+6|voice-bridge  | ║    ██╔══██╗██║     ██╔════╝██╔════╝██╔════╝██║██╔══██╗        
