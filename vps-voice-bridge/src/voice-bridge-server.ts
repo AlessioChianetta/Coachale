@@ -6,7 +6,7 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { sessionManager } from './session-manager.js';
 import { ReplitWSClient } from './replit-ws-client.js';
-import { convertForGemini, convertFromGemini } from './audio-converter.js';
+import { convertForGemini, convertFromGemini, pcmToMulaw } from './audio-converter.js';
 import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
 import { callMetadata } from './esl-client.js';
 import { handleOutboundCall } from './outbound-handler.js';
@@ -202,7 +202,7 @@ export function startVoiceBridgeServer(): void {
         caller_id: callerId,
         called_number: '9999',
         codec: 'L16',
-        sample_rate: 16000,
+        sample_rate: 8000,
       };
 
       handleCallStart(ws, startMsg).then((sid) => {
@@ -257,9 +257,10 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
       const lastAI = bgLastAISend.get(session.id) || 0;
 
       if (now - lastAI >= 20) {
-        const bgChunk = generateBackgroundChunk(session.id, 640);
+        const bgChunk = generateBackgroundChunk(session.id, 320);
         if (bgChunk) {
-          s.fsWebSocket.send(bgChunk, { binary: true });
+          const mulawChunk = pcmToMulaw(bgChunk);
+          s.fsWebSocket.send(mulawChunk, { binary: true });
         }
       }
     }, 20);
@@ -310,17 +311,19 @@ function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
     return;
   }
 
-  let fsAudio = convertFromGemini(audio, session.codec, session.sampleRate);
+  let pcmAudio = convertFromGemini(audio, 'L16', session.sampleRate);
 
-  if (session.codec === 'L16' && isBackgroundLoaded()) {
-    fsAudio = mixWithBackground(fsAudio, sessionId);
+  if (isBackgroundLoaded()) {
+    pcmAudio = mixWithBackground(pcmAudio, sessionId);
   }
+
+  const mulawAudio = pcmToMulaw(pcmAudio);
 
   bgLastAISend.set(sessionId, Date.now());
 
-  const CHUNK_SIZE = 640;
-  for (let i = 0; i < fsAudio.length; i += CHUNK_SIZE) {
-    const chunk = fsAudio.slice(i, i + CHUNK_SIZE);
+  const CHUNK_SIZE = 160;
+  for (let i = 0; i < mulawAudio.length; i += CHUNK_SIZE) {
+    const chunk = mulawAudio.slice(i, i + CHUNK_SIZE);
     session.fsWebSocket.send(chunk, { binary: true });
   }
 }

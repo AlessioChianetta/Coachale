@@ -9,7 +9,7 @@ let bgPcmBuffer: Buffer | null = null;
 let bgLoaded = false;
 
 const BG_FILE_PATH = '/opt/sounds/background.wav';
-const EXPECTED_SAMPLE_RATE = 16000;
+const EXPECTED_SAMPLE_RATE = 8000;
 const EXPECTED_CHANNELS = 1;
 const EXPECTED_BIT_DEPTH = 16;
 
@@ -89,17 +89,17 @@ export function loadBackgroundAudio(filePath?: string): boolean {
 
     if (header.sampleRate !== EXPECTED_SAMPLE_RATE) {
       log.error(`Wrong sample rate: ${header.sampleRate}Hz (expected ${EXPECTED_SAMPLE_RATE}Hz)`);
-      log.error(`Convert with: ffmpeg -i input.wav -ar 16000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
+      log.error(`Convert with: ffmpeg -i input.wav -ar 8000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
       return false;
     }
     if (header.channels !== EXPECTED_CHANNELS) {
       log.error(`Wrong channel count: ${header.channels} (expected mono)`);
-      log.error(`Convert with: ffmpeg -i input.wav -ar 16000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
+      log.error(`Convert with: ffmpeg -i input.wav -ar 8000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
       return false;
     }
     if (header.bitDepth !== EXPECTED_BIT_DEPTH) {
       log.error(`Wrong bit depth: ${header.bitDepth} (expected 16-bit)`);
-      log.error(`Convert with: ffmpeg -i input.wav -ar 16000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
+      log.error(`Convert with: ffmpeg -i input.wav -ar 8000 -ac 1 -sample_fmt s16 -acodec pcm_s16le /opt/sounds/background.wav`);
       return false;
     }
 
@@ -152,7 +152,7 @@ export function mixWithBackground(audio: Buffer, sessionId: string, volume: numb
   return mixed;
 }
 
-export function generateBackgroundChunk(sessionId: string, bytes: number = 640, volume: number = 0.08): Buffer | null {
+export function generateBackgroundChunk(sessionId: string, bytes: number = 320, volume: number = 0.08): Buffer | null {
   if (!bgPcmBuffer || !bgLoaded) return null;
 
   let cursor = sessionCursors.get(sessionId) || 0;

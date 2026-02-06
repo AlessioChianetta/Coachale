@@ -42,20 +42,18 @@ export function startESLController(): void {
 
     // 1. Configurazione Audio Base
     (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_PLAYBACK true`);
-    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_SAMPLE_RATE 16000`);
+    (conn as any).bgapi(`uuid_setvar ${uuid} STREAM_SAMPLE_RATE 8000`);
     (conn as any).bgapi(`uuid_setvar ${uuid} mod_audio_stream_bidirectional true`);
 
     // 2. JITTERBUFFER (Elimina il packet loss iniziale e i "salti" audio)
     (conn as any).bgapi(`uuid_setvar ${uuid} jitterbuffer_msec 60:120`);
 
-    // 3. MUSICA DI SOTTOFONDO (Nativa FreeSWITCH - Zero Latenza)
-    const bgFile = '/opt/sounds/background.wav';
-    log.info(`🎵 Starting native background music`, { uuid });
-    (conn as any).bgapi(`uuid_displace ${uuid} start '${bgFile}' 0 mux`);
+    // 3. Background audio: gestito da Node.js background-mixer (NON da FreeSWITCH)
+    // uuid_displace rimosso: causava 30% packet loss per conflitto media bug con mod_audio_stream
 
     // 4. 🎯 FIX: Passa l'UUID come PATH nell'URL WebSocket (non query param!)
     const wsUrl = `ws://172.17.0.1:${config.ws.port}/stream/${uuid}`;
-    const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 16000`;
+    const streamCmd = `uuid_audio_stream ${uuid} start ${wsUrl} mono 8000`;
 
     log.debug(`🚀 Executing stream command on PARKED call`, { cmd: streamCmd, wsUrl });
 
