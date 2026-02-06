@@ -37,19 +37,18 @@ export class ReplitWSClient {
   }
 
   async connect(): Promise<void> {
-    // phone_service mode usa il service token per autenticazione VPS
     const mode = this.options.mode || 'phone_service';
     const voice = this.options.voice || config.voice.voiceId;
     
     let wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
     
-    // Pass scheduledCallId if available (for outbound calls with instructions)
     if (this.scheduledCallId) {
       wsUrl += `&scheduledCallId=${encodeURIComponent(this.scheduledCallId)}`;
     }
 
     log.info(`Connecting to Replit WebSocket`, { 
       sessionId: this.sessionId.slice(0, 8),
+      url: config.replit.wsUrl,
       mode,
       voice,
       scheduledCallId: this.scheduledCallId || 'none',
@@ -73,8 +72,8 @@ export class ReplitWSClient {
         resolve();
       });
 
-      this.ws.on('message', (data: Buffer) => {
-        this.handleMessage(data);
+      this.ws.on('message', (data: Buffer, isBinary: boolean) => {
+        this.handleMessage(data, isBinary);
       });
 
       this.ws.on('error', (error) => {
@@ -101,7 +100,12 @@ export class ReplitWSClient {
     });
   }
 
-  private handleMessage(data: Buffer): void {
+  private handleMessage(data: Buffer, isBinary: boolean): void {
+    if (isBinary) {
+      this.options.onAudioResponse(data);
+      return;
+    }
+
     try {
       const message = JSON.parse(data.toString());
 

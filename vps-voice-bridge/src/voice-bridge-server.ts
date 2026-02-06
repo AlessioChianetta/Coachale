@@ -22,27 +22,26 @@ import {
 const log = logger.child('SERVER');
 
 const bgTimers = new Map<string, NodeJS.Timeout>();
-const bgLastAISend = new Map<string, number>();
+
+const audioOutputQueues = new Map<string, Buffer[]>();
+const AUDIO_QUEUE_MAX = 500;
+const CHUNK_SIZE = 320;
 
 loadBackgroundAudio();
 
-// 🎯 FIX: Usa una Map invece di una singola variabile
 const pendingCalls = new Map<string, { callId: string; timer: NodeJS.Timeout }>();
 
 export function setExpectedCallId(callId: string, freeswitchUuid?: string): void {
-  // Per chiamate INBOUND, l'UUID è anche il callId
   const uuid = freeswitchUuid || callId;
 
   log.info(`📝 Setting expected call: callId=${callId}, uuid=${uuid}`);
 
-  // Pulisci eventuali timer esistenti per questo UUID
   const existing = pendingCalls.get(uuid);
   if (existing) {
     clearTimeout(existing.timer);
     log.info(`🔄 Replacing existing pending call for uuid=${uuid}`);
   }
 
-  // Timer di 30 secondi
   const timer = setTimeout(() => {
     const deleted = pendingCalls.delete(uuid);
     if (deleted) {
@@ -54,7 +53,6 @@ export function setExpectedCallId(callId: string, freeswitchUuid?: string): void
   log.info(`✅ Pending calls count: ${pendingCalls.size}`);
 }
 
-// Funzione per consumare un pending call (rimuovendolo dalla Map)
 function consumePendingCall(freeswitchUuid: string): string | null {
   const pending = pendingCalls.get(freeswitchUuid);
   if (pending) {
@@ -88,7 +86,6 @@ function firstQueryValue(v: unknown): string {
   return typeof v === 'string' ? v : '';
 }
 
-// Valida il service token (ricevuto da Replit)
 function validateServiceToken(token: string | undefined): boolean {
   if (!token) return false;
   const expectedToken = config.serviceToken || process.env.REPLIT_SERVICE_TOKEN;
@@ -99,9 +96,6 @@ export function startVoiceBridgeServer(): void {
   const app = express();
   app.use(express.json());
 
-  // =============================================
-  // ENDPOINT OUTBOUND: Riceve richieste da Replit
-  // =============================================
   app.post('/outbound/call', async (req, res) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
@@ -126,7 +120,6 @@ export function startVoiceBridgeServer(): void {
     }
   });
 
-  // Health check
   app.get('/health', (req, res) => {
     res.json({ 
       status: 'ok', 
@@ -146,10 +139,8 @@ export function startVoiceBridgeServer(): void {
     let currentSessionId: string | null = null;
     let callId: string | null = null;
 
-    // 🎯 FIX: Leggi l'UUID dal PATH (es: /stream/uuid-here)
     const parsedUrl = parseUrl(req.url || '', true);
     const pathParts = (parsedUrl.pathname || '').split('/').filter(Boolean);
-    // Path format: /stream/{uuid}
     const uuidFromUrl = pathParts.length >= 2 && pathParts[0] === 'stream' ? pathParts[1] : null;
 
     log.info('🔍 WEBSOCKET CONNECTION', { 
@@ -160,13 +151,10 @@ export function startVoiceBridgeServer(): void {
       timestamp: Date.now() 
     });
 
-    // 🎯 FIX: Cerca nella Map usando l'UUID dal path
     if (uuidFromUrl) {
-      // Abbiamo l'UUID dal path - cerca nella Map
       callId = consumePendingCall(uuidFromUrl);
 
       if (callId) {
-        // Determina se è INBOUND o OUTBOUND
         if (uuidFromUrl.startsWith('outbound-')) {
           log.info(`📞 OUTBOUND call matched: callId=${callId}, uuid=${uuidFromUrl}`);
         } else {
@@ -174,10 +162,9 @@ export function startVoiceBridgeServer(): void {
         }
       } else {
         log.warn(`⚠️ UUID ${uuidFromUrl} not found in pending calls - using UUID as callId`);
-        callId = uuidFromUrl; // Fallback: usa l'UUID stesso
+        callId = uuidFromUrl;
       }
     } else {
-      // Fallback vecchio comportamento (FIFO) - per retrocompatibilità
       log.warn('⚠️ No UUID in path - using FIFO fallback');
       if (pendingCalls.size > 0) {
         const firstEntry = pendingCalls.entries().next().value;
@@ -246,27 +233,29 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
   bgInitSession(session.id);
 
-  if (isBackgroundLoaded()) {
-    const bgInterval = setInterval(() => {
-      const s = sessionManager.getSession(session.id);
-      if (!s || s.state !== 'active' || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
-        return;
+  audioOutputQueues.set(session.id, []);
+
+  const pacedInterval = setInterval(() => {
+    const s = sessionManager.getSession(session.id);
+    if (!s || s.state !== 'active' || !s.fsWebSocket || s.fsWebSocket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const queue = audioOutputQueues.get(session.id);
+
+    if (queue && queue.length > 0) {
+      const chunk = queue.shift()!;
+      s.fsWebSocket.send(chunk, { binary: true });
+    } else if (isBackgroundLoaded()) {
+      const bgChunk = generateBackgroundChunk(session.id, CHUNK_SIZE);
+      if (bgChunk) {
+        s.fsWebSocket.send(bgChunk, { binary: true });
       }
+    }
+  }, 20);
 
-      const now = Date.now();
-      const lastAI = bgLastAISend.get(session.id) || 0;
-
-      if (now - lastAI >= 20) {
-        const bgChunk = generateBackgroundChunk(session.id, 320);
-        if (bgChunk) {
-          s.fsWebSocket.send(bgChunk, { binary: true });
-        }
-      }
-    }, 20);
-
-    bgTimers.set(session.id, bgInterval);
-    log.info(`🎵 Background audio timer started`, { sessionId: session.id.slice(0, 8) });
-  }
+  bgTimers.set(session.id, pacedInterval);
+  log.info(`🎵 Paced audio timer started (jitter buffer)`, { sessionId: session.id.slice(0, 8) });
 
   try {
     const replitClient = new ReplitWSClient({
@@ -274,7 +263,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
       callerId: message.caller_id,
       scheduledCallId: message.call_id,
       onAudioResponse: (audio) => {
-        sendAudioToFreeSWITCH(session.id, audio);
+        queueAudioForFreeSWITCH(session.id, audio);
       },
       onTextResponse: (text) => {
         log.info(`[AI]: "${text}"`);
@@ -291,7 +280,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
     return session.id;
   } catch (error) {
-    cleanupBackgroundTimer(session.id);
+    cleanupSession(session.id);
     throw error;
   }
 }
@@ -304,7 +293,7 @@ function handleAudioData(sessionId: string, audioData: Buffer): void {
   session.replitClient?.sendAudio(pcm);
 }
 
-function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
+function queueAudioForFreeSWITCH(sessionId: string, audio: Buffer): void {
   const session = sessionManager.getSession(sessionId);
   if (!session?.fsWebSocket || session.fsWebSocket.readyState !== WebSocket.OPEN) {
     return;
@@ -316,22 +305,45 @@ function sendAudioToFreeSWITCH(sessionId: string, audio: Buffer): void {
     pcmAudio = mixWithBackground(pcmAudio, sessionId);
   }
 
-  bgLastAISend.set(sessionId, Date.now());
+  let queue = audioOutputQueues.get(sessionId);
+  if (!queue) {
+    queue = [];
+    audioOutputQueues.set(sessionId, queue);
+  }
 
-  const CHUNK_SIZE = 320;
+  const wasEmpty = queue.length === 0;
+
   for (let i = 0; i < pcmAudio.length; i += CHUNK_SIZE) {
-    const chunk = pcmAudio.slice(i, i + CHUNK_SIZE);
-    session.fsWebSocket.send(chunk, { binary: true });
+    const end = Math.min(i + CHUNK_SIZE, pcmAudio.length);
+    const chunk = pcmAudio.slice(i, end);
+    if (chunk.length === CHUNK_SIZE) {
+      queue.push(chunk);
+    } else if (chunk.length > 0) {
+      const padded = Buffer.alloc(CHUNK_SIZE, 0);
+      chunk.copy(padded);
+      queue.push(padded);
+    }
+  }
+
+  if (queue.length > AUDIO_QUEUE_MAX) {
+    const overflow = queue.length - AUDIO_QUEUE_MAX;
+    queue.splice(0, overflow);
+    log.warn(`Audio queue overflow, dropped ${overflow} old chunks`, { sessionId: sessionId.slice(0, 8) });
+  }
+
+  if (wasEmpty && queue.length > 0) {
+    const firstChunk = queue.shift()!;
+    session.fsWebSocket.send(firstChunk, { binary: true });
   }
 }
 
-function cleanupBackgroundTimer(sessionId: string): void {
+function cleanupSession(sessionId: string): void {
   const timer = bgTimers.get(sessionId);
   if (timer) {
     clearInterval(timer);
     bgTimers.delete(sessionId);
   }
-  bgLastAISend.delete(sessionId);
+  audioOutputQueues.delete(sessionId);
   bgDestroySession(sessionId);
 }
 
@@ -339,7 +351,7 @@ function handleCallStop(callId: string, reason: string): void {
   const session = sessionManager.getSessionByCallId(callId);
   if (!session) return;
 
-  cleanupBackgroundTimer(session.id);
+  cleanupSession(session.id);
 
   const duration = Date.now() - session.startTime.getTime();
   notifyCallEnd(session.id, duration, session.audioStats.bytesIn, session.audioStats.bytesOut, reason);
