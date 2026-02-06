@@ -24,7 +24,7 @@ const log = logger.child('SERVER');
 const bgTimers = new Map<string, NodeJS.Timeout>();
 
 const audioOutputQueues = new Map<string, Buffer[]>();
-const AUDIO_QUEUE_MAX = 500;
+const AUDIO_QUEUE_MAX = 2500;
 const CHUNK_SIZE = 320;
 
 loadBackgroundAudio();

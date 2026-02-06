@@ -1,0 +1,230 @@
+6|voice-bridge  | 2026-02-06T04:48:25.448Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=348cbe91-41b7-4192-8a04-effff0cb08f6 callerIdNumber=1003 callerIdName=Alessio
+6|voice-bridge  | 2026-02-06T04:48:25.448Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=348cbe91-41b7-4192-8a04-effff0cb08f6, uuid=348cbe91-41b7-4192-8a04-effff0cb08f6
+6|voice-bridge  | 2026-02-06T04:48:25.449Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-02-06T04:48:25.449Z [INFO ] [BRIDGE:ESL] 📞 INBOUND call - setting UUID as call ID uuid=348cbe91-41b7-4192-8a04-effff0cb08f6
+6|voice-bridge  | 2026-02-06T04:48:25.498Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully uuid=348cbe91-41b7-4192-8a04-effff0cb08f6
+6|voice-bridge  | 2026-02-06T04:48:25.503Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-02-06T04:48:25.504Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/348cbe91-41b7-4192-8a04-effff0cb08f6 uuidFromUrl=348cbe91-41b7-4192-8a04-effff0cb08f6 pendingCallsCount=1 pendingIds=[{"uuid":"348cbe91-41b7-4192-8a04-effff0cb08f6","callId":"348cbe91-41b7-4192-8a04-effff0cb08f6"}] timestamp=1770353305504
+6|voice-bridge  | 2026-02-06T04:48:25.504Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=348cbe91-41b7-4192-8a04-effff0cb08f6, uuid=348cbe91-41b7-4192-8a04-effff0cb08f6
+6|voice-bridge  | 2026-02-06T04:48:25.505Z [INFO ] [BRIDGE:SERVER] 📞 INBOUND call matched: callId=348cbe91-41b7-4192-8a04-effff0cb08f6 (same as uuid)
+6|voice-bridge  | 2026-02-06T04:48:25.505Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=348cbe91-41b7-4192-8a04-effff0cb08f6 | CallerId=1003 | CallerName=Alessio
+6|voice-bridge  | 2026-02-06T04:48:25.505Z [INFO ] [BRIDGE:SESSION] Session created sessionId=3fea5a25 callId=348cbe91-41b7-4192-8a04-effff0cb08f6 callerId=1003 calledNumber=9999 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-02-06T04:48:26.022Z [INFO ] [BRIDGE:SERVER] 🎵 Paced audio timer started (jitter buffer) sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:48:26.022Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=3fea5a25 url=wss://eccd94e9-7ab4-4aa3-b041-908fb28891d6-00-3vyudda9y3x6w.janeway.replit.dev/ws/ai-voice voice=Puck
+6|voice-bridge  | 2026-02-06T04:48:26.477Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:48:26.477Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:48:26.477Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=3fea5a25 from=connecting to=active
+6|voice-bridge  | 2026-02-06T04:48:29.846Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Prontooo! Ciao
+6|voice-bridge  | 2026-02-06T04:48:29.846Z [INFO ] [BRIDGE:SERVER] [AI]: "Prontooo! Ciao"
+6|voice-bridge  | 2026-02-06T04:48:30.126Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Alessio!
+6|voice-bridge  | 2026-02-06T04:48:30.126Z [INFO ] [BRIDGE:SERVER] [AI]: " Alessio!"
+6|voice-bridge  | 2026-02-06T04:48:30.270Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che bello
+6|voice-bridge  | 2026-02-06T04:48:30.270Z [INFO ] [BRIDGE:SERVER] [AI]: " Che bello"
+6|voice-bridge  | 2026-02-06T04:48:30.368Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sentirti
+6|voice-bridge  | 2026-02-06T04:48:30.368Z [INFO ] [BRIDGE:SERVER] [AI]: " sentirti"
+6|voice-bridge  | 2026-02-06T04:48:30.545Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di nuovo!
+6|voice-bridge  | 2026-02-06T04:48:30.545Z [INFO ] [BRIDGE:SERVER] [AI]: " di nuovo!"
+6|voice-bridge  | 2026-02-06T04:48:30.607Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Allora,
+6|voice-bridge  | 2026-02-06T04:48:30.607Z [INFO ] [BRIDGE:SERVER] [AI]: " Allora,"
+6|voice-bridge  | 2026-02-06T04:48:30.819Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  l'ultima
+6|voice-bridge  | 2026-02-06T04:48:30.819Z [INFO ] [BRIDGE:SERVER] [AI]: " l'ultima"
+6|voice-bridge  | 2026-02-06T04:48:30.940Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  volta
+6|voice-bridge  | 2026-02-06T04:48:30.940Z [INFO ] [BRIDGE:SERVER] [AI]: " volta"
+6|voice-bridge  | 2026-02-06T04:48:31.037Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  stavamo
+6|voice-bridge  | 2026-02-06T04:48:31.037Z [INFO ] [BRIDGE:SERVER] [AI]: " stavamo"
+6|voice-bridge  | 2026-02-06T04:48:31.148Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  parlando
+6|voice-bridge  | 2026-02-06T04:48:31.148Z [INFO ] [BRIDGE:SERVER] [AI]: " parlando"
+6|voice-bridge  | 2026-02-06T04:48:31.223Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  degli
+6|voice-bridge  | 2026-02-06T04:48:31.224Z [INFO ] [BRIDGE:SERVER] [AI]: " degli"
+6|voice-bridge  | 2026-02-06T04:48:31.276Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  appuntamenti,
+6|voice-bridge  | 2026-02-06T04:48:31.277Z [INFO ] [BRIDGE:SERVER] [AI]: " appuntamenti,"
+6|voice-bridge  | 2026-02-06T04:48:31.454Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  giusto?
+6|voice-bridge  | 2026-02-06T04:48:31.454Z [INFO ] [BRIDGE:SERVER] [AI]: " giusto?"
+6|voice-bridge  | 2026-02-06T04:48:31.523Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Come
+6|voice-bridge  | 2026-02-06T04:48:31.523Z [INFO ] [BRIDGE:SERVER] [AI]: " Come"
+6|voice-bridge  | 2026-02-06T04:48:31.614Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  posso
+6|voice-bridge  | 2026-02-06T04:48:31.614Z [INFO ] [BRIDGE:SERVER] [AI]: " posso"
+6|voice-bridge  | 2026-02-06T04:48:31.688Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti?
+6|voice-bridge  | 2026-02-06T04:48:31.689Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti?"
+6|voice-bridge  | 2026-02-06T04:48:45.397Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Guarda, noi
+6|voice-bridge  | 2026-02-06T04:48:45.397Z [INFO ] [BRIDGE:SERVER] [AI]: "Guarda, noi"
+6|voice-bridge  | 2026-02-06T04:48:45.774Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ci occupiamo
+6|voice-bridge  | 2026-02-06T04:48:45.775Z [INFO ] [BRIDGE:SERVER] [AI]: " ci occupiamo"
+6|voice-bridge  | 2026-02-06T04:48:45.969Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di
+6|voice-bridge  | 2026-02-06T04:48:45.969Z [INFO ] [BRIDGE:SERVER] [AI]: " di"
+6|voice-bridge  | 2026-02-06T04:48:46.052Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  far
+6|voice-bridge  | 2026-02-06T04:48:46.052Z [INFO ] [BRIDGE:SERVER] [AI]: " far"
+6|voice-bridge  | 2026-02-06T04:48:46.118Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  crescere
+6|voice-bridge  | 2026-02-06T04:48:46.118Z [INFO ] [BRIDGE:SERVER] [AI]: " crescere"
+6|voice-bridge  | 2026-02-06T04:48:46.284Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  le aziende
+6|voice-bridge  | 2026-02-06T04:48:46.284Z [INFO ] [BRIDGE:SERVER] [AI]: " le aziende"
+6|voice-bridge  | 2026-02-06T04:48:46.566Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  con
+6|voice-bridge  | 2026-02-06T04:48:46.566Z [INFO ] [BRIDGE:SERVER] [AI]: " con"
+6|voice-bridge  | 2026-02-06T04:48:46.665Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un sistema
+6|voice-bridge  | 2026-02-06T04:48:46.665Z [INFO ] [BRIDGE:SERVER] [AI]: " un sistema"
+6|voice-bridge  | 2026-02-06T04:48:46.880Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di automazione
+6|voice-bridge  | 2026-02-06T04:48:46.880Z [INFO ] [BRIDGE:SERVER] [AI]: " di automazione"
+6|voice-bridge  | 2026-02-06T04:48:47.210Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  che gestisce
+6|voice-bridge  | 2026-02-06T04:48:47.210Z [INFO ] [BRIDGE:SERVER] [AI]: " che gestisce"
+6|voice-bridge  | 2026-02-06T04:48:47.437Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  i contatti
+6|voice-bridge  | 2026-02-06T04:48:47.437Z [INFO ] [BRIDGE:SERVER] [AI]: " i contatti"
+6|voice-bridge  | 2026-02-06T04:48:47.549Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  su WhatsApp
+6|voice-bridge  | 2026-02-06T04:48:47.549Z [INFO ] [BRIDGE:SERVER] [AI]: " su WhatsApp"
+6|voice-bridge  | 2026-02-06T04:48:47.718Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  e Instagram!
+6|voice-bridge  | 2026-02-06T04:48:47.719Z [INFO ] [BRIDGE:SERVER] [AI]: " e Instagram!"
+6|voice-bridge  | 2026-02-06T04:48:47.902Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  In pratica,
+6|voice-bridge  | 2026-02-06T04:48:47.902Z [INFO ] [BRIDGE:SERVER] [AI]: " In pratica,"
+6|voice-bridge  | 2026-02-06T04:48:48.054Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un Dipendente
+6|voice-bridge  | 2026-02-06T04:48:48.054Z [INFO ] [BRIDGE:SERVER] [AI]: " un Dipendente"
+6|voice-bridge  | 2026-02-06T04:48:48.217Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  AI
+6|voice-bridge  | 2026-02-06T04:48:48.217Z [INFO ] [BRIDGE:SERVER] [AI]: " AI"
+6|voice-bridge  | 2026-02-06T04:48:48.313Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  risponde
+6|voice-bridge  | 2026-02-06T04:48:48.313Z [INFO ] [BRIDGE:SERVER] [AI]: " risponde"
+6|voice-bridge  | 2026-02-06T04:48:48.462Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  al posto
+6|voice-bridge  | 2026-02-06T04:48:48.463Z [INFO ] [BRIDGE:SERVER] [AI]: " al posto"
+6|voice-bridge  | 2026-02-06T04:48:48.467Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  tuo,
+6|voice-bridge  | 2026-02-06T04:48:48.467Z [INFO ] [BRIDGE:SERVER] [AI]: " tuo,"
+6|voice-bridge  | 2026-02-06T04:48:48.552Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  segue
+6|voice-bridge  | 2026-02-06T04:48:48.552Z [INFO ] [BRIDGE:SERVER] [AI]: " segue"
+6|voice-bridge  | 2026-02-06T04:48:48.616Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  le procedure
+6|voice-bridge  | 2026-02-06T04:48:48.616Z [INFO ] [BRIDGE:SERVER] [AI]: " le procedure"
+6|voice-bridge  | 2026-02-06T04:48:48.766Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  e fissa
+6|voice-bridge  | 2026-02-06T04:48:48.766Z [INFO ] [BRIDGE:SERVER] [AI]: " e fissa"
+6|voice-bridge  | 2026-02-06T04:48:48.880Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  gli appuntamenti.
+6|voice-bridge  | 2026-02-06T04:48:48.881Z [INFO ] [BRIDGE:SERVER] [AI]: " gli appuntamenti."
+6|voice-bridge  | 2026-02-06T04:48:49.054Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Ti interessa
+6|voice-bridge  | 2026-02-06T04:48:49.054Z [INFO ] [BRIDGE:SERVER] [AI]: " Ti interessa"
+6|voice-bridge  | 2026-02-06T04:48:49.197Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 3 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:48:49.220Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  questa
+6|voice-bridge  | 2026-02-06T04:48:49.220Z [INFO ] [BRIDGE:SERVER] [AI]: " questa"
+6|voice-bridge  | 2026-02-06T04:48:49.244Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:48:49.262Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  cosa?
+6|voice-bridge  | 2026-02-06T04:48:49.262Z [INFO ] [BRIDGE:SERVER] [AI]: " cosa?"
+6|voice-bridge  | 2026-02-06T04:48:49.289Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:48:49.323Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 9 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:48:49.362Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:03.621Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Certo, super
+6|voice-bridge  | 2026-02-06T04:49:03.622Z [INFO ] [BRIDGE:SERVER] [AI]: "Certo, super"
+6|voice-bridge  | 2026-02-06T04:49:03.937Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  volentieri!
+6|voice-bridge  | 2026-02-06T04:49:03.937Z [INFO ] [BRIDGE:SERVER] [AI]: " volentieri!"
+6|voice-bridge  | 2026-02-06T04:49:04.043Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Allora,
+6|voice-bridge  | 2026-02-06T04:49:04.043Z [INFO ] [BRIDGE:SERVER] [AI]: " Allora,"
+6|voice-bridge  | 2026-02-06T04:49:04.220Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  immagina
+6|voice-bridge  | 2026-02-06T04:49:04.220Z [INFO ] [BRIDGE:SERVER] [AI]: " immagina"
+6|voice-bridge  | 2026-02-06T04:49:04.359Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di avere
+6|voice-bridge  | 2026-02-06T04:49:04.359Z [INFO ] [BRIDGE:SERVER] [AI]: " di avere"
+6|voice-bridge  | 2026-02-06T04:49:04.500Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un assistente
+6|voice-bridge  | 2026-02-06T04:49:04.500Z [INFO ] [BRIDGE:SERVER] [AI]: " un assistente"
+6|voice-bridge  | 2026-02-06T04:49:04.663Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  virtuale
+6|voice-bridge  | 2026-02-06T04:49:04.663Z [INFO ] [BRIDGE:SERVER] [AI]: " virtuale"
+6|voice-bridge  | 2026-02-06T04:49:04.824Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  che lavora
+6|voice-bridge  | 2026-02-06T04:49:04.824Z [INFO ] [BRIDGE:SERVER] [AI]: " che lavora"
+6|voice-bridge  | 2026-02-06T04:49:04.881Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  per te
+6|voice-bridge  | 2026-02-06T04:49:04.881Z [INFO ] [BRIDGE:SERVER] [AI]: " per te"
+6|voice-bridge  | 2026-02-06T04:49:04.938Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  su WhatsApp
+6|voice-bridge  | 2026-02-06T04:49:04.939Z [INFO ] [BRIDGE:SERVER] [AI]: " su WhatsApp"
+6|voice-bridge  | 2026-02-06T04:49:05.110Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  e Instagram.
+6|voice-bridge  | 2026-02-06T04:49:05.111Z [INFO ] [BRIDGE:SERVER] [AI]: " e Instagram."
+6|voice-bridge  | 2026-02-06T04:49:05.278Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Quando
+6|voice-bridge  | 2026-02-06T04:49:05.278Z [INFO ] [BRIDGE:SERVER] [AI]: " Quando"
+6|voice-bridge  | 2026-02-06T04:49:05.449Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un nuovo
+6|voice-bridge  | 2026-02-06T04:49:05.449Z [INFO ] [BRIDGE:SERVER] [AI]: " un nuovo"
+6|voice-bridge  | 2026-02-06T04:49:05.465Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  contatto
+6|voice-bridge  | 2026-02-06T04:49:05.465Z [INFO ] [BRIDGE:SERVER] [AI]: " contatto"
+6|voice-bridge  | 2026-02-06T04:49:05.574Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  arriva,
+6|voice-bridge  | 2026-02-06T04:49:05.575Z [INFO ] [BRIDGE:SERVER] [AI]: " arriva,"
+6|voice-bridge  | 2026-02-06T04:49:05.674Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  lui
+6|voice-bridge  | 2026-02-06T04:49:05.674Z [INFO ] [BRIDGE:SERVER] [AI]: " lui"
+6|voice-bridge  | 2026-02-06T04:49:05.749Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  risponde
+6|voice-bridge  | 2026-02-06T04:49:05.749Z [INFO ] [BRIDGE:SERVER] [AI]: " risponde"
+6|voice-bridge  | 2026-02-06T04:49:05.866Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  subito,
+6|voice-bridge  | 2026-02-06T04:49:05.866Z [INFO ] [BRIDGE:SERVER] [AI]: " subito,"
+6|voice-bridge  | 2026-02-06T04:49:05.971Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  gli fa
+6|voice-bridge  | 2026-02-06T04:49:05.971Z [INFO ] [BRIDGE:SERVER] [AI]: " gli fa"
+6|voice-bridge  | 2026-02-06T04:49:06.060Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  le domande
+6|voice-bridge  | 2026-02-06T04:49:06.060Z [INFO ] [BRIDGE:SERVER] [AI]: " le domande"
+6|voice-bridge  | 2026-02-06T04:49:06.162Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  giuste
+6|voice-bridge  | 2026-02-06T04:49:06.162Z [INFO ] [BRIDGE:SERVER] [AI]: " giuste"
+6|voice-bridge  | 2026-02-06T04:49:06.267Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  per capire
+6|voice-bridge  | 2026-02-06T04:49:06.267Z [INFO ] [BRIDGE:SERVER] [AI]: " per capire"
+6|voice-bridge  | 2026-02-06T04:49:06.444Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  se è
+6|voice-bridge  | 2026-02-06T04:49:06.444Z [INFO ] [BRIDGE:SERVER] [AI]: " se è"
+6|voice-bridge  | 2026-02-06T04:49:06.447Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un potenziale
+6|voice-bridge  | 2026-02-06T04:49:06.447Z [INFO ] [BRIDGE:SERVER] [AI]: " un potenziale"
+6|voice-bridge  | 2026-02-06T04:49:06.587Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  cliente
+6|voice-bridge  | 2026-02-06T04:49:06.588Z [INFO ] [BRIDGE:SERVER] [AI]: " cliente"
+6|voice-bridge  | 2026-02-06T04:49:06.722Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  e, se
+6|voice-bridge  | 2026-02-06T04:49:06.722Z [INFO ] [BRIDGE:SERVER] [AI]: " e, se"
+6|voice-bridge  | 2026-02-06T04:49:06.805Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sì,
+6|voice-bridge  | 2026-02-06T04:49:06.805Z [INFO ] [BRIDGE:SERVER] [AI]: " sì,"
+6|voice-bridge  | 2026-02-06T04:49:06.914Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:06.915Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  gli prenota
+6|voice-bridge  | 2026-02-06T04:49:06.915Z [INFO ] [BRIDGE:SERVER] [AI]: " gli prenota"
+6|voice-bridge  | 2026-02-06T04:49:06.929Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 11 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:06.999Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.066Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  direttamente
+6|voice-bridge  | 2026-02-06T04:49:07.066Z [INFO ] [BRIDGE:SERVER] [AI]: " direttamente"
+6|voice-bridge  | 2026-02-06T04:49:07.069Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.072Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 9 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.138Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.156Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un appuntamento
+6|voice-bridge  | 2026-02-06T04:49:07.156Z [INFO ] [BRIDGE:SERVER] [AI]: " un appuntamento"
+6|voice-bridge  | 2026-02-06T04:49:07.160Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 9 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.210Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 10 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.279Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.283Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  in agenda.
+6|voice-bridge  | 2026-02-06T04:49:07.283Z [INFO ] [BRIDGE:SERVER] [AI]: " in agenda."
+6|voice-bridge  | 2026-02-06T04:49:07.345Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 11 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.404Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.463Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Tu
+6|voice-bridge  | 2026-02-06T04:49:07.463Z [INFO ] [BRIDGE:SERVER] [AI]: " Tu"
+6|voice-bridge  | 2026-02-06T04:49:07.466Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.504Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.555Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.605Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.610Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  non
+6|voice-bridge  | 2026-02-06T04:49:07.610Z [INFO ] [BRIDGE:SERVER] [AI]: " non"
+6|voice-bridge  | 2026-02-06T04:49:07.692Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 6 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.693Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  devi
+6|voice-bridge  | 2026-02-06T04:49:07.693Z [INFO ] [BRIDGE:SERVER] [AI]: " devi"
+6|voice-bridge  | 2026-02-06T04:49:07.761Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.761Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  fare
+6|voice-bridge  | 2026-02-06T04:49:07.761Z [INFO ] [BRIDGE:SERVER] [AI]: " fare"
+6|voice-bridge  | 2026-02-06T04:49:07.772Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  nulla,
+6|voice-bridge  | 2026-02-06T04:49:07.772Z [INFO ] [BRIDGE:SERVER] [AI]: " nulla,"
+6|voice-bridge  | 2026-02-06T04:49:07.775Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 9 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.871Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 6 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.873Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  pensiamo
+6|voice-bridge  | 2026-02-06T04:49:07.874Z [INFO ] [BRIDGE:SERVER] [AI]: " pensiamo"
+6|voice-bridge  | 2026-02-06T04:49:07.877Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 10 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:07.918Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.023Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 4 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.023Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  a tutto
+6|voice-bridge  | 2026-02-06T04:49:08.024Z [INFO ] [BRIDGE:SERVER] [AI]: " a tutto"
+6|voice-bridge  | 2026-02-06T04:49:08.032Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 12 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.083Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  noi!
+6|voice-bridge  | 2026-02-06T04:49:08.083Z [INFO ] [BRIDGE:SERVER] [AI]: " noi!"
+6|voice-bridge  | 2026-02-06T04:49:08.153Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 6 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.180Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Ti fa
+6|voice-bridge  | 2026-02-06T04:49:08.181Z [INFO ] [BRIDGE:SERVER] [AI]: " Ti fa"
+6|voice-bridge  | 2026-02-06T04:49:08.184Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 9 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.249Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 6 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.253Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 10 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.309Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  risparmiare
+6|voice-bridge  | 2026-02-06T04:49:08.309Z [INFO ] [BRIDGE:SERVER] [AI]: " risparmiare"
+6|voice-bridge  | 2026-02-06T04:49:08.313Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 7 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.355Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.396Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.401Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  un sacco
+6|voice-bridge  | 2026-02-06T04:49:08.401Z [INFO ] [BRIDGE:SERVER] [AI]: " un sacco"
+6|voice-bridge  | 2026-02-06T04:49:08.438Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.476Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di tempo,
+6|voice-bridge  | 2026-02-06T04:49:08.476Z [INFO ] [BRIDGE:SERVER] [AI]: " di tempo,"
+6|voice-bridge  | 2026-02-06T04:49:08.479Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.519Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.562Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.575Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  no?
+6|voice-bridge  | 2026-02-06T04:49:08.575Z [INFO ] [BRIDGE:SERVER] [AI]: " no?"
+6|voice-bridge  | 2026-02-06T04:49:08.603Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.645Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 8 old chunks sessionId=3fea5a25
+6|voice-bridge  | 2026-02-06T04:49:08.697Z [WARN ] [BRIDGE:SERVER] Audio queue overflow, dropped 3 old chunks sessionId=3fea5a25
