@@ -4391,7 +4391,6 @@ ${clientLiveSystemPrompt}`;
           console.log(systemInstruction.substring(0, 2000) + (systemInstruction.length > 2000 ? '\n... [truncated]' : ''));
           console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         } else if (customPrompt) {
-          // Custom prompt overrides everything
           systemInstruction = customPrompt;
           console.log(`📝 [${connectionId}] Using custom prompt (${customPrompt.length} characters)`);
         } else if (useFullPrompt) {
@@ -4408,12 +4407,22 @@ ${clientLiveSystemPrompt}`;
           console.log(`📚 [${connectionId}] Using FULL PROMPT MODE (complete prompt will be sent in chunks after setup)`);
         } else {
           // ✅ OPTIMIZED MODE (default): Static instruction + dynamic context wrapper
-          // This enables Context Caching (90% cost reduction on cached tokens)
+          // Early backend detection for context optimization (before credentials are awaited)
+          const earlyProvider = (process.env.LIVE_API_PROVIDER || 'auto').toLowerCase().trim();
+          const earlyBackend: 'google_ai_studio' | 'vertex_ai' = earlyProvider === 'vertex_ai' ? 'vertex_ai' : 'google_ai_studio';
+          console.log(`🎯 [${connectionId}] Early backend detection for context optimization: ${earlyBackend}`);
+          
           systemInstruction = buildMinimalSystemInstructionForLive(
             mode,
             mode === 'consulente' ? consultantType : null
           );
-          userDataContext = buildDynamicContextForLive(userContext);
+          userDataContext = buildDynamicContextForLive(userContext, earlyBackend);
+          
+          if (earlyBackend === 'google_ai_studio') {
+            console.log(`🔵 [${connectionId}] Google AI Studio OPTIMIZED: consulenze first + compressed exercises (${userDataContext?.length || 0} chars)`);
+          } else {
+            console.log(`🟢 [${connectionId}] Vertex AI FULL context: all data included (${userDataContext?.length || 0} chars)`);
+          }
           console.log(`⚡ [${connectionId}] Using OPTIMIZED MODE (static cached prompt + dynamic context injection)`);
         }
 
@@ -5212,23 +5221,14 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             console.log(`⏳ Sending chunks to Gemini Live API...`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
             
-            const primerContent = shouldSpeakFirst
-              ? `📋 CONTEXT_END - All user data loaded and ready.
+            const primerContent = `📋 CONTEXT_END - All user data loaded and ready.
 
-🎬 REGOLA CRITICA - PARTI SUBITO:
-La sessione è iniziata. L'utente è in linea e ti sta ascoltando.
-Inizia SUBITO a parlare con un saluto naturale e breve.
-Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]...").
-Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]...").
-NON aspettare che l'utente parli per primo. Parti tu immediatamente.`
-              : `📋 CONTEXT_END - All user data loaded and ready.
-
-🚨 REGOLA CRITICA - ASPETTA IL CLIENTE:
+${shouldSpeakFirst ? `🎬 NOTA: Stai per ricevere un comando di avvio sessione. Preparati a salutare l'utente.` : `🚨 REGOLA CRITICA - ASPETTA IL CLIENTE:
 NON iniziare a parlare tu per primo!
 ASPETTA che il cliente dica qualcosa (anche solo "pronto" o "ciao").
 Solo DOPO che il cliente ha parlato, puoi iniziare con il benvenuto.
 Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi senti?"
-MA NON iniziare con lo script completo finché il cliente non risponde!`;
+MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             
             // ✅ UNIFIED CHUNKED STRATEGY: Both Google AI Studio and Vertex AI use the same approach
             // Send all data chunks FIRST (turnComplete: false), then primer LAST (turnComplete: true)
@@ -5619,23 +5619,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
             const isNewAssistantOrPhoneSession = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
             
             if (isNewAssistantOrPhoneSession) {
-              if (liveApiBackend === 'google_ai_studio') {
+              {
                 console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`[${connectionId}] GREETING HANDLED BY PRIMER (Google AI Studio)`);
-                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`   Mode: ${mode}`);
-                console.log(`   Primer already sent with turnComplete:true and greeting instructions`);
-                console.log(`   Skipping separate greeting to avoid double-turn issue`);
-                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-                latencyTracker.greetingTriggerTime = Date.now();
-                latencyTracker.greetingTriggered = true;
-              } else {
-                console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`[${connectionId}] STARTING AI WITH IMMEDIATE GREETING`);
+                console.log(`[${connectionId}] STARTING AI WITH IMMEDIATE GREETING (${liveApiBackend === 'google_ai_studio' ? '🔵 AI Studio' : '🟢 Vertex AI'})`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                 console.log(`   Mode: ${mode}`);
                 console.log(`   Is Resume: NO (new session)`);
                 console.log(`   Action: AI will speak first with natural greeting`);
+                console.log(`   Note: Sending explicit greeting trigger (primer alone may not be sufficient)`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                 
                 const startGreetingMessage = {
@@ -5651,7 +5642,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
                 geminiSession.send(JSON.stringify(startGreetingMessage));
                 latencyTracker.greetingTriggerTime = Date.now();
                 latencyTracker.greetingTriggered = true;
-                console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode})`);
+                console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode}, backend: ${liveApiBackend})`);
                 console.log(`⏱️ [LATENCY] Greeting trigger sent: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
               }
               

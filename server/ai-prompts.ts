@@ -320,9 +320,8 @@ Sei un CONSULENTE VENDITE SENIOR con oltre 15 anni di esperienza in B2B.
 // ✅ NEW: Build dynamic context for Live API (sent as separate user message)
 // This is sent ONLY on new sessions (not on resume) to provide current date/time and user data
 // Keeps static system prompt cacheable while allowing dynamic data injection
-export function buildDynamicContextForLive(userContext: UserContext | null): string {
+export function buildDynamicContextForLive(userContext: UserContext | null, liveApiBackend?: 'google_ai_studio' | 'vertex_ai'): string {
   if (!userContext) {
-    // Minimal dynamic context with just timestamp
     const now = new Date();
     return `[CONTESTO ATTUALE - NON LEGGERE AD ALTA VOCE]
 
@@ -330,9 +329,7 @@ export function buildDynamicContextForLive(userContext: UserContext | null): str
 🕐 Ora: ${now.toLocaleTimeString('it-IT')}`;
   }
 
-  // Full dynamic context with user data
-  // Voice calls exclude financial data to reduce tokens (24k -> ~7k)
-  const userDataContext = buildUserDataContextForLive(userContext, { excludeFinancialData: true });
+  const userDataContext = buildUserDataContextForLive(userContext, { excludeFinancialData: true, liveApiBackend });
   
   return `[CONTESTO ATTUALE - NON LEGGERE AD ALTA VOCE]
 
@@ -371,19 +368,27 @@ Durante le consulenze settimanali live (90 minuti totali):
 }
 
 // Build full user data context for Live API (sent as chunked messages after setup)
-export function buildUserDataContextForLive(userContext: UserContext, options?: { hasFileSearch?: boolean; excludeFinancialData?: boolean }): string {
+// 🔵 Google AI Studio: Reordered sections (consulenze FIRST) + compressed exercises (title+status only)
+// 🟢 Vertex AI / default: Full context with all details unchanged
+export function buildUserDataContextForLive(userContext: UserContext, options?: { hasFileSearch?: boolean; excludeFinancialData?: boolean; liveApiBackend?: 'google_ai_studio' | 'vertex_ai' }): string {
   const hasFileSearch = options?.hasFileSearch ?? false;
   const excludeFinancialData = options?.excludeFinancialData ?? false;
+  const liveApiBackend = options?.liveApiBackend;
   const relevantDocs = userContext.library.documents;
 
-  return `
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // SHARED SECTIONS (same for both backends)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  const headerSection = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 DATI COMPLETI DELL'UTENTE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Questi sono i dati completi e aggiornati dell'utente. Usa questi dati
-per fornire risposte personalizzate e consulenza specifica.
+per fornire risposte personalizzate e consulenza specifica.`;
 
+  const dateTimeSection = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⏰ DATA E ORA CORRENTE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -391,9 +396,9 @@ per fornire risposte personalizzate e consulenza specifica.
 📅 Data di oggi: ${new Date(userContext.currentDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 🕐 Ora corrente: ${new Date(userContext.currentDateTime).toLocaleTimeString('it-IT')}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-${!hasFileSearch && !excludeFinancialData && userContext.financeData ? `
+  const financeSection = !hasFileSearch && !excludeFinancialData && userContext.financeData ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚨 DATI FINANZIARI REALI - SOFTWARE ORBITALE 🚨  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -438,71 +443,42 @@ ${userContext.financeData.transactions.slice(0, 10).map(t =>
 ` : hasFileSearch && !excludeFinancialData && userContext.financeData ? `
 💰 DATI FINANZIARI VIA FILE SEARCH
 I dati finanziari sono disponibili via File Search RAG.
-` : ''}
+` : '';
 
-${userContext.user ? `
+  const userInfoSection = userContext.user ? `
 👤 INFO UTENTE
 - Nome: ${userContext.user.name}
 - Email: ${userContext.user.email}
 - Livello: ${userContext.user.level || 'N/A'}
-` : ''}
+` : '';
 
-${userContext.exercises?.all && userContext.exercises.all.length > 0 ? `
-📚 ESERCIZI (${userContext.exercises.all.length} totali)
-${userContext.exercises.all.map(e => {
-  const statusEmoji = e.status === 'completed' ? '✅' : e.status === 'in_progress' ? '🔄' : '⏳';
-  let desc = `${statusEmoji} ${e.title} (${e.category})`;
-  if (e.dueDate) desc += ` - Scadenza: ${new Date(e.dueDate).toLocaleDateString('it-IT')}`;
-  if (e.score) desc += ` - Punteggio: ${e.score}`;
-  
-  // LIVE MODE: Include MORE content (1000 chars instead of 200)
-  // This allows AI to answer questions about exercise content without external scraping
-  if (e.workPlatformContent) {
-    const contentPreview = e.workPlatformContent.substring(0, 1000);
-    desc += `\n  📄 Contenuto: ${contentPreview}${e.workPlatformContent.length > 1000 ? '...' : ''}`;
-  }
-  
-  // Include ALL questions if present
-  if (e.questions && e.questions.length > 0) {
-    desc += `\n  ❓ Domande (${e.questions.length}):`;
-    e.questions.forEach((q: any, idx: number) => {
-      desc += `\n    ${idx + 1}. ${q.question}`;
-      if (q.options && q.options.length > 0) {
-        q.options.forEach((opt: string, optIdx: number) => {
-          desc += `\n       ${String.fromCharCode(65 + optIdx)}. ${opt}`;
-        });
-      }
-      if (q.correctAnswer) desc += `\n       ✅ Risposta corretta: ${q.correctAnswer}`;
-    });
-  }
-  
-  return desc;
-}).join('\n')}
-` : ''}
-
-${relevantDocs && relevantDocs.length > 0 ? `
+  const librarySection = relevantDocs && relevantDocs.length > 0 ? `
 📖 DOCUMENTI BIBLIOTECA (${relevantDocs.length})
 ${relevantDocs.map(d => 
   `  - ${d.title} (${d.category})${d.content ? `\n    ${d.content.substring(0, 200)}...` : ''}`
 ).join('\n')}
-` : ''}
+` : '';
 
-${userContext.momentum ? `
+  const momentumSection = userContext.momentum ? `
 📊 STATISTICHE MOMENTUM
 - Check-in totali: ${userContext.momentum.totalCheckins}
 - Check-in produttivi: ${userContext.momentum.productiveCheckins}
 - Tasso produttività: ${userContext.momentum.productivityRate}%
 - Streak corrente: ${userContext.momentum.currentStreak} giorni
-` : ''}
+` : '';
 
-${userContext.calendar?.events && userContext.calendar.events.length > 0 ? `
+  const calendarSection = userContext.calendar?.events && userContext.calendar.events.length > 0 ? `
 📅 EVENTI CALENDARIO (${userContext.calendar.events.length})
 ${userContext.calendar.events.slice(0, 5).map(e => 
   `  - ${new Date(e.start).toLocaleDateString('it-IT')} ${new Date(e.start).toLocaleTimeString('it-IT')}: ${e.title}`
 ).join('\n')}
-` : ''}
+` : '';
 
-${userContext.consultations ? `
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // CONSULENZE SECTION (same for both backends - full details)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  const consulenzeSection = userContext.consultations ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📞 CONSULENZE - STORICO COMPLETO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -547,14 +523,11 @@ ${userContext.consultations.recent.map(c => {
   info += `\n  ⏱️  Durata: ${c.duration} minuti`;
   if (c.consultantType) info += `\n  👤 Tipo: ${c.consultantType}`;
   
-  // FULL NOTES
   if (c.notes) {
     info += `\n  📝 NOTE COMPLETE:\n${c.notes}`;
   }
   
-  // FULL SUMMARY EMAIL
   if (c.summaryEmail) {
-    // Remove HTML tags but keep structure
     const emailText = c.summaryEmail
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/p>/gi, '\n\n')
@@ -565,18 +538,15 @@ ${userContext.consultations.recent.map(c => {
     info += `\n  📧 RIEPILOGO EMAIL CONSULENZA COMPLETO:\n${emailText}`;
   }
   
-  // FATHOM TRANSCRIPT (limited to 5000 chars for context size)
   if (c.transcript) {
     const transcriptPreview = c.transcript.length > 5000 ? c.transcript.substring(0, 5000) + '...' : c.transcript;
     info += `\n  🎙️ TRASCRIZIONE FATHOM:\n${transcriptPreview}`;
   }
   
-  // TOPICS if available
   if (c.topics && c.topics.length > 0) {
     info += `\n  🏷️  Argomenti discussi: ${c.topics.join(', ')}`;
   }
   
-  // ACTION ITEMS if available
   if (c.actionItems && c.actionItems.length > 0) {
     info += `\n  ✅ Azioni da fare:`;
     c.actionItems.forEach((action: string) => {
@@ -595,12 +565,104 @@ ${userContext.consultations.recent.map(c => {
 ` : 'Nessuna consulenza recente.'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-` : ''}
+` : '';
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // EXERCISES SECTION (different per backend)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  let exercisesSection = '';
+  
+  if (userContext.exercises?.all && userContext.exercises.all.length > 0) {
+    if (liveApiBackend === 'google_ai_studio') {
+      // 🔵 GOOGLE AI STUDIO: Compressed exercises (title + category + status + due date ONLY)
+      // This saves ~50K tokens by removing workPlatformContent and questions
+      exercisesSection = `
+📚 ESERCIZI - RIEPILOGO (${userContext.exercises.all.length} totali)
+${userContext.exercises.all.map(e => {
+  const statusEmoji = e.status === 'completed' ? '✅' : e.status === 'in_progress' ? '🔄' : '⏳';
+  let desc = `${statusEmoji} ${e.title} (${e.category})`;
+  if (e.dueDate) desc += ` - Scadenza: ${new Date(e.dueDate).toLocaleDateString('it-IT')}`;
+  if (e.score) desc += ` - Punteggio: ${e.score}`;
+  return desc;
+}).join('\n')}
+`;
+    } else {
+      // 🟢 VERTEX AI / DEFAULT: Full exercises with content + questions (unchanged)
+      exercisesSection = `
+📚 ESERCIZI (${userContext.exercises.all.length} totali)
+${userContext.exercises.all.map(e => {
+  const statusEmoji = e.status === 'completed' ? '✅' : e.status === 'in_progress' ? '🔄' : '⏳';
+  let desc = `${statusEmoji} ${e.title} (${e.category})`;
+  if (e.dueDate) desc += ` - Scadenza: ${new Date(e.dueDate).toLocaleDateString('it-IT')}`;
+  if (e.score) desc += ` - Punteggio: ${e.score}`;
+  
+  if (e.workPlatformContent) {
+    const contentPreview = e.workPlatformContent.substring(0, 1000);
+    desc += `\n  📄 Contenuto: ${contentPreview}${e.workPlatformContent.length > 1000 ? '...' : ''}`;
+  }
+  
+  if (e.questions && e.questions.length > 0) {
+    desc += `\n  ❓ Domande (${e.questions.length}):`;
+    e.questions.forEach((q: any, idx: number) => {
+      desc += `\n    ${idx + 1}. ${q.question}`;
+      if (q.options && q.options.length > 0) {
+        q.options.forEach((opt: string, optIdx: number) => {
+          desc += `\n       ${String.fromCharCode(65 + optIdx)}. ${opt}`;
+        });
+      }
+      if (q.correctAnswer) desc += `\n       ✅ Risposta corretta: ${q.correctAnswer}`;
+    });
+  }
+  
+  return desc;
+}).join('\n')}
+`;
+    }
+  }
+
+  const footerSection = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ FINE DATI UTENTE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ASSEMBLY: Different order based on backend
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  if (liveApiBackend === 'google_ai_studio') {
+    // 🔵 GOOGLE AI STUDIO: Consulenze FIRST (high priority), exercises LAST (compressed)
+    // Order: header → datetime → finance → user → CONSULENZE → library → momentum → calendar → EXERCISES (compressed)
+    console.log(`🔵 [buildUserDataContextForLive] Google AI Studio: Reordered (consulenze first) + compressed exercises`);
+    return [
+      headerSection,
+      dateTimeSection,
+      financeSection,
+      userInfoSection,
+      consulenzeSection,
+      librarySection,
+      momentumSection,
+      calendarSection,
+      exercisesSection,
+      footerSection
+    ].filter(s => s.length > 0).join('\n');
+  } else {
+    // 🟢 VERTEX AI / DEFAULT: Original order (exercises before consulenze, full content)
+    // Order: header → datetime → finance → user → EXERCISES (full) → library → momentum → calendar → CONSULENZE
+    return [
+      headerSection,
+      dateTimeSection,
+      financeSection,
+      userInfoSection,
+      exercisesSection,
+      librarySection,
+      momentumSection,
+      calendarSection,
+      consulenzeSection,
+      footerSection
+    ].filter(s => s.length > 0).join('\n');
+  }
 }
 
 // Helper per identificare esercizi con contenuto finanziario
