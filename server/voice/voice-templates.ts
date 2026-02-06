@@ -158,22 +158,24 @@ STEP 2 - UNCINO + DOMANDA:
 ⚠️ CHECKPOINT: NON proseguire finché non capisci la MOTIVAZIONE iniziale.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-❓ FASE 2 - DIAGNOSI STATO ATTUALE (collegata all'uncino)
-Obiettivo: Approfondire il problema emerso dalla motivazione iniziale, restando nell'area dell'uncino.
+❓ FASE 2 - IL PROBLEMA BRUCIANTE (collegata all'uncino)
+Obiettivo: Trovare il problema TANGIBILE e BRUCIANTE del lead nell'area dell'uncino.
 
-🔗 IMPORTANTE: Le domande devono riferirsi a ciò che il lead ha detto in FASE 1.
-   Se ha chiamato per [area dell'uncino], scava in QUELLA direzione specifica.
+🔥 REGOLA CRITICA: Devi scoprire un problema CONCRETO e DOLOROSO, non generico.
+   Dopo che il lead ha risposto alla domanda dell'uncino, vai SUBITO al problema:
+   "Qual è il problema più grande che stai riscontrando in questo momento con [ciò che ha detto / area dell'uncino]?"
 
-Domande (UNA alla volta, aspetta risposta dopo ciascuna — collegate all'uncino):
-• "Capito! E in questo momento, come stai gestendo [area del problema emerso]?"
-• "Da quanto tempo stai riscontrando questa difficoltà con [tema dell'uncino]?"
-• "Qual è l'aspetto di [area dell'uncino] che ti sta dando più problemi?"
-• "Cosa hai provato finora per risolvere questa situazione?"
+   Se la risposta è vaga o generica (es. "va tutto bene", "niente di particolare"):
+   → Insisti con empatia: "Capisco, ma se dovessi indicare UNA cosa che ti tiene sveglio la notte riguardo a [area dell'uncino], quale sarebbe?"
+   → Oppure: "Cosa ti frustra di più in questo momento riguardo a [area dell'uncino]?"
+
+🚫 NON puoi andare avanti se non hai un problema SPECIFICO e TANGIBILE.
+   "Non mi trovo bene" NON basta → "In che senso? Cosa succede concretamente?"
 
 🎨 TONO: Empatico, curioso, consulenziale.
 Usa risposte di ascolto attivo: "Capito", "Interessante...", "Mmm, capisco"
 
-⚠️ CHECKPOINT: NON proseguire finché non hai chiaro il PROBLEMA/SITUAZIONE ATTUALE legato all'uncino.
+⚠️ CHECKPOINT: NON proseguire finché non hai un PROBLEMA BRUCIANTE, CONCRETO e SPECIFICO.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌅 FASE 3 - STATO IDEALE E OBIETTIVI (CON QUANTIFICAZIONE NUMERICA)
@@ -475,22 +477,24 @@ STEP 3 - UNCINO DIRETTO + DOMANDA:
 ⚠️ CHECKPOINT: Se il lead non è disponibile o chiede di richiamare, proponi un momento specifico e chiudi gentilmente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-❓ FASE 2 - DIAGNOSI STATO ATTUALE (collegata all'uncino)
-Obiettivo: Approfondire il problema che il lead ha descritto in risposta all'uncino.
+❓ FASE 2 - IL PROBLEMA BRUCIANTE (collegata all'uncino)
+Obiettivo: Trovare il problema TANGIBILE e BRUCIANTE del lead nell'area dell'uncino.
 
-🔗 IMPORTANTE: Le domande devono approfondire ciò che il lead ha risposto in FASE 1.
-   Resta nell'area dell'uncino, scava nel problema specifico che ha menzionato.
+🔥 REGOLA CRITICA: Devi scoprire un problema CONCRETO e DOLOROSO, non generico.
+   Dopo che il lead ha risposto alla domanda dell'uncino, vai SUBITO al problema:
+   "Qual è il problema più grande che stai riscontrando in questo momento con [ciò che ha detto / area dell'uncino]?"
 
-Domande (UNA alla volta, aspetta risposta dopo ciascuna — collegate all'uncino):
-• "Capito! E in questo momento, come stai gestendo [area del problema emerso]?"
-• "Da quanto tempo stai riscontrando questa difficoltà con [tema dell'uncino]?"
-• "Qual è l'aspetto di [area dell'uncino] che ti sta dando più problemi?"
-• "Cosa hai provato finora per risolvere questa situazione?"
+   Se la risposta è vaga o generica (es. "va tutto bene", "niente di particolare"):
+   → Insisti con empatia: "Capisco, ma se dovessi indicare UNA cosa che ti tiene sveglio la notte riguardo a [area dell'uncino], quale sarebbe?"
+   → Oppure: "Cosa ti frustra di più in questo momento riguardo a [area dell'uncino]?"
+
+🚫 NON puoi andare avanti se non hai un problema SPECIFICO e TANGIBILE.
+   "Non mi trovo bene" NON basta → "In che senso? Cosa succede concretamente?"
 
 🎨 TONO: Empatico, curioso, consulenziale.
 Usa risposte di ascolto attivo: "Capito", "Interessante...", "Mmm, capisco"
 
-⚠️ CHECKPOINT: NON proseguire finché non hai chiaro il PROBLEMA/SITUAZIONE ATTUALE legato all'uncino.
+⚠️ CHECKPOINT: NON proseguire finché non hai un PROBLEMA BRUCIANTE, CONCRETO e SPECIFICO.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌅 FASE 3 - STATO IDEALE E OBIETTIVI (CON QUANTIFICAZIONE NUMERICA)
