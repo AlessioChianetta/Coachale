@@ -23,7 +23,7 @@ export interface CallSession {
   codec: 'PCMU' | 'L16';
   sampleRate: number;
   startTime: Date;
-  state: 'connecting' | 'active' | 'ending' | 'ended';
+  state: 'connecting' | 'active' | 'reconnecting' | 'ending' | 'ended';
   fsWebSocket: WebSocket | null;
   replitClient: ReplitWSClient | null;
   clientContext: ClientContext | null;
