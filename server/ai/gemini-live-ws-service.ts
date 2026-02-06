@@ -4341,8 +4341,11 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               "getAvailableSlots",
               { startDate: new Date().toISOString().slice(0, 10) },
               userId || 'voice_anonymous',
-              consultantId
+              consultantId,
+              undefined,
+              agentId || undefined
             );
+            console.log(`📅 [${connectionId}] Slot loading: agentId=${agentId || 'none (using consultant global settings)'}`);
             if (slotsResult.success && slotsResult.result?.availableSlots) {
               bookingAvailableSlots = slotsResult.result.availableSlots.map((s: any) => ({
                 date: s.date,

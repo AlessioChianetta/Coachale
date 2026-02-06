@@ -4,7 +4,7 @@
  */
 
 import { db } from "../db";
-import { consultations, users, consultantClients, consultantAvailabilitySettings, pendingBookings } from "@shared/schema";
+import { consultations, users, consultantClients, consultantAvailabilitySettings, pendingBookings, consultantWhatsappConfig } from "@shared/schema";
 import { eq, and, gte, lte, sql, or, desc, isNull } from "drizzle-orm";
 import { ConsultationToolResult } from "./consultation-tools";
 import crypto from "crypto";
@@ -16,18 +16,20 @@ export async function executeConsultationTool(
   args: Record<string, any>,
   clientId: string,
   consultantId: string,
-  conversationId?: string | null
+  conversationId?: string | null,
+  agentConfigId?: string
 ): Promise<ConsultationToolResult> {
   console.log(`🔧 [CONSULTATION TOOL] Executing ${toolName} for client ${clientId.slice(0, 8)}`);
   console.log(`   Args:`, JSON.stringify(args));
   console.log(`   ConversationId: ${conversationId || 'none'}`);
+  console.log(`   AgentConfigId: ${agentConfigId || 'none'}`);
 
   try {
     switch (toolName) {
       case "getConsultationStatus":
         return await executeGetConsultationStatus(clientId, consultantId, args);
       case "getAvailableSlots":
-        return await executeGetAvailableSlots(clientId, consultantId, args, conversationId);
+        return await executeGetAvailableSlots(clientId, consultantId, args, conversationId, agentConfigId);
       case "proposeBooking":
         return await executeProposeBooking(clientId, consultantId, args, conversationId);
       case "confirmBooking":
@@ -211,56 +213,164 @@ async function executeGetAvailableSlots(
     preferredDayOfWeek?: string;
     preferredTimeRange?: string;
   },
-  conversationId?: string | null
+  conversationId?: string | null,
+  agentConfigId?: string
 ): Promise<ConsultationToolResult> {
   const now = new Date();
   
-  // Load consultant availability settings from DB
-  const [settings] = await db
-    .select()
-    .from(consultantAvailabilitySettings)
-    .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
-    .limit(1);
-
-  // Default config if not configured
-  const appointmentDuration = settings?.appointmentDuration || 60;
-  const bufferBefore = settings?.bufferBefore || 15;
-  const bufferAfter = settings?.bufferAfter || 15;
-  const minHoursNotice = settings?.minHoursNotice || 24;
-  const maxDaysAhead = settings?.maxDaysAhead || 30;
-  const timezone = settings?.timezone || "Europe/Rome";
-  
-  // Parse appointmentAvailability from DB - supports both old format (start/end) and new format (slots array)
   type TimeSlot = { start: string; end: string };
   type DayAvailability = { enabled: boolean; slots: TimeSlot[] };
+
+  const dayNameToNumber: Record<string, string> = {
+    sunday: "0", monday: "1", tuesday: "2", wednesday: "3",
+    thursday: "4", friday: "5", saturday: "6"
+  };
+
+  let appointmentDuration = 60;
+  let bufferBefore = 15;
+  let bufferAfter = 15;
+  let minHoursNotice = 24;
+  let maxDaysAhead = 30;
+  let timezone = "Europe/Rome";
+  let settings: any = null;
+  let rawAvailabilityData: Record<string, any> | null = null;
+  let defaultMorningStart = "09:00";
+  let defaultMorningEnd = "13:00";
+  let defaultAfternoonStart = "15:00";
+  let defaultAfternoonEnd = "18:00";
+
+  if (agentConfigId) {
+    const [agentConfig] = await db
+      .select()
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.id, agentConfigId))
+      .limit(1);
+
+    if (agentConfig) {
+      appointmentDuration = agentConfig.availabilityAppointmentDuration || 60;
+      bufferBefore = agentConfig.availabilityBufferBefore || 15;
+      bufferAfter = agentConfig.availabilityBufferAfter || 15;
+      minHoursNotice = agentConfig.availabilityMinHoursNotice || 24;
+      maxDaysAhead = agentConfig.availabilityMaxDaysAhead || 30;
+      timezone = agentConfig.availabilityTimezone || "Europe/Rome";
+      if (agentConfig.availabilityWorkingHours && typeof agentConfig.availabilityWorkingHours === 'object') {
+        rawAvailabilityData = agentConfig.availabilityWorkingHours as Record<string, any>;
+      }
+      console.log(`🤖 [SLOTS] Using AGENT config (${agentConfigId.slice(0, 8)}): duration=${appointmentDuration}, timezone=${timezone}`);
+    } else {
+      console.log(`⚠️ [SLOTS] Agent config ${agentConfigId} not found, falling back to consultant settings`);
+    }
+  }
+
+  if (!rawAvailabilityData) {
+    const [consultantSettings] = await db
+      .select()
+      .from(consultantAvailabilitySettings)
+      .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+      .limit(1);
+
+    settings = consultantSettings;
+
+    if (!agentConfigId && settings) {
+      appointmentDuration = settings.appointmentDuration || 60;
+      bufferBefore = settings.bufferBefore || 15;
+      bufferAfter = settings.bufferAfter || 15;
+      minHoursNotice = settings.minHoursNotice || 24;
+      maxDaysAhead = settings.maxDaysAhead || 30;
+      timezone = settings.timezone || "Europe/Rome";
+    }
+
+    if (settings?.morningSlotStart) defaultMorningStart = settings.morningSlotStart;
+    if (settings?.morningSlotEnd) defaultMorningEnd = settings.morningSlotEnd;
+    if (settings?.afternoonSlotStart) defaultAfternoonStart = settings.afternoonSlotStart;
+    if (settings?.afternoonSlotEnd) defaultAfternoonEnd = settings.afternoonSlotEnd;
+
+    if (settings?.appointmentAvailability && typeof settings.appointmentAvailability === 'object') {
+      rawAvailabilityData = settings.appointmentAvailability as Record<string, any>;
+    }
+  }
+
   const availabilityConfig: Record<string, DayAvailability> = {};
-  
-  if (settings?.appointmentAvailability && typeof settings.appointmentAvailability === 'object') {
-    const rawConfig = settings.appointmentAvailability as Record<string, any>;
-    for (const [dayId, config] of Object.entries(rawConfig)) {
-      if (config && typeof config === 'object' && 'enabled' in config) {
-        // Check if it's the new format with slots array
-        if ('slots' in config && Array.isArray(config.slots)) {
-          availabilityConfig[dayId] = config as DayAvailability;
-        } else if ('start' in config && 'end' in config) {
-          // Old format - convert to slots array
-          availabilityConfig[dayId] = {
-            enabled: config.enabled,
-            slots: [{ start: config.start, end: config.end }]
-          };
+
+  const parseNamedDaysToConfig = (workingDays: Record<string, any>) => {
+    for (const [dayName, dayConfig] of Object.entries(workingDays)) {
+      const dayNum = dayNameToNumber[dayName.toLowerCase()];
+      if (dayNum === undefined || !dayConfig || typeof dayConfig !== 'object') continue;
+
+      if ('ranges' in dayConfig && Array.isArray(dayConfig.ranges) && dayConfig.ranges.length > 0) {
+        availabilityConfig[dayNum] = {
+          enabled: !!dayConfig.enabled,
+          slots: dayConfig.ranges.map((r: any) => ({ start: r.start || "09:00", end: r.end || "18:00" }))
+        };
+      } else if ('start' in dayConfig && 'end' in dayConfig) {
+        availabilityConfig[dayNum] = {
+          enabled: !!dayConfig.enabled,
+          slots: [{ start: dayConfig.start, end: dayConfig.end }]
+        };
+      } else {
+        availabilityConfig[dayNum] = {
+          enabled: !!dayConfig.enabled,
+          slots: dayConfig.enabled
+            ? [{ start: defaultMorningStart, end: defaultMorningEnd }, { start: defaultAfternoonStart, end: defaultAfternoonEnd }]
+            : [{ start: "09:00", end: "18:00" }]
+        };
+      }
+    }
+  };
+
+  if (rawAvailabilityData) {
+    if ('workingDays' in rawAvailabilityData && typeof rawAvailabilityData.workingDays === 'object') {
+      parseNamedDaysToConfig(rawAvailabilityData.workingDays as Record<string, any>);
+      if (rawAvailabilityData.morningSlot && typeof rawAvailabilityData.morningSlot === 'object') {
+        defaultMorningStart = rawAvailabilityData.morningSlot.start || defaultMorningStart;
+        defaultMorningEnd = rawAvailabilityData.morningSlot.end || defaultMorningEnd;
+      }
+      if (rawAvailabilityData.afternoonSlot && typeof rawAvailabilityData.afternoonSlot === 'object') {
+        defaultAfternoonStart = rawAvailabilityData.afternoonSlot.start || defaultAfternoonStart;
+        defaultAfternoonEnd = rawAvailabilityData.afternoonSlot.end || defaultAfternoonEnd;
+      }
+    } else {
+      const hasNamedDayKeys = Object.keys(rawAvailabilityData).some(k => dayNameToNumber[k.toLowerCase()] !== undefined);
+      if (hasNamedDayKeys) {
+        parseNamedDaysToConfig(rawAvailabilityData);
+      } else {
+        for (const [dayId, config] of Object.entries(rawAvailabilityData)) {
+          if (!/^\d$/.test(dayId)) continue;
+          if (config && typeof config === 'object' && 'enabled' in config) {
+            if ('slots' in config && Array.isArray(config.slots)) {
+              availabilityConfig[dayId] = config as DayAvailability;
+            } else if ('start' in config && 'end' in config) {
+              availabilityConfig[dayId] = {
+                enabled: config.enabled,
+                slots: [{ start: config.start, end: config.end }]
+              };
+            } else if (config.enabled) {
+              availabilityConfig[dayId] = {
+                enabled: true,
+                slots: [
+                  { start: defaultMorningStart, end: defaultMorningEnd },
+                  { start: defaultAfternoonStart, end: defaultAfternoonEnd }
+                ]
+              };
+            } else {
+              availabilityConfig[dayId] = {
+                enabled: false,
+                slots: [{ start: "09:00", end: "18:00" }]
+              };
+            }
+          }
         }
       }
     }
   }
-  
-  // If no config, use defaults (Mon-Fri with morning and afternoon slots)
+
   if (Object.keys(availabilityConfig).length === 0) {
     for (let d = 1; d <= 5; d++) {
       availabilityConfig[d.toString()] = { 
         enabled: true, 
         slots: [
-          { start: "09:00", end: "13:00" },
-          { start: "15:00", end: "18:00" }
+          { start: defaultMorningStart, end: defaultMorningEnd },
+          { start: defaultAfternoonStart, end: defaultAfternoonEnd }
         ]
       };
     }
@@ -341,7 +451,7 @@ async function executeGetAvailableSlots(
   let calendarBusy: Array<{ start: Date; end: Date }> = [];
   try {
     const { listEvents } = await import("../google-calendar-service");
-    const calendarEvents = await listEvents(consultantId, effectiveStartDate, effectiveEndDate);
+    const calendarEvents = await listEvents(consultantId, effectiveStartDate, effectiveEndDate, agentConfigId);
     for (const event of calendarEvents) {
       calendarBusy.push({
         start: event.start,
@@ -516,11 +626,12 @@ async function executeGetAvailableSlots(
   }
 
   console.log(`\n📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  console.log(`📊 [SLOTS] DISPONIBILITÀ DEBUG - Consultant ${consultantId.slice(0, 8)}`);
+  console.log(`📊 [SLOTS] DISPONIBILITÀ DEBUG - Consultant ${consultantId.slice(0, 8)}${agentConfigId ? ` (Agent: ${agentConfigId.slice(0, 8)})` : ''}`);
   console.log(`   Timezone: ${timezone}`);
   console.log(`   Range: ${effectiveStartDate.toISOString().slice(0, 10)} → ${effectiveEndDate.toISOString().slice(0, 10)}`);
   console.log(`   Durata consulenza: ${appointmentDuration}min | Buffer: ${bufferBefore}min/${bufferAfter}min | Preavviso: ${minHoursNotice}h`);
-  console.log(`   Giorni attivi: ${Object.entries(availabilityConfig).filter(([_, c]) => c.enabled).map(([d, c]) => `${dayNames[parseInt(d)]}(${c.slots.map(s => `${s.start}-${s.end}`).join(',')})`).join(', ')}`);
+  console.log(`   Giorni attivi: ${Object.entries(availabilityConfig).filter(([_, c]) => c.enabled).map(([d, c]) => `${dayNames[parseInt(d)] || `day${d}`}(${c.slots.map(s => `${s.start}-${s.end}`).join(',')})`).join(', ') || 'nessuno'}`);
+  console.log(`   Tutti i giorni: ${Object.entries(availabilityConfig).map(([d, c]) => `${dayNames[parseInt(d)] || `day${d}`}:${c.enabled ? '✅' : '❌'}`).join(', ')}`);
   console.log(`   ─────────────────────────────────────────────────────`);
   console.log(`   Consulenze DB occupate: ${existingConsultations.length}`);
   console.log(`   Prenotazioni pendenti: ${pendingBookingsData.length}`);

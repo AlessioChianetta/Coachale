@@ -1,0 +1,42 @@
+r-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📅 [LIST EVENTS] Using consultant's calendar (legacy flow): primary
+📅 Fetching events from calendar: primary
+📅 [LIST EVENTS] Date range: 2026-02-07T01:03:07.996Z → 2026-03-08T01:03:07.996Z
+📅 [LIST EVENTS] Total events from Google: 64
+📅 [LIST EVENTS] Cancelled events (filtered out): 0
+📅 [LIST EVENTS] Transparent/Free events (filtered out): 0
+📅 [LIST EVENTS] Final events after filtering: 64
+📅 [LIST EVENTS] First event: INIZIO GIORNATA on 2026-02-09T07:00:00.000Z
+📅 [LIST EVENTS] Last event: FINE GIORNATA on 2026-03-06T19:00:00.000Z
+📅 [SLOTS] Loaded 64 events from Google Calendar (filtered: transparent/free excluded)
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [SLOTS] DISPONIBILITÀ DEBUG - Consultant 0c73bbe5
+   Timezone: Europe/Rome
+   Range: 2026-02-07 → 2026-03-08
+   Durata consulenza: 60min | Buffer: 15min/15min | Preavviso: 24h
+   Giorni attivi: lunedì(09:00-13:00,15:00-18:00), martedì(09:00-13:00,15:00-18:00), mercoledì(09:00-13:00,15:00-18:00), giovedì(09:00-13:00,15:00-18:00), venerdì(09:00-13:00,15:00-18:00)
+   ─────────────────────────────────────────────────────
+   Consulenze DB occupate: 0
+   Prenotazioni pendenti: 0
+   Eventi Google Calendar: 64
+   Totale fasce busy: 64
+   ─────────────────────────────────────────────────────
+   Slot candidati generati: 35
+   Bloccati (troppo vicini): 0
+   Bloccati (occupati): 15
+   ✅ SLOT DISPONIBILI: 20
+   Esempi bloccati:
+     ❌ 2026-02-09 09:00 → conflict 07:00-08:00
+     ❌ 2026-02-09 12:00 → conflict 12:00-13:00
+     ❌ 2026-02-09 15:00 → conflict 14:00-15:00
+     ❌ 2026-02-09 16:00 → conflict 14:00-15:00
+     ❌ 2026-02-09 17:00 → conflict 16:00-17:00
+   Primi slot liberi:
+     ✅ 2026-02-09 10:00 (lunedì)
+     ✅ 2026-02-09 11:00 (lunedì)
+     ✅ 2026-02-10 10:00 (martedì)
+     ✅ 2026-02-10 11:00 (martedì)
+     ✅ 2026-02-10 15:00 (martedì)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
