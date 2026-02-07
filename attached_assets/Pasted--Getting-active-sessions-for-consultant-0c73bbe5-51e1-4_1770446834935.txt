@@ -1,0 +1,344 @@
+
+Getting active sessions for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+Found active sessions: 0
+Returning sessions with users: 0
+6:44:48 AM [express] GET /api/activity/sessions/active 304 in 503ms :: []
+📝 [6t7y2m] Voice call transcript updated (1 messages)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 1
+   • 6t7y2m: assistenza - active - durata: 0min - idle: 0min - retries: 0
+🎙️ [6t7y2m] User started speaking - backup watchdog armed
+
+✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ [6t7y2m] PROSPECT SPOKE FIRST! Enabling AI audio output
+   → Transcript: " Bene"
+   → Dropped 0 audio chunks while waiting
+   → AI can now speak freely
+✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " Bene"
+   → Timestamp: 2026-02-07T06:44:50.614Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Bene" + "," = " Bene ,"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: ","
+   → Timestamp: 2026-02-07T06:44:50.775Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Bene ," + " bene" = " Bene , bene"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " bene"
+   → Timestamp: 2026-02-07T06:44:50.918Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Bene , bene" + "," = " Bene , bene ,"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: ","
+   → Timestamp: 2026-02-07T06:44:51.241Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Bene , bene ," + " vo" = " Bene , bene , vo"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " vo"
+   → Timestamp: 2026-02-07T06:44:51.732Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " Bene , bene , vo" + "levo" = " Bene , bene , volevo"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "levo"
+   → Timestamp: 2026-02-07T06:44:51.892Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Bene , bene , volevo" + " dir" = " Bene , bene , volevo dir"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " dir"
+   → Timestamp: 2026-02-07T06:44:52.214Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " Bene , bene , volevo dir" + "ti" = " Bene , bene , volevo dirti"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "ti"
+   → Timestamp: 2026-02-07T06:44:52.539Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Bene , bene , volevo dirti" + " che" = " Bene , bene , volevo dirti che"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " che"
+   → Timestamp: 2026-02-07T06:44:53.796Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Bene , bene , volevo dirti che" + " ade" = " Bene , bene , volevo dirti che ade"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " ade"
+   → Timestamp: 2026-02-07T06:44:53.957Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " Bene , bene , volevo dirti che ade" + "sso devo andare." = " Bene , bene , volevo dirti che adesso devo andare."
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "sso devo andare."
+   → Timestamp: 2026-02-07T06:44:54.076Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🛑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛑 [6t7y2m] BARGE-IN: serverContent.interrupted detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ Timestamp: 2026-02-07T06:44:54.849Z
+🎤 AI was speaking: NO
+🎯 Action: Stop audio playback immediately
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔇 [6t7y2m] serverContent.interrupted received but AI was NOT speaking - ignoring (false positive)
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 9877,
+  "totalTokenCount": 9877,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 9870
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 7
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TOKEN COMPOSITION ANALYSIS] - Turn #2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 GEMINI promptTokensDetails BREAKDOWN:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ TEXT tokens:  9,870      (~9.9k)        │
+   │ AUDIO tokens: 7          (user voice input)     │
+   │ TOTAL:        9,877      (promptTokenCount)     │
+   └─────────────────────────────────────────────────────────────┘
+
+🧮 ESTIMATED TEXT TOKEN COMPOSITION:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ 1. System Instruction:      ~8,097    tokens            │
+   │    (32,388 chars, sent in setup)                      │
+   │                                                             │
+   │ 2. Conversation History:    ~13       tokens            │
+   │    (1 messages saved)                               │
+   │                                                             │
+   │ 3. Initial Chunks:          ~0        tokens            │
+   │    (sent at session start)                                  │
+   └─────────────────────────────────────────────────────────────┘
+
+🎯 ANALYSIS:
+   • Actual TEXT tokens from Gemini: 9,870
+   • Our estimate (sysInst + history): 8,110
+   • UNEXPLAINED tokens: 1,760 tokens
+
+   ⚠️  HIGH UNEXPLAINED TOKENS (1,760)!
+   Possible sources:
+   - Chunks being re-processed (not cached)
+   - Internal Gemini system overhead
+   - Context from previous turns (live session memory)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  No messages tracked in current turn (Turn #2)
+   This is normal for turns after the first - audio-only input
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 9,877 tokens × $0.50/1M = $0.004939
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [6t7y2m] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 9,877 tokens → $0.004939 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.004939 USD
+
+📊 Session totals:
+   - Text Input: 19,481 tokens → $0.009740
+   - Audio Output: 0 tokens → $0.000000
+   - SESSION TOTAL: $0.009740 USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [6t7y2m] Usage tracked → DB saved (Turn cost: $0.004939)
+✅ [6t7y2m] Turn complete
+💾 [6t7y2m] Saved USER message: "Bene , bene , volevo dirti che adesso devo andare." (2 total)
+⚠️  [6t7y2m] Sales tracking: Fallback - committed user message without isFinal flag
+📝 [6t7y2m] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔄 [6t7y2m] SESSION RESUMPTION UPDATE received
+   - New handle: Cig3anNmeTJoYnVsdWw0eWg2enA5YW...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+   ✅ Handle saved to database with ownership metadata
+      → Mode: assistenza
+      → UserId: null
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " mi"
+   → Timestamp: 2026-02-07T06:44:56.086Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Italian word + new phrase: " mi" + " cre" = " mi cre"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " cre"
+   → Timestamp: 2026-02-07T06:44:56.408Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " mi cre" + "o" = " mi creo"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "o"
+   → Timestamp: 2026-02-07T06:44:56.576Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " mi creo" + " un" = " mi creo un"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " un"
+   → Timestamp: 2026-02-07T06:44:56.739Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " mi creo un" + " appun" = " mi creo un appun"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " appun"
+   → Timestamp: 2026-02-07T06:44:56.876Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " mi creo un appun" + "tamento" = " mi creo un appuntamento"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "tamento"
+   → Timestamp: 2026-02-07T06:44:57.036Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [6t7y2m] Voice call transcript updated (2 messages)
+📝 [VAD CONCAT] New phrase: " mi creo un appuntamento" + " tra" = " mi creo un appuntamento tra"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " tra"
+   → Timestamp: 2026-02-07T06:44:57.520Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " mi creo un appuntamento tra" + " 5" = " mi creo un appuntamento tra 5"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " 5"
+   → Timestamp: 2026-02-07T06:44:57.679Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " mi creo un appuntamento tra 5" + " minu" = " mi creo un appuntamento tra 5 minu"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " minu"
+   → Timestamp: 2026-02-07T06:44:57.848Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " mi creo un appuntamento tra 5 minu" + "ti" = " mi creo un appuntamento tra 5 minuti"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "ti"
+   → Timestamp: 2026-02-07T06:44:58.014Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " mi creo un appuntamento tra 5 minuti" + ", cioè" = " mi creo un appuntamento tra 5 minuti , cioè"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: ", cioè"
+   → Timestamp: 2026-02-07T06:44:58.181Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " mi creo un appuntamento tra 5 minuti , cioè" + " mi" = " mi creo un appuntamento tra 5 minuti , cioè mi"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " mi"
+   → Timestamp: 2026-02-07T06:44:58.316Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " mi creo un appuntamento tra 5 minuti , cioè mi" + " chiami tra 5 minuti." = " mi creo un appuntamento tra 5 minuti , cioè mi chiami tra 5 minuti."
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " chiami tra 5 minuti."
+   → Timestamp: 2026-02-07T06:44:58.445Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 [6t7y2m] AI transcript: **Scheduling the Reminder**
+
+I've understood the request – a reminder/call is needed in precisely five minutes. Following task management protocol, I'm initiating the creation procedure to schedule this. This is handled as a direct task input.
+
