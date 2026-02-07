@@ -1132,26 +1132,151 @@ export default function ConsultantAIAutonomyPage() {
               </TabsContent>
 
               <TabsContent value="dashboard" className="space-y-6 mt-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Dashboard Task</h2>
-                  <Button onClick={() => setShowCreateTask(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Crea Task
-                  </Button>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Dashboard Task</h2>
+                    {!showCreateTask && (
+                      <Button onClick={() => setShowCreateTask(true)} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Crea Nuovo Task
+                      </Button>
+                    )}
+                  </div>
+
+                  {showCreateTask && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-transparent">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center justify-between text-base">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-md bg-purple-500/15">
+                                <Sparkles className="h-4 w-4 text-purple-500" />
+                              </div>
+                              Crea Nuovo Task AI
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setShowCreateTask(false)}>
+                              <ChevronUp className="h-4 w-4" />
+                            </Button>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Istruzioni per l'AI</Label>
+                            <Textarea
+                              placeholder="Descrivi cosa deve fare l'AI... es: Analizza il portafoglio del cliente Mario Rossi e prepara un report sulle performance"
+                              value={newTask.ai_instruction}
+                              onChange={(e) => setNewTask(prev => ({ ...prev, ai_instruction: e.target.value }))}
+                              rows={3}
+                              className="resize-none"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Categoria</Label>
+                              <Select value={newTask.task_category} onValueChange={(v) => setNewTask(prev => ({ ...prev, task_category: v }))}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TASK_CATEGORIES.map(cat => (
+                                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Priorità</Label>
+                              <Select value={String(newTask.priority)} onValueChange={(v) => setNewTask(prev => ({ ...prev, priority: parseInt(v) }))}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">Alta</SelectItem>
+                                  <SelectItem value="2">Media-Alta</SelectItem>
+                                  <SelectItem value="3">Media</SelectItem>
+                                  <SelectItem value="4">Bassa</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Nome contatto <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                              <Input
+                                placeholder="es: Mario Rossi"
+                                value={newTask.contact_name}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, contact_name: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Telefono <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                              <Input
+                                placeholder="es: +39 333 1234567"
+                                value={newTask.contact_phone}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, contact_phone: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 pt-2">
+                            <Button
+                              onClick={() => createTaskMutation.mutate(newTask)}
+                              disabled={!newTask.ai_instruction.trim() || createTaskMutation.isPending}
+                              className="gap-2"
+                            >
+                              {createTaskMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Plus className="h-4 w-4" />
+                              )}
+                              Crea Task
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setShowCreateTask(false);
+                                setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "" });
+                              }}
+                            >
+                              Annulla
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
                 </div>
 
                 {activeTasks && activeTasks.length > 0 && (
                   <Card className="border-cyan-500/30 bg-gradient-to-r from-cyan-500/5 to-transparent">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-base">
-                        <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                        </span>
                         Task Attive in Tempo Reale
                         <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">{activeTasks.length}</Badge>
+                        <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Ultimo aggiornamento: {new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {activeTasks.map((task) => (
-                        <div key={task.id} className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer hover:border-cyan-500/40 transition-colors" onClick={() => setSelectedTaskId(task.id)}>
+                      {activeTasks.map((task, index) => (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.08 }}
+                          className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer hover:border-cyan-500/40 transition-colors"
+                          onClick={() => setSelectedTaskId(task.id)}
+                        >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{task.ai_instruction}</p>
@@ -1199,7 +1324,7 @@ export default function ConsultantAIAutonomyPage() {
                           {task.result_summary && (
                             <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">{task.result_summary}</p>
                           )}
-                        </div>
+                        </motion.div>
                       ))}
                     </CardContent>
                   </Card>
