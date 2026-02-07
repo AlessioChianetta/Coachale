@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { authenticateToken, requireAnyRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
+import { GoogleGenAI } from "@google/genai";
+import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-factory";
 
 const router = Router();
 
@@ -334,6 +336,157 @@ router.get("/activity/unread-count", authenticateToken, requireAnyRole(["consult
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching unread count:", error);
     return res.status(500).json({ error: "Failed to fetch unread count" });
+  }
+});
+
+router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { message } = req.body;
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Message is required" });
+    }
+
+    await db.execute(sql`
+      INSERT INTO ai_employee_chat_messages (consultant_id, role, content)
+      VALUES (${consultantId}, 'user', ${message})
+    `);
+
+    const historyResult = await db.execute(sql`
+      SELECT role, content FROM ai_employee_chat_messages
+      WHERE consultant_id = ${consultantId}
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+    const chatHistory = historyResult.rows.reverse().map((row: any) => ({
+      role: row.role === "assistant" ? "model" : "user",
+      parts: [{ text: row.content }],
+    }));
+
+    const [settingsResult, tasksResult, activityResult, clientsResult] = await Promise.all([
+      db.execute(sql`SELECT * FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1`),
+      db.execute(sql`SELECT id, ai_instruction, status, task_category, scheduled_at, result_summary FROM ai_scheduled_tasks WHERE consultant_id = ${consultantId} AND task_type = 'ai_task' ORDER BY created_at DESC LIMIT 10`),
+      db.execute(sql`SELECT event_type, title, description, created_at FROM ai_activity_log WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10`),
+      db.execute(sql`SELECT id, first_name, last_name, email, phone FROM contacts WHERE consultant_id = ${consultantId} LIMIT 20`),
+    ]);
+
+    const settingsJson = settingsResult.rows.length > 0 ? JSON.stringify(settingsResult.rows[0]) : "Nessuna impostazione configurata";
+    const tasksJson = tasksResult.rows.length > 0 ? JSON.stringify(tasksResult.rows) : "Nessun task recente";
+    const activityJson = activityResult.rows.length > 0 ? JSON.stringify(activityResult.rows) : "Nessuna attività recente";
+    const clientsSummary = clientsResult.rows.length > 0
+      ? clientsResult.rows.map((c: any) => `${c.first_name || ""} ${c.last_name || ""} (${c.email || "no email"})`).join(", ")
+      : "Nessun cliente trovato";
+
+    const systemPrompt = `Sei Alessia, il Dipendente AI di questo consulente finanziario. Comunichi in italiano.
+
+Il tuo ruolo è quello di un assistente intelligente e proattivo che lavora per il consulente. Puoi:
+- Analizzare i dati dei clienti e fornire insight
+- Proporre azioni da intraprendere (chiamate, email, follow-up)
+- Rispondere a domande sul portafoglio clienti
+- Suggerire strategie basate sui dati disponibili
+- Dare aggiornamenti sulle attività in corso
+
+Contesto attuale del consulente:
+- Impostazioni autonomia: ${settingsJson}
+- Task recenti: ${tasksJson}
+- Attività recente: ${activityJson}
+- Lista clienti: ${clientsSummary}
+
+Rispondi in modo conciso, professionale ma amichevole. Quando proponi azioni, sii specifico.
+Se non hai informazioni sufficienti, chiedi chiarimenti.
+Non inventare dati sui clienti - usa solo quelli disponibili nel contesto.`;
+
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) {
+      return res.status(500).json({ error: "AI service not configured" });
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const result = await ai.models.generateContent({
+      model: GEMINI_3_MODEL,
+      contents: chatHistory,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: 1024 },
+      },
+    });
+
+    let responseText = "";
+    if (result.text) {
+      responseText = result.text;
+    } else if ((result as any).response?.text) {
+      responseText = (result as any).response.text();
+    } else if ((result as any).candidates?.[0]?.content?.parts?.[0]?.text) {
+      responseText = (result as any).candidates[0].content.parts[0].text;
+    } else {
+      responseText = "Mi dispiace, non sono riuscita a generare una risposta. Riprova.";
+    }
+
+    const saveResult = await db.execute(sql`
+      INSERT INTO ai_employee_chat_messages (consultant_id, role, content)
+      VALUES (${consultantId}, 'assistant', ${responseText})
+      RETURNING id, role, content, created_at
+    `);
+
+    const savedMsg = saveResult.rows[0] as any;
+    return res.json({
+      message: {
+        id: savedMsg.id,
+        role: "assistant",
+        content: savedMsg.content,
+        created_at: savedMsg.created_at,
+      },
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error in chat:", error);
+    return res.status(500).json({ error: "Failed to process chat message" });
+  }
+});
+
+router.get("/chat/history", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+
+    const result = await db.execute(sql`
+      SELECT id, role, content, metadata, created_at FROM ai_employee_chat_messages
+      WHERE consultant_id = ${consultantId}
+      ORDER BY created_at ASC
+      LIMIT ${limit}
+    `);
+
+    return res.json({ messages: result.rows });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching chat history:", error);
+    return res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+});
+
+router.delete("/chat/history", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    await db.execute(sql`
+      DELETE FROM ai_employee_chat_messages WHERE consultant_id = ${consultantId}
+    `);
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error clearing chat history:", error);
+    return res.status(500).json({ error: "Failed to clear chat history" });
   }
 });
 
