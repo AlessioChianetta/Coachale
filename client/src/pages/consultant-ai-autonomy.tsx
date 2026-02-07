@@ -19,7 +19,8 @@ import {
   Clock, Calendar, Shield, Zap, Brain, CheckCircle, AlertCircle,
   XCircle, Info, Loader2, RefreshCw, Eye, ChevronLeft, ChevronRight,
   Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus,
-  Send, Trash2, Sparkles, User, BookOpen, Lightbulb
+  Send, Trash2, Sparkles, User, BookOpen, Lightbulb,
+  ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
@@ -287,6 +288,7 @@ export default function ConsultantAIAutonomyPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatHistoryLoading, setChatHistoryLoading] = useState(true);
+  const [showArchDetails, setShowArchDetails] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const queryClient = useQueryClient();
@@ -308,6 +310,7 @@ export default function ConsultantAIAutonomyPage() {
       setSettings({
         ...DEFAULT_SETTINGS,
         ...settingsData,
+        custom_instructions: settingsData.custom_instructions || "",
         channels_enabled: {
           ...DEFAULT_SETTINGS.channels_enabled,
           ...(settingsData.channels_enabled || {}),
@@ -643,42 +646,177 @@ export default function ConsultantAIAutonomyPage() {
                   </div>
                 ) : (
                   <>
-                    <Card className="border-primary/20 bg-primary/5">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Bot className="h-5 w-5" />
-                          Cosa può fare il tuo Dipendente AI
+                    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+                      <CardHeader className="cursor-pointer" onClick={() => setShowArchDetails(!showArchDetails)}>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600">
+                              <Bot className="h-5 w-5 text-white" />
+                            </div>
+                            Cosa può fare il tuo Dipendente AI
+                          </div>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            {showArchDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
                         </CardTitle>
                         <CardDescription>
-                          Panoramica delle capacità e delle azioni disponibili
+                          Architettura, modalità operative e guardrail di sicurezza
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-3">
-                            <p className="text-sm font-medium">Azioni disponibili:</p>
-                            <div className="space-y-2 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-green-500" /> Effettuare chiamate vocali AI</div>
-                              <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-blue-500" /> Inviare email personalizzate</div>
-                              <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-emerald-500" /> Inviare messaggi WhatsApp</div>
-                              <div className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-purple-500" /> Analizzare dati e generare report</div>
-                              <div className="flex items-center gap-2"><Brain className="h-4 w-4 text-orange-500" /> Preparare materiale per consulenze</div>
-                              <div className="flex items-center gap-2"><Target className="h-4 w-4 text-cyan-500" /> Ricercare informazioni di mercato</div>
+
+                      {showArchDetails && (
+                        <CardContent>
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="space-y-6"
+                          >
+                            <div className="rounded-xl border-l-4 border-purple-500 bg-gradient-to-r from-purple-500/10 to-transparent p-4">
+                              <div className="flex items-start gap-3">
+                                <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 shrink-0">
+                                  <Brain className="h-5 w-5 text-white" />
+                                </div>
+                                <div className="space-y-2 flex-1">
+                                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                                    Come funziona
+                                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">Il Cervello</Badge>
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground leading-relaxed">
+                                    Un <span className="font-medium text-foreground">motore decisionale</span> basato su Gemini analizza il contesto di ogni cliente
+                                    (storico, dati, scadenze) e crea <span className="font-medium text-foreground">piani di esecuzione multi-step</span>.
+                                    Ragiona come un consulente esperto per decidere cosa fare, quando e come.
+                                  </p>
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    <Badge variant="outline" className="text-xs gap-1"><Eye className="h-3 w-3" /> Analisi contesto</Badge>
+                                    <Badge variant="outline" className="text-xs gap-1"><ListTodo className="h-3 w-3" /> Piani multi-step</Badge>
+                                    <Badge variant="outline" className="text-xs gap-1"><Sparkles className="h-3 w-3" /> Reasoning AI</Badge>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="space-y-3">
-                            <p className="text-sm font-medium">Regole di sicurezza:</p>
-                            <div className="space-y-2 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> Opera solo nell'orario di lavoro configurato</div>
-                              <div className="flex items-center gap-2"><Shield className="h-4 w-4" /> Rispetta i limiti giornalieri per ogni canale</div>
-                              <div className="flex items-center gap-2"><Zap className="h-4 w-4" /> Usa solo i canali e le categorie abilitate</div>
-                              <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Richiede livello 2+ per azioni autonome</div>
-                              <div className="flex items-center gap-2"><Info className="h-4 w-4" /> Ogni azione viene registrata nel feed attività</div>
-                              <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4" /> Evita azioni duplicate o ridondanti</div>
+
+                            <Separator />
+
+                            <div className="rounded-xl border-l-4 border-blue-500 bg-gradient-to-r from-blue-500/10 to-transparent p-4">
+                              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <Cog className="h-4 w-4 text-blue-500" />
+                                Le 3 Modalità
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="rounded-lg border bg-card p-3 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-green-500/15">
+                                      <User className="h-4 w-4 text-green-500" />
+                                    </div>
+                                    <span className="font-medium text-sm">Manuale</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    Tu crei i task, l'AI li esegue quando programmati. Controllo totale su ogni azione.
+                                  </p>
+                                </div>
+                                <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 space-y-2 relative">
+                                  <Badge className="absolute -top-2 right-2 bg-blue-500 text-white text-[10px] px-1.5 py-0">Consigliata</Badge>
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-blue-500/15">
+                                      <Lightbulb className="h-4 w-4 text-blue-500" />
+                                    </div>
+                                    <span className="font-medium text-sm">Ibrida</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    L'AI propone nuove azioni ma chiede approvazione per quelle importanti.
+                                  </p>
+                                </div>
+                                <div className="rounded-lg border bg-card p-3 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-orange-500/15">
+                                      <Zap className="h-4 w-4 text-orange-500" />
+                                    </div>
+                                    <span className="font-medium text-sm">Automatica</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    L'AI opera in piena autonomia entro i limiti configurati.
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </CardContent>
+
+                            <Separator />
+
+                            <div className="rounded-xl border-l-4 border-emerald-500 bg-gradient-to-r from-emerald-500/10 to-transparent p-4">
+                              <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                                <RefreshCw className="h-4 w-4 text-emerald-500" />
+                                Il Ciclo di Lavoro
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {[
+                                  { step: 1, icon: Timer, title: "CRON Scheduler", desc: "Controlla ogni minuto se ci sono task da eseguire", color: "text-cyan-500", bg: "bg-cyan-500/15" },
+                                  { step: 2, icon: Brain, title: "Decision Engine", desc: "Analizza contesto cliente, storico e priorità", color: "text-purple-500", bg: "bg-purple-500/15" },
+                                  { step: 3, icon: ListTodo, title: "Piano Esecuzione", desc: "Crea un piano multi-step con azioni ordinate", color: "text-blue-500", bg: "bg-blue-500/15" },
+                                  { step: 4, icon: Play, title: "Task Executor", desc: "Esegue: chiamate, email, WhatsApp, analisi, report", color: "text-emerald-500", bg: "bg-emerald-500/15" },
+                                ].map((item, idx) => (
+                                  <div key={item.step} className="flex items-start gap-2">
+                                    <div className="flex flex-col items-center gap-1 shrink-0">
+                                      <div className={cn("flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold text-white", 
+                                        item.step === 1 ? "bg-cyan-500" : item.step === 2 ? "bg-purple-500" : item.step === 3 ? "bg-blue-500" : "bg-emerald-500"
+                                      )}>
+                                        {item.step}
+                                      </div>
+                                      {idx < 3 && <ArrowRight className="h-3 w-3 text-muted-foreground hidden lg:block rotate-0 lg:rotate-0" />}
+                                    </div>
+                                    <div className="space-y-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <item.icon className={cn("h-3.5 w-3.5", item.color)} />
+                                        <span className="text-xs font-medium truncate">{item.title}</span>
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground leading-relaxed">{item.desc}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-1.5">
+                                {[
+                                  { icon: Phone, label: "Chiamate", color: "text-green-500" },
+                                  { icon: Mail, label: "Email", color: "text-blue-500" },
+                                  { icon: MessageSquare, label: "WhatsApp", color: "text-emerald-500" },
+                                  { icon: BarChart3, label: "Analisi", color: "text-purple-500" },
+                                  { icon: Target, label: "Ricerca", color: "text-cyan-500" },
+                                ].map((ch) => (
+                                  <Badge key={ch.label} variant="outline" className="text-[10px] gap-1 py-0.5">
+                                    <ch.icon className={cn("h-3 w-3", ch.color)} />
+                                    {ch.label}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="rounded-xl border-l-4 border-amber-500 bg-gradient-to-r from-amber-500/10 to-transparent p-4">
+                              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <Shield className="h-4 w-4 text-amber-500" />
+                                Guardrail di Sicurezza
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                                {[
+                                  { icon: Clock, text: "Opera solo nell'orario di lavoro configurato" },
+                                  { icon: Shield, text: "Limiti giornalieri per ogni canale" },
+                                  { icon: Zap, text: "Solo canali e categorie abilitate" },
+                                  { icon: AlertCircle, text: "Livello autonomia richiesto per ogni azione" },
+                                  { icon: Activity, text: "Ogni azione registrata nel feed attività" },
+                                  { icon: CheckCircle, text: "Nessuna azione duplicata o ridondante" },
+                                ].map((rule, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+                                    <rule.icon className="h-4 w-4 text-amber-500 shrink-0" />
+                                    <span>{rule.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </motion.div>
+                        </CardContent>
+                      )}
                     </Card>
 
                     <Card>
