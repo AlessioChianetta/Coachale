@@ -1,7 +1,7 @@
 # RDP - Task AI Autonomo: Dipendente Virtuale Intelligente
 
 > **Data:** 7 Febbraio 2026  
-> **Status:** In Implementazione — Fase 1 Completata  
+> **Status:** In Implementazione — Fase 2 Completata  
 > **Priorità:** Alta  
 > **Dipendenze:** VoiceTaskSupervisor, AI Task Scheduler, Follow-up Decision Engine, Gemini API
 
@@ -10,7 +10,7 @@
 | Fase | Status | Data |
 |------|--------|------|
 | **Fase 1: Fondamenta** | ✅ Completata | 7 Feb 2026 |
-| **Fase 2: Decision Engine** | ⏳ Da iniziare | — |
+| **Fase 2: Decision Engine** | ✅ Completata | 7 Feb 2026 |
 | **Fase 3: Proactive Monitor** | ⏳ Da iniziare | — |
 | **Fase 4: Integrations & Polish** | ⏳ Da iniziare | — |
 
@@ -24,6 +24,13 @@
 - ✅ Frontend `consultant-ai-autonomy.tsx` — Pagina completa con tab Impostazioni (slider autonomia, orari, limiti, canali, istruzioni) e Feed Attività (timeline, filtri, paginazione, mark as read)
 - ✅ Sidebar aggiornata — Voce "AI Autonomo" nella sezione COMUNICAZIONE
 - ✅ Route `/consultant/ai-autonomy` registrata in App.tsx
+
+**Fase 2 — Dettaglio completamento:**
+- ✅ `server/ai/autonomous-decision-engine.ts` — Decision Engine con Gemini: context builder (dati cliente, storico task, activity log), guardrails (orari lavoro, limiti giornalieri, canali), generazione piano di esecuzione via LLM con prompt italiano
+- ✅ `server/ai/ai-task-executor.ts` — Task Executor con 7 step handlers: fetch_client_data (DB), analyze_patterns (Gemini), generate_report (Gemini), prepare_call (Gemini), voice_call (crea scheduled_voice_call), send_email (placeholder Fase 4), send_whatsapp (placeholder Fase 4)
+- ✅ `server/cron/ai-task-scheduler.ts` aggiornato — executeAutonomousTask() ora usa Decision Engine per generare piani + Task Executor per eseguirli step-by-step, con enforcement guardrails (canExecuteAutonomously), logging per-step, gestione errori con skip degli step successivi
+- ✅ Backend `ai-autonomy-router.ts` esteso — 3 nuovi endpoint: GET /tasks (lista con filtri e paginazione), GET /tasks/:id (dettaglio con activity), GET /tasks-stats (conteggi per status)
+- ✅ Frontend `consultant-ai-autonomy.tsx` esteso — Terzo tab "Dashboard" con: 4 cards statistiche, lista task filtrabili per status/categoria, dialog dettaglio task con stepper piano di esecuzione, timeline attività, badge priorità/stato/categoria, paginazione
 
 ---
 

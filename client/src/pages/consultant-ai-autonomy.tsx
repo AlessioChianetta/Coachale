@@ -12,12 +12,13 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Bot, Settings, Activity, Bell, BellOff, Phone, Mail, MessageSquare,
   Clock, Calendar, Shield, Zap, Brain, CheckCircle, AlertCircle,
   XCircle, Info, Loader2, RefreshCw, Eye, ChevronLeft, ChevronRight,
-  Save, BarChart3
+  Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -60,6 +61,52 @@ interface ActivityResponse {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+interface TaskStepPlan {
+  step: number;
+  action: string;
+  description: string;
+  status: string;
+}
+
+interface AITask {
+  id: string;
+  ai_instruction: string;
+  status: string;
+  task_category: string;
+  origin_type: string;
+  priority: number;
+  contact_name?: string;
+  ai_reasoning?: string;
+  ai_confidence?: number;
+  execution_plan?: TaskStepPlan[];
+  result_summary?: string;
+  result_data?: any;
+  scheduled_at?: string;
+  completed_at?: string;
+  created_at: string;
+}
+
+interface TasksResponse {
+  tasks: AITask[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface TasksStats {
+  total: number;
+  active: number;
+  completed: number;
+  failed: number;
+  pending: number;
+}
+
+interface TaskDetailResponse {
+  task: AITask;
+  activity: ActivityItem[];
 }
 
 const DAYS_OF_WEEK = [
@@ -125,6 +172,65 @@ function getSeverityBadge(severity: string) {
   }
 }
 
+function getTaskStatusBadge(status: string) {
+  switch (status) {
+    case "scheduled":
+    case "in_progress":
+    case "approved":
+      return <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">Attivo</Badge>;
+    case "completed":
+      return <Badge className="bg-green-500/20 text-green-500 border-green-500/30">Completato</Badge>;
+    case "failed":
+      return <Badge className="bg-red-500/20 text-red-500 border-red-500/30">Fallito</Badge>;
+    case "paused":
+    case "draft":
+    case "waiting_approval":
+      return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30">In pausa</Badge>;
+    default:
+      return <Badge variant="secondary">{status}</Badge>;
+  }
+}
+
+function getCategoryLabel(category: string): string {
+  const map: Record<string, string> = {
+    outreach: "Contatto",
+    analysis: "Analisi",
+    report: "Report",
+    followup: "Follow-up",
+    research: "Ricerca",
+    preparation: "Preparazione",
+    monitoring: "Monitoraggio",
+    reminder: "Promemoria",
+  };
+  return map[category] || category;
+}
+
+function getCategoryBadge(category: string) {
+  return <Badge variant="outline" className="text-xs">{getCategoryLabel(category)}</Badge>;
+}
+
+function getPriorityIndicator(priority: number) {
+  if (priority === 1) return <Badge className="bg-red-500/20 text-red-500 border-red-500/30 text-xs">Alta</Badge>;
+  if (priority === 2) return <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30 text-xs">Media-Alta</Badge>;
+  if (priority === 3) return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30 text-xs">Media</Badge>;
+  return <Badge className="bg-muted text-muted-foreground text-xs">Bassa</Badge>;
+}
+
+function getStepStatusIcon(status: string) {
+  switch (status) {
+    case "completed":
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
+    case "in_progress":
+      return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+    case "failed":
+      return <XCircle className="h-5 w-5 text-red-500" />;
+    case "skipped":
+      return <Minus className="h-5 w-5 text-muted-foreground" />;
+    default:
+      return <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/40" />;
+  }
+}
+
 function getRelativeTime(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -147,6 +253,10 @@ export default function ConsultantAIAutonomyPage() {
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
   const [activityPage, setActivityPage] = useState(1);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [dashboardPage, setDashboardPage] = useState(1);
+  const [dashboardStatusFilter, setDashboardStatusFilter] = useState<string>("all");
+  const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>("all");
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -248,6 +358,37 @@ export default function ConsultantAIAutonomyPage() {
     },
   });
 
+  const { data: tasksStats, isLoading: loadingStats } = useQuery<TasksStats>({
+    queryKey: ["/api/ai-autonomy/tasks-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/tasks-stats", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: activeTab === "dashboard",
+  });
+
+  const tasksUrl = `/api/ai-autonomy/tasks?page=${dashboardPage}&limit=10${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}`;
+  const { data: tasksData, isLoading: loadingTasks } = useQuery<TasksResponse>({
+    queryKey: [tasksUrl],
+    queryFn: async () => {
+      const res = await fetch(tasksUrl, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: activeTab === "dashboard",
+  });
+
+  const { data: taskDetailData, isLoading: loadingTaskDetail } = useQuery<TaskDetailResponse>({
+    queryKey: [`/api/ai-autonomy/tasks/${selectedTaskId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/ai-autonomy/tasks/${selectedTaskId}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!selectedTaskId,
+  });
+
   const handleSave = () => {
     saveMutation.mutate(settings);
   };
@@ -282,7 +423,7 @@ export default function ConsultantAIAutonomyPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsList className="grid w-full grid-cols-3 max-w-2xl">
                 <TabsTrigger value="settings" className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
                   Impostazioni Autonomia
@@ -295,6 +436,10 @@ export default function ConsultantAIAutonomyPage() {
                       {unreadCount}
                     </Badge>
                   )}
+                </TabsTrigger>
+                <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                  <ListTodo className="h-4 w-4" />
+                  Dashboard
                 </TabsTrigger>
               </TabsList>
 
@@ -710,6 +855,319 @@ export default function ConsultantAIAutonomyPage() {
                     </Button>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="dashboard" className="space-y-6 mt-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-blue-500/10">
+                          <ListTodo className="h-5 w-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.total ?? 0}</p>
+                          <p className="text-xs text-muted-foreground">Totali</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-blue-500/10">
+                          <TrendingUp className="h-5 w-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.active ?? 0}</p>
+                          <p className="text-xs text-muted-foreground">Attivi</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-green-500/10">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.completed ?? 0}</p>
+                          <p className="text-xs text-muted-foreground">Completati</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-red-500/10">
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.failed ?? 0}</p>
+                          <p className="text-xs text-muted-foreground">Falliti</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <Select value={dashboardStatusFilter} onValueChange={(val) => { setDashboardStatusFilter(val); setDashboardPage(1); }}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Stato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti</SelectItem>
+                      <SelectItem value="active">Attivi</SelectItem>
+                      <SelectItem value="completed">Completati</SelectItem>
+                      <SelectItem value="failed">Falliti</SelectItem>
+                      <SelectItem value="paused">In pausa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={dashboardCategoryFilter} onValueChange={(val) => { setDashboardCategoryFilter(val); setDashboardPage(1); }}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti</SelectItem>
+                      <SelectItem value="outreach">Contatto</SelectItem>
+                      <SelectItem value="analysis">Analisi</SelectItem>
+                      <SelectItem value="report">Report</SelectItem>
+                      <SelectItem value="followup">Follow-up</SelectItem>
+                      <SelectItem value="research">Ricerca</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {loadingTasks ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !tasksData?.tasks?.length ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <ListTodo className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Nessun task trovato</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {tasksData.tasks.map((task) => (
+                      <Card
+                        key={task.id}
+                        className="cursor-pointer hover:border-primary/40 transition-colors"
+                        onClick={() => setSelectedTaskId(task.id)}
+                      >
+                        <CardContent className="py-4 px-5">
+                          <div className="flex items-start gap-4">
+                            <div className="mt-0.5 p-2 rounded-full bg-primary/10">
+                              <Target className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold truncate max-w-[400px]">
+                                  {task.ai_instruction.length > 80
+                                    ? task.ai_instruction.substring(0, 80) + "…"
+                                    : task.ai_instruction}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                {getTaskStatusBadge(task.status)}
+                                {getCategoryBadge(task.task_category)}
+                                {getPriorityIndicator(task.priority)}
+                              </div>
+                              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {getRelativeTime(task.created_at)}
+                                </span>
+                                {task.contact_name && (
+                                  <span className="flex items-center gap-1">
+                                    <Bot className="h-3 w-3" />
+                                    {task.contact_name}
+                                  </span>
+                                )}
+                                {task.completed_at && (
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3" />
+                                    Completato: {new Date(task.completed_at).toLocaleString("it-IT")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                {tasksData && tasksData.totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-4 pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDashboardPage(p => Math.max(1, p - 1))}
+                      disabled={dashboardPage <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Precedente
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Pagina {tasksData.page} di {tasksData.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDashboardPage(p => Math.min(tasksData.totalPages, p + 1))}
+                      disabled={dashboardPage >= tasksData.totalPages}
+                    >
+                      Successiva
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                )}
+
+                <Dialog open={!!selectedTaskId} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
+                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                    {loadingTaskDetail ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : taskDetailData?.task ? (
+                      <>
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2 text-lg">
+                            <Target className="h-5 w-5" />
+                            Dettaglio Task
+                          </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-6 mt-2">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Istruzione</p>
+                              <p className="mt-1">{taskDetailData.task.ai_instruction}</p>
+                            </div>
+                            {taskDetailData.task.ai_reasoning && (
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground">Ragionamento AI</p>
+                                <p className="mt-1 text-sm">{taskDetailData.task.ai_reasoning}</p>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-4 flex-wrap">
+                              {getTaskStatusBadge(taskDetailData.task.status)}
+                              {getCategoryBadge(taskDetailData.task.task_category)}
+                              {getPriorityIndicator(taskDetailData.task.priority)}
+                              {taskDetailData.task.ai_confidence != null && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Hash className="h-3 w-3 mr-1" />
+                                  Confidenza: {Math.round(taskDetailData.task.ai_confidence * 100)}%
+                                </Badge>
+                              )}
+                            </div>
+                            {taskDetailData.task.contact_name && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Bot className="h-4 w-4" />
+                                <span>{taskDetailData.task.contact_name}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                              <span>Creato: {new Date(taskDetailData.task.created_at).toLocaleString("it-IT")}</span>
+                              {taskDetailData.task.scheduled_at && (
+                                <span>Schedulato: {new Date(taskDetailData.task.scheduled_at).toLocaleString("it-IT")}</span>
+                              )}
+                              {taskDetailData.task.completed_at && (
+                                <span>Completato: {new Date(taskDetailData.task.completed_at).toLocaleString("it-IT")}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {taskDetailData.task.execution_plan && taskDetailData.task.execution_plan.length > 0 && (
+                            <>
+                              <Separator />
+                              <div>
+                                <p className="text-sm font-medium mb-3">Piano di Esecuzione</p>
+                                <div className="space-y-0">
+                                  {taskDetailData.task.execution_plan.map((step, idx) => (
+                                    <div key={step.step} className="flex gap-3">
+                                      <div className="flex flex-col items-center">
+                                        {getStepStatusIcon(step.status)}
+                                        {idx < taskDetailData.task.execution_plan!.length - 1 && (
+                                          <div className="w-0.5 flex-1 bg-border my-1 min-h-[24px]" />
+                                        )}
+                                      </div>
+                                      <div className="pb-4">
+                                        <p className="text-sm font-medium">{step.description}</p>
+                                        <p className="text-xs text-muted-foreground">{step.action}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {taskDetailData.task.result_summary && (
+                            <>
+                              <Separator />
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground">Risultato</p>
+                                <p className="mt-1 text-sm">{taskDetailData.task.result_summary}</p>
+                              </div>
+                            </>
+                          )}
+
+                          {taskDetailData.task.result_data && (
+                            <div className="bg-muted/50 rounded-lg p-3">
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Dati risultato</p>
+                              <pre className="text-xs overflow-auto max-h-40">
+                                {JSON.stringify(taskDetailData.task.result_data, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+
+                          {taskDetailData.activity && taskDetailData.activity.length > 0 && (
+                            <>
+                              <Separator />
+                              <div>
+                                <p className="text-sm font-medium mb-3">Timeline Attività</p>
+                                <div className="space-y-3">
+                                  {taskDetailData.activity.map((act) => (
+                                    <div key={act.id} className="flex items-start gap-3">
+                                      <div className={`mt-0.5 p-1.5 rounded-full ${
+                                        act.severity === "error" ? "bg-red-500/10 text-red-500" :
+                                        act.severity === "warning" ? "bg-yellow-500/10 text-yellow-500" :
+                                        act.severity === "success" ? "bg-green-500/10 text-green-500" :
+                                        "bg-blue-500/10 text-blue-500"
+                                      }`}>
+                                        {getActivityIcon(act.icon)}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium">{act.title}</p>
+                                        <p className="text-xs text-muted-foreground">{act.description}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {getRelativeTime(act.created_at)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        Task non trovato
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
               </TabsContent>
             </Tabs>
           </div>

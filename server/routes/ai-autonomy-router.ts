@@ -198,6 +198,126 @@ router.post("/activity/read-all", authenticateToken, requireAnyRole(["consultant
   }
 });
 
+router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const offset = (page - 1) * limit;
+    const statusFilter = req.query.status as string | undefined;
+    const categoryFilter = req.query.category as string | undefined;
+
+    let conditions = [sql`consultant_id = ${consultantId}`, sql`task_type = 'ai_task'`];
+    if (statusFilter && statusFilter !== 'all') {
+      if (statusFilter === 'active') {
+        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved')`);
+      } else if (statusFilter === 'paused') {
+        conditions.push(sql`status IN ('paused', 'draft', 'waiting_approval')`);
+      } else {
+        conditions.push(sql`status = ${statusFilter}`);
+      }
+    }
+    if (categoryFilter && categoryFilter !== 'all') {
+      conditions.push(sql`task_category = ${categoryFilter}`);
+    }
+
+    const whereClause = sql.join(conditions, sql` AND `);
+
+    const [tasksResult, countResult] = await Promise.all([
+      db.execute(sql`
+        SELECT id, consultant_id, contact_name, contact_phone, task_type, task_category,
+               ai_instruction, status, origin_type, priority, ai_reasoning, ai_confidence,
+               execution_plan, result_summary, result_data, scheduled_at, started_at,
+               completed_at, created_at, updated_at, call_after_task
+        FROM ai_scheduled_tasks
+        WHERE ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as total FROM ai_scheduled_tasks
+        WHERE ${whereClause}
+      `),
+    ]);
+
+    const total = (countResult.rows[0] as any)?.total || 0;
+
+    return res.json({
+      tasks: tasksResult.rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching tasks:", error);
+    return res.status(500).json({ error: "Failed to fetch tasks" });
+  }
+});
+
+router.get("/tasks/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      SELECT * FROM ai_scheduled_tasks
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    const activityResult = await db.execute(sql`
+      SELECT * FROM ai_activity_log
+      WHERE task_id = ${id} AND consultant_id = ${consultantId}
+      ORDER BY created_at ASC
+    `);
+
+    return res.json({
+      task: result.rows[0],
+      activity: activityResult.rows,
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching task detail:", error);
+    return res.status(500).json({ error: "Failed to fetch task detail" });
+  }
+});
+
+router.get("/tasks-stats", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const result = await db.execute(sql`
+      SELECT 
+        COUNT(*)::int as total,
+        COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
+        COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
+        COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
+        COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval'))::int as pending
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId} AND task_type = 'ai_task'
+    `);
+
+    return res.json(result.rows[0] || { total: 0, active: 0, completed: 0, failed: 0, pending: 0 });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching task stats:", error);
+    return res.status(500).json({ error: "Failed to fetch task stats" });
+  }
+});
+
 router.get("/activity/unread-count", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
