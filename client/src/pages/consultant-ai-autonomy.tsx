@@ -28,7 +28,7 @@ import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { FloatingEmployeeChat } from "@/components/alessia/FloatingEmployeeChat";
+import { AllessiaSidePanel } from "@/components/alessia/FloatingEmployeeChat";
 
 interface AutonomySettings {
   is_active: boolean;
@@ -277,6 +277,7 @@ export default function ConsultantAIAutonomyPage() {
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>("all");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showArchDetails, setShowArchDetails] = useState(true);
+  const [showMobileChat, setShowMobileChat] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -440,8 +441,9 @@ export default function ConsultantAIAutonomyPage() {
       <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
         <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        <main className="flex-1 p-6 lg:px-8 overflow-auto">
-          <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex-1 flex overflow-hidden">
+          <main className="flex-1 p-6 lg:px-8 overflow-auto">
+            <div className="max-w-5xl space-y-6">
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-2">
                 <Bot className="h-8 w-8" />
@@ -1410,8 +1412,38 @@ export default function ConsultantAIAutonomyPage() {
             </Tabs>
           </div>
         </main>
+        <div className="w-[380px] border-l border-border shrink-0 hidden lg:flex flex-col">
+          <AllessiaSidePanel />
+        </div>
+        </div>
+
+        {isMobile && (
+          <>
+            <Button
+              onClick={() => setShowMobileChat(!showMobileChat)}
+              size="lg"
+              className={cn(
+                "fixed bottom-6 right-6 z-50 h-12 px-4 rounded-xl shadow-2xl transition-all duration-300 flex items-center gap-2 lg:hidden",
+                "bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
+              )}
+            >
+              <Bot className="h-5 w-5 text-white" />
+              <span className="text-white font-medium">Alessia</span>
+            </Button>
+            {showMobileChat && (
+              <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-white dark:bg-slate-900">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-700">
+                  <span className="font-semibold text-sm">Alessia</span>
+                  <Button variant="ghost" size="sm" onClick={() => setShowMobileChat(false)}>Chiudi</Button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <AllessiaSidePanel />
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-      <FloatingEmployeeChat />
     </div>
   );
 }
