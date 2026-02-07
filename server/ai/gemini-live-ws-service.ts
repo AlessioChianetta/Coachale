@@ -6887,12 +6887,15 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               // 📞 Update voice call transcript in real-time
               scheduleTranscriptUpdate();
 
-              if (bookingSupervisor && isPhoneCall) {
+              const taskSupervisorActive = taskSupervisor && ['raccolta_dati', 'dati_completi', 'confermato'].includes(taskSupervisor.getState().stage);
+              if (bookingSupervisor && isPhoneCall && !taskSupervisorActive) {
                 (async () => {
                   try {
                     const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
                     try {
-                      const bookingMessages: BookingMessage[] = conversationMessages.map(m => ({
+                      const bookingMessages: BookingMessage[] = conversationMessages
+                        .filter(m => !m.transcript.includes('[SYSTEM_INSTRUCTION') && !m.transcript.includes('[TASK_CREATED]') && !m.transcript.includes('[TASK_MODIFIED]') && !m.transcript.includes('[TASK_CANCELLED]') && !m.transcript.includes('[BOOKING_CREATED]') && !m.transcript.includes('[BOOKING_FAILED]') && !m.transcript.includes('[TASK_NOT_FOUND]') && !m.transcript.includes('[TASK_LIST]'))
+                        .map(m => ({
                         role: m.role,
                         transcript: m.transcript,
                         timestamp: m.timestamp,
@@ -6949,7 +6952,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   try {
                     const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
                     try {
-                      const taskMessages: TaskConversationMessage[] = conversationMessages.map(m => ({
+                      const taskMessages: TaskConversationMessage[] = conversationMessages
+                        .filter(m => !m.transcript.includes('[SYSTEM_INSTRUCTION') && !m.transcript.includes('[TASK_CREATED]') && !m.transcript.includes('[TASK_MODIFIED]') && !m.transcript.includes('[TASK_CANCELLED]') && !m.transcript.includes('[BOOKING_CREATED]') && !m.transcript.includes('[BOOKING_FAILED]') && !m.transcript.includes('[TASK_NOT_FOUND]') && !m.transcript.includes('[TASK_LIST]'))
+                        .map(m => ({
                         role: m.role,
                         transcript: m.transcript,
                         timestamp: m.timestamp,
@@ -6973,8 +6978,6 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                           console.log(`📝 [${connectionId}] Task list sent to Gemini`);
                         } else if (result.action === 'task_failed') {
                           console.log(`❌ [${connectionId}] Task operation failed: ${result.errorMessage}`);
-                        } else if (result.action === 'notify_ai') {
-                          console.log(`📝 [${connectionId}] Task supervisor: asking AI to confirm with caller`);
                         }
 
                         const taskNotification = {
