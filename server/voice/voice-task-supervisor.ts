@@ -147,7 +147,7 @@ export class VoiceTaskSupervisor {
     }
 
     if (this.state.stage === 'completato') {
-      this.state.completedMessageBoundary = messages.length - 1;
+      console.log(`📋 [VOICE-TASK-SUPERVISOR] Task completed - boundary at message ${this.state.completedMessageBoundary}, future analysis will only consider new messages`);
       this.state.stage = 'nessun_intento';
       this.state.currentIntent = 'none';
       this.state.extractedTasks = [];
@@ -164,7 +164,6 @@ export class VoiceTaskSupervisor {
       this.state.listFilter = null;
       this.state.confirmed = false;
       this.state.metadata.turnsInCurrentState = 0;
-      console.log(`📋 [VOICE-TASK-SUPERVISOR] Task completed - boundary set at message ${this.state.completedMessageBoundary}, future analysis will only consider new messages`);
     }
 
     if (messages.length - 1 <= this.state.metadata.lastAnalyzedMessageIndex) {
@@ -434,6 +433,7 @@ export class VoiceTaskSupervisor {
     }
 
     this.state.taskInProgress = false;
+    this.state.completedMessageBoundary = this.state.metadata.lastAnalyzedMessageIndex;
     this.state.stage = 'completato';
     this.state.metadata.createdTaskIds.push(...createdIds);
 
@@ -516,6 +516,7 @@ export class VoiceTaskSupervisor {
     }
 
     this.state.taskInProgress = false;
+    this.state.completedMessageBoundary = this.state.metadata.lastAnalyzedMessageIndex;
     this.state.stage = 'completato';
 
     const modifiedDesc = newDescription || targetTask.ai_instruction;
@@ -538,11 +539,11 @@ export class VoiceTaskSupervisor {
     ];
 
     if (searchBy === 'date' && originalDate) {
-      whereConditions.push(sql`scheduled_at::date = ${originalDate}::date`);
+      whereConditions.push(sql`(scheduled_at AT TIME ZONE 'Europe/Rome')::date = ${originalDate}::date`);
     }
     if (searchBy === 'time' && originalTime) {
       const timeFilter = `${originalTime}:00`;
-      whereConditions.push(sql`scheduled_at::time = ${timeFilter}::time`);
+      whereConditions.push(sql`(scheduled_at AT TIME ZONE 'Europe/Rome')::time = ${timeFilter}::time`);
     }
     if (searchBy === 'description' && originalDescription) {
       whereConditions.push(sql`ai_instruction ILIKE ${'%' + originalDescription + '%'}`);
@@ -575,6 +576,7 @@ export class VoiceTaskSupervisor {
     `);
 
     this.state.taskInProgress = false;
+    this.state.completedMessageBoundary = this.state.metadata.lastAnalyzedMessageIndex;
     this.state.stage = 'completato';
 
     const notifyMessage = `[TASK_CANCELLED] Promemoria "${targetTask.ai_instruction}" cancellato con successo. Comunica la conferma al chiamante.`;
