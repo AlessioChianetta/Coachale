@@ -260,6 +260,35 @@ export async function canExecuteAutonomously(consultantId: string): Promise<{ al
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CAN EXECUTE MANUALLY (skips autonomy level check, keeps daily limits)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function canExecuteManually(consultantId: string): Promise<{ allowed: boolean; reason?: string }> {
+  const settings = await getAutonomySettings(consultantId);
+
+  if (!settings.is_active) {
+    return { allowed: false, reason: "Autonomia AI non attiva per questo consulente" };
+  }
+
+  const counts = await getTodayActionCounts(consultantId);
+
+  if (counts.calls >= settings.max_daily_calls) {
+    return { allowed: false, reason: `Limite giornaliero chiamate raggiunto (${counts.calls}/${settings.max_daily_calls})` };
+  }
+  if (counts.emails >= settings.max_daily_emails) {
+    return { allowed: false, reason: `Limite giornaliero email raggiunto (${counts.emails}/${settings.max_daily_emails})` };
+  }
+  if (counts.whatsapp >= settings.max_daily_whatsapp) {
+    return { allowed: false, reason: `Limite giornaliero WhatsApp raggiunto (${counts.whatsapp}/${settings.max_daily_whatsapp})` };
+  }
+  if (counts.analyses >= settings.max_daily_analyses) {
+    return { allowed: false, reason: `Limite giornaliero analisi raggiunto (${counts.analyses}/${settings.max_daily_analyses})` };
+  }
+
+  return { allowed: true };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BUILD TASK CONTEXT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -361,12 +390,14 @@ export async function generateExecutionPlan(task: {
   ai_instruction?: string;
   task_category?: string;
   priority?: number;
-}): Promise<DecisionResult> {
-  console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}`);
+}, options?: { isManual?: boolean }): Promise<DecisionResult> {
+  console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}`);
 
   const context = await buildTaskContext(task);
 
-  const { allowed, reason } = await canExecuteAutonomously(task.consultant_id);
+  const { allowed, reason } = options?.isManual
+    ? await canExecuteManually(task.consultant_id)
+    : await canExecuteAutonomously(task.consultant_id);
   if (!allowed) {
     console.log(`${LOG_PREFIX} Autonomous execution blocked: ${reason}`);
     await logActivity(task.consultant_id, {

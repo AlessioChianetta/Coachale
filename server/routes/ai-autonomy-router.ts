@@ -596,7 +596,7 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
             ai_instruction: task.ai_instruction,
             task_category: task.task_category,
             priority: task.priority,
-          });
+          }, { isManual: true });
 
           if (!decision.should_execute) {
             console.log(`🛑 [AI-AUTONOMY] Decision Engine says skip task ${task.id}: ${decision.reasoning}`);
