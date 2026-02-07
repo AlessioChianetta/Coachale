@@ -40,6 +40,12 @@ private scheduledCallId?: string;
   private proactiveRestartInterval: ReturnType<typeof setInterval> | null = null;
   private isProactiveRestarting = false;
 
+  private audioBufferActive = false;
+  private audioBuffer: Buffer[] = [];
+  private audioBufferTimeout: ReturnType<typeof setTimeout> | null = null;
+  private static readonly MAX_BUFFER_FRAMES = 500;
+  private static readonly BUFFER_TIMEOUT_MS = 10000;
+
   constructor(options: ReplitClientOptions) {
     this.sessionId = options.sessionId;
     this.callerId = options.callerId;
@@ -112,6 +118,7 @@ if (this.scheduledCallId) {
             sessionId: this.sessionId.slice(0, 8),
             attempt: this.reconnectAttempt,
           });
+          this.flushAudioBuffer();
         }
         clearTimeout(connectionTimeout);
         resolve();
@@ -260,6 +267,7 @@ if (this.scheduledCallId) {
     this._isReconnecting = true;
     this.reconnectAttempt = attempt;
     this.pendingResumeHandle = resumeHandle;
+    this.startAudioBuffer();
     this.options.onReconnecting?.();
 
     log.info(`🔄 Closing old WebSocket, will reconnect on close event...`, { sessionId: this.sessionId.slice(0, 8) });
@@ -301,8 +309,16 @@ if (this.scheduledCallId) {
   }
 
   sendAudio(pcmData: Buffer): void {
-    if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.lastAudioActivityTime = Date.now();
+
+    if (this.audioBufferActive) {
+      if (this.audioBuffer.length < ReplitWSClient.MAX_BUFFER_FRAMES) {
+        this.audioBuffer.push(Buffer.from(pcmData));
+      }
+      return;
+    }
+
+    if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.ws.send(pcmData, { binary: true });
   }
 
@@ -359,6 +375,53 @@ if (this.scheduledCallId) {
     }
   }
 
+  private startAudioBuffer(): void {
+    this.audioBufferActive = true;
+    this.audioBuffer = [];
+    if (this.audioBufferTimeout) clearTimeout(this.audioBufferTimeout);
+    this.audioBufferTimeout = setTimeout(() => {
+      if (this.audioBufferActive) {
+        log.warn(`🔊 [AUDIO BUFFER] Safety timeout (${ReplitWSClient.BUFFER_TIMEOUT_MS}ms) - discarding ${this.audioBuffer.length} frames`, {
+          sessionId: this.sessionId.slice(0, 8),
+        });
+        this.audioBuffer = [];
+        this.audioBufferActive = false;
+      }
+    }, ReplitWSClient.BUFFER_TIMEOUT_MS);
+    log.info(`🔊 [AUDIO BUFFER] Activated - buffering caller audio during restart`, {
+      sessionId: this.sessionId.slice(0, 8),
+    });
+  }
+
+  private flushAudioBuffer(): void {
+    if (this.audioBufferTimeout) {
+      clearTimeout(this.audioBufferTimeout);
+      this.audioBufferTimeout = null;
+    }
+
+    if (this.audioBuffer.length === 0) {
+      this.audioBufferActive = false;
+      return;
+    }
+
+    const frameCount = this.audioBuffer.length;
+    log.info(`🔊 [AUDIO BUFFER] Flushing ${frameCount} buffered audio frames to new session`, {
+      sessionId: this.sessionId.slice(0, 8),
+    });
+
+    for (const frame of this.audioBuffer) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(frame, { binary: true });
+      }
+    }
+
+    this.audioBuffer = [];
+    this.audioBufferActive = false;
+    log.info(`🔊 [AUDIO BUFFER] Flush complete - ${frameCount} frames sent`, {
+      sessionId: this.sessionId.slice(0, 8),
+    });
+  }
+
   private triggerProactiveRestart(): void {
     if (this.isProactiveRestarting) return;
     this.isProactiveRestarting = true;
@@ -369,6 +432,8 @@ if (this.scheduledCallId) {
       this.isProactiveRestarting = false;
       return;
     }
+
+    this.startAudioBuffer();
 
     this._isReconnecting = true;
     this.pendingResumeHandle = handle;
@@ -390,10 +455,16 @@ if (this.scheduledCallId) {
 
   close(): void {
     this.stopProactiveRestartTimer();
+    if (this.audioBufferTimeout) {
+      clearTimeout(this.audioBufferTimeout);
+      this.audioBufferTimeout = null;
+    }
     this.pendingResumeHandle = null;
     this.latestResumeHandle = null;
     this._isReconnecting = false;
     this.isProactiveRestarting = false;
+    this.audioBufferActive = false;
+    this.audioBuffer = [];
     if (this.ws) {
       try {
         this.ws.close(1000, 'Session ended');
