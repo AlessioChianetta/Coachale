@@ -243,7 +243,7 @@ export const exerciseRevisionHistory = pgTable("exercise_revision_history", {
 export const consultations = pgTable("consultations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id).notNull(),
-  clientId: varchar("client_id").references(() => users.id).notNull(),
+  clientId: varchar("client_id").references(() => users.id),
   scheduledAt: timestamp("scheduled_at").notNull(),
   duration: integer("duration").notNull(), // in minutes
   notes: text("notes"),

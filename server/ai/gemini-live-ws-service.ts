@@ -4972,7 +4972,9 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         }
         
         // Send setup message to Gemini Live API
-        // ✅ FIX RESUME: Omit system_instruction field entirely when resuming
+        // ✅ FIX RESUME: ALWAYS include system_instruction even during resume
+        //    Google docs confirm: "You can change config params except model when resuming"
+        //    This ensures AI has instructions even if resume handle is expired/invalid
         // ✅ DUAL BACKEND: camelCase for Google AI Studio, snake_case for Vertex AI
         let setupMessage: any;
         
@@ -5013,15 +5015,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
-              ...(!validatedResumeHandle && {
-                systemInstruction: {
-                  parts: [
-                    {
-                      text: systemInstruction
-                    }
-                  ]
-                }
-              }),
+              systemInstruction: {
+                parts: [
+                  {
+                    text: systemInstruction
+                  }
+                ]
+              },
               sessionResumption: { handle: validatedResumeHandle || null }
             }
           };
@@ -5049,15 +5049,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               },
               input_audio_transcription: {},
               output_audio_transcription: {},
-              ...(!validatedResumeHandle && {
-                system_instruction: {
-                  parts: [
-                    {
-                      text: systemInstruction
-                    }
-                  ]
-                }
-              }),
+              system_instruction: {
+                parts: [
+                  {
+                    text: systemInstruction
+                  }
+                ]
+              },
               realtime_input_config: {
                 automatic_activity_detection: {
                   disabled: false,

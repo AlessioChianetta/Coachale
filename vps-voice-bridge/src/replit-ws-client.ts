@@ -34,6 +34,12 @@ private scheduledCallId?: string;
   private pendingSilentStreak = 0;
   private reconnectAttempt = 0;
 
+  private latestResumeHandle: string | null = null;
+  private wsConnectTime = 0;
+  private lastAudioActivityTime = 0;
+  private proactiveRestartInterval: ReturnType<typeof setInterval> | null = null;
+  private isProactiveRestarting = false;
+
   constructor(options: ReplitClientOptions) {
     this.sessionId = options.sessionId;
     this.callerId = options.callerId;
@@ -95,6 +101,10 @@ if (this.scheduledCallId) {
           resumed: !!resumeHandle,
         });
         this.isConnected = true;
+        this.wsConnectTime = Date.now();
+        this.lastAudioActivityTime = Date.now();
+        this.isProactiveRestarting = false;
+        this.startProactiveRestartTimer();
         if (this._isReconnecting) {
           this._isReconnecting = false;
           this.options.onReconnected?.();
@@ -153,6 +163,7 @@ if (this.scheduledCallId) {
 
   private handleMessage(data: any, isBinary: boolean): void {
     if (isBinary) {
+      this.lastAudioActivityTime = Date.now();
       this.options.onAudioResponse(data);
       return;
     }
@@ -175,6 +186,15 @@ if (this.scheduledCallId) {
       if (message.type === 'barge_in_detected') {
         log.info(`🛑 BARGE-IN received from Replit`, { sessionId: this.sessionId.slice(0, 8) });
         this.options.onInterrupted?.();
+        return;
+      }
+
+      if (message.type === 'session_resumption_update' && message.handle) {
+        this.latestResumeHandle = message.handle;
+        log.info(`🔄 [SESSION HANDLE] Saved resume handle for proactive restart`, {
+          sessionId: this.sessionId.slice(0, 8),
+          handlePreview: message.handle.substring(0, 25) + '...',
+        });
         return;
       }
 
@@ -282,6 +302,7 @@ if (this.scheduledCallId) {
 
   sendAudio(pcmData: Buffer): void {
     if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.lastAudioActivityTime = Date.now();
     this.ws.send(pcmData, { binary: true });
   }
 
@@ -297,9 +318,82 @@ if (this.scheduledCallId) {
     }
   }
 
+  private startProactiveRestartTimer(): void {
+    this.stopProactiveRestartTimer();
+    this.proactiveRestartInterval = setInterval(() => {
+      this.checkProactiveRestart();
+    }, 5000);
+  }
+
+  private stopProactiveRestartTimer(): void {
+    if (this.proactiveRestartInterval) {
+      clearInterval(this.proactiveRestartInterval);
+      this.proactiveRestartInterval = null;
+    }
+  }
+
+  private checkProactiveRestart(): void {
+    if (this.isProactiveRestarting || this._isReconnecting || !this.isConnected) return;
+    if (!this.latestResumeHandle) return;
+
+    const elapsedMs = Date.now() - this.wsConnectTime;
+    const elapsedMinutes = elapsedMs / 1000 / 60;
+
+    if (elapsedMinutes < 7) return;
+
+    const silenceSec = (Date.now() - this.lastAudioActivityTime) / 1000;
+    const isSilent = silenceSec > 2;
+
+    if (isSilent) {
+      log.info(`\n♻️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      log.info(`♻️ [PROACTIVE RESTART] WebSocket age: ${elapsedMinutes.toFixed(1)}m, silence: ${silenceSec.toFixed(0)}s`);
+      log.info(`♻️  Handle available: ${this.latestResumeHandle.substring(0, 25)}...`);
+      log.info(`♻️  Action: Close + reconnect with resume handle`);
+      log.info(`♻️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      this.triggerProactiveRestart();
+    } else if (elapsedMinutes > 9) {
+      log.warn(`\n⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      log.warn(`⚠️ [FORCE RESTART] WebSocket age: ${elapsedMinutes.toFixed(1)}m - forcing to avoid Gemini timeout`);
+      log.warn(`⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      this.triggerProactiveRestart();
+    }
+  }
+
+  private triggerProactiveRestart(): void {
+    if (this.isProactiveRestarting) return;
+    this.isProactiveRestarting = true;
+    this.stopProactiveRestartTimer();
+
+    const handle = this.latestResumeHandle;
+    if (!handle) {
+      this.isProactiveRestarting = false;
+      return;
+    }
+
+    this._isReconnecting = true;
+    this.pendingResumeHandle = handle;
+    this.latestResumeHandle = null;
+    this.options.onReconnecting?.();
+
+    if (this.ws) {
+      try {
+        this.ws.close(1000, 'Proactive Client Restart');
+      } catch (e) {
+        log.warn(`♻️ Error closing WS for proactive restart, forcing reconnect`);
+        this.ws = null;
+        this.isConnected = false;
+        this.pendingResumeHandle = null;
+        this.executeReconnect(handle);
+      }
+    }
+  }
+
   close(): void {
+    this.stopProactiveRestartTimer();
     this.pendingResumeHandle = null;
+    this.latestResumeHandle = null;
     this._isReconnecting = false;
+    this.isProactiveRestarting = false;
     if (this.ws) {
       try {
         this.ws.close(1000, 'Session ended');
