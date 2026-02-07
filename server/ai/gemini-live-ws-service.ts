@@ -6890,11 +6890,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               // 📞 Update voice call transcript in real-time
               scheduleTranscriptUpdate();
 
-              const lastMsg = conversationMessages.at(-1);
-              const lastMsgIsUser = lastMsg?.role === 'user';
-              const hasNewUserInput = lastMsgIsUser && lastUserMessageIndex > lastSupervisorUserIndex;
+              const hasNewUserInput = lastUserMessageIndex > lastSupervisorUserIndex;
               if (!hasNewUserInput) {
-                console.log(`⏭️  [${connectionId}] Supervisors SKIPPED - ${!lastMsgIsUser ? 'last msg is not user' : 'no new user input'} (lastUserIdx: ${lastUserMessageIndex}, lastSupervisorIdx: ${lastSupervisorUserIndex}, lastMsgRole: ${lastMsg?.role || 'none'})`);
+                console.log(`⏭️  [${connectionId}] Supervisors SKIPPED - no new user input since last analysis (lastUserIdx: ${lastUserMessageIndex}, lastSupervisorIdx: ${lastSupervisorUserIndex})`);
               }
 
               const taskSupervisorActive = taskSupervisor && ['raccolta_dati', 'dati_completi', 'confermato'].includes(taskSupervisor.getState().stage);
