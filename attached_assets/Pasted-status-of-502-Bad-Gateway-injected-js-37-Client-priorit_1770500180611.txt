@@ -1,0 +1,30 @@
+status of 502 (Bad Gateway)
+injected.js:37 Client priority scoring failed: sessions source unavailable 
+Object
+10
+injected.js:37 Heartbeat sent successfully
+2
+consultant-ai-autonomy.tsx:661 Uncaught ReferenceError: Cannot access 'taskDetailData' before initialization
+    at ConsultantAIAutonomyPage (consultant-ai-autonomy.tsx:661:22)
+
+injected.js:37 The above error occurred in the <ConsultantAIAutonomyPage> component:
+
+    at ConsultantAIAutonomyPage (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/pages/consultant-ai-autonomy.tsx:780:20)
+    at AuthGuard (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ff93d6c1:226:16)
+    at Switch (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ff93d6c1:283:17)
+    at Suspense
+    at Router (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/App.tsx?v=xpRqKjB3UVbR9ruBBWbL1:316:35)
+    at Provider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=ff93d6c1:44:15)
+    at TooltipProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=ff93d6c1:158:5)
+    at TourProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=ff93d6c1:3096:3)
+    at V (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=ff93d6c1:44:25)
+    at J (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=ff93d6c1:42:18)
+    at App (https://e5e5d389-7027-46ec-9502-ae70046624db-00-1ix64mx5w387c.worf.replit.dev/src/App.tsx?v=xpRqKjB3UVbR9ruBBWbL1:1996:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=ff93d6c1:19413 Uncaught ReferenceError: Cannot access 'taskDetailData' before initialization
+    at ConsultantAIAutonomyPage (consultant-ai-autonomy.tsx:661:22)

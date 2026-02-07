@@ -658,7 +658,10 @@ export default function ConsultantAIAutonomyPage() {
       return res.json();
     },
     enabled: !!selectedTaskId,
-    refetchInterval: taskDetailData?.task?.status === 'in_progress' ? 2000 : false,
+    refetchInterval: (query) => {
+      const data = query.state.data as TaskDetailResponse | undefined;
+      return data?.task?.status === 'in_progress' ? 2000 : false;
+    },
   });
 
   const executeTaskMutation = useMutation({
