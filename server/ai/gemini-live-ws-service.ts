@@ -6896,7 +6896,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               }
 
               const taskSupervisorActive = taskSupervisor && ['raccolta_dati', 'dati_completi', 'confermato'].includes(taskSupervisor.getState().stage);
-              if (bookingSupervisor && isPhoneCall && !taskSupervisorActive && hasNewUserInput) {
+              if (bookingSupervisor && isPhoneCall && hasNewUserInput) {
                 (async () => {
                   try {
                     const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
@@ -7009,7 +7009,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 })();
               }
 
-              const bookingSupervisorRan = bookingSupervisor && isPhoneCall && !taskSupervisorActive && hasNewUserInput;
+              const bookingSupervisorRan = bookingSupervisor && isPhoneCall && hasNewUserInput;
               const taskSupervisorRan = taskSupervisor && isPhoneCall && hasNewUserInput;
               if (bookingSupervisorRan || taskSupervisorRan) {
                 lastSupervisorUserIndex = lastUserMessageIndex;
