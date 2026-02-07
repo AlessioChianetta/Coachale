@@ -200,6 +200,45 @@ router.post("/activity/read-all", authenticateToken, requireAnyRole(["consultant
   }
 });
 
+router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { ai_instruction, task_category, priority, contact_name, contact_phone } = req.body;
+
+    if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
+      return res.status(400).json({ error: "ai_instruction is required" });
+    }
+
+    const validCategories = ["outreach", "reminder", "followup", "analysis", "report", "research", "preparation", "monitoring"];
+    if (!task_category || !validCategories.includes(task_category)) {
+      return res.status(400).json({ error: `task_category must be one of: ${validCategories.join(", ")}` });
+    }
+
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    const taskPriority = priority ?? 3;
+
+    const result = await db.execute(sql`
+      INSERT INTO ai_scheduled_tasks (
+        id, consultant_id, task_type, task_category, ai_instruction, status,
+        scheduled_at, timezone, origin_type, priority, contact_name, contact_phone
+      ) VALUES (
+        ${taskId}, ${consultantId}, 'ai_task', ${task_category}, ${ai_instruction.trim()}, 'scheduled',
+        NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${contact_phone || null}
+      )
+      RETURNING *
+    `);
+
+    return res.status(201).json({ success: true, task: result.rows[0] });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error creating task:", error);
+    return res.status(500).json({ error: "Failed to create task" });
+  }
+});
+
 router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

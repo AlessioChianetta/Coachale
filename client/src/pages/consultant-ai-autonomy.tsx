@@ -20,7 +20,7 @@ import {
   XCircle, Info, Loader2, RefreshCw, Eye, ChevronLeft, ChevronRight,
   Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus,
   Sparkles, User, Lightbulb,
-  ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp
+  ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp, Plus
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/sidebar";
@@ -277,6 +277,8 @@ export default function ConsultantAIAutonomyPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [newTask, setNewTask] = useState({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "" });
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -377,6 +379,44 @@ export default function ConsultantAIAutonomyPage() {
       queryClient.invalidateQueries({ queryKey: [activityUrl] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/activity/unread-count"] });
     },
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (data: typeof newTask) => {
+      const res = await fetch("/api/ai-autonomy/tasks", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella creazione");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Task creato", description: "Il task è stato programmato per l'esecuzione" });
+      setShowCreateTask(false);
+      setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "" });
+      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const { data: activeTasks } = useQuery<AITask[]>({
+    queryKey: ["/api/ai-autonomy/active-tasks"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/tasks?status=active&limit=5", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      return data.tasks || [];
+    },
+    enabled: activeTab === "dashboard",
+    refetchInterval: 5000,
   });
 
   const { data: tasksStats, isLoading: loadingStats } = useQuery<TasksStats>({
@@ -1092,6 +1132,79 @@ export default function ConsultantAIAutonomyPage() {
               </TabsContent>
 
               <TabsContent value="dashboard" className="space-y-6 mt-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Dashboard Task</h2>
+                  <Button onClick={() => setShowCreateTask(true)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Crea Task
+                  </Button>
+                </div>
+
+                {activeTasks && activeTasks.length > 0 && (
+                  <Card className="border-cyan-500/30 bg-gradient-to-r from-cyan-500/5 to-transparent">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />
+                        Task Attive in Tempo Reale
+                        <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">{activeTasks.length}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {activeTasks.map((task) => (
+                        <div key={task.id} className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer hover:border-cyan-500/40 transition-colors" onClick={() => setSelectedTaskId(task.id)}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{task.ai_instruction}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                {getCategoryBadge(task.task_category)}
+                                {getPriorityIndicator(task.priority)}
+                                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                                  {task.status === "in_progress" ? "In esecuzione" : "Programmato"}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          {task.execution_plan && task.execution_plan.length > 0 && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Progresso</span>
+                                <span>{task.execution_plan.filter(s => s.status === "completed").length}/{task.execution_plan.length} step</span>
+                              </div>
+                              <div className="w-full bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                                  style={{ width: `${(task.execution_plan.filter(s => s.status === "completed").length / task.execution_plan.length) * 100}%` }}
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {task.execution_plan.map((step) => (
+                                  <div key={step.step} className="flex items-center gap-1 text-xs">
+                                    {step.status === "completed" ? (
+                                      <CheckCircle className="h-3 w-3 text-green-500" />
+                                    ) : step.status === "in_progress" ? (
+                                      <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
+                                    ) : step.status === "failed" ? (
+                                      <XCircle className="h-3 w-3 text-red-500" />
+                                    ) : (
+                                      <div className="h-3 w-3 rounded-full border border-muted-foreground/40" />
+                                    )}
+                                    <span className={step.status === "completed" ? "text-green-500" : step.status === "in_progress" ? "text-blue-500" : "text-muted-foreground"}>
+                                      {step.action.replace(/_/g, " ")}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {task.result_summary && (
+                            <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">{task.result_summary}</p>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="pt-6">
@@ -1403,6 +1516,89 @@ export default function ConsultantAIAutonomyPage() {
                         Task non trovato
                       </div>
                     )}
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Plus className="h-5 w-5" />
+                        Crea Nuovo Task per Alessia
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-2">
+                      <div className="space-y-2">
+                        <Label>Istruzione *</Label>
+                        <Textarea
+                          value={newTask.ai_instruction}
+                          onChange={(e) => setNewTask(prev => ({ ...prev, ai_instruction: e.target.value }))}
+                          placeholder="Es: Analizza il portafoglio di Mario Rossi e genera un report dettagliato..."
+                          rows={3}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Categoria</Label>
+                          <Select value={newTask.task_category} onValueChange={(val) => setNewTask(prev => ({ ...prev, task_category: val }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TASK_CATEGORIES.map((cat) => (
+                                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Priorità</Label>
+                          <Select value={String(newTask.priority)} onValueChange={(val) => setNewTask(prev => ({ ...prev, priority: parseInt(val) }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Alta</SelectItem>
+                              <SelectItem value="2">Media-Alta</SelectItem>
+                              <SelectItem value="3">Media</SelectItem>
+                              <SelectItem value="4">Bassa</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Nome Contatto (opzionale)</Label>
+                          <Input
+                            value={newTask.contact_name}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, contact_name: e.target.value }))}
+                            placeholder="Es: Mario Rossi"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Telefono (opzionale)</Label>
+                          <Input
+                            value={newTask.contact_phone}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, contact_phone: e.target.value }))}
+                            placeholder="Es: +39..."
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="outline" onClick={() => setShowCreateTask(false)}>Annulla</Button>
+                        <Button
+                          onClick={() => createTaskMutation.mutate(newTask)}
+                          disabled={!newTask.ai_instruction.trim() || createTaskMutation.isPending}
+                        >
+                          {createTaskMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Plus className="h-4 w-4 mr-2" />
+                          )}
+                          Crea Task
+                        </Button>
+                      </div>
+                    </div>
                   </DialogContent>
                 </Dialog>
               </TabsContent>
