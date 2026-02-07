@@ -1,0 +1,148 @@
+🎯 Obiettivo
+
+La schermata “Deep Research” non deve sembrare un log tecnico ma un report strategico premium.
+Serve più gerarchia visiva, meno densità, più focus sul risultato finale.
+
+🔧 Modifiche richieste
+1️⃣ Separare “Processo AI” da “Risultato”
+
+Attualmente è tutto mischiato.
+
+Nuova struttura:
+
+Sezione 1 → Hero Summary
+
+Sezione 2 → Risultato Finale (aperta di default)
+
+Sezione 3 → Processo AI (collassabile)
+
+2️⃣ Hero Section più chiara
+
+In alto voglio una card con:
+
+Titolo task
+
+Stato (badge verde)
+
+Confidenza con progress bar
+
+Durata esecuzione
+
+Eventuale data
+
+Layout tipo card con:
+
+Border radius 12px
+
+Ombra soft
+
+Padding generoso
+
+Badge colorati
+
+3️⃣ Accordion per sezioni tecniche
+
+Trasformare queste sezioni in accordion:
+
+Ragionamento AI
+
+Preparazione chiamata
+
+Chiamata vocale
+
+Log / Step tecnici
+
+Devono essere:
+
+Chiuse di default
+
+Apribili
+
+Con animazione smooth
+
+4️⃣ Evidenziare il risultato finale
+
+La parte utile per l’utente (script chiamata, raccomandazioni, punti chiave) deve essere:
+
+In card separate
+
+Con icone
+
+Con titoli più grandi
+
+Spacing maggiore
+
+Il testo non deve essere un blocco unico.
+Usare bullet list dove possibile.
+
+5️⃣ Ridurre densità testo
+
+Richieste precise:
+
+Aumentare line-height
+
+Aumentare spacing verticale tra blocchi
+
+Non usare paragrafi lunghi
+
+Convertire testo continuo in liste puntate
+
+6️⃣ CTA finali
+
+Aggiungere in fondo:
+
+Bottone “Modifica Script”
+
+Bottone “Scarica PDF”
+
+Bottone “Rigenera Analisi”
+
+Devono essere visivamente evidenti.
+
+7️⃣ Migliorare la timeline
+
+La timeline attuale è troppo simile a un log.
+
+Opzioni:
+
+O la rendiamo più minimal (linea più sottile, icone più pulite)
+
+Oppure la sostituiamo con step numerati orizzontali
+
+Deve sembrare un workflow, non un debug.
+
+8️⃣ Gerarchia tipografica
+
+Uniformare font:
+
+Titolo sezione: 18–20px semibold
+
+Sottotitoli: 15–16px medium
+
+Testo: 14px regular
+
+Note tecniche: 13px muted
+
+9️⃣ UI più “SaaS premium”
+
+Richiedo:
+
+Card layout
+
+Ombre leggere
+
+Radius coerente
+
+Spaziatura coerente
+
+No blocchi grigi piatti troppo lunghi
+
+🧠 Obiettivo finale
+
+Voglio che sembri:
+
+“Report strategico AI pronto per essere usato”
+
+Non:
+
+“Log tecnico di un agente”.

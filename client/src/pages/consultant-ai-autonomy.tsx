@@ -1857,28 +1857,52 @@ export default function ConsultantAIAutonomyPage() {
                       const hasResults = task.result_data && task.result_data.results;
                       const isFinished = task.status === 'completed' || task.status === 'failed';
 
+                      const executionDuration = (() => {
+                        if (task.status === 'in_progress') return "In corso...";
+                        if (task.completed_at && task.created_at) {
+                          const start = new Date(task.created_at).getTime();
+                          const end = new Date(task.completed_at).getTime();
+                          const diffMs = end - start;
+                          const diffSec = Math.floor(diffMs / 1000);
+                          if (diffSec < 60) return `${diffSec}s`;
+                          const diffMin = Math.floor(diffSec / 60);
+                          const remainSec = diffSec % 60;
+                          if (diffMin < 60) return `${diffMin}m ${remainSec}s`;
+                          const diffHrs = Math.floor(diffMin / 60);
+                          const remainMin = diffMin % 60;
+                          return `${diffHrs}h ${remainMin}m`;
+                        }
+                        return null;
+                      })();
+
+                      const progressPercent = task.execution_plan && task.execution_plan.length > 0
+                        ? Math.max(5, (task.execution_plan.filter(s => s.status === 'completed').length / task.execution_plan.length) * 100)
+                        : 30;
+
                       return (
-                        <>
-                          {/* Sticky Header */}
-                          <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-6 py-4 text-white border-b border-white/5">
-                            <DialogHeader>
-                              <DialogTitle className="sr-only">Deep Research</DialogTitle>
-                              <DialogDescription className="sr-only">Dettaglio task e risultati deep research</DialogDescription>
-                            </DialogHeader>
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 shrink-0">
+                        <div className="p-6 space-y-4">
+                          <DialogHeader className="sr-only">
+                            <DialogTitle>Deep Research</DialogTitle>
+                            <DialogDescription>Dettaglio task e risultati deep research</DialogDescription>
+                          </DialogHeader>
+
+                          {/* Section 1: Hero Summary Card */}
+                          <div className="rounded-xl border shadow-sm bg-card p-6 space-y-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-3 min-w-0 flex-1">
+                                <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 shrink-0">
                                   <Brain className="h-5 w-5 text-white" />
                                 </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="text-base font-bold text-white">Deep Research</h2>
-                                    <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
-                                      task.status === 'completed' ? "bg-green-500/20 text-green-300 border border-green-500/30" :
-                                      task.status === 'failed' ? "bg-red-500/20 text-red-300 border border-red-500/30" :
-                                      task.status === 'in_progress' ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" :
-                                      task.status === 'paused' ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30" :
-                                      "bg-slate-500/20 text-slate-300 border border-slate-500/30"
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <h2 className="text-lg font-semibold text-foreground">Deep Research</h2>
+                                    <span className={cn(
+                                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                                      task.status === 'completed' ? "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30" :
+                                      task.status === 'failed' ? "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30" :
+                                      task.status === 'in_progress' ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30" :
+                                      task.status === 'paused' ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30" :
+                                      "bg-muted text-muted-foreground border-border"
                                     )}>
                                       {task.status === 'completed' ? '✅ Completato' :
                                        task.status === 'failed' ? '❌ Fallito' :
@@ -1887,231 +1911,207 @@ export default function ConsultantAIAutonomyPage() {
                                        task.status === 'scheduled' ? '📅 Programmato' :
                                        task.status}
                                     </span>
-                                    {getCategoryBadge(task.task_category)}
                                   </div>
-                                  <p className="text-xs text-slate-400 mt-0.5 truncate">{task.ai_instruction}</p>
+                                  <p className="text-sm text-muted-foreground leading-relaxed" title={task.ai_instruction}>
+                                    {task.ai_instruction.length > 200 ? task.ai_instruction.slice(0, 200) + '...' : task.ai_instruction}
+                                  </p>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {(task.status === 'paused' || task.status === 'scheduled') && (
-                                  <Button
-                                    onClick={() => executeTaskMutation.mutate(task.id)}
-                                    disabled={executeTaskMutation.isPending}
-                                    size="sm"
-                                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0"
-                                  >
-                                    {executeTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Play className="h-4 w-4 mr-1.5" />Esegui ora</>}
-                                  </Button>
-                                )}
-                                {task.status === 'failed' && (
-                                  <Button
-                                    onClick={() => executeTaskMutation.mutate(task.id)}
-                                    disabled={executeTaskMutation.isPending}
-                                    size="sm"
-                                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
-                                  >
-                                    {executeTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1.5" />Riprova</>}
-                                  </Button>
-                                )}
                               </div>
                             </div>
-                          </div>
 
-                          {/* Progress Section */}
-                          {task.status === 'in_progress' && (
-                            <div className="px-6 pt-4 pb-0">
-                              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div className="relative">
-                                    <Brain className="h-7 w-7 text-blue-500" />
-                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping" />
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold text-sm text-blue-800 dark:text-blue-200">Alessia sta lavorando...</p>
-                                    <p className="text-xs text-blue-600 dark:text-blue-400">
-                                      {task.result_summary || "Elaborazione in corso"}
-                                    </p>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {getCategoryBadge(task.task_category)}
+                              {task.contact_name && (
+                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">
+                                  <User className="h-3 w-3" /> {task.contact_name}
+                                </span>
+                              )}
+                              {executionDuration && (
+                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">
+                                  <Timer className="h-3 w-3" /> {executionDuration}
+                                </span>
+                              )}
+                              {task.ai_confidence != null && (
+                                <div className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">
+                                  <Target className="h-3 w-3" />
+                                  <span>{Math.round(task.ai_confidence * 100)}%</span>
+                                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                      className={cn(
+                                        "h-full rounded-full transition-all",
+                                        task.ai_confidence >= 0.8 ? "bg-green-500" :
+                                        task.ai_confidence >= 0.5 ? "bg-yellow-500" :
+                                        "bg-red-500"
+                                      )}
+                                      style={{ width: `${Math.round(task.ai_confidence * 100)}%` }}
+                                    />
                                   </div>
                                 </div>
-                                <div className="h-1.5 bg-blue-200 dark:bg-blue-900 rounded-full overflow-hidden">
+                              )}
+                            </div>
+
+                            {task.status === 'in_progress' && (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="relative">
+                                    <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                                  </div>
+                                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                    {task.result_summary || "Alessia sta lavorando..."}
+                                  </p>
+                                </div>
+                                <div className="h-1 bg-blue-100 dark:bg-blue-950/50 rounded-full overflow-hidden">
                                   <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full animate-pulse" style={{
-                                    width: task.execution_plan && task.execution_plan.length > 0 ? `${Math.max(10, (task.execution_plan.filter(s => s.status === 'completed').length / task.execution_plan.length) * 100)}%` : '30%',
+                                    width: `${progressPercent}%`,
                                     transition: 'width 0.5s ease'
                                   }} />
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
 
-                          {/* Chronological Flow */}
-                          <div className="px-6 py-5">
-                            <div className="relative">
-                              {/* Vertical timeline line */}
-                              <div className="absolute left-[11px] top-3 bottom-3 w-[2px] bg-border dark:bg-slate-700" />
+                          {/* Section 2: Results - THE MAIN CONTENT */}
+                          <div className="rounded-xl border shadow-sm bg-card p-6">
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                              <Sparkles className="h-5 w-5 text-primary" />
+                              Risultati Analisi
+                            </h3>
 
-                              <div className="space-y-0">
-                                {/* 1. Task Created */}
-                                <div className="relative flex gap-4 pb-6">
-                                  <div className="relative z-10 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                                    <Plus className="h-3 w-3 text-slate-600 dark:text-slate-300" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <p className="text-sm font-medium text-foreground">Task creato</p>
-                                      <span className="text-[11px] text-muted-foreground">{formatTime(task.created_at)}</span>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{task.ai_instruction}</p>
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                      {task.contact_name && (
-                                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-                                          <User className="h-3 w-3" /> {task.contact_name}
-                                        </span>
-                                      )}
-                                      {task.ai_confidence != null && (
-                                        <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-                                          Confidenza: {Math.round(task.ai_confidence * 100)}%
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* 2. AI Reasoning */}
-                                {task.ai_reasoning && (
-                                  <div className="relative flex gap-4 pb-6">
-                                    <div className="relative z-10 w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                                      <Sparkles className="h-3 w-3 text-purple-500" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <details open>
-                                        <summary className="cursor-pointer select-none flex items-center gap-2 group">
-                                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300 group-hover:text-purple-600 dark:group-hover:text-purple-200 transition-colors">
-                                            Ragionamento AI
-                                          </span>
-                                          <span className="text-[11px] text-muted-foreground">{formatTime(task.created_at)}</span>
-                                        </summary>
-                                        <div className="mt-2 relative rounded-xl overflow-hidden">
-                                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/20 via-indigo-500/20 to-purple-500/20 dark:from-purple-500/10 dark:via-indigo-500/10 dark:to-purple-500/10 animate-pulse" style={{ animationDuration: '3s' }} />
-                                          <div className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-purple-200 dark:border-purple-800/50 rounded-xl p-4">
-                                            <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">
-                                              {task.ai_reasoning}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </details>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* 3. Execution Plan Steps */}
-                                {task.execution_plan && task.execution_plan.length > 0 && task.execution_plan.map((step) => {
-                                  const isActive = step.status === 'in_progress';
-                                  const isCompleted = step.status === 'completed';
-                                  const isFailed = step.status === 'failed';
-                                  const isSkipped = step.status === 'skipped';
-
-                                  return (
-                                    <div key={step.step} className="relative flex gap-4 pb-5">
-                                      <div className={cn(
-                                        "relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all",
-                                        isCompleted ? "bg-green-500 text-white shadow-sm shadow-green-500/30" :
-                                        isActive ? "bg-blue-500 text-white shadow-sm shadow-blue-500/30" :
-                                        isFailed ? "bg-red-500 text-white shadow-sm shadow-red-500/30" :
-                                        isSkipped ? "bg-slate-300 dark:bg-slate-600 text-slate-500 dark:text-slate-400" :
-                                        "bg-muted text-muted-foreground border-2 border-border"
-                                      )}>
-                                        {isCompleted ? <CheckCircle className="h-3 w-3" /> :
-                                         isActive ? <Loader2 className="h-3 w-3 animate-spin" /> :
-                                         isFailed ? <XCircle className="h-3 w-3" /> :
-                                         isSkipped ? <Minus className="h-3 w-3" /> :
-                                         <span className="text-[10px] font-bold">{step.step}</span>}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div>
-                                            <p className={cn(
-                                              "text-sm font-medium",
-                                              isActive && "text-blue-600 dark:text-blue-400",
-                                              isCompleted && "text-green-700 dark:text-green-400",
-                                              isFailed && "text-red-600 dark:text-red-400",
-                                              isSkipped && "text-muted-foreground line-through"
-                                            )}>
-                                              {getStepActionLabel(step.action)}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
-                                          </div>
-                                          {isActive && (
-                                            <span className="text-[10px] text-blue-500 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full shrink-0 animate-pulse">in corso</span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-
-                                {/* 4. Result Summary */}
-                                {task.result_summary && task.status !== 'in_progress' && (
-                                  <div className="relative flex gap-4 pb-6">
-                                    <div className="relative z-10 w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                                      <Info className="h-3 w-3 text-indigo-500" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-foreground">Riepilogo</p>
-                                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{task.result_summary}</p>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* 5. Deep Research Results */}
-                                {hasResults && (
-                                  <div className="relative flex gap-4 pb-6">
-                                    <div className="relative z-10 w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 mt-0.5">
-                                      <Sparkles className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <DeepResearchResults results={task.result_data.results} />
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* 6. Final Status */}
-                                {isFinished && (
-                                  <div className="relative flex gap-4 pb-2">
-                                    <div className={cn(
-                                      "relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                                      task.status === 'completed' ? "bg-green-500 text-white" : "bg-red-500 text-white"
-                                    )}>
-                                      {task.status === 'completed' ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <p className={cn(
-                                          "text-sm font-semibold",
-                                          task.status === 'completed' ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                                        )}>
-                                          {task.status === 'completed' ? 'Task completato' : 'Task fallito'}
-                                        </p>
-                                        {task.completed_at && (
-                                          <span className="text-[11px] text-muted-foreground">{formatTime(task.completed_at)}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
+                            {task.result_summary && task.status !== 'in_progress' && (
+                              <div className="mb-5 rounded-xl bg-primary/5 border border-primary/10 p-4">
+                                <p className="text-[15px] font-medium text-foreground mb-1">Riepilogo</p>
+                                <p className="text-sm text-muted-foreground leading-relaxed">{task.result_summary}</p>
                               </div>
-                            </div>
+                            )}
 
-                            {/* Collapsible Activity Log */}
-                            {sortedActivity.length > 0 && (
-                              <div className="mt-6 pt-4 border-t border-border">
-                                <details>
-                                  <summary className="cursor-pointer select-none flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                                    <Activity className="h-4 w-4" />
-                                    Registro attività ({sortedActivity.length})
+                            {hasResults ? (
+                              <DeepResearchResults results={task.result_data.results} />
+                            ) : (
+                              <div className="text-center py-10">
+                                <div className="p-3 rounded-full bg-muted/50 w-fit mx-auto mb-3">
+                                  {task.status === 'in_progress' ? (
+                                    <Brain className="h-8 w-8 text-blue-500 animate-pulse" />
+                                  ) : task.status === 'scheduled' ? (
+                                    <Clock className="h-8 w-8 text-muted-foreground" />
+                                  ) : task.status === 'failed' ? (
+                                    <AlertCircle className="h-8 w-8 text-red-500" />
+                                  ) : (
+                                    <Info className="h-8 w-8 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <p className="text-[15px] font-medium text-foreground">
+                                  {task.status === 'in_progress' ? "Analisi in corso..." :
+                                   task.status === 'scheduled' ? "Analisi programmata" :
+                                   task.status === 'failed' ? "Analisi non completata" :
+                                   "Nessun risultato disponibile"}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {task.status === 'in_progress' ? "I risultati appariranno qui al termine dell'elaborazione" :
+                                   task.status === 'scheduled' ? "L'analisi verrà eseguita all'orario programmato" :
+                                   task.status === 'failed' ? "Puoi riprovare l'esecuzione con il pulsante in basso" :
+                                   ""}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Section 3: AI Process - COLLAPSED */}
+                          {(task.ai_reasoning || (task.execution_plan && task.execution_plan.length > 0) || sortedActivity.length > 0) && (
+                            <div className="rounded-xl border shadow-sm bg-card p-5 space-y-3">
+                              <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <Cog className="h-5 w-5 text-muted-foreground" />
+                                Processo AI
+                              </h3>
+
+                              {task.ai_reasoning && (
+                                <details className="group">
+                                  <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                                    <Sparkles className="h-4 w-4 text-purple-500" />
+                                    <span className="text-[15px] font-medium text-purple-700 dark:text-purple-300">Ragionamento AI</span>
                                   </summary>
-                                  <div className="mt-3 space-y-1.5">
+                                  <div className="mt-2 ml-6 relative rounded-xl overflow-hidden">
+                                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-purple-500/10" />
+                                    <div className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-purple-200 dark:border-purple-800/50 rounded-xl p-4">
+                                      <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">
+                                        {task.ai_reasoning}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {task.execution_plan && task.execution_plan.length > 0 && (
+                                <details className="group">
+                                  <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                                    <ListTodo className="h-4 w-4 text-blue-500" />
+                                    <span className="text-[15px] font-medium">Piano di Esecuzione</span>
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                      ({task.execution_plan.filter(s => s.status === 'completed').length}/{task.execution_plan.length})
+                                    </span>
+                                  </summary>
+                                  <div className="mt-3 ml-6">
+                                    <div className="flex flex-wrap items-start gap-0">
+                                      {task.execution_plan.map((step, idx) => {
+                                        const isActive = step.status === 'in_progress';
+                                        const isCompleted = step.status === 'completed';
+                                        const isFailed = step.status === 'failed';
+                                        const isSkipped = step.status === 'skipped';
+                                        const isLast = idx === task.execution_plan!.length - 1;
+
+                                        return (
+                                          <div key={step.step} className="flex items-start">
+                                            <div className="flex flex-col items-center" style={{ minWidth: '80px' }}>
+                                              <div className={cn(
+                                                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2",
+                                                isCompleted ? "bg-green-500 border-green-500 text-white shadow-sm shadow-green-500/30" :
+                                                isActive ? "bg-blue-500 border-blue-500 text-white shadow-sm shadow-blue-500/30 animate-pulse" :
+                                                isFailed ? "bg-red-500 border-red-500 text-white shadow-sm shadow-red-500/30" :
+                                                isSkipped ? "bg-muted border-muted-foreground/30 text-muted-foreground" :
+                                                "bg-background border-border text-muted-foreground"
+                                              )}>
+                                                {isCompleted ? <CheckCircle className="h-4 w-4" /> :
+                                                 isActive ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                                                 isFailed ? <XCircle className="h-4 w-4" /> :
+                                                 isSkipped ? <Minus className="h-4 w-4" /> :
+                                                 step.step}
+                                              </div>
+                                              <p className={cn(
+                                                "text-[10px] mt-1.5 text-center leading-tight max-w-[80px]",
+                                                isActive ? "text-blue-600 dark:text-blue-400 font-medium" :
+                                                isCompleted ? "text-green-700 dark:text-green-400" :
+                                                isFailed ? "text-red-600 dark:text-red-400" :
+                                                "text-muted-foreground"
+                                              )}>
+                                                {getStepActionLabel(step.action).replace(/^[^\s]+\s/, '')}
+                                              </p>
+                                            </div>
+                                            {!isLast && (
+                                              <div className={cn(
+                                                "h-[2px] mt-4 w-6 shrink-0",
+                                                isCompleted ? "bg-green-500" : "bg-border"
+                                              )} />
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </details>
+                              )}
+
+                              {sortedActivity.length > 0 && (
+                                <details className="group">
+                                  <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                                    <Activity className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-[15px] font-medium">Registro Attività</span>
+                                    <span className="text-xs text-muted-foreground ml-1">({sortedActivity.length})</span>
+                                  </summary>
+                                  <div className="mt-3 ml-6 space-y-1.5">
                                     {sortedActivity.map((act) => (
-                                      <div key={act.id} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                                      <div key={act.id} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
                                         <div className={cn(
                                           "mt-0.5 p-1 rounded-full shrink-0",
                                           act.severity === "error" ? "bg-red-500/10 text-red-500" :
@@ -2132,10 +2132,53 @@ export default function ConsultantAIAutonomyPage() {
                                     ))}
                                   </div>
                                 </details>
-                              </div>
-                            )}
+                              )}
+                            </div>
+                          )}
+
+                          {/* Section 4: Action Buttons */}
+                          <div className="rounded-xl border shadow-sm bg-card p-4">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {(task.status === 'paused' || task.status === 'scheduled') && (
+                                <Button
+                                  onClick={() => executeTaskMutation.mutate(task.id)}
+                                  disabled={executeTaskMutation.isPending}
+                                  className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0"
+                                >
+                                  {executeTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Play className="h-4 w-4 mr-1.5" />}
+                                  Esegui ora
+                                </Button>
+                              )}
+                              {task.status === 'failed' && (
+                                <Button
+                                  onClick={() => executeTaskMutation.mutate(task.id)}
+                                  disabled={executeTaskMutation.isPending}
+                                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+                                >
+                                  {executeTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                                  Riprova
+                                </Button>
+                              )}
+                              {task.status === 'completed' && (
+                                <Button
+                                  onClick={() => executeTaskMutation.mutate(task.id)}
+                                  disabled={executeTaskMutation.isPending}
+                                  variant="outline"
+                                >
+                                  {executeTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
+                                  Rigenera Analisi
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                onClick={() => toast({ title: "Funzionalità in arrivo", description: "La generazione del PDF sarà disponibile a breve" })}
+                              >
+                                <Save className="h-4 w-4 mr-1.5" />
+                                Scarica PDF
+                              </Button>
+                            </div>
                           </div>
-                        </>
+                        </div>
                       );
                     })() : (
                       <div className="py-12 text-center text-muted-foreground">
