@@ -22,6 +22,7 @@ import { generateDiscoveryRec, type DiscoveryRec } from './discovery-rec-generat
 import type { SalesManagerParams, SalesManagerAnalysis, BusinessContext } from './sales-manager-agent';
 import { getTemplateById, resolveTemplateVariables, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 import { VoiceBookingSupervisor, ConversationMessage as BookingMessage, AvailableSlot } from '../voice/voice-booking-supervisor';
+import { VoiceTaskSupervisor, TaskConversationMessage, TaskSupervisorResult } from '../voice/voice-task-supervisor';
 import { executeConsultationTool } from './consultation-tool-executor';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
@@ -1632,6 +1633,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // feedback to the next user message so it gets processed naturally.
     let pendingFeedbackForAI: string | null = null;
     let bookingSupervisor: VoiceBookingSupervisor | null = null;
+    let taskSupervisor: VoiceTaskSupervisor | null = null;
     let bookingAvailableSlots: AvailableSlot[] = [];
     let phoneLeadContactData: { name: string | null; email: string | null; phone: string | null; leadId: string | null; category: string | null } | null = null;
     
@@ -4576,6 +4578,20 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`📋 [${connectionId}] Booking prompt section appended (${bookingPromptSection.length} chars)`);
         }
 
+        if (isPhoneCall && consultantId) {
+          taskSupervisor = new VoiceTaskSupervisor({
+            consultantId,
+            voiceCallId: voiceCallId || '',
+            contactPhone: phoneCallerId || '',
+            contactName: phoneLeadContactData?.name || null,
+          });
+          console.log(`📝 [${connectionId}] VoiceTaskSupervisor initialized (phone: ${phoneCallerId || 'unknown'})`);
+
+          const taskPromptSection = taskSupervisor.getTaskPromptSection();
+          systemInstruction = systemInstruction + '\n\n' + taskPromptSection;
+          console.log(`📝 [${connectionId}] Task prompt section appended (${taskPromptSection.length} chars)`);
+        }
+
       // Log the system prompt (FULL for sales_agent minimal, truncated otherwise)
       if (customPrompt) {
         console.log(`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -6924,6 +6940,58 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     }
                   } catch (bookingErr: any) {
                     console.error(`❌ [${connectionId}] Booking supervisor error:`, bookingErr.message);
+                  }
+                })();
+              }
+
+              if (taskSupervisor && isPhoneCall) {
+                (async () => {
+                  try {
+                    const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    try {
+                      const taskMessages: TaskConversationMessage[] = conversationMessages.map(m => ({
+                        role: m.role,
+                        transcript: m.transcript,
+                        timestamp: m.timestamp,
+                      }));
+                      const result = await taskSupervisor!.analyzeTranscript(taskMessages, aiClient);
+
+                      if (result.notifyMessage && geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
+                        if (result.action === 'tasks_created') {
+                          console.log(`\n📝 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          console.log(`📝 [${connectionId}] TASK CREATED! Injecting notification to Gemini`);
+                          console.log(`📝   Task IDs: ${result.createdTaskIds?.join(', ')}`);
+                          if (result.conflictWarning) {
+                            console.log(`⚠️   Conflict: ${result.conflictWarning}`);
+                          }
+                          console.log(`📝 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                        } else if (result.action === 'task_modified') {
+                          console.log(`📝 [${connectionId}] Task modified: ${result.modifiedTaskId}`);
+                        } else if (result.action === 'task_cancelled') {
+                          console.log(`📝 [${connectionId}] Task cancelled: ${result.cancelledTaskId}`);
+                        } else if (result.action === 'tasks_listed') {
+                          console.log(`📝 [${connectionId}] Task list sent to Gemini`);
+                        } else if (result.action === 'task_failed') {
+                          console.log(`❌ [${connectionId}] Task operation failed: ${result.errorMessage}`);
+                        }
+
+                        const taskNotification = {
+                          clientContent: {
+                            turns: [{
+                              role: 'user',
+                              parts: [{ text: result.notifyMessage }]
+                            }],
+                            turnComplete: true
+                          }
+                        };
+                        geminiSession.send(JSON.stringify(taskNotification));
+                        console.log(`📝 [${connectionId}] Task supervisor notification injected to Gemini Live`);
+                      }
+                    } finally {
+                      if (cleanup) cleanup();
+                    }
+                  } catch (taskErr: any) {
+                    console.error(`❌ [${connectionId}] Task supervisor error:`, taskErr.message);
                   }
                 })();
               }
