@@ -311,8 +311,6 @@ if (this.scheduledCallId) {
   }
 
   sendAudio(pcmData: Buffer): void {
-    this.lastAudioActivityTime = Date.now();
-
     if (this.audioBufferActive) {
       if (this.audioBuffer.length < ReplitWSClient.MAX_BUFFER_FRAMES) {
         this.audioBuffer.push(Buffer.from(pcmData));
