@@ -221,6 +221,22 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       return res.status(400).json({ error: `task_category must be one of: ${validCategories.join(", ")}` });
     }
 
+    const sanitizedPhone = contact_phone ? String(contact_phone).replace(/[^0-9+\s\-()]/g, '') : null;
+    if (sanitizedPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(sanitizedPhone)) {
+      return res.status(400).json({ error: "Formato telefono non valido. Usa il formato: +39 333 1234567" });
+    }
+
+    if (client_id) {
+      const clientCheck = await db.execute(sql`
+        SELECT urp.id FROM user_role_profiles urp
+        WHERE urp.user_id = ${client_id} AND urp.consultant_id = ${consultantId} AND urp.role = 'client'
+        LIMIT 1
+      `);
+      if (clientCheck.rows.length === 0) {
+        return res.status(400).json({ error: "Il cliente selezionato non è associato al tuo account" });
+      }
+    }
+
     const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
     const taskPriority = priority ?? 3;
 
@@ -230,7 +246,7 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
         scheduled_at, timezone, origin_type, priority, contact_name, contact_phone, contact_id
       ) VALUES (
         ${taskId}, ${consultantId}, 'ai_task', ${task_category}, ${ai_instruction.trim()}, 'scheduled',
-        NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${contact_phone || null}, ${client_id || null}
+        NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${sanitizedPhone}, ${client_id || null}
       )
       RETURNING *
     `);
