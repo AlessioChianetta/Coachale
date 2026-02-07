@@ -971,6 +971,8 @@ export default function ConsultantVoiceCallsPage() {
   const isMobile = useIsMobile();
   const { currentRole } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [guideOpenSections, setGuideOpenSections] = useState<Record<string, boolean>>({});
+  const toggleGuideSection = (key: string) => setGuideOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
@@ -2188,6 +2190,13 @@ export default function ConsultantVoiceCallsPage() {
                 >
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Configurazione</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="voice-guide" 
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 transition-all duration-200"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span className="hidden sm:inline">Guida Voce</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -6851,6 +6860,613 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     </div>
                   </div>
                 )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="voice-guide" className="space-y-6">
+                <Card className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-0">
+                  <CardContent className="pt-8 pb-8">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-3 bg-white/20 rounded-xl">
+                        <BookOpen className="h-8 w-8" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold">Guida Completa Alessia AI Phone</h2>
+                        <p className="text-emerald-100 text-sm mt-1">Tutto quello che devi sapere sulle chiamate vocali AI della piattaforma</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-emerald-600" />
+                    Chi Può Usare le Chiamate Vocali?
+                  </h3>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100">Consulente</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">Gestisce tutto: template, numeri VoIP, chiamate outbound, storico completo e calendario AI.</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Clienti Registrati</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">Riconosciuti per nome quando chiamano, accesso all'AI assistant vocale dal browser.</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">Non Clienti / Lead</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">L'AI li qualifica con mini-discovery, raccoglie dati di contatto e propone appuntamento.</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Phone className="h-5 w-5 text-emerald-600" />
+                    Funzionalità Chiamate
+                  </h3>
+                  <div className="space-y-3">
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('inbound')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <PhoneIncoming className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Chiamate in Entrata (Inbound)</span>
+                              <Badge variant="secondary">Automatico</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Alessia risponde automaticamente alle chiamate in arrivo</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['inbound'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['inbound'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Riconoscimento automatico del chiamante (cliente vs non-cliente)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">3 template configurabili: Mini-Discovery, Sales Call Orbitale Inbound, Info Generale</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Saluto personalizzato per clienti conosciuti</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Raccolta dati contatto per lead sconosciuti</span>
+                            </div>
+                          </div>
+                          <div className="bg-muted/50 rounded-lg p-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Flusso</p>
+                            <div className="flex flex-wrap items-center gap-1 text-sm">
+                              <Badge variant="outline" className="text-xs">Chiamata</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">Riconoscimento</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">Template</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">Conversazione AI</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">Azioni automatiche</Badge>
+                            </div>
+                          </div>
+                          <Alert>
+                            <Target className="h-4 w-4" />
+                            <AlertTitle className="text-sm">Esempio pratico</AlertTitle>
+                            <AlertDescription className="text-sm">
+                              Un potenziale cliente chiama il tuo numero. Alessia risponde, fa domande di qualifica, raccoglie nome/email/telefono, e propone un appuntamento.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('outbound')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-emerald-100 rounded-lg">
+                            <PhoneOutgoing className="h-5 w-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Chiamate in Uscita (Outbound)</span>
+                              <Badge variant="secondary">Manuale + AI</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Tu o l'AI chiamate un contatto</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['outbound'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['outbound'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Chiama direttamente dalla dashboard con tab "Chiama Ora"</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">4 template outbound: Sales Call Orbitale, Follow-up Lead, Recupero Crediti, Check-in Cliente</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Importa istruzioni da agente WhatsApp</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Personalizzazione manuale del prompt</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Istruzioni specifiche per task/reminder</span>
+                            </div>
+                          </div>
+                          <Alert>
+                            <Target className="h-4 w-4" />
+                            <AlertTitle className="text-sm">Esempio pratico</AlertTitle>
+                            <AlertDescription className="text-sm">
+                              Vuoi ricontattare un lead che ha compilato il form. Vai su Chiama Ora, inserisci il numero, scegli il template Follow-up Lead, e l'AI chiama per te.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('booking')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-purple-100 rounded-lg">
+                            <CalendarCheck className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Prenotazione Appuntamenti (Booking Supervisor)</span>
+                              <Badge variant="secondary">Automatico durante la chiamata</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">L'AI gestisce le prenotazioni durante qualsiasi telefonata</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['booking'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['booking'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Rilevamento automatico dell'intento di prenotazione</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Proposta slot disponibili dal calendario Google</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Raccolta dati: data, ora, nome, email, telefono</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Creazione evento Google Calendar + link Meet</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Conferma esplicita prima di creare</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Percorso diverso per clienti (consultazione) vs lead (appuntamento)</span>
+                            </div>
+                          </div>
+                          <div className="bg-muted/50 rounded-lg p-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Macchina a stati</p>
+                            <div className="flex flex-wrap items-center gap-1 text-sm">
+                              <Badge variant="outline" className="text-xs">nessun_intento</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">raccolta_dati</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">dati_completi</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">confermato</Badge>
+                              <span>→</span>
+                              <Badge variant="outline" className="text-xs">completato</Badge>
+                            </div>
+                          </div>
+                          <Alert>
+                            <Target className="h-4 w-4" />
+                            <AlertTitle className="text-sm">Esempio pratico</AlertTitle>
+                            <AlertDescription className="text-sm">
+                              Durante una chiamata il lead dice "vorrei fissare un incontro". Alessia propone le disponibilità, raccoglie i dati, e crea automaticamente l'evento su Google Calendar.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('tasks')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-amber-100 rounded-lg">
+                            <Bell className="h-5 w-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Promemoria e Task Vocali (Task Supervisor)</span>
+                              <Badge className="bg-green-500 text-white hover:bg-green-500">NUOVO</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Il chiamante può chiedere promemoria e l'AI li schedula</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['tasks'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['tasks'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">"Ricordami di..." → crea un task che richiamerà il contatto</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Parsing temporale: "domani alle 17", "tra 2 ore", "dopo pranzo" (14:00)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Supporto ricorrenza: "ogni lunedì e mercoledì"</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Più promemoria in una frase: "ricordami X alle 9 e Y alle 15"</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Modifica e cancellazione vocale</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Richiesta lista: "che promemoria ho?"</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Controllo conflitti (±30 minuti)</span>
+                            </div>
+                          </div>
+                          <Alert>
+                            <Target className="h-4 w-4" />
+                            <AlertTitle className="text-sm">Esempio pratico</AlertTitle>
+                            <AlertDescription className="text-sm">
+                              Il cliente dice "ricordami di pagare la fattura domani alle 10". Alessia conferma, crea il task, e domani alle 10 il sistema richiamerà automaticamente il cliente con il promemoria.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('scheduler')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-indigo-100 rounded-lg">
+                            <CalendarClock className="h-5 w-5 text-indigo-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Calendario AI (Task Scheduler)</span>
+                              <Badge variant="secondary">Automatico</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Coda automatica di chiamate AI programmate</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['scheduler'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['scheduler'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Task singoli, giornalieri o settimanali</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Retry automatico se non risponde (fino a 5 tentativi)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Backoff esponenziale tra i tentativi</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Gestione completa da tab "Calendario AI"</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Istruzioni personalizzate per ogni chiamata</span>
+                            </div>
+                          </div>
+                          <Alert>
+                            <Target className="h-4 w-4" />
+                            <AlertTitle className="text-sm">Esempio pratico</AlertTitle>
+                            <AlertDescription className="text-sm">
+                              Hai programmato un follow-up settimanale per un cliente. Ogni lunedì alle 9, Alessia chiama automaticamente per il check-in.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('retry')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-orange-100 rounded-lg">
+                            <RepeatIcon className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Sistema Retry Automatico</span>
+                              <Badge variant="secondary">Automatico</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Riprova automaticamente se la chiamata non ha risposta</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['retry'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['retry'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Retry per: nessuna risposta, occupato, chiamata troppo breve</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Backoff esponenziale: 5min → 10min → 20min (max 30min)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Max tentativi configurabile per consulente</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Visibile nello storico con contatore tentativi</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('session')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-yellow-100 rounded-lg">
+                            <Zap className="h-5 w-5 text-yellow-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Durata Illimitata (Session Resumption)</span>
+                              <Badge className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white hover:from-yellow-500 hover:to-amber-500">Tecnologia Avanzata</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Chiamate senza limiti di tempo grazie al restart trasparente</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['session'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['session'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Gemini ha un limite di 10 minuti per sessione</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Il sistema riavvia la sessione a 7 min (pausa) o 9 min (limite)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">L'audio viene preservato durante il restart</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Per l'utente la chiamata è continua senza interruzioni</span>
+                            </div>
+                          </div>
+                          <Alert>
+                            <Target className="h-4 w-4" />
+                            <AlertTitle className="text-sm">Esempio pratico</AlertTitle>
+                            <AlertDescription className="text-sm">
+                              Una chiamata di consulenza dura 45 minuti. Il sistema fa circa 5 restart trasparenti, ma né il consulente né il cliente se ne accorgono.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => toggleGuideSection('webvoice')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-cyan-100 rounded-lg">
+                            <Mic2 className="h-5 w-5 text-cyan-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Chiamate dal Browser (Web Voice)</span>
+                              <Badge variant="secondary">Per Tutti</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">I clienti parlano con l'AI direttamente dal browser</p>
+                          </div>
+                        </div>
+                        {guideOpenSections['webvoice'] ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      {guideOpenSections['webvoice'] && (
+                        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                          <div className="grid gap-2">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">AI Assistant con modalità vocale</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Connessione WebSocket diretta</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Nessun numero telefonico necessario</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                              <span className="text-sm">Conversazione bidirezionale in tempo reale</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-emerald-600" />
+                    Template Vocali Disponibili
+                  </h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <PhoneIncoming className="h-4 w-4 text-blue-500" />
+                          Inbound
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <span className="text-sm font-medium">Mini-Discovery</span>
+                          <span className="text-xs text-muted-foreground">Qualifica rapida + appuntamento</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <span className="text-sm font-medium">Sales Call Orbitale</span>
+                          <span className="text-xs text-muted-foreground">Vendita strutturata inbound</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <span className="text-sm font-medium">Info Generale</span>
+                          <span className="text-xs text-muted-foreground">Risposte informative sul business</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <PhoneOutgoing className="h-4 w-4 text-emerald-500" />
+                          Outbound
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <span className="text-sm font-medium">Sales Call Orbitale</span>
+                          <span className="text-xs text-muted-foreground">Script di vendita completo</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <span className="text-sm font-medium">Follow-up Lead</span>
+                          <span className="text-xs text-muted-foreground">Ricontatto dopo primo contatto</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <span className="text-sm font-medium">Recupero Crediti</span>
+                          <span className="text-xs text-muted-foreground">Sollecito pagamenti gentile</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <span className="text-sm font-medium">Check-in Cliente</span>
+                          <span className="text-xs text-muted-foreground">Verifica soddisfazione e bisogni</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Play className="h-5 w-5 text-emerald-600" />
+                    Come Iniziare
+                  </h3>
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <Card className="text-center">
+                      <CardContent className="pt-6">
+                        <div className="mx-auto w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                          <span className="text-emerald-700 font-bold">1</span>
+                        </div>
+                        <p className="font-medium text-sm">Configura un numero VoIP</p>
+                        <p className="text-xs text-muted-foreground mt-1">Vai su Configurazione per collegare il tuo numero</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="text-center">
+                      <CardContent className="pt-6">
+                        <div className="mx-auto w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                          <span className="text-emerald-700 font-bold">2</span>
+                        </div>
+                        <p className="font-medium text-sm">Scegli i template</p>
+                        <p className="text-xs text-muted-foreground mt-1">Personalizza come l'AI risponde alle chiamate</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="text-center">
+                      <CardContent className="pt-6">
+                        <div className="mx-auto w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                          <span className="text-emerald-700 font-bold">3</span>
+                        </div>
+                        <p className="font-medium text-sm">Attiva il sistema</p>
+                        <p className="text-xs text-muted-foreground mt-1">Le chiamate inizieranno automaticamente</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="text-center">
+                      <CardContent className="pt-6">
+                        <div className="mx-auto w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                          <span className="text-emerald-700 font-bold">4</span>
+                        </div>
+                        <p className="font-medium text-sm">Monitora dallo Storico</p>
+                        <p className="text-xs text-muted-foreground mt-1">Controlla tutte le chiamate e i risultati</p>
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               </TabsContent>
