@@ -233,7 +233,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
       db.execute(sql`
         SELECT id, consultant_id, contact_name, contact_phone, task_type, task_category,
                ai_instruction, status, origin_type, priority, ai_reasoning, ai_confidence,
-               execution_plan, result_summary, result_data, scheduled_at, started_at,
+               execution_plan, result_summary, result_data, scheduled_at,
                completed_at, created_at, updated_at, call_after_task
         FROM ai_scheduled_tasks
         WHERE ${whereClause}

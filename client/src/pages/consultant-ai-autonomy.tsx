@@ -19,12 +19,15 @@ import {
   Clock, Calendar, Shield, Zap, Brain, CheckCircle, AlertCircle,
   XCircle, Info, Loader2, RefreshCw, Eye, ChevronLeft, ChevronRight,
   Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus,
-  Send, Trash2
+  Send, Trash2, Sparkles, User, BookOpen, Lightbulb
 } from "lucide-react";
+import { motion } from "framer-motion";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { MessageList } from "@/components/ai-assistant/MessageList";
+import { cn } from "@/lib/utils";
 
 interface AutonomySettings {
   is_active: boolean;
@@ -489,6 +492,69 @@ export default function ConsultantAIAutonomyPage() {
       setChatLoading(false);
     }
   };
+
+  const sendDirectMessage = async (message: string) => {
+    if (!message.trim() || chatLoading) return;
+    const userMessage: ChatMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: message.trim(),
+      created_at: new Date().toISOString(),
+    };
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatLoading(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/chat", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage.content }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages(prev => [...prev, data.message]);
+      } else {
+        toast({ title: "Errore", description: "Impossibile inviare il messaggio", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buongiorno";
+    if (hour < 18) return "Buon pomeriggio";
+    return "Buonasera";
+  };
+
+  const alessiaSuggestions = [
+    {
+      icon: Target,
+      label: "Panoramica clienti",
+      prompt: "Dammi una panoramica dei miei clienti e delle loro situazioni",
+      gradient: "from-cyan-500 to-teal-500",
+    },
+    {
+      icon: TrendingUp,
+      label: "Suggerimenti follow-up",
+      prompt: "Quali clienti dovrei ricontattare questa settimana?",
+      gradient: "from-teal-500 to-emerald-500",
+    },
+    {
+      icon: BarChart3,
+      label: "Analisi portafoglio",
+      prompt: "Analizza il portafoglio complessivo dei miei clienti",
+      gradient: "from-slate-500 to-cyan-500",
+    },
+    {
+      icon: ListTodo,
+      label: "Task pendenti",
+      prompt: "Quali task hai in sospeso o programmati per oggi?",
+      gradient: "from-cyan-600 to-teal-600",
+    },
+  ];
 
   const clearChat = async () => {
     try {
@@ -1369,105 +1435,124 @@ export default function ConsultantAIAutonomyPage() {
                 </Dialog>
               </TabsContent>
 
-              <TabsContent value="chat" className="mt-6">
-                <Card className="border-0 shadow-lg">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col h-[600px]">
-                      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Bot className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">Alessia - Dipendente AI</p>
-                            <p className="text-xs text-muted-foreground">Assistente del consulente</p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={clearChat}
-                          className="text-muted-foreground hover:text-destructive"
-                          title="Cancella chat"
+              <TabsContent value="chat" className="mt-0 -mx-4 sm:-mx-6 lg:-mx-8">
+                <div className="flex flex-col h-[calc(100vh-180px)] bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
+                  {chatHistoryLoading ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                    </div>
+                  ) : chatMessages.length === 0 ? (
+                    <div className="flex flex-col items-center flex-1 px-4 py-8 overflow-y-auto bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="flex flex-col items-center max-w-2xl w-full my-auto"
+                      >
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.1, duration: 0.5 }}
+                          className="relative mb-6"
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 via-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-cyan-500/25">
+                            <motion.div
+                              animate={{ rotate: [0, 5, -5, 0] }}
+                              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                            >
+                              <Bot className="w-10 h-10 text-white" />
+                            </motion.div>
+                          </div>
+                          <motion.div
+                            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400 flex items-center justify-center"
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ repeat: Infinity, duration: 2 }}
+                          >
+                            <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                          </motion.div>
+                        </motion.div>
 
-                      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-                        {chatHistoryLoading ? (
-                          <div className="space-y-4">
-                            {[1, 2, 3].map((i) => (
-                              <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}>
-                                <div className="h-12 w-48 rounded-2xl bg-muted animate-pulse" />
-                              </div>
-                            ))}
-                          </div>
-                        ) : chatMessages.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-                            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                              <Bot className="h-8 w-8 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-lg">Ciao! Sono Alessia 👋</h3>
-                              <p className="text-muted-foreground text-sm mt-1 max-w-md">
-                                Il tuo dipendente AI. Chiedimi informazioni sui tuoi clienti, suggerimenti per follow-up, o analisi del tuo portafoglio.
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {chatMessages.map((msg) => (
-                              <div
-                                key={msg.id}
-                                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                        <motion.h1
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.2, duration: 0.5 }}
+                          className="text-2xl md:text-3xl font-semibold text-slate-800 dark:text-slate-100 mb-2 text-center"
+                        >
+                          {getGreeting()}!
+                        </motion.h1>
+
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.3, duration: 0.5 }}
+                          className="text-base md:text-lg text-slate-500 dark:text-slate-400 mb-8 text-center"
+                        >
+                          Sono <span className="font-medium text-cyan-600 dark:text-cyan-400">Alessia</span>, come posso aiutarti oggi?
+                        </motion.p>
+
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.4, duration: 0.5 }}
+                          className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-8"
+                        >
+                          {alessiaSuggestions.map((suggestion, index) => {
+                            const IconComponent = suggestion.icon;
+                            return (
+                              <motion.button
+                                key={index}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 + index * 0.1, duration: 0.3 }}
+                                onClick={() => sendDirectMessage(suggestion.prompt)}
+                                disabled={chatLoading}
+                                className="group relative flex items-start gap-3 p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                <div className={`flex gap-2 max-w-[80%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                                  {msg.role === "assistant" && (
-                                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                                      <Bot className="h-4 w-4 text-primary" />
-                                    </div>
-                                  )}
-                                  <div>
-                                    <div
-                                      className={`rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
-                                        msg.role === "user"
-                                          ? "bg-primary text-primary-foreground rounded-br-md"
-                                          : "bg-muted rounded-bl-md"
-                                      }`}
-                                    >
-                                      {msg.content}
-                                    </div>
-                                    <p className={`text-[10px] text-muted-foreground mt-1 ${msg.role === "user" ? "text-right" : "text-left"}`}>
-                                      {formatChatTime(msg.created_at)}
-                                    </p>
-                                  </div>
+                                <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow", suggestion.gradient)}>
+                                  <IconComponent className="w-5 h-5 text-white" />
                                 </div>
-                              </div>
-                            ))}
-                            {chatLoading && (
-                              <div className="flex justify-start">
-                                <div className="flex gap-2 max-w-[80%]">
-                                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                                    <Bot className="h-4 w-4 text-primary" />
-                                  </div>
-                                  <div className="rounded-2xl rounded-bl-md bg-muted px-4 py-3">
-                                    <div className="flex gap-1.5">
-                                      <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
-                                      <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
-                                      <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
-                                    </div>
-                                  </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm text-slate-800 dark:text-slate-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                                    {suggestion.label}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                                    {suggestion.prompt}
+                                  </p>
                                 </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-                        <div ref={chatEndRef} />
-                      </div>
+                              </motion.button>
+                            );
+                          })}
+                        </motion.div>
 
-                      <div className="border-t px-4 py-3 bg-background">
-                        <div className="flex gap-2 items-end">
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.9, duration: 0.5 }}
+                          className="text-xs text-slate-400 dark:text-slate-500 text-center"
+                        >
+                          Scrivi un messaggio o scegli uno dei suggerimenti sopra
+                        </motion.p>
+                      </motion.div>
+                      <div ref={chatEndRef} />
+                    </div>
+                  ) : (
+                    <div className="flex-1 min-h-0">
+                      <MessageList
+                        messages={chatMessages.map(msg => ({
+                          id: String(msg.id),
+                          role: msg.role,
+                          content: msg.content,
+                        }))}
+                        isTyping={chatLoading}
+                      />
+                      <div ref={chatEndRef} />
+                    </div>
+                  )}
+
+                  <div className="border-t border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900 px-4 py-3">
+                    <div className="max-w-3xl mx-auto">
+                      <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 focus-within:border-slate-300 dark:focus-within:border-slate-600 focus-within:bg-white dark:focus-within:bg-slate-800">
+                        <div className="px-4 pt-3 pb-2">
                           <Textarea
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
@@ -1477,28 +1562,48 @@ export default function ConsultantAIAutonomyPage() {
                                 sendChatMessage();
                               }
                             }}
-                            placeholder="Scrivi un messaggio ad Alessia..."
-                            className="min-h-[44px] max-h-[120px] resize-none flex-1"
-                            rows={1}
+                            placeholder={chatLoading ? "Sto elaborando..." : "Scrivi un messaggio ad Alessia..."}
                             disabled={chatLoading}
+                            className="resize-none min-h-[44px] max-h-[120px] bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 disabled:opacity-60 disabled:cursor-not-allowed text-base placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0 shadow-none"
+                            rows={1}
                           />
-                          <Button
-                            onClick={sendChatMessage}
-                            disabled={!chatInput.trim() || chatLoading}
-                            size="icon"
-                            className="h-[44px] w-[44px] shrink-0"
-                          >
-                            {chatLoading ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Send className="h-4 w-4" />
-                            )}
-                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between px-3 pb-3 pt-1 border-t border-slate-100 dark:border-slate-700/50">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-red-500"
+                              onClick={clearChat}
+                              title="Cancella chat"
+                              disabled={chatLoading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              onClick={sendChatMessage}
+                              disabled={!chatInput.trim() || chatLoading}
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 disabled:bg-slate-200 dark:disabled:bg-slate-700 transition-all"
+                            >
+                              {chatLoading ? (
+                                <div className="flex gap-0.5">
+                                  <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                  <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                  <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                </div>
+                              ) : (
+                                <Send className="h-4 w-4 text-white dark:text-slate-900" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
