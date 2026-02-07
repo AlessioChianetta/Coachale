@@ -436,10 +436,10 @@ export default function ConsultantAIAutonomyPage() {
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
-        <div className="flex-1 flex overflow-hidden">
+      <div className={`flex-1 flex flex-col min-h-0 ${isMobile ? "w-full" : "ml-0"}`}>
+        <div className="flex-1 flex min-h-0">
           <main className="flex-1 p-6 lg:px-8 overflow-auto">
             <div className="max-w-5xl space-y-6">
             <div>
@@ -1410,7 +1410,7 @@ export default function ConsultantAIAutonomyPage() {
             </Tabs>
           </div>
         </main>
-        <div className="w-[380px] border-l border-border shrink-0 hidden lg:flex flex-col">
+        <div className="w-[380px] border-l border-border shrink-0 hidden lg:flex flex-col min-h-0">
           <AllessiaSidePanel />
         </div>
         </div>
