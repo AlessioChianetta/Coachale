@@ -1805,6 +1805,25 @@ export default function ConsultantAIAutonomyPage() {
                               )}
                             </Button>
                           )}
+                          {taskDetailData.task.status === 'failed' && (
+                            <Button
+                              onClick={() => executeTaskMutation.mutate(taskDetailData.task.id)}
+                              disabled={executeTaskMutation.isPending}
+                              className="mt-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+                            >
+                              {executeTaskMutation.isPending ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Riavvio in corso...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Riprova
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
 
                         <div className="p-6 space-y-6">

@@ -552,15 +552,21 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
     const task = taskResult.rows[0] as any;
 
-    if (!['paused', 'scheduled'].includes(task.status)) {
-      return res.status(400).json({ error: `Cannot execute task with status '${task.status}'. Only 'paused' or 'scheduled' tasks can be manually executed.` });
+    if (!['paused', 'scheduled', 'failed'].includes(task.status)) {
+      return res.status(400).json({ error: `Cannot execute task with status '${task.status}'. Only 'paused', 'scheduled', or 'failed' tasks can be manually executed.` });
     }
+
+    const isRetry = task.status === 'failed';
 
     await db.execute(sql`
       UPDATE ai_scheduled_tasks
       SET status = 'in_progress',
           current_attempt = COALESCE(current_attempt, 0) + 1,
           last_attempt_at = NOW(),
+          error_message = NULL,
+          execution_plan = ${isRetry ? sql`'[]'::jsonb` : sql`execution_plan`},
+          result_data = ${isRetry ? sql`NULL` : sql`result_data`},
+          result_summary = ${isRetry ? sql`NULL` : sql`result_summary`},
           updated_at = NOW()
       WHERE id = ${id}
     `);
