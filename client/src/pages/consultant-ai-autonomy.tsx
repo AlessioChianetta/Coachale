@@ -41,6 +41,7 @@ interface AutonomySettings {
     email: boolean;
     whatsapp: boolean;
   };
+  allowed_task_categories: string[];
   custom_instructions: string;
 }
 
@@ -119,6 +120,17 @@ const DAYS_OF_WEEK = [
   { value: 7, label: "Dom" },
 ];
 
+const TASK_CATEGORIES = [
+  { value: "outreach", label: "Contatto", description: "Contattare nuovi o esistenti clienti" },
+  { value: "reminder", label: "Promemoria", description: "Ricordare scadenze, appuntamenti, pagamenti" },
+  { value: "followup", label: "Follow-up", description: "Ricontattare dopo consulenze o eventi" },
+  { value: "analysis", label: "Analisi", description: "Analizzare dati finanziari e pattern del cliente" },
+  { value: "report", label: "Report", description: "Generare report e documenti di analisi" },
+  { value: "research", label: "Ricerca", description: "Ricercare informazioni di mercato e normative" },
+  { value: "preparation", label: "Preparazione", description: "Preparare materiale per consulenze e incontri" },
+  { value: "monitoring", label: "Monitoraggio", description: "Monitorare proattivamente situazioni e scadenze clienti" },
+];
+
 const DEFAULT_SETTINGS: AutonomySettings = {
   is_active: false,
   autonomy_level: 1,
@@ -131,15 +143,17 @@ const DEFAULT_SETTINGS: AutonomySettings = {
   max_daily_whatsapp: 30,
   max_daily_analyses: 50,
   channels_enabled: { voice: true, email: false, whatsapp: false },
+  allowed_task_categories: ["outreach", "reminder", "followup"],
   custom_instructions: "",
 };
 
 function getAutonomyLabel(level: number): { label: string; color: string; description: string } {
-  if (level === 0) return { label: "Disattivato", color: "text-muted-foreground", description: "L'AI non esegue alcuna azione autonomamente." };
-  if (level <= 3) return { label: "Solo proposte", color: "text-green-500", description: "L'AI suggerisce azioni ma attende la tua approvazione prima di procedere." };
-  if (level <= 6) return { label: "Semi-autonomo", color: "text-yellow-500", description: "L'AI esegue azioni di routine e chiede approvazione solo per decisioni importanti." };
-  if (level <= 9) return { label: "Quasi autonomo", color: "text-orange-500", description: "L'AI opera in modo indipendente, notificandoti solo per situazioni critiche." };
-  return { label: "Autonomia completa", color: "text-red-500", description: "L'AI gestisce tutto autonomamente senza necessità di approvazione." };
+  if (level === 0) return { label: "Disattivato", color: "text-muted-foreground", description: "Il dipendente AI è completamente disattivato. Non eseguirà alcuna azione." };
+  if (level === 1) return { label: "Solo manuale", color: "text-green-500", description: "Modalità manuale: puoi creare task per l'AI, che li eseguirà solo quando programmati. Nessuna azione autonoma." };
+  if (level <= 3) return { label: "Proposte", color: "text-green-500", description: "L'AI può eseguire task programmati autonomamente durante l'orario di lavoro, ma solo nelle categorie abilitate. Ti notifica ogni azione." };
+  if (level <= 6) return { label: "Semi-autonomo", color: "text-yellow-500", description: "L'AI esegue task di routine autonomamente e può proporre nuove azioni. Chiede approvazione per decisioni importanti come chiamate e email." };
+  if (level <= 9) return { label: "Quasi autonomo", color: "text-orange-500", description: "L'AI opera in modo indipendente: analizza, decide e agisce. Ti notifica solo per situazioni critiche o fuori dalla norma." };
+  return { label: "Autonomia completa", color: "text-red-500", description: "L'AI gestisce tutto autonomamente entro i limiti configurati. Agisce senza approvazione su tutte le categorie e canali abilitati." };
 }
 
 function getAutonomyBadgeColor(level: number): string {
@@ -402,6 +416,15 @@ export default function ConsultantAIAutonomyPage() {
     }));
   };
 
+  const toggleCategory = (cat: string) => {
+    setSettings(prev => ({
+      ...prev,
+      allowed_task_categories: prev.allowed_task_categories.includes(cat)
+        ? prev.allowed_task_categories.filter(c => c !== cat)
+        : [...prev.allowed_task_categories, cat],
+    }));
+  };
+
   const unreadCount = unreadData?.count || 0;
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
 
@@ -450,6 +473,44 @@ export default function ConsultantAIAutonomyPage() {
                   </div>
                 ) : (
                   <>
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Bot className="h-5 w-5" />
+                          Cosa può fare il tuo Dipendente AI
+                        </CardTitle>
+                        <CardDescription>
+                          Panoramica delle capacità e delle azioni disponibili
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium">Azioni disponibili:</p>
+                            <div className="space-y-2 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-green-500" /> Effettuare chiamate vocali AI</div>
+                              <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-blue-500" /> Inviare email personalizzate</div>
+                              <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-emerald-500" /> Inviare messaggi WhatsApp</div>
+                              <div className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-purple-500" /> Analizzare dati e generare report</div>
+                              <div className="flex items-center gap-2"><Brain className="h-4 w-4 text-orange-500" /> Preparare materiale per consulenze</div>
+                              <div className="flex items-center gap-2"><Target className="h-4 w-4 text-cyan-500" /> Ricercare informazioni di mercato</div>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium">Regole di sicurezza:</p>
+                            <div className="space-y-2 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> Opera solo nell'orario di lavoro configurato</div>
+                              <div className="flex items-center gap-2"><Shield className="h-4 w-4" /> Rispetta i limiti giornalieri per ogni canale</div>
+                              <div className="flex items-center gap-2"><Zap className="h-4 w-4" /> Usa solo i canali e le categorie abilitate</div>
+                              <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Richiede livello 2+ per azioni autonome</div>
+                              <div className="flex items-center gap-2"><Info className="h-4 w-4" /> Ogni azione viene registrata nel feed attività</div>
+                              <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4" /> Evita azioni duplicate o ridondanti</div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -698,6 +759,37 @@ export default function ConsultantAIAutonomyPage() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
+                          <ListTodo className="h-5 w-5" />
+                          Categorie Task Abilitate
+                        </CardTitle>
+                        <CardDescription>
+                          Scegli quali categorie di task il dipendente AI può gestire
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {TASK_CATEGORIES.map((cat) => (
+                            <div key={cat.value} className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+                              <Checkbox
+                                id={`cat-${cat.value}`}
+                                checked={settings.allowed_task_categories.includes(cat.value)}
+                                onCheckedChange={() => toggleCategory(cat.value)}
+                              />
+                              <div className="space-y-0.5">
+                                <Label htmlFor={`cat-${cat.value}`} className="text-sm font-medium cursor-pointer">
+                                  {cat.label}
+                                </Label>
+                                <p className="text-xs text-muted-foreground">{cat.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
                           <Brain className="h-5 w-5" />
                           Istruzioni Personalizzate
                         </CardTitle>
@@ -933,10 +1025,13 @@ export default function ConsultantAIAutonomyPage() {
                     <SelectContent>
                       <SelectItem value="all">Tutti</SelectItem>
                       <SelectItem value="outreach">Contatto</SelectItem>
+                      <SelectItem value="reminder">Promemoria</SelectItem>
+                      <SelectItem value="followup">Follow-up</SelectItem>
                       <SelectItem value="analysis">Analisi</SelectItem>
                       <SelectItem value="report">Report</SelectItem>
-                      <SelectItem value="followup">Follow-up</SelectItem>
                       <SelectItem value="research">Ricerca</SelectItem>
+                      <SelectItem value="preparation">Preparazione</SelectItem>
+                      <SelectItem value="monitoring">Monitoraggio</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
