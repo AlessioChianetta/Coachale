@@ -291,6 +291,25 @@ export class VoiceTaskSupervisor {
       return await this.executeListTasks();
     }
 
+    if (this.state.stage === 'dati_completi' && this.state.currentIntent === 'create_task') {
+      const taskSummary = this.state.extractedTasks
+        .filter(t => t.description && t.date && t.time)
+        .map(t => `"${t.description}" il ${t.date} alle ${t.time}`)
+        .join(', ');
+      return {
+        action: 'notify_ai',
+        notifyMessage: `[TASK_CONFIRM_NEEDED] Il chiamante vuole creare un promemoria: ${taskSummary}. Chiedi conferma esplicita prima di procedere (es. "Vuoi che ti richiami il [data] alle [ora] per ricordarti di [descrizione]? Confermi?"). NON creare il task finché il chiamante non conferma.`,
+      };
+    }
+
+    if (this.state.stage === 'dati_completi' && (this.state.currentIntent === 'modify_task' || this.state.currentIntent === 'cancel_task')) {
+      const opLabel = this.state.currentIntent === 'modify_task' ? 'modificare' : 'cancellare';
+      return {
+        action: 'notify_ai',
+        notifyMessage: `[TASK_CONFIRM_NEEDED] Il chiamante vuole ${opLabel} un promemoria. Chiedi conferma esplicita prima di procedere.`,
+      };
+    }
+
     return { action: 'none' };
   }
 

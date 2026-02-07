@@ -6973,6 +6973,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                           console.log(`📝 [${connectionId}] Task list sent to Gemini`);
                         } else if (result.action === 'task_failed') {
                           console.log(`❌ [${connectionId}] Task operation failed: ${result.errorMessage}`);
+                        } else if (result.action === 'notify_ai') {
+                          console.log(`📝 [${connectionId}] Task supervisor: asking AI to confirm with caller`);
                         }
 
                         const taskNotification = {
