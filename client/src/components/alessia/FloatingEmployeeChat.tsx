@@ -317,16 +317,16 @@ export function AllessiaSidePanel() {
                       <div
                         key={act.id}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors",
+                          "flex items-start gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors",
                           act.is_read
                             ? "bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400"
                             : "bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300"
                         )}
                         onClick={() => !act.is_read && markActivityRead(act.id)}
                       >
-                        <span>{getActivityEmoji(act.icon)}</span>
-                        <span className="flex-1 truncate">{act.title}</span>
-                        <span className="text-[10px] text-slate-400 shrink-0">{getRelativeTime(act.created_at)}</span>
+                        <span className="shrink-0">{getActivityEmoji(act.icon)}</span>
+                        <span className="flex-1 min-w-0 break-words line-clamp-2 leading-snug">{act.title}</span>
+                        <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">{getRelativeTime(act.created_at)}</span>
                       </div>
                     ))}
                   </motion.div>
