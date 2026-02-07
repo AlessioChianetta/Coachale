@@ -77,6 +77,9 @@ export async function executeStep(
       case "send_whatsapp":
         result = await handleSendWhatsapp(task, step, previousResults);
         break;
+      case "web_search":
+        result = await handleWebSearch(task, step, previousResults);
+        break;
       default:
         throw new Error(`Unknown step action: ${step.action}`);
     }
@@ -578,5 +581,85 @@ async function handleSendWhatsapp(
     intended_recipient: task.contact_name || task.contact_phone,
     target_phone: task.contact_phone,
     task_category: task.task_category,
+  };
+}
+
+async function handleWebSearch(
+  task: AITaskInfo,
+  step: ExecutionStep,
+  previousResults: Record<string, any>,
+): Promise<Record<string, any>> {
+  const searchQuery = step.params?.search_query || task.ai_instruction || "ricerca generica";
+  const analysisData = previousResults.analyze_patterns || {};
+  const clientData = previousResults.fetch_client_data || {};
+  const contactName = task.contact_name || clientData.contact?.first_name || "N/A";
+
+  console.log(`${LOG_PREFIX} Esecuzione ricerca web: "${searchQuery}"`);
+
+  const prompt = `Sei un ricercatore AI specializzato in consulenza finanziaria e commerciale italiana.
+
+RICERCA RICHIESTA:
+${searchQuery}
+
+CONTESTO CLIENTE:
+Nome: ${contactName}
+Categoria task: ${task.task_category}
+
+${analysisData.key_topics ? `ARGOMENTI CORRELATI: ${JSON.stringify(analysisData.key_topics)}` : ""}
+
+ISTRUZIONE ORIGINALE:
+${task.ai_instruction}
+
+Cerca informazioni aggiornate e pertinenti su internet riguardo alla ricerca richiesta.
+Concentrati su:
+1. Normative e regolamenti italiani/europei rilevanti
+2. Andamenti di mercato e trend finanziari
+3. Notizie recenti pertinenti
+4. Dati statistici e benchmark di settore
+5. Best practice e raccomandazioni degli esperti
+
+Fornisci una risposta strutturata e dettagliata con le informazioni trovate, citando le fonti quando possibile.`;
+
+  const apiKey = await getGeminiApiKeyForClassifier();
+  if (!apiKey) throw new Error("No Gemini API key available");
+  const ai = new GoogleGenAI({ apiKey });
+
+  const response = await withRetry(async () => {
+    return await ai.models.generateContent({
+      model: GEMINI_LEGACY_MODEL,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 8192,
+        tools: [{ googleSearch: {} }],
+      },
+    });
+  });
+
+  const text = response.text || "";
+  console.log(`${LOG_PREFIX} Risposta ricerca web, lunghezza: ${text.length}`);
+
+  const groundingMetadata = (response as any).candidates?.[0]?.groundingMetadata;
+  const groundingChunks = groundingMetadata?.groundingChunks || [];
+  const searchQueries = groundingMetadata?.webSearchQueries || [];
+
+  const sources = groundingChunks
+    .filter((chunk: any) => chunk.web)
+    .map((chunk: any) => ({
+      url: chunk.web.uri,
+      title: chunk.web.title || "Fonte web",
+    }));
+
+  console.log(`${LOG_PREFIX} Ricerca web completata: ${sources.length} fonti trovate, ${searchQueries.length} query eseguite`);
+
+  return {
+    search_query: searchQuery,
+    findings: text,
+    sources,
+    search_queries_used: searchQueries,
+    grounding_metadata: groundingMetadata ? {
+      queries: searchQueries,
+      sources_count: sources.length,
+    } : null,
   };
 }

@@ -12,7 +12,7 @@ const LOG_PREFIX = "🧠 [DECISION-ENGINE]";
 
 export interface ExecutionStep {
   step: number;
-  action: "fetch_client_data" | "analyze_patterns" | "generate_report" | "prepare_call" | "voice_call" | "send_email" | "send_whatsapp";
+  action: "fetch_client_data" | "analyze_patterns" | "generate_report" | "prepare_call" | "voice_call" | "send_email" | "send_whatsapp" | "web_search";
   description: string;
   status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
   params?: Record<string, any>;
@@ -435,6 +435,7 @@ Le azioni disponibili sono:
 - "voice_call": Effettua una chiamata vocale
 - "send_email": Invia un'email
 - "send_whatsapp": Invia un messaggio WhatsApp
+- "web_search": Cerca informazioni aggiornate su internet (normative, mercati, notizie, trend finanziari)
 
 REGOLE:
 1. Usa SOLO i canali abilitati (${channelsList || "nessuno"})
