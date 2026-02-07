@@ -318,6 +318,22 @@ Analizza la conversazione e rispondi SOLO con JSON valido nel seguente formato:
 }
 
 REGOLE CRITICHE:
+
+⚠️ DISTINZIONE FONDAMENTALE - PROMEMORIA vs PRENOTAZIONE:
+Un altro sistema (Task Supervisor) gestisce promemoria, reminder, richiami e task.
+Tu ti occupi ESCLUSIVAMENTE di prenotazioni a CALENDARIO (appuntamenti, consulenze, visite).
+IGNORA COMPLETAMENTE queste richieste (sono compito del Task Supervisor):
+- "Ricordami di...", "Chiamami tra X minuti", "Richiamami per...", "Ogni giorno alle..."
+- Promemoria per fare qualcosa (spesa, palestra, medicine, ecc.)
+- Richieste di richiamo/callback senza contesto di appuntamento
+- Task ricorrenti, reminder giornalieri/settimanali
+ATTIVATI SOLO per queste richieste:
+- "Vorrei prendere un appuntamento", "Posso prenotare una consulenza?"
+- "Quando è disponibile il dottore/consulente?"
+- "Ho bisogno di fissare un incontro"
+- Richieste esplicite di slot a calendario con un professionista
+Se l'utente chiede un promemoria o un richiamo, mantieni newStage="nessun_intento".
+
 1. "confirmed" = true SOLO SE:
    a) L'ASSISTENTE ha proposto esplicitamente uno slot specifico (data+ora)
    b) L'UTENTE ha risposto affermativamente SUBITO DOPO
@@ -332,8 +348,8 @@ REGOLE CRITICHE:
 
 5. "aiProposedSlot" = riempi SOLO se l'ASSISTENTE ha proposto uno slot specifico nel suo ultimo messaggio (es: "mercoledì 12 alle 15:00, va bene?")
 
-6. Per "nessun_intento": nessuna menzione di appuntamenti, prenotazioni, disponibilità
-7. Per "raccolta_dati": conversazione in corso su booking ma mancano dati
+6. Per "nessun_intento": nessuna menzione di appuntamenti, prenotazioni, disponibilità. ANCHE per promemoria/reminder/richiami.
+7. Per "raccolta_dati": conversazione in corso su booking A CALENDARIO ma mancano dati
 8. Per "dati_completi": tutti i dati presenti ma manca conferma esplicita
 9. Per "confermato": confirmed=true E tutti i dati richiesti sono presenti`;
   }
