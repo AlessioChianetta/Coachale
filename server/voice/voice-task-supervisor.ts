@@ -389,11 +389,13 @@ export class VoiceTaskSupervisor {
 
       const scheduledAt = `${task.date}T${task.time}:00`;
 
+      const scheduledAtTz = `${scheduledAt} Europe/Rome`;
+
       const conflicts = await db.execute(sql`
         SELECT id, contact_name, ai_instruction, scheduled_at
         FROM ai_scheduled_tasks
         WHERE consultant_id = ${this.consultantId} AND contact_phone = ${this.contactPhone}
-        AND scheduled_at BETWEEN (${scheduledAt}::timestamptz - interval '30 minutes') AND (${scheduledAt}::timestamptz + interval '30 minutes')
+        AND scheduled_at BETWEEN (${scheduledAtTz}::timestamptz - interval '30 minutes') AND (${scheduledAtTz}::timestamptz + interval '30 minutes')
         AND status IN ('scheduled', 'retry_pending')
       `);
 
@@ -420,7 +422,7 @@ export class VoiceTaskSupervisor {
           retry_delay_minutes, status, voice_direction
         ) VALUES (
           ${taskId}, ${this.consultantId}, ${this.contactName}, ${this.contactPhone}, ${taskType},
-          ${aiInstruction}, ${scheduledAt}::timestamptz, 'Europe/Rome', ${task.recurrenceType || 'once'},
+          ${aiInstruction}, ${scheduledAtTz}::timestamptz, 'Europe/Rome', ${task.recurrenceType || 'once'},
           ${task.recurrenceDays && task.recurrenceDays.length > 0 ? `{${task.recurrenceDays.join(',')}}` : null}::integer[], ${task.recurrenceEndDate},
           ${maxAttempts}, 15, 'scheduled', 'outbound'
         )
@@ -458,11 +460,11 @@ export class VoiceTaskSupervisor {
     ];
 
     if (searchBy === 'date' && originalDate) {
-      whereConditions.push(sql`scheduled_at::date = ${originalDate}::date`);
+      whereConditions.push(sql`(scheduled_at AT TIME ZONE 'Europe/Rome')::date = ${originalDate}::date`);
     }
     if (searchBy === 'time' && originalTime) {
       const timeFilter = `${originalTime}:00`;
-      whereConditions.push(sql`scheduled_at::time = ${timeFilter}::time`);
+      whereConditions.push(sql`(scheduled_at AT TIME ZONE 'Europe/Rome')::time = ${timeFilter}::time`);
     }
     if (searchBy === 'description' && originalDescription) {
       whereConditions.push(sql`ai_instruction ILIKE ${'%' + originalDescription + '%'}`);
@@ -493,9 +495,9 @@ export class VoiceTaskSupervisor {
     const updateParts: any[] = [];
     if (newDate || newTime) {
       const existingDate = new Date(targetTask.scheduled_at);
-      const finalDate = newDate || existingDate.toISOString().slice(0, 10);
-      const finalTime = newTime || existingDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const newScheduledAt = `${finalDate}T${finalTime}:00`;
+      const finalDate = newDate || existingDate.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+      const finalTime = newTime || existingDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Rome' });
+      const newScheduledAt = `${finalDate}T${finalTime}:00 Europe/Rome`;
 
       await db.execute(sql`
         UPDATE ai_scheduled_tasks

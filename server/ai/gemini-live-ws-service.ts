@@ -1683,6 +1683,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let userMessagePendingResponse = false;
     let lastUserFinalTranscript = '';
     let lastUserMessageTimestamp = 0;
+    let lastUserMessageIndex = -1; // Tracks index of last real user message for supervisor gating
+    let lastSupervisorUserIndex = -1; // Last user message index that supervisors already analyzed
     let responseWatchdogRetries = 0;
     let modelResponsePending = false; // 🆕 Flag: Gemini ha iniziato a elaborare (qualsiasi serverContent ricevuto)
     let lastAiTurnCompleteTimestamp = 0; // 🆕 FIX: Traccia quando l'AI ha completato l'ultimo turno
@@ -2033,7 +2035,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         timestamp: new Date().toISOString()
       });
       
-      console.log(`💾 [${connectionId}] Saved USER message: "${trimmed.substring(0, 80)}${trimmed.length > 80 ? '...' : ''}" (${conversationMessages.length} total)`);
+      lastUserMessageIndex = conversationMessages.length - 1;
+      console.log(`💾 [${connectionId}] Saved USER message: "${trimmed.substring(0, 80)}${trimmed.length > 80 ? '...' : ''}" (${conversationMessages.length} total, userIdx: ${lastUserMessageIndex})`);
       
       // 📞 Update voice call transcript in real-time
       scheduleTranscriptUpdate();
@@ -6887,8 +6890,15 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               // 📞 Update voice call transcript in real-time
               scheduleTranscriptUpdate();
 
+              const lastMsg = conversationMessages.at(-1);
+              const lastMsgIsUser = lastMsg?.role === 'user';
+              const hasNewUserInput = lastMsgIsUser && lastUserMessageIndex > lastSupervisorUserIndex;
+              if (!hasNewUserInput) {
+                console.log(`⏭️  [${connectionId}] Supervisors SKIPPED - ${!lastMsgIsUser ? 'last msg is not user' : 'no new user input'} (lastUserIdx: ${lastUserMessageIndex}, lastSupervisorIdx: ${lastSupervisorUserIndex}, lastMsgRole: ${lastMsg?.role || 'none'})`);
+              }
+
               const taskSupervisorActive = taskSupervisor && ['raccolta_dati', 'dati_completi', 'confermato'].includes(taskSupervisor.getState().stage);
-              if (bookingSupervisor && isPhoneCall && !taskSupervisorActive) {
+              if (bookingSupervisor && isPhoneCall && !taskSupervisorActive && hasNewUserInput) {
                 (async () => {
                   try {
                     const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
@@ -6947,7 +6957,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 })();
               }
 
-              if (taskSupervisor && isPhoneCall) {
+              if (taskSupervisor && isPhoneCall && hasNewUserInput) {
                 (async () => {
                   try {
                     const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
@@ -6999,6 +7009,12 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     console.error(`❌ [${connectionId}] Task supervisor error:`, taskErr.message);
                   }
                 })();
+              }
+
+              const bookingSupervisorRan = bookingSupervisor && isPhoneCall && !taskSupervisorActive && hasNewUserInput;
+              const taskSupervisorRan = taskSupervisor && isPhoneCall && hasNewUserInput;
+              if (bookingSupervisorRan || taskSupervisorRan) {
+                lastSupervisorUserIndex = lastUserMessageIndex;
               }
               
               // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
