@@ -23,7 +23,6 @@ import {
   ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp
 } from "lucide-react";
 import { motion } from "framer-motion";
-import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -440,7 +439,6 @@ export default function ConsultantAIAutonomyPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
-        <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <div className="flex-1 flex overflow-hidden">
           <main className="flex-1 p-6 lg:px-8 overflow-auto">
             <div className="max-w-5xl space-y-6">
