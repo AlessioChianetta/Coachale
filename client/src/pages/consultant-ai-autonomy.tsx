@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Bot, Settings, Activity, Bell, BellOff, Phone, Mail, MessageSquare,
@@ -249,6 +249,216 @@ function getStepStatusIcon(status: string) {
   }
 }
 
+function getStepActionLabel(action: string): string {
+  const labels: Record<string, string> = {
+    fetch_client_data: "📊 Raccolta dati cliente",
+    analyze_patterns: "🔍 Analisi pattern e trend",
+    generate_report: "📝 Generazione report",
+    prepare_call: "📞 Preparazione chiamata",
+    voice_call: "🗣️ Chiamata vocale",
+    send_email: "📧 Invio email",
+    send_whatsapp: "💬 Invio WhatsApp",
+    web_search: "🌐 Ricerca web",
+  };
+  return labels[action] || action;
+}
+
+function DeepResearchResults({ results }: { results: Record<string, any> }) {
+  const sections: React.ReactNode[] = [];
+
+  const report = results.generate_report;
+  if (report && typeof report === 'object') {
+    sections.push(
+      <div key="report" className="space-y-4">
+        <h3 className="text-base font-bold flex items-center gap-2">
+          <Target className="h-5 w-5 text-primary" />
+          {report.title || "Report"}
+        </h3>
+        {report.summary && (
+          <p className="text-sm text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 leading-relaxed">
+            {report.summary}
+          </p>
+        )}
+        {report.sections && Array.isArray(report.sections) && report.sections.map((section: any, i: number) => (
+          <div key={i} className="space-y-1">
+            <h4 className="text-sm font-semibold text-foreground">{section.heading}</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{section.content}</p>
+          </div>
+        ))}
+        {report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0 && (
+          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 rounded-xl p-4">
+            <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">🔑 Risultati Chiave</p>
+            <ul className="space-y-1">
+              {report.key_findings.map((finding: string, i: number) => (
+                <li key={i} className="text-sm text-green-700 dark:text-green-300 flex items-start gap-2">
+                  <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>{finding}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold">💡 Raccomandazioni</p>
+            {report.recommendations.map((rec: any, i: number) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <div className={cn(
+                  "px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 mt-0.5",
+                  rec.priority === 'high' ? "bg-red-500/20 text-red-600" :
+                  rec.priority === 'medium' ? "bg-yellow-500/20 text-yellow-600" :
+                  "bg-green-500/20 text-green-600"
+                )}>
+                  {rec.priority === 'high' ? 'Alta' : rec.priority === 'medium' ? 'Media' : 'Bassa'}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{rec.action}</p>
+                  {rec.rationale && <p className="text-xs text-muted-foreground mt-0.5">{rec.rationale}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0 && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4">
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">➡️ Prossimi Passi</p>
+            <ol className="space-y-1 list-decimal list-inside">
+              {report.next_steps.map((step: string, i: number) => (
+                <li key={i} className="text-sm text-blue-700 dark:text-blue-300">{step}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const analysis = results.analyze_patterns;
+  if (analysis && typeof analysis === 'object' && !report) {
+    sections.push(
+      <div key="analysis" className="space-y-3">
+        <h3 className="text-base font-bold flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          Analisi
+        </h3>
+        {analysis.insights && Array.isArray(analysis.insights) && (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">Insight</p>
+            <ul className="space-y-1">
+              {analysis.insights.map((insight: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-yellow-500" />
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {analysis.risk_assessment && (
+          <div className={cn(
+            "rounded-xl p-4 border",
+            analysis.risk_assessment.level === 'high' ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50" :
+            analysis.risk_assessment.level === 'medium' ? "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/50" :
+            "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/50"
+          )}>
+            <p className="text-sm font-semibold mb-1">
+              {analysis.risk_assessment.level === 'high' ? '🔴' : analysis.risk_assessment.level === 'medium' ? '🟡' : '🟢'} Valutazione Rischio: {analysis.risk_assessment.level === 'high' ? 'Alto' : analysis.risk_assessment.level === 'medium' ? 'Medio' : 'Basso'}
+            </p>
+            <p className="text-sm text-muted-foreground">{analysis.risk_assessment.description}</p>
+          </div>
+        )}
+        {analysis.suggested_approach && (
+          <div className="bg-muted/50 rounded-lg p-3 border border-border">
+            <p className="text-sm font-semibold mb-1">Approccio Suggerito</p>
+            <p className="text-sm text-muted-foreground">{analysis.suggested_approach}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const webSearch = results.web_search;
+  if (webSearch && typeof webSearch === 'object') {
+    sections.push(
+      <div key="websearch" className="space-y-3">
+        <h3 className="text-base font-bold flex items-center gap-2">
+          🌐 Ricerca Web
+        </h3>
+        {webSearch.findings && (
+          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-4 border border-border">
+            {webSearch.findings}
+          </div>
+        )}
+        {webSearch.sources && Array.isArray(webSearch.sources) && webSearch.sources.length > 0 && (
+          <div>
+            <p className="text-sm font-semibold mb-2">Fonti</p>
+            <div className="space-y-1">
+              {webSearch.sources.map((source: any, i: number) => (
+                <a key={i} href={source.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                  <ArrowRight className="h-3 w-3" />
+                  {source.title || source.url}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const callPrep = results.prepare_call;
+  if (callPrep && typeof callPrep === 'object') {
+    sections.push(
+      <div key="callprep" className="space-y-3">
+        <h3 className="text-base font-bold flex items-center gap-2">
+          <Phone className="h-5 w-5 text-primary" />
+          Preparazione Chiamata
+        </h3>
+        {callPrep.opening_script && (
+          <div className="bg-muted/50 rounded-lg p-3 border border-border">
+            <p className="text-xs font-semibold text-muted-foreground mb-1">Apertura</p>
+            <p className="text-sm italic">"{callPrep.opening_script}"</p>
+          </div>
+        )}
+        {callPrep.talking_points && Array.isArray(callPrep.talking_points) && (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold">Punti di Discussione</p>
+            {callPrep.talking_points.map((tp: any, i: number) => (
+              <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border">
+                <p className="text-sm font-medium">{tp.topic}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{tp.key_message}</p>
+                {tp.supporting_details && <p className="text-xs text-muted-foreground mt-0.5 italic">{tp.supporting_details}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        {callPrep.closing_script && (
+          <div className="bg-muted/50 rounded-lg p-3 border border-border">
+            <p className="text-xs font-semibold text-muted-foreground mb-1">Chiusura</p>
+            <p className="text-sm italic">"{callPrep.closing_script}"</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (sections.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Separator />
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-primary" />
+        Risultati Deep Research
+      </h3>
+      {sections}
+    </div>
+  );
+}
+
 function getRelativeTime(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -448,6 +658,26 @@ export default function ConsultantAIAutonomyPage() {
       return res.json();
     },
     enabled: !!selectedTaskId,
+    refetchInterval: taskDetailData?.task?.status === 'in_progress' ? 2000 : false,
+  });
+
+  const executeTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/execute`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to execute");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Esecuzione avviata", description: "Alessia sta lavorando sul task..." });
+      queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${selectedTaskId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks"] });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile avviare l'esecuzione", variant: "destructive" });
+    },
   });
 
   const handleSave = () => {
@@ -1507,137 +1737,203 @@ export default function ConsultantAIAutonomyPage() {
                 )}
 
                 <Dialog open={!!selectedTaskId} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
-                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
                     {loadingTaskDetail ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      <div className="flex items-center justify-center py-20">
+                        <DialogHeader className="sr-only"><DialogTitle>Caricamento task</DialogTitle><DialogDescription>Caricamento dettagli task in corso</DialogDescription></DialogHeader>
+                        <div className="text-center space-y-3">
+                          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+                          <p className="text-sm text-muted-foreground">Caricamento...</p>
+                        </div>
                       </div>
                     ) : taskDetailData?.task ? (
                       <>
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2 text-lg">
-                            <Target className="h-5 w-5" />
-                            Dettaglio Task
-                          </DialogTitle>
-                        </DialogHeader>
-
-                        <div className="space-y-6 mt-2">
-                          <div className="space-y-3">
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">Istruzione</p>
-                              <p className="mt-1">{taskDetailData.task.ai_instruction}</p>
-                            </div>
-                            {taskDetailData.task.ai_reasoning && (
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Ragionamento AI</p>
-                                <p className="mt-1 text-sm">{taskDetailData.task.ai_reasoning}</p>
-                              </div>
+                        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-6 py-5 text-white">
+                          <DialogHeader>
+                            <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
+                              <Brain className="h-5 w-5" />
+                              Deep Research
+                            </DialogTitle>
+                            <DialogDescription className="sr-only">Dettaglio task e risultati deep research</DialogDescription>
+                          </DialogHeader>
+                          <p className="text-sm text-slate-300 mt-2 leading-relaxed">{taskDetailData.task.ai_instruction}</p>
+                          <div className="flex items-center gap-3 mt-3 flex-wrap">
+                            <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                              taskDetailData.task.status === 'completed' ? "bg-green-500/20 text-green-300 border border-green-500/30" :
+                              taskDetailData.task.status === 'failed' ? "bg-red-500/20 text-red-300 border border-red-500/30" :
+                              taskDetailData.task.status === 'in_progress' ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" :
+                              taskDetailData.task.status === 'paused' ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30" :
+                              "bg-slate-500/20 text-slate-300 border border-slate-500/30"
+                            )}>
+                              {taskDetailData.task.status === 'completed' ? '✅ Completato' :
+                               taskDetailData.task.status === 'failed' ? '❌ Fallito' :
+                               taskDetailData.task.status === 'in_progress' ? '⚡ In esecuzione...' :
+                               taskDetailData.task.status === 'paused' ? '⏸️ In pausa' :
+                               taskDetailData.task.status === 'scheduled' ? '📅 Programmato' :
+                               taskDetailData.task.status}
+                            </span>
+                            {getCategoryBadge(taskDetailData.task.task_category)}
+                            {taskDetailData.task.ai_confidence != null && (
+                              <span className="text-xs text-slate-400">
+                                Confidenza: {Math.round(taskDetailData.task.ai_confidence * 100)}%
+                              </span>
                             )}
-                            <div className="flex items-center gap-4 flex-wrap">
-                              {getTaskStatusBadge(taskDetailData.task.status)}
-                              {getCategoryBadge(taskDetailData.task.task_category)}
-                              {getPriorityIndicator(taskDetailData.task.priority)}
-                              {taskDetailData.task.ai_confidence != null && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Hash className="h-3 w-3 mr-1" />
-                                  Confidenza: {Math.round(taskDetailData.task.ai_confidence * 100)}%
-                                </Badge>
-                              )}
-                            </div>
-                            {taskDetailData.task.contact_name && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Bot className="h-4 w-4" />
-                                <span>{taskDetailData.task.contact_name}</span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                              <span>Creato: {new Date(taskDetailData.task.created_at).toLocaleString("it-IT")}</span>
-                              {taskDetailData.task.scheduled_at && (
-                                <span>Schedulato: {new Date(taskDetailData.task.scheduled_at).toLocaleString("it-IT")}</span>
-                              )}
-                              {taskDetailData.task.completed_at && (
-                                <span>Completato: {new Date(taskDetailData.task.completed_at).toLocaleString("it-IT")}</span>
-                              )}
-                            </div>
+                            <span className="text-xs text-slate-400">
+                              {new Date(taskDetailData.task.created_at).toLocaleString("it-IT")}
+                            </span>
                           </div>
+                          
+                          {(taskDetailData.task.status === 'paused' || taskDetailData.task.status === 'scheduled') && (
+                            <Button
+                              onClick={() => executeTaskMutation.mutate(taskDetailData.task.id)}
+                              disabled={executeTaskMutation.isPending}
+                              className="mt-4 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white border-0"
+                            >
+                              {executeTaskMutation.isPending ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Avvio in corso...
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="h-4 w-4 mr-2" />
+                                  Esegui ora
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
 
-                          {taskDetailData.task.execution_plan && taskDetailData.task.execution_plan.length > 0 && (
-                            <>
-                              <Separator />
-                              <div>
-                                <p className="text-sm font-medium mb-3">Piano di Esecuzione</p>
-                                <div className="space-y-0">
-                                  {taskDetailData.task.execution_plan.map((step, idx) => (
-                                    <div key={step.step} className="flex gap-3">
-                                      <div className="flex flex-col items-center">
-                                        {getStepStatusIcon(step.status)}
-                                        {idx < taskDetailData.task.execution_plan!.length - 1 && (
-                                          <div className="w-0.5 flex-1 bg-border my-1 min-h-[24px]" />
-                                        )}
-                                      </div>
-                                      <div className="pb-4">
-                                        <p className="text-sm font-medium">{step.description}</p>
-                                        <p className="text-xs text-muted-foreground">{step.action}</p>
-                                      </div>
-                                    </div>
-                                  ))}
+                        <div className="p-6 space-y-6">
+                          {taskDetailData.task.status === 'in_progress' && (
+                            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="relative">
+                                  <Brain className="h-8 w-8 text-blue-500" />
+                                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-blue-800 dark:text-blue-200">Alessia sta lavorando...</p>
+                                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                                    {taskDetailData.task.result_summary || "Elaborazione in corso"}
+                                  </p>
                                 </div>
                               </div>
-                            </>
+                            </div>
                           )}
-
-                          {taskDetailData.task.result_summary && (
-                            <>
-                              <Separator />
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Risultato</p>
-                                <p className="mt-1 text-sm">{taskDetailData.task.result_summary}</p>
+                          
+                          {taskDetailData.task.ai_reasoning && (
+                            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border border-purple-200 dark:border-purple-800/50 rounded-xl p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Sparkles className="h-4 w-4 text-purple-500" />
+                                <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">Ragionamento AI</p>
                               </div>
-                            </>
-                          )}
-
-                          {taskDetailData.task.result_data && (
-                            <div className="bg-muted/50 rounded-lg p-3">
-                              <p className="text-xs font-medium text-muted-foreground mb-1">Dati risultato</p>
-                              <pre className="text-xs overflow-auto max-h-40">
-                                {JSON.stringify(taskDetailData.task.result_data, null, 2)}
-                              </pre>
+                              <p className="text-sm text-purple-700 dark:text-purple-300 leading-relaxed whitespace-pre-wrap">
+                                {taskDetailData.task.ai_reasoning}
+                              </p>
                             </div>
                           )}
 
-                          {taskDetailData.activity && taskDetailData.activity.length > 0 && (
-                            <>
-                              <Separator />
-                              <div>
-                                <p className="text-sm font-medium mb-3">Timeline Attività</p>
-                                <div className="space-y-3">
-                                  {taskDetailData.activity.map((act) => (
-                                    <div key={act.id} className="flex items-start gap-3">
-                                      <div className={`mt-0.5 p-1.5 rounded-full ${
-                                        act.severity === "error" ? "bg-red-500/10 text-red-500" :
-                                        act.severity === "warning" ? "bg-yellow-500/10 text-yellow-500" :
-                                        act.severity === "success" ? "bg-green-500/10 text-green-500" :
-                                        "bg-blue-500/10 text-blue-500"
-                                      }`}>
-                                        {getActivityIcon(act.icon)}
+                          {taskDetailData.task.execution_plan && taskDetailData.task.execution_plan.length > 0 && (
+                            <div>
+                              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                                <Cog className="h-4 w-4 text-muted-foreground" />
+                                Piano di Esecuzione
+                              </h3>
+                              <div className="space-y-0 ml-2">
+                                {taskDetailData.task.execution_plan.map((step, idx) => {
+                                  const isActive = step.status === 'in_progress';
+                                  const isCompleted = step.status === 'completed';
+                                  const isFailed = step.status === 'failed';
+                                  
+                                  return (
+                                    <div key={step.step} className="flex gap-4">
+                                      <div className="flex flex-col items-center">
+                                        <div className={cn(
+                                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                                          isCompleted ? "bg-green-500 text-white shadow-lg shadow-green-500/20" :
+                                          isActive ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30 animate-pulse" :
+                                          isFailed ? "bg-red-500 text-white shadow-lg shadow-red-500/20" :
+                                          "bg-muted text-muted-foreground"
+                                        )}>
+                                          {isCompleted ? <CheckCircle className="h-4 w-4" /> :
+                                           isActive ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                                           isFailed ? <XCircle className="h-4 w-4" /> :
+                                           step.step}
+                                        </div>
+                                        {idx < taskDetailData.task.execution_plan!.length - 1 && (
+                                          <div className={cn(
+                                            "w-0.5 flex-1 my-1 min-h-[32px] transition-colors",
+                                            isCompleted ? "bg-green-500" : "bg-border"
+                                          )} />
+                                        )}
                                       </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium">{act.title}</p>
-                                        <p className="text-xs text-muted-foreground">{act.description}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          {getRelativeTime(act.created_at)}
+                                      <div className="pb-6 flex-1">
+                                        <p className={cn(
+                                          "text-sm font-medium",
+                                          isActive && "text-blue-600 dark:text-blue-400",
+                                          isCompleted && "text-green-700 dark:text-green-400"
+                                        )}>{step.description}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                          {getStepActionLabel(step.action)}
                                         </p>
                                       </div>
                                     </div>
-                                  ))}
-                                </div>
+                                  );
+                                })}
                               </div>
-                            </>
+                            </div>
+                          )}
+
+                          {taskDetailData.task.result_summary && taskDetailData.task.status !== 'in_progress' && (
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                              <p className="text-sm font-semibold mb-1 flex items-center gap-2">
+                                <Info className="h-4 w-4 text-muted-foreground" />
+                                Riepilogo
+                              </p>
+                              <p className="text-sm text-muted-foreground">{taskDetailData.task.result_summary}</p>
+                            </div>
+                          )}
+
+                          {taskDetailData.task.result_data && taskDetailData.task.result_data.results && (
+                            <DeepResearchResults results={taskDetailData.task.result_data.results} />
+                          )}
+
+                          {taskDetailData.activity && taskDetailData.activity.length > 0 && (
+                            <div>
+                              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                <Activity className="h-4 w-4 text-muted-foreground" />
+                                Timeline
+                              </h3>
+                              <div className="space-y-2">
+                                {taskDetailData.activity.map((act) => (
+                                  <div key={act.id} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-muted/30">
+                                    <div className={cn(
+                                      "mt-0.5 p-1 rounded-full shrink-0",
+                                      act.severity === "error" ? "bg-red-500/10 text-red-500" :
+                                      act.severity === "warning" ? "bg-yellow-500/10 text-yellow-500" :
+                                      act.severity === "success" ? "bg-green-500/10 text-green-500" :
+                                      "bg-blue-500/10 text-blue-500"
+                                    )}>
+                                      {getActivityIcon(act.icon)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium">{act.title}</p>
+                                      <p className="text-xs text-muted-foreground">{act.description}</p>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                                      {getRelativeTime(act.created_at)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </>
                     ) : (
-                      <div className="py-8 text-center text-muted-foreground">
+                      <div className="py-12 text-center text-muted-foreground">
+                        <DialogHeader className="sr-only"><DialogTitle>Task non trovato</DialogTitle><DialogDescription>Il task richiesto non esiste</DialogDescription></DialogHeader>
                         Task non trovato
                       </div>
                     )}

@@ -4,6 +4,9 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-factory";
+import { generateExecutionPlan, type ExecutionStep } from "../ai/autonomous-decision-engine";
+import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
+import { logActivity } from "../cron/ai-task-scheduler";
 
 const router = Router();
 
@@ -526,6 +529,297 @@ router.delete("/chat/history", authenticateToken, requireAnyRole(["consultant", 
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error clearing chat history:", error);
     return res.status(500).json({ error: "Failed to clear chat history" });
+  }
+});
+
+router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const taskResult = await db.execute(sql`
+      SELECT * FROM ai_scheduled_tasks
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    const task = taskResult.rows[0] as any;
+
+    if (!['paused', 'scheduled'].includes(task.status)) {
+      return res.status(400).json({ error: `Cannot execute task with status '${task.status}'. Only 'paused' or 'scheduled' tasks can be manually executed.` });
+    }
+
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'in_progress',
+          current_attempt = COALESCE(current_attempt, 0) + 1,
+          last_attempt_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${id}
+    `);
+
+    res.json({ success: true, status: 'executing' });
+
+    const runExecution = async () => {
+      try {
+        let executionPlan: ExecutionStep[] = Array.isArray(task.execution_plan) && task.execution_plan.length > 0
+          ? task.execution_plan as ExecutionStep[]
+          : [];
+
+        if (executionPlan.length === 0) {
+          console.log(`🧠 [AI-AUTONOMY] Task ${task.id} has no execution plan, generating via Decision Engine...`);
+
+          await logActivity(task.consultant_id, {
+            event_type: 'decision_made',
+            title: `Generazione piano per: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+            description: 'Decision Engine sta analizzando il contesto e creando un piano di esecuzione',
+            icon: 'brain',
+            severity: 'info',
+            task_id: task.id,
+            contact_name: task.contact_name,
+            contact_id: task.contact_id,
+          });
+
+          const decision = await generateExecutionPlan({
+            id: task.id,
+            consultant_id: task.consultant_id,
+            contact_id: task.contact_id,
+            contact_phone: task.contact_phone,
+            contact_name: task.contact_name,
+            ai_instruction: task.ai_instruction,
+            task_category: task.task_category,
+            priority: task.priority,
+          });
+
+          if (!decision.should_execute) {
+            console.log(`🛑 [AI-AUTONOMY] Decision Engine says skip task ${task.id}: ${decision.reasoning}`);
+
+            await db.execute(sql`
+              UPDATE ai_scheduled_tasks
+              SET status = 'completed',
+                  ai_reasoning = ${decision.reasoning},
+                  ai_confidence = ${decision.confidence},
+                  result_summary = ${`AI ha deciso di non eseguire: ${decision.reasoning.substring(0, 200)}`},
+                  result_data = ${JSON.stringify({ decision: 'skip', reasoning: decision.reasoning })}::jsonb,
+                  completed_at = NOW(),
+                  updated_at = NOW()
+              WHERE id = ${task.id}
+            `);
+
+            await logActivity(task.consultant_id, {
+              event_type: 'decision_made',
+              title: `Task non necessario: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+              description: decision.reasoning.substring(0, 300),
+              icon: 'brain',
+              severity: 'info',
+              task_id: task.id,
+              contact_name: task.contact_name,
+              contact_id: task.contact_id,
+              event_data: { confidence: decision.confidence }
+            });
+            return;
+          }
+
+          executionPlan = decision.execution_plan;
+
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
+                ai_reasoning = ${decision.reasoning},
+                ai_confidence = ${decision.confidence},
+                started_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+
+          console.log(`🧠 [AI-AUTONOMY] Generated ${executionPlan.length}-step plan for task ${task.id} (confidence: ${decision.confidence})`);
+        }
+
+        const totalSteps = executionPlan.length;
+
+        await logActivity(task.consultant_id, {
+          event_type: 'task_started',
+          title: `Task avviato (manuale): ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+          description: `${totalSteps} step da eseguire. Categoria: ${task.task_category}`,
+          icon: 'brain',
+          severity: 'info',
+          task_id: task.id,
+          contact_name: task.contact_name,
+          contact_id: task.contact_id,
+        });
+
+        const taskInfo: AITaskInfo = {
+          id: task.id,
+          consultant_id: task.consultant_id,
+          contact_id: task.contact_id,
+          contact_phone: task.contact_phone,
+          contact_name: task.contact_name,
+          ai_instruction: task.ai_instruction,
+          task_category: task.task_category,
+          priority: task.priority,
+          timezone: task.timezone || 'Europe/Rome',
+        };
+
+        const allResults: Record<string, any> = {};
+        let completedSteps = 0;
+        let failedStep: string | null = null;
+
+        for (let i = 0; i < totalSteps; i++) {
+          const step = executionPlan[i];
+          const stepName = step.action || `step_${i + 1}`;
+
+          console.log(`🧠 [AI-AUTONOMY] Executing step ${i + 1}/${totalSteps}: ${stepName}`);
+
+          executionPlan[i] = { ...executionPlan[i], status: 'in_progress' };
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
+                result_summary = ${`Eseguendo step ${i + 1}/${totalSteps}: ${step.description || stepName}`},
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+
+          const stepResult = await executeStep(taskInfo, step, allResults);
+
+          if (stepResult.success) {
+            executionPlan[i] = { ...executionPlan[i], status: 'completed' };
+            allResults[stepName] = stepResult.result;
+            allResults[`step_${i + 1}`] = stepResult.result;
+            completedSteps++;
+
+            console.log(`✅ [AI-AUTONOMY] Step ${i + 1}/${totalSteps} completed in ${stepResult.duration_ms}ms`);
+          } else {
+            executionPlan[i] = { ...executionPlan[i], status: 'failed' };
+            failedStep = stepName;
+
+            console.error(`❌ [AI-AUTONOMY] Step ${i + 1}/${totalSteps} failed: ${stepResult.error}`);
+
+            for (let j = i + 1; j < totalSteps; j++) {
+              executionPlan[j] = { ...executionPlan[j], status: 'skipped' };
+            }
+            break;
+          }
+
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+        }
+
+        if (failedStep) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET status = 'failed',
+                execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
+                result_summary = ${`Fallito allo step "${failedStep}" (${completedSteps}/${totalSteps} completati)`},
+                result_data = ${JSON.stringify({ steps_completed: completedSteps, total_steps: totalSteps, results: allResults })}::jsonb,
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+
+          await logActivity(task.consultant_id, {
+            event_type: 'task_failed',
+            title: `Task fallito: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+            description: `Errore nello step "${failedStep}" (${completedSteps}/${totalSteps} completati)`,
+            icon: 'alert',
+            severity: 'error',
+            task_id: task.id,
+            contact_name: task.contact_name,
+            contact_id: task.contact_id,
+            event_data: { steps_completed: completedSteps, failed_step: failedStep }
+          });
+        } else {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET status = 'completed',
+                execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
+                result_summary = ${`Completato: ${totalSteps} step eseguiti con successo`},
+                result_data = ${JSON.stringify({ steps_completed: totalSteps, total_steps: totalSteps, results: allResults })}::jsonb,
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+
+          if (task.call_after_task && task.contact_phone) {
+            console.log(`📞 [AI-AUTONOMY] Task ${task.id} requires post-task call to ${task.contact_phone}`);
+            const callTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+
+            const talkingPoints = allResults['prepare_call']?.talking_points;
+            const callInstruction = talkingPoints
+              ? `Punti da discutere:\n${talkingPoints.map((tp: any, idx: number) => `${idx + 1}. ${typeof tp === 'string' ? tp : tp.topic || tp.point || JSON.stringify(tp)}`).join('\n')}`
+              : task.ai_instruction;
+
+            await db.execute(sql`
+              INSERT INTO ai_scheduled_tasks (
+                id, consultant_id, contact_name, contact_phone, task_type,
+                ai_instruction, scheduled_at, timezone, status, origin_type,
+                task_category, parent_task_id, priority
+              ) VALUES (
+                ${callTaskId}, ${task.consultant_id}, ${task.contact_name}, ${task.contact_phone},
+                'single_call', ${callInstruction}, NOW() + INTERVAL '1 minute',
+                ${task.timezone || 'Europe/Rome'}, 'scheduled', 'autonomous',
+                'followup', ${task.id}, ${task.priority}
+              )
+            `);
+            console.log(`📞 [AI-AUTONOMY] Created follow-up call task ${callTaskId}`);
+          }
+
+          await logActivity(task.consultant_id, {
+            event_type: 'task_completed',
+            title: `Task completato: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+            description: `${totalSteps} step completati con successo`,
+            icon: 'check',
+            severity: 'success',
+            task_id: task.id,
+            contact_name: task.contact_name,
+            contact_id: task.contact_id,
+            event_data: { steps_completed: totalSteps }
+          });
+
+          console.log(`✅ [AI-AUTONOMY] Manual task execution ${task.id} completed (${totalSteps} steps)`);
+        }
+      } catch (error: any) {
+        console.error(`❌ [AI-AUTONOMY] Manual task execution ${task.id} failed:`, error.message);
+
+        await db.execute(sql`
+          UPDATE ai_scheduled_tasks
+          SET status = 'failed',
+              result_summary = ${`Errore: ${error.message}`},
+              completed_at = NOW(),
+              updated_at = NOW()
+          WHERE id = ${task.id}
+        `);
+
+        await logActivity(task.consultant_id, {
+          event_type: 'task_failed',
+          title: `Task fallito: ${task.ai_instruction?.substring(0, 80) || 'Task AI'}`,
+          description: `Errore: ${error.message}`,
+          icon: 'alert',
+          severity: 'error',
+          task_id: task.id,
+          contact_name: task.contact_name,
+          contact_id: task.contact_id,
+        });
+      }
+    };
+
+    runExecution();
+
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error starting task execution:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: "Failed to start task execution" });
+    }
   }
 });
 
