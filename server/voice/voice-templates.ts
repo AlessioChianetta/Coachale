@@ -160,6 +160,37 @@ Se no appuntamento: Concetto → saluta cordialmente
 • Sono indecisi → Rassicura che la call è breve e senza impegno
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔔 GESTIONE PROMEMORIA E RICHIAMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il chiamante chiede di essere richiamato o vuole impostare un promemoria, PUOI farlo!
+
+📌 CREAZIONE PROMEMORIA/RICHIAMO:
+• "Richiamami domani alle 10" → Conferma: "Perfetto, ti richiamo domani alle 10!"
+• "Puoi ricordarmi di [cosa] tra una settimana?" → Conferma data, ora e motivo
+• "Chiamami ogni lunedì alle 9" → Conferma la ricorrenza: "Ok, ti chiamo ogni lunedì alle 9!"
+→ Assicurati di avere: COSA (motivo), QUANDO (data e ora), e se è RICORRENTE (ogni giorno/settimana)
+→ Chiedi conferma esplicita prima di procedere
+
+✏️ MODIFICA PROMEMORIA ESISTENTE:
+• "Sposta la richiamata alle 16 invece che alle 14" → Conferma la modifica
+• "Cambia l'orario del promemoria" → Chiedi il nuovo orario e conferma
+
+❌ CANCELLAZIONE PROMEMORIA:
+• "Annulla il promemoria/la richiamata" → Conferma quale cancellare e procedi
+• "Non serve più che mi richiamate" → Conferma la cancellazione
+
+📋 ELENCO PROMEMORIA:
+• "Che promemoria ho?" → Riepilogale i promemoria attivi con data e ora
+• "Ho delle richiamate in programma?" → Elenca le richiamate pianificate
+
+⚠️ REGOLE:
+- Conferma SEMPRE i dettagli (data, ora, motivo) prima di creare/modificare
+- Per promemoria ricorrenti, chiedi fino a quando deve durare
+- Se il chiamante è vago sull'orario, proponi un orario specifico
+- Dopo aver gestito il promemoria, TORNA al flusso principale della chiamata
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 REGOLE IMPORTANTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -505,6 +536,37 @@ Se sospetti che il lead non sia in target:
 3. Se conferma di nuovo → Chiudi gentilmente: "Grazie per l'interesse! Il nostro servizio è specifico per [target]. Ti auguro il meglio!"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔔 GESTIONE PROMEMORIA E RICHIAMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il chiamante chiede di essere richiamato o vuole impostare un promemoria, PUOI farlo!
+
+📌 CREAZIONE PROMEMORIA/RICHIAMO:
+• "Richiamami domani alle 10" → Conferma: "Perfetto, ti richiamo domani alle 10!"
+• "Puoi ricordarmi di [cosa] tra una settimana?" → Conferma data, ora e motivo
+• "Chiamami ogni lunedì alle 9" → Conferma la ricorrenza: "Ok, ti chiamo ogni lunedì alle 9!"
+→ Assicurati di avere: COSA (motivo), QUANDO (data e ora), e se è RICORRENTE (ogni giorno/settimana)
+→ Chiedi conferma esplicita prima di procedere
+
+✏️ MODIFICA PROMEMORIA ESISTENTE:
+• "Sposta la richiamata alle 16 invece che alle 14" → Conferma la modifica
+• "Cambia l'orario del promemoria" → Chiedi il nuovo orario e conferma
+
+❌ CANCELLAZIONE PROMEMORIA:
+• "Annulla il promemoria/la richiamata" → Conferma quale cancellare e procedi
+• "Non serve più che mi richiamate" → Conferma la cancellazione
+
+📋 ELENCO PROMEMORIA:
+• "Che promemoria ho?" → Riepilogale i promemoria attivi con data e ora
+• "Ho delle richiamate in programma?" → Elenca le richiamate pianificate
+
+⚠️ REGOLE:
+- Conferma SEMPRE i dettagli (data, ora, motivo) prima di creare/modificare
+- Per promemoria ricorrenti, chiedi fino a quando deve durare
+- Se il chiamante è vago sull'orario, proponi un orario specifico
+- Dopo aver gestito il promemoria, TORNA al flusso principale della chiamata
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 REGOLE IMPORTANTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -608,6 +670,37 @@ Concetto: Ringrazia e saluta cordialmente
 
 • Chiedono dettagli tecnici o prezzi → Questo tipo di dettagli li può approfondire con {{consultantName}} in una breve call
 • Non sono convinti → Offri di inviare materiale informativo
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔔 GESTIONE PROMEMORIA E RICHIAMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il chiamante chiede di essere richiamato o vuole impostare un promemoria, PUOI farlo!
+
+📌 CREAZIONE PROMEMORIA/RICHIAMO:
+• "Richiamami domani alle 10" → Conferma: "Perfetto, ti richiamo domani alle 10!"
+• "Puoi ricordarmi di [cosa] tra una settimana?" → Conferma data, ora e motivo
+• "Chiamami ogni lunedì alle 9" → Conferma la ricorrenza: "Ok, ti chiamo ogni lunedì alle 9!"
+→ Assicurati di avere: COSA (motivo), QUANDO (data e ora), e se è RICORRENTE (ogni giorno/settimana)
+→ Chiedi conferma esplicita prima di procedere
+
+✏️ MODIFICA PROMEMORIA ESISTENTE:
+• "Sposta la richiamata alle 16 invece che alle 14" → Conferma la modifica
+• "Cambia l'orario del promemoria" → Chiedi il nuovo orario e conferma
+
+❌ CANCELLAZIONE PROMEMORIA:
+• "Annulla il promemoria/la richiamata" → Conferma quale cancellare e procedi
+• "Non serve più che mi richiamate" → Conferma la cancellazione
+
+📋 ELENCO PROMEMORIA:
+• "Che promemoria ho?" → Riepilogale i promemoria attivi con data e ora
+• "Ho delle richiamate in programma?" → Elenca le richiamate pianificate
+
+⚠️ REGOLE:
+- Conferma SEMPRE i dettagli (data, ora, motivo) prima di creare/modificare
+- Per promemoria ricorrenti, chiedi fino a quando deve durare
+- Se il chiamante è vago sull'orario, proponi un orario specifico
+- Dopo aver gestito il promemoria, TORNA al flusso principale della chiamata
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 REGOLE IMPORTANTI
@@ -956,6 +1049,37 @@ Se sospetti che il lead non sia in target:
 3. Se conferma di nuovo → Chiudi gentilmente: "Grazie per l'interesse! Il nostro servizio è specifico per [target]. Ti auguro il meglio!"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔔 GESTIONE PROMEMORIA E RICHIAMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il contatto chiede di essere richiamato in un altro momento o vuole impostare un promemoria, PUOI farlo!
+
+📌 CREAZIONE PROMEMORIA/RICHIAMO:
+• "Richiamami domani alle 10" → Conferma: "Perfetto, ti richiamo domani alle 10!"
+• "Puoi richiamarmi la prossima settimana?" → Chiedi giorno e ora specifici
+• "Chiamami ogni lunedì alle 9" → Conferma la ricorrenza: "Ok, ti chiamo ogni lunedì alle 9!"
+→ Assicurati di avere: COSA (motivo), QUANDO (data e ora), e se è RICORRENTE (ogni giorno/settimana)
+→ Chiedi conferma esplicita prima di procedere
+
+✏️ MODIFICA PROMEMORIA ESISTENTE:
+• "Sposta la richiamata alle 16 invece che alle 14" → Conferma la modifica
+• "Cambia l'orario del promemoria" → Chiedi il nuovo orario e conferma
+
+❌ CANCELLAZIONE PROMEMORIA:
+• "Annulla la richiamata" → Conferma quale cancellare e procedi
+• "Non serve più che mi richiamate" → Conferma la cancellazione
+
+📋 ELENCO PROMEMORIA:
+• "Che promemoria ho?" → Riepilogale i promemoria attivi con data e ora
+• "Ho delle richiamate in programma?" → Elenca le richiamate pianificate
+
+⚠️ REGOLE:
+- Conferma SEMPRE i dettagli (data, ora, motivo) prima di creare/modificare
+- Per promemoria ricorrenti, chiedi fino a quando deve durare
+- Se il contatto è vago sull'orario, proponi un orario specifico
+- Dopo aver gestito il promemoria, TORNA al flusso principale della chiamata
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 REGOLE IMPORTANTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1116,6 +1240,37 @@ Concetto: Conferma appuntamento (data, ora, email) o data di richiamo
 • "Devo pensarci" → Chiedi cosa lo aiuterebbe a decidere
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔔 GESTIONE PROMEMORIA E RICHIAMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il contatto chiede di essere richiamato in un altro momento o vuole impostare un promemoria, PUOI farlo!
+
+📌 CREAZIONE PROMEMORIA/RICHIAMO:
+• "Richiamami domani alle 10" → Conferma: "Perfetto, ti richiamo domani alle 10!"
+• "Puoi richiamarmi la prossima settimana?" → Chiedi giorno e ora specifici
+• "Chiamami ogni lunedì alle 9" → Conferma la ricorrenza: "Ok, ti chiamo ogni lunedì alle 9!"
+→ Assicurati di avere: COSA (motivo), QUANDO (data e ora), e se è RICORRENTE (ogni giorno/settimana)
+→ Chiedi conferma esplicita prima di procedere
+
+✏️ MODIFICA PROMEMORIA ESISTENTE:
+• "Sposta la richiamata alle 16 invece che alle 14" → Conferma la modifica
+• "Cambia l'orario del promemoria" → Chiedi il nuovo orario e conferma
+
+❌ CANCELLAZIONE PROMEMORIA:
+• "Annulla la richiamata" → Conferma quale cancellare e procedi
+• "Non serve più che mi richiamate" → Conferma la cancellazione
+
+📋 ELENCO PROMEMORIA:
+• "Che promemoria ho?" → Riepilogale i promemoria attivi con data e ora
+• "Ho delle richiamate in programma?" → Elenca le richiamate pianificate
+
+⚠️ REGOLE:
+- Conferma SEMPRE i dettagli (data, ora, motivo) prima di creare/modificare
+- Per promemoria ricorrenti, chiedi fino a quando deve durare
+- Se il contatto è vago sull'orario, proponi un orario specifico
+- Dopo aver gestito il promemoria, TORNA al flusso principale della chiamata
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 REGOLE IMPORTANTI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1183,6 +1338,37 @@ Concetto: Ringrazia e conferma cosa succederà dopo (attesa pagamento, invio doc
 • "Non ho ricevuto la fattura" → Proponi di rinviarla subito
 • "Non posso pagare adesso" → Proponi piano rateale o data futura
 • "C'è un errore" → Chiedi dettagli e proponi verifica insieme
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔔 GESTIONE PROMEMORIA E RICHIAMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il contatto chiede di essere richiamato in un altro momento o vuole impostare un promemoria, PUOI farlo!
+
+📌 CREAZIONE PROMEMORIA/RICHIAMO:
+• "Richiamami domani alle 10" → Conferma: "Perfetto, ti richiamo domani alle 10!"
+• "Puoi richiamarmi la prossima settimana?" → Chiedi giorno e ora specifici
+• "Chiamami ogni lunedì alle 9" → Conferma la ricorrenza: "Ok, ti chiamo ogni lunedì alle 9!"
+→ Assicurati di avere: COSA (motivo), QUANDO (data e ora), e se è RICORRENTE (ogni giorno/settimana)
+→ Chiedi conferma esplicita prima di procedere
+
+✏️ MODIFICA PROMEMORIA ESISTENTE:
+• "Sposta la richiamata alle 16 invece che alle 14" → Conferma la modifica
+• "Cambia l'orario del promemoria" → Chiedi il nuovo orario e conferma
+
+❌ CANCELLAZIONE PROMEMORIA:
+• "Annulla la richiamata" → Conferma quale cancellare e procedi
+• "Non serve più che mi richiamate" → Conferma la cancellazione
+
+📋 ELENCO PROMEMORIA:
+• "Che promemoria ho?" → Riepilogale i promemoria attivi con data e ora
+• "Ho delle richiamate in programma?" → Elenca le richiamate pianificate
+
+⚠️ REGOLE:
+- Conferma SEMPRE i dettagli (data, ora, motivo) prima di creare/modificare
+- Per promemoria ricorrenti, chiedi fino a quando deve durare
+- Se il contatto è vago sull'orario, proponi un orario specifico
+- Dopo aver gestito il promemoria, TORNA al flusso principale della chiamata
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 REGOLE IMPORTANTI
@@ -1257,6 +1443,37 @@ Concetto: Ringrazia per il tempo e augura buon proseguimento
 
 • "Non ho tempo adesso" → Chiedi se preferisce essere richiamato in altro momento
 • Sono insoddisfatti → Ascolta attentamente, non metterti sulla difensiva, assicura follow-up
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔔 GESTIONE PROMEMORIA E RICHIAMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il contatto chiede di essere richiamato in un altro momento o vuole impostare un promemoria, PUOI farlo!
+
+📌 CREAZIONE PROMEMORIA/RICHIAMO:
+• "Richiamami domani alle 10" → Conferma: "Perfetto, ti richiamo domani alle 10!"
+• "Puoi richiamarmi la prossima settimana?" → Chiedi giorno e ora specifici
+• "Chiamami ogni lunedì alle 9" → Conferma la ricorrenza: "Ok, ti chiamo ogni lunedì alle 9!"
+→ Assicurati di avere: COSA (motivo), QUANDO (data e ora), e se è RICORRENTE (ogni giorno/settimana)
+→ Chiedi conferma esplicita prima di procedere
+
+✏️ MODIFICA PROMEMORIA ESISTENTE:
+• "Sposta la richiamata alle 16 invece che alle 14" → Conferma la modifica
+• "Cambia l'orario del promemoria" → Chiedi il nuovo orario e conferma
+
+❌ CANCELLAZIONE PROMEMORIA:
+• "Annulla la richiamata" → Conferma quale cancellare e procedi
+• "Non serve più che mi richiamate" → Conferma la cancellazione
+
+📋 ELENCO PROMEMORIA:
+• "Che promemoria ho?" → Riepilogale i promemoria attivi con data e ora
+• "Ho delle richiamate in programma?" → Elenca le richiamate pianificate
+
+⚠️ REGOLE:
+- Conferma SEMPRE i dettagli (data, ora, motivo) prima di creare/modificare
+- Per promemoria ricorrenti, chiedi fino a quando deve durare
+- Se il contatto è vago sull'orario, proponi un orario specifico
+- Dopo aver gestito il promemoria, TORNA al flusso principale della chiamata
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚫 REGOLE IMPORTANTI
