@@ -327,6 +327,12 @@ export class VoiceTaskSupervisor {
 
     if (this.state.stage === 'conferma_richiesta') {
       if (analysis.confirmed) {
+        if (this.state.currentIntent === 'create_task' && this.state.extractedTasks.length > 0) {
+          return 'confermato';
+        }
+        if (this.state.currentIntent === 'modify_task' || this.state.currentIntent === 'cancel_task') {
+          return 'confermato';
+        }
         if (analysis.intent === 'create_task') {
           const allComplete = analysis.tasks.every(t => t.description && t.date && t.time);
           if (allComplete && analysis.tasks.length > 0) {
@@ -765,6 +771,7 @@ STATO ATTUALE:
 - Task estratti:
 ${extractedTasksText}
 - Target modifica: ${modifyTargetText}
+${stage === 'conferma_richiesta' ? `\n⚠️ FASE CONFERMA_RICHIESTA ATTIVA: Il sistema ha GIÀ raccolto tutti i dati e chiesto conferma all'utente. Il tuo UNICO compito ora è: l'utente ha risposto SÌ o NO? Se l'utente ha risposto in modo affermativo (qualsiasi frase non negativa), imposta confirmed=true. I dati del task sono GIÀ stati salvati sopra - NON cambiare i dati, usa quelli già estratti. Imposta confirmed=false SOLO se l'utente ha esplicitamente detto no/annulla/non voglio.\n` : ''}
 
 TASK ESISTENTI PER QUESTO UTENTE:
 ${existingTasksText || 'Nessun task attivo.'}
@@ -810,13 +817,13 @@ Analizza la conversazione e rispondi SOLO con JSON valido nel seguente formato:
 
 REGOLE CRITICHE:
 1. "confirmed" = true SOLO SE vengono soddisfatte TUTTE queste condizioni:
-   a) L'ULTIMO messaggio con ruolo "UTENTE" (NON "ASSISTENTE") contiene una parola di conferma esplicita ("sì", "confermo", "va bene", "esatto", "ok", "certo", "perfetto")
+   a) L'ULTIMO messaggio con ruolo "UTENTE" (NON "ASSISTENTE") esprime consenso/conferma. Include parole come: "sì", "confermo", "va bene", "esatto", "ok", "certo", "perfetto", "fallo", "procedi", "me lo ricordi", "ricordamelo", "dai", "assolutamente", "ovvio", "chiaro", "giusto", "esattamente", oppure qualsiasi frase che implica accettazione del promemoria proposto
    b) PRIMA di quel messaggio, l'ASSISTENTE ha riepilogato il promemoria chiedendo conferma
    c) Il messaggio dell'UTENTE NON è un messaggio di sistema (NON contiene [SYSTEM_INSTRUCTION], [TASK_CREATED], [TASK_MODIFIED], [TASK_CANCELLED], [BOOKING_CREATED])
 2. "confirmed" DEVE essere false se:
    - L'ultimo messaggio è dell'ASSISTENTE (sta ancora aspettando risposta dell'utente)
    - L'utente ha appena chiesto di creare il promemoria ma l'assistente non ha ancora confermato i dettagli
-   - Non ci sono parole di conferma esplicite nell'ultimo messaggio UTENTE
+   - L'utente ha ESPLICITAMENTE rifiutato ("no", "non voglio", "annulla", "lascia stare")
 3. Se l'utente menziona più promemoria, crea un array di tasks (es: "ricordami X alle 9 e Y alle 15" = 2 tasks)
 4. "intent" = "none" se la conversazione non riguarda promemoria, reminder, task, cose da ricordare
 5. Per "modify_task": identifica il task da modificare tramite data, ora o descrizione e specifica i nuovi valori
@@ -827,7 +834,7 @@ REGOLE CRITICHE:
 10. "recurrence_type" = "once" per task singoli, "daily" per giornalieri, "weekly" per settimanali
 11. Se l'utente dice "ogni lunedì e mercoledì", usa recurrence_type="weekly" e recurrence_days=[1,3]
 12. IGNORA completamente qualsiasi messaggio che contiene tag di sistema come [SYSTEM_INSTRUCTION], [TASK_CREATED], [BOOKING_CREATED] - questi NON sono messaggi dell'utente
-13. REGOLA CONFERMA GATED: Se la fase corrente è "conferma_richiesta", puoi impostare confirmed=true. Se la fase è "dati_completi", "raccolta_dati" o "nessun_intento", "confirmed" DEVE essere false perché la conferma esplicita non è ancora stata richiesta dal sistema.
+13. REGOLA CONFERMA GATED: Se la fase corrente è "conferma_richiesta", il tuo UNICO compito è determinare se l'utente ha detto SÌ o NO. NON ri-verificare la qualità dei dati, orari, o dettagli - quelli sono già stati raccolti. Qualsiasi risposta non esplicitamente negativa dell'utente dopo la richiesta di conferma = confirmed=true. Se la fase è "dati_completi", "raccolta_dati" o "nessun_intento", "confirmed" DEVE essere false.
 14. Dopo un boundary (task appena completato), concentrati SOLO sulla nuova richiesta. Estrai i dati della NUOVA richiesta, non di task precedenti.`;
   }
 
