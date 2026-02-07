@@ -1,0 +1,636 @@
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 10,923 tokens × $0.50/1M = $0.005462
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [w56dph] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 10,923 tokens → $0.005462 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.005462 USD
+
+📊 Session totals:
+   - Text Input: 41,361 tokens → $0.020681
+   - Audio Output: 0 tokens → $0.000000
+   - SESSION TOTAL: $0.020681 USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [w56dph] Usage tracked → DB saved (Turn cost: $0.005462)
+✅ [w56dph] Turn complete
+💾 [w56dph] Saved USER message: "Esatto, esattamente." (6 total)
+⚠️  [w56dph] Sales tracking: Fallback - committed user message without isFinal flag
+📝 [w56dph] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔇 [w56dph] AI finished speaking (turn complete)
+💾 [w56dph] Saved AI message (server-side): 7 total messages
+🔍 Finding AI provider for client voice_anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User voice_anonymous is a client, checking their consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's settings
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
+🔄 [w56dph] SESSION RESUMPTION UPDATE received
+   - New handle: Cig0anBtdWMxcjhvNzhoYmw5NHByaG...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+   ✅ Handle saved to database with ownership metadata
+      → Mode: assistenza
+      → UserId: null
+8:36:06 AM [express] GET /api/voice/gemini-connections 200 in 202ms :: {"success":true,"connections"…
+🔓 [Semaphore] Released slot (0/3 in use)
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [VOICE-TASK-SUPERVISOR] AUDIT LOG - Call vc_17704
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Turn: 4 | ➡️ Stage: dati_completi → dati_completi
+   Intent: create_task | Tasks: 1 | Confirmed: false
+   Reasoning: L'utente ha confermato la richiesta di essere richiamato tra 5 minuti, ma l'assistente ha riepilogato l'ora come 09:39 invece di 09:41 (09:36 + 5 minuti). L'utente non ha ancora confermato esplicitamente il riepilogo dell'assistente.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [w56dph] Voice call transcript updated (7 messages)
+8:36:09 AM [express] GET /api/voice/outbound/scheduled 304 in 320ms :: {"calls":[],"count":0,"active…
+8:36:10 AM [express] GET /api/voice/calls 200 in 507ms :: {"calls":[{"id":"vc_1770453292658_c52zl8ix…
+8:36:11 AM [express] GET /api/voice/gemini-connections 200 in 202ms :: {"success":true,"connections"…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 1
+   • w56dph: assistenza - active - durata: 1min - idle: 0min - retries: 0
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " Cer"
+   → Timestamp: 2026-02-07T08:36:14.712Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " Cer" + "to" = " Certo"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "to"
+   → Timestamp: 2026-02-07T08:36:14.889Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: " Certo" + ", va benissimo." = " Certo , va benissimo."
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: ", va benissimo."
+   → Timestamp: 2026-02-07T08:36:14.890Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [w56dph] AI transcript (output): Perfetto, sto
+🎤 [w56dph] AI started speaking (audio streaming)
+📝 [w56dph] AI transcript (output):  creando
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  il promemoria,
+📝 [w56dph] AI transcript (output):  un attimo
+📝 [w56dph] AI transcript (output):  Alessio...
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output): 
+
+📝 [w56dph] AI transcript (output): [TASK_CREATED] Tutto
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  fatto!
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  Ci
+📝 [w56dph] AI transcript (output):  sentiamo
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  tra poco
+8:36:16 AM [express] GET /api/voice/gemini-connections 200 in 201ms :: {"success":true,"connections"…
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  allora!
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  A prestissimo,
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  Alessio!
+8:36:18 AM [express] GET /api/voice/ai-tasks 304 in 403ms :: {"tasks":[],"pagination":{"page":1,"lim…
+8:36:20 AM [express] GET /api/voice/outbound/scheduled 304 in 303ms :: {"calls":[],"count":0,"active…
+8:36:21 AM [express] GET /api/voice/calls 304 in 502ms :: {"calls":[{"id":"vc_1770453292658_c52zl8ix…
+8:36:22 AM [express] GET /api/voice/gemini-connections 200 in 201ms :: {"success":true,"connections"…
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 11180,
+  "responseTokenCount": 190,
+  "totalTokenCount": 11370,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 11122
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 58
+    }
+  ],
+  "responseTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 190
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TOKEN COMPOSITION ANALYSIS] - Turn #5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 GEMINI promptTokensDetails BREAKDOWN:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ TEXT tokens:  11,122     (~11.1k)        │
+   │ AUDIO tokens: 58         (user voice input)     │
+   │ TOTAL:        11,180     (promptTokenCount)     │
+   └─────────────────────────────────────────────────────────────┘
+
+🧮 ESTIMATED TEXT TOKEN COMPOSITION:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ 1. System Instruction:      ~8,129    tokens            │
+   │    (32,517 chars, sent in setup)                      │
+   │                                                             │
+   │ 2. Conversation History:    ~139      tokens            │
+   │    (7 messages saved)                               │
+   │                                                             │
+   │ 3. Initial Chunks:          ~0        tokens            │
+   │    (sent at session start)                                  │
+   └─────────────────────────────────────────────────────────────┘
+
+🎯 ANALYSIS:
+   • Actual TEXT tokens from Gemini: 11,122
+   • Our estimate (sysInst + history): 8,268
+   • UNEXPLAINED tokens: 2,854 tokens
+
+   ⚠️  HIGH UNEXPLAINED TOKENS (2,854)!
+   Possible sources:
+   - Chunks being re-processed (not cached)
+   - Internal Gemini system overhead
+   - Context from previous turns (live session memory)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  No messages tracked in current turn (Turn #5)
+   This is normal for turns after the first - audio-only input
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 11,180 tokens × $0.50/1M = $0.005590
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [w56dph] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 11,180 tokens → $0.005590 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.005590 USD
+
+📊 Session totals:
+   - Text Input: 52,541 tokens → $0.026270
+   - Audio Output: 0 tokens → $0.000000
+   - SESSION TOTAL: $0.026270 USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [w56dph] Usage tracked → DB saved (Turn cost: $0.005590)
+✅ [w56dph] Turn complete
+💾 [w56dph] Saved USER message: "Certo , va benissimo." (8 total)
+⚠️  [w56dph] Sales tracking: Fallback - committed user message without isFinal flag
+📝 [w56dph] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔇 [w56dph] AI finished speaking (turn complete)
+💾 [w56dph] Saved AI message (server-side): 9 total messages
+🔍 Finding AI provider for client voice_anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User voice_anonymous is a client, checking their consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's settings
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
+🔄 [w56dph] SESSION RESUMPTION UPDATE received
+   - New handle: CihhaWZsZGY3dXB1cTc4M3IwNnJ1Zz...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+   ✅ Handle saved to database with ownership metadata
+      → Mode: assistenza
+      → UserId: null
+🔓 [Semaphore] Released slot (0/3 in use)
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [VOICE-TASK-SUPERVISOR] AUDIT LOG - Call vc_17704
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Turn: 5 | 🔄 Stage: dati_completi → confermato
+   Intent: create_task | Tasks: 1 | Confirmed: true
+   Deltas: stage: dati_completi → confermato | confirmed: false → true
+   Reasoning: L'utente ha confermato esplicitamente la creazione del task dopo il riepilogo dell'assistente. L'espressione temporale 'tra 5 minuti' è stata correttamente interpretata sommando 5 minuti all'ora attuale (09:36 + 5 minuti = 09:41).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VOICE-TASK-SUPERVISOR] AI instruction for task task_1770453384835_5n9xh8: Stai richiamando Alessio come da sua richiesta. Ha chiesto di essere ricontattato tra 5 minuti per discutere di qualcosa. Ricordagli che lo stai richi...
+
+📝 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 [w56dph] TASK CREATED! Injecting notification to Gemini
+📝   Task IDs: task_1770453384835_5n9xh8
+📝 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [w56dph] Task supervisor notification injected to Gemini Live
+📝 [w56dph] Voice call transcript updated (9 messages)
+📝 [w56dph] AI transcript (output): Tutto confermato
+📝 [w56dph] AI transcript (output):  Alessio!
+🎤 [w56dph] AI started speaking (audio streaming)
+📝 [w56dph] AI transcript (output):  Ci
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  sentiamo
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  prestissimo!
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+8:36:27 AM [express] GET /api/voice/gemini-connections 200 in 201ms :: {"success":true,"connections"…
+8:36:28 AM [express] GET /api/voice/health 304 in 301ms :: {"overall":"healthy","components":{"datab…
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 11505,
+  "responseTokenCount": 83,
+  "totalTokenCount": 11588,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 11435
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 70
+    }
+  ],
+  "responseTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 83
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TOKEN COMPOSITION ANALYSIS] - Turn #6
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 GEMINI promptTokensDetails BREAKDOWN:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ TEXT tokens:  11,435     (~11.4k)        │
+   │ AUDIO tokens: 70         (user voice input)     │
+   │ TOTAL:        11,505     (promptTokenCount)     │
+   └─────────────────────────────────────────────────────────────┘
+
+🧮 ESTIMATED TEXT TOKEN COMPOSITION:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ 1. System Instruction:      ~8,129    tokens            │
+   │    (32,517 chars, sent in setup)                      │
+   │                                                             │
+   │ 2. Conversation History:    ~179      tokens            │
+   │    (9 messages saved)                               │
+   │                                                             │
+   │ 3. Initial Chunks:          ~0        tokens            │
+   │    (sent at session start)                                  │
+   └─────────────────────────────────────────────────────────────┘
+
+🎯 ANALYSIS:
+   • Actual TEXT tokens from Gemini: 11,435
+   • Our estimate (sysInst + history): 8,308
+   • UNEXPLAINED tokens: 3,127 tokens
+
+   ⚠️  HIGH UNEXPLAINED TOKENS (3,127)!
+   Possible sources:
+   - Chunks being re-processed (not cached)
+   - Internal Gemini system overhead
+   - Context from previous turns (live session memory)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  No messages tracked in current turn (Turn #6)
+   This is normal for turns after the first - audio-only input
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 11,505 tokens × $0.50/1M = $0.005752
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [w56dph] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 11,505 tokens → $0.005752 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.005752 USD
+
+📊 Session totals:
+   - Text Input: 64,046 tokens → $0.032023
+   - Audio Output: 0 tokens → $0.000000
+   - SESSION TOTAL: $0.032023 USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:36:29 AM [express] GET /api/voice/stats 304 in 501ms :: {"period":"day","stats":{"total_calls":"1"…
+🔄 [w56dph] SESSION RESUMPTION UPDATE received
+   - New handle: Cih6aGYwc2dnNTRleHBjZTkyeDR4ZW...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+   ✅ Handle saved to database with ownership metadata
+      → Mode: assistenza
+      → UserId: null
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 1
+   • w56dph: assistenza - active - durata: 2min - idle: 0min - retries: 0
+💾 [w56dph] Usage tracked → DB saved (Turn cost: $0.005752)
+✅ [w56dph] Turn complete
+🔇 [w56dph] AI finished speaking (turn complete)
+💾 [w56dph] Saved AI message (server-side): 10 total messages
+🔍 Finding AI provider for client voice_anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔍 Finding AI provider for client voice_anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User voice_anonymous is a client, checking their consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's settings
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User voice_anonymous is a client, checking their consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's settings
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+📋 [VOICE-TASK-SUPERVISOR] Task completed - boundary set at message 8, future analysis will only consider new messages
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
+8:36:30 AM [express] GET /api/voice/ai-tasks 304 in 1016ms :: {"tasks":[],"pagination":{"page":1,"li…
+8:36:30 AM [express] GET /api/voice/outbound/scheduled 304 in 306ms :: {"calls":[],"count":0,"active…
+🔓 [Semaphore] Released slot (0/3 in use)
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [VOICE-BOOKING-SUPERVISOR] AUDIT LOG - Call vc_17704
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Turn: 4 | 🔄 Stage: raccolta_dati → confermato
+   Correction: false
+   Deltas: date: null → 2026-02-07 | time: null → 09:39 | name: null → Alessio | confirmed: false → true | lastProposedSlot: 2026-02-07 09:39
+   Reasoning: L'utente ha confermato esplicitamente lo slot proposto dall'assistente (7 febbraio alle 9:39). I dati richiesti per un non-cliente (data, ora, telefono) sono presenti. L'email è ancora mancante, ma la conferma è avvenuta.
+   Data: date=2026-02-07, time=09:39, confirmed=true
+   Lead data: phone=***, email=null, name=Alessio
+   LastProposedSlot: 2026-02-07 09:39 (turn 4)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💾 [BOOKING SERVICE] Creating booking record
+   Consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   Source: voice_call
+   Date: 2026-02-07, Time: 09:39
+   Duration: 60 min
+   End time: 10:39
+   ✅ Booking created with ID: fa959c21-e980-4e84-9632-b9f668ca5fbc
+
+📅 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 [w56dph] BOOKING CONFIRMED! Injecting notification to Gemini
+📅   Booking ID: fa959c21-e980-4e84-9632-b9f668ca5fbc
+📅   Type: appointment
+📅   Meet Link: N/A
+📅 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 [w56dph] Booking confirmation injected to Gemini Live
+8:36:31 AM [express] GET /api/voice/calls 200 in 509ms :: {"calls":[{"id":"vc_1770453292658_c52zl8ix…
+📝 [w56dph] Voice call transcript updated (10 messages)
+💬 [w56dph] AI transcript: **Confirming Appointment Details**
+
+I have a booking confirmed for February 7th, 2026, at 09:39. My next step is to contact Alessio with enthusiasm and confirm these specific details, ensuring I maintain a positive and energetic demeanor throughout the call. I will state the date and time clearly, then conclude the call in an upbeat way.
+
+
+
+📝 [w56dph] AI transcript (output): Fantasticooo! Ho
+8:36:33 AM [express] GET /api/voice/gemini-connections 200 in 203ms :: {"success":true,"connections"…
+🎤 [w56dph] AI started speaking (audio streaming)
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  creato
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  l'appuntamento!
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  Ci vediamo
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  il 7
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  febbraio
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  alle
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  9:39!
+8:36:34 AM [express] GET /api/voice/ai-tasks 200 in 404ms :: {"tasks":[{"id":"task_1770453384835_5n9…
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  Se hai
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  domande,
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  non
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  esitare
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📝 [w56dph] AI transcript (output):  a richiamare!
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+📞 [w56dph] Phone audio: 1920 bytes PCM raw → VPS
+8:36:38 AM [express] GET /api/voice/gemini-connections 200 in 203ms :: {"success":true,"connections"…
+8:36:41 AM [express] GET /api/voice/outbound/scheduled 304 in 305ms :: {"calls":[],"count":0,"active…
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 11662,
+  "responseTokenCount": 221,
+  "totalTokenCount": 11883,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 11587
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 75
+    }
+  ],
+  "responseTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 221
+    }
+  ],
+  "thoughtsTokenCount": 78
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TOKEN COMPOSITION ANALYSIS] - Turn #7
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 GEMINI promptTokensDetails BREAKDOWN:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ TEXT tokens:  11,587     (~11.6k)        │
+   │ AUDIO tokens: 75         (user voice input)     │
+   │ TOTAL:        11,662     (promptTokenCount)     │
+   └─────────────────────────────────────────────────────────────┘
+
+🧮 ESTIMATED TEXT TOKEN COMPOSITION:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ 1. System Instruction:      ~8,129    tokens            │
+   │    (32,517 chars, sent in setup)                      │
+   │                                                             │
+   │ 2. Conversation History:    ~192      tokens            │
+   │    (10 messages saved)                               │
+   │                                                             │
+   │ 3. Initial Chunks:          ~0        tokens            │
+   │    (sent at session start)                                  │
+   └─────────────────────────────────────────────────────────────┘
+
+🎯 ANALYSIS:
+   • Actual TEXT tokens from Gemini: 11,587
+   • Our estimate (sysInst + history): 8,321
+   • UNEXPLAINED tokens: 3,266 tokens
+
+   ⚠️  HIGH UNEXPLAINED TOKENS (3,266)!
+   Possible sources:
+   - Chunks being re-processed (not cached)
+   - Internal Gemini system overhead
+   - Context from previous turns (live session memory)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  No messages tracked in current turn (Turn #7)
+   This is normal for turns after the first - audio-only input
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 11,662 tokens × $0.50/1M = $0.005831
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [w56dph] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 11,662 tokens → $0.005831 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.005831 USD
+
+📊 Session totals:
+   - Text Input: 75,708 tokens → $0.037854
+   - Audio Output: 0 tokens → $0.000000
+   - SESSION TOTAL: $0.037854 USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [w56dph] Usage tracked → DB saved (Turn cost: $0.005831)
+✅ [w56dph] Turn complete
+🔇 [w56dph] AI finished speaking (turn complete)
+🧹 [w56dph] Stripped thinking from AI message: 459 chars → 117 chars (spoken only)
+💾 [w56dph] Saved AI message (server-side): 11 total messages
+🔍 Finding AI provider for client voice_anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔍 Finding AI provider for client voice_anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User voice_anonymous is a client, checking their consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's settings
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔄 [w56dph] SESSION RESUMPTION UPDATE received
+   - New handle: Cih3OWt6MWluMm52OXdnZmo3cjZvZW...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+   ✅ Handle saved to database with ownership metadata
+      → Mode: assistenza
+      → UserId: null
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+📋 User voice_anonymous is a client, checking their consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's settings
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🔒 [Semaphore] Acquired slot (1/3 in use)
+8:36:42 AM [express] GET /api/voice/calls 200 in 1121ms :: {"calls":[{"id":"vc_1770453292658_c52zl8i…
+🔓 [Semaphore] Released slot (0/3 in use)
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [VOICE-TASK-SUPERVISOR] AUDIT LOG - Call vc_17704
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Turn: 6 | ➡️ Stage: nessun_intento → nessun_intento
+   Intent: none | Tasks: 0 | Confirmed: false
+   Reasoning: L'ultimo messaggio è dell'assistente che conferma la creazione di un appuntamento. L'utente non ha ancora risposto per confermare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8:36:43 AM [express] GET /api/voice/gemini-connections 200 in 202ms :: {"success":true,"connections"…
+📝 [w56dph] Voice call transcript updated (11 messages)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 1
+   • w56dph: assistenza - active - durata: 2min - idle: 0min - retries: 0
+8:36:49 AM [express] GET /api/voice/gemini-connections 200 in 200ms :: {"success":true,"connections"…
+8:36:49 AM [express] GET /api/voice/ai-tasks 304 in 400ms :: {"tasks":[{"id":"task_1770453384835_5n9…
+8:36:51 AM [express] GET /api/voice/outbound/scheduled 304 in 301ms :: {"calls":[],"count":0,"active…
+❌ [w56dph] Client disconnected - Code: 1000, Reason: Session ended
+🔌 [w56dph] Removed from connection tracker (remaining: 0)
+📞 [w56dph] Voice call vc_1770453292658_c52zl8ix8 completed - Duration: 123s
+🔗 [w56dph] Synced scheduled_voice_call c33a01d2-b6e1-4af0-86fd-77336a61e827 -> completed
+8:36:55 AM [express] POST /api/voice/call-end 200 in 8ms
+💾 [w56dph] AUTO-SAVE: Saving 11 messages before closing...
+💾 Saving voice conversation for user anonymous (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, callerPhone: 1009)...
+8:36:56 AM [express] GET /api/voice/gemini-connections 200 in 822ms :: {"success":true,"connections"…
+8:36:56 AM [express] GET /api/voice/settings 304 in 916ms :: {"voiceId":"Achernar","vpsBridgeUrl":"h…
+8:36:56 AM [express] GET /api/voice/health 304 in 923ms :: {"overall":"healthy","components":{"datab…
+8:36:56 AM [express] GET /api/auth/my-profiles 304 in 944ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+✅ Conversation saved: 9af3679c-f0c3-437b-9d17-63bb626fed6f with 11 messages
+✅ [w56dph] AUTO-SAVE: Conversation saved successfully
