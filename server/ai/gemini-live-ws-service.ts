@@ -1115,7 +1115,7 @@ async function getUserIdFromRequest(req: any): Promise<{
           customPrompt: null,
           useFullPrompt: false,
           voiceName: consultantVoice,
-          resumeHandle: null,
+          resumeHandle: resumeHandle,
           sessionType: null,
           conversationId: null,
           agentId: null,
@@ -1692,6 +1692,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // 🔬 DIAGNOSTIC TRACKING - Per capire PERCHÉ Gemini non risponde
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     let audioChunksSentSinceLastResponse = 0;  // Contatore audio chunks inviati
+    let lastDiscardedAudioLogTime: number | null = null;  // Throttle log for discarded audio
     let lastServerContentTimestamp = 0;         // Quando è arrivato l'ultimo serverContent
     let lastServerContentType: 'audio' | 'text' | 'metadata' | 'none' = 'none';  // Tipo ultimo serverContent
     let isFinalReceivedForCurrentTurn = false;  // Se isFinal è stato ricevuto per il turno corrente
@@ -5563,22 +5564,25 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                                         conversationHistory.length > 0 &&
                                         !validatedResumeHandle; // SKIP replay if using session resumption
             
-            if (validatedResumeHandle && conversationHistory && conversationHistory.length > 0) {
-              // SESSION RESUMPTION: Skip expensive replay to Gemini
-              console.log(`\n╔${'═'.repeat(78)}╗`);
-              console.log(`║ 🔄 [${connectionId}] SESSION RESUMPTION - Skipping Gemini history replay ${' '.repeat(18)} ║`);
-              console.log(`╠${'═'.repeat(78)}╣`);
-              console.log(`║ ✅ Gemini restored context from session handle (FREE)${' '.repeat(23)} ║`);
-              console.log(`║ ⚡ Skipped resending ${conversationHistory.length} messages - saves ~$0.05 per reconnect${' '.repeat(19 - String(conversationHistory.length).length)} ║`);
-              console.log(`║ 📊 Database loaded: ${conversationHistory.length} messages (needed for prompt/persistence)${' '.repeat(15 - String(conversationHistory.length).length)} ║`);
-              console.log(`╚${'═'.repeat(78)}╝\n`);
+            if (validatedResumeHandle) {
+              if (conversationHistory && conversationHistory.length > 0) {
+                // SESSION RESUMPTION with history: Skip expensive replay to Gemini
+                console.log(`\n╔${'═'.repeat(78)}╗`);
+                console.log(`║ 🔄 [${connectionId}] SESSION RESUMPTION - Skipping Gemini history replay ${' '.repeat(18)} ║`);
+                console.log(`╠${'═'.repeat(78)}╣`);
+                console.log(`║ ✅ Gemini restored context from session handle (FREE)${' '.repeat(23)} ║`);
+                console.log(`║ ⚡ Skipped resending ${conversationHistory.length} messages - saves ~$0.05 per reconnect${' '.repeat(19 - String(conversationHistory.length).length)} ║`);
+                console.log(`║ 📊 Database loaded: ${conversationHistory.length} messages (needed for prompt/persistence)${' '.repeat(15 - String(conversationHistory.length).length)} ║`);
+                console.log(`╚${'═'.repeat(78)}╝\n`);
+              } else {
+                console.log(`🔄 [${connectionId}] SESSION RESUMPTION - No conversation history (phone call or new session)`);
+              }
               
-              // 🔧 FIX: After resume, AI should STAY SILENT and wait for prospect
-              // DO NOT send any clientContent with turnComplete:true - that triggers AI response!
-              // The session resumption already restores context, AI just needs to wait.
-              console.log(`🔇 [${connectionId}] RESUME: AI will stay SILENT until prospect speaks`);
+              // 🔧 FIX: After resume, AI should STAY SILENT and wait for user
+              // Applies to ALL modes (sales_agent, phone_service, assistenza, etc.)
+              console.log(`🔇 [${connectionId}] RESUME: AI will stay SILENT until user speaks`);
               console.log(`   → NO greeting, NO turnComplete:true message sent`);
-              console.log(`   → AI waits for prospect to speak first after reconnection`);
+              console.log(`   → AI waits for user to speak first after reconnection`);
               console.log(`   → suppressAiOutputAfterResume = true (blocking AI audio output)`);
               
               // 🔇 CRITICAL: Activate post-resume silence mode
@@ -6197,18 +6201,19 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             console.log(`🎯 Action: Stop audio playback immediately`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
             
-            // Reset AI speaking state
+            // Only send barge_in if AI was actually speaking - prevents false positives
             if (isAiSpeaking) {
               isAiSpeaking = false;
               console.log(`🔇 [${connectionId}] AI stopped speaking (serverContent.interrupted)`);
+              
+              clientWs.send(JSON.stringify({
+                type: 'barge_in_detected',
+                message: 'User interrupted - stop audio playback immediately',
+                source: 'serverContent.interrupted'
+              }));
+            } else {
+              console.log(`🔇 [${connectionId}] serverContent.interrupted received but AI was NOT speaking - ignoring (false positive)`);
             }
-            
-            // Send barge-in signal to client to stop audio playback
-            clientWs.send(JSON.stringify({
-              type: 'barge_in_detected',
-              message: 'User interrupted - stop audio playback immediately',
-              source: 'serverContent.interrupted'
-            }));
             
             // Note: We don't return/continue here because the subsequent code
             // has its own checks (modelTurn?.parts) which won't match if interrupted
@@ -7980,6 +7985,11 @@ ${compactFeedback}
               audioChunksSentSinceLastResponse++;
               lastActivityTimestamp = Date.now();
               updateConnectionActivity(connectionId);
+            } else {
+              if (!lastDiscardedAudioLogTime || Date.now() - lastDiscardedAudioLogTime > 5000) {
+                console.warn(`⚠️ [${connectionId}] Phone audio DISCARDED - gemini=${!!geminiSession}, active=${isSessionActive}, readyState=${geminiSession?.readyState ?? 'null'}`);
+                lastDiscardedAudioLogTime = Date.now();
+              }
             }
             return;
           }

@@ -45,6 +45,8 @@ private scheduledCallId?: string;
   private audioBufferTimeout: ReturnType<typeof setTimeout> | null = null;
   private static readonly MAX_BUFFER_FRAMES = 500;
   private static readonly BUFFER_TIMEOUT_MS = 10000;
+  private lastDiscardedAudioLogTime = 0;
+  private lastBufferOverflowLogTime = 0;
 
   constructor(options: ReplitClientOptions) {
     this.sessionId = options.sessionId;
@@ -314,11 +316,29 @@ if (this.scheduledCallId) {
     if (this.audioBufferActive) {
       if (this.audioBuffer.length < ReplitWSClient.MAX_BUFFER_FRAMES) {
         this.audioBuffer.push(Buffer.from(pcmData));
+      } else {
+        const now = Date.now();
+        if (now - this.lastBufferOverflowLogTime > 5000) {
+          log.warn(`⚠️ [AUDIO BUFFER] Buffer FULL (${ReplitWSClient.MAX_BUFFER_FRAMES} frames) - audio discarded`, {
+            sessionId: this.sessionId.slice(0, 8),
+          });
+          this.lastBufferOverflowLogTime = now;
+        }
       }
       return;
     }
 
-    if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      const now = Date.now();
+      if (now - this.lastDiscardedAudioLogTime > 5000) {
+        log.warn(`⚠️ Audio DISCARDED - connected=${this.isConnected}, ws=${!!this.ws}, readyState=${this.ws?.readyState ?? 'null'}`, {
+          sessionId: this.sessionId.slice(0, 8),
+          reconnecting: this._isReconnecting,
+        });
+        this.lastDiscardedAudioLogTime = now;
+      }
+      return;
+    }
     this.ws.send(pcmData, { binary: true });
   }
 

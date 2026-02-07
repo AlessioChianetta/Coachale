@@ -6172,14 +6172,17 @@ export class DatabaseStorage implements IStorage {
       }
       return isValid;
     } else {
-      // SECURITY: Reject if userId is missing
-      if (!userId) {
+      // For anonymous phone calls, both userId in DB and request are null
+      // The handle itself is a cryptographic token from Gemini (not guessable),
+      // so mode match + handle match is sufficient for security
+      if (!userId && !existing.userId) {
+        console.log(`✅ [SESSION HANDLE VALIDATION] Anonymous phone call - handle matched by mode + token`);
+        console.log(`   → Mode: ${mode}, both userId are null (anonymous caller)`);
+        // Mode already validated above, handle is cryptographic - safe to allow
+      } else if (!userId) {
         console.warn(`🚨 [SESSION HANDLE VALIDATION] Missing userId for authenticated mode`);
         return false;
-      }
-      
-      // Check userId match
-      if (existing.userId !== userId) {
+      } else if (existing.userId !== userId) {
         console.warn(`🚨 [SESSION HANDLE VALIDATION] User ownership mismatch`);
         console.warn(`   → Expected userId: ${userId}`);
         console.warn(`   → Found userId: ${existing.userId}`);
