@@ -20,6 +20,7 @@ export interface VoiceTaskSupervisorState {
     recurrenceDays: number[] | null;
     recurrenceEndDate: string | null;
     originalExpression: string | null;
+    aiCallInstruction: string | null;
   }>;
   modifyTarget: {
     searchBy: 'date' | 'description' | 'time' | null;
@@ -70,6 +71,7 @@ interface LLMTaskAnalysisResult {
     recurrence_days: number[] | null;
     recurrence_end_date: string | null;
     original_expression: string;
+    ai_call_instruction: string | null;
   }>;
   modify_target: {
     search_by: 'date' | 'description' | 'time';
@@ -250,6 +252,7 @@ export class VoiceTaskSupervisor {
         recurrenceDays: t.recurrence_days,
         recurrenceEndDate: t.recurrence_end_date,
         originalExpression: t.original_expression,
+        aiCallInstruction: t.ai_call_instruction || null,
       }));
     }
 
@@ -428,7 +431,11 @@ export class VoiceTaskSupervisor {
       const isRecurring = task.recurrenceType === 'daily' || task.recurrenceType === 'weekly';
       const taskType = isRecurring ? 'follow_up' : 'single_call';
       const maxAttempts = isRecurring ? 3 : 1;
-      const aiInstruction = `Promemoria: ${task.description}`;
+      const aiInstruction = task.aiCallInstruction && task.aiCallInstruction.length > 20
+        ? task.aiCallInstruction
+        : `Promemoria: ${task.description}${this.contactName ? `. Stai richiamando ${this.contactName} come da sua richiesta.` : ''}`;
+
+      console.log(`📝 [VOICE-TASK-SUPERVISOR] AI instruction for task ${taskId}: ${aiInstruction.substring(0, 150)}...`);
 
       await db.execute(sql`
         INSERT INTO ai_scheduled_tasks (
@@ -688,13 +695,14 @@ Analizza la conversazione e rispondi SOLO con JSON valido nel seguente formato:
   "intent": "create_task|modify_task|cancel_task|list_tasks|none",
   "tasks": [
     {
-      "description": "cosa ricordare",
+      "description": "cosa ricordare (breve)",
       "date": "YYYY-MM-DD",
       "time": "HH:MM",
       "recurrence_type": "once|daily|weekly" o null,
       "recurrence_days": [1,3,5] o null,
       "recurrence_end_date": "YYYY-MM-DD" o null,
-      "original_expression": "espressione originale dell'utente"
+      "original_expression": "espressione originale dell'utente",
+      "ai_call_instruction": "Istruzione dettagliata per l'AI che effettuerà la chiamata. Deve includere: 1) CHI stai chiamando (nome se disponibile), 2) PERCHÉ stai chiamando (il contesto dalla conversazione), 3) COSA dire specificamente, 4) eventuali dettagli rilevanti emersi dalla conversazione. Esempio: 'Stai richiamando Mario Rossi come da sua richiesta durante la chiamata precedente. Voleva essere ricontattato per discutere delle opzioni di investimento per il fondo pensione. Ricordagli le 3 opzioni discusse e chiedi se ha preso una decisione.'"
     }
   ],
   "modify_target": {
