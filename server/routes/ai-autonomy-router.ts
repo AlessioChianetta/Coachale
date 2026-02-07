@@ -210,7 +210,7 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { ai_instruction, task_category, priority, contact_name, contact_phone } = req.body;
+    const { ai_instruction, task_category, priority, contact_name, contact_phone, client_id } = req.body;
 
     if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
       return res.status(400).json({ error: "ai_instruction is required" });
@@ -227,10 +227,10 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
     const result = await db.execute(sql`
       INSERT INTO ai_scheduled_tasks (
         id, consultant_id, task_type, task_category, ai_instruction, status,
-        scheduled_at, timezone, origin_type, priority, contact_name, contact_phone
+        scheduled_at, timezone, origin_type, priority, contact_name, contact_phone, contact_id
       ) VALUES (
         ${taskId}, ${consultantId}, 'ai_task', ${task_category}, ${ai_instruction.trim()}, 'scheduled',
-        NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${contact_phone || null}
+        NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${contact_phone || null}, ${client_id || null}
       )
       RETURNING *
     `);
@@ -273,7 +273,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
 
     const [tasksResult, countResult] = await Promise.all([
       db.execute(sql`
-        SELECT id, consultant_id, contact_name, contact_phone, task_type, task_category,
+        SELECT id, consultant_id, contact_name, contact_phone, contact_id, task_type, task_category,
                ai_instruction, status, origin_type, priority, ai_reasoning, ai_confidence,
                execution_plan, result_summary, result_data, scheduled_at,
                completed_at, created_at, updated_at, call_after_task

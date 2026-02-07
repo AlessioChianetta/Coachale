@@ -488,7 +488,8 @@ export default function ConsultantAIAutonomyPage() {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
-  const [newTask, setNewTask] = useState({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "" });
+  const [newTask, setNewTask] = useState({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "" });
+  const [clientSearchFilter, setClientSearchFilter] = useState("");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -500,6 +501,17 @@ export default function ConsultantAIAutonomyPage() {
         headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: allClients } = useQuery<Array<{ id: string; firstName: string; lastName: string; email: string; phoneNumber?: string; isActive: boolean }>>({
+    queryKey: ["/api/clients-for-tasks"],
+    queryFn: async () => {
+      const res = await fetch("/api/clients", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch clients");
       return res.json();
     },
   });
@@ -607,7 +619,8 @@ export default function ConsultantAIAutonomyPage() {
     onSuccess: () => {
       toast({ title: "Task creato", description: "Il task è stato programmato per l'esecuzione" });
       setShowCreateTask(false);
-      setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "" });
+      setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "" });
+      setClientSearchFilter("");
       queryClient.invalidateQueries({ queryKey: [tasksUrl] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
@@ -1439,21 +1452,99 @@ export default function ConsultantAIAutonomyPage() {
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Nome contatto <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
-                              <Input
-                                placeholder="es: Mario Rossi"
-                                value={newTask.contact_name}
-                                onChange={(e) => setNewTask(prev => ({ ...prev, contact_name: e.target.value }))}
-                              />
+                              <Label className="text-sm font-medium">Cliente <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                              <Select
+                                value={newTask.client_id}
+                                onValueChange={(v) => {
+                                  const selectedClient = allClients?.find(c => c.id === v);
+                                  if (v === "__none__") {
+                                    setNewTask(prev => ({ ...prev, client_id: "", contact_name: "", contact_phone: "" }));
+                                    setClientSearchFilter("");
+                                  } else if (selectedClient) {
+                                    setNewTask(prev => ({
+                                      ...prev,
+                                      client_id: v,
+                                      contact_name: `${selectedClient.firstName} ${selectedClient.lastName}`,
+                                      contact_phone: selectedClient.phoneNumber || "",
+                                    }));
+                                    setClientSearchFilter("");
+                                  }
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleziona un cliente..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <div className="px-2 py-1.5">
+                                    <Input
+                                      placeholder="Cerca cliente..."
+                                      value={clientSearchFilter}
+                                      onChange={(e) => setClientSearchFilter(e.target.value)}
+                                      className="h-8 text-sm"
+                                      onKeyDown={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                  <SelectItem value="__none__">Nessun cliente specifico</SelectItem>
+                                  {(() => {
+                                    const filtered = (allClients || []).filter(c => {
+                                      if (!clientSearchFilter) return true;
+                                      const search = clientSearchFilter.toLowerCase();
+                                      return `${c.firstName} ${c.lastName}`.toLowerCase().includes(search) || c.email.toLowerCase().includes(search);
+                                    });
+                                    const activeClients = filtered.filter(c => c.isActive);
+                                    const inactiveClients = filtered.filter(c => !c.isActive);
+                                    return (
+                                      <>
+                                        {activeClients.length > 0 && (
+                                          <>
+                                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                              Clienti attivi <span className="font-normal text-[10px]">(include consulenti-clienti)</span>
+                                            </div>
+                                            {activeClients.map(c => (
+                                              <SelectItem key={c.id} value={c.id}>
+                                                <span className="flex items-center gap-2">
+                                                  {c.firstName} {c.lastName}
+                                                  <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-[10px] px-1 py-0">Attivo</Badge>
+                                                </span>
+                                              </SelectItem>
+                                            ))}
+                                          </>
+                                        )}
+                                        {inactiveClients.length > 0 && (
+                                          <>
+                                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                              Clienti inattivi
+                                            </div>
+                                            {inactiveClients.map(c => (
+                                              <SelectItem key={c.id} value={c.id}>
+                                                <span className="flex items-center gap-2">
+                                                  {c.firstName} {c.lastName}
+                                                  <Badge className="bg-muted text-muted-foreground text-[10px] px-1 py-0">Inattivo</Badge>
+                                                </span>
+                                              </SelectItem>
+                                            ))}
+                                          </>
+                                        )}
+                                        {filtered.length === 0 && (
+                                          <div className="px-2 py-3 text-sm text-muted-foreground text-center">Nessun cliente trovato</div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </SelectContent>
+                              </Select>
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Telefono <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
-                              <Input
-                                placeholder="es: +39 333 1234567"
-                                value={newTask.contact_phone}
-                                onChange={(e) => setNewTask(prev => ({ ...prev, contact_phone: e.target.value }))}
-                              />
-                            </div>
+                            {newTask.client_id && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Telefono <span className="text-muted-foreground font-normal">(modificabile)</span></Label>
+                                <Input
+                                  placeholder="es: +39 333 1234567"
+                                  value={newTask.contact_phone}
+                                  onChange={(e) => setNewTask(prev => ({ ...prev, contact_phone: e.target.value }))}
+                                  className="h-9 text-sm"
+                                />
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 pt-2">
                             <Button
@@ -1472,7 +1563,8 @@ export default function ConsultantAIAutonomyPage() {
                               variant="outline"
                               onClick={() => {
                                 setShowCreateTask(false);
-                                setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "" });
+                                setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "" });
+                                setClientSearchFilter("");
                               }}
                             >
                               Annulla
