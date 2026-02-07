@@ -9,7 +9,7 @@ export interface TaskConversationMessage {
 }
 
 export interface VoiceTaskSupervisorState {
-  stage: 'nessun_intento' | 'raccolta_dati' | 'dati_completi' | 'confermato' | 'completato' | 'errore';
+  stage: 'nessun_intento' | 'raccolta_dati' | 'dati_completi' | 'conferma_richiesta' | 'confermato' | 'completato' | 'errore';
   taskInProgress: boolean;
   currentIntent: 'create_task' | 'modify_task' | 'cancel_task' | 'list_tasks' | 'none';
   extractedTasks: Array<{
@@ -50,7 +50,7 @@ export interface VoiceTaskSupervisorState {
 }
 
 export interface TaskSupervisorResult {
-  action: 'none' | 'tasks_created' | 'task_modified' | 'task_cancelled' | 'tasks_listed' | 'task_failed';
+  action: 'none' | 'confirm_request' | 'tasks_created' | 'task_modified' | 'task_cancelled' | 'tasks_listed' | 'task_failed';
   createdTaskIds?: string[];
   modifiedTaskId?: string;
   cancelledTaskId?: string;
@@ -307,9 +307,15 @@ export class VoiceTaskSupervisor {
       return await this.executeListTasks();
     }
 
-    // No mid-flow notification needed - the AI handles confirmation naturally
-    // via the system instruction (getTaskPromptSection). This matches the
-    // Booking Supervisor pattern which only injects AFTER completion.
+    if (this.state.stage === 'dati_completi') {
+      this.state.stage = 'conferma_richiesta';
+      const confirmMsg = this.buildConfirmationRequest();
+      console.log(`📋 [VOICE-TASK-SUPERVISOR] Confirmation request injected → stage: conferma_richiesta`);
+      return {
+        action: 'confirm_request',
+        notifyMessage: confirmMsg,
+      };
+    }
 
     return { action: 'none' };
   }
@@ -319,19 +325,27 @@ export class VoiceTaskSupervisor {
       return 'nessun_intento';
     }
 
-    if (analysis.confirmed) {
-      if (analysis.intent === 'create_task') {
-        const allComplete = analysis.tasks.every(t => t.description && t.date && t.time);
-        if (allComplete && analysis.tasks.length > 0) {
+    if (this.state.stage === 'conferma_richiesta') {
+      if (analysis.confirmed) {
+        if (analysis.intent === 'create_task') {
+          const allComplete = analysis.tasks.every(t => t.description && t.date && t.time);
+          if (allComplete && analysis.tasks.length > 0) {
+            return 'confermato';
+          }
+        }
+        if (analysis.intent === 'modify_task' && analysis.modify_target) {
+          return 'confermato';
+        }
+        if (analysis.intent === 'cancel_task' && analysis.modify_target) {
           return 'confermato';
         }
       }
-      if (analysis.intent === 'modify_task' && analysis.modify_target) {
-        return 'confermato';
+
+      if (analysis.intent !== this.state.currentIntent || analysis.intent === 'none') {
+        return 'nessun_intento';
       }
-      if (analysis.intent === 'cancel_task' && analysis.modify_target) {
-        return 'confermato';
-      }
+
+      return 'conferma_richiesta';
     }
 
     if (analysis.intent === 'list_tasks') {
@@ -354,6 +368,39 @@ export class VoiceTaskSupervisor {
     }
 
     return 'raccolta_dati';
+  }
+
+  private buildConfirmationRequest(): string {
+    const intent = this.state.currentIntent;
+
+    if (intent === 'create_task' && this.state.extractedTasks.length > 0) {
+      const taskSummaries = this.state.extractedTasks
+        .filter(t => t.description && t.date && t.time)
+        .map(t => {
+          const recurrenceText = t.recurrenceType === 'daily' ? ' (ogni giorno)' : t.recurrenceType === 'weekly' ? ' (settimanale)' : '';
+          return `"${t.description}" il ${t.date} alle ${t.time}${recurrenceText}`;
+        })
+        .join(', ');
+      return `[CONFIRM_TASK] Chiedi conferma esplicita al chiamante prima di procedere. Riepilogo: vuole impostare un promemoria per ${taskSummaries}. Chiedi: "Confermi che vuoi che ti imposti questo promemoria?" e attendi la risposta.`;
+    }
+
+    if (intent === 'modify_task') {
+      const { originalDescription, originalDate, originalTime, newDate, newTime, newDescription } = this.state.modifyTarget;
+      const origRef = originalDescription || `del ${originalDate} alle ${originalTime}`;
+      const changes: string[] = [];
+      if (newDate) changes.push(`data: ${newDate}`);
+      if (newTime) changes.push(`ora: ${newTime}`);
+      if (newDescription) changes.push(`descrizione: "${newDescription}"`);
+      return `[CONFIRM_TASK] Chiedi conferma esplicita al chiamante. Vuole modificare il promemoria ${origRef} → ${changes.join(', ')}. Chiedi: "Confermi la modifica?" e attendi la risposta.`;
+    }
+
+    if (intent === 'cancel_task') {
+      const { originalDescription, originalDate, originalTime } = this.state.modifyTarget;
+      const origRef = originalDescription || `del ${originalDate} alle ${originalTime}`;
+      return `[CONFIRM_TASK] Chiedi conferma esplicita al chiamante. Vuole cancellare il promemoria ${origRef}. Chiedi: "Confermi la cancellazione?" e attendi la risposta.`;
+    }
+
+    return `[CONFIRM_TASK] Chiedi conferma esplicita al chiamante prima di procedere con l'operazione sul promemoria.`;
   }
 
   private async executeTaskOperation(): Promise<TaskSupervisorResult> {
@@ -686,8 +733,12 @@ export class VoiceTaskSupervisor {
       ? `searchBy=${modifyTarget.searchBy}, origDate=${modifyTarget.originalDate}, origTime=${modifyTarget.originalTime}, origDesc=${modifyTarget.originalDescription}, newDate=${modifyTarget.newDate}, newTime=${modifyTarget.newTime}`
       : 'Nessuno';
 
-    return `Sei un analizzatore di trascrizioni vocali per un sistema di gestione promemoria e task.
+    const boundaryWarning = this.state.completedMessageBoundary >= 0
+      ? `\n⚠️ CONTESTO IMPORTANTE: Un task/promemoria è stato appena completato con successo. La trascrizione qui sotto contiene SOLO i messaggi SUCCESSIVI a quell'operazione. IGNORA completamente qualsiasi riferimento a task precedenti già gestiti. Concentrati ESCLUSIVAMENTE sulla NUOVA richiesta del chiamante in questa porzione di conversazione.\n`
+      : '';
 
+    return `Sei un analizzatore di trascrizioni vocali per un sistema di gestione promemoria e task.
+${boundaryWarning}
 DATA ODIERNA: ${todayFormatted} (${todayDayName})
 ORA ATTUALE: ${currentTime}
 
@@ -775,7 +826,9 @@ REGOLE CRITICHE:
 9. Se manca la descrizione o la data/ora, NON impostare confirmed=true
 10. "recurrence_type" = "once" per task singoli, "daily" per giornalieri, "weekly" per settimanali
 11. Se l'utente dice "ogni lunedì e mercoledì", usa recurrence_type="weekly" e recurrence_days=[1,3]
-12. IGNORA completamente qualsiasi messaggio che contiene tag di sistema come [SYSTEM_INSTRUCTION], [TASK_CREATED], [BOOKING_CREATED] - questi NON sono messaggi dell'utente`;
+12. IGNORA completamente qualsiasi messaggio che contiene tag di sistema come [SYSTEM_INSTRUCTION], [TASK_CREATED], [BOOKING_CREATED] - questi NON sono messaggi dell'utente
+13. REGOLA CONFERMA GATED: Se la fase corrente è "conferma_richiesta", puoi impostare confirmed=true. Se la fase è "dati_completi", "raccolta_dati" o "nessun_intento", "confirmed" DEVE essere false perché la conferma esplicita non è ancora stata richiesta dal sistema.
+14. Dopo un boundary (task appena completato), concentrati SOLO sulla nuova richiesta. Estrai i dati della NUOVA richiesta, non di task precedenti.`;
   }
 
   async getTaskPromptSection(): Promise<string> {
@@ -813,9 +866,12 @@ ${existingTasksText}
 
 Puoi riferire al chiamante i suoi task attivi se li chiede, e aiutarlo a modificarli o cancellarli.
 
-⚠️ Dopo aver chiesto conferma al chiamante e ricevuto il "sì", rispondi SOLO con "Perfetto, sto impostando il promemoria..." e attendi.
-NON dire "fatto" o "creato" finché non ricevi un messaggio di sistema [TASK_CREATED] o [TASK_MODIFIED].
-Quando ricevi [TASK_CREATED], conferma al chiamante con naturalezza: "Tutto fatto! Ti richiamerò come concordato."`;
+⚠️ FLUSSO CONFERMA (OBBLIGATORIO):
+1. Quando ricevi un messaggio [CONFIRM_TASK], devi chiedere conferma esplicita al chiamante ripetendo il riepilogo del promemoria
+2. Attendi la risposta del chiamante ("sì", "confermo", etc.)
+3. Dopo il "sì", rispondi SOLO con "Perfetto, sto impostando il promemoria..." e attendi
+4. NON dire "fatto" o "creato" finché non ricevi un messaggio di sistema [TASK_CREATED] o [TASK_MODIFIED]
+5. Quando ricevi [TASK_CREATED], conferma al chiamante con naturalezza: "Tutto fatto! Ti richiamerò come concordato."`;
   }
 
   private logAudit(params: {
