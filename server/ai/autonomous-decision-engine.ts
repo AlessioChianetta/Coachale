@@ -458,23 +458,30 @@ ${context.recent_activity.length > 0 ? context.recent_activity.slice(0, 5).map(a
 
 ANALIZZA l'istruzione del task e decidi la migliore sequenza di azioni per portarlo a termine.
 
-Le azioni disponibili sono:
-- "fetch_client_data": Recupera dati aggiuntivi sul cliente
+Le azioni disponibili si dividono in due categorie:
+
+AZIONI INTERNE (sempre disponibili, non richiedono canali di comunicazione):
+- "fetch_client_data": Recupera dati aggiuntivi sul cliente dal database
 - "analyze_patterns": Analizza pattern e storico interazioni
-- "generate_report": Genera un report o analisi
-- "prepare_call": Prepara script e contesto per una chiamata
-- "voice_call": Effettua una chiamata vocale
-- "send_email": Invia un'email
-- "send_whatsapp": Invia un messaggio WhatsApp
+- "generate_report": Genera un report scritto o analisi dettagliata
 - "web_search": Cerca informazioni aggiornate su internet (normative, mercati, notizie, trend finanziari)
 
+AZIONI DI COMUNICAZIONE (richiedono canale abilitato E contatto valido):
+- "prepare_call": Prepara script e contesto per una chiamata (richiede canale "voice" e numero di telefono valido)
+- "voice_call": Effettua una chiamata vocale (richiede canale "voice" e numero di telefono valido)
+- "send_email": Invia un'email (richiede canale "email" e indirizzo email valido)
+- "send_whatsapp": Invia un messaggio WhatsApp (richiede canale "whatsapp" e numero di telefono valido)
+
 REGOLE:
-1. Usa SOLO i canali abilitati (${channelsList || "nessuno"})
-2. Non superare i limiti giornalieri rimanenti
-3. Se non ci sono canali abilitati per l'azione richiesta, imposta should_execute a false
-4. Assegna un punteggio di confidenza tra 0.0 e 1.0
-5. Stima la durata in minuti
-6. Evita azioni duplicate o ridondanti rispetto ai task recenti
+1. Le azioni INTERNE sono SEMPRE disponibili indipendentemente dai canali abilitati
+2. Le azioni di COMUNICAZIONE richiedono sia il canale abilitato (${channelsList || "nessuno"}) sia i dati di contatto validi (telefono/email)
+3. Se il contatto è "Sconosciuto" o non ha dati di contatto validi (telefono N/A, email N/A), NON usare azioni di comunicazione
+4. Per task di tipo "analysis" o che richiedono report/analisi, PREFERISCI le azioni interne (fetch_client_data, analyze_patterns, generate_report, web_search)
+5. Non superare i limiti giornalieri rimanenti
+6. Assegna un punteggio di confidenza tra 0.0 e 1.0
+7. Stima la durata in minuti
+8. Evita azioni duplicate o ridondanti rispetto ai task recenti
+9. Se l'istruzione chiede esplicitamente un report o un'analisi, genera il report come documento scritto tramite generate_report, NON tramite chiamata
 
 Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 {
