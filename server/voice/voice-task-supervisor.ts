@@ -38,6 +38,7 @@ export interface VoiceTaskSupervisorState {
   } | null;
   confirmed: boolean;
   confirmationNotifySent: boolean;
+  completedMessageBoundary: number;
   metadata: {
     turnsInCurrentState: number;
     totalTurns: number;
@@ -126,6 +127,7 @@ export class VoiceTaskSupervisor {
       listFilter: null,
       confirmed: false,
       confirmationNotifySent: false,
+      completedMessageBoundary: -1,
       metadata: {
         turnsInCurrentState: 0,
         totalTurns: 0,
@@ -144,6 +146,7 @@ export class VoiceTaskSupervisor {
     }
 
     if (this.state.stage === 'completato') {
+      this.state.completedMessageBoundary = messages.length - 1;
       this.state.stage = 'nessun_intento';
       this.state.currentIntent = 'none';
       this.state.extractedTasks = [];
@@ -161,13 +164,21 @@ export class VoiceTaskSupervisor {
       this.state.confirmed = false;
       this.state.confirmationNotifySent = false;
       this.state.metadata.turnsInCurrentState = 0;
+      console.log(`📋 [VOICE-TASK-SUPERVISOR] Task completed - boundary set at message ${this.state.completedMessageBoundary}, future analysis will only consider new messages`);
     }
 
     if (messages.length - 1 <= this.state.metadata.lastAnalyzedMessageIndex) {
       return { action: 'none' };
     }
 
-    const recentMessages = messages.slice(-VoiceTaskSupervisor.MAX_RECENT_MESSAGES);
+    const messagesAfterBoundary = this.state.completedMessageBoundary >= 0
+      ? messages.slice(this.state.completedMessageBoundary + 1)
+      : messages;
+    const recentMessages = messagesAfterBoundary.slice(-VoiceTaskSupervisor.MAX_RECENT_MESSAGES);
+
+    if (recentMessages.length === 0) {
+      return { action: 'none' };
+    }
 
     this.state.metadata.totalTurns++;
     this.state.metadata.turnsInCurrentState++;
@@ -306,7 +317,7 @@ export class VoiceTaskSupervisor {
           .join(', ');
         return {
           action: 'notify_ai',
-          notifyMessage: `[SYSTEM_INSTRUCTION - NON LEGGERE AD ALTA VOCE, NON RISPONDERE A QUESTO MESSAGGIO DIRETTAMENTE] Il chiamante ha chiesto un promemoria: ${taskSummary}. Nella tua PROSSIMA risposta naturale al chiamante, chiedi conferma riepilogando il promemoria (es. "Perfetto, ti richiamo il [data] alle [ora] per [descrizione], confermi?"). Attendi la conferma esplicita del chiamante prima di procedere.`,
+          notifyMessage: `[SYSTEM_INSTRUCTION - NON LEGGERE AD ALTA VOCE, NON RISPONDERE A QUESTO MESSAGGIO DIRETTAMENTE] Il chiamante ha chiesto un promemoria: ${taskSummary}. IMPORTANTE: rispondi con UNA SOLA frase fluida e naturale che include il riepilogo e la richiesta di conferma INSIEME, senza pause. Esempio: "Perfetto, allora ti richiamo il [data] alle [ora] per [descrizione], va bene così?". NON fare due frasi separate. Attendi la conferma esplicita del chiamante.`,
         };
       }
 
@@ -647,7 +658,8 @@ ORA ATTUALE: ${currentTime}
 REGOLE DI PARSING TEMPORALE:
 - "domani" = il giorno dopo ${todayFormatted}
 - "dopodomani" = due giorni dopo ${todayFormatted}
-- "tra 2 ore" = ${currentTime} + 2 ore
+- "tra X minuti" = aggiungi esattamente X minuti all'ORA ATTUALE. Esempio: se ORA ATTUALE è ${currentTime} e l'utente dice "tra 5 minuti", calcola ${currentTime} + 5 minuti
+- "tra X ore" / "tra 2 ore" = aggiungi esattamente X ore all'ORA ATTUALE
 - "dopo pranzo" = 14:00
 - "la prossima settimana" = prossimo lunedì dopo oggi
 - "fra X giorni" = ${todayFormatted} + X giorni
@@ -656,7 +668,8 @@ REGOLE DI PARSING TEMPORALE:
 - "stasera" = oggi, 20:00
 - "stamattina" = oggi, 09:00
 - "nel pomeriggio" = oggi, 15:00
-- Se non specificata l'ora, usa 09:00 come default
+- IMPORTANTE: per QUALSIASI espressione temporale relativa ("tra X minuti", "tra X ore"), DEVI calcolare l'ora esatta sommando all'ORA ATTUALE. NON usare mai valori predefiniti.
+- Se non specificata l'ora E non è un'espressione relativa, usa 09:00 come default
 
 STATO ATTUALE:
 - Fase: ${stage}
