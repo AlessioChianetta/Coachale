@@ -37,6 +37,7 @@ export interface VoiceTaskSupervisorState {
     rangeEnd: string | null;
   } | null;
   confirmed: boolean;
+  confirmationNotifySent: boolean;
   metadata: {
     turnsInCurrentState: number;
     totalTurns: number;
@@ -124,6 +125,7 @@ export class VoiceTaskSupervisor {
       },
       listFilter: null,
       confirmed: false,
+      confirmationNotifySent: false,
       metadata: {
         turnsInCurrentState: 0,
         totalTurns: 0,
@@ -157,6 +159,7 @@ export class VoiceTaskSupervisor {
       };
       this.state.listFilter = null;
       this.state.confirmed = false;
+      this.state.confirmationNotifySent = false;
       this.state.metadata.turnsInCurrentState = 0;
     }
 
@@ -265,6 +268,9 @@ export class VoiceTaskSupervisor {
     const newStage = this.computeStage(analysisResult);
     if (newStage !== this.state.stage) {
       this.state.metadata.turnsInCurrentState = 0;
+      if (this.state.stage === 'dati_completi' && newStage !== 'dati_completi') {
+        this.state.confirmationNotifySent = false;
+      }
     }
     this.state.stage = newStage;
 
@@ -291,23 +297,27 @@ export class VoiceTaskSupervisor {
       return await this.executeListTasks();
     }
 
-    if (this.state.stage === 'dati_completi' && this.state.currentIntent === 'create_task') {
-      const taskSummary = this.state.extractedTasks
-        .filter(t => t.description && t.date && t.time)
-        .map(t => `"${t.description}" il ${t.date} alle ${t.time}`)
-        .join(', ');
-      return {
-        action: 'notify_ai',
-        notifyMessage: `[TASK_CONFIRM_NEEDED] Il chiamante vuole creare un promemoria: ${taskSummary}. Chiedi conferma esplicita prima di procedere (es. "Vuoi che ti richiami il [data] alle [ora] per ricordarti di [descrizione]? Confermi?"). NON creare il task finché il chiamante non conferma.`,
-      };
-    }
+    if (this.state.stage === 'dati_completi' && !this.state.confirmationNotifySent) {
+      if (this.state.currentIntent === 'create_task') {
+        this.state.confirmationNotifySent = true;
+        const taskSummary = this.state.extractedTasks
+          .filter(t => t.description && t.date && t.time)
+          .map(t => `"${t.description}" il ${t.date} alle ${t.time}`)
+          .join(', ');
+        return {
+          action: 'notify_ai',
+          notifyMessage: `[SYSTEM_INSTRUCTION - NON LEGGERE AD ALTA VOCE, NON RISPONDERE A QUESTO MESSAGGIO DIRETTAMENTE] Il chiamante ha chiesto un promemoria: ${taskSummary}. Nella tua PROSSIMA risposta naturale al chiamante, chiedi conferma riepilogando il promemoria (es. "Perfetto, ti richiamo il [data] alle [ora] per [descrizione], confermi?"). Attendi la conferma esplicita del chiamante prima di procedere.`,
+        };
+      }
 
-    if (this.state.stage === 'dati_completi' && (this.state.currentIntent === 'modify_task' || this.state.currentIntent === 'cancel_task')) {
-      const opLabel = this.state.currentIntent === 'modify_task' ? 'modificare' : 'cancellare';
-      return {
-        action: 'notify_ai',
-        notifyMessage: `[TASK_CONFIRM_NEEDED] Il chiamante vuole ${opLabel} un promemoria. Chiedi conferma esplicita prima di procedere.`,
-      };
+      if (this.state.currentIntent === 'modify_task' || this.state.currentIntent === 'cancel_task') {
+        this.state.confirmationNotifySent = true;
+        const opLabel = this.state.currentIntent === 'modify_task' ? 'modificare' : 'cancellare';
+        return {
+          action: 'notify_ai',
+          notifyMessage: `[SYSTEM_INSTRUCTION - NON LEGGERE AD ALTA VOCE, NON RISPONDERE A QUESTO MESSAGGIO DIRETTAMENTE] Il chiamante vuole ${opLabel} un promemoria. Nella tua PROSSIMA risposta naturale, chiedi conferma esplicita prima di procedere.`,
+        };
+      }
     }
 
     return { action: 'none' };
@@ -418,7 +428,7 @@ export class VoiceTaskSupervisor {
         ) VALUES (
           ${taskId}, ${this.consultantId}, ${this.contactName}, ${this.contactPhone}, ${taskType},
           ${aiInstruction}, ${scheduledAt}::timestamptz, 'Europe/Rome', ${task.recurrenceType || 'once'},
-          ${task.recurrenceDays ? JSON.stringify(task.recurrenceDays) : null}::jsonb, ${task.recurrenceEndDate},
+          ${task.recurrenceDays && task.recurrenceDays.length > 0 ? `{${task.recurrenceDays.join(',')}}` : null}::integer[], ${task.recurrenceEndDate},
           ${maxAttempts}, 15, 'scheduled', 'outbound'
         )
       `);
