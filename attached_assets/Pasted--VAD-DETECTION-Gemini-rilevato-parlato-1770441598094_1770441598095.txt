@@ -1,0 +1,40 @@
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "pe"
+   → Timestamp: 2026-02-07T05:17:57.077Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " Apli , i due dipendenti , chiamate voice , benchporti , contenuti, calendario , brand asset , università , dashboard , stanze da piedi iniziale , clienti , calendario, task , email , analisi dati , applead , i tuoi dipe" + "nde" = " Apli , i due dipendenti , chiamate voice , benchporti , contenuti, calendario , brand asset , università , dashboard , stanze da piedi iniziale , clienti , calendario, task , email , analisi dati , applead , i tuoi dipende"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "nde"
+   → Timestamp: 2026-02-07T05:17:57.247Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: " Apli , i due dipendenti , chiamate voice , benchporti , contenuti, calendario , brand asset , università , dashboard , stanze da piedi iniziale , clienti , calendario, task , email , analisi dati , applead , i tuoi dipende" + "nti, email app." = " Apli , i due dipendenti , chiamate voice , benchporti , contenuti, calendario , brand asset , università , dashboard , stanze da piedi iniziale , clienti , calendario, task , email , analisi dati , applead , i tuoi dipendenti, email app."
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "nti, email app."
+   → Timestamp: 2026-02-07T05:17:57.327Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🛑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛑 [8spfoq] BARGE-IN: serverContent.interrupted detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ Timestamp: 2026-02-07T05:17:57.629Z
+🎤 AI was speaking: NO
+🎯 Action: Stop audio playback immediately
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

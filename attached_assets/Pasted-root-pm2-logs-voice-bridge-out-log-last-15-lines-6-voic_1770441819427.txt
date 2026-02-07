@@ -1,0 +1,132 @@
+root/.pm2/logs/voice-bridge-out.log last 15 lines:
+6|voice-br | 2026-02-07T05:18:03.464Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  lavorare
+6|voice-br | 2026-02-07T05:18:03.465Z [INFO ] [BRIDGE:SERVER] [AI]: " lavorare"
+6|voice-br | 2026-02-07T05:18:03.632Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  insieme
+6|voice-br | 2026-02-07T05:18:03.632Z [INFO ] [BRIDGE:SERVER] [AI]: " insieme"
+6|voice-br | 2026-02-07T05:18:03.831Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  per
+6|voice-br | 2026-02-07T05:18:03.831Z [INFO ] [BRIDGE:SERVER] [AI]: " per"
+6|voice-br | 2026-02-07T05:18:03.905Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  l'obiettivo
+6|voice-br | 2026-02-07T05:18:03.905Z [INFO ] [BRIDGE:SERVER] [AI]: " l'obiettivo"
+6|voice-br | 2026-02-07T05:18:04.078Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  dei 10
+6|voice-br | 2026-02-07T05:18:04.078Z [INFO ] [BRIDGE:SERVER] [AI]: " dei 10"
+6|voice-br | 2026-02-07T05:18:04.185Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  clienti,
+6|voice-br | 2026-02-07T05:18:04.185Z [INFO ] [BRIDGE:SERVER] [AI]: " clienti,"
+6|voice-br | 2026-02-07T05:18:04.349Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  giusto?
+6|voice-br | 2026-02-07T05:18:04.350Z [INFO ] [BRIDGE:SERVER] [AI]: " giusto?"
+6|voice-br | 2026-02-07T05:18:14.859Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=6cff0a5d handlePreview=Cihxb2xyYmV0aXVha2hzY3N5M...
+
+6|voice-bridge  | 2026-02-07T05:20:54.776Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Perfetto! Allora,
+6|voice-bridge  | 2026-02-07T05:20:54.777Z [INFO ] [BRIDGE:SERVER] [AI]: "Perfetto! Allora,"
+6|voice-bridge  | 2026-02-07T05:20:55.400Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  se
+6|voice-bridge  | 2026-02-07T05:20:55.401Z [INFO ] [BRIDGE:SERVER] [AI]: " se"
+6|voice-bridge  | 2026-02-07T05:20:55.510Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  potessimo
+6|voice-bridge  | 2026-02-07T05:20:55.511Z [INFO ] [BRIDGE:SERVER] [AI]: " potessimo"
+6|voice-bridge  | 2026-02-07T05:20:55.687Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti
+6|voice-bridge  | 2026-02-07T05:20:55.687Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti"
+6|voice-bridge  | 2026-02-07T05:20:55.941Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ad
+6|voice-bridge  | 2026-02-07T05:20:55.941Z [INFO ] [BRIDGE:SERVER] [AI]: " ad"
+6|voice-bridge  | 2026-02-07T05:20:55.985Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  arrivare
+6|voice-bridge  | 2026-02-07T05:20:55.985Z [INFO ] [BRIDGE:SERVER] [AI]: " arrivare"
+6|voice-bridge  | 2026-02-07T05:20:56.174Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  anche
+6|voice-bridge  | 2026-02-07T05:20:56.174Z [INFO ] [BRIDGE:SERVER] [AI]: " anche"
+6|voice-bridge  | 2026-02-07T05:20:56.284Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  a 5
+6|voice-bridge  | 2026-02-07T05:20:56.284Z [INFO ] [BRIDGE:SERVER] [AI]: " a 5"
+6|voice-bridge  | 2026-02-07T05:20:56.468Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  clienti
+6|voice-bridge  | 2026-02-07T05:20:56.468Z [INFO ] [BRIDGE:SERVER] [AI]: " clienti"
+6|voice-bridge  | 2026-02-07T05:20:56.667Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  al mese
+6|voice-bridge  | 2026-02-07T05:20:56.667Z [INFO ] [BRIDGE:SERVER] [AI]: " al mese"
+6|voice-bridge  | 2026-02-07T05:20:56.835Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  grazie
+6|voice-bridge  | 2026-02-07T05:20:56.836Z [INFO ] [BRIDGE:SERVER] [AI]: " grazie"
+6|voice-bridge  | 2026-02-07T05:20:56.950Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  al nostro
+6|voice-bridge  | 2026-02-07T05:20:56.950Z [INFO ] [BRIDGE:SERVER] [AI]: " al nostro"
+6|voice-bridge  | 2026-02-07T05:20:57.041Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sistema,
+6|voice-bridge  | 2026-02-07T05:20:57.042Z [INFO ] [BRIDGE:SERVER] [AI]: " sistema,"
+6|voice-bridge  | 2026-02-07T05:20:57.221Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ci dedicheresti
+6|voice-bridge  | 2026-02-07T05:20:57.221Z [INFO ] [BRIDGE:SERVER] [AI]: " ci dedicheresti"
+6|voice-bridge  | 2026-02-07T05:20:57.527Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  30
+6|voice-bridge  | 2026-02-07T05:20:57.527Z [INFO ] [BRIDGE:SERVER] [AI]: " 30"
+6|voice-bridge  | 2026-02-07T05:20:57.657Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  minuti
+6|voice-bridge  | 2026-02-07T05:20:57.657Z [INFO ] [BRIDGE:SERVER] [AI]: " minuti"
+6|voice-bridge  | 2026-02-07T05:20:57.766Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  in una
+6|voice-bridge  | 2026-02-07T05:20:57.767Z [INFO ] [BRIDGE:SERVER] [AI]: " in una"
+6|voice-bridge  | 2026-02-07T05:20:57.847Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  consulenza
+6|voice-bridge  | 2026-02-07T05:20:57.847Z [INFO ] [BRIDGE:SERVER] [AI]: " consulenza"
+6|voice-bridge  | 2026-02-07T05:20:58.077Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  gratuita
+6|voice-bridge  | 2026-02-07T05:20:58.077Z [INFO ] [BRIDGE:SERVER] [AI]: " gratuita"
+6|voice-bridge  | 2026-02-07T05:20:58.248Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  con
+6|voice-bridge  | 2026-02-07T05:20:58.248Z [INFO ] [BRIDGE:SERVER] [AI]: " con"
+6|voice-bridge  | 2026-02-07T05:20:58.317Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Alessio
+6|voice-bridge  | 2026-02-07T05:20:58.318Z [INFO ] [BRIDGE:SERVER] [AI]: " Alessio"
+6|voice-bridge  | 2026-02-07T05:20:58.456Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Chianetta
+6|voice-bridge  | 2026-02-07T05:20:58.456Z [INFO ] [BRIDGE:SERVER] [AI]: " Chianetta"
+6|voice-bridge  | 2026-02-07T05:20:58.575Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  per
+6|voice-bridge  | 2026-02-07T05:20:58.575Z [INFO ] [BRIDGE:SERVER] [AI]: " per"
+6|voice-bridge  | 2026-02-07T05:20:58.690Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  capire
+6|voice-bridge  | 2026-02-07T05:20:58.690Z [INFO ] [BRIDGE:SERVER] [AI]: " capire"
+6|voice-bridge  | 2026-02-07T05:20:58.794Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  se
+6|voice-bridge  | 2026-02-07T05:20:58.794Z [INFO ] [BRIDGE:SERVER] [AI]: " se"
+6|voice-bridge  | 2026-02-07T05:20:58.900Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  e come
+6|voice-bridge  | 2026-02-07T05:20:58.900Z [INFO ] [BRIDGE:SERVER] [AI]: " e come"
+6|voice-bridge  | 2026-02-07T05:20:59.035Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  possiamo
+6|voice-bridge  | 2026-02-07T05:20:59.035Z [INFO ] [BRIDGE:SERVER] [AI]: " possiamo"
+6|voice-bridge  | 2026-02-07T05:20:59.159Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  aiutarti
+6|voice-bridge  | 2026-02-07T05:20:59.159Z [INFO ] [BRIDGE:SERVER] [AI]: " aiutarti"
+6|voice-bridge  | 2026-02-07T05:20:59.282Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  concretamente?
+6|voice-bridge  | 2026-02-07T05:20:59.282Z [INFO ] [BRIDGE:SERVER] [AI]: " concretamente?"
+6|voice-bridge  | 2026-02-07T05:21:12.020Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=6cff0a5d handlePreview=Cih5NGs1aGlvanVmYmcxZjdrN...
+6|voice-bridge  | 2026-02-07T05:21:28.745Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Fantasticooo! Allora,
+6|voice-bridge  | 2026-02-07T05:21:28.745Z [INFO ] [BRIDGE:SERVER] [AI]: "Fantasticooo! Allora,"
+6|voice-bridge  | 2026-02-07T05:21:29.360Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  ti va
+6|voice-bridge  | 2026-02-07T05:21:29.360Z [INFO ] [BRIDGE:SERVER] [AI]: " ti va"
+6|voice-bridge  | 2026-02-07T05:21:29.468Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  meglio
+6|voice-bridge  | 2026-02-07T05:21:29.468Z [INFO ] [BRIDGE:SERVER] [AI]: " meglio"
+6|voice-bridge  | 2026-02-07T05:21:29.594Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  la mattina
+6|voice-bridge  | 2026-02-07T05:21:29.594Z [INFO ] [BRIDGE:SERVER] [AI]: " la mattina"
+6|voice-bridge  | 2026-02-07T05:21:29.821Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  o il
+6|voice-bridge  | 2026-02-07T05:21:29.821Z [INFO ] [BRIDGE:SERVER] [AI]: " o il"
+6|voice-bridge  | 2026-02-07T05:21:29.867Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  pomeriggio
+6|voice-bridge  | 2026-02-07T05:21:29.868Z [INFO ] [BRIDGE:SERVER] [AI]: " pomeriggio"
+6|voice-bridge  | 2026-02-07T05:21:30.002Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  per questa
+6|voice-bridge  | 2026-02-07T05:21:30.002Z [INFO ] [BRIDGE:SERVER] [AI]: " per questa"
+6|voice-bridge  | 2026-02-07T05:21:30.097Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  consulenza?
+6|voice-bridge  | 2026-02-07T05:21:30.097Z [INFO ] [BRIDGE:SERVER] [AI]: " consulenza?"
+6|voice-bridge  | 2026-02-07T05:21:35.733Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=6cff0a5d handlePreview=CigxaXB4NHgzM2RpeHZwMzVyd...
+6|voice-bridge  | 2026-02-07T05:22:52.175Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=6cff0a5d handlePreview=CigxaXB4NHgzM2RpeHZwMzVyd...
+6|voice-bridge  | 2026-02-07T05:22:54.236Z [WARN ] [BRIDGE:REPLIT-WS] 
+6|voice-bridge  | ⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-02-07T05:22:54.237Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ [FORCE RESTART] WebSocket age: 9.1m - forcing to avoid Gemini timeout
+6|voice-bridge  | 2026-02-07T05:22:54.237Z [WARN ] [BRIDGE:REPLIT-WS] ⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-02-07T05:22:54.237Z [INFO ] [BRIDGE:REPLIT-WS] 🔊 [AUDIO BUFFER] Activated - buffering caller audio during restart sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:54.237Z [INFO ] [BRIDGE:SERVER] 🔄 Gemini session expired - entering reconnect state, keeping FreeSWITCH call alive sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:54.237Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=6cff0a5d from=active to=reconnecting
+6|voice-bridge  | 2026-02-07T05:22:54.237Z [INFO ] [BRIDGE:SESSION] Inactivity timeout paused (session resume) sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:54.345Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket closed sessionId=6cff0a5d code=1000 reason=Proactive Client Restart hasPendingResume=true
+6|voice-bridge  | 2026-02-07T05:22:54.345Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 Old connection closed → executing reconnect with resume handle sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:54.345Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 Executing reconnect with resume handle... sessionId=6cff0a5d attempt=0 silentStreak=0
+6|voice-bridge  | 2026-02-07T05:22:54.846Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 Connecting with resumeHandle for session resume sessionId=6cff0a5d handlePreview=CigxaXB4NHgzM2RpeHZw... silentStreak=0
+6|voice-bridge  | 2026-02-07T05:22:54.846Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=6cff0a5d url=wss://eccd94e9-7ab4-4aa3-b041-908fb28891d6-00-3vyudda9y3x6w.janeway.replit.dev/ws/ai-voice voice=Puck isResume=true
+6|voice-bridge  | 2026-02-07T05:22:55.273Z [INFO ] [BRIDGE:REPLIT-WS] Replit WebSocket connected sessionId=6cff0a5d resumed=true
+6|voice-bridge  | 2026-02-07T05:22:55.273Z [INFO ] [BRIDGE:SERVER] ✅ Gemini session resumed - returning to active state sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:55.273Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=6cff0a5d from=reconnecting to=active
+6|voice-bridge  | 2026-02-07T05:22:55.273Z [INFO ] [BRIDGE:SESSION] Inactivity timeout resumed sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:55.273Z [INFO ] [BRIDGE:REPLIT-WS] ✅ Session resumed successfully! sessionId=6cff0a5d attempt=0
+6|voice-bridge  | 2026-02-07T05:22:55.274Z [INFO ] [BRIDGE:REPLIT-WS] 🔊 [AUDIO BUFFER] Flushing 52 buffered audio frames to new session sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:55.274Z [INFO ] [BRIDGE:REPLIT-WS] 🔊 [AUDIO BUFFER] Flush complete - 52 frames sent sessionId=6cff0a5d
+6|voice-bridge  | 2026-02-07T05:22:59.583Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: **Initiating Call Procedure**
+6|voice-bridge  | I am now focusing on immediately initiating the conversation as the session has started. I'm prioritizing adherence to the Director's Notes for energy and vocal style: maintaining a "vocal smile" with punchy consonants, elongated, enthusiastic vowels, a high, bright, and projecting tone, filled with infectious enthusiasm. I am ready to start.
+6|voice-bridge  | 2026-02-07T05:22:59.583Z [INFO ] [BRIDGE:SERVER] [AI]: "**Initiating Call Procedure**
+6|voice-bridge  | I am now focusing on immediately initiating the conversation as the session has started. I'm prioritizing adherence to the Director's Notes for energy and vocal style: maintaining a "vocal smile" with punchy consonants, elongated, enthusiastic vowels, a high, bright, and projecting tone, filled with infectious enthusiasm. I am ready to start.
+6|voice-bridge  | "
+6|voice-bridge  | 2026-02-07T05:22:59.735Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ciao Alessio!
+6|voice-bridge  | 2026-02-07T05:22:59.735Z [INFO ] [BRIDGE:SERVER] [AI]: "Ciao Alessio!"
+6|voice-bridge  | 2026-02-07T05:23:00.237Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che
+6|voice-bridge  | 2026-02-07T05:23:00.238Z [INFO ] [BRIDGE:SERVER] [AI]: " Che"
+6|voice-bridge  | 2026-02-07T05:23:00.239Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  fantasticooo
+6|voice-bridge  | 2026-02-07T05:23:00.240Z [INFO ] [BRIDGE:SERVER] [AI]: " fantasticooo"
+6|voice-bridge  | 2026-02-07T05:23:00.345Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sentirti!
+6|voice-bridge  | 2026-02-07T05:23:00.345Z [INFO ] [BRIDGE:SERVER] [AI]: " sentirti!"
+6|voice-bridge  | 2026-02-07T05:23:00.513Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Come
+6|voice-bridge  | 2026-02-07T05:23:00.513Z [INFO ] [BRIDGE:SERVER] [AI]: " Come"
+6|voice-bridge  | 2026-02-07T05:23:00.599Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  stai?
+6|voice-bridge  | 2026-02-07T05:23:00.600Z [INFO ] [BRIDGE:SERVER] [AI]: " stai?"
+6|voice-bridge  | 2026-02-07T05:23:04.472Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=6cff0a5d handlePreview=CihiOGh6Zm11cWIwd3lmZXZne...
