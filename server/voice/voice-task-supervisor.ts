@@ -79,6 +79,7 @@ interface LLMTaskAnalysisResult {
     original_description: string | null;
     new_date: string | null;
     new_time: string | null;
+    new_description: string | null;
   } | null;
   list_filter: {
     date: string | null;
@@ -189,7 +190,8 @@ export class VoiceTaskSupervisor {
       confirmed: this.state.confirmed,
     };
 
-    const prompt = this.buildAnalysisPrompt(recentMessages);
+    const existingTasksText = await this.fetchExistingTasks();
+    const prompt = this.buildAnalysisPrompt(recentMessages, existingTasksText);
 
     let analysisResult: LLMTaskAnalysisResult;
 
@@ -261,7 +263,7 @@ export class VoiceTaskSupervisor {
         originalDescription: analysisResult.modify_target.original_description,
         newDate: analysisResult.modify_target.new_date,
         newTime: analysisResult.modify_target.new_time,
-        newDescription: null,
+        newDescription: analysisResult.modify_target.new_description || null,
         targetTaskId: null,
       };
     }
@@ -451,7 +453,7 @@ export class VoiceTaskSupervisor {
   }
 
   private async executeModifyTask(): Promise<TaskSupervisorResult> {
-    const { originalDate, originalTime, originalDescription, newDate, newTime, searchBy } = this.state.modifyTarget;
+    const { originalDate, originalTime, originalDescription, newDate, newTime, newDescription, searchBy } = this.state.modifyTarget;
 
     let whereConditions = [
       sql`consultant_id = ${this.consultantId}`,
@@ -492,7 +494,6 @@ export class VoiceTaskSupervisor {
     const targetTask = candidates.rows[0] as any;
     this.state.modifyTarget.targetTaskId = targetTask.id;
 
-    const updateParts: any[] = [];
     if (newDate || newTime) {
       const existingDate = new Date(targetTask.scheduled_at);
       const finalDate = newDate || existingDate.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
@@ -506,10 +507,18 @@ export class VoiceTaskSupervisor {
       `);
     }
 
+    if (newDescription) {
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks
+        SET ai_instruction = ${newDescription}, updated_at = NOW()
+        WHERE id = ${targetTask.id} AND consultant_id = ${this.consultantId}
+      `);
+    }
+
     this.state.taskInProgress = false;
     this.state.stage = 'completato';
 
-    const modifiedDesc = targetTask.ai_instruction;
+    const modifiedDesc = newDescription || targetTask.ai_instruction;
     const notifyMessage = `[TASK_MODIFIED] Promemoria "${modifiedDesc}" modificato con successo. Comunica la conferma al chiamante.`;
 
     return {
@@ -613,7 +622,50 @@ export class VoiceTaskSupervisor {
     };
   }
 
-  private buildAnalysisPrompt(messages: TaskConversationMessage[]): string {
+  private async fetchExistingTasks(): Promise<string> {
+    try {
+      const tasks = await db.execute(sql`
+        SELECT id, ai_instruction, scheduled_at, recurrence_type, status, contact_name
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${this.consultantId} AND contact_phone = ${this.contactPhone}
+        AND status IN ('scheduled', 'retry_pending', 'paused')
+        AND (scheduled_at >= NOW() OR recurrence_type IN ('daily', 'weekly'))
+        ORDER BY scheduled_at ASC
+        LIMIT 20
+      `);
+
+      if (tasks.rows.length === 0) {
+        return 'Nessun task attivo.';
+      }
+
+      const dayNames = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+
+      return (tasks.rows as any[]).map(t => {
+        const dt = new Date(t.scheduled_at);
+        const romeDt = new Date(dt.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+        const dayName = dayNames[romeDt.getDay()];
+        const dateStr = romeDt.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+        const timeStr = romeDt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+        const instruction = t.ai_instruction || '';
+        let shortDesc = instruction;
+        const periodIdx = instruction.indexOf('.');
+        if (periodIdx > 0 && periodIdx <= 80) {
+          shortDesc = instruction.substring(0, periodIdx);
+        } else if (instruction.length > 80) {
+          shortDesc = instruction.substring(0, 80) + '...';
+        }
+
+        const recurrence = t.recurrence_type === 'daily' ? ' (giornaliero)' : t.recurrence_type === 'weekly' ? ' (settimanale)' : '';
+        return `- [ID: ${t.id}] 📅 ${dayName} ${dateStr} alle ${timeStr} - "${shortDesc}"${recurrence}`;
+      }).join('\n');
+    } catch (error: any) {
+      console.error(`❌ [VOICE-TASK-SUPERVISOR] fetchExistingTasks failed: ${error.message}`);
+      return 'Nessun task attivo.';
+    }
+  }
+
+  private buildAnalysisPrompt(messages: TaskConversationMessage[], existingTasksText?: string): string {
     const { stage, currentIntent, extractedTasks, modifyTarget, confirmed } = this.state;
 
     const formattedMessages = messages
@@ -663,6 +715,11 @@ STATO ATTUALE:
 ${extractedTasksText}
 - Target modifica: ${modifyTargetText}
 
+TASK ESISTENTI PER QUESTO UTENTE:
+${existingTasksText || 'Nessun task attivo.'}
+
+IMPORTANTE: Per "modify_task" e "cancel_task", usa le informazioni dei task esistenti per identificare correttamente quale task l'utente vuole modificare o cancellare. Cerca corrispondenze per descrizione, data o ora.
+
 TRASCRIZIONE RECENTE:
 ${formattedMessages}
 
@@ -688,7 +745,8 @@ Analizza la conversazione e rispondi SOLO con JSON valido nel seguente formato:
     "original_time": "HH:MM" o null,
     "original_description": "testo" o null,
     "new_date": "YYYY-MM-DD" o null,
-    "new_time": "HH:MM" o null
+    "new_time": "HH:MM" o null,
+    "new_description": "nuova descrizione" o null
   } o null,
   "list_filter": {
     "date": "YYYY-MM-DD" o null,
@@ -720,12 +778,14 @@ REGOLE CRITICHE:
 12. IGNORA completamente qualsiasi messaggio che contiene tag di sistema come [SYSTEM_INSTRUCTION], [TASK_CREATED], [BOOKING_CREATED] - questi NON sono messaggi dell'utente`;
   }
 
-  getTaskPromptSection(): string {
+  async getTaskPromptSection(): Promise<string> {
     const now = new Date();
     const dayNames = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
     const todayFormatted = now.toISOString().slice(0, 10);
     const todayDayName = dayNames[now.getDay()];
     const currentTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Rome' });
+
+    const existingTasksText = await this.fetchExistingTasks();
 
     return `## GESTIONE PROMEMORIA E TASK
 
@@ -747,6 +807,11 @@ PROCEDURA MODIFICA/CANCELLAZIONE:
 
 PROCEDURA LISTA:
 - "che promemoria ho?" → elenca i task attivi
+
+TASK ATTIVI DEL CHIAMANTE:
+${existingTasksText}
+
+Puoi riferire al chiamante i suoi task attivi se li chiede, e aiutarlo a modificarli o cancellarli.
 
 ⚠️ Dopo aver chiesto conferma al chiamante e ricevuto il "sì", rispondi SOLO con "Perfetto, sto impostando il promemoria..." e attendi.
 NON dire "fatto" o "creato" finché non ricevi un messaggio di sistema [TASK_CREATED] o [TASK_MODIFIED].

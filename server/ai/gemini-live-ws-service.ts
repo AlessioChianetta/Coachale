@@ -4590,7 +4590,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           });
           console.log(`📝 [${connectionId}] VoiceTaskSupervisor initialized (phone: ${phoneCallerId || 'unknown'})`);
 
-          const taskPromptSection = taskSupervisor.getTaskPromptSection();
+          const taskPromptSection = await taskSupervisor.getTaskPromptSection();
           systemInstruction = systemInstruction + '\n\n' + taskPromptSection;
           console.log(`📝 [${connectionId}] Task prompt section appended (${taskPromptSection.length} chars)`);
         }
