@@ -371,14 +371,14 @@ router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_adm
       db.execute(sql`SELECT * FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1`),
       db.execute(sql`SELECT id, ai_instruction, status, task_category, scheduled_at, result_summary FROM ai_scheduled_tasks WHERE consultant_id = ${consultantId} AND task_type = 'ai_task' ORDER BY created_at DESC LIMIT 10`),
       db.execute(sql`SELECT event_type, title, description, created_at FROM ai_activity_log WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10`),
-      db.execute(sql`SELECT id, first_name, last_name, email, phone FROM users WHERE consultant_id = ${consultantId} AND role = 'client' LIMIT 20`),
+      db.execute(sql`SELECT id, first_name, last_name, email, phone_number FROM users WHERE consultant_id = ${consultantId} AND role = 'client' LIMIT 20`),
     ]);
 
     const settingsJson = settingsResult.rows.length > 0 ? JSON.stringify(settingsResult.rows[0]) : "Nessuna impostazione configurata";
     const tasksJson = tasksResult.rows.length > 0 ? JSON.stringify(tasksResult.rows) : "Nessun task recente";
     const activityJson = activityResult.rows.length > 0 ? JSON.stringify(activityResult.rows) : "Nessuna attività recente";
     const clientsSummary = clientsResult.rows.length > 0
-      ? clientsResult.rows.map((c: any) => `${c.first_name || ""} ${c.last_name || ""} (${c.email || "no email"})`).join(", ")
+      ? clientsResult.rows.map((c: any) => `${c.first_name || ""} ${c.last_name || ""} (${c.email || "no email"}, tel: ${c.phone_number || "N/A"})`).join(", ")
       : "Nessun cliente trovato";
 
     const systemPrompt = `Sei Alessia, il Dipendente AI di questo consulente finanziario. Comunichi in italiano.
