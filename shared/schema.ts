@@ -9965,6 +9965,19 @@ export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
   completedAt: timestamp("completed_at", { withTimezone: true }),
+  // Autonomous AI columns
+  originType: varchar("origin_type", { length: 20 }).default("manual"),
+  taskCategory: varchar("task_category", { length: 30 }).default("outreach"),
+  contactId: uuid("contact_id"),
+  aiReasoning: text("ai_reasoning"),
+  aiConfidence: decimal("ai_confidence", { precision: 3, scale: 2 }),
+  executionPlan: jsonb("execution_plan").$type<any[]>().default(sql`'[]'::jsonb`),
+  resultData: jsonb("result_data").$type<Record<string, any>>(),
+  priority: integer("priority").default(3),
+  parentTaskId: varchar("parent_task_id", { length: 100 }),
+  callAfterTask: boolean("call_after_task").default(false),
+  postActions: jsonb("post_actions").$type<any[]>().default(sql`'[]'::jsonb`),
+  attemptsLog: jsonb("attempts_log").$type<any[]>().default(sql`'[]'::jsonb`),
 }, (table) => ({
   consultantIdx: index("idx_ai_tasks_consultant").on(table.consultantId),
   statusIdx: index("idx_ai_tasks_status").on(table.status),
@@ -9973,3 +9986,50 @@ export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
 
 export type AIScheduledTask = typeof aiScheduledTasks.$inferSelect;
 export type InsertAIScheduledTask = typeof aiScheduledTasks.$inferInsert;
+
+export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: uuid("consultant_id").notNull(),
+  autonomyLevel: integer("autonomy_level").default(1),
+  defaultMode: varchar("default_mode", { length: 10 }).default("manual"),
+  allowedTaskCategories: jsonb("allowed_task_categories").$type<string[]>().default(sql`'["outreach", "reminder", "followup"]'::jsonb`),
+  alwaysApproveActions: jsonb("always_approve_actions").$type<string[]>().default(sql`'["send_email", "make_call", "modify_data"]'::jsonb`),
+  workingHoursStart: time("working_hours_start").default(sql`'08:00'`),
+  workingHoursEnd: time("working_hours_end").default(sql`'20:00'`),
+  workingDays: jsonb("working_days").$type<number[]>().default(sql`'[1,2,3,4,5]'::jsonb`),
+  maxDailyCalls: integer("max_daily_calls").default(10),
+  maxDailyEmails: integer("max_daily_emails").default(20),
+  maxDailyWhatsapp: integer("max_daily_whatsapp").default(30),
+  maxDailyAnalyses: integer("max_daily_analyses").default(50),
+  proactiveCheckIntervalMinutes: integer("proactive_check_interval_minutes").default(60),
+  isActive: boolean("is_active").default(false),
+  customInstructions: text("custom_instructions"),
+  channelsEnabled: jsonb("channels_enabled").$type<Record<string, boolean>>().default(sql`'{"voice": true, "email": false, "whatsapp": false}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+});
+
+export type AIAutonomySettings = typeof aiAutonomySettings.$inferSelect;
+export type InsertAIAutonomySettings = typeof aiAutonomySettings.$inferInsert;
+
+export const aiActivityLog = pgTable("ai_activity_log", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: uuid("consultant_id").notNull(),
+  eventType: varchar("event_type", { length: 30 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  icon: varchar("icon", { length: 30 }),
+  severity: varchar("severity", { length: 10 }).default("info"),
+  eventData: jsonb("event_data").$type<Record<string, any>>().default(sql`'{}'::jsonb`),
+  contactId: uuid("contact_id"),
+  contactName: varchar("contact_name", { length: 255 }),
+  taskId: varchar("task_id", { length: 100 }),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_ai_activity_consultant").on(table.consultantId),
+  createdIdx: index("idx_ai_activity_created").on(table.createdAt),
+}));
+
+export type AIActivityLog = typeof aiActivityLog.$inferSelect;
+export type InsertAIActivityLog = typeof aiActivityLog.$inferInsert;

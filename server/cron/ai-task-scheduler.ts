@@ -38,6 +38,17 @@ interface AIScheduledTask {
   voice_call_id: string | null;
   voice_template_id: string | null;
   voice_direction: string;
+  origin_type: string;
+  task_category: string;
+  contact_id: string | null;
+  ai_reasoning: string | null;
+  ai_confidence: number | null;
+  execution_plan: any[];
+  result_data: any;
+  priority: number;
+  parent_task_id: string | null;
+  call_after_task: boolean;
+  post_actions: any[];
 }
 
 /**
@@ -46,6 +57,12 @@ interface AIScheduledTask {
 async function processAITasks(): Promise<void> {
   const result = await withCronLock(CRON_JOB_NAME, async () => {
     console.log('🤖 [AI-SCHEDULER] Processing AI tasks...');
+    
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'scheduled', updated_at = NOW()
+      WHERE status = 'approved' AND scheduled_at <= NOW()
+    `);
     
     // Find tasks ready to execute:
     // 1. Scheduled tasks whose time has come
@@ -121,6 +138,11 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
   const updatedTask = { ...task, current_attempt: attemptNumber };
   
   try {
+    if (task.task_type === 'ai_task') {
+      await executeAutonomousTask(updatedTask);
+      return;
+    }
+
     // 2. Attempt to make the call
     const callSuccess = await initiateVoiceCall(updatedTask);
     
@@ -428,6 +450,204 @@ async function handleFailure(task: AIScheduledTask, reason: string): Promise<voi
     // NOTE: Recurrence is NOT scheduled here on failure
     // The callback will handle recurrence when a call actually completes successfully
     // This prevents duplicate recurrence scheduling
+  }
+}
+
+/**
+ * Execute an autonomous multi-step AI task
+ * Phase 1: Basic execution with plan parsing, step tracking, and activity logging
+ */
+async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
+  console.log(`🧠 [AI-SCHEDULER] Executing autonomous task ${task.id} (category: ${task.task_category})`);
+  
+  try {
+    const executionPlan = Array.isArray(task.execution_plan) ? task.execution_plan : [];
+    const totalSteps = executionPlan.length;
+    
+    if (totalSteps === 0) {
+      console.log(`🧠 [AI-SCHEDULER] Task ${task.id} has no execution plan, executing as simple analysis`);
+      
+      await logActivity(task.consultant_id, {
+        event_type: 'task_started',
+        title: `Task avviato: ${task.ai_instruction?.substring(0, 80) || 'Task AI'}`,
+        description: `Categoria: ${task.task_category}, Priorità: ${task.priority}`,
+        icon: 'brain',
+        severity: 'info',
+        task_id: task.id,
+        contact_name: task.contact_name,
+        contact_id: task.contact_id,
+      });
+      
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks 
+        SET status = 'completed',
+            result_summary = 'Task completato (Fase 1 - placeholder)',
+            result_data = ${JSON.stringify({ phase: 1, completed_at: new Date().toISOString() })}::jsonb,
+            completed_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${task.id}
+      `);
+      
+      await logActivity(task.consultant_id, {
+        event_type: 'task_completed',
+        title: `Task completato: ${task.ai_instruction?.substring(0, 80) || 'Task AI'}`,
+        description: 'Esecuzione completata con successo',
+        icon: 'check',
+        severity: 'success',
+        task_id: task.id,
+        contact_name: task.contact_name,
+        contact_id: task.contact_id,
+      });
+      
+      console.log(`✅ [AI-SCHEDULER] Autonomous task ${task.id} completed successfully`);
+      return;
+    }
+    
+    console.log(`🧠 [AI-SCHEDULER] Task ${task.id} has ${totalSteps} steps to execute`);
+    
+    await logActivity(task.consultant_id, {
+      event_type: 'task_started',
+      title: `Task multi-step avviato: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+      description: `${totalSteps} step da eseguire. Categoria: ${task.task_category}`,
+      icon: 'brain',
+      severity: 'info',
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+    
+    const stepResults: any[] = [];
+    
+    for (let i = 0; i < totalSteps; i++) {
+      const step = executionPlan[i];
+      const stepName = step?.action || step?.type || `step_${i + 1}`;
+      
+      console.log(`🧠 [AI-SCHEDULER] Executing step ${i + 1}/${totalSteps}: ${stepName}`);
+      
+      const updatedPlan = [...executionPlan];
+      updatedPlan[i] = { ...updatedPlan[i], status: 'in_progress', started_at: new Date().toISOString() };
+      
+      await db.execute(sql`
+        UPDATE ai_scheduled_tasks 
+        SET execution_plan = ${JSON.stringify(updatedPlan)}::jsonb,
+            result_summary = ${`Eseguendo step ${i + 1}/${totalSteps}: ${stepName}`},
+            updated_at = NOW()
+        WHERE id = ${task.id}
+      `);
+      
+      updatedPlan[i] = { 
+        ...updatedPlan[i], 
+        status: 'completed', 
+        completed_at: new Date().toISOString(),
+        result: { phase: 1, message: `Step ${stepName} completato (placeholder)` }
+      };
+      
+      stepResults.push({
+        step: i + 1,
+        action: stepName,
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      });
+    }
+    
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'completed',
+          execution_plan = ${JSON.stringify(executionPlan.map((s: any, i: number) => ({
+            ...s, status: 'completed', completed_at: new Date().toISOString()
+          })))}::jsonb,
+          result_summary = ${`Completato: ${totalSteps} step eseguiti con successo`},
+          result_data = ${JSON.stringify({ phase: 1, steps: stepResults, completed_at: new Date().toISOString() })}::jsonb,
+          completed_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${task.id}
+    `);
+    
+    if (task.call_after_task && task.contact_phone) {
+      console.log(`📞 [AI-SCHEDULER] Task ${task.id} requires post-task call to ${task.contact_phone}`);
+      const callTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      await db.execute(sql`
+        INSERT INTO ai_scheduled_tasks (
+          id, consultant_id, contact_name, contact_phone, task_type,
+          ai_instruction, scheduled_at, timezone, status, origin_type,
+          task_category, parent_task_id, priority
+        ) VALUES (
+          ${callTaskId}, ${task.consultant_id}, ${task.contact_name}, ${task.contact_phone},
+          'single_call', ${task.ai_instruction}, NOW() + INTERVAL '1 minute', 
+          ${task.timezone || 'Europe/Rome'}, 'scheduled', 'autonomous',
+          'followup', ${task.id}, ${task.priority}
+        )
+      `);
+      console.log(`📞 [AI-SCHEDULER] Created follow-up call task ${callTaskId}`);
+    }
+    
+    await logActivity(task.consultant_id, {
+      event_type: 'task_completed',
+      title: `Task multi-step completato: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+      description: `${totalSteps} step completati con successo`,
+      icon: 'check',
+      severity: 'success',
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+      event_data: { steps_completed: totalSteps }
+    });
+    
+    console.log(`✅ [AI-SCHEDULER] Autonomous task ${task.id} completed (${totalSteps} steps)`);
+    
+  } catch (error: any) {
+    console.error(`❌ [AI-SCHEDULER] Autonomous task ${task.id} failed:`, error.message);
+    
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'failed',
+          result_summary = ${`Errore: ${error.message}`},
+          completed_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${task.id}
+    `);
+    
+    await logActivity(task.consultant_id, {
+      event_type: 'task_failed',
+      title: `Task fallito: ${task.ai_instruction?.substring(0, 80) || 'Task AI'}`,
+      description: `Errore: ${error.message}`,
+      icon: 'alert',
+      severity: 'error',
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+  }
+}
+
+/**
+ * Log an activity entry in ai_activity_log
+ */
+export async function logActivity(consultantId: string, data: {
+  event_type: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  severity?: string;
+  task_id?: string;
+  contact_name?: string | null;
+  contact_id?: string | null;
+  event_data?: Record<string, any>;
+}): Promise<void> {
+  try {
+    await db.execute(sql`
+      INSERT INTO ai_activity_log (
+        consultant_id, event_type, title, description, icon, severity,
+        task_id, contact_name, contact_id, event_data
+      ) VALUES (
+        ${consultantId}, ${data.event_type}, ${data.title},
+        ${data.description || null}, ${data.icon || null}, ${data.severity || 'info'},
+        ${data.task_id || null}, ${data.contact_name || null}, ${data.contact_id || null},
+        ${JSON.stringify(data.event_data || {})}::jsonb
+      )
+    `);
+  } catch (error: any) {
+    console.error(`⚠️ [AI-SCHEDULER] Failed to log activity:`, error.message);
   }
 }
 

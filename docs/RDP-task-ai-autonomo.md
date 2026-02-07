@@ -1,9 +1,29 @@
 # RDP - Task AI Autonomo: Dipendente Virtuale Intelligente
 
 > **Data:** 7 Febbraio 2026  
-> **Status:** Proposta  
+> **Status:** In Implementazione — Fase 1 Completata  
 > **Priorità:** Alta  
 > **Dipendenze:** VoiceTaskSupervisor, AI Task Scheduler, Follow-up Decision Engine, Gemini API
+
+### Progresso Implementazione
+
+| Fase | Status | Data |
+|------|--------|------|
+| **Fase 1: Fondamenta** | ✅ Completata | 7 Feb 2026 |
+| **Fase 2: Decision Engine** | ⏳ Da iniziare | — |
+| **Fase 3: Proactive Monitor** | ⏳ Da iniziare | — |
+| **Fase 4: Integrations & Polish** | ⏳ Da iniziare | — |
+
+**Fase 1 — Dettaglio completamento:**
+- ✅ ALTER TABLE `ai_scheduled_tasks` — 11 nuove colonne aggiunte (origin_type, task_category, contact_id, ai_reasoning, ai_confidence, execution_plan, result_data, priority, parent_task_id, call_after_task, post_actions)
+- ✅ CREATE TABLE `ai_autonomy_settings` — Configurazione autonomia per consulente
+- ✅ CREATE TABLE `ai_activity_log` — Audit trail con indici
+- ✅ Drizzle schema aggiornato (`shared/schema.ts`) — Nuove colonne + 2 nuove tabelle con tipi
+- ✅ Backend `ai-autonomy-router.ts` — 6 endpoint CRUD (GET/PUT settings, GET activity, POST read, POST read-all, GET unread-count)
+- ✅ Backend `ai-task-scheduler.ts` esteso — Branch `task_type='ai_task'` con `executeAutonomousTask()`, `logActivity()`, transizione approved→scheduled
+- ✅ Frontend `consultant-ai-autonomy.tsx` — Pagina completa con tab Impostazioni (slider autonomia, orari, limiti, canali, istruzioni) e Feed Attività (timeline, filtri, paginazione, mark as read)
+- ✅ Sidebar aggiornata — Voce "AI Autonomo" nella sezione COMUNICAZIONE
+- ✅ Route `/consultant/ai-autonomy` registrata in App.tsx
 
 ---
 

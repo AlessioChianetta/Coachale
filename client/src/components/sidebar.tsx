@@ -138,6 +138,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: Settings, color: "text-slate-500" },
       { name: "Email Hub", href: "/consultant/email-hub", icon: Mail, color: "text-blue-500" },
       { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone, color: "text-green-500", badge: "NEW" },
+      { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot, color: "text-violet-500", badge: "AI" },
     ]
   },
   {
