@@ -1169,6 +1169,21 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
 
   if (eligibleClients.length === 0) {
     console.log(`🧠 [AUTONOMOUS-GEN] No eligible clients for consultant ${consultantId}`);
+    await logActivity(consultantId, {
+      event_type: 'autonomous_analysis',
+      title: 'Analisi autonoma: nessun cliente idoneo',
+      description: `${clients.length} clienti totali, ma tutti hanno task pendenti o completati di recente.`,
+      icon: '🧠',
+      severity: 'info',
+      event_data: {
+        total_clients: clients.length,
+        eligible_clients: 0,
+        clients_with_pending_tasks: clientsWithPendingTasks.size,
+        clients_with_recent_completion: clientsWithRecentCompletion.size,
+        tasks_suggested: 0,
+        suggestions: [],
+      },
+    });
     return 0;
   }
 
@@ -1284,6 +1299,31 @@ Rispondi SOLO con un JSON valido nel seguente formato (senza markdown, senza bac
       }
       parsed = JSON.parse(jsonMatch[0]);
     }
+
+    await logActivity(consultantId, {
+      event_type: 'autonomous_analysis',
+      title: `Analisi autonoma: ${eligibleClients.length} clienti valutati`,
+      description: parsed.tasks && parsed.tasks.length > 0 
+        ? `L'AI ha analizzato ${eligibleClients.length} clienti e suggerito ${parsed.tasks.length} task proattivi.`
+        : `L'AI ha analizzato ${eligibleClients.length} clienti e non ha identificato task necessari.`,
+      icon: '🧠',
+      severity: 'info',
+      event_data: {
+        total_clients: clients.length,
+        eligible_clients: eligibleClients.length,
+        clients_with_pending_tasks: clientsWithPendingTasks.size,
+        clients_with_recent_completion: clientsWithRecentCompletion.size,
+        tasks_suggested: parsed.tasks?.length || 0,
+        suggestions: (parsed.tasks || []).map(t => ({
+          client_name: t.contact_name,
+          category: t.task_category,
+          instruction: t.ai_instruction?.substring(0, 150),
+          reasoning: t.reasoning,
+          channel: t.preferred_channel,
+          priority: t.priority,
+        })),
+      },
+    });
 
     if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
       console.log('🧠 [AUTONOMOUS-GEN] Gemini suggested no tasks for consultant ' + consultantId);

@@ -59,6 +59,7 @@ interface ActivityItem {
   created_at: string;
   contact_name?: string;
   is_read: boolean;
+  event_data?: any;
 }
 
 interface ActivityResponse {
@@ -1041,6 +1042,8 @@ export default function ConsultantAIAutonomyPage() {
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
   const [activityPage, setActivityPage] = useState(1);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [activitySubTab, setActivitySubTab] = useState<"all" | "reasoning">("all");
+  const [reasoningPage, setReasoningPage] = useState(1);
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardStatusFilter, setDashboardStatusFilter] = useState<string>("all");
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>("all");
@@ -1128,6 +1131,18 @@ export default function ConsultantAIAutonomyPage() {
       return res.json();
     },
     enabled: activeTab === "activity",
+  });
+
+  const { data: reasoningData, isLoading: loadingReasoning, refetch: refetchReasoning } = useQuery<ActivityResponse>({
+    queryKey: ["ai-reasoning", reasoningPage],
+    queryFn: async () => {
+      const res = await fetch(`/api/ai-autonomy/activity?event_type=autonomous_analysis&page=${reasoningPage}&limit=20`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch reasoning data");
+      return res.json();
+    },
+    enabled: activitySubTab === "reasoning",
   });
 
   const { data: unreadData } = useQuery<{ count: number }>({
@@ -1973,129 +1988,315 @@ export default function ConsultantAIAutonomyPage() {
               </TabsContent>
 
               <TabsContent value="activity" className="space-y-4 mt-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <Select value={severityFilter} onValueChange={(val) => { setSeverityFilter(val); setActivityPage(1); }}>
-                      <SelectTrigger className="w-[160px]">
-                        <SelectValue placeholder="Filtra per tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tutti</SelectItem>
-                        <SelectItem value="info">Info</SelectItem>
-                        <SelectItem value="success">Successo</SelectItem>
-                        <SelectItem value="warning">Avviso</SelectItem>
-                        <SelectItem value="error">Errore</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
+                <div className="flex items-center gap-2 border-b pb-3">
                   <Button
-                    variant="outline"
+                    variant={activitySubTab === "all" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => markAllReadMutation.mutate()}
-                    disabled={markAllReadMutation.isPending || unreadCount === 0}
+                    onClick={() => setActivitySubTab("all")}
+                    className="gap-1.5"
                   >
-                    {markAllReadMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                    )}
-                    Segna tutto come letto
+                    <Activity className="h-3.5 w-3.5" />
+                    Tutti
+                  </Button>
+                  <Button
+                    variant={activitySubTab === "reasoning" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => { setActivitySubTab("reasoning"); setReasoningPage(1); }}
+                    className="gap-1.5"
+                  >
+                    <Brain className="h-3.5 w-3.5" />
+                    Ragionamento AI
                   </Button>
                 </div>
 
-                {loadingActivity ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : !activityData?.activities?.length ? (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">Nessuna attività trovata</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {activityData.activities.map((item) => (
-                      <Card key={item.id} className={`transition-colors ${!item.is_read ? "border-primary/30 bg-primary/5" : ""}`}>
-                        <CardContent className="py-4 px-5">
-                          <div className="flex items-start gap-4">
-                            <div className={`mt-0.5 p-2 rounded-full ${
-                              item.severity === "error" ? "bg-red-500/10 text-red-500" :
-                              item.severity === "warning" ? "bg-yellow-500/10 text-yellow-500" :
-                              item.severity === "success" ? "bg-green-500/10 text-green-500" :
-                              "bg-blue-500/10 text-blue-500"
-                            }`}>
-                              {getActivityIcon(item.icon)}
-                            </div>
+                {activitySubTab === "all" && (
+                  <>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <Select value={severityFilter} onValueChange={(val) => { setSeverityFilter(val); setActivityPage(1); }}>
+                          <SelectTrigger className="w-[160px]">
+                            <SelectValue placeholder="Filtra per tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti</SelectItem>
+                            <SelectItem value="info">Info</SelectItem>
+                            <SelectItem value="success">Successo</SelectItem>
+                            <SelectItem value="warning">Avviso</SelectItem>
+                            <SelectItem value="error">Errore</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold">{item.title}</span>
-                                {getSeverityBadge(item.severity)}
-                                {!item.is_read && (
-                                  <Badge variant="outline" className="text-xs border-primary/50 text-primary">
-                                    Nuovo
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {getRelativeTime(item.created_at)}
-                                </span>
-                                {item.contact_name && (
-                                  <span className="flex items-center gap-1">
-                                    <Bot className="h-3 w-3" />
-                                    {item.contact_name}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => markAllReadMutation.mutate()}
+                        disabled={markAllReadMutation.isPending || unreadCount === 0}
+                      >
+                        {markAllReadMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                        )}
+                        Segna tutto come letto
+                      </Button>
+                    </div>
 
-                            {!item.is_read && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="shrink-0"
-                                onClick={() => markReadMutation.mutate(item.id)}
-                                disabled={markReadMutation.isPending}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                    {loadingActivity ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : !activityData?.activities?.length ? (
+                      <Card>
+                        <CardContent className="py-12 text-center">
+                          <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground">Nessuna attività trovata</p>
                         </CardContent>
                       </Card>
-                    ))}
-                  </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {activityData.activities.map((item) => (
+                          <Card key={item.id} className={`transition-colors ${!item.is_read ? "border-primary/30 bg-primary/5" : ""}`}>
+                            <CardContent className="py-4 px-5">
+                              <div className="flex items-start gap-4">
+                                <div className={`mt-0.5 p-2 rounded-full ${
+                                  item.severity === "error" ? "bg-red-500/10 text-red-500" :
+                                  item.severity === "warning" ? "bg-yellow-500/10 text-yellow-500" :
+                                  item.severity === "success" ? "bg-green-500/10 text-green-500" :
+                                  "bg-blue-500/10 text-blue-500"
+                                }`}>
+                                  {getActivityIcon(item.icon)}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold">{item.title}</span>
+                                    {getSeverityBadge(item.severity)}
+                                    {!item.is_read && (
+                                      <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                                        Nuovo
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      {getRelativeTime(item.created_at)}
+                                    </span>
+                                    {item.contact_name && (
+                                      <span className="flex items-center gap-1">
+                                        <Bot className="h-3 w-3" />
+                                        {item.contact_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {!item.is_read && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="shrink-0"
+                                    onClick={() => markReadMutation.mutate(item.id)}
+                                    disabled={markReadMutation.isPending}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+
+                    {activityData && activityData.totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-4 pt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActivityPage(p => Math.max(1, p - 1))}
+                          disabled={activityPage <= 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Precedente
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          Pagina {activityData.page} di {activityData.totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActivityPage(p => Math.min(activityData.totalPages, p + 1))}
+                          disabled={activityPage >= activityData.totalPages}
+                        >
+                          Successiva
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {activityData && activityData.totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-4 pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setActivityPage(p => Math.max(1, p - 1))}
-                      disabled={activityPage <= 1}
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-1" />
-                      Precedente
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                      Pagina {activityData.page} di {activityData.totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setActivityPage(p => Math.min(activityData.totalPages, p + 1))}
-                      disabled={activityPage >= activityData.totalPages}
-                    >
-                      Successiva
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
+                {activitySubTab === "reasoning" && (
+                  <div className="space-y-3">
+                    {loadingReasoning ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : !reasoningData?.activities?.length ? (
+                      <Card>
+                        <CardContent className="py-12 text-center">
+                          <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground">Nessuna analisi autonoma ancora. Il sistema analizza i tuoi clienti periodicamente.</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <>
+                        {reasoningData.activities.map((item) => {
+                          const eventData = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {});
+                          const suggestions = eventData.suggestions || [];
+                          return (
+                            <Card key={item.id} className={`transition-colors ${!item.is_read ? "border-purple-500/30 bg-purple-500/5" : ""}`}>
+                              <CardContent className="py-4 px-5">
+                                <div className="flex items-start gap-4">
+                                  <div className="mt-0.5 p-2 rounded-full bg-purple-500/10 text-purple-500">
+                                    <Brain className="h-4 w-4" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold">{item.title}</span>
+                                      {!item.is_read && (
+                                        <Badge variant="outline" className="text-xs border-primary/50 text-primary">Nuovo</Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                                    
+                                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {getRelativeTime(item.created_at)}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <User className="h-3 w-3" />
+                                        {eventData.total_clients || 0} clienti totali
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Target className="h-3 w-3" />
+                                        {eventData.eligible_clients || 0} idonei
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Sparkles className="h-3 w-3" />
+                                        {eventData.tasks_suggested || 0} task suggeriti
+                                      </span>
+                                    </div>
+
+                                    {suggestions.length > 0 && (
+                                      <div className="mt-3 space-y-2">
+                                        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                          <Lightbulb className="h-3 w-3" />
+                                          Ragionamento per ogni task:
+                                        </p>
+                                        {suggestions.map((s: any, idx: number) => (
+                                          <div key={idx} className="text-xs bg-muted/50 rounded-lg p-3 border border-border/50">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className="font-semibold">{s.client_name || 'Cliente'}</span>
+                                              {s.category && (
+                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">{s.category}</Badge>
+                                              )}
+                                              {s.channel && s.channel !== 'none' && (
+                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                                  {s.channel === 'voice' ? '📞' : s.channel === 'email' ? '📧' : '💬'} {s.channel}
+                                                </Badge>
+                                              )}
+                                              {s.priority && (
+                                                <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0",
+                                                  s.priority === 1 ? "border-red-500/50 text-red-500" :
+                                                  s.priority === 2 ? "border-orange-500/50 text-orange-500" :
+                                                  "border-muted-foreground/50"
+                                                )}>
+                                                  P{s.priority}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <p className="text-muted-foreground mb-1">{s.instruction}</p>
+                                            {s.reasoning && (
+                                              <p className="text-purple-600 dark:text-purple-400 italic">
+                                                💭 {s.reasoning}
+                                              </p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {suggestions.length === 0 && eventData.eligible_clients > 0 && (
+                                      <div className="mt-3 text-xs bg-muted/50 rounded-lg p-3 border border-border/50">
+                                        <p className="text-muted-foreground italic">
+                                          💭 L'AI ha analizzato i clienti e non ha identificato necessità di task proattivi al momento.
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {eventData.eligible_clients === 0 && (
+                                      <div className="mt-3 text-xs bg-muted/50 rounded-lg p-3 border border-border/50">
+                                        <div className="flex flex-wrap gap-3 text-muted-foreground">
+                                          {eventData.clients_with_pending_tasks > 0 && (
+                                            <span>⏳ {eventData.clients_with_pending_tasks} con task pendenti</span>
+                                          )}
+                                          {eventData.clients_with_recent_completion > 0 && (
+                                            <span>✅ {eventData.clients_with_recent_completion} completati di recente</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {!item.is_read && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="shrink-0"
+                                      onClick={() => markReadMutation.mutate(item.id)}
+                                      disabled={markReadMutation.isPending}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                        
+                        {reasoningData && reasoningData.totalPages > 1 && (
+                          <div className="flex items-center justify-center gap-4 pt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setReasoningPage(p => Math.max(1, p - 1))}
+                              disabled={reasoningPage <= 1}
+                            >
+                              <ChevronLeft className="h-4 w-4 mr-1" />
+                              Precedente
+                            </Button>
+                            <span className="text-sm text-muted-foreground">
+                              Pagina {reasoningData.page} di {reasoningData.totalPages}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setReasoningPage(p => Math.min(reasoningData.totalPages, p + 1))}
+                              disabled={reasoningPage >= reasoningData.totalPages}
+                            >
+                              Successiva
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </TabsContent>
