@@ -4819,38 +4819,19 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         }
       }
 
-        // ⚡ O5: Await early-started slots + tasks IN PARALLEL (launched right after auth)
+        // ⚡ O5: Only await TASKS (fast ~50ms), DEFER slots (slow ~1.7s) to after Gemini session start
         if (isPhoneCall && consultantId) {
-          const _slotsTaskStart = Date.now();
-          const [slotsResult, preloadedTaskRows] = await Promise.all([
-            _earlyStartedSlotsPromise || Promise.resolve({ success: false, result: null }),
-            _earlyStartedTasksPromise || Promise.resolve({ rows: [] as any[] }),
-          ]);
-          console.log(`⏱️ [O5] Slots + tasks await resolved: ${Date.now() - _slotsTaskStart}ms (already running since auth)`);
+          const _tasksStart = Date.now();
+          const preloadedTaskRows = await (_earlyStartedTasksPromise || Promise.resolve({ rows: [] as any[] }));
+          console.log(`⏱️ [O5] Tasks await resolved: ${Date.now() - _tasksStart}ms (already running since auth)`);
 
-          try {
-            if (slotsResult?.success && slotsResult?.result?.slots) {
-              bookingAvailableSlots = slotsResult.result.slots.map((s: any) => ({
-                date: s.date,
-                dayOfWeek: s.dayOfWeek,
-                time: s.time,
-                dateFormatted: s.dateFormatted,
-                duration: s.duration || 60,
-              }));
-              console.log(`📅 [${connectionId}] Pre-loaded ${bookingAvailableSlots.length} available slots for booking supervisor`);
-            } else {
-              console.warn(`⚠️ [${connectionId}] Slot loading returned 0 slots`);
-            }
-          } catch (slotErr: any) {
-            console.warn(`⚠️ [${connectionId}] Could not process slots:`, slotErr.message);
-          }
-
+          // Initialize BookingSupervisor with EMPTY slots - will be updated after Gemini connects
           bookingSupervisor = new VoiceBookingSupervisor({
             consultantId,
             clientId: userId || null,
             voiceCallId: voiceCallId || '',
             outboundTargetPhone: phoneCallerId || null,
-            availableSlots: bookingAvailableSlots,
+            availableSlots: [],
             prePopulatedData: phoneLeadContactData ? {
               phone: phoneLeadContactData.phone,
               email: phoneLeadContactData.email,
@@ -4860,7 +4841,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
 
           const bookingPromptSection = bookingSupervisor.getBookingPromptSection();
           systemInstruction = systemInstruction + '\n\n' + bookingPromptSection;
-          console.log(`📋 [${connectionId}] Booking prompt section appended (${bookingPromptSection.length} chars)`);
+          console.log(`📋 [${connectionId}] Booking prompt section appended WITHOUT slots (deferred) (${bookingPromptSection.length} chars)`);
 
           taskSupervisor = new VoiceTaskSupervisor({
             consultantId,
@@ -5893,6 +5874,42 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               console.log(`\n📤 [${connectionId}] Google AI Studio: setupComplete received, NOW sending deferred chunks...`);
               pendingChunksSend();
               pendingChunksSend = null;
+            }
+            
+            // ⚡ O6: DEFERRED SLOT INJECTION - Send booking slots AFTER Gemini session is live
+            if (isPhoneCall && _earlyStartedSlotsPromise && bookingSupervisor) {
+              const _capturedBookingSupervisor = bookingSupervisor;
+              const _capturedGeminiSession = geminiSession;
+              _earlyStartedSlotsPromise.then((slotsResult: any) => {
+                try {
+                  if (slotsResult?.success && slotsResult?.result?.slots) {
+                    const slots = slotsResult.result.slots.map((s: any) => ({
+                      date: s.date,
+                      dayOfWeek: s.dayOfWeek,
+                      time: s.time,
+                      dateFormatted: s.dateFormatted,
+                      duration: s.duration || 60,
+                    }));
+                    const contextMessage = _capturedBookingSupervisor.updateSlots(slots);
+                    if (contextMessage && _capturedGeminiSession && _capturedGeminiSession.readyState === 1) {
+                      const slotUpdateMsg = {
+                        clientContent: {
+                          turns: [{ role: 'user', parts: [{ text: contextMessage }] }],
+                          turnComplete: false
+                        }
+                      };
+                      _capturedGeminiSession.send(JSON.stringify(slotUpdateMsg));
+                      console.log(`📅 [${connectionId}] [O6] Deferred slots injected: ${slots.length} slots sent to Gemini session`);
+                    } else {
+                      console.log(`📅 [${connectionId}] [O6] Slots loaded but no context to send (0 slots or session closed)`);
+                    }
+                  } else {
+                    console.warn(`⚠️ [${connectionId}] [O6] Deferred slot loading returned 0 slots`);
+                  }
+                } catch (err: any) {
+                  console.warn(`⚠️ [${connectionId}] [O6] Deferred slot injection failed:`, err.message);
+                }
+              });
             }
             
             // ⏱️  SYNC TIMER: Send session start time to client (for weekly consultations)

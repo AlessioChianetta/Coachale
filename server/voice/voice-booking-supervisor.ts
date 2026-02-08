@@ -78,6 +78,7 @@ export class VoiceBookingSupervisor {
   private voiceCallId: string;
   private outboundTargetPhone: string | null;
   private availableSlots: AvailableSlot[];
+  private slotsLoaded: boolean = false;
   private static readonly MODEL = "gemini-2.5-flash-lite";
   private static readonly TIMEOUT_MS = 12000;
   private static readonly MAX_RECENT_MESSAGES = 12;
@@ -99,6 +100,7 @@ export class VoiceBookingSupervisor {
     this.voiceCallId = params.voiceCallId;
     this.outboundTargetPhone = params.outboundTargetPhone;
     this.availableSlots = params.availableSlots;
+    this.slotsLoaded = params.availableSlots.length > 0;
 
     this.state = {
       stage: 'nessun_intento',
@@ -547,6 +549,14 @@ NON affermare MAI che l'appuntamento è "confermato", "creato", "prenotato" o "f
 NON dire "ho confermato", "è prenotato", "ti mando l'invito".
 Puoi dire "sto verificando la disponibilità..." o "un momento, controllo...".
 Dirai la conferma SOLO quando riceverai un messaggio di sistema [BOOKING_CONFIRMED].`;
+  }
+
+  updateSlots(slots: AvailableSlot[]): string | null {
+    this.availableSlots = slots;
+    this.slotsLoaded = true;
+    if (slots.length === 0) return null;
+    const formatted = this.getAvailableSlotsForPrompt();
+    return `[SYSTEM_UPDATE] Aggiornamento disponibilità appuntamenti. SLOT DISPONIBILI:\n${formatted}\n\nSe il chiamante chiede un appuntamento, proponi questi slot in modo naturale.`;
   }
 
   getAvailableSlotsForPrompt(): string {
