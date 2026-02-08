@@ -670,7 +670,6 @@ export default function ConsultantAIAutonomyPage() {
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>("all");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showArchDetails, setShowArchDetails] = useState(true);
-  const [showDataCatalog, setShowDataCatalog] = useState(false);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showLibrary, setShowLibrary] = useState(true);
@@ -970,10 +969,10 @@ export default function ConsultantAIAutonomyPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+              <TabsList className="grid w-full grid-cols-4 max-w-3xl">
                 <TabsTrigger value="settings" className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
-                  Impostazioni Autonomia
+                  Impostazioni
                 </TabsTrigger>
                 <TabsTrigger value="activity" className="flex items-center gap-2">
                   <Activity className="h-4 w-4" />
@@ -987,6 +986,10 @@ export default function ConsultantAIAutonomyPage() {
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
                   <ListTodo className="h-4 w-4" />
                   Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="data-catalog" className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Catalogo Dati
                 </TabsTrigger>
               </TabsList>
 
@@ -1241,318 +1244,6 @@ export default function ConsultantAIAutonomyPage() {
                                     <span>{rule.text}</span>
                                   </div>
                                 ))}
-                              </div>
-                            </div>
-                          </motion.div>
-                        </CardContent>
-                      )}
-                    </Card>
-
-                    <Card className="rounded-xl shadow-sm border-primary/10 bg-gradient-to-br from-primary/[0.03] to-primary/[0.06] dark:from-primary/[0.05] dark:to-primary/[0.08]">
-                      <CardHeader className="cursor-pointer" onClick={() => setShowDataCatalog(!showDataCatalog)}>
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2.5 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-md">
-                              <Database className="h-6 w-6 text-white" />
-                            </div>
-                            <span className="text-xl font-bold">Catalogo Dati Accessibili</span>
-                          </div>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            {showDataCatalog ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </Button>
-                        </CardTitle>
-                        <CardDescription>
-                          Tutte le query e operazioni che il Dipendente AI esegue internamente
-                        </CardDescription>
-                      </CardHeader>
-
-                      {showDataCatalog && (
-                        <CardContent>
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="space-y-5"
-                          >
-                            <div className="rounded-xl border-l-4 border-teal-500 bg-gradient-to-r from-teal-500/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-teal-500/15 shrink-0">
-                                  <Search className="h-5 w-5 text-teal-500" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    1. Recupero Dati Cliente
-                                    <Badge className="bg-teal-500/20 text-teal-500 border-teal-500/30 text-xs">fetch_client_data</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Cerca le informazioni del contatto nel database. Se il task ha un <span className="font-medium text-foreground">ID contatto</span>, lo usa direttamente.
-                                    Altrimenti cerca per <span className="font-medium text-foreground">numero di telefono</span>.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-teal-600 dark:text-teal-400">
-                                      <Table2 className="h-3.5 w-3.5" />
-                                      Query 1 — Tabella: users
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Campi letti:</span> id, first_name, last_name, email, phone_number, role, level, consultant_id, is_active, enrolled_at, created_at</p>
-                                      <p><span className="font-medium text-foreground">Filtro:</span> per ID contatto oppure per numero di telefono</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Recuperare l'anagrafica completa del contatto associato al task</p>
-                                    </div>
-                                  </div>
-                                  <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-teal-600 dark:text-teal-400">
-                                      <Table2 className="h-3.5 w-3.5" />
-                                      Query 2 — Tabella: ai_scheduled_tasks
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Campi letti:</span> id, task_type, task_category, status, ai_instruction, scheduled_at, result_summary, priority</p>
-                                      <p><span className="font-medium text-foreground">Filtro:</span> per contact_id, ordine cronologico (ultimi 10)</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Vedere i task precedenti per quel contatto ed evitare azioni duplicate</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-l-4 border-purple-500 bg-gradient-to-r from-purple-500/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-purple-500/15 shrink-0">
-                                  <Brain className="h-5 w-5 text-purple-500" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    2. Analisi Pattern
-                                    <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-xs">analyze_patterns</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Prende i dati recuperati nello step precedente (anagrafica + task recenti)
-                                    e li passa a <span className="font-medium text-foreground">Gemini AI</span> per un'analisi dettagliata.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400">
-                                      <Sparkles className="h-3.5 w-3.5" />
-                                      Output AI
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Input:</span> Dati contatto + storico task recenti</p>
-                                      <p><span className="font-medium text-foreground">Produce:</span> Punteggio engagement, argomenti chiave, frequenza contatti, rischi identificati, raccomandazioni</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Capire la situazione del cliente prima di agire</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-l-4 border-blue-500 bg-gradient-to-r from-blue-500/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-blue-500/15 shrink-0">
-                                  <FileText className="h-5 w-5 text-blue-500" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    3. Generazione Report
-                                    <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30 text-xs">generate_report</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Usa i dati di fetch + analisi per generare un
-                                    <span className="font-medium text-foreground"> documento strutturato</span> tramite Gemini AI.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                      <FileText className="h-3.5 w-3.5" />
-                                      Output AI
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Input:</span> Dati contatto + analisi pattern + istruzione originale</p>
-                                      <p><span className="font-medium text-foreground">Produce:</span> Titolo, sommario, sezioni dettagliate, risultati chiave, raccomandazioni, prossimi passi</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Creare un report scritto e strutturato da consultare</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-l-4 border-green-500 bg-gradient-to-r from-green-500/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-green-500/15 shrink-0">
-                                  <PhoneCall className="h-5 w-5 text-green-500" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    4. Preparazione Chiamata
-                                    <Badge className="bg-green-500/20 text-green-500 border-green-500/30 text-xs">prepare_call</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Usa i dati raccolti per generare uno
-                                    <span className="font-medium text-foreground"> script di chiamata</span> personalizzato tramite Gemini AI.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-green-600 dark:text-green-400">
-                                      <Sparkles className="h-3.5 w-3.5" />
-                                      Output AI
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Input:</span> Analisi pattern + report + dati contatto</p>
-                                      <p><span className="font-medium text-foreground">Produce:</span> Punti chiave, frase di apertura, frase di chiusura, risposte a obiezioni, durata stimata, priorità</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Preparare l'AI per una chiamata vocale efficace</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-l-4 border-emerald-500 bg-gradient-to-r from-emerald-500/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-emerald-500/15 shrink-0">
-                                  <Phone className="h-5 w-5 text-emerald-500" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    5. Chiamata Vocale
-                                    <Badge className="bg-emerald-500/20 text-emerald-500 border-emerald-500/30 text-xs">voice_call</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    <span className="font-medium text-foreground">Scrive nel DB</span> per programmare una chiamata vocale AI.
-                                    Crea un record nella tabella delle chiamate e un task figlio.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                      <Table2 className="h-3.5 w-3.5" />
-                                      INSERT — Tabella: scheduled_voice_calls
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Campi scritti:</span> id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, attempts, max_attempts, priority, source_task_id, attempts_log, use_default_template, created_at, updated_at</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Programmare la chiamata nel sistema vocale FreeSWITCH</p>
-                                    </div>
-                                  </div>
-                                  <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                      <Table2 className="h-3.5 w-3.5" />
-                                      INSERT — Tabella: ai_scheduled_tasks
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Campi scritti:</span> id, consultant_id, contact_phone, contact_name, task_type, ai_instruction, scheduled_at, timezone, status, priority, parent_task_id, contact_id, task_category, voice_call_id, max_attempts, current_attempt, retry_delay_minutes, created_at, updated_at</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Creare un task figlio collegato alla chiamata per il tracciamento</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-l-4 border-sky-500 bg-gradient-to-r from-sky-500/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-sky-500/15 shrink-0">
-                                  <Mail className="h-5 w-5 text-sky-500" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    6. Invio Email
-                                    <Badge className="bg-sky-500/20 text-sky-500 border-sky-500/30 text-xs">send_email</Badge>
-                                    <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">In arrivo</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Attualmente <span className="font-medium text-foreground">registra l'intenzione nel feed attività</span> ma non invia email reali.
-                                    L'integrazione completa è prevista in una fase futura.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-sky-600 dark:text-sky-400">
-                                      <Activity className="h-3.5 w-3.5" />
-                                      Azione attuale
-                                    </div>
-                                    <div className="text-xs text-muted-foreground pl-5">
-                                      <p>Registra un evento di tipo "send_email" nel feed attività con nome contatto, categoria task e dati del report</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-l-4 border-green-600 bg-gradient-to-r from-green-600/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-green-600/15 shrink-0">
-                                  <MessageSquare className="h-5 w-5 text-green-600" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    7. Invio WhatsApp
-                                    <Badge className="bg-green-600/20 text-green-600 border-green-600/30 text-xs">send_whatsapp</Badge>
-                                    <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">In arrivo</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Attualmente <span className="font-medium text-foreground">registra l'intenzione nel feed attività</span> ma non invia messaggi reali.
-                                    L'integrazione completa è prevista in una fase futura.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-green-700 dark:text-green-400">
-                                      <Activity className="h-3.5 w-3.5" />
-                                      Azione attuale
-                                    </div>
-                                    <div className="text-xs text-muted-foreground pl-5">
-                                      <p>Registra un evento di tipo "send_whatsapp" nel feed attività con nome contatto, telefono e dati del report</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-l-4 border-cyan-500 bg-gradient-to-r from-cyan-500/10 to-transparent p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-cyan-500/15 shrink-0">
-                                  <Globe className="h-5 w-5 text-cyan-500" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                                    8. Ricerca Web
-                                    <Badge className="bg-cyan-500/20 text-cyan-500 border-cyan-500/30 text-xs">web_search</Badge>
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed">
-                                    <span className="font-medium text-foreground">Non interroga il DB.</span> Usa Gemini AI con
-                                    <span className="font-medium text-foreground"> Google Search integrato</span> per cercare informazioni aggiornate su internet.
-                                  </p>
-                                  <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-cyan-600 dark:text-cyan-400">
-                                      <Globe className="h-3.5 w-3.5" />
-                                      Ricerca esterna
-                                    </div>
-                                    <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                                      <p><span className="font-medium text-foreground">Input:</span> Query di ricerca (dall'istruzione del task o parametri)</p>
-                                      <p><span className="font-medium text-foreground">Produce:</span> Risultati di ricerca, fonti web con URL, query utilizzate, metadati di grounding</p>
-                                      <p><span className="font-medium text-foreground">Scopo:</span> Trovare normative, tendenze, notizie e dati di settore aggiornati</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/30 p-4">
-                              <div className="flex items-center gap-3">
-                                <Info className="h-5 w-5 text-muted-foreground shrink-0" />
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-muted-foreground">Riepilogo accessi al database</p>
-                                  <div className="flex flex-wrap gap-2 mt-2">
-                                    <Badge variant="outline" className="text-[10px] gap-1">
-                                      <Table2 className="h-3 w-3 text-teal-500" />
-                                      users — Lettura
-                                    </Badge>
-                                    <Badge variant="outline" className="text-[10px] gap-1">
-                                      <Table2 className="h-3 w-3 text-teal-500" />
-                                      ai_scheduled_tasks — Lettura + Scrittura
-                                    </Badge>
-                                    <Badge variant="outline" className="text-[10px] gap-1">
-                                      <Table2 className="h-3 w-3 text-emerald-500" />
-                                      scheduled_voice_calls — Scrittura
-                                    </Badge>
-                                    <Badge variant="outline" className="text-[10px] gap-1">
-                                      <Sparkles className="h-3 w-3 text-purple-500" />
-                                      Gemini AI — 4 step
-                                    </Badge>
-                                    <Badge variant="outline" className="text-[10px] gap-1">
-                                      <Globe className="h-3 w-3 text-cyan-500" />
-                                      Google Search — 1 step
-                                    </Badge>
-                                  </div>
-                                </div>
                               </div>
                             </div>
                           </motion.div>
@@ -3037,6 +2728,324 @@ export default function ConsultantAIAutonomyPage() {
                   </DialogContent>
                 </Dialog>
 
+              </TabsContent>
+
+              <TabsContent value="data-catalog" className="space-y-6 mt-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="space-y-5"
+                >
+                  <Card className="rounded-xl shadow-sm border-l-4 border-l-teal-500 bg-gradient-to-r from-teal-500/5 via-cyan-500/5 to-transparent">
+                    <CardContent className="py-5 px-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-md">
+                          <Database className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-lg font-bold">Catalogo Dati Accessibili</h2>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            Tutte le query e operazioni che il Dipendente AI esegue internamente, step per step
+                          </p>
+                          <div className="flex items-center gap-3 mt-2">
+                            <Badge variant="outline" className="text-xs gap-1">
+                              <Table2 className="h-3 w-3 text-teal-500" />
+                              3 tabelle
+                            </Badge>
+                            <Badge variant="outline" className="text-xs gap-1">
+                              <Sparkles className="h-3 w-3 text-purple-500" />
+                              8 operazioni
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="rounded-xl border-l-4 border-teal-500 bg-gradient-to-r from-teal-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-teal-500/15 shrink-0">
+                        <Search className="h-5 w-5 text-teal-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          1. Recupero Dati Cliente
+                          <Badge className="bg-teal-500/20 text-teal-500 border-teal-500/30 text-xs">fetch_client_data</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          Cerca le informazioni del contatto nel database. Se il task ha un <span className="font-medium text-foreground">ID contatto</span>, lo usa direttamente.
+                          Altrimenti cerca per <span className="font-medium text-foreground">numero di telefono</span>.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-teal-600 dark:text-teal-400">
+                            <Table2 className="h-3.5 w-3.5" />
+                            Query 1 — Tabella: users
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Campi letti:</span> id, first_name, last_name, email, phone_number, role, level, consultant_id, is_active, enrolled_at, created_at</p>
+                            <p><span className="font-medium text-foreground">Filtro:</span> per ID contatto oppure per numero di telefono</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Recuperare l'anagrafica completa del contatto associato al task</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-teal-600 dark:text-teal-400">
+                            <Table2 className="h-3.5 w-3.5" />
+                            Query 2 — Tabella: ai_scheduled_tasks
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Campi letti:</span> id, task_type, task_category, status, ai_instruction, scheduled_at, result_summary, priority</p>
+                            <p><span className="font-medium text-foreground">Filtro:</span> per contact_id, ordine cronologico (ultimi 10)</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Vedere i task precedenti per quel contatto ed evitare azioni duplicate</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-l-4 border-purple-500 bg-gradient-to-r from-purple-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-purple-500/15 shrink-0">
+                        <Brain className="h-5 w-5 text-purple-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          2. Analisi Pattern
+                          <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-xs">analyze_patterns</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Prende i dati recuperati nello step precedente (anagrafica + task recenti)
+                          e li passa a <span className="font-medium text-foreground">Gemini AI</span> per un'analisi dettagliata.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Output AI
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Input:</span> Dati contatto + storico task recenti</p>
+                            <p><span className="font-medium text-foreground">Produce:</span> Punteggio engagement, argomenti chiave, frequenza contatti, rischi identificati, raccomandazioni</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Capire la situazione del cliente prima di agire</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-l-4 border-blue-500 bg-gradient-to-r from-blue-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/15 shrink-0">
+                        <FileText className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          3. Generazione Report
+                          <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30 text-xs">generate_report</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Usa i dati di fetch + analisi per generare un
+                          <span className="font-medium text-foreground"> documento strutturato</span> tramite Gemini AI.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                            <FileText className="h-3.5 w-3.5" />
+                            Output AI
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Input:</span> Dati contatto + analisi pattern + istruzione originale</p>
+                            <p><span className="font-medium text-foreground">Produce:</span> Titolo, sommario, sezioni dettagliate, risultati chiave, raccomandazioni, prossimi passi</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Creare un report scritto e strutturato da consultare</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-l-4 border-green-500 bg-gradient-to-r from-green-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-green-500/15 shrink-0">
+                        <PhoneCall className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          4. Preparazione Chiamata
+                          <Badge className="bg-green-500/20 text-green-500 border-green-500/30 text-xs">prepare_call</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Usa i dati raccolti per generare uno
+                          <span className="font-medium text-foreground"> script di chiamata</span> personalizzato tramite Gemini AI.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-green-600 dark:text-green-400">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Output AI
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Input:</span> Analisi pattern + report + dati contatto</p>
+                            <p><span className="font-medium text-foreground">Produce:</span> Punti chiave, frase di apertura, frase di chiusura, risposte a obiezioni, durata stimata, priorità</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Preparare l'AI per una chiamata vocale efficace</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-l-4 border-emerald-500 bg-gradient-to-r from-emerald-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-500/15 shrink-0">
+                        <Phone className="h-5 w-5 text-emerald-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          5. Chiamata Vocale
+                          <Badge className="bg-emerald-500/20 text-emerald-500 border-emerald-500/30 text-xs">voice_call</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          <span className="font-medium text-foreground">Scrive nel DB</span> per programmare una chiamata vocale AI.
+                          Crea un record nella tabella delle chiamate e un task figlio.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                            <Table2 className="h-3.5 w-3.5" />
+                            INSERT — Tabella: scheduled_voice_calls
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Campi scritti:</span> id, consultant_id, target_phone, scheduled_at, status, ai_mode, custom_prompt, call_instruction, instruction_type, attempts, max_attempts, priority, source_task_id, attempts_log, use_default_template, created_at, updated_at</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Programmare la chiamata nel sistema vocale FreeSWITCH</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                            <Table2 className="h-3.5 w-3.5" />
+                            INSERT — Tabella: ai_scheduled_tasks
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Campi scritti:</span> id, consultant_id, contact_phone, contact_name, task_type, ai_instruction, scheduled_at, timezone, status, priority, parent_task_id, contact_id, task_category, voice_call_id, max_attempts, current_attempt, retry_delay_minutes, created_at, updated_at</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Creare un task figlio collegato alla chiamata per il tracciamento</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-l-4 border-sky-500 bg-gradient-to-r from-sky-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-sky-500/15 shrink-0">
+                        <Mail className="h-5 w-5 text-sky-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          6. Invio Email
+                          <Badge className="bg-sky-500/20 text-sky-500 border-sky-500/30 text-xs">send_email</Badge>
+                          <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">In arrivo</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          Attualmente <span className="font-medium text-foreground">registra l'intenzione nel feed attività</span> ma non invia email reali.
+                          L'integrazione completa è prevista in una fase futura.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-sky-600 dark:text-sky-400">
+                            <Activity className="h-3.5 w-3.5" />
+                            Azione attuale
+                          </div>
+                          <div className="text-xs text-muted-foreground pl-5">
+                            <p>Registra un evento di tipo "send_email" nel feed attività con nome contatto, categoria task e dati del report</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-l-4 border-green-600 bg-gradient-to-r from-green-600/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-green-600/15 shrink-0">
+                        <MessageSquare className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          7. Invio WhatsApp
+                          <Badge className="bg-green-600/20 text-green-600 border-green-600/30 text-xs">send_whatsapp</Badge>
+                          <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">In arrivo</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          Attualmente <span className="font-medium text-foreground">registra l'intenzione nel feed attività</span> ma non invia messaggi reali.
+                          L'integrazione completa è prevista in una fase futura.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-green-700 dark:text-green-400">
+                            <Activity className="h-3.5 w-3.5" />
+                            Azione attuale
+                          </div>
+                          <div className="text-xs text-muted-foreground pl-5">
+                            <p>Registra un evento di tipo "send_whatsapp" nel feed attività con nome contatto, telefono e dati del report</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border-l-4 border-cyan-500 bg-gradient-to-r from-cyan-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-cyan-500/15 shrink-0">
+                        <Globe className="h-5 w-5 text-cyan-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          8. Ricerca Web
+                          <Badge className="bg-cyan-500/20 text-cyan-500 border-cyan-500/30 text-xs">web_search</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          <span className="font-medium text-foreground">Non interroga il DB.</span> Usa Gemini AI con
+                          <span className="font-medium text-foreground"> Google Search integrato</span> per cercare informazioni aggiornate su internet.
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-cyan-600 dark:text-cyan-400">
+                            <Globe className="h-3.5 w-3.5" />
+                            Ricerca esterna
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Input:</span> Query di ricerca (dall'istruzione del task o parametri)</p>
+                            <p><span className="font-medium text-foreground">Produce:</span> Risultati di ricerca, fonti web con URL, query utilizzate, metadati di grounding</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Trovare normative, tendenze, notizie e dati di settore aggiornati</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Card className="rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+                    <CardContent className="py-4 px-5">
+                      <div className="flex items-center gap-3">
+                        <Info className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">Riepilogo accessi al database</p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Badge variant="outline" className="text-[10px] gap-1">
+                              <Table2 className="h-3 w-3 text-teal-500" />
+                              users — Lettura
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] gap-1">
+                              <Table2 className="h-3 w-3 text-teal-500" />
+                              ai_scheduled_tasks — Lettura + Scrittura
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] gap-1">
+                              <Table2 className="h-3 w-3 text-emerald-500" />
+                              scheduled_voice_calls — Scrittura
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] gap-1">
+                              <Sparkles className="h-3 w-3 text-purple-500" />
+                              Gemini AI — 4 step
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] gap-1">
+                              <Globe className="h-3 w-3 text-cyan-500" />
+                              Google Search — 1 step
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </TabsContent>
 
             </Tabs>
