@@ -1,0 +1,107 @@
+  [AI-SCHEDULER] No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 1
+   • luew3c: assistenza - active - durata: 0min - idle: 0min - retries: 0
+🎙️ [luew3c] User started speaking - backup watchdog armed
+
+✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ [luew3c] PROSPECT SPOKE FIRST! Enabling AI audio output
+   → Transcript: " Di nuovo, eh?"
+   → Dropped 0 audio chunks while waiting
+   → AI can now speak freely
+✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " Di nuovo, eh?"
+   → Timestamp: 2026-02-08T14:06:01.970Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🛑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛑 [luew3c] BARGE-IN: serverContent.interrupted detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ Timestamp: 2026-02-08T14:06:02.453Z
+🎤 AI was speaking: NO
+🎯 Action: Stop audio playback immediately
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔇 [luew3c] serverContent.interrupted received but AI was NOT speaking - ignoring (false positive)
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [luew3c] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 0 tokens → $0.000000 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.000000 USD
+
+📊 Session totals:
+   - Text Input: 9,398 tokens → $0.004699
+   - Audio Output: 0 tokens → $0.000000
+   - SESSION TOTAL: $0.004699 USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [luew3c] Usage tracked → DB saved (Turn cost: $0.000000)
+✅ [luew3c] Turn complete
+💾 [luew3c] Saved USER message: "Di nuovo, eh?" (2 total, userIdx: 1)
+⚠️  [luew3c] Sales tracking: Fallback - committed user message without isFinal flag
+📝 [luew3c] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔄 [luew3c] SESSION RESUMPTION UPDATE received
+   - New handle: CihsbnA2Z21kbWdyZDIwbmVycHMzbH...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+   ✅ Handle saved to database with ownership metadata
+      → Mode: assistenza
+      → UserId: null
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " que se mucho sentido."
+   → Timestamp: 2026-02-08T14:06:03.735Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [luew3c] Voice call transcript updated (2 messages)
+💬 [luew3c] AI transcript: **Addressing Initial Skepticism**
+
+I acknowledge the user's skepticism regarding previous interactions. While I understand their hesitation, I'm eager to build rapport. My strategy involves validating their feelings briefly, then pivoting to "FASE 1: Accoglienza e Motivazione". The goal is to avoid the pitfalls of past calls, which were cut short, and to begin STEP 2: Uncino + Domanda.
+
+
+
+💬 [luew3c] AI transcript: **Acknowledging Skepticism & Pivoting**
+
+I recognize the user's skepticism, stemming from a perceived lack of progress in prior interactions. My revised approach focuses on a rapid transition from acknowledging this hesitancy to validating their feelings and redirecting into *FASE 1: Accoglienza e Motivazione* without getting bogged down by *divagazioni*. The goal is to avoid repeating the pattern of abbreviated calls.
+
+
+
+📝 [luew3c] AI transcript (output): Ah, ma
+📝 [luew3c] AI transcript (output):  certo!
+🎤 [luew3c] AI started speaking (audio streaming)
+
+⏱️ ┌─── TURN LATENCY #1 ────────────────────────────────────────────┐
+⏱️ │  🏁 User→AI first audio:  3153ms (3.2s) ⚠️ SLOW!  │
+⏱️ │  ─────────────────────────────────────────                    │
+⏱️ │  Server processing:     0ms  (0%)                           │
+⏱️ │  Gemini thinking:   3153ms  (100%) ← AI processing            │
+⏱️ │  ─────────────────────────────────────────                    │
+⏱️ │  📞 E2E PHONE LATENCY (estimated):                          │
+⏱️ │    Last phone audio → now:    15ms                            │
+⏱️ │    VAD gap (audio→transcript):     0ms                        │
+⏱️ │    + downstream VPS→phone: ~300-500ms                        │
+⏱️ │    ≈ PERCEIVED:   415ms (0.4s) ⚡                       │
+⏱️ └──────────────────────────────────────────────────────────────┘
+
+📞 [luew3c] Phone audio: 1920 bytes PCM raw → VPS
+📝 [luew3c] AI transcript (output):  L'ultima
+📞 [luew3c] Phone audio: 1920 bytes PCM raw → VPS
+📝 [luew3c] AI transcript (output):  volta
+📝 [luew3c] AI transcript (output):  ci eravamo
