@@ -1,0 +1,46 @@
+injected.js:37 Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+
+injected.js:37 Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+chunk-QCHXOAYK.js?v=f4875995:1066 Uncaught TypeError: Cannot read properties of null (reading 'useState')
+    at ConsultantAIAutonomyPage (consultant-ai-autonomy.tsx:1067:41)
+injected.js:37 Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+injected.js:37 Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+chunk-QCHXOAYK.js?v=f4875995:1066 Uncaught TypeError: Cannot read properties of null (reading 'useState')
+    at ConsultantAIAutonomyPage (consultant-ai-autonomy.tsx:1067:41)
+injected.js:37 The above error occurred in the <ConsultantAIAutonomyPage> component:
+
+    at ConsultantAIAutonomyPage (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/src/pages/consultant-ai-autonomy.tsx:1468:20)
+    at AuthGuard (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ff93d6c1:226:16)
+    at Switch (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ff93d6c1:283:17)
+    at Suspense
+    at Router (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/src/App.tsx?v=NGcND5O-LB63kBWO3nymB:316:35)
+    at Provider (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=ff93d6c1:44:15)
+    at TooltipProvider (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=ff93d6c1:158:5)
+    at TourProvider (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=ff93d6c1:3096:3)
+    at V (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=ff93d6c1:44:25)
+    at J (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=ff93d6c1:42:18)
+    at App (https://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/src/App.tsx?v=NGcND5O-LB63kBWO3nymB:1996:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=ff93d6c1:19413 Uncaught TypeError: Cannot read properties of null (reading 'useState')
+    at ConsultantAIAutonomyPage (consultant-ai-autonomy.tsx:1067:41)

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -512,7 +511,8 @@ function cleanBoldMarkers(text: string): string {
   return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
 }
 
-function generateTaskPDF(task: AITask) {
+async function generateTaskPDF(task: AITask) {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
