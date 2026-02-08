@@ -2069,17 +2069,17 @@ export default function ConsultantAIAutonomyPage() {
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">Telefono <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
                               <Input
-                                placeholder="es: +39 333 1234567"
+                                placeholder="es: +39 333 1234567 o 1009"
                                 value={newTask.contact_phone}
                                 onChange={(e) => {
                                   const val = e.target.value.replace(/[^0-9+\s\-()]/g, '');
                                   setNewTask(prev => ({ ...prev, contact_phone: val }));
                                 }}
-                                className={cn("h-9 text-sm", newTask.contact_phone && !/^\+?[0-9\s\-()]{7,20}$/.test(newTask.contact_phone) && "border-red-500 focus-visible:ring-red-500")}
+                                className={cn("h-9 text-sm", newTask.contact_phone && !/^\+?[0-9\s\-()]{3,20}$/.test(newTask.contact_phone) && "border-red-500 focus-visible:ring-red-500")}
                                 type="tel"
                               />
-                              {newTask.contact_phone && !/^\+?[0-9\s\-()]{7,20}$/.test(newTask.contact_phone) && (
-                                <p className="text-xs text-red-500">Formato non valido. Usa il formato: +39 333 1234567</p>
+                              {newTask.contact_phone && !/^\+?[0-9\s\-()]{3,20}$/.test(newTask.contact_phone) && (
+                                <p className="text-xs text-red-500">Formato non valido. Usa un numero di telefono o interno (es: +39 333 1234567, 1009)</p>
                               )}
                             </div>
                           </div>
