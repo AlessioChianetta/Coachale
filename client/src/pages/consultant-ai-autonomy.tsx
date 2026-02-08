@@ -2755,7 +2755,7 @@ export default function ConsultantAIAutonomyPage() {
                             </Badge>
                             <Badge variant="outline" className="text-xs gap-1">
                               <Sparkles className="h-3 w-3 text-purple-500" />
-                              8 operazioni
+                              9 operazioni
                             </Badge>
                           </div>
                         </div>
@@ -2803,6 +2803,54 @@ export default function ConsultantAIAutonomyPage() {
                     </div>
                   </div>
 
+                  <div className="rounded-xl border-l-4 border-amber-500 bg-gradient-to-r from-amber-500/10 to-transparent p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-amber-500/15 shrink-0">
+                        <BookOpen className="h-5 w-5 text-amber-500" />
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          2. Ricerca Documenti Privati
+                          <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">search_private_stores</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          Cerca nei <span className="font-medium text-foreground">documenti privati</span> del cliente e del consulente usando
+                          <span className="font-medium text-foreground"> ricerca semantica AI</span> (Gemini File Search).
+                        </p>
+                        <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                            <Search className="h-3.5 w-3.5" />
+                            Store Cliente (se disponibile)
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Fonti:</span> Note consulenze, risposte esercizi, knowledge base cliente</p>
+                            <p><span className="font-medium text-foreground">Metodo:</span> Ricerca semantica nei documenti indicizzati del contatto</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                            <Search className="h-3.5 w-3.5" />
+                            Store Consulente
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Fonti:</span> Libreria documenti, knowledge base, contesto AI dinamico, guide piattaforma</p>
+                            <p><span className="font-medium text-foreground">Metodo:</span> Ricerca semantica negli archivi del consulente</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Output AI
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
+                            <p><span className="font-medium text-foreground">Produce:</span> Riassunto documenti trovati, citazioni con fonti, conteggio documenti per categoria</p>
+                            <p><span className="font-medium text-foreground">Scopo:</span> Arricchire il contesto con dati reali dal fascicolo privato del cliente</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="rounded-xl border-l-4 border-purple-500 bg-gradient-to-r from-purple-500/10 to-transparent p-4">
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-lg bg-purple-500/15 shrink-0">
@@ -2810,11 +2858,11 @@ export default function ConsultantAIAutonomyPage() {
                       </div>
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
-                          2. Analisi Pattern
+                          3. Analisi Pattern
                           <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-xs">analyze_patterns</Badge>
                         </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                          <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Prende i dati recuperati nello step precedente (anagrafica + task recenti)
+                          <span className="font-medium text-foreground">Non fa query dirette al DB.</span> Prende i dati recuperati negli step precedenti (anagrafica + task recenti + documenti privati)
                           e li passa a <span className="font-medium text-foreground">Gemini AI</span> per un'analisi dettagliata.
                         </p>
                         <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
@@ -2823,7 +2871,7 @@ export default function ConsultantAIAutonomyPage() {
                             Output AI
                           </div>
                           <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                            <p><span className="font-medium text-foreground">Input:</span> Dati contatto + storico task recenti</p>
+                            <p><span className="font-medium text-foreground">Input:</span> Dati contatto + storico task recenti + documenti privati (se trovati)</p>
                             <p><span className="font-medium text-foreground">Produce:</span> Punteggio engagement, argomenti chiave, frequenza contatti, rischi identificati, raccomandazioni</p>
                             <p><span className="font-medium text-foreground">Scopo:</span> Capire la situazione del cliente prima di agire</p>
                           </div>
@@ -2839,7 +2887,7 @@ export default function ConsultantAIAutonomyPage() {
                       </div>
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
-                          3. Generazione Report
+                          4. Generazione Report
                           <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30 text-xs">generate_report</Badge>
                         </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -2852,7 +2900,7 @@ export default function ConsultantAIAutonomyPage() {
                             Output AI
                           </div>
                           <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                            <p><span className="font-medium text-foreground">Input:</span> Dati contatto + analisi pattern + istruzione originale</p>
+                            <p><span className="font-medium text-foreground">Input:</span> Dati contatto + analisi pattern + documenti privati + istruzione originale</p>
                             <p><span className="font-medium text-foreground">Produce:</span> Titolo, sommario, sezioni dettagliate, risultati chiave, raccomandazioni, prossimi passi</p>
                             <p><span className="font-medium text-foreground">Scopo:</span> Creare un report scritto e strutturato da consultare</p>
                           </div>
@@ -2868,7 +2916,7 @@ export default function ConsultantAIAutonomyPage() {
                       </div>
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
-                          4. Preparazione Chiamata
+                          5. Preparazione Chiamata
                           <Badge className="bg-green-500/20 text-green-500 border-green-500/30 text-xs">prepare_call</Badge>
                         </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -2897,7 +2945,7 @@ export default function ConsultantAIAutonomyPage() {
                       </div>
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
-                          5. Chiamata Vocale
+                          6. Chiamata Vocale
                           <Badge className="bg-emerald-500/20 text-emerald-500 border-emerald-500/30 text-xs">voice_call</Badge>
                         </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -2935,7 +2983,7 @@ export default function ConsultantAIAutonomyPage() {
                       </div>
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
-                          6. Invio Email
+                          7. Invio Email
                           <Badge className="bg-sky-500/20 text-sky-500 border-sky-500/30 text-xs">send_email</Badge>
                           <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">In arrivo</Badge>
                         </h4>
@@ -2963,7 +3011,7 @@ export default function ConsultantAIAutonomyPage() {
                       </div>
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
-                          7. Invio WhatsApp
+                          8. Invio WhatsApp
                           <Badge className="bg-green-600/20 text-green-600 border-green-600/30 text-xs">send_whatsapp</Badge>
                           <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">In arrivo</Badge>
                         </h4>
@@ -2991,7 +3039,7 @@ export default function ConsultantAIAutonomyPage() {
                       </div>
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
-                          8. Ricerca Web
+                          9. Ricerca Web
                           <Badge className="bg-cyan-500/20 text-cyan-500 border-cyan-500/30 text-xs">web_search</Badge>
                         </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -3034,7 +3082,11 @@ export default function ConsultantAIAutonomyPage() {
                             </Badge>
                             <Badge variant="outline" className="text-[10px] gap-1">
                               <Sparkles className="h-3 w-3 text-purple-500" />
-                              Gemini AI — 4 step
+                              Gemini AI — 5 step
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] gap-1">
+                              <Search className="h-3 w-3 text-amber-500" />
+                              File Search — Ricerca semantica
                             </Badge>
                             <Badge variant="outline" className="text-[10px] gap-1">
                               <Globe className="h-3 w-3 text-cyan-500" />

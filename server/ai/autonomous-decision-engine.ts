@@ -12,7 +12,7 @@ const LOG_PREFIX = "🧠 [DECISION-ENGINE]";
 
 export interface ExecutionStep {
   step: number;
-  action: "fetch_client_data" | "analyze_patterns" | "generate_report" | "prepare_call" | "voice_call" | "send_email" | "send_whatsapp" | "web_search";
+  action: "fetch_client_data" | "search_private_stores" | "analyze_patterns" | "generate_report" | "prepare_call" | "voice_call" | "send_email" | "send_whatsapp" | "web_search";
   description: string;
   status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
   params?: Record<string, any>;
@@ -478,6 +478,7 @@ Le azioni disponibili si dividono in due categorie:
 
 AZIONI INTERNE (sempre disponibili, non richiedono canali di comunicazione):
 - "fetch_client_data": Recupera dati aggiuntivi sul cliente dal database
+- "search_private_stores": Cerca nei documenti privati del cliente e del consulente (consulenze, esercizi, knowledge base, libreria) usando ricerca semantica AI
 - "analyze_patterns": Analizza pattern e storico interazioni
 - "generate_report": Genera un report scritto o analisi dettagliata
 - "web_search": Cerca informazioni aggiornate su internet (normative, mercati, notizie, trend finanziari)
@@ -498,6 +499,7 @@ REGOLE:
 7. Stima la durata in minuti
 8. Evita azioni duplicate o ridondanti rispetto ai task recenti
 9. Se l'istruzione chiede esplicitamente un report o un'analisi, genera il report come documento scritto tramite generate_report, NON tramite chiamata
+10. Per task che riguardano un contatto specifico, USA SEMPRE "search_private_stores" dopo "fetch_client_data" per arricchire il contesto con documenti privati (consulenze, esercizi, KB)
 
 Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 {

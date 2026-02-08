@@ -4,6 +4,7 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
 import { ExecutionStep } from "./autonomous-decision-engine";
+import { fileSearchService } from "./file-search-service";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
 
@@ -58,6 +59,9 @@ export async function executeStep(
     switch (step.action) {
       case "fetch_client_data":
         result = await handleFetchClientData(task, step, previousResults);
+        break;
+      case "search_private_stores":
+        result = await handleSearchPrivateStores(task, step, previousResults);
         break;
       case "analyze_patterns":
         result = await handleAnalyzePatterns(task, step, previousResults);
@@ -213,12 +217,147 @@ async function handleFetchClientData(
   };
 }
 
+async function handleSearchPrivateStores(
+  task: AITaskInfo,
+  _step: ExecutionStep,
+  _previousResults: Record<string, any>,
+): Promise<Record<string, any>> {
+  console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}`);
+
+  let storeNames: string[] = [];
+
+  if (task.contact_id) {
+    try {
+      const clientStores = await fileSearchService.getStoreNamesForClient(task.contact_id, task.consultant_id);
+      storeNames.push(...clientStores);
+    } catch (err: any) {
+      console.warn(`${LOG_PREFIX} Failed to get client stores: ${err.message}`);
+    }
+  }
+
+  try {
+    const consultantStores = await fileSearchService.getStoreNamesForGeneration(task.consultant_id, 'consultant');
+    storeNames.push(...consultantStores);
+  } catch (err: any) {
+    console.warn(`${LOG_PREFIX} Failed to get consultant stores: ${err.message}`);
+  }
+
+  storeNames = [...new Set(storeNames)];
+
+  if (storeNames.length === 0) {
+    console.log(`${LOG_PREFIX} No private stores found, skipping file search`);
+    return {
+      documents_found: 0,
+      stores_searched: 0,
+      store_breakdown: [],
+      findings_summary: "Nessun archivio privato disponibile per questo consulente/contatto.",
+      citations: [],
+      search_query: task.ai_instruction,
+    };
+  }
+
+  let breakdown: any[] = [];
+  try {
+    const breakdownResult = await fileSearchService.getStoreBreakdownForGeneration(task.consultant_id, 'consultant');
+    breakdown = breakdownResult.breakdown;
+  } catch (err: any) {
+    console.warn(`${LOG_PREFIX} Failed to get store breakdown: ${err.message}`);
+  }
+
+  const storeProgressMessages = [
+    { message: "Cerco nelle consulenze passate...", icon: "📋" },
+    { message: "Analizzo esercizi del cliente...", icon: "📝" },
+    { message: "Consulto la knowledge base...", icon: "📚" },
+    { message: "Cerco nella libreria del consulente...", icon: "🗂️" },
+  ];
+
+  for (const progress of storeProgressMessages.slice(0, Math.min(storeNames.length, storeProgressMessages.length))) {
+    await logActivity(task.consultant_id, {
+      event_type: "step_search_store_progress",
+      title: progress.message,
+      description: `Ricerca in ${storeNames.length} archivi privati`,
+      icon: progress.icon,
+      severity: "info",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+  }
+
+  const fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
+  if (!fileSearchTool) {
+    console.log(`${LOG_PREFIX} buildFileSearchTool returned null, no valid stores`);
+    return {
+      documents_found: 0,
+      stores_searched: storeNames.length,
+      store_breakdown: breakdown,
+      findings_summary: "Nessun archivio valido trovato dopo la validazione.",
+      citations: [],
+      search_query: task.ai_instruction,
+    };
+  }
+
+  let ai = await fileSearchService.getClientForUser(task.consultant_id);
+  if (!ai) {
+    const fallbackKey = await getGeminiApiKeyForClassifier();
+    if (!fallbackKey) throw new Error("No Gemini API key available for file search");
+    ai = new GoogleGenAI({ apiKey: fallbackKey, apiVersion: 'v1beta' });
+    console.log(`${LOG_PREFIX} Using fallback API key for file search`);
+  }
+
+  const searchPrompt = `Sei un assistente AI per consulenti. Cerca nei documenti privati informazioni rilevanti per questo task.
+
+ISTRUZIONE TASK: ${task.ai_instruction}
+CATEGORIA: ${task.task_category}
+CONTATTO: ${task.contact_name || 'N/A'}
+
+Cerca specificamente:
+1. Note di consulenze passate con questo contatto
+2. Esercizi assegnati e risposte
+3. Documenti della knowledge base pertinenti
+4. Contesto dalla libreria del consulente
+
+Riassumi le informazioni trovate in modo strutturato.`;
+
+  const response = await withRetry(async () => {
+    return await ai!.models.generateContent({
+      model: GEMINI_LEGACY_MODEL,
+      contents: [{ role: "user", parts: [{ text: searchPrompt }] }],
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 8192,
+        tools: [fileSearchTool],
+      },
+    });
+  });
+
+  const text = response.text || "";
+  console.log(`${LOG_PREFIX} File search response length: ${text.length}`);
+
+  const citations = fileSearchService.parseCitations(response);
+  console.log(`${LOG_PREFIX} File search completed: ${citations.length} citations from ${storeNames.length} stores`);
+
+  return {
+    documents_found: citations.length,
+    stores_searched: storeNames.length,
+    store_breakdown: breakdown,
+    findings_summary: text,
+    citations: citations.map(c => ({ source: c.sourceTitle, content: c.content?.substring(0, 200) })),
+    search_query: task.ai_instruction,
+  };
+}
+
 async function handleAnalyzePatterns(
   task: AITaskInfo,
   _step: ExecutionStep,
   previousResults: Record<string, any>,
 ): Promise<Record<string, any>> {
   const clientData = previousResults.fetch_client_data || previousResults;
+
+  const privateStoreData = previousResults.search_private_stores;
+  const privateStoreSection = privateStoreData
+    ? `\nDOCUMENTI PRIVATI TROVATI:\n${privateStoreData.findings_summary || "Nessun documento privato trovato"}\n\nCITAZIONI:\n${privateStoreData.citations?.map((c: any) => `- ${c.source}: ${c.content}`).join('\n') || "Nessuna citazione"}\n`
+    : "";
 
   const prompt = `Sei un analista AI specializzato in consulenza commerciale italiana.
 
@@ -229,7 +368,7 @@ ${JSON.stringify(clientData.contact || {}, null, 2)}
 
 TASK RECENTI:
 ${JSON.stringify(clientData.recent_tasks || [], null, 2)}
-
+${privateStoreSection}
 ISTRUZIONE ORIGINALE DEL TASK:
 ${task.ai_instruction}
 
@@ -292,6 +431,11 @@ async function handleGenerateReport(
   const analysisData = previousResults.analyze_patterns || previousResults;
   const clientData = previousResults.fetch_client_data || {};
 
+  const privateStoreData = previousResults.search_private_stores;
+  const privateStoreSection = privateStoreData
+    ? `\nDOCUMENTI PRIVATI TROVATI:\n${privateStoreData.findings_summary || "Nessun documento privato trovato"}\n\nCITAZIONI:\n${privateStoreData.citations?.map((c: any) => `- ${c.source}: ${c.content}`).join('\n') || "Nessuna citazione"}\n`
+    : "";
+
   const prompt = `Sei un assistente AI per consulenti commerciali italiani.
 Genera un report strutturato basato sull'analisi seguente.
 
@@ -300,7 +444,7 @@ ${JSON.stringify(analysisData, null, 2)}
 
 DATI CLIENTE:
 ${JSON.stringify(clientData.contact || {}, null, 2)}
-
+${privateStoreSection}
 ISTRUZIONE ORIGINALE:
 ${task.ai_instruction}
 
