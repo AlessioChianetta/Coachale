@@ -2313,6 +2313,85 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         consultantId
       );
 
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🚀 O3: PRE-CONNECT Gemini WS in parallel with data loading
+      // Resolve credentials → determine backend → start TLS handshake
+      // All while data loading continues. Saves ~200-500ms of TLS latency.
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const geminiPreConnectPromise = (async () => {
+        const preConnectStart = Date.now();
+        const [gConfig, vConfig] = await Promise.all([googleStudioConfigPromise, vertexConfigPromise]);
+        
+        const providerEnv = (process.env.LIVE_API_PROVIDER || 'auto').toLowerCase().trim();
+        let backend: 'google_ai_studio' | 'vertex_ai';
+        let url: string;
+        let modelId: string;
+        
+        console.log(`🔧 [${connectionId}] O3: LIVE_API_PROVIDER env var: "${providerEnv}"`);
+        
+        if (providerEnv === 'ai_studio') {
+          if (!gConfig) {
+            throw new Error('LIVE_API_PROVIDER=ai_studio but Google AI Studio credentials are not available');
+          }
+          backend = 'google_ai_studio';
+          modelId = gConfig.modelId;
+          url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${gConfig.apiKey}`;
+          console.log(`🔵 [${connectionId}] O3: Using GOOGLE AI STUDIO (forced by LIVE_API_PROVIDER=ai_studio) - Model: ${modelId}`);
+        } else if (providerEnv === 'vertex_ai') {
+          if (!vConfig) {
+            throw new Error('LIVE_API_PROVIDER=vertex_ai but Vertex AI credentials are not available');
+          }
+          backend = 'vertex_ai';
+          modelId = vConfig.modelId;
+          url = `wss://${vConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+          console.log(`🟢 [${connectionId}] O3: Using VERTEX AI (forced by LIVE_API_PROVIDER=vertex_ai) - Model: ${modelId}, Location: ${vConfig.location}`);
+        } else if (gConfig) {
+          backend = 'google_ai_studio';
+          modelId = gConfig.modelId;
+          url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${gConfig.apiKey}`;
+          console.log(`🔵 [${connectionId}] O3: Using GOOGLE AI STUDIO (auto: Studio available) - Model: ${modelId}`);
+        } else if (vConfig) {
+          backend = 'vertex_ai';
+          modelId = vConfig.modelId;
+          url = `wss://${vConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+          console.log(`🟢 [${connectionId}] O3: Using VERTEX AI (auto: Studio unavailable) - Model: ${modelId}, Location: ${vConfig.location}`);
+        } else {
+          throw new Error('Failed to get Live API credentials - neither Google AI Studio nor Vertex AI available');
+        }
+        
+        let ws: WebSocket;
+        if (backend === 'google_ai_studio') {
+          ws = new WebSocket(url);
+        } else {
+          ws = new WebSocket(url, {
+            headers: {
+              'Authorization': `Bearer ${vConfig!.accessToken}`,
+              'Content-Type': 'application/json',
+            }
+          });
+        }
+        
+        try {
+          await new Promise<void>((resolve, reject) => {
+            ws.on('open', () => resolve());
+            ws.on('error', (err) => reject(err));
+            setTimeout(() => reject(new Error('Gemini WS pre-connect timeout (10s)')), 10000);
+          });
+        } catch (networkErr) {
+          console.warn(`⚠️ [${connectionId}] O3: WS handshake failed (transient), will fall back to sequential: ${(networkErr as Error).message}`);
+          try { ws.close(); } catch (_) {}
+          return null;
+        }
+        
+        const elapsed = Date.now() - preConnectStart;
+        console.log(`🚀 [${connectionId}] O3: Gemini WS pre-connected in ${elapsed}ms (parallel with data loading) - backend: ${backend}`);
+        
+        return { ws, backend, modelId, gConfig, vConfig, preConnectElapsed: elapsed };
+      })().catch((err) => {
+        console.error(`❌ [${connectionId}] O3: Pre-connect credential/config error: ${(err as Error).message}`);
+        return { error: err as Error };
+      });
+
       // 2b. Build prompts based on mode
       let systemInstruction: string;
       let userDataContext: string | null = null;
@@ -4791,74 +4870,71 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       console.log(`\n🎁 TOTAL TOKENS INVIATI (setup): ${totalTokens.toLocaleString()} tokens`);
       console.log(`${'═'.repeat(70)}\n`);
 
-      // 3. Await Live API credentials (⚡ deferred - try Google AI Studio first, fallback to Vertex AI)
-      const googleStudioConfig = await googleStudioConfigPromise;
-      const vertexConfig = await vertexConfigPromise;
+      const dataLoadDoneTime = Date.now();
+      console.log(`⏱️ [LATENCY-E2E] Data loading + prompt build completed: +${dataLoadDoneTime - authDoneTime}ms from auth, total: +${dataLoadDoneTime - wsArrivalTime}ms from WS arrival`);
+
+      // 3. Await pre-connected Gemini WS (O3: was connecting in parallel with data loading)
+      const preConnectRaw = await geminiPreConnectPromise;
       
-      // Determine which backend to use based on LIVE_API_PROVIDER env var
-      const liveApiProviderEnv = (process.env.LIVE_API_PROVIDER || 'auto').toLowerCase().trim();
+      // Re-throw config/credential errors (forced-provider missing creds, no creds at all)
+      if (preConnectRaw && 'error' in preConnectRaw) {
+        throw preConnectRaw.error;
+      }
+      const preConnectResult = preConnectRaw as { ws: WebSocket; backend: 'google_ai_studio' | 'vertex_ai'; modelId: string; gConfig: any; vConfig: any; preConnectElapsed: number } | null;
+      
       let liveApiBackend: 'google_ai_studio' | 'vertex_ai';
-      let wsUrl: string;
       let liveModelId: string;
+      let googleStudioConfig: any;
+      let vertexConfig: any;
       
-      console.log(`🔧 [${connectionId}] LIVE_API_PROVIDER env var: "${liveApiProviderEnv}"`);
-      
-      if (liveApiProviderEnv === 'ai_studio') {
-        if (!googleStudioConfig) {
-          throw new Error('LIVE_API_PROVIDER=ai_studio but Google AI Studio credentials are not available');
-        }
-        liveApiBackend = 'google_ai_studio';
-        liveModelId = googleStudioConfig.modelId;
-        wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
-        console.log(`🔵 [${connectionId}] Using GOOGLE AI STUDIO for Live API (forced by LIVE_API_PROVIDER=ai_studio)`);
+      if (preConnectResult) {
+        geminiSession = preConnectResult.ws;
+        liveApiBackend = preConnectResult.backend;
+        liveModelId = preConnectResult.modelId;
+        googleStudioConfig = preConnectResult.gConfig;
+        vertexConfig = preConnectResult.vConfig;
+        console.log(`🚀 [${connectionId}] O3: Using pre-connected Gemini WS (saved ~${preConnectResult.preConnectElapsed}ms of sequential TLS)`);
+        console.log(`   Backend: ${liveApiBackend === 'google_ai_studio' ? '🔵 Google AI Studio' : '🟢 Vertex AI'}`);
         console.log(`   Model: ${liveModelId}`);
-        console.log(`   Endpoint: generativelanguage.googleapis.com`);
-      } else if (liveApiProviderEnv === 'vertex_ai') {
-        if (!vertexConfig) {
-          throw new Error('LIVE_API_PROVIDER=vertex_ai but Vertex AI credentials are not available');
-        }
-        liveApiBackend = 'vertex_ai';
-        liveModelId = vertexConfig.modelId;
-        wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
-        console.log(`🟢 [${connectionId}] Using VERTEX AI for Live API (forced by LIVE_API_PROVIDER=vertex_ai)`);
-        console.log(`   Model: ${liveModelId}`);
-        console.log(`   Location: ${vertexConfig.location}`);
       } else {
-        // auto mode: Google AI Studio first, Vertex AI fallback
-        if (googleStudioConfig) {
+        console.log(`⚠️ [${connectionId}] O3: Pre-connect failed, falling back to sequential connection...`);
+        googleStudioConfig = await googleStudioConfigPromise;
+        vertexConfig = await vertexConfigPromise;
+        
+        const liveApiProviderEnv = (process.env.LIVE_API_PROVIDER || 'auto').toLowerCase().trim();
+        let wsUrl: string;
+        
+        if (liveApiProviderEnv === 'ai_studio' && googleStudioConfig) {
           liveApiBackend = 'google_ai_studio';
           liveModelId = googleStudioConfig.modelId;
           wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
-          console.log(`🔵 [${connectionId}] Using GOOGLE AI STUDIO for Live API (auto: Studio available)`);
-          console.log(`   Model: ${liveModelId}`);
-          console.log(`   Endpoint: generativelanguage.googleapis.com`);
+        } else if (liveApiProviderEnv === 'vertex_ai' && vertexConfig) {
+          liveApiBackend = 'vertex_ai';
+          liveModelId = vertexConfig.modelId;
+          wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
+        } else if (googleStudioConfig) {
+          liveApiBackend = 'google_ai_studio';
+          liveModelId = googleStudioConfig.modelId;
+          wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${googleStudioConfig.apiKey}`;
         } else if (vertexConfig) {
           liveApiBackend = 'vertex_ai';
           liveModelId = vertexConfig.modelId;
           wsUrl = `wss://${vertexConfig.location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
-          console.log(`🟢 [${connectionId}] Using VERTEX AI for Live API (auto: Studio unavailable, Vertex fallback)`);
-          console.log(`   Model: ${liveModelId}`);
-          console.log(`   Location: ${vertexConfig.location}`);
         } else {
-          throw new Error('Failed to get Live API credentials - neither Google AI Studio nor Vertex AI available');
+          throw new Error('Failed to get Live API credentials');
         }
-      }
-
-      const dataLoadDoneTime = Date.now();
-      console.log(`⏱️ [LATENCY-E2E] Data loading + prompt build completed: +${dataLoadDoneTime - authDoneTime}ms from auth, total: +${dataLoadDoneTime - wsArrivalTime}ms from WS arrival`);
-
-      // 4. Create raw WebSocket connection
-      if (liveApiBackend === 'google_ai_studio') {
-        // Google AI Studio: API key in URL query param, no auth headers needed
-        geminiSession = new WebSocket(wsUrl);
-      } else {
-        // Vertex AI: OAuth2 Bearer token in header
-        geminiSession = new WebSocket(wsUrl, {
-          headers: {
-            'Authorization': `Bearer ${vertexConfig!.accessToken}`,
-            'Content-Type': 'application/json',
-          }
-        });
+        
+        if (liveApiBackend === 'google_ai_studio') {
+          geminiSession = new WebSocket(wsUrl);
+        } else {
+          geminiSession = new WebSocket(wsUrl, {
+            headers: {
+              'Authorization': `Bearer ${vertexConfig!.accessToken}`,
+              'Content-Type': 'application/json',
+            }
+          });
+        }
+        console.log(`🔌 [${connectionId}] Sequential WS connection started (fallback)`);
       }
       
       // 🔌 Track this connection in global tracker (P0.1 - con lastActivity per anti-zombie)
@@ -5111,10 +5187,11 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
       };
       
       let pendingChunksSend: (() => void) | null = null;
+      let greetingAlreadySent = false;
       
-      geminiSession.on('open', () => {
+      const onGeminiWsOpen = () => {
         latencyTracker.geminiOpenTime = Date.now();
-        console.log(`✅ [${connectionId}] Gemini Live WebSocket opened`);
+        console.log(`✅ [${connectionId}] Gemini Live WebSocket opened${preConnectResult ? ' (O3: pre-connected)' : ''}`);
         console.log(`⏱️ [LATENCY] Gemini WS open: +${latencyTracker.geminiOpenTime - latencyTracker.wsConnectionTime}ms from client connection`);
         isSessionActive = true;
         
@@ -5177,7 +5254,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 topK: 40,
                 maxOutputTokens: 8192,
                 thinkingConfig: {
-                  thinkingBudget: 128
+                  thinkingBudget: 0
                 }
               },
               inputAudioTranscription: {},
@@ -5595,7 +5672,15 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
         } else if (isResuming) {
           console.log(`\n⏩ [${connectionId}] RESUMING - Skipping dynamic context (preserved in session)`);
         }
-      });
+      };
+      
+      // O3: If WS was pre-connected, it's already OPEN - invoke handler directly
+      if (preConnectResult && geminiSession.readyState === WebSocket.OPEN) {
+        console.log(`🚀 [${connectionId}] O3: WS already OPEN from pre-connect, invoking open handler immediately`);
+        onGeminiWsOpen();
+      } else {
+        geminiSession.on('open', onGeminiWsOpen);
+      }
 
       // 🔍 DEBUG: Counter for message logging
       let geminiMessageCount = 0;
@@ -5668,6 +5753,49 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               message: 'Gemini Live session ready',
               voice: voiceName
             }));
+            
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 🚀 O2: EARLY GREETING - Send greeting trigger BEFORE chunks
+            // For speak-first modes, the AI can start generating "Ciao Marco!"
+            // from the system instruction alone. No need to wait for chunks.
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            const shouldGreetEarly = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
+            if (shouldGreetEarly) {
+              const earlyGreetingMessage = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: '[SISTEMA] La sessione è iniziata. L\'utente è in linea e ti sta ascoltando. Inizia SUBITO a parlare con un saluto naturale e breve. Se conosci il nome della persona, usalo nel saluto (es: "Marco? Sì ciao, sono [tuo nome]..."). Se non lo conosci, presentati comunque brevemente (es: "Ciao, sono [tuo nome]..."). NON aspettare che l\'utente parli per primo. Parti tu immediatamente.' }]
+                  }],
+                  turnComplete: true
+                }
+              };
+              geminiSession.send(JSON.stringify(earlyGreetingMessage));
+              latencyTracker.greetingTriggerTime = Date.now();
+              latencyTracker.greetingTriggered = true;
+              greetingAlreadySent = true;
+              console.log(`🚀 [${connectionId}] EARLY GREETING sent BEFORE chunks (O2 optimization) - mode: ${mode}`);
+              console.log(`⏱️ [LATENCY] Early greeting trigger: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
+              
+              if (isPhoneCall && _ncLatency.deferredCallHistory) {
+                const historyChunk = {
+                  clientContent: {
+                    turns: [{
+                      role: 'user',
+                      parts: [{ text: _ncLatency.deferredCallHistory }]
+                    }],
+                    turnComplete: false
+                  }
+                };
+                geminiSession.send(JSON.stringify(historyChunk));
+                console.log(`📚 [${connectionId}] Deferred call history sent AFTER early greeting (${_ncLatency.deferredCallHistory.length} chars)`);
+              }
+              
+              clientWs.send(JSON.stringify({
+                type: 'ai_starting',
+                message: 'AI sta iniziando con il saluto'
+              }));
+            }
             
             if (pendingChunksSend) {
               console.log(`\n📤 [${connectionId}] Google AI Studio: setupComplete received, NOW sending deferred chunks...`);
@@ -5890,10 +6018,10 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             const isNewAssistantOrPhoneSession = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
             
-            if (isNewAssistantOrPhoneSession) {
+            if (isNewAssistantOrPhoneSession && !greetingAlreadySent) {
               {
                 console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`[${connectionId}] STARTING AI WITH IMMEDIATE GREETING (${liveApiBackend === 'google_ai_studio' ? '🔵 AI Studio' : '🟢 Vertex AI'})`);
+                console.log(`[${connectionId}] STARTING AI WITH IMMEDIATE GREETING (${liveApiBackend === 'google_ai_studio' ? '🔵 AI Studio' : '🟢 Vertex AI'}) [FALLBACK - early greeting didn't fire]`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                 console.log(`   Mode: ${mode}`);
                 console.log(`   Is Resume: NO (new session)`);
@@ -5936,6 +6064,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 type: 'ai_starting',
                 message: 'AI sta iniziando con il saluto'
               }));
+            } else if (isNewAssistantOrPhoneSession && greetingAlreadySent) {
+              console.log(`✅ [${connectionId}] Greeting already sent early (O2) - skipping duplicate`);
             }
             
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
