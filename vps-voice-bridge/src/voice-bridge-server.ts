@@ -180,6 +180,12 @@ export function startVoiceBridgeServer(): void {
       const metadata = callMetadata.get(uuidFromUrl || callId);
       const callerId = metadata?.callerIdNumber || 'unknown';
       const callerName = metadata?.callerIdName || '';
+      const parkTime = metadata?.parkTime;
+      const tWsConnect = Date.now();
+
+      if (parkTime) {
+        log.info(`⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: ${tWsConnect - parkTime}ms (FreeSWITCH audio_stream setup + WS open)`, { callId });
+      }
 
       log.info(`📞 Call detected: ID=${callId} | CallerId=${callerId} | CallerName=${callerName}`);
 
@@ -224,16 +230,26 @@ export function startVoiceBridgeServer(): void {
 }
 
 async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage): Promise<string> {
+  const t0 = Date.now();
+
   const session = sessionManager.createSession(
     message.call_id, message.caller_id, message.called_number,
     message.codec, message.sample_rate, ws
   );
+  const tSession = Date.now();
 
-  await notifyCallStart(session.id, message.caller_id, message.called_number);
+  notifyCallStart(session.id, message.caller_id, message.called_number).catch(e => {
+    log.warn(`⚠️ notifyCallStart failed (non-blocking)`, { error: e?.message });
+  });
 
   bgInitSession(session.id);
 
   audioOutputQueues.set(session.id, []);
+  const tSetup = Date.now();
+
+  log.info(`⏱️ [VPS-TIMING] handleCallStart setup: session=${tSession - t0}ms, bgInit+queue=${tSetup - tSession}ms`, {
+    sessionId: session.id.slice(0, 8),
+  });
 
   let lastTickNs = process.hrtime.bigint();
   const FRAME_NS = BigInt(20_000_000);
@@ -280,12 +296,31 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
   bgTimers.set(session.id, setTimeout(audioTick, 5));
   log.info(`🎵 Adaptive audio timer started (prefill=${PREFILL_FRAMES})`, { sessionId: session.id.slice(0, 8) });
 
+  const tPreConnect = Date.now();
+  log.info(`⏱️ [VPS-TIMING] Pre-connect overhead: ${tPreConnect - t0}ms`, { sessionId: session.id.slice(0, 8) });
+
+  let firstAudioReceived = false;
+  const tConnectStart = Date.now();
+
   try {
     const replitClient = new ReplitWSClient({
       sessionId: session.id,
       callerId: message.caller_id,
       scheduledCallId: message.call_id,
       onAudioResponse: (audio) => {
+        if (!firstAudioReceived) {
+          firstAudioReceived = true;
+          const tFirstAudio = Date.now();
+          log.info(`\n⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          log.info(`⏱️ [VPS LATENCY REPORT] First audio from Replit`);
+          log.info(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          log.info(`⏱️  handleCallStart entry → Replit WS connect start:  ${tConnectStart - t0}ms (local setup)`);
+          log.info(`⏱️  Replit WS connect (TLS handshake):                ${(replitClient as any).wsConnectTime ? ((replitClient as any).wsConnectTime - tConnectStart) : '?'}ms`);
+          log.info(`⏱️  Replit WS open → First audio byte:               ${tFirstAudio - ((replitClient as any).wsConnectTime || tConnectStart)}ms (server-side processing)`);
+          log.info(`⏱️  ─────────────────────────────────────────`);
+          log.info(`⏱️  TOTAL handleCallStart → First audio:              ${tFirstAudio - t0}ms`);
+          log.info(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        }
         queueAudioForFreeSWITCH(session.id, audio);
       },
       onTextResponse: (text) => {
@@ -321,8 +356,14 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
     });
 
     await replitClient.connect();
+    const tConnected = Date.now();
+    log.info(`⏱️ [VPS-TIMING] Replit WS connected in ${tConnected - tConnectStart}ms (TLS handshake + HTTP upgrade)`, { sessionId: session.id.slice(0, 8) });
+
     sessionManager.setReplitClient(session.id, replitClient);
     sessionManager.updateSessionState(session.id, 'active');
+
+    const tActive = Date.now();
+    log.info(`⏱️ [VPS-TIMING] Total handleCallStart: ${tActive - t0}ms (setup=${tPreConnect - t0}ms, connect=${tConnected - tConnectStart}ms, post=${tActive - tConnected}ms)`, { sessionId: session.id.slice(0, 8) });
 
     return session.id;
   } catch (error) {

@@ -39,6 +39,7 @@ private scheduledCallId?: string;
   private lastAudioActivityTime = 0;
   private proactiveRestartInterval: ReturnType<typeof setInterval> | null = null;
   private isProactiveRestarting = false;
+  private firstAudioLogged = false;
 
   private audioBufferActive = false;
   private audioBuffer: Buffer[] = [];
@@ -67,6 +68,7 @@ this.scheduledCallId = options.scheduledCallId;
   async connect(resumeHandle?: string, silentStreak?: number): Promise<void> {
     const mode = this.options.mode || 'phone_service';
     const voice = this.options.voice || config.voice.voiceId;
+    const connectStartTime = Date.now();
 
     let wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
 
@@ -104,7 +106,8 @@ if (this.scheduledCallId) {
       }, 15000);
 
       this.ws.on('open', () => {
-        log.info(`Replit WebSocket connected`, {
+        const handshakeMs = Date.now() - connectStartTime;
+        log.info(`⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: ${handshakeMs}ms`, {
           sessionId: this.sessionId.slice(0, 8),
           resumed: !!resumeHandle,
         });
@@ -172,6 +175,13 @@ if (this.scheduledCallId) {
 
   private handleMessage(data: any, isBinary: boolean): void {
     if (isBinary) {
+      if (!this.firstAudioLogged) {
+        this.firstAudioLogged = true;
+        const elapsed = this.wsConnectTime > 0 ? Date.now() - this.wsConnectTime : -1;
+        log.info(`⏱️ [REPLIT-WS-TIMING] First BINARY audio byte received ${elapsed}ms after WS open`, {
+          sessionId: this.sessionId.slice(0, 8),
+        });
+      }
       this.lastAudioActivityTime = Date.now();
       this.options.onAudioResponse(data);
       return;
@@ -182,6 +192,13 @@ if (this.scheduledCallId) {
       const message = JSON.parse(text);
 
       if ((message.type === 'audio' || message.type === 'audio_output') && message.data) {
+        if (!this.firstAudioLogged) {
+          this.firstAudioLogged = true;
+          const elapsed = this.wsConnectTime > 0 ? Date.now() - this.wsConnectTime : -1;
+          log.info(`⏱️ [REPLIT-WS-TIMING] First JSON audio received ${elapsed}ms after WS open`, {
+            sessionId: this.sessionId.slice(0, 8),
+          });
+        }
         const audioData = base64ToPcm(message.data);
         this.options.onAudioResponse(audioData);
       }
