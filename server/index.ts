@@ -28,6 +28,7 @@ import { startDrivePendingSyncScheduler } from "./cron/drive-pending-sync";
 import { initDatasetSyncScheduler } from "./cron/dataset-sync-scheduler";
 import { startPendingBookingExpiryScheduler } from "./cron/pending-booking-expiry";
 import { initAITaskScheduler } from "./cron/ai-task-scheduler";
+import { warmupPool } from "./db";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -121,6 +122,8 @@ app.use((req, res, next) => {
   }
 
   const server = await registerRoutes(app);
+
+  warmupPool();
 
   // Setup WebSocket test server
   //setupWebSocketTest(server);

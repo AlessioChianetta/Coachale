@@ -947,7 +947,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       try {
+        const jwtDecodeStart = Date.now();
         const decoded = jwt.verify(token, JWT_SECRET) as any;
+        console.log(`⏱️ [AUTH] JWT verify: ${Date.now() - jwtDecodeStart}ms`);
 
         if (decoded.type !== 'phone_service') {
           console.error('❌ Invalid token type. Must be phone_service');
@@ -976,13 +978,15 @@ async function getUserIdFromRequest(req: any): Promise<{
         const parallelStart = Date.now();
         const [userByPhone, voiceSettingsRows, scheduledCallResult] = await Promise.all([
           storage.getUserByPhoneNumber(normalizedCallerId, decoded.consultantId)
-            .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Caller lookup failed:`, err.message); return null; }),
+            .then(r => { console.log(`⏱️ [AUTH] userByPhone query: ${Date.now() - parallelStart}ms`); return r; })
+            .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Caller lookup failed (${Date.now() - parallelStart}ms):`, err.message); return null; }),
 
           db.select({ voiceId: consultantAvailabilitySettings.voiceId })
             .from(consultantAvailabilitySettings)
             .where(eq(consultantAvailabilitySettings.consultantId, decoded.consultantId))
             .limit(1)
-            .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Voice settings failed, using default:`, err.message); return [] as any[]; }),
+            .then(r => { console.log(`⏱️ [AUTH] voiceSettings query: ${Date.now() - parallelStart}ms`); return r; })
+            .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Voice settings failed (${Date.now() - parallelStart}ms):`, err.message); return [] as any[]; }),
 
           scheduledCallIdParam
             ? db.execute(sql`
@@ -992,7 +996,8 @@ async function getUserIdFromRequest(req: any): Promise<{
                   AND consultant_id = ${decoded.consultantId}
                   AND status = 'calling'
                 LIMIT 1
-              `).catch(err => { console.warn(`⚠️ [PHONE SERVICE] Scheduled call lookup failed:`, err.message); return { rows: [] }; })
+              `).then(r => { console.log(`⏱️ [AUTH] scheduledCall query: ${Date.now() - parallelStart}ms`); return r; })
+              .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Scheduled call lookup failed (${Date.now() - parallelStart}ms):`, err.message); return { rows: [] }; })
             : Promise.resolve(null)
         ]);
         console.log(`⚡ [PHONE SERVICE] Parallel auth queries completed in ${Date.now() - parallelStart}ms`);
@@ -1152,7 +1157,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // Verify session JWT
+      const jwtDecodeStart = Date.now();
       const decoded = jwt.verify(sessionToken, JWT_SECRET) as any;
+      console.log(`⏱️ [AUTH] JWT verify (sales_agent): ${Date.now() - jwtDecodeStart}ms`);
 
       // Validate JWT type
       if (decoded.type !== 'sales_agent_session') {
@@ -1173,7 +1180,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // Load agent by shareToken to validate it's still active
+      const agentQueryStart = Date.now();
       const agent = await storage.getClientSalesAgentByShareToken(shareToken);
+      console.log(`⏱️ [AUTH] getAgentByShareToken query: ${Date.now() - agentQueryStart}ms`);
       if (!agent) {
         console.error('❌ Sales agent not found for shareToken');
         return null;
@@ -1191,7 +1200,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // Load conversation to verify it exists
+      const convQueryStart = Date.now();
       const conversation = await storage.getClientSalesConversationById(decoded.conversationId);
+      console.log(`⏱️ [AUTH] getConversationById query: ${Date.now() - convQueryStart}ms`);
       if (!conversation) {
         console.error('❌ Conversation not found');
         return null;
@@ -1242,7 +1253,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // Verify session JWT
+      const jwtDecodeStart = Date.now();
       const decoded = jwt.verify(sessionToken, JWT_SECRET) as any;
+      console.log(`⏱️ [AUTH] JWT verify (consultation_invite): ${Date.now() - jwtDecodeStart}ms`);
 
       // Validate JWT type
       if (decoded.type !== 'consultation_invite_session') {
@@ -1263,7 +1276,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // Load invite to validate it's still active
+      const inviteQueryStart = Date.now();
       const invite = await storage.getConsultationInviteByToken(inviteToken);
+      console.log(`⏱️ [AUTH] getInviteByToken query: ${Date.now() - inviteQueryStart}ms`);
       if (!invite) {
         console.error('❌ Consultation invite not found');
         return null;
@@ -1275,7 +1290,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // Load agent to validate it's still active
+      const agentQueryStart = Date.now();
       const agent = await storage.getClientSalesAgentById(invite.agentId);
+      console.log(`⏱️ [AUTH] getAgentById query: ${Date.now() - agentQueryStart}ms`);
       if (!agent) {
         console.error('❌ Sales agent not found for invite');
         return null;
@@ -1293,7 +1310,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // Load conversation to verify it exists
+      const convQueryStart = Date.now();
       const conversation = await storage.getClientSalesConversationById(decoded.conversationId);
+      console.log(`⏱️ [AUTH] getConversationById query: ${Date.now() - convQueryStart}ms`);
       if (!conversation) {
         console.error('❌ Conversation not found');
         return null;
@@ -1336,10 +1355,14 @@ async function getUserIdFromRequest(req: any): Promise<{
     // Validate consultantType (optional, validated separately if needed)
 
     // Verifica JWT
+    const jwtDecodeStart = Date.now();
     const decoded = jwt.verify(token, JWT_SECRET) as any;
+    console.log(`⏱️ [AUTH] JWT verify (client): ${Date.now() - jwtDecodeStart}ms`);
 
     // Carica utente dal database per validare
+    const userQueryStart = Date.now();
     const user = await storage.getUser(decoded.userId);
+    console.log(`⏱️ [AUTH] getUser query: ${Date.now() - userQueryStart}ms`);
 
     if (!user) {
       console.error('❌ Invalid JWT: user not found');
@@ -1350,7 +1373,9 @@ async function getUserIdFromRequest(req: any): Promise<{
     // Email Condivisa: if JWT has profileId, use profile's role instead of user's database role
     let effectiveRole = user.role;
     if (decoded.profileId) {
+      const profileQueryStart = Date.now();
       const profile = await storage.getUserRoleProfileById(decoded.profileId);
+      console.log(`⏱️ [AUTH] getUserRoleProfile query: ${Date.now() - profileQueryStart}ms`);
       if (profile && profile.userId === user.id && profile.isActive) {
         effectiveRole = profile.role;
       }
@@ -3961,10 +3986,12 @@ ${contentPrompt}`;
       else {
         console.log(`📊 [${connectionId}] CLIENT MODE - Building user context...`);
         // Pass sessionType to buildUserContext for proper separation
+        const buildUserContextStart = Date.now();
         userContext = await buildUserContext(userId!, {
           message: '',
           sessionType: sessionType // 'weekly_consultation' or undefined
         });
+        console.log(`⏱️ [DATA LOAD] buildUserContext: ${Date.now() - buildUserContextStart}ms`);
         
         // Import the functions for Live API
         const { 
@@ -3998,7 +4025,9 @@ ${contentPrompt}`;
           let clientConsultantName = 'il consulente';
           if (consultantId) {
             try {
+              const consultantInfoStart = Date.now();
               const consultant = await storage.getUser(consultantId);
+              console.log(`⏱️ [DATA LOAD] client consultantInfo query: ${Date.now() - consultantInfoStart}ms`);
               if (consultant) {
                 const fullName = [consultant.firstName, consultant.lastName].filter(Boolean).join(' ').trim();
                 clientConsultantName = fullName || consultant.email?.split('@')[0] || 'il consulente';
@@ -4012,12 +4041,14 @@ ${contentPrompt}`;
           let clientVoiceDirectives = '';
           if (consultantId) {
             try {
+              const voiceDirectivesStart = Date.now();
               const settingsResult = await db
                 .select({
                   voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
                 })
                 .from(consultantAvailabilitySettings)
                 .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
+              console.log(`⏱️ [DATA LOAD] client voiceDirectives query: ${Date.now() - voiceDirectivesStart}ms`);
               
               if (settingsResult.length > 0 && settingsResult[0].voiceDirectives) {
                 clientVoiceDirectives = settingsResult[0].voiceDirectives;
@@ -4050,6 +4081,7 @@ ${contentPrompt}`;
           let clientInstructionHasPreviousConversations = false;
           if (phoneCallerId) {
             try {
+              const clientPrevConvsStart = Date.now();
               const previousConversations = await db.execute(sql`
                 SELECT 
                   ac.id,
@@ -4074,6 +4106,7 @@ ${contentPrompt}`;
                 LIMIT 100
               `);
               
+              console.log(`⏱️ [DATA LOAD] client previousConversations query (instruction path): ${Date.now() - clientPrevConvsStart}ms (${previousConversations.rows.length} rows)`);
               if (previousConversations.rows.length > 0) {
                 clientInstructionHasPreviousConversations = true;
                 let historyContent = '';
@@ -4314,7 +4347,9 @@ ${clientInstructionCallHistory}
           let inboundConsultantName = 'il consulente';
           if (consultantId) {
             try {
+              const inboundConsultantInfoStart = Date.now();
               const consultant = await storage.getUser(consultantId);
+              console.log(`⏱️ [DATA LOAD] inbound consultantInfo query: ${Date.now() - inboundConsultantInfoStart}ms`);
               if (consultant) {
                 const fullName = [consultant.firstName, consultant.lastName].filter(Boolean).join(' ').trim();
                 inboundConsultantName = fullName || consultant.email?.split('@')[0] || 'il consulente';
@@ -4328,12 +4363,14 @@ ${clientInstructionCallHistory}
           let inboundVoiceDirectives = '';
           if (consultantId) {
             try {
+              const inboundVoiceDirectivesStart = Date.now();
               const settingsResult = await db
                 .select({
                   voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
                 })
                 .from(consultantAvailabilitySettings)
                 .where(eq(consultantAvailabilitySettings.consultantId, consultantId));
+              console.log(`⏱️ [DATA LOAD] inbound voiceDirectives query: ${Date.now() - inboundVoiceDirectivesStart}ms`);
               
               if (settingsResult.length > 0 && settingsResult[0].voiceDirectives) {
                 inboundVoiceDirectives = settingsResult[0].voiceDirectives;
@@ -4366,6 +4403,7 @@ ${clientInstructionCallHistory}
           let hasPreviousConversations = false;
           if (phoneCallerId) {
             try {
+              const inboundPrevConvsStart = Date.now();
               const previousConversations = await db.execute(sql`
                 SELECT 
                   ac.id,
@@ -4390,6 +4428,7 @@ ${clientInstructionCallHistory}
                 LIMIT 100
               `);
               
+              console.log(`⏱️ [DATA LOAD] inbound previousConversations query: ${Date.now() - inboundPrevConvsStart}ms (${previousConversations.rows.length} rows)`);
               if (previousConversations.rows.length > 0) {
                 hasPreviousConversations = true;
                 let historyContent = '';

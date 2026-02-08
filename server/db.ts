@@ -10,19 +10,50 @@ if (!process.env.DATABASE_URL) {
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
+  min: 3,
   max: 20,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 15000,
-  maxUses: 100,
-  allowExitOnIdle: true,
+  idleTimeoutMillis: 60000,
+  connectionTimeoutMillis: 10000,
+  maxUses: 7500,
+  allowExitOnIdle: false,
   keepAlive: true,
-  keepAliveInitialDelayMillis: 10000,
+  keepAliveInitialDelayMillis: 5000,
   ssl: {
     rejectUnauthorized: false
   }
 };
 
 export const pool = new Pool(poolConfig);
+
+console.log(`🔧 [DB POOL] Config: min=${poolConfig.min}, max=${poolConfig.max}, idleTimeout=${poolConfig.idleTimeoutMillis}ms`);
+
+// Pool stats logging
+export function logPoolStats(): void {
+  console.log(`📊 [DB POOL] Stats: total=${pool.totalCount}, idle=${pool.idleCount}, waiting=${pool.waitingCount}`);
+}
+
+// Pool warmup function (non-blocking: logs and continues on failure, 10s timeout)
+export async function warmupPool(): Promise<void> {
+  const startTime = Date.now();
+  try {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Warmup timeout (10s)')), 10000));
+    await Promise.race([
+      Promise.all([
+        pool.query('SELECT 1'),
+        pool.query('SELECT 1'),
+        pool.query('SELECT 1')
+      ]),
+      timeout
+    ]);
+    const ms = Date.now() - startTime;
+    console.log(`🔥 [DB POOL] Warmup: 3 connections pre-created in ${ms}ms`);
+    logPoolStats();
+    startKeepalive();
+  } catch (error: any) {
+    console.error(`⚠️ [DB POOL] Warmup failed (non-blocking): ${error.message}`);
+    startKeepalive();
+  }
+}
 
 // Funzione di retry con exponential backoff
 class DatabaseRetryError extends Error {
@@ -117,6 +148,18 @@ export async function withRetry<T>(
   throw lastError!;
 }
 
+// Periodic keepalive interval (30 seconds)
+let keepaliveInterval: NodeJS.Timer | null = null;
+
+function startKeepalive(): void {
+  if (keepaliveInterval) return;
+  keepaliveInterval = setInterval(() => {
+    pool.query('SELECT 1').catch((error: any) => {
+      console.error(`⚠️  [DB POOL] Keepalive failed: ${error.message}`);
+    });
+  }, 30000);
+}
+
 // Database principale - mantiene compatibilità totale con il codice esistente
 export const db = drizzle({ client: pool, schema });
 
@@ -172,12 +215,20 @@ export async function checkDatabaseHealth(): Promise<boolean> {
 // Cleanup graceful delle connessioni
 process.on('SIGINT', async () => {
   console.log('Closing database pool...');
+  if (keepaliveInterval) {
+    clearInterval(keepaliveInterval);
+    keepaliveInterval = null;
+  }
   await pool.end();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('Closing database pool...');
+  if (keepaliveInterval) {
+    clearInterval(keepaliveInterval);
+    keepaliveInterval = null;
+  }
   await pool.end();
   process.exit(0);
 });
