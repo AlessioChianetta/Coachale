@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKeyForClassifier, GEMINI_LEGACY_MODEL } from "./provider-factory";
+import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "./provider-factory";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
@@ -480,7 +480,7 @@ AZIONI INTERNE (sempre disponibili, non richiedono canali di comunicazione):
 - "fetch_client_data": Recupera dati aggiuntivi sul cliente dal database
 - "search_private_stores": Cerca nei documenti privati del cliente e del consulente (consulenze, esercizi, knowledge base, libreria) usando ricerca semantica AI
 - "analyze_patterns": Analizza pattern e storico interazioni
-- "generate_report": Genera un report scritto dettagliato. La struttura predefinita include: Panoramica Cliente, Analisi Situazione, Punti di Forza/Debolezza, Pattern, Rischio, Piano d'Azione, Prossimi Passi. Tuttavia, puoi specificare una struttura personalizzata tramite il parametro "custom_sections" (array di titoli sezione) se l'obiettivo del task richiede una struttura diversa.
+- "generate_report": Genera un report scritto dettagliato. HAI PIENA LIBERTÀ DI DECIDERE LA STRUTTURA DEL REPORT. Analizza l'obiettivo del task e crea le sezioni più appropriate. La struttura predefinita (Panoramica Cliente, Analisi Situazione, Punti di Forza/Debolezza, Pattern, Rischio, Piano d'Azione, Prossimi Passi) è solo un SUGGERIMENTO, NON un obbligo. Usa il parametro "custom_sections" (array di titoli sezione) per definire la TUA struttura ideale. Esempi: per un task "preparazione incontro" potresti usare ["Agenda Proposta", "Punti da Discutere", "Obiettivi dell'Incontro", "Materiale da Preparare"]. Per un task "analisi investimenti" potresti usare ["Portafoglio Attuale", "Opportunità di Mercato", "Analisi Rischio/Rendimento", "Strategia Consigliata"]. Sii creativo e specifico per l'obiettivo del task.
 - "web_search": Cerca informazioni aggiornate su internet su un ARGOMENTO SPECIFICO. Specifica sempre il parametro "search_topic" con l'argomento preciso da ricercare (es. "strategie marketing massoterapia sportiva", "normative fiscali partita IVA 2026"). NON fare ricerche generiche.
 
 AZIONI DI COMUNICAZIONE (richiedono canale abilitato E contatto valido):
@@ -527,7 +527,7 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: GEMINI_LEGACY_MODEL,
+        model: GEMINI_3_MODEL,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: { temperature: 0.2, maxOutputTokens: 4096 },
       });

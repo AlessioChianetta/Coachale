@@ -761,28 +761,28 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (report && typeof report === 'object') {
     sections.push(
-      <div key="report" className="space-y-6">
-        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
+      <div key="report" className="space-y-8">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-3">
           <Target className="h-5 w-5 text-primary" />
           {report.title || "Report"}
         </h3>
         {report.summary && (
-          <p className="text-sm text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 leading-relaxed mb-3">
+          <p className="text-sm text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-5 leading-[1.8] mb-4">
             {renderFormattedText(report.summary)}
           </p>
         )}
         {report.sections && Array.isArray(report.sections) && report.sections.map((section: any, i: number) => (
-          <div key={i} className="space-y-2 mt-4">
-            <h4 className="text-sm font-semibold text-foreground mb-2">{section.heading}</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap mb-3">{renderFormattedText(section.content)}</p>
+          <div key={i} className="space-y-3 mt-6">
+            <h4 className="text-sm font-semibold text-foreground mb-3">{section.heading}</h4>
+            <p className="text-sm text-muted-foreground leading-[1.85] whitespace-pre-wrap mb-4">{renderFormattedText(section.content)}</p>
           </div>
         ))}
         {report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0 && (
-          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 rounded-xl p-4 mt-4">
-            <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-3">🔑 Risultati Chiave</p>
-            <ul className="space-y-2">
+          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 rounded-xl p-5 mt-6">
+            <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-4">🔑 Risultati Chiave</p>
+            <ul className="space-y-3">
               {report.key_findings.map((finding: string, i: number) => (
-                <li key={i} className="text-sm text-green-700 dark:text-green-300 flex items-start gap-2 leading-relaxed">
+                <li key={i} className="text-sm text-green-700 dark:text-green-300 flex items-start gap-2 leading-[1.8]">
                   <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>{renderFormattedText(finding)}</span>
                 </li>
@@ -791,10 +791,10 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
           </div>
         )}
         {report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0 && (
-          <div className="space-y-3 mt-4">
-            <p className="text-sm font-semibold mb-2">💡 Raccomandazioni</p>
+          <div className="space-y-4 mt-6">
+            <p className="text-sm font-semibold mb-3">💡 Raccomandazioni</p>
             {report.recommendations.map((rec: any, i: number) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+              <div key={i} className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
                 <div className={cn(
                   "px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 mt-0.5",
                   rec.priority === 'high' ? "bg-red-500/20 text-red-600" :
@@ -804,19 +804,19 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
                   {rec.priority === 'high' ? 'Alta' : rec.priority === 'medium' ? 'Media' : 'Bassa'}
                 </div>
                 <div>
-                  <p className="text-sm font-medium leading-relaxed">{renderFormattedText(rec.action)}</p>
-                  {rec.rationale && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{renderFormattedText(rec.rationale)}</p>}
+                  <p className="text-sm font-medium leading-[1.8]">{renderFormattedText(rec.action)}</p>
+                  {rec.rationale && <p className="text-xs text-muted-foreground mt-2 leading-[1.75]">{renderFormattedText(rec.rationale)}</p>}
                 </div>
               </div>
             ))}
           </div>
         )}
         {report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 mt-4">
-            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-3">➡️ Prossimi Passi</p>
-            <ol className="space-y-2 list-decimal list-inside">
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-5 mt-6">
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-4">➡️ Prossimi Passi</p>
+            <ol className="space-y-3 list-decimal list-inside">
               {report.next_steps.map((step: string, i: number) => (
-                <li key={i} className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">{renderFormattedText(step)}</li>
+                <li key={i} className="text-sm text-blue-700 dark:text-blue-300 leading-[1.8]">{renderFormattedText(step)}</li>
               ))}
             </ol>
           </div>
@@ -827,23 +827,23 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (analysis && typeof analysis === 'object' && !report) {
     sections.push(
-      <div key="analysis" className="space-y-5">
-        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
+      <div key="analysis" className="space-y-8">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-3">
           <BarChart3 className="h-5 w-5 text-primary" />
           Analisi
         </h3>
         {analysis.client_profile_summary && (
-          <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
-            <p className="text-sm font-semibold mb-2">Profilo Cliente</p>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap mb-3">{renderFormattedText(analysis.client_profile_summary)}</p>
+          <div className="bg-primary/5 border border-primary/10 rounded-lg p-5">
+            <p className="text-sm font-semibold mb-3">Profilo Cliente</p>
+            <p className="text-sm text-muted-foreground leading-[1.85] whitespace-pre-wrap mb-4">{renderFormattedText(analysis.client_profile_summary)}</p>
           </div>
         )}
         {analysis.strengths && Array.isArray(analysis.strengths) && analysis.strengths.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">💪 Punti di Forza</p>
-            <ul className="space-y-2">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-3">💪 Punti di Forza</p>
+            <ul className="space-y-3">
               {analysis.strengths.map((s: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-[1.8]">
                   <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-green-500" />
                   <span>{renderFormattedText(s)}</span>
                 </li>
@@ -852,11 +852,11 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
           </div>
         )}
         {analysis.weaknesses && Array.isArray(analysis.weaknesses) && analysis.weaknesses.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-orange-700 dark:text-orange-400 mb-2">⚠️ Aree di Miglioramento</p>
-            <ul className="space-y-2">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-orange-700 dark:text-orange-400 mb-3">⚠️ Aree di Miglioramento</p>
+            <ul className="space-y-3">
               {analysis.weaknesses.map((w: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-[1.8]">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-orange-500" />
                   <span>{renderFormattedText(w)}</span>
                 </li>
@@ -865,11 +865,11 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
           </div>
         )}
         {analysis.opportunities && Array.isArray(analysis.opportunities) && analysis.opportunities.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2">🚀 Opportunità</p>
-            <ul className="space-y-2">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-3">🚀 Opportunità</p>
+            <ul className="space-y-3">
               {analysis.opportunities.map((o: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-[1.8]">
                   <ArrowRight className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
                   <span>{renderFormattedText(o)}</span>
                 </li>
@@ -878,11 +878,11 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
           </div>
         )}
         {analysis.behavioral_patterns && Array.isArray(analysis.behavioral_patterns) && analysis.behavioral_patterns.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold mb-2">📊 Pattern Comportamentali</p>
-            <ul className="space-y-2">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold mb-3">📊 Pattern Comportamentali</p>
+            <ul className="space-y-3">
               {analysis.behavioral_patterns.map((p: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-[1.8]">
                   <span className="text-muted-foreground/60">•</span>
                   <span>{renderFormattedText(p)}</span>
                 </li>
@@ -891,11 +891,11 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
           </div>
         )}
         {analysis.past_consultation_insights && Array.isArray(analysis.past_consultation_insights) && analysis.past_consultation_insights.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold mb-2">📋 Insight dalle Consulenze Passate</p>
-            <ul className="space-y-2">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold mb-3">📋 Insight dalle Consulenze Passate</p>
+            <ul className="space-y-3">
               {analysis.past_consultation_insights.map((ins: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-[1.8]">
                   <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-purple-500" />
                   <span>{renderFormattedText(ins)}</span>
                 </li>
@@ -904,11 +904,11 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
           </div>
         )}
         {analysis.insights && Array.isArray(analysis.insights) && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold mb-2">💡 Insight</p>
-            <ul className="space-y-2">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold mb-3">💡 Insight</p>
+            <ul className="space-y-3">
               {analysis.insights.map((insight: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-[1.8]">
                   <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-yellow-500" />
                   <span>{renderFormattedText(insight)}</span>
                 </li>
@@ -918,21 +918,21 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
         )}
         {analysis.risk_assessment && (
           <div className={cn(
-            "rounded-xl p-4 border",
+            "rounded-xl p-5 border",
             analysis.risk_assessment.level === 'high' ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50" :
             analysis.risk_assessment.level === 'medium' ? "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/50" :
             "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/50"
           )}>
-            <p className="text-sm font-semibold mb-2">
+            <p className="text-sm font-semibold mb-3">
               {analysis.risk_assessment.level === 'high' ? '🔴' : analysis.risk_assessment.level === 'medium' ? '🟡' : '🟢'} Valutazione Rischio: {analysis.risk_assessment.level === 'high' ? 'Alto' : analysis.risk_assessment.level === 'medium' ? 'Medio' : 'Basso'}
             </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">{renderFormattedText(analysis.risk_assessment.description)}</p>
+            <p className="text-sm text-muted-foreground leading-[1.8]">{renderFormattedText(analysis.risk_assessment.description)}</p>
           </div>
         )}
         {analysis.suggested_approach && (
-          <div className="bg-muted/50 rounded-lg p-3 border border-border">
-            <p className="text-sm font-semibold mb-2">Approccio Suggerito</p>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{renderFormattedText(analysis.suggested_approach)}</p>
+          <div className="bg-muted/50 rounded-lg p-5 border border-border">
+            <p className="text-sm font-semibold mb-3">Approccio Suggerito</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-[1.85]">{renderFormattedText(analysis.suggested_approach)}</p>
           </div>
         )}
       </div>
@@ -941,19 +941,19 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (webSearch && typeof webSearch === 'object') {
     sections.push(
-      <div key="websearch" className="space-y-5">
-        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
+      <div key="websearch" className="space-y-7">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-3">
           🌐 Ricerca Web
         </h3>
         {webSearch.findings && (
-          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-4 border border-border mb-3">
+          <div className="text-sm text-muted-foreground leading-[1.85] whitespace-pre-wrap bg-muted/30 rounded-lg p-5 border border-border mb-4">
             {renderFormattedText(webSearch.findings)}
           </div>
         )}
         {webSearch.sources && Array.isArray(webSearch.sources) && webSearch.sources.length > 0 && (
           <div>
-            <p className="text-sm font-semibold mb-2">Fonti</p>
-            <div className="space-y-1">
+            <p className="text-sm font-semibold mb-3">Fonti</p>
+            <div className="space-y-2">
               {webSearch.sources.map((source: any, i: number) => (
                 <a key={i} href={source.url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
@@ -970,33 +970,33 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (callPrep && typeof callPrep === 'object') {
     sections.push(
-      <div key="callprep" className="space-y-5">
-        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
+      <div key="callprep" className="space-y-7">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-3">
           <Phone className="h-5 w-5 text-primary" />
           Preparazione Chiamata
         </h3>
         {callPrep.opening_script && (
-          <div className="bg-muted/50 rounded-lg p-3 border border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Apertura</p>
-            <p className="text-sm italic leading-relaxed">"{renderFormattedText(callPrep.opening_script)}"</p>
+          <div className="bg-muted/50 rounded-lg p-5 border border-border">
+            <p className="text-xs font-semibold text-muted-foreground mb-3">Apertura</p>
+            <p className="text-sm italic leading-[1.8]">"{renderFormattedText(callPrep.opening_script)}"</p>
           </div>
         )}
         {callPrep.talking_points && Array.isArray(callPrep.talking_points) && (
-          <div className="space-y-3">
-            <p className="text-sm font-semibold mb-2">Punti di Discussione</p>
+          <div className="space-y-4">
+            <p className="text-sm font-semibold mb-3">Punti di Discussione</p>
             {callPrep.talking_points.map((tp: any, i: number) => (
-              <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-sm font-medium leading-relaxed">{renderFormattedText(tp.topic)}</p>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{renderFormattedText(tp.key_message)}</p>
-                {tp.supporting_details && <p className="text-xs text-muted-foreground mt-1 italic leading-relaxed">{renderFormattedText(tp.supporting_details)}</p>}
+              <div key={i} className="p-4 rounded-lg bg-muted/30 border border-border">
+                <p className="text-sm font-medium leading-[1.8]">{renderFormattedText(tp.topic)}</p>
+                <p className="text-xs text-muted-foreground mt-2 leading-[1.75]">{renderFormattedText(tp.key_message)}</p>
+                {tp.supporting_details && <p className="text-xs text-muted-foreground mt-2 italic leading-[1.75]">{renderFormattedText(tp.supporting_details)}</p>}
               </div>
             ))}
           </div>
         )}
         {callPrep.closing_script && (
-          <div className="bg-muted/50 rounded-lg p-3 border border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Chiusura</p>
-            <p className="text-sm italic leading-relaxed">"{renderFormattedText(callPrep.closing_script)}"</p>
+          <div className="bg-muted/50 rounded-lg p-5 border border-border">
+            <p className="text-xs font-semibold text-muted-foreground mb-3">Chiusura</p>
+            <p className="text-sm italic leading-[1.8]">"{renderFormattedText(callPrep.closing_script)}"</p>
           </div>
         )}
       </div>
@@ -1008,9 +1008,9 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Separator />
-      <h3 className="text-sm font-semibold flex items-center gap-2">
+      <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
         <Sparkles className="h-4 w-4 text-primary" />
         Risultati Deep Research
       </h3>
@@ -2885,52 +2885,7 @@ export default function ConsultantAIAutonomyPage() {
                             )}
                           </div>
 
-                          {/* Section 2: Results - THE MAIN CONTENT */}
-                          <div className="rounded-xl border shadow-sm bg-card p-6">
-                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                              <Sparkles className="h-5 w-5 text-primary" />
-                              Risultati Analisi
-                            </h3>
-
-                            {task.result_summary && task.status !== 'in_progress' && (
-                              <div className="mb-5 rounded-xl bg-primary/5 border border-primary/10 p-4">
-                                <p className="text-[15px] font-medium text-foreground mb-1">Riepilogo</p>
-                                <p className="text-sm text-muted-foreground leading-relaxed">{task.result_summary}</p>
-                              </div>
-                            )}
-
-                            {hasResults ? (
-                              <DeepResearchResults results={task.result_data.results} />
-                            ) : (
-                              <div className="text-center py-10">
-                                <div className="p-3 rounded-full bg-muted/50 w-fit mx-auto mb-3">
-                                  {task.status === 'in_progress' ? (
-                                    <Brain className="h-8 w-8 text-blue-500 animate-pulse" />
-                                  ) : task.status === 'scheduled' ? (
-                                    <Clock className="h-8 w-8 text-muted-foreground" />
-                                  ) : task.status === 'failed' ? (
-                                    <AlertCircle className="h-8 w-8 text-red-500" />
-                                  ) : (
-                                    <Info className="h-8 w-8 text-muted-foreground" />
-                                  )}
-                                </div>
-                                <p className="text-[15px] font-medium text-foreground">
-                                  {task.status === 'in_progress' ? "Analisi in corso..." :
-                                   task.status === 'scheduled' ? "Analisi programmata" :
-                                   task.status === 'failed' ? "Analisi non completata" :
-                                   "Nessun risultato disponibile"}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {task.status === 'in_progress' ? "I risultati appariranno qui al termine dell'elaborazione" :
-                                   task.status === 'scheduled' ? "L'analisi verrà eseguita all'orario programmato" :
-                                   task.status === 'failed' ? "Puoi riprovare l'esecuzione con il pulsante in basso" :
-                                   ""}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Section 3: AI Process - COLLAPSED */}
+                          {/* Section 2: AI Process - COLLAPSED */}
                           {(task.ai_reasoning || (task.execution_plan && task.execution_plan.length > 0) || sortedActivity.length > 0) && (
                             <div className="rounded-xl border shadow-sm bg-card p-5 space-y-3">
                               <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -3050,6 +3005,51 @@ export default function ConsultantAIAutonomyPage() {
                               )}
                             </div>
                           )}
+
+                          {/* Section 3: Results - THE MAIN CONTENT */}
+                          <div className="rounded-xl border shadow-sm bg-card p-6">
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                              <Sparkles className="h-5 w-5 text-primary" />
+                              Risultati Analisi
+                            </h3>
+
+                            {task.result_summary && task.status !== 'in_progress' && (
+                              <div className="mb-5 rounded-xl bg-primary/5 border border-primary/10 p-4">
+                                <p className="text-[15px] font-medium text-foreground mb-1">Riepilogo</p>
+                                <p className="text-sm text-muted-foreground leading-relaxed">{task.result_summary}</p>
+                              </div>
+                            )}
+
+                            {hasResults ? (
+                              <DeepResearchResults results={task.result_data.results} />
+                            ) : (
+                              <div className="text-center py-10">
+                                <div className="p-3 rounded-full bg-muted/50 w-fit mx-auto mb-3">
+                                  {task.status === 'in_progress' ? (
+                                    <Brain className="h-8 w-8 text-blue-500 animate-pulse" />
+                                  ) : task.status === 'scheduled' ? (
+                                    <Clock className="h-8 w-8 text-muted-foreground" />
+                                  ) : task.status === 'failed' ? (
+                                    <AlertCircle className="h-8 w-8 text-red-500" />
+                                  ) : (
+                                    <Info className="h-8 w-8 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <p className="text-[15px] font-medium text-foreground">
+                                  {task.status === 'in_progress' ? "Analisi in corso..." :
+                                   task.status === 'scheduled' ? "Analisi programmata" :
+                                   task.status === 'failed' ? "Analisi non completata" :
+                                   "Nessun risultato disponibile"}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {task.status === 'in_progress' ? "I risultati appariranno qui al termine dell'elaborazione" :
+                                   task.status === 'scheduled' ? "L'analisi verrà eseguita all'orario programmato" :
+                                   task.status === 'failed' ? "Puoi riprovare l'esecuzione con il pulsante in basso" :
+                                   ""}
+                                </p>
+                              </div>
+                            )}
+                          </div>
 
                           {/* Section 4: Action Buttons */}
                           <div className="rounded-xl border shadow-sm bg-card p-4">

@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKeyForClassifier, GEMINI_LEGACY_MODEL } from "./provider-factory";
+import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "./provider-factory";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
@@ -336,7 +336,7 @@ Riassumi le informazioni trovate in modo strutturato.`;
 
   const response = await withRetry(async () => {
     return await ai!.models.generateContent({
-      model: GEMINI_LEGACY_MODEL,
+      model: GEMINI_3_MODEL,
       contents: [{ role: "user", parts: [{ text: searchPrompt }] }],
       config: {
         temperature: 0.3,
@@ -428,7 +428,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 
   const response = await withRetry(async () => {
     return await ai.models.generateContent({
-      model: GEMINI_LEGACY_MODEL,
+      model: GEMINI_3_MODEL,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: { temperature: 0.3, maxOutputTokens: 16384 },
     });
@@ -529,7 +529,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 
   const response = await withRetry(async () => {
     return await ai.models.generateContent({
-      model: GEMINI_LEGACY_MODEL,
+      model: GEMINI_3_MODEL,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: { temperature: 0.3, maxOutputTokens: 16384 },
     });
@@ -616,7 +616,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 
   const response = await withRetry(async () => {
     return await ai.models.generateContent({
-      model: GEMINI_LEGACY_MODEL,
+      model: GEMINI_3_MODEL,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: { temperature: 0.4, maxOutputTokens: 4096 },
     });
@@ -828,7 +828,7 @@ ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 200)}` : ''
 NON scrivere un papiro. Il dettaglio è nel PDF allegato. Scrivi solo il corpo dell'email (senza oggetto, senza "Gentile..." all'inizio, inizia direttamente con il contenuto).`;
 
       const resp = await withRetry(() => ai.models.generateContent({
-        model: GEMINI_LEGACY_MODEL,
+        model: GEMINI_3_MODEL,
         contents: [{ role: "user", parts: [{ text: emailPrompt }] }],
         config: { temperature: 0.4, maxOutputTokens: 512 },
       }));
@@ -940,7 +940,7 @@ ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 150)}` : ''
 NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report, menziona che lo riceverà via email.`;
 
       const resp = await withRetry(() => ai.models.generateContent({
-        model: GEMINI_LEGACY_MODEL,
+        model: GEMINI_3_MODEL,
         contents: [{ role: "user", parts: [{ text: whatsappPrompt }] }],
         config: { temperature: 0.5, maxOutputTokens: 256 },
       }));
@@ -1026,7 +1026,7 @@ ${step.description ? `Step description: ${step.description}` : ''}`;
 
         const queryGenResponse = await withRetry(async () => {
           return await queryGenAi.models.generateContent({
-            model: GEMINI_LEGACY_MODEL,
+            model: GEMINI_3_MODEL,
             contents: [{ role: "user", parts: [{ text: queryGenPrompt }] }],
             config: { temperature: 0.3, maxOutputTokens: 256 },
           });
@@ -1076,7 +1076,7 @@ Fornisci una risposta strutturata e dettagliata con le informazioni trovate, cit
 
   const response = await withRetry(async () => {
     return await ai.models.generateContent({
-      model: GEMINI_LEGACY_MODEL,
+      model: GEMINI_3_MODEL,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         temperature: 0.3,
