@@ -83,16 +83,28 @@ function stripAiThinking(text: string): string {
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * 
  * Loads business context from a WhatsApp agent to inject into voice call prompts.
- * Used when "Contesto Business" is enabled with Templates.
+ * Uses in-memory cache (TTL 10min) to avoid DB hit on every call.
  */
+const brandVoiceCache = new Map<string, { text: string; timestamp: number }>();
+const BRAND_VOICE_CACHE_TTL_MS = 10 * 60 * 1000;
+
 async function buildBrandVoiceFromAgent(agentId: string): Promise<string> {
   try {
+    const cached = brandVoiceCache.get(agentId);
+    if (cached && (Date.now() - cached.timestamp) < BRAND_VOICE_CACHE_TTL_MS) {
+      console.log(`🏢 [BrandVoice] Cache HIT for agent ${agentId} (age: ${Math.round((Date.now() - cached.timestamp) / 1000)}s)`);
+      return cached.text;
+    }
+
     const agentResult = await db
       .select()
       .from(consultantWhatsappConfig)
       .where(eq(consultantWhatsappConfig.id, agentId));
     
-    if (agentResult.length === 0) return '';
+    if (agentResult.length === 0) {
+      brandVoiceCache.set(agentId, { text: '', timestamp: Date.now() });
+      return '';
+    }
     
     const agent = agentResult[0];
     let brandVoice = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -122,6 +134,8 @@ async function buildBrandVoiceFromAgent(agentId: string): Promise<string> {
       } catch {}
     }
     
+    brandVoiceCache.set(agentId, { text: brandVoice, timestamp: Date.now() });
+    console.log(`🏢 [BrandVoice] Cache MISS → loaded from DB (${brandVoice.length} chars)`);
     return brandVoice;
   } catch (err) {
     console.error('Error building brand voice:', err);
@@ -1489,6 +1503,101 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     console.log(`⏱️ [LATENCY-E2E] Auth completed: +${authDoneTime - wsArrivalTime}ms from WS arrival`);
 
     const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneInstructionType, phoneScheduledCallId } = authResult;
+
+    // ⚡ O4: EARLY-START non-client parallel queries immediately after auth
+    // These queries start running while 1400+ lines of variable declarations and function definitions execute
+    // They'll be reused at their original location (line ~2920) via the _earlyStarted* promises
+    let _earlyStartedConsultantInfoPromise: Promise<any> | null = null;
+    let _earlyStartedSettingsPromise: Promise<any> | null = null;
+    let _earlyStartedPreviousConversationsPromise: Promise<any> | null = null;
+    let _earlyStartedProactiveLeadPromise: Promise<any> | null = null;
+    
+    if (isPhoneCall && !userId && consultantId) {
+      console.log(`⚡ [O4] EARLY-START: Launching non-client parallel queries immediately after auth`);
+      
+      _earlyStartedConsultantInfoPromise = storage.getUser(consultantId).catch((err: any) => {
+        console.warn(`⚠️ [${connectionId}] [O4] Could not fetch consultant info:`, err);
+        return null;
+      });
+      
+      _earlyStartedSettingsPromise = db.select({
+        voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+        outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
+        outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
+        outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
+        outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
+        outboundBrandVoiceEnabled: consultantAvailabilitySettings.outboundBrandVoiceEnabled,
+        outboundBrandVoiceAgentId: consultantAvailabilitySettings.outboundBrandVoiceAgentId,
+        inboundPromptSource: consultantAvailabilitySettings.inboundPromptSource,
+        inboundTemplateId: consultantAvailabilitySettings.inboundTemplateId,
+        inboundAgentId: consultantAvailabilitySettings.inboundAgentId,
+        inboundManualPrompt: consultantAvailabilitySettings.inboundManualPrompt,
+        inboundBrandVoiceEnabled: consultantAvailabilitySettings.inboundBrandVoiceEnabled,
+        inboundBrandVoiceAgentId: consultantAvailabilitySettings.inboundBrandVoiceAgentId,
+        nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
+        nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
+        nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
+      })
+      .from(consultantAvailabilitySettings)
+      .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+      .catch((err: any) => {
+        console.warn(`⚠️ [${connectionId}] [O4] Could not fetch non-client settings:`, err);
+        return [] as any[];
+      });
+      
+      if (phoneCallerId) {
+        _earlyStartedPreviousConversationsPromise = db.execute(sql`
+          SELECT 
+            ac.id,
+            ac.title,
+            ac.created_at,
+            (
+              SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
+              FROM (
+                SELECT json_build_object(
+                  'role', am.role,
+                  'content', am.content,
+                  'created_at', am.created_at
+                ) as msg_data
+                FROM ai_messages am
+                WHERE am.conversation_id = ac.id
+                ORDER BY am.created_at DESC
+                LIMIT 30
+              ) sub
+            ) as messages
+          FROM ai_conversations ac
+          WHERE ac.caller_phone = ${phoneCallerId}
+          ORDER BY ac.created_at DESC
+          LIMIT 100
+        `).catch((err: any) => {
+          console.warn(`⚠️ [${connectionId}] [O4] Could not load previous caller conversations:`, err);
+          return { rows: [] as any[] };
+        });
+        
+        _earlyStartedProactiveLeadPromise = db.execute(sql`
+          SELECT 
+            id,
+            first_name,
+            last_name,
+            phone_number,
+            lead_info,
+            lead_category,
+            status
+          FROM proactive_leads
+          WHERE consultant_id = ${consultantId}
+            AND (
+              phone_number = ${phoneCallerId}
+              OR phone_number = ${phoneCallerId.replace(/^\+/, '')}
+              OR ('+' || phone_number) = ${phoneCallerId}
+            )
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).catch((err: any) => {
+          console.warn(`⚠️ [${connectionId}] [O4] Could not lookup proactive lead:`, err.message);
+          return { rows: [] as any[] };
+        });
+      }
+    }
 
     const reqUrl = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
     const incomingSilentStreak = parseInt(reqUrl.searchParams.get('silentStreak') || '0', 10) || 0;
@@ -2861,24 +2970,29 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 📚 TRAINING SYSTEM: Log COMPLETE prompt (not truncated)
+        // 📚 TRAINING SYSTEM: Log COMPLETE prompt - DEFERRED to avoid blocking critical path
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        console.log(`\n╔${'═'.repeat(78)}╗`);
-        console.log(`║ 📚 [TRAINING] COMPLETE SYSTEM PROMPT - SENT TO GEMINI${' '.repeat(24)} ║`);
-        console.log(`╠${'═'.repeat(78)}╣`);
-        console.log(`║ ConversationId: ${(conversationId || 'NULL').padEnd(57)} ║`);
-        console.log(`║ Total Length: ${String(systemInstruction.length + userDataContext.length).padStart(10)} chars${' '.repeat(51)} ║`);
-        console.log(`╠${'═'.repeat(78)}╣`);
-        console.log(`║ PART 1: Minimal System Instruction (${systemInstruction.length} chars)${' '.repeat(34 - String(systemInstruction.length).length)} ║`);
-        console.log(`╚${'═'.repeat(78)}╝\n`);
-        console.log(systemInstruction);
-        console.log(`\n╔${'═'.repeat(78)}╗`);
-        console.log(`║ PART 2: Full Sales Agent Context (${userDataContext.length} chars)${' '.repeat(34 - String(userDataContext.length).length)} ║`);
-        console.log(`╚${'═'.repeat(78)}╝\n`);
-        console.log(userDataContext);
-        console.log(`\n╔${'═'.repeat(78)}╗`);
-        console.log(`║ 📚 [TRAINING] END OF COMPLETE PROMPT${' '.repeat(41)} ║`);
-        console.log(`╚${'═'.repeat(78)}╝\n`);
+        const _deferredTrainingSysInst = systemInstruction;
+        const _deferredTrainingUserData = userDataContext;
+        const _deferredTrainingConvId = conversationId;
+        setImmediate(() => {
+          console.log(`\n╔${'═'.repeat(78)}╗`);
+          console.log(`║ 📚 [TRAINING] COMPLETE SYSTEM PROMPT - SENT TO GEMINI${' '.repeat(24)} ║`);
+          console.log(`╠${'═'.repeat(78)}╣`);
+          console.log(`║ ConversationId: ${(_deferredTrainingConvId || 'NULL').padEnd(57)} ║`);
+          console.log(`║ Total Length: ${String(_deferredTrainingSysInst.length + _deferredTrainingUserData.length).padStart(10)} chars${' '.repeat(51)} ║`);
+          console.log(`╠${'═'.repeat(78)}╣`);
+          console.log(`║ PART 1: Minimal System Instruction (${_deferredTrainingSysInst.length} chars)${' '.repeat(Math.max(0, 34 - String(_deferredTrainingSysInst.length).length))} ║`);
+          console.log(`╚${'═'.repeat(78)}╝\n`);
+          console.log(_deferredTrainingSysInst);
+          console.log(`\n╔${'═'.repeat(78)}╗`);
+          console.log(`║ PART 2: Full Sales Agent Context (${_deferredTrainingUserData.length} chars)${' '.repeat(Math.max(0, 34 - String(_deferredTrainingUserData.length).length))} ║`);
+          console.log(`╚${'═'.repeat(78)}╝\n`);
+          console.log(_deferredTrainingUserData);
+          console.log(`\n╔${'═'.repeat(78)}╗`);
+          console.log(`║ 📚 [TRAINING] END OF COMPLETE PROMPT${' '.repeat(41)} ║`);
+          console.log(`╚${'═'.repeat(78)}╝\n`);
+        });
       } 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // PHONE CALL - UNKNOWN CALLER MODE (Non-Client)
@@ -2889,101 +3003,17 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         
         console.log(`\n📞 [${connectionId}] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt`);
         
-        // ⚡ PARALLEL OPTIMIZATION: Start all independent queries simultaneously
-        // Each query runs in background and is awaited at its original location
+        // ⚡ O4: Reuse early-started parallel queries (launched right after auth, ~1400 lines ago)
+        // Queries have been running in background during variable declarations and function definitions
         const _ncParallelStart = Date.now();
         _ncLatency.parallelQueriesStartTime = _ncParallelStart;
         _ncLatency.isNonClientCall = true;
+        console.log(`⏱️ [NC-LATENCY] Auth → parallel queries start gap: ${_ncParallelStart - authDoneTime}ms (queries already running since auth)`);
         
-        const _consultantInfoPromise = consultantId 
-          ? storage.getUser(consultantId).catch((err: any) => {
-              console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
-              return null;
-            })
-          : Promise.resolve(null);
-        
-        const _settingsPromise = consultantId
-          ? db.select({
-              voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
-              outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
-              outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
-              outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
-              outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
-              outboundBrandVoiceEnabled: consultantAvailabilitySettings.outboundBrandVoiceEnabled,
-              outboundBrandVoiceAgentId: consultantAvailabilitySettings.outboundBrandVoiceAgentId,
-              inboundPromptSource: consultantAvailabilitySettings.inboundPromptSource,
-              inboundTemplateId: consultantAvailabilitySettings.inboundTemplateId,
-              inboundAgentId: consultantAvailabilitySettings.inboundAgentId,
-              inboundManualPrompt: consultantAvailabilitySettings.inboundManualPrompt,
-              inboundBrandVoiceEnabled: consultantAvailabilitySettings.inboundBrandVoiceEnabled,
-              inboundBrandVoiceAgentId: consultantAvailabilitySettings.inboundBrandVoiceAgentId,
-              nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
-              nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
-              nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
-            })
-            .from(consultantAvailabilitySettings)
-            .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
-            .catch((err: any) => {
-              console.warn(`⚠️ [${connectionId}] Could not fetch non-client settings:`, err);
-              return [] as any[];
-            })
-          : Promise.resolve([] as any[]);
-        
-        const _previousConversationsPromise = phoneCallerId
-          ? db.execute(sql`
-              SELECT 
-                ac.id,
-                ac.title,
-                ac.created_at,
-                (
-                  SELECT json_agg(msg_data ORDER BY msg_data->>'created_at' ASC)
-                  FROM (
-                    SELECT json_build_object(
-                      'role', am.role,
-                      'content', am.content,
-                      'created_at', am.created_at
-                    ) as msg_data
-                    FROM ai_messages am
-                    WHERE am.conversation_id = ac.id
-                    ORDER BY am.created_at DESC
-                    LIMIT 30
-                  ) sub
-                ) as messages
-              FROM ai_conversations ac
-              WHERE ac.caller_phone = ${phoneCallerId}
-              ORDER BY ac.created_at DESC
-              LIMIT 100
-            `).catch((err: any) => {
-              console.warn(`⚠️ [${connectionId}] Could not load previous caller conversations:`, err);
-              return { rows: [] as any[] };
-            })
-          : Promise.resolve({ rows: [] as any[] });
-        
-        // ⚡ PROACTIVE LEAD LOOKUP - Query proactive_leads by phone number for pre-populated booking data
-        const _proactiveLeadPromise = (phoneCallerId && consultantId)
-          ? db.execute(sql`
-              SELECT 
-                id,
-                first_name,
-                last_name,
-                phone_number,
-                lead_info,
-                lead_category,
-                status
-              FROM proactive_leads
-              WHERE consultant_id = ${consultantId}
-                AND (
-                  phone_number = ${phoneCallerId}
-                  OR phone_number = ${phoneCallerId.replace(/^\+/, '')}
-                  OR ('+' || phone_number) = ${phoneCallerId}
-                )
-              ORDER BY created_at DESC
-              LIMIT 1
-            `).catch((err: any) => {
-              console.warn(`⚠️ [${connectionId}] Could not lookup proactive lead:`, err.message);
-              return { rows: [] as any[] };
-            })
-          : Promise.resolve({ rows: [] as any[] });
+        const _consultantInfoPromise = _earlyStartedConsultantInfoPromise || Promise.resolve(null);
+        const _settingsPromise = _earlyStartedSettingsPromise || Promise.resolve([] as any[]);
+        const _previousConversationsPromise = _earlyStartedPreviousConversationsPromise || Promise.resolve({ rows: [] as any[] });
+        const _proactiveLeadPromise = _earlyStartedProactiveLeadPromise || Promise.resolve({ rows: [] as any[] });
         
         // ⚡ Await consultant info (started in parallel above)
         let consultantName = 'il consulente';
@@ -3198,29 +3228,34 @@ ${historyContent}
             }
           }
           
-          // 📊 LOG SCENARIO TABLE FOR NON-CLIENT WITH INSTRUCTION
-          console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
-          console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT WITH INSTRUCTION        │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ Parametro                    │ Valore                              │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ È cliente registrato?        │ ❌ NO                                │`);
-          console.log(`│ Ha istruzione (task/remind)? │ ✅ SÌ (${(phoneInstructionType || 'generic').padEnd(10)})              │`);
-          console.log(`│ Conversazioni precedenti?    │ ${instructionHasPreviousConversations ? '✅ SÌ' : '❌ NO'}                               │`);
-          console.log(`│ Caller ID                    │ ${(phoneCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ 🎯 SCENARIO                  │ OUTBOUND NON-CLIENT + TASK/REMINDER │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
-          if (instructionHasPreviousConversations) {
-            console.log(`│   → Saluto informale (lo/la conosce già!)                          │`);
-            console.log(`│   → NON si presenta ("Ciao! Come stai?")                           │`);
-            console.log(`│   → Va dritto all'istruzione                                        │`);
-          } else {
-            console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
-            console.log(`│   → Poi va dritto all'istruzione                                    │`);
-          }
-          console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+          // 📊 LOG SCENARIO TABLE FOR NON-CLIENT WITH INSTRUCTION - DEFERRED to avoid blocking critical path
+          const _deferredInstrHasPrevConvs = instructionHasPreviousConversations;
+          const _deferredInstrType = phoneInstructionType;
+          const _deferredCallerId = phoneCallerId;
+          setImmediate(() => {
+            console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+            console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT WITH INSTRUCTION        │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ Parametro                    │ Valore                              │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ È cliente registrato?        │ ❌ NO                                │`);
+            console.log(`│ Ha istruzione (task/remind)? │ ✅ SÌ (${(_deferredInstrType || 'generic').padEnd(10)})              │`);
+            console.log(`│ Conversazioni precedenti?    │ ${_deferredInstrHasPrevConvs ? '✅ SÌ' : '❌ NO'}                               │`);
+            console.log(`│ Caller ID                    │ ${(_deferredCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ 🎯 SCENARIO                  │ OUTBOUND NON-CLIENT + TASK/REMINDER │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
+            if (_deferredInstrHasPrevConvs) {
+              console.log(`│   → Saluto informale (lo/la conosce già!)                          │`);
+              console.log(`│   → NON si presenta ("Ciao! Come stai?")                           │`);
+              console.log(`│   → Va dritto all'istruzione                                        │`);
+            } else {
+              console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
+              console.log(`│   → Poi va dritto all'istruzione                                    │`);
+            }
+            console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+          });
           
           // Build dynamic greeting based on previous conversations
           const instructionGreetingSection = instructionHasPreviousConversations 
@@ -3337,12 +3372,15 @@ Una volta che hanno capito e confermato:
           userDataContext = '';
           console.log(`🎯 [${connectionId}] Instruction prompt built (${systemInstruction.length} chars)${instructionPreviousCallContext ? ' [CALL HISTORY DEFERRED]' : ''}`);
           
-          // 🔥 PRINT FULL PROMPT FOR DEBUGGING
-          console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`🎯 FULL INSTRUCTION PROMPT:`);
-          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(systemInstruction);
-          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          // 🔥 PRINT FULL PROMPT FOR DEBUGGING - DEFERRED to avoid blocking critical path
+          const _deferredInstructionPromptLog = systemInstruction;
+          setImmediate(() => {
+            console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🎯 FULL INSTRUCTION PROMPT:`);
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(_deferredInstructionPromptLog);
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          });
         } else {
           // No specific instruction - continue with normal non-client prompt flow (INBOUND)
         
@@ -3942,45 +3980,29 @@ ${brandVoicePrompt}` : ''}`;
           minute: '2-digit'
         });
         
-        // 📊 LOG SCENARIO TABLE FOR NON-CLIENT (INBOUND or OUTBOUND based on scheduledCallId)
+        // 📊 LOG SCENARIO TABLE FOR NON-CLIENT - DEFERRED to avoid blocking critical path
         const nonClientHasPreviousConvs = previousCallContext ? true : false;
         const directionLabel = isOutbound ? 'OUTBOUND' : 'INBOUND';
         const scenarioLabel = isOutbound ? 'OUTBOUND NON-CLIENT (SCENARIO 3)' : 'INBOUND NON-CLIENT (SCENARIO 2)';
-        console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
-        console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT ${directionLabel.padEnd(8)}              │`);
-        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-        console.log(`│ Parametro                    │ Valore                              │`);
-        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-        console.log(`│ È cliente registrato?        │ ❌ NO                                │`);
-        console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
-        console.log(`│ Conversazioni precedenti?    │ ${nonClientHasPreviousConvs ? '✅ SÌ' : '❌ NO'}                               │`);
-        console.log(`│ Caller ID                    │ ${(phoneCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-        console.log(`│ Scheduled Call ID            │ ${(phoneScheduledCallId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-        console.log(`│ Direction                    │ ${directionLabel.padEnd(20)}                 │`);
-        console.log(`│ Prompt Source                │ ${promptSource.padEnd(20)}                 │`);
-        console.log(`│ Template ID                  │ ${templateId.padEnd(20)}                 │`);
-        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-        console.log(`│ 🎯 SCENARIO                  │ ${scenarioLabel.padEnd(20)}    │`);
-        console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-        console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
-        if (isOutbound) {
-          console.log(`│   → Saluta il prospect (TU stai chiamando LUI)                       │`);
-          console.log(`│   → Usa il template OUTBOUND configurato                             │`);
-          console.log(`│   → Segui lo script di vendita/follow-up                             │`);
-        } else if (nonClientHasPreviousConvs && promptSource === 'template') {
-          console.log(`│   → ⚡ TEMPLATE HA PRIORITÀ (storico = solo contesto)                │`);
-          console.log(`│   → Segue script template: ${templateId.padEnd(30)}       │`);
-          console.log(`│   → Nome contatto noto: ${(extractedContactName || 'no').padEnd(15)}                        │`);
-        } else if (nonClientHasPreviousConvs) {
-          console.log(`│   → Saluto informale (già parlato prima!)                           │`);
-          console.log(`│   → Chiede come può aiutare                                          │`);
-          console.log(`│   → Propone appuntamento se appropriato                              │`);
-        } else {
-          console.log(`│   → Si presenta ("Sono Alessia, assistente di...")                   │`);
-          console.log(`│   → Chiede come può aiutare                                          │`);
-          console.log(`│   → Propone appuntamento se appropriato                              │`);
-        }
-        console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+        console.log(`📊 [${connectionId}] Scenario: ${scenarioLabel} | Prompt: ${promptSource} | Template: ${templateId} | PrevConvs: ${nonClientHasPreviousConvs}`);
+        setImmediate(() => {
+          console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+          console.log(`│           📊 SCENARIO DETECTION: NON-CLIENT ${directionLabel.padEnd(8)}              │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ Parametro                    │ Valore                              │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ È cliente registrato?        │ ❌ NO                                │`);
+          console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
+          console.log(`│ Conversazioni precedenti?    │ ${nonClientHasPreviousConvs ? '✅ SÌ' : '❌ NO'}                               │`);
+          console.log(`│ Caller ID                    │ ${(phoneCallerId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`│ Scheduled Call ID            │ ${(phoneScheduledCallId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+          console.log(`│ Direction                    │ ${directionLabel.padEnd(20)}                 │`);
+          console.log(`│ Prompt Source                │ ${promptSource.padEnd(20)}                 │`);
+          console.log(`│ Template ID                  │ ${templateId.padEnd(20)}                 │`);
+          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+          console.log(`│ 🎯 SCENARIO                  │ ${scenarioLabel.padEnd(20)}    │`);
+          console.log(`└─────────────────────────────────────────────────────────────────────┘`);
+        });
         
         let nonClientBrandVoiceSection = '';
         nonClientBrandVoiceSection = await _nonInstructionBrandVoicePromise;
@@ -4059,12 +4081,16 @@ ${contentPrompt}`;
         userDataContext = ''; // No user data for unknown callers
         console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} non-client prompt built (${systemInstruction.length} chars) - Source: ${promptSource}, Template: ${templateId}${previousCallContext ? ' [CALL HISTORY DEFERRED]' : ''}${nonClientBrandVoiceSection ? ' [WITH BRAND VOICE]' : ''}`);
         
-        // 🔍 DEBUG: Full system prompt for non-client calls
-        console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`📞 [${connectionId}] FULL NON-CLIENT SYSTEM PROMPT (${isOutbound ? 'OUTBOUND' : 'INBOUND'}):`);
-        console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(systemInstruction);
-        console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        // 🔍 DEBUG: Full system prompt for non-client calls - DEFERRED to avoid blocking critical path
+        const _deferredNonClientPromptLog = systemInstruction;
+        const _deferredNonClientDirection = isOutbound ? 'OUTBOUND' : 'INBOUND';
+        setImmediate(() => {
+          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📞 [${connectionId}] FULL NON-CLIENT SYSTEM PROMPT (${_deferredNonClientDirection}):`);
+          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(_deferredNonClientPromptLog);
+          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        });
         } // Close the else block for non-instruction flow
       }
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4256,32 +4282,38 @@ ${historyContent}
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
-          // 📊 LOG SCENARIO TABLE FOR CLIENT WITH INSTRUCTION (SCENARIO 3/4)
-          console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
-          console.log(`│           📊 SCENARIO DETECTION: CLIENT + INSTRUCTION               │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ Parametro                    │ Valore                              │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ È cliente registrato?        │ ✅ SÌ                                │`);
-          console.log(`│ Ha istruzione (task/remind)? │ ✅ SÌ (${(phoneInstructionType || 'generic').padEnd(10)})              │`);
-          console.log(`│ Conversazioni precedenti?    │ ${clientInstructionHasPreviousConversations ? '✅ SÌ' : '❌ NO'}                               │`);
-          console.log(`│ Client User ID               │ ${(userId?.toString() || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-          console.log(`│ Nome Cliente                 │ ${(clientName || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ 🎯 SCENARIO                  │ OUTBOUND CLIENT + TASK/REMINDER     │`);
-          console.log(`│                              │ (SCENARIO 3/4)                      │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
-          if (clientInstructionHasPreviousConversations) {
-            console.log(`│   → Saluto caloroso ("Ciao ${clientName.substring(0, 15)}! Come stai?")`.padEnd(70) + `│`);
-            console.log(`│   → NON si presenta (sa già chi è!)                                 │`);
-            console.log(`│   → Va dritto all'istruzione (task/reminder)                        │`);
-          } else {
-            console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
-            console.log(`│   → Poi va dritto all'istruzione (task/reminder)                    │`);
-          }
-          console.log(`│ 📋 PROMPT USED               │ Instruction Priority + Client Prompt│`);
-          console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+          // 📊 LOG SCENARIO TABLE FOR CLIENT WITH INSTRUCTION (SCENARIO 3/4) - DEFERRED
+          const _deferredClientInstrHasPrevConvs = clientInstructionHasPreviousConversations;
+          const _deferredClientName = clientName;
+          const _deferredClientUserId = userId;
+          const _deferredClientInstrType = phoneInstructionType;
+          setImmediate(() => {
+            console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+            console.log(`│           📊 SCENARIO DETECTION: CLIENT + INSTRUCTION               │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ Parametro                    │ Valore                              │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ È cliente registrato?        │ ✅ SÌ                                │`);
+            console.log(`│ Ha istruzione (task/remind)? │ ✅ SÌ (${(_deferredClientInstrType || 'generic').padEnd(10)})              │`);
+            console.log(`│ Conversazioni precedenti?    │ ${_deferredClientInstrHasPrevConvs ? '✅ SÌ' : '❌ NO'}                               │`);
+            console.log(`│ Client User ID               │ ${(_deferredClientUserId?.toString() || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+            console.log(`│ Nome Cliente                 │ ${(_deferredClientName || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ 🎯 SCENARIO                  │ OUTBOUND CLIENT + TASK/REMINDER     │`);
+            console.log(`│                              │ (SCENARIO 3/4)                      │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
+            if (_deferredClientInstrHasPrevConvs) {
+              console.log(`│   → Saluto caloroso ("Ciao ${_deferredClientName.substring(0, 15)}! Come stai?")`.padEnd(70) + `│`);
+              console.log(`│   → NON si presenta (sa già chi è!)                                 │`);
+              console.log(`│   → Va dritto all'istruzione (task/reminder)                        │`);
+            } else {
+              console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
+              console.log(`│   → Poi va dritto all'istruzione (task/reminder)                    │`);
+            }
+            console.log(`│ 📋 PROMPT USED               │ Instruction Priority + Client Prompt│`);
+            console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+          });
           
           // Build the client's normal system prompt
           const clientSystemPrompt = buildFullSystemInstructionForLive(
@@ -4404,12 +4436,15 @@ ${clientInstructionCallHistory}
           
           console.log(`🎯 [${connectionId}] Client instruction prompt built (${systemInstruction.length} chars)${clientInstructionCallHistory ? ' [WITH CALL HISTORY]' : ''}`);
           
-          // 🔥 PRINT FULL PROMPT FOR DEBUGGING
-          console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`🎯 FULL CLIENT INSTRUCTION PROMPT (first 2000 chars):`);
-          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(systemInstruction.substring(0, 2000) + (systemInstruction.length > 2000 ? '\n... [truncated]' : ''));
-          console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          // 🔥 PRINT FULL PROMPT FOR DEBUGGING - DEFERRED to avoid blocking critical path
+          const _deferredClientInstrPrompt = systemInstruction;
+          setImmediate(() => {
+            console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🎯 FULL CLIENT INSTRUCTION PROMPT (first 2000 chars):`);
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(_deferredClientInstrPrompt.substring(0, 2000) + (_deferredClientInstrPrompt.length > 2000 ? '\n... [truncated]' : ''));
+            console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          });
         } else if (isPhoneCall && !phoneCallInstruction) {
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           // 📞 SCENARIO 1: CHIAMATA IN DA CLIENTE NOTO (senza instruction)
@@ -4580,37 +4615,45 @@ ${historyContent}
           const clientDirectionLabel = isClientOutbound ? 'OUTBOUND' : 'INBOUND';
           const clientScenarioLabel = isClientOutbound ? 'OUTBOUND CLIENT (SCENARIO 4)' : 'INBOUND CLIENT (SCENARIO 1)';
           
-          // 📊 LOG SCENARIO TABLE FOR CLIENT (INBOUND or OUTBOUND)
-          console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
-          console.log(`│           📊 SCENARIO DETECTION: CLIENT ${clientDirectionLabel.padEnd(8)}                   │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ Parametro                    │ Valore                              │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ È cliente registrato?        │ ✅ SÌ                                │`);
-          console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
-          console.log(`│ Conversazioni precedenti?    │ ${hasPreviousConversations ? '✅ SÌ' : '❌ NO'}                               │`);
-          console.log(`│ Client User ID               │ ${(userId?.toString() || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-          console.log(`│ Nome Cliente                 │ ${(inboundClientName || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-          console.log(`│ Scheduled Call ID            │ ${(phoneScheduledCallId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
-          console.log(`│ Direction                    │ ${clientDirectionLabel.padEnd(20)}                 │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ 🎯 SCENARIO                  │ ${clientScenarioLabel.padEnd(20)}   │`);
-          console.log(`├─────────────────────────────────────────────────────────────────────┤`);
-          console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
-          if (isClientOutbound) {
-            console.log(`│   → Saluta il cliente (TU stai chiamando LUI)                        │`);
-            console.log(`│   → Usa contesto cliente per personalizzare                          │`);
-            console.log(`│   → Segui obiettivo della chiamata schedulata                        │`);
-          } else if (hasPreviousConversations) {
-            console.log(`│   → Saluto caloroso ("Ciao ${inboundClientName.substring(0, 15)}! Come stai?")`.padEnd(70) + `│`);
-            console.log(`│   → NON si presenta (sa già chi è!)                                 │`);
-            console.log(`│   → Chiede come può aiutare                                          │`);
-          } else {
-            console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
-            console.log(`│   → Chiede come può aiutare                                          │`);
-          }
-          console.log(`│ 📋 PROMPT USED               │ Live-Consultation + Voice Directives│`);
-          console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+          // 📊 LOG SCENARIO TABLE FOR CLIENT (INBOUND or OUTBOUND) - DEFERRED
+          const _deferredHasPrevConvs = hasPreviousConversations;
+          const _deferredInboundClientName = inboundClientName;
+          const _deferredClientDirLabel = clientDirectionLabel;
+          const _deferredClientScenLabel = clientScenarioLabel;
+          const _deferredIsClientOutbound = isClientOutbound;
+          const _deferredClientUserId2 = userId;
+          setImmediate(() => {
+            console.log(`\n┌─────────────────────────────────────────────────────────────────────┐`);
+            console.log(`│           📊 SCENARIO DETECTION: CLIENT ${_deferredClientDirLabel.padEnd(8)}                   │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ Parametro                    │ Valore                              │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ È cliente registrato?        │ ✅ SÌ                                │`);
+            console.log(`│ Ha istruzione (task/remind)? │ ❌ NO                                │`);
+            console.log(`│ Conversazioni precedenti?    │ ${_deferredHasPrevConvs ? '✅ SÌ' : '❌ NO'}                               │`);
+            console.log(`│ Client User ID               │ ${(_deferredClientUserId2?.toString() || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+            console.log(`│ Nome Cliente                 │ ${(_deferredInboundClientName || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+            console.log(`│ Scheduled Call ID            │ ${(phoneScheduledCallId || 'N/A').substring(0, 20).padEnd(20)}                 │`);
+            console.log(`│ Direction                    │ ${_deferredClientDirLabel.padEnd(20)}                 │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ 🎯 SCENARIO                  │ ${_deferredClientScenLabel.padEnd(20)}   │`);
+            console.log(`├─────────────────────────────────────────────────────────────────────┤`);
+            console.log(`│ 💬 COMPORTAMENTO ATTESO:                                            │`);
+            if (_deferredIsClientOutbound) {
+              console.log(`│   → Saluta il cliente (TU stai chiamando LUI)                        │`);
+              console.log(`│   → Usa contesto cliente per personalizzare                          │`);
+              console.log(`│   → Segui obiettivo della chiamata schedulata                        │`);
+            } else if (_deferredHasPrevConvs) {
+              console.log(`│   → Saluto caloroso ("Ciao ${_deferredInboundClientName.substring(0, 15)}! Come stai?")`.padEnd(70) + `│`);
+              console.log(`│   → NON si presenta (sa già chi è!)                                 │`);
+              console.log(`│   → Chiede come può aiutare                                          │`);
+            } else {
+              console.log(`│   → Si presenta brevemente ("Sono Alessia di...")                   │`);
+              console.log(`│   → Chiede come può aiutare                                          │`);
+            }
+            console.log(`│ 📋 PROMPT USED               │ Live-Consultation + Voice Directives│`);
+            console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
+          });
           
           // Build the client's FULL system prompt using live-consultation mode
           const clientLiveSystemPrompt = buildFullSystemInstructionForLive(
@@ -4672,12 +4715,15 @@ ${clientLiveSystemPrompt}`;
           
           console.log(`📞 [${connectionId}] Inbound client call prompt built (${systemInstruction.length} chars)${inboundCallHistory ? ' [WITH CALL HISTORY]' : ''}`);
           
-          // 🔥 PRINT FULL PROMPT FOR DEBUGGING
-          console.log(`\n📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`📞 SCENARIO 1 PROMPT (first 2000 chars):`);
-          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(systemInstruction.substring(0, 2000) + (systemInstruction.length > 2000 ? '\n... [truncated]' : ''));
-          console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          // 🔥 PRINT FULL PROMPT FOR DEBUGGING - DEFERRED to avoid blocking critical path
+          const _deferredScenario1Prompt = systemInstruction;
+          setImmediate(() => {
+            console.log(`\n📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`📞 SCENARIO 1 PROMPT (first 2000 chars):`);
+            console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(_deferredScenario1Prompt.substring(0, 2000) + (_deferredScenario1Prompt.length > 2000 ? '\n... [truncated]' : ''));
+            console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          });
         } else if (customPrompt) {
           systemInstruction = customPrompt;
           console.log(`📝 [${connectionId}] Using custom prompt (${customPrompt.length} characters)`);
@@ -4801,85 +4847,94 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           console.log(`📝 [${connectionId}] Task prompt section appended (${taskPromptSection.length} chars)`);
         }
 
-      // Log the system prompt (FULL for sales_agent minimal, truncated otherwise)
-      if (customPrompt) {
-        console.log(`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`┃ 🤖 CUSTOM SYSTEM PROMPT (LIVE MODE) - ${customPrompt.length} chars`);
-        console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(customPrompt.substring(0, 1000) + (customPrompt.length > 1000 ? '...' : ''));
-        console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-      } else {
-        console.log(`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`┃ 🤖 ${useFullPrompt ? 'FULL' : 'MINIMAL'} SYSTEM PROMPT (LIVE MODE) - ${systemInstruction.length} chars`);
-        console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        
-        // For Sales Agent minimal instruction, show FULL content (it's short)
-        // For others, truncate to 1000 chars
-        if (mode === 'sales_agent' || mode === 'consultation_invite') {
-          console.log(systemInstruction);
+      // Log the system prompt - DEFERRED to avoid blocking critical path
+      const _deferredSysInstr = systemInstruction;
+      const _deferredCustomPrompt = customPrompt;
+      const _deferredUseFullPrompt = useFullPrompt;
+      const _deferredMode = mode;
+      setImmediate(() => {
+        if (_deferredCustomPrompt) {
+          console.log(`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`┃ 🤖 CUSTOM SYSTEM PROMPT (LIVE MODE) - ${_deferredCustomPrompt.length} chars`);
+          console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(_deferredCustomPrompt.substring(0, 1000) + (_deferredCustomPrompt.length > 1000 ? '...' : ''));
+          console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         } else {
-          console.log(systemInstruction.substring(0, 1000) + (systemInstruction.length > 1000 ? '...' : ''));
+          console.log(`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`┃ 🤖 ${_deferredUseFullPrompt ? 'FULL' : 'MINIMAL'} SYSTEM PROMPT (LIVE MODE) - ${_deferredSysInstr.length} chars`);
+          console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          if (_deferredMode === 'sales_agent' || _deferredMode === 'consultation_invite') {
+            console.log(_deferredSysInstr);
+          } else {
+            console.log(_deferredSysInstr.substring(0, 1000) + (_deferredSysInstr.length > 1000 ? '...' : ''));
+          }
+          console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         }
-        console.log(`┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-      }
+      });
       
-      // Calculate detailed token breakdown
+      // ⏱️ CRITICAL: Measure data load time BEFORE token analysis logging (which is deferred)
+      const dataLoadDoneTime = Date.now();
+      const _gapAfterPromptBuild = _ncLatency.promptBuildDoneTime > 0 
+        ? dataLoadDoneTime - _ncLatency.promptBuildDoneTime 
+        : -1;
+      console.log(`⏱️ [LATENCY-E2E] Data loading + prompt build completed: +${dataLoadDoneTime - authDoneTime}ms from auth, total: +${dataLoadDoneTime - wsArrivalTime}ms from WS arrival${_gapAfterPromptBuild >= 0 ? ` (gap after promptBuild: ${_gapAfterPromptBuild}ms)` : ''}`);
+
+      // Calculate detailed token breakdown - DEFERRED to avoid blocking critical path
       const estimateTokens = (text: string) => Math.ceil(text.length / 4);
       const systemInstructionTokens = estimateTokens(systemInstruction);
       const userDataTokens = userDataContext ? estimateTokens(userDataContext) : 0;
       const totalTokens = systemInstructionTokens + userDataTokens;
       
-      console.log(`\n${'═'.repeat(70)}`);
-      console.log(`📊 [${connectionId}] TOKEN BREAKDOWN - LIVE MODE`);
-      console.log(`${'═'.repeat(70)}`);
-      console.log(`🎯 System Instruction: ${systemInstructionTokens.toLocaleString()} tokens`);
-      if (userDataContext) {
-        console.log(`📦 ${useFullPrompt ? 'Full Prompt' : 'User Data'} Context (formatted & chunked): ${userDataTokens.toLocaleString()} tokens`);
-      }
-      
-      // Detailed breakdown ONLY for client mode (sales_agent doesn't have userContext)
-      if (mode !== 'sales_agent' && userContext) {
-        // Breakdown dettagliato per sezione (dai dati RAW originali)
-        const financeTokens = userContext.financeData ? estimateTokens(JSON.stringify(userContext.financeData)) : 0;
-        const exercisesTokens = estimateTokens(JSON.stringify(userContext.exercises));
-        const libraryTokens = estimateTokens(JSON.stringify(userContext.library.documents));
-        const universityTokens = estimateTokens(JSON.stringify(userContext.university));
-        const consultationsTokens = estimateTokens(JSON.stringify({
-          upcoming: userContext.consultations.upcoming,
-          recent: userContext.consultations.recent,
-          tasks: userContext.consultationTasks
-        }));
-        const goalsTokens = estimateTokens(JSON.stringify({
-          goals: userContext.goals,
-          dailyTasks: userContext.daily?.tasks || [],
-          reflection: userContext.daily?.todayReflection || null
-        }));
-        const momentumTokens = estimateTokens(JSON.stringify({
-          momentum: userContext.momentum,
-          calendar: userContext.calendar
-        }));
+      const _deferredUserContext = userContext;
+      const _deferredUserDataContext = userDataContext;
+      const _deferredUseFullPrompt2 = useFullPrompt;
+      setImmediate(() => {
+        console.log(`\n${'═'.repeat(70)}`);
+        console.log(`📊 [${connectionId}] TOKEN BREAKDOWN - LIVE MODE`);
+        console.log(`${'═'.repeat(70)}`);
+        console.log(`🎯 System Instruction: ${systemInstructionTokens.toLocaleString()} tokens`);
+        if (_deferredUserDataContext) {
+          console.log(`📦 ${_deferredUseFullPrompt2 ? 'Full Prompt' : 'User Data'} Context (formatted & chunked): ${userDataTokens.toLocaleString()} tokens`);
+        }
         
-        // Somma totale delle sezioni (per calcolare % corrette)
-        const totalSectionTokens = financeTokens + exercisesTokens + libraryTokens + universityTokens + 
-                                   consultationsTokens + goalsTokens + momentumTokens;
+        if (mode !== 'sales_agent' && _deferredUserContext) {
+          const financeTokens = _deferredUserContext.financeData ? estimateTokens(JSON.stringify(_deferredUserContext.financeData)) : 0;
+          const exercisesTokens = estimateTokens(JSON.stringify(_deferredUserContext.exercises));
+          const libraryTokens = estimateTokens(JSON.stringify(_deferredUserContext.library.documents));
+          const universityTokens = estimateTokens(JSON.stringify(_deferredUserContext.university));
+          const consultationsTokens = estimateTokens(JSON.stringify({
+            upcoming: _deferredUserContext.consultations.upcoming,
+            recent: _deferredUserContext.consultations.recent,
+            tasks: _deferredUserContext.consultationTasks
+          }));
+          const goalsTokens = estimateTokens(JSON.stringify({
+            goals: _deferredUserContext.goals,
+            dailyTasks: _deferredUserContext.daily?.tasks || [],
+            reflection: _deferredUserContext.daily?.todayReflection || null
+          }));
+          const momentumTokens = estimateTokens(JSON.stringify({
+            momentum: _deferredUserContext.momentum,
+            calendar: _deferredUserContext.calendar
+          }));
+          
+          const totalSectionTokens = financeTokens + exercisesTokens + libraryTokens + universityTokens + 
+                                     consultationsTokens + goalsTokens + momentumTokens;
+          
+          console.log(`\n📋 BREAKDOWN PER SEZIONE (dati originali RAW):`);
+          console.log(`   └─ 💰 Finance Data: ${financeTokens.toLocaleString()} tokens (${((financeTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
+          console.log(`   └─ 📚 Exercises: ${exercisesTokens.toLocaleString()} tokens (${((exercisesTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
+          console.log(`   └─ 📖 Library Docs: ${libraryTokens.toLocaleString()} tokens (${((libraryTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
+          console.log(`   └─ 🎓 University: ${universityTokens.toLocaleString()} tokens (${((universityTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
+          console.log(`   └─ 💬 Consultations: ${consultationsTokens.toLocaleString()} tokens (${((consultationsTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
+          console.log(`   └─ 🎯 Goals & Tasks: ${goalsTokens.toLocaleString()} tokens (${((goalsTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
+          console.log(`   └─ ⚡ Momentum & Calendar: ${momentumTokens.toLocaleString()} tokens (${((momentumTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
+          console.log(`   └─ 🎁 Totale sezioni: ${totalSectionTokens.toLocaleString()} tokens`);
+          console.log(`\n💡 Nota: ${totalSectionTokens.toLocaleString()} tokens RAW → ${userDataTokens.toLocaleString()} tokens formattati (riduzione ${(((totalSectionTokens - userDataTokens) / totalSectionTokens) * 100).toFixed(1)}%)`);
+        }
         
-        console.log(`\n📋 BREAKDOWN PER SEZIONE (dati originali RAW):`);
-        console.log(`   └─ 💰 Finance Data: ${financeTokens.toLocaleString()} tokens (${((financeTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
-        console.log(`   └─ 📚 Exercises: ${exercisesTokens.toLocaleString()} tokens (${((exercisesTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
-        console.log(`   └─ 📖 Library Docs: ${libraryTokens.toLocaleString()} tokens (${((libraryTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
-        console.log(`   └─ 🎓 University: ${universityTokens.toLocaleString()} tokens (${((universityTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
-        console.log(`   └─ 💬 Consultations: ${consultationsTokens.toLocaleString()} tokens (${((consultationsTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
-        console.log(`   └─ 🎯 Goals & Tasks: ${goalsTokens.toLocaleString()} tokens (${((goalsTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
-        console.log(`   └─ ⚡ Momentum & Calendar: ${momentumTokens.toLocaleString()} tokens (${((momentumTokens / totalSectionTokens) * 100).toFixed(1)}%)`);
-        console.log(`   └─ 🎁 Totale sezioni: ${totalSectionTokens.toLocaleString()} tokens`);
-        console.log(`\n💡 Nota: ${totalSectionTokens.toLocaleString()} tokens RAW → ${userDataTokens.toLocaleString()} tokens formattati (riduzione ${(((totalSectionTokens - userDataTokens) / totalSectionTokens) * 100).toFixed(1)}%)`);
-      }
-      
-      console.log(`\n🎁 TOTAL TOKENS INVIATI (setup): ${totalTokens.toLocaleString()} tokens`);
-      console.log(`${'═'.repeat(70)}\n`);
-
-      const dataLoadDoneTime = Date.now();
-      console.log(`⏱️ [LATENCY-E2E] Data loading + prompt build completed: +${dataLoadDoneTime - authDoneTime}ms from auth, total: +${dataLoadDoneTime - wsArrivalTime}ms from WS arrival`);
+        console.log(`\n🎁 TOTAL TOKENS INVIATI (setup): ${totalTokens.toLocaleString()} tokens`);
+        console.log(`${'═'.repeat(70)}\n`);
+      });
 
       // 3. Await pre-connected Gemini WS (O3: was connecting in parallel with data loading)
       const preConnectRaw = await geminiPreConnectPromise;
@@ -6652,7 +6707,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     console.log(`⏱️  │  B. Auth → Data load complete:        ${String(latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime).padStart(6)}ms                              │`);
 
                     if (latencyTracker.isNonClientCall) {
-                      console.log(`⏱️  │  ├── Parallel queries start:          +0ms (baseline)                          │`);
+                      const _authToParallelGap = latencyTracker.ncParallelQueriesStartTime > 0 ? latencyTracker.ncParallelQueriesStartTime - latencyTracker.authDoneTime : 0;
+                      console.log(`⏱️  │  ├── Auth → parallel queries:         ${String(_authToParallelGap).padStart(6)}ms (setup overhead)                   │`);
                       if (latencyTracker.ncConsultantInfoResolvedTime > 0) {
                         console.log(`⏱️  │  ├── consultantInfo resolved:         ${String(latencyTracker.ncConsultantInfoResolvedTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms                              │`);
                       }
@@ -6669,7 +6725,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                         console.log(`⏱️  │  ├── brandVoice resolved:             ${String(latencyTracker.ncBrandVoiceResolvedTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms (${latencyTracker.brandVoiceChars} chars)                │`);
                       }
                       if (latencyTracker.ncPromptBuildDoneTime > 0) {
-                        console.log(`⏱️  │  └── prompt build done:               ${String(latencyTracker.ncPromptBuildDoneTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms                              │`);
+                        console.log(`⏱️  │  ├── prompt build done:               ${String(latencyTracker.ncPromptBuildDoneTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms                              │`);
+                        const _promptToDataLoadGap = latencyTracker.dataLoadDoneTime - latencyTracker.ncPromptBuildDoneTime;
+                        console.log(`⏱️  │  └── promptBuild → dataLoad gap:     ${String(_promptToDataLoadGap).padStart(6)}ms (logging overhead)                │`);
                       }
                     }
 

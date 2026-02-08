@@ -1,0 +1,69 @@
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️ [LATENCY REPORT] FIRST AUDIO BYTE - luf4xu
+⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️
+⏱️  ┌─── STEP A: AUTH ─────────────────────────────────────────────────────────────┐
+⏱️  │  A. WS arrival → Auth done:              243ms                              │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── STEP B: DATA LOAD + PROMPT BUILD ─────────────────────────────────────────┐
+⏱️  │  B. Auth → Data load complete:          2131ms                              │
+⏱️  │  ├── Parallel queries start:          +0ms (baseline)                          │
+⏱️  │  ├── consultantInfo resolved:            828ms                              │
+⏱️  │  ├── proactiveLead resolved:             828ms                              │
+⏱️  │  ├── settings resolved:                  828ms                              │
+⏱️  │  ├── previousConversations resolved:     829ms (40 DB rows → 40 included) │
+⏱️  │  ├── brandVoice resolved:                999ms (3234 chars)                │
+⏱️  │  └── prompt build done:                  999ms                              │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── STEP C: GEMINI WS CONNECT ────────────────────────────────────────────────┐
+⏱️  │  C. Data load → Gemini WS open:            0ms                              │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── STEP D: SETUP MESSAGE ────────────────────────────────────────────────────┐
+⏱️  │  D. Gemini WS open → Setup sent:           0ms                              │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── STEP E: GEMINI SETUP PROCESSING ──────────────────────────────────────────┐
+⏱️  │  E. Setup sent → setupComplete:           51ms                              │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── STEP F: CHUNKS + GREETING TRIGGER ──────────────────────────────────────┐
+⏱️  │  F. setupComplete → Greeting trigger:      1ms (no chunks)                    │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── STEP G: GEMINI THINKING + AUDIO GENERATION ──────────────────────────────┐
+⏱️  │  G. Greeting → First audio byte:       1677ms ← GEMINI PROCESSING             │
+⏱️  │  ├── G1. Greeting → first response:        5ms (type: other               )  │
+⏱️  │  └── G2. First response → first audio:  1672ms                              │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── CONTEXT SIZE BREAKDOWN ───────────────────────────────────────────────────┐
+⏱️  │  📝 System Instruction:                25804 chars (~ 6451 tok)      │
+⏱️  │  ├── Voice Directives:                  1568 chars                              │
+⏱️  │  ├── Content Prompt:                   18132 chars                              │
+⏱️  │  ├── Brand Voice:                       3234 chars                              │
+⏱️  │  └── Call History:                       7791 chars (40 convs)          │
+⏱️  │  📦 Chunks (user data):                 7791 chars                              │
+⏱️  │  ═══════════════════════════════════════════                              │
+⏱️  │  📊 TOTAL CONTEXT:                      33595 chars (~ 8399 tok)      │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── CALL METADATA ──────────────────────────────────────────────────────────┐
+⏱️  │  📞 Type: Non-Client INBOUND                                               │
+⏱️  │  📋 Has Instruction: NO                                                    │
+⏱️  │  📜 Has Call History: YES                                                   │
+⏱️  │  🎯 Prompt Source: template                                                  │
+⏱️  │  📞 Previous Conversations:  40 ( 40 DB rows)                       │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️
+⏱️  ┌─── SUMMARY ──────────────────────────────────────────────────────────────────┐
+⏱️  │  🏁 TOTAL: WS arrival → First audio:    4103ms (4.1s)                       │
+⏱️  │  ─────────────────────────────────────────                                   │
+⏱️  │  Auth:              243ms  (  6%)                                  │
+⏱️  │  Data/Prompt:      2131ms  ( 52%)                                  │
+⏱️  │  Gemini connect:      0ms  (  0%)                                  │
+⏱️  │  Gemini proc:      1729ms  ( 42%)                                  │
+⏱️  └──────────────────────────────────────────────────────────────────────────────┘
+⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
