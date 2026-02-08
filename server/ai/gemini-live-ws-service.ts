@@ -961,9 +961,10 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       try {
+        const authPhaseStart = Date.now();
         const jwtDecodeStart = Date.now();
         const decoded = jwt.verify(token, JWT_SECRET) as any;
-        console.log(`⏱️ [AUTH] JWT verify: ${Date.now() - jwtDecodeStart}ms`);
+        console.log(`⏱️ [AUTH-DETAIL] JWT verify: ${Date.now() - jwtDecodeStart}ms`);
 
         if (decoded.type !== 'phone_service') {
           console.error('❌ Invalid token type. Must be phone_service');
@@ -1014,7 +1015,7 @@ async function getUserIdFromRequest(req: any): Promise<{
               .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Scheduled call lookup failed (${Date.now() - parallelStart}ms):`, err.message); return { rows: [] }; })
             : Promise.resolve(null)
         ]);
-        console.log(`⚡ [PHONE SERVICE] Parallel auth queries completed in ${Date.now() - parallelStart}ms`);
+        console.log(`⏱️ [AUTH-DETAIL] Parallel auth queries completed in ${Date.now() - parallelStart}ms (from authPhaseStart: +${Date.now() - authPhaseStart}ms)`);
 
         if (userByPhone) {
           userId = userByPhone.id;
@@ -1125,6 +1126,7 @@ async function getUserIdFromRequest(req: any): Promise<{
         });
 
         console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
+        console.log(`⏱️ [AUTH-DETAIL] TOTAL auth phase: ${Date.now() - authPhaseStart}ms (JWT: sync, parallelQueries: ${Date.now() - parallelStart}ms, post-query logic: ${Date.now() - authPhaseStart - (Date.now() - parallelStart)}ms)`);
 
         return {
           userId: userId,
