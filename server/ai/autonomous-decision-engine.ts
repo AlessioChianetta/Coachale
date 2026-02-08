@@ -73,6 +73,13 @@ export interface TaskContext {
     description?: string | null;
     created_at: string;
   }>;
+  upcoming_calls: Array<{
+    id: string;
+    target_phone: string;
+    scheduled_at: string;
+    status: string;
+    custom_prompt?: string | null;
+  }>;
   autonomy_settings: AutonomySettings;
   daily_counts: DailyActionCounts;
 }
@@ -300,7 +307,7 @@ export async function buildTaskContext(task: {
 }): Promise<TaskContext> {
   console.log(`${LOG_PREFIX} Building context for consultant=${task.consultant_id}, contact=${task.contact_id || task.contact_phone || "N/A"}`);
 
-  const [contactResult, recentTasksResult, recentActivityResult, autonomySettings, dailyCounts] = await Promise.all([
+  const [contactResult, recentTasksResult, recentActivityResult, upcomingCallsResult, autonomySettings, dailyCounts] = await Promise.all([
     task.contact_id
       ? db.execute(sql`
           SELECT id, first_name, last_name, email, phone_number, role
@@ -329,6 +336,16 @@ export async function buildTaskContext(task: {
         ${task.contact_id ? sql`AND contact_id = ${task.contact_id}` : sql``}
       ORDER BY created_at DESC
       LIMIT 15
+    `),
+
+    db.execute(sql`
+      SELECT id, target_phone, scheduled_at, status, custom_prompt
+      FROM scheduled_voice_calls
+      WHERE consultant_id = ${task.consultant_id}
+        AND status IN ('scheduled', 'pending')
+        AND scheduled_at > NOW()
+      ORDER BY scheduled_at ASC
+      LIMIT 10
     `),
 
     getAutonomySettings(task.consultant_id),
@@ -366,12 +383,21 @@ export async function buildTaskContext(task: {
     created_at: r.created_at?.toISOString?.() ?? String(r.created_at),
   }));
 
-  console.log(`${LOG_PREFIX} Context built: contact=${contact?.name || contact?.phone || "none"}, tasks=${recent_tasks.length}, activities=${recent_activity.length}`);
+  const upcoming_calls = (upcomingCallsResult.rows as any[]).map(r => ({
+    id: r.id,
+    target_phone: r.target_phone,
+    scheduled_at: r.scheduled_at?.toISOString?.() ?? String(r.scheduled_at),
+    status: r.status,
+    custom_prompt: r.custom_prompt,
+  }));
+
+  console.log(`${LOG_PREFIX} Context built: contact=${contact?.name || contact?.phone || "none"}, tasks=${recent_tasks.length}, activities=${recent_activity.length}, upcoming_calls=${upcoming_calls.length}`);
 
   return {
     contact,
     recent_tasks,
     recent_activity,
+    upcoming_calls,
     autonomy_settings: autonomySettings,
     daily_counts: dailyCounts,
   };
@@ -472,6 +498,9 @@ ${context.recent_tasks.length > 0 ? context.recent_tasks.map(t => `- [${t.status
 ATTIVITA' RECENTI:
 ${context.recent_activity.length > 0 ? context.recent_activity.slice(0, 5).map(a => `- ${a.event_type}: ${a.title} (${a.created_at})`).join("\n") : "Nessuna attività recente"}
 
+CHIAMATE GIÀ PROGRAMMATE (NON sovrapporre nuove chiamate a questi orari):
+${context.upcoming_calls.length > 0 ? context.upcoming_calls.map(c => `- ${c.scheduled_at}: ${c.target_phone} [${c.status}]`).join('\n') : 'Nessuna chiamata programmata'}
+
 ANALIZZA l'istruzione del task e decidi la migliore sequenza di azioni per portarlo a termine.
 
 Le azioni disponibili si dividono in due categorie:
@@ -503,6 +532,7 @@ REGOLE:
 11. Per web_search, specifica SEMPRE un "search_topic" specifico nel params - non usare l'istruzione generica del task
 12. Per prepare_call, specifica SEMPRE "preferred_time" e "preferred_date" nel params
 13. Per send_email e send_whatsapp, specifica "subject" (solo email) e "message_summary" nel params - i messaggi devono essere BREVI, il dettaglio è nel PDF allegato
+14. Per prepare_call, CONTROLLA le chiamate già programmate e scegli un orario che NON si sovrapponga (almeno 30 minuti di distanza)
 
 Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 {

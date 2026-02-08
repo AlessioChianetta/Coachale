@@ -581,20 +581,24 @@ async function handlePrepareCall(
   const prompt = `Sei un assistente AI per consulenti.
 Prepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.
 
+IMPORTANT: The talking points and script MUST be about the CURRENT task instruction below, NOT about any previous task or report from a different context. Focus EXCLUSIVELY on what the current task asks.
+
+ISTRUZIONE DEL TASK CORRENTE (questa è la PRIORITÀ ASSOLUTA - la chiamata DEVE riguardare QUESTO argomento):
+${task.ai_instruction}
+
+CATEGORIA: ${task.task_category}
+
 DATI CLIENTE:
 Nome: ${task.contact_name || clientData.contact?.first_name || "N/A"}
 Telefono: ${task.contact_phone}
 
-ANALISI PRECEDENTE:
+CONTESTO SUPPLEMENTARE DA QUESTA ESECUZIONE (usa solo come supporto, NON come argomento principale della chiamata):
+
+Analisi di supporto:
 ${JSON.stringify(analysisData, null, 2)}
 
-REPORT:
+Report di supporto:
 ${JSON.stringify(reportData, null, 2)}
-
-ISTRUZIONE ORIGINALE:
-${task.ai_instruction}
-
-CATEGORIA: ${task.task_category}
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 {
@@ -618,7 +622,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "call_priority": "high|medium|low",
   "preferred_call_time": "HH:MM",
   "preferred_call_date": "YYYY-MM-DD",
-  "timing_reasoning": "spiegazione del perché questo orario è ottimale"
+  "timing_reasoning": "spiegazione del perché questo orario è ottimale",
+  "call_topic_summary": "brief summary of what this call is about"
 }`;
 
   const apiKey = await getGeminiApiKeyForClassifier();
@@ -694,17 +699,73 @@ async function handleVoiceCall(
   const preferredTime = callPrep.preferred_call_time || _step.params?.preferred_time;
   let scheduledAtSql = sql`NOW()`;
 
+  console.log(`${LOG_PREFIX} Creating scheduled voice call ${scheduledCallId} for task ${task.id}, preferred: ${preferredDate || 'none'} ${preferredTime || 'none'}`);
+
+  let targetDateTimeStr: string | null = null;
   if (preferredDate && preferredTime) {
-    const dateTimeStr = `${preferredDate} ${preferredTime}:00`;
-    scheduledAtSql = sql`${dateTimeStr}::timestamp AT TIME ZONE 'Europe/Rome'`;
-    console.log(`${LOG_PREFIX} Scheduling call at preferred time: ${dateTimeStr} (Europe/Rome)`);
+    targetDateTimeStr = `${preferredDate} ${preferredTime}:00`;
   } else if (preferredDate) {
-    const dateTimeStr = `${preferredDate} 10:00:00`;
-    scheduledAtSql = sql`${dateTimeStr}::timestamp AT TIME ZONE 'Europe/Rome'`;
-    console.log(`${LOG_PREFIX} Scheduling call at preferred date: ${preferredDate} 10:00 (Europe/Rome)`);
+    targetDateTimeStr = `${preferredDate} 10:00:00`;
   }
 
-  console.log(`${LOG_PREFIX} Creating scheduled voice call ${scheduledCallId} for task ${task.id}`);
+  let timeWasShifted = false;
+  let shiftAttempts = 0;
+  const MAX_SHIFT_ATTEMPTS = 10;
+
+  if (targetDateTimeStr) {
+    let currentCheckStr = targetDateTimeStr;
+    for (let attempt = 0; attempt < MAX_SHIFT_ATTEMPTS; attempt++) {
+      const conflictResult = await db.execute(sql`
+        SELECT scheduled_at FROM scheduled_voice_calls
+        WHERE consultant_id = ${task.consultant_id}
+          AND status IN ('scheduled', 'pending')
+          AND ABS(EXTRACT(EPOCH FROM (scheduled_at - (${currentCheckStr}::timestamp AT TIME ZONE 'Europe/Rome')))) < 1800
+        LIMIT 1
+      `);
+      if (conflictResult.rows.length === 0) {
+        break;
+      }
+      console.log(`${LOG_PREFIX} Conflict found at ${currentCheckStr} (Rome), shifting +30 minutes (attempt ${attempt + 1}/${MAX_SHIFT_ATTEMPTS})`);
+      const shiftedResult = await db.execute(sql`
+        SELECT to_char((${currentCheckStr}::timestamp + interval '30 minutes'), 'YYYY-MM-DD HH24:MI:SS') as shifted
+      `);
+      currentCheckStr = (shiftedResult.rows[0] as any).shifted;
+      timeWasShifted = true;
+      shiftAttempts = attempt + 1;
+    }
+    scheduledAtSql = sql`${currentCheckStr}::timestamp AT TIME ZONE 'Europe/Rome'`;
+    if (timeWasShifted) {
+      console.log(`${LOG_PREFIX} Call time shifted to ${currentCheckStr} (Rome) after ${shiftAttempts} conflict resolution(s)`);
+    }
+  } else {
+    const nowResult = await db.execute(sql`
+      SELECT to_char(NOW() AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD HH24:MI:SS') as now_rome
+    `);
+    let currentCheckStr = (nowResult.rows[0] as any).now_rome as string;
+    for (let attempt = 0; attempt < MAX_SHIFT_ATTEMPTS; attempt++) {
+      const conflictResult = await db.execute(sql`
+        SELECT scheduled_at FROM scheduled_voice_calls
+        WHERE consultant_id = ${task.consultant_id}
+          AND status IN ('scheduled', 'pending')
+          AND ABS(EXTRACT(EPOCH FROM (scheduled_at - (${currentCheckStr}::timestamp AT TIME ZONE 'Europe/Rome')))) < 1800
+        LIMIT 1
+      `);
+      if (conflictResult.rows.length === 0) {
+        break;
+      }
+      console.log(`${LOG_PREFIX} Conflict found at NOW+offset, shifting +30 minutes (attempt ${attempt + 1}/${MAX_SHIFT_ATTEMPTS})`);
+      const shiftedResult = await db.execute(sql`
+        SELECT to_char((${currentCheckStr}::timestamp + interval '30 minutes'), 'YYYY-MM-DD HH24:MI:SS') as shifted
+      `);
+      currentCheckStr = (shiftedResult.rows[0] as any).shifted;
+      timeWasShifted = true;
+      shiftAttempts = attempt + 1;
+    }
+    scheduledAtSql = sql`${currentCheckStr}::timestamp AT TIME ZONE 'Europe/Rome'`;
+    if (timeWasShifted) {
+      console.log(`${LOG_PREFIX} Call time shifted from NOW to ${currentCheckStr} (Rome) after ${shiftAttempts} conflict resolution(s)`);
+    }
+  }
 
   await db.execute(sql`
     INSERT INTO scheduled_voice_calls (
@@ -741,11 +802,18 @@ async function handleVoiceCall(
 
   console.log(`${LOG_PREFIX} Created child task ${childTaskId} with voice_call_id ${scheduledCallId}`);
 
-  const scheduledDisplay = preferredDate && preferredTime 
-    ? `${preferredDate.split('-').reverse().join('/')} alle ${preferredTime}`
-    : preferredDate 
-      ? `${preferredDate.split('-').reverse().join('/')} alle 10:00`
-      : "il prima possibile";
+  const insertedResult = await db.execute(sql`
+    SELECT to_char(scheduled_at AT TIME ZONE 'Europe/Rome', 'DD/MM/YYYY') as display_date,
+           to_char(scheduled_at AT TIME ZONE 'Europe/Rome', 'HH24:MI') as display_time,
+           to_char(scheduled_at AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD HH24:MI') as return_at
+    FROM scheduled_voice_calls WHERE id = ${scheduledCallId} LIMIT 1
+  `);
+  const inserted = insertedResult.rows[0] as any;
+  const shiftNote = timeWasShifted ? ' (spostata per evitare conflitti)' : '';
+  const scheduledDisplay = inserted
+    ? `${inserted.display_date} alle ${inserted.display_time}${shiftNote}`
+    : "il prima possibile";
+  const scheduledAtReturn = inserted?.return_at || "now";
 
   await logActivity(task.consultant_id, {
     event_type: "voice_call_scheduled",
@@ -764,7 +832,9 @@ async function handleVoiceCall(
     target_phone: task.contact_phone,
     custom_prompt: customPrompt,
     status: "scheduled",
-    scheduled_at: preferredDate && preferredTime ? `${preferredDate} ${preferredTime}` : "now",
+    scheduled_at: scheduledAtReturn,
+    time_was_shifted: timeWasShifted,
+    shift_attempts: shiftAttempts,
   };
 }
 
