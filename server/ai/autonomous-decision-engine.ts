@@ -433,7 +433,7 @@ export async function generateExecutionPlan(task: {
     .map(([k]) => k)
     .join(", ");
 
-  const prompt = `Sei un assistente intelligente di un consulente finanziario. Agisci come un dipendente esperto e affidabile.
+  const prompt = `Sei un assistente intelligente di un consulente. Agisci come un dipendente esperto e affidabile. NON assumere che il consulente lavori in un settore specifico (finanziario, legale, etc.) — il settore lo devi capire ESCLUSIVAMENTE dall'istruzione del task, dal nome del contatto e dai dati disponibili. Adatta il tuo ragionamento e il tuo piano d'azione al settore reale del cliente.
 
 CONTESTO TASK:
 - ID Task: ${task.id}

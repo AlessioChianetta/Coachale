@@ -476,51 +476,62 @@ async function handleGenerateReport(
     ? `\nDOCUMENTI PRIVATI TROVATI:\n${privateStoreData.findings_summary || "Nessun documento privato trovato"}\n\nCITAZIONI:\n${privateStoreData.citations?.map((c: any) => `- ${c.source}: ${c.content}`).join('\n') || "Nessuna citazione"}\n`
     : "";
 
-  const prompt = `Sei un assistente AI senior. Genera un report COMPLETO, DETTAGLIATO e APPROFONDITO basato sull'analisi seguente, adattandoti al contesto specifico del cliente e della sua attività.
+  const webSearchData = previousResults.web_search;
+  const webSearchSection = webSearchData
+    ? `\nRICERCA WEB:\n${webSearchData.findings || "Nessun risultato dalla ricerca web"}\n\nFONTI WEB:\n${webSearchData.sources?.map((s: any) => `- ${s.title}: ${s.url}`).join('\n') || "Nessuna fonte"}\n`
+    : "";
 
-Hai carta bianca sulla struttura del report se le sezioni personalizzate sono fornite. L'obiettivo è creare il report più utile possibile per il consulente.
+  const prompt = `Sei un assistente AI senior specializzato in consulenza. Genera un report COMPLETO, DETTAGLIATO e APPROFONDITO.
 
-IMPORTANTE: Il report deve essere esaustivo e ricco di dettagli. Ogni sezione deve contenere almeno 200 caratteri di contenuto. Includi dati specifici, citazioni dai documenti privati, e raccomandazioni operative concrete.
+REGOLA FONDAMENTALE: Il report deve essere ESAUSTIVO e LUNGO. Ogni sezione deve contenere ALMENO 500 caratteri di contenuto ricco e dettagliato. Cita SEMPRE i documenti privati con il tag [CONSULENZA PRIVATA] e le date quando disponibili. NON abbreviare MAI il contenuto - il consulente ha bisogno di un dossier completo, non di un riassunto.
+
+${_step.params?.custom_sections && Array.isArray(_step.params.custom_sections) && _step.params.custom_sections.length > 0
+  ? `STRUTTURA PERSONALIZZATA - Usa ESATTAMENTE queste sezioni:
+${_step.params.custom_sections.map((s: string, i: number) => `${i+1}. ${s}`).join('\n')}
+
+ATTENZIONE: Anche con struttura personalizzata, OGNI sezione deve essere scritta con la STESSA profondità e lunghezza di un report standard. Minimo 500 caratteri per sezione con dati specifici, citazioni dai documenti privati, e analisi dettagliata. NON fare riassunti brevi.`
+  : `STRUTTURA DEL REPORT - Includi TUTTE le seguenti sezioni:
+1. Panoramica Cliente - Background completo, situazione attuale, contesto (minimo 500 caratteri)
+2. Analisi della Situazione - Dettagli approfonditi su cosa emerge dai dati (minimo 500 caratteri)
+3. Punti di Forza e Debolezza - Con esempi specifici dai documenti (minimo 500 caratteri)
+4. Pattern e Tendenze - Comportamenti ricorrenti, trend osservati (minimo 500 caratteri)
+5. Valutazione del Rischio - Analisi dettagliata dei fattori di rischio (minimo 500 caratteri)
+6. Piano d'Azione - Raccomandazioni operative concrete e prioritizzate (minimo 500 caratteri)
+7. Prossimi Passi - Azioni immediate con timeline suggerita (minimo 500 caratteri)`}
+
+OBBLIGATORIO - Genera SEMPRE queste sezioni aggiuntive indipendentemente dalla struttura scelta:
+- "key_findings": ALMENO 5 risultati chiave dettagliati (ogni item almeno 80 caratteri)
+- "recommendations": ALMENO 4 raccomandazioni con action, priority e rationale dettagliati
+- "next_steps": ALMENO 4 passi successivi concreti con timeline
 
 === ANALISI COMPLETA ===
 ${JSON.stringify(analysisData, null, 2)}
 
 === DATI CLIENTE ===
 ${JSON.stringify(clientData.contact || {}, null, 2)}
-${privateStoreSection}
+${privateStoreSection}${webSearchSection}
 === ISTRUZIONE ORIGINALE ===
 ${task.ai_instruction}
-
-${_step.params?.custom_sections && Array.isArray(_step.params.custom_sections) && _step.params.custom_sections.length > 0
-  ? `STRUTTURA PERSONALIZZATA DEL REPORT - Usa queste sezioni:\n${_step.params.custom_sections.map((s: string, i: number) => `${i+1}. ${s}`).join('\n')}`
-  : `STRUTTURA DEL REPORT - Includi TUTTE le seguenti sezioni:
-1. Panoramica Cliente - Background completo, situazione attuale, contesto
-2. Analisi della Situazione - Dettagli approfonditi su cosa emerge dai dati
-3. Punti di Forza e Debolezza - Con esempi specifici dai documenti
-4. Pattern e Tendenze - Comportamenti ricorrenti, trend osservati
-5. Valutazione del Rischio - Analisi dettagliata dei fattori di rischio
-6. Piano d'Azione - Raccomandazioni operative concrete e prioritizzate
-7. Prossimi Passi - Azioni immediate con timeline suggerita`}
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 {
   "title": "Titolo descrittivo del report",
-  "summary": "Riepilogo esecutivo dettagliato in 3-5 frasi che cattura i punti essenziali",
+  "summary": "Riepilogo esecutivo dettagliato in 4-6 frasi che cattura i punti essenziali (minimo 300 caratteri)",
   "sections": [
     {
       "heading": "Titolo sezione",
-      "content": "Contenuto dettagliato della sezione (almeno 200 caratteri per sezione)"
+      "content": "Contenuto DETTAGLIATO della sezione (MINIMO 500 caratteri per sezione, con citazioni [CONSULENZA PRIVATA] e date specifiche)"
     }
   ],
-  "key_findings": ["risultato chiave dettagliato 1", "risultato chiave dettagliato 2", ...],
+  "key_findings": ["risultato chiave dettagliato 1 (almeno 80 caratteri)", "risultato chiave 2", "risultato chiave 3", "risultato chiave 4", "risultato chiave 5"],
   "recommendations": [
     {
-      "action": "azione consigliata dettagliata",
+      "action": "azione consigliata dettagliata e specifica",
       "priority": "high|medium|low",
-      "rationale": "motivazione dettagliata basata sui dati"
+      "rationale": "motivazione dettagliata basata sui dati e citazioni"
     }
   ],
-  "next_steps": ["passo successivo concreto 1 con timeline", "passo successivo 2", ...]
+  "next_steps": ["passo successivo concreto 1 con timeline", "passo successivo 2", "passo successivo 3", "passo successivo 4"]
 }`;
 
   const apiKey = await getGeminiApiKeyForClassifier();
@@ -730,6 +741,23 @@ async function handleVoiceCall(
 
   console.log(`${LOG_PREFIX} Created child task ${childTaskId} with voice_call_id ${scheduledCallId}`);
 
+  const scheduledDisplay = preferredDate && preferredTime 
+    ? `${preferredDate.split('-').reverse().join('/')} alle ${preferredTime}`
+    : preferredDate 
+      ? `${preferredDate.split('-').reverse().join('/')} alle 10:00`
+      : "il prima possibile";
+
+  await logActivity(task.consultant_id, {
+    event_type: "voice_call_scheduled",
+    title: `Chiamata programmata per ${task.contact_name || task.contact_phone}`,
+    description: `Programmata per ${scheduledDisplay}. ID chiamata: ${scheduledCallId}`,
+    icon: "📅",
+    severity: "info",
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   return {
     call_id: scheduledCallId,
     child_task_id: childTaskId,
@@ -740,51 +768,92 @@ async function handleVoiceCall(
   };
 }
 
-function generateServerPdfContent(report: any, analysis: any, task: AITaskInfo): string {
-  const lines: string[] = [];
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(report.title || 'Report AI');
-  lines.push(`Cliente: ${task.contact_name || 'N/A'}`);
-  lines.push(`Data: ${new Date().toLocaleDateString('it-IT')}`);
-  lines.push(`═══════════════════════════════════════\n`);
+async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): Promise<Buffer> {
+  const PDFDocument = (await import('pdfkit')).default;
 
-  if (report.summary) {
-    lines.push(`RIEPILOGO`);
-    lines.push(report.summary);
-    lines.push('');
-  }
-
-  if (report.sections && Array.isArray(report.sections)) {
-    for (const section of report.sections) {
-      lines.push(`\n--- ${section.heading} ---`);
-      lines.push(section.content);
-    }
-  }
-
-  if (report.key_findings && Array.isArray(report.key_findings)) {
-    lines.push(`\n--- Risultati Chiave ---`);
-    for (const f of report.key_findings) {
-      lines.push(`• ${f}`);
-    }
-  }
-
-  if (report.recommendations && Array.isArray(report.recommendations)) {
-    lines.push(`\n--- Raccomandazioni ---`);
-    for (const r of report.recommendations) {
-      const priority = r.priority === 'high' ? '[ALTA]' : r.priority === 'medium' ? '[MEDIA]' : '[BASSA]';
-      lines.push(`${priority} ${r.action}`);
-      if (r.rationale) lines.push(`  → ${r.rationale}`);
-    }
-  }
-
-  if (report.next_steps && Array.isArray(report.next_steps)) {
-    lines.push(`\n--- Prossimi Passi ---`);
-    report.next_steps.forEach((s: string, i: number) => {
-      lines.push(`${i+1}. ${s}`);
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ 
+      size: 'A4', 
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      bufferPages: true,
     });
-  }
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
-  return lines.join('\n');
+    doc.fontSize(18).font('Helvetica-Bold').text(report.title || 'Report AI', { align: 'center' });
+    doc.moveDown(0.3);
+    doc.fontSize(10).font('Helvetica').fillColor('#666666')
+      .text(`Cliente: ${task.contact_name || 'N/A'}  |  Data: ${new Date().toLocaleDateString('it-IT')}`, { align: 'center' });
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+    doc.moveDown(1);
+
+    if (report.summary) {
+      doc.fillColor('#333333').fontSize(9).font('Helvetica-Oblique')
+        .text(report.summary, { align: 'justify' });
+      doc.moveDown(1);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#eeeeee').stroke();
+      doc.moveDown(1);
+    }
+
+    if (report.sections && Array.isArray(report.sections)) {
+      report.sections.forEach((section: any, idx: number) => {
+        if (doc.y > 700) doc.addPage();
+        doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold')
+          .text(`${idx + 1}. ${section.heading}`, { align: 'left' });
+        doc.moveDown(0.5);
+        doc.fillColor('#333333').fontSize(10).font('Helvetica')
+          .text(section.content, { align: 'justify', lineGap: 3 });
+        doc.moveDown(1.2);
+      });
+    }
+
+    if (report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0) {
+      if (doc.y > 650) doc.addPage();
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      doc.moveDown(0.8);
+      doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Risultati Chiave');
+      doc.moveDown(0.5);
+      for (const f of report.key_findings) {
+        doc.fillColor('#333333').fontSize(10).font('Helvetica').text(`•  ${f}`, { indent: 10, lineGap: 2 });
+        doc.moveDown(0.4);
+      }
+      doc.moveDown(0.8);
+    }
+
+    if (report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0) {
+      if (doc.y > 650) doc.addPage();
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      doc.moveDown(0.8);
+      doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Raccomandazioni');
+      doc.moveDown(0.5);
+      for (const r of report.recommendations) {
+        const priority = r.priority === 'high' ? '[ALTA]' : r.priority === 'medium' ? '[MEDIA]' : '[BASSA]';
+        doc.fillColor('#1a1a1a').fontSize(10).font('Helvetica-Bold').text(`${priority} ${r.action}`, { indent: 10 });
+        if (r.rationale) {
+          doc.fillColor('#555555').fontSize(9).font('Helvetica').text(`→ ${r.rationale}`, { indent: 20, lineGap: 2 });
+        }
+        doc.moveDown(0.5);
+      }
+      doc.moveDown(0.8);
+    }
+
+    if (report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0) {
+      if (doc.y > 650) doc.addPage();
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      doc.moveDown(0.8);
+      doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Prossimi Passi');
+      doc.moveDown(0.5);
+      report.next_steps.forEach((s: string, i: number) => {
+        doc.fillColor('#333333').fontSize(10).font('Helvetica').text(`${i + 1}. ${s}`, { indent: 10, lineGap: 2 });
+        doc.moveDown(0.4);
+      });
+    }
+
+    doc.end();
+  });
 }
 
 async function handleSendEmail(
@@ -821,11 +890,16 @@ async function handleSendEmail(
     const apiKey = await getGeminiApiKeyForClassifier();
     if (apiKey) {
       const ai = new GoogleGenAI({ apiKey });
-      const emailPrompt = `Scrivi un'email BREVE (massimo 3-4 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
+      const emailPrompt = `Scrivi un'email BREVE (massimo 4-5 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
 Contesto: ${task.ai_instruction}
 ${reportData.title ? `Report allegato: "${reportData.title}"` : ''}
 ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 200)}` : ''}
-NON scrivere un papiro. Il dettaglio è nel PDF allegato. Scrivi solo il corpo dell'email (senza oggetto, senza "Gentile..." all'inizio, inizia direttamente con il contenuto).`;
+
+REGOLE IMPORTANTI:
+1. Scrivi l'INTERA email completa: saluto iniziale, corpo, e chiusura. Il tono deve essere COERENTE dall'inizio alla fine.
+2. NON dare per scontato che azioni programmate (chiamate, incontri) siano già avvenute. Se è stata programmata una chiamata futura, scrivi "la contatterò" o "ci sentiremo", NON "come anticipato a voce".
+3. NON scrivere un papiro. Il dettaglio è nel report allegato.
+4. Sii diretto e professionale.`;
 
       const resp = await withRetry(() => ai.models.generateContent({
         model: GEMINI_3_MODEL,
@@ -837,19 +911,23 @@ NON scrivere un papiro. Il dettaglio è nel PDF allegato. Scrivi solo il corpo d
   }
 
   const htmlBody = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-    <p>Gentile ${task.contact_name || 'Cliente'},</p>
     <p>${emailBody.replace(/\n/g, '</p><p>')}</p>
     ${reportData.title ? '<p><em>In allegato trova il report dettagliato.</em></p>' : ''}
-    <p>Cordiali saluti</p>
   </div>`;
 
   let attachments: any[] = [];
   if (reportData && reportData.title) {
-    const pdfContent = generateServerPdfContent(reportData, analysisData, task);
-    attachments.push({
-      filename: `report_${(task.contact_name || 'cliente').replace(/[^a-zA-Z0-9]/g, '_')}.txt`,
-      content: pdfContent,
-    });
+    try {
+      const pdfBuffer = await generatePdfBuffer(reportData, analysisData, task);
+      attachments.push({
+        filename: `report_${(task.contact_name || 'cliente').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      });
+      console.log(`${LOG_PREFIX} PDF generated: ${pdfBuffer.length} bytes`);
+    } catch (pdfErr: any) {
+      console.error(`${LOG_PREFIX} PDF generation failed, skipping attachment: ${pdfErr.message}`);
+    }
   }
 
   try {
@@ -1067,6 +1145,8 @@ Concentrati su:
 3. Notizie recenti pertinenti
 4. Dati statistici e benchmark utili
 5. Best practice e strategie raccomandate dagli esperti
+
+IMPORTANTE: Riporta SOLO informazioni che trovi realmente dalla ricerca. NON inventare dati, statistiche, o fonti. Se non trovi informazioni pertinenti, dillo chiaramente.
 
 Fornisci una risposta strutturata e dettagliata con le informazioni trovate, citando le fonti quando possibile.`;
 
