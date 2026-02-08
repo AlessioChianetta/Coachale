@@ -1637,6 +1637,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     
     // ⏱️ PER-TURN LATENCY TRACKING
     let userFinishedSpeakingTime: number = 0; // Timestamp when isFinal received
+    let lastInputTranscriptionTime: number = 0; // Timestamp of last inputTranscription chunk (fallback for phone calls where isFinal never arrives)
     let turnLatencyMeasured: boolean = false; // Reset each turn to measure first audio byte per turn
     let turnCount: number = 0; // Counts user→AI exchanges
     let turnSalesTrackerDoneTime: number = 0; // After salesTracker.trackUserMessage
@@ -6564,7 +6565,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
           // Audio output da Gemini
           if (response.serverContent?.modelTurn?.parts) {
             // ⏱️ TURN LATENCY: Track first Gemini response after user turn
-            if (turnFirstGeminiResponseTime === 0 && userFinishedSpeakingTime > 0) {
+            // Fallback: use lastInputTranscriptionTime when isFinal never arrives (phone calls)
+            if (turnFirstGeminiResponseTime === 0 && (userFinishedSpeakingTime > 0 || lastInputTranscriptionTime > 0)) {
+              if (userFinishedSpeakingTime === 0 && lastInputTranscriptionTime > 0) {
+                userFinishedSpeakingTime = lastInputTranscriptionTime;
+                turnLatencyMeasured = false;
+                turnCount++;
+                turnsInCurrentSegment++;
+              }
               turnFirstGeminiResponseTime = Date.now();
             }
             
@@ -7004,6 +7012,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               // Update buffer and timestamp
               vadConcatBuffer = processedTranscript;
               vadLastChunkTime = now;
+              lastInputTranscriptionTime = now;
               
               currentUserTranscript = processedTranscript;
               
@@ -7196,6 +7205,11 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               
               pendingUserTranscript = { text: '', hasFinalChunk: false }; // Reset
             }
+            
+            // ⏱️ Reset turn latency tracking for next turn
+            userFinishedSpeakingTime = 0;
+            lastInputTranscriptionTime = 0;
+            turnFirstGeminiResponseTime = 0;
             
             // 🔒 AI has finished speaking
             const wasAiSpeaking = isAiSpeaking;
