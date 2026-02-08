@@ -1639,6 +1639,11 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let userFinishedSpeakingTime: number = 0; // Timestamp when isFinal received
     let turnLatencyMeasured: boolean = false; // Reset each turn to measure first audio byte per turn
     let turnCount: number = 0; // Counts user→AI exchanges
+    let turnSalesTrackerDoneTime: number = 0; // After salesTracker.trackUserMessage
+    let turnFeedbackInjectedTime: number = 0; // After pendingFeedback injection
+    let turnCommitDoneTime: number = 0; // After commitUserMessage
+    let turnWatchdogStartedTime: number = 0; // After startResponseWatchdog
+    let turnFirstGeminiResponseTime: number = 0; // First serverContent after user turn
     
     // 🎯 User transcript buffering for sales tracking (with isFinal flag)
     let pendingUserTranscript: { text: string; hasFinalChunk: boolean } = {
@@ -6558,6 +6563,11 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
           
           // Audio output da Gemini
           if (response.serverContent?.modelTurn?.parts) {
+            // ⏱️ TURN LATENCY: Track first Gemini response after user turn
+            if (turnFirstGeminiResponseTime === 0 && userFinishedSpeakingTime > 0) {
+              turnFirstGeminiResponseTime = Date.now();
+            }
+            
             // 🆕 WATCHDOG: Gemini sta rispondendo - cancella il timer!
             if (userMessagePendingResponse) {
               cancelResponseWatchdog();
@@ -6733,8 +6743,29 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   // ⏱️ PER-TURN LATENCY: Measure time from user finished speaking to AI first audio
                   if (userFinishedSpeakingTime > 0 && !turnLatencyMeasured) {
                     turnLatencyMeasured = true;
-                    const turnLatencyMs = Date.now() - userFinishedSpeakingTime;
-                    console.log(`⏱️ [TURN LATENCY] Turn #${turnCount} | User→AI: ${turnLatencyMs}ms (${(turnLatencyMs / 1000).toFixed(1)}s)`);
+                    const now = Date.now();
+                    const totalTurnLatencyMs = now - userFinishedSpeakingTime;
+                    const serverProcessing = turnWatchdogStartedTime > 0 ? turnWatchdogStartedTime - userFinishedSpeakingTime : 0;
+                    const geminiThinking = turnWatchdogStartedTime > 0 ? now - turnWatchdogStartedTime : totalTurnLatencyMs;
+                    
+                    console.log(`\n⏱️ ┌─── TURN LATENCY #${turnCount} ────────────────────────────────────────────┐`);
+                    console.log(`⏱️ │  🏁 User→AI first audio: ${String(totalTurnLatencyMs).padStart(5)}ms (${(totalTurnLatencyMs / 1000).toFixed(1)}s)${totalTurnLatencyMs > 2000 ? ' ⚠️ SLOW!' : totalTurnLatencyMs > 1000 ? ' ⚡' : ' ✅'}  │`);
+                    console.log(`⏱️ │  ─────────────────────────────────────────                    │`);
+                    console.log(`⏱️ │  Server processing: ${String(serverProcessing).padStart(5)}ms  (${serverProcessing > 0 ? ((serverProcessing / totalTurnLatencyMs) * 100).toFixed(0) : '0'  }%)                           │`);
+                    if (turnSalesTrackerDoneTime > 0) {
+                      const salesMs = turnSalesTrackerDoneTime - userFinishedSpeakingTime;
+                      console.log(`⏱️ │    └─ salesTracker:    ${String(salesMs).padStart(5)}ms${salesMs > 100 ? ' ⚠️' : ''}                            │`);
+                    }
+                    if (turnFeedbackInjectedTime > 0) {
+                      const fbMs = turnFeedbackInjectedTime - (turnSalesTrackerDoneTime || userFinishedSpeakingTime);
+                      console.log(`⏱️ │    └─ feedback inject: ${String(fbMs).padStart(5)}ms                            │`);
+                    }
+                    if (turnCommitDoneTime > 0) {
+                      const cmMs = turnCommitDoneTime - (turnFeedbackInjectedTime || turnSalesTrackerDoneTime || userFinishedSpeakingTime);
+                      console.log(`⏱️ │    └─ commit:          ${String(cmMs).padStart(5)}ms                            │`);
+                    }
+                    console.log(`⏱️ │  Gemini thinking:  ${String(geminiThinking).padStart(5)}ms  (${geminiThinking > 0 ? ((geminiThinking / totalTurnLatencyMs) * 100).toFixed(0) : '0'}%) ← AI processing            │`);
+                    console.log(`⏱️ └──────────────────────────────────────────────────────────────┘\n`);
                   }
                 } else {
                   // Assicurati che rimanga true durante tutto lo streaming
@@ -6988,6 +7019,11 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 userSpeakingStartTime = null; // Reset - user finished speaking
                 userFinishedSpeakingTime = Date.now(); // ⏱️ TURN LATENCY: mark when user stopped
                 turnLatencyMeasured = false; // Reset for this turn
+                turnSalesTrackerDoneTime = 0;
+                turnFeedbackInjectedTime = 0;
+                turnCommitDoneTime = 0;
+                turnWatchdogStartedTime = 0;
+                turnFirstGeminiResponseTime = 0;
                 turnCount++;
                 turnsInCurrentSegment++;
                 console.log(`✅ [${connectionId}] isFinal received - user finished speaking (turn #${turnCount}, segment turn #${turnsInCurrentSegment})`);
@@ -7022,6 +7058,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                       console.error(`❌ [${connectionId}] Sales tracking error (user isFinal):`, trackError.message);
                     }
                   }
+                  turnSalesTrackerDoneTime = Date.now();
                 } finally {
                   // 🔧 FIX: Always commit user message to conversationMessages and reset buffer
                   // This runs AFTER salesTracker, ensuring no duplicates from fallback path
@@ -7058,6 +7095,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     // Clear feedback from RAM buffer
                     const usedFeedback = pendingFeedbackForAI; // Save before clearing for logging
                     pendingFeedbackForAI = null;
+                    turnFeedbackInjectedTime = Date.now();
                     
                     // 🆕 Clear feedback from DB as well (consumed)
                     if (conversationId) {
@@ -7071,6 +7109,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     // No feedback pending - just commit the user message
                     commitUserMessage(finalTranscript);
                   }
+                  turnCommitDoneTime = Date.now();
                   
                   pendingUserTranscript = { text: '', hasFinalChunk: false };
                   
@@ -7078,6 +7117,18 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   if (geminiSession) {
                     startResponseWatchdog(finalTranscript, geminiSession);
                   }
+                  turnWatchdogStartedTime = Date.now();
+                  
+                  // ⏱️ TURN LATENCY: Log server-side processing time
+                  const serverProcessingMs = turnWatchdogStartedTime - userFinishedSpeakingTime;
+                  console.log(`⏱️ [TURN LATENCY] Turn #${turnCount} server processing: ${serverProcessingMs}ms`);
+                  if (turnSalesTrackerDoneTime > 0) {
+                    console.log(`   └─ salesTracker: ${turnSalesTrackerDoneTime - userFinishedSpeakingTime}ms`);
+                  }
+                  if (turnFeedbackInjectedTime > 0) {
+                    console.log(`   └─ feedbackInjection: ${turnFeedbackInjectedTime - (turnSalesTrackerDoneTime || userFinishedSpeakingTime)}ms`);
+                  }
+                  console.log(`   └─ commit+watchdog: ${turnWatchdogStartedTime - turnCommitDoneTime}ms`);
                 }
               }
               
