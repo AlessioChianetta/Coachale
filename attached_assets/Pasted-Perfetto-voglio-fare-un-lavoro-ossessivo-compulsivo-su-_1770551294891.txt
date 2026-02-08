@@ -1,0 +1,171 @@
+Perfetto, voglio fare un lavoro ossessivo-compulsivo su ogni singolo millisecondo. Parto con la lettura completa di tutte le sezioni rilevanti per non perdere nulla.
+
+Prima devo leggere tutte le sezioni che devo modificare per avere il quadro completo prima di toccare una riga. Leggo i punti chiave rimanenti:
+
+Ora devo leggere la funzione buildBrandVoiceFromAgent per capire esattamente cosa fa:
+
+Ora ho il quadro completo. Questo è un lavoro complesso che tocca centinaia di righe. Lo delegherò a un subagent con istruzioni dettagliate. Ma prima leggo ancora le righe critiche tra setupComplete e greeting per essere sicuro di avere tutto:
+
+Ho tutti i dati che mi servono. Ora delego il lavoro pesante a un subagent con istruzioni ultra-dettagliate. Il lavoro è complesso: tocca il latency tracker, il flusso non-client, la parallelizzazione, e la separazione storico/greeting.
+
+Task
+Enhance latency tracking for non-client voice calls by adding granular metrics, optimizing prompt building, and refining the final latency report.
+
+
+Hide work done
+Let me start by reading the key sections of the file to understand the exact code structure.
+
+Good, I can see the structure. The latencyTracker is already defined OUTSIDE geminiSession.on('open') at line 4951 (not inside it as the task description initially worried). Let me now read more sections to understand the full picture.
+
+Let me continue reading the other critical sections.
+
+Now let me read the remaining critical sections - the systemInstruction build for non-instruction path, the greeting trigger, and the old latency report.
+
+Good, I now have a clear picture of the code. Let me also read a few more sections I need to understand - the area around the italianTime variable definition in the non-instruction path and where _ncLatency needs to be placed in scope.
+
+Now I have a comprehensive understanding of the codebase. Let me also check the italianTime variable in the instruction path, since both paths define it separately:
+
+Understand the gemini live service file
+Optimized Agent memory
+Now let me read the SQL query for previousConversations and the _consultantInfoPromise area:
+
+Now I have a thorough understanding. Let me implement all changes systematically. I'll start with the foundational changes first.
+
+CAMBIO 5 + 9: Add _ncLatency object before the if/else block, and SQL LIMIT optimization
+
+Let me now understand the exact scope where _ncLatency needs to be declared. I need to find the right scope that encloses both the non-client block and the gemini session handlers:
+
+I have a comprehensive understanding. The _ncLatency needs to be declared at the function scope level (same as authDoneTime, wsArrivalTime, etc.) so it's accessible in both the non-client block and the Gemini session callbacks. Let me check where exactly that would be - between auth and the mode branching:
+
+Now let me implement everything. I'll start making the edits systematically. First, let me find the right place to add _ncLatency - it needs to be before the mode branching blocks but accessible everywhere. Let me find what scope contains the modes:
+
+Searched for "Where is systemInstruction and userDataContext declared in gemini-live-ws-service before the branching blocks"
+Let me find the correct scope for _ncLatency placement. I need to find what's between authDoneTime and the mode branching:
+
+Good. I can see systemInstruction is declared at line 2292 and userDataContext at 2293, which is at the same scope level. I'll declare _ncLatency right after these declarations.
+
+Now let me implement all the changes. I'll work systematically through the file from top to bottom.
+
+Step 1: Add _ncLatency declaration near systemInstruction (line ~2297)
+
+Good, I have the full context. Let me now implement all changes systematically. I'll proceed step by step, editing from top to bottom in the file.
+
+Edit 1: Add _ncLatency declaration after agentBusinessContext (line 2296)
+
+Good, _ncLatency is now declared. Let me continue with CAMBIO 9 (SQL optimization) and CAMBIO 2 (timestamps after awaits in non-client block). Let me start with the SQL change and the parallel queries start tracking:
+
+Good, both edits went through. Now let me mark task 2 done and continue with the rest. Let me add timestamps after each await in the non-client block:
+
+Add object, speed up data fetch
+Now let me add timestamps after each await. Let me first re-read the current state of the file at the relevant sections (since line numbers shifted):
+
+Now let me add the timestamps after each await. I'll make multiple edits:
+
+Now let me add the proactive lead timestamp:
+
+Now add the proactive lead timestamp:
+
+Good. Now let me continue adding the settings timestamp for both paths. Let me add it for the instruction path first (line 2951 now):
+
+Let me now add the settings timestamp for both paths (instruction path at line 2955 and non-instruction path at line 3234):
+
+Now let me add settings timestamp for both paths, and previous conversations timestamps:
+
+Now let me add timestamps for settings in the non-instruction path and the previous conversations timestamps for both paths:
+
+Now let me add previous conversations timestamps for both paths. Let me read the current state first:
+
+Now let me add previous conversations timestamps. Let me first handle the instruction path (line ~3021):
+
+Now let me add previous conversations timestamps for both paths:
+
+Now let me add the non-instruction path previous conversations timestamp:
+
+I need to continue implementing changes. Now I need to implement CAMBIO 7 (defer call history), CAMBIO 8 (parallelize brand voice), and add the prompt metrics tracking. Let me first handle the instruction path's systemInstruction build and brand voice parallelization:
+
+Good, let me continue. I need to implement CAMBIO 7 (defer call history) and CAMBIO 8 (parallelize brand voice). Let me look at the current instruction path's brand voice and system instruction build:
+
+CAMBIO 8 (instruction path): Parallelize brand voice by launching promise right after settings, before awaiting previousConversations
+
+Good, the task is still in progress. Let me continue with the remaining changes. I need to implement:
+
+CAMBIO 8 - Parallelize brand voice (instruction path)
+CAMBIO 7 - Defer call history from systemInstruction (both paths)
+CAMBIO 2c - Prompt build metrics at end of non-client blocks
+Continue with latencyTracker expansion, greeting tracking, deferred context sending, and new report
+Let me implement CAMBIO 8 (instruction path) - Launch brandVoice promise BEFORE awaiting previousConversations:
+
+Now let me implement CAMBIO 8 for the instruction path. I need to launch the brand voice promise right after settings are resolved, before awaiting previousConversations:
+
+Now let me implement CAMBIO 8 for the instruction path - launch brand voice promise RIGHT AFTER settings resolve, BEFORE previousConversations await:
+
+Good. Now let me replace the old brand voice await with the already-launched promise, and then continue with the rest of the changes. Let me find and update the brand voice section in the instruction path:
+
+I need to now replace the old brand voice await with the promise-based approach and implement the systemInstruction change for deferred history. Let me continue:
+
+Good, the edit went through. Now let me continue implementing CAMBIO 7 for the instruction path - removing instructionPreviousCallContext from systemInstruction and deferring it. Let me find the exact location:
+
+Now let me implement CAMBIO 7 for the instruction path - defer instructionPreviousCallContext from systemInstruction:
+
+Good, now let me continue with the remaining changes. Let me work on the non-instruction path: CAMBIO 7 (defer history), CAMBIO 8 (parallelize brand voice), and CAMBIO 2c (prompt metrics).
+
+First, let me find the current state of the non-instruction path's brand voice and systemInstruction build:
+
+Now let me continue implementing the remaining changes. Let me handle the non-instruction path's brand voice parallelization and systemInstruction changes (CAMBIO 7+8):
+
+Let me continue with the non-instruction path. Now I need to implement CAMBIO 8 (parallelize brand voice) and CAMBIO 7 (defer history) for the non-instruction path. Let me read the relevant section:
+
+OK I see the system log status. Let me continue implementing. Now for the non-instruction path: I need to handle CAMBIO 8 (launch brand voice promise after settings, before previousConversations await) and CAMBIO 7 (defer call history).
+
+Let me re-read the non-instruction path settings block end to find where to insert the brand voice promise launch:
+
+Let me continue with the non-instruction path. I need to implement CAMBIO 8 (parallelize brand voice) and CAMBIO 7 (defer history). Let me find the end of the settings block in the non-instruction path and add the brand voice promise launch:
+
+Now let me continue implementing. I need to:
+
+Add brand voice promise launch after settings in non-instruction path
+Defer call history in non-instruction path
+Add _ncLatency tracking at end of non-instruction path
+Let me insert the brand voice promise launch after settings block end in non-instruction path:
+
+Now let me continue with the non-instruction path - replace the old brand voice loading with the promise-based approach and add CAMBIO 7 (defer history):
+
+Let me now replace the old brand voice loading in the non-instruction path with the promise-based approach:
+
+Let me continue with the non-instruction path. Replace the old brand voice loading with the promise-based approach:
+
+Now let me implement CAMBIO 7 for the non-instruction path - defer previousCallContext from systemInstruction:
+
+Now let me implement CAMBIO 7 for the non-instruction path. Let me read the current systemInstruction build:
+
+Let me now implement CAMBIO 7 for the non-instruction path (defer previousCallContext) and add _ncLatency tracking:
+
+Great progress! Now I need to continue with CAMBIO 1 (expand latencyTracker), CAMBIO 3 (track first Gemini response), CAMBIO 6 (send deferred context after greeting), and CAMBIO 4 (new latency report). Let me update the task list and continue:
+
+Add timestamps to internal steps
+Get call history later from instruction
+Make brand voice building faster
+Optimized Agent memory
+Now let me work on CAMBIO 1 (expand latencyTracker), CAMBIO 3 (track first Gemini response), CAMBIO 6 (send deferred context). Let me find the latencyTracker and the message handler:
+
+Now let me read the latencyTracker definition and the areas around the greeting trigger and message handler:
+
+Now let me implement the remaining changes. Let me first find the old latency report to replace:
+
+Now let me read the old latency report to replace it:
+
+Now let me implement all remaining changes in parallel. First, let me do CAMBIO 1 (expand latencyTracker), CAMBIO 3 (track first Gemini response), and CAMBIO 6 (send deferred context):
+
+Good, CAMBIO 1 is done. Now let me implement CAMBIO 3 (track first Gemini response) and CAMBIO 6 (send deferred context) simultaneously:
+
+Good, CAMBIO 3 is done. Now let me implement CAMBIO 6 (send deferred context after greeting trigger):
+
+Good, CAMBIO 6 is done. Now let me implement CAMBIO 4 (replace old latency report). Let me replace the old latency report:
+
+All the major changes are implemented. Now I need to verify TypeScript compilation. Let me also check if there are any chunk-tracking points I need to add for chunksSendStartTime, chunksSendEndTime, and chunksCount:
+
+Now let me also check if I need to track chunks sending. Let me find where chunks are sent:
+
+I see chunks are tracked with chunksSentTime and primerSentTime. I need to also track chunksSendStartTime, chunksSendEndTime, and chunksCount. Let me find where chunks are actually sent in the loop:
+
+Now I need to also add chunk tracking. Let me find where chunks are sent and add chunksSendStartTime/chunksSendEndTime/chunksCount:
