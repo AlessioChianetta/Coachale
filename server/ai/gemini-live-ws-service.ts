@@ -5055,8 +5055,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         brandVoiceChars: _ncLatency.brandVoiceChars,
         contentPromptChars: _ncLatency.contentPromptChars,
         voiceDirectivesChars: _ncLatency.voiceDirectivesChars,
-        totalContextChars: 0,
-        totalContextTokens: 0,
+        totalContextChars: systemInstruction.length + (userDataContext ? userDataContext.length : 0) + _ncLatency.previousCallContextChars,
+        totalContextTokens: Math.round((systemInstruction.length + (userDataContext ? userDataContext.length : 0) + _ncLatency.previousCallContextChars) / 4),
         previousConversationsCount: _ncLatency.previousConversationsCount,
         previousConversationsDbRows: _ncLatency.previousConversationsDbRows,
         geminiFirstResponseTime: 0,
@@ -5443,6 +5443,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             console.log(`   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
             
+            latencyTracker.chunksSendStartTime = Date.now();
+            
             if (liveApiBackend === 'google_ai_studio') {
               // 🔵 Google AI Studio: camelCase clientContent
               // ⚠️ LIMIT: Send only first 4 chunks to test (~30K tokens)
@@ -5482,8 +5484,11 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               geminiSession.send(JSON.stringify(primerMessage));
               latencyTracker.primerSentTime = Date.now();
               latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
+              latencyTracker.chunksCount = chunksToSend;
+              latencyTracker.chunksSendEndTime = Date.now();
               console.log(`\n   🎯 Primer chunk sent - ${primerContent.length} chars (~${primerTokens} tokens)`);
               console.log(`   ${shouldSpeakFirst ? '⏳ turnComplete: false (greeting message will trigger response)' : '✅ turnComplete: true (AI waits for client)'}`);
+              console.log(`⏱️ [LATENCY] Chunks send: start=${latencyTracker.chunksSendStartTime - latencyTracker.wsArrivalTime}ms, end=${latencyTracker.chunksSendEndTime - latencyTracker.wsArrivalTime}ms, duration=${latencyTracker.chunksSendEndTime - latencyTracker.chunksSendStartTime}ms, count=${latencyTracker.chunksCount}`);
             } else {
               // 🟢 Vertex AI: same chunked approach (already working)
               for (let i = 0; i < chunks.length; i++) {
@@ -5514,8 +5519,11 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               geminiSession.send(JSON.stringify(primerMessage));
               latencyTracker.primerSentTime = Date.now();
               latencyTracker.chunksSentTime = latencyTracker.primerSentTime;
+              latencyTracker.chunksCount = chunks.length;
+              latencyTracker.chunksSendEndTime = Date.now();
               console.log(`\n   🎯 Primer chunk sent - ${primerContent.length} chars (~${primerTokens} tokens)`);
               console.log(`   ${shouldSpeakFirst ? '⏳ turnComplete: false (greeting message will trigger response)' : '✅ turnComplete: true (AI waits for client)'}`);
+              console.log(`⏱️ [LATENCY] Chunks send: start=${latencyTracker.chunksSendStartTime - latencyTracker.wsArrivalTime}ms, end=${latencyTracker.chunksSendEndTime - latencyTracker.wsArrivalTime}ms, duration=${latencyTracker.chunksSendEndTime - latencyTracker.chunksSendStartTime}ms, count=${latencyTracker.chunksCount}`);
             }
             
             console.log(`⏱️ [LATENCY] All chunks + primer sent: +${latencyTracker.primerSentTime - latencyTracker.setupSentTime}ms from setup sent, total: +${latencyTracker.primerSentTime - latencyTracker.wsConnectionTime}ms`);
