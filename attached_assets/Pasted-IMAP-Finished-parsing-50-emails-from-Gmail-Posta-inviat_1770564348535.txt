@@ -1,0 +1,178 @@
+IMAP] Finished parsing 50 emails from "[Gmail]/Posta inviata"
+[EMAIL-HUB AUTO] Fetched 50 emails from [Gmail]/Posta inviata (sent)
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+3:22:38 PM [express] GET /api/ai-autonomy/tasks 304 in 340ms :: {"tasks":[],"total":0,"page":1,"limi…
+[AI-AUTONOMY] Failed to parse AI response: ```json
+{
+  "task_category": "analysis",
+  "priority
+3:22:39 PM [express] POST /api/ai-autonomy/tasks/analyze 200 in 3388ms :: {"success":true,"suggestio…
+3:22:43 PM [express] GET /api/ai-autonomy/tasks 304 in 340ms :: {"tasks":[],"total":0,"page":1,"limi…
+3:22:46 PM [express] POST /api/activity/session/heartbeat 200 in 346ms :: {"success":true,"lastActiv…
+[IMAP] Opened folder "[Gmail]/Bozze": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Bozze (drafts)
+3:22:47 PM [express] POST /api/ai-autonomy/tasks 201 in 454ms :: {"success":true,"task":{"id":"task_…
+[IMAP] Opened folder "[Gmail]/Cestino": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from [Gmail]/Cestino (trash)
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP IDLE] Inbox opened for 1bc25001-c420-461a-9468-c1a3e3f2c531, last UID: 59
+[IMAP IDLE] Started IDLE for account 1bc25001-c420-461a-9468-c1a3e3f2c531
+[EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+3:22:47 PM [express] GET /api/ai-autonomy/tasks 200 in 335ms :: {"tasks":[{"id":"task_1770564166964_…
+3:22:47 PM [express] GET /api/ai-autonomy/tasks-stats 200 in 334ms :: {"total":1,"active":1,"complet…
+3:22:47 PM [express] GET /api/ai-autonomy/tasks 200 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+3:22:49 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 457ms :: {"task":…
+🧠 [AI-AUTONOMY] Task task_1770564166964_00qdn33f has no execution plan, generating via Decision Engine...
+3:22:51 PM [express] POST /api/ai-autonomy/tasks/task_1770564166964_00qdn33f/execute 200 in 459ms ::…
+🧠 [DECISION-ENGINE] Generating execution plan for task task_1770564166964_00qdn33f (MANUAL)
+🧠 [DECISION-ENGINE] Building context for consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, contact=7e40b56c-2cc8-4515-b843-dc105e478f38
+🧠 [DECISION-ENGINE] Context built: contact=Giusy Dattilo, tasks=1, activities=15
+3:22:51 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 449ms :: {"task":…
+3:22:53 PM [express] GET /api/ai-autonomy/tasks 200 in 337ms :: {"tasks":[{"id":"task_1770564166964_…
+3:22:54 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 449ms :: {"task":…
+3:22:57 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 448ms :: {"task":…
+3:22:58 PM [express] GET /api/ai-autonomy/activity 200 in 341ms :: {"activities":[{"id":"0717022d-b9…
+3:22:58 PM [express] GET /api/ai-autonomy/tasks 304 in 337ms :: {"tasks":[{"id":"task_1770564166964_…
+3:22:59 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 0e44c353)
+🤖 [AI-SCHEDULER] Processing AI tasks...
+🤖 [AI-SCHEDULER] No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+🧠 [DECISION-ENGINE] Decision for task task_1770564166964_00qdn33f: execute=true, confidence=1, steps=7
+3:23:02 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 452ms :: {"task":…
+🧠 [AI-AUTONOMY] Generated 7-step plan for task task_1770564166964_00qdn33f (confidence: 1)
+🧠 [AI-AUTONOMY] Executing step 1/7: fetch_client_data
+⚙️ [TASK-EXECUTOR] Executing step 1: fetch_client_data - Recupera i dati anagrafici e le informazioni di base su Giusy Dattilo per avere un quadro iniziale della sua situazione.
+⚙️ [TASK-EXECUTOR] Fetching client data for contact_id=7e40b56c-2cc8-4515-b843-dc105e478f38, phone=1009
+⚙️ [TASK-EXECUTOR] Client data fetched: contact=found, recent_tasks=1
+⚙️ [TASK-EXECUTOR] Step 1 (fetch_client_data) completed in 224ms
+⚠️ [AI-SCHEDULER] Failed to log activity: value too long for type character varying(30)
+✅ [AI-AUTONOMY] Step 1/7 completed in 224ms
+🧠 [AI-AUTONOMY] Executing step 2/7: search_private_stores
+⚙️ [TASK-EXECUTOR] Executing step 2: search_private_stores - Cerca nei documenti privati del cliente e del consulente (consulenze passate, esercizi, knowledge base) per approfondire la situazione specifica di Giusy Dattilo e identificare eventuali esigenze o contesti rilevanti per le campagne marketing.
+⚙️ [TASK-EXECUTOR] Searching private stores for consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, contact=7e40b56c-2cc8-4515-b843-dc105e478f38
+🔍 [FileSearch] getStoreNamesForClient - ClientId: 7e40b56c-2cc8-4515-b843-dc105e478f38, ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 2 stores: Private Store - Client 7e40b56c (client), Knowledge Base Consulente (consultant)
+🔍 [FileSearch] getConsultantOwnStores - ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 1 consultant-only stores: Knowledge Base Consulente
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+3:23:04 PM [express] GET /api/ai-autonomy/tasks 200 in 342ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:04 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 456ms :: {"task":…
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+✅ [FileSearch] Store name valid: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+3:23:07 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 453ms :: {"task":…
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+3:23:09 PM [express] GET /api/ai-autonomy/tasks 304 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:10 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:23:12 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 453ms :: {"task":…
+3:23:15 PM [express] GET /api/ai-autonomy/tasks 304 in 338ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:15 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 454ms :: {"task":…
+3:23:18 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 456ms :: {"task":…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+3:23:20 PM [express] GET /api/ai-autonomy/tasks 304 in 338ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:20 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 455ms :: {"task":…
+3:23:23 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 455ms :: {"task":…
+3:23:26 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 455ms :: {"task":…
+3:23:26 PM [express] GET /api/ai-autonomy/tasks 304 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:28 PM [express] GET /api/ai-autonomy/activity 200 in 345ms :: {"activities":[{"id":"57ae225b-16…
+3:23:28 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 455ms :: {"task":…
+3:23:31 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 460ms :: {"task":…
+3:23:31 PM [express] GET /api/ai-autonomy/tasks 304 in 347ms :: {"tasks":[{"id":"task_1770564166964_…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+3:23:33 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 457ms :: {"task":…
+3:23:36 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 455ms :: {"task":…
+3:23:37 PM [express] GET /api/ai-autonomy/tasks 304 in 344ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:39 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 456ms :: {"task":…
+3:23:41 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 456ms :: {"task":…
+3:23:42 PM [express] GET /api/ai-autonomy/tasks 304 in 343ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:44 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 460ms :: {"task":…
+3:23:47 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 455ms :: {"task":…
+3:23:48 PM [express] GET /api/ai-autonomy/tasks 304 in 343ms :: {"tasks":[{"id":"task_1770564166964_…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⚙️ [TASK-EXECUTOR] File search response length: 7534
+⚙️ [TASK-EXECUTOR] File search completed: 40 citations from 2 stores
+⚙️ [TASK-EXECUTOR] Step 2 (search_private_stores) completed in 45809ms
+⚠️ [AI-SCHEDULER] Failed to log activity: value too long for type character varying(30)
+✅ [AI-AUTONOMY] Step 2/7 completed in 45809ms
+🧠 [AI-AUTONOMY] Executing step 3/7: analyze_patterns
+⚙️ [TASK-EXECUTOR] Executing step 3: analyze_patterns - Analizza i dati raccolti da 'fetch_client_data' e 'search_private_stores' per identificare pattern, esigenze specifiche, punti di forza e debolezza di Giusy Dattilo che possano influenzare l'efficacia delle future campagne marketing. Questo passo è cruciale per 'capire la situazione'.
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+3:23:49 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 486ms :: {"task":…
+3:23:52 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 449ms :: {"task":…
+3:23:53 PM [express] GET /api/ai-autonomy/tasks 200 in 341ms :: {"tasks":[{"id":"task_1770564166964_…
+3:23:54 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:23:57 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:23:58 PM [express] GET /api/ai-autonomy/activity 304 in 339ms :: {"activities":[{"id":"57ae225b-16…
+3:23:59 PM [express] GET /api/ai-autonomy/tasks 304 in 340ms :: {"tasks":[{"id":"task_1770564166964_…
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 0e44c353)
+🤖 [AI-SCHEDULER] Processing AI tasks...
+3:24:00 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+🤖 [AI-SCHEDULER] No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+3:24:02 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 449ms :: {"task":…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+3:24:04 PM [express] GET /api/ai-autonomy/tasks 304 in 337ms :: {"tasks":[{"id":"task_1770564166964_…
+3:24:05 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:24:08 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+⚙️ [TASK-EXECUTOR] Gemini analysis response length: 612
+⚙️ [TASK-EXECUTOR] Step 3 (analyze_patterns) completed in 20088ms
+⚠️ [AI-SCHEDULER] Failed to log activity: value too long for type character varying(30)
+✅ [AI-AUTONOMY] Step 3/7 completed in 20088ms
+🧠 [AI-AUTONOMY] Executing step 4/7: web_search
+⚙️ [TASK-EXECUTOR] Executing step 4: web_search - Esegui una ricerca su internet per trovare informazioni aggiornate e best practice su come creare campagne marketing efficaci, tenendo conto del contesto e delle esigenze identificate per Giusy Dattilo.
+⚙️ [TASK-EXECUTOR] Esecuzione ricerca web: "Voglio che analizzi la situazione di giusy d'attilo, e una volta che hai capito la situazione, crei un report per come creare delle campagne marketng efficaci per la prossima volta che ci vediamo, dopo aver fatto una ricerca su internet, e poi mi chiami e me lo spieghi anche a voce"
+3:24:10 PM [express] GET /api/ai-autonomy/tasks 200 in 337ms :: {"tasks":[{"id":"task_1770564166964_…
+3:24:11 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 1128ms :: {"task"…
+3:24:14 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 447ms :: {"task":…
+3:24:15 PM [express] GET /api/ai-autonomy/tasks 304 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+⚙️ [TASK-EXECUTOR] Risposta ricerca web, lunghezza: 1769
+⚙️ [TASK-EXECUTOR] Ricerca web completata: 0 fonti trovate, 0 query eseguite
+⚙️ [TASK-EXECUTOR] Step 4 (web_search) completed in 6398ms
+✅ [AI-AUTONOMY] Step 4/7 completed in 6398ms
+🧠 [AI-AUTONOMY] Executing step 5/7: generate_report
+3:24:16 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 452ms :: {"task":…
+⚙️ [TASK-EXECUTOR] Executing step 5: generate_report - Crea un report dettagliato che sintetizzi l'analisi della situazione di Giusy Dattilo e le strategie di marketing efficaci identificate tramite la ricerca web. Il report dovrà fornire raccomandazioni concrete per le prossime campagne.
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+3:24:19 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 450ms :: {"task":…
+3:24:21 PM [express] GET /api/ai-autonomy/tasks 200 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+3:24:21 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:24:24 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:24:26 PM [express] GET /api/ai-autonomy/tasks 304 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+3:24:27 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 450ms :: {"task":…
+3:24:28 PM [express] GET /api/ai-autonomy/activity 200 in 342ms :: {"activities":[{"id":"8356d011-68…
+3:24:29 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:24:32 PM [express] GET /api/ai-autonomy/tasks 304 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+3:24:32 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⚙️ [TASK-EXECUTOR] Gemini report response length: 622
+⚙️ [TASK-EXECUTOR] Step 5 (generate_report) completed in 17361ms
+✅ [AI-AUTONOMY] Step 5/7 completed in 17361ms
+🧠 [AI-AUTONOMY] Executing step 6/7: prepare_call
+⚙️ [TASK-EXECUTOR] Executing step 6: prepare_call - Prepara uno script e il contesto per la chiamata vocale al consulente, riassumendo i punti chiave del report e le raccomandazioni per le campagne marketing di Giusy Dattilo.
+3:24:35 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 456ms :: {"task":…
+3:24:37 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 450ms :: {"task":…
+3:24:37 PM [express] GET /api/ai-autonomy/tasks 200 in 337ms :: {"tasks":[{"id":"task_1770564166964_…
+3:24:40 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+3:24:42 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 452ms :: {"task":…
+3:24:43 PM [express] GET /api/ai-autonomy/tasks 304 in 339ms :: {"tasks":[{"id":"task_1770564166964_…
+3:24:45 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 450ms :: {"task":…
+3:24:48 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 304 in 451ms :: {"task":…
+⚙️ [TASK-EXECUTOR] Gemini call prep response length: 5093
+⚙️ [TASK-EXECUTOR] Step 6 (prepare_call) completed in 14106ms
+✅ [AI-AUTONOMY] Step 6/7 completed in 14106ms
+🧠 [AI-AUTONOMY] Executing step 7/7: voice_call
+⚙️ [TASK-EXECUTOR] Executing step 7: voice_call - Effettua una chiamata vocale al consulente per spiegare a voce l'analisi della situazione di Giusy Dattilo e le raccomandazioni contenute nel report sulle campagne marketing efficaci.
+⚙️ [TASK-EXECUTOR] Creating scheduled voice call sc_1770564288841_zk5sg5scy for task task_1770564166964_00qdn33f
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+3:24:48 PM [express] GET /api/ai-autonomy/tasks 200 in 337ms :: {"tasks":[{"id":"task_1770564166964_…
+⚙️ [TASK-EXECUTOR] Created child task task_1770564288965_1ltltru with voice_call_id sc_1770564288841_zk5sg5scy
+⚙️ [TASK-EXECUTOR] Step 7 (voice_call) completed in 240ms
+✅ [AI-AUTONOMY] Step 7/7 completed in 240ms
+✅ [AI-AUTONOMY] Manual task execution task_1770564166964_00qdn33f completed (7 steps)
+3:24:50 PM [express] GET /api/ai-autonomy/tasks/task_1770564166964_00qdn33f 200 in 673ms :: {"task":…
+3:24:54 PM [express] GET /api/ai-autonomy/tasks 200 in 338ms :: {"tasks":[],"total":0,"page":1,"limi…
+3:24:58 PM [express] GET /api/ai-autonomy/activity 200 in 338ms :: {"activities":[{"id":"c50ca412-87…
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 0e44c353)
+🤖 [AI-SCHEDULER] Processing AI tasks...
+3:25:00 PM [express] GET /api/ai-autonomy/tasks 304 in 661ms :: {"tas
