@@ -107,6 +107,10 @@ export async function executeStep(
       enrichedDescription = `Chiamata preparata: ${result.talking_points?.length || 0} punti di discussione. Priorità: ${result.call_priority || 'N/A'}. Durata stimata: ${result.call_duration_estimate_minutes || 'N/A'} min.`;
     } else if (step.action === 'voice_call' && result) {
       enrichedDescription = `Chiamata programmata a ${result.target_phone || 'N/A'}. ID: ${result.call_id || 'N/A'}. Status: ${result.status || 'N/A'}.`;
+    } else if (step.action === 'send_email' && result) {
+      enrichedDescription = `Email ${result.status === 'sent' ? 'inviata' : result.status === 'skipped' ? 'saltata' : 'fallita'} a ${result.recipient || task.contact_name || 'N/A'}. ${result.subject ? `Oggetto: "${result.subject}"` : ''} ${result.has_attachment ? 'Con PDF allegato.' : ''}`;
+    } else if (step.action === 'send_whatsapp' && result) {
+      enrichedDescription = `WhatsApp ${result.status === 'sent' ? 'inviato' : result.status === 'skipped' ? 'saltato' : 'fallito'} a ${result.target_phone || task.contact_name || 'N/A'}. ${result.message_preview ? `"${result.message_preview}"` : ''}`;
     }
 
     await logActivity(task.consultant_id, {
@@ -474,6 +478,8 @@ async function handleGenerateReport(
 
   const prompt = `Sei un assistente AI senior. Genera un report COMPLETO, DETTAGLIATO e APPROFONDITO basato sull'analisi seguente, adattandoti al contesto specifico del cliente e della sua attività.
 
+Hai carta bianca sulla struttura del report se le sezioni personalizzate sono fornite. L'obiettivo è creare il report più utile possibile per il consulente.
+
 IMPORTANTE: Il report deve essere esaustivo e ricco di dettagli. Ogni sezione deve contenere almeno 200 caratteri di contenuto. Includi dati specifici, citazioni dai documenti privati, e raccomandazioni operative concrete.
 
 === ANALISI COMPLETA ===
@@ -485,14 +491,16 @@ ${privateStoreSection}
 === ISTRUZIONE ORIGINALE ===
 ${task.ai_instruction}
 
-STRUTTURA DEL REPORT - Includi TUTTE le seguenti sezioni:
+${_step.params?.custom_sections && Array.isArray(_step.params.custom_sections) && _step.params.custom_sections.length > 0
+  ? `STRUTTURA PERSONALIZZATA DEL REPORT - Usa queste sezioni:\n${_step.params.custom_sections.map((s: string, i: number) => `${i+1}. ${s}`).join('\n')}`
+  : `STRUTTURA DEL REPORT - Includi TUTTE le seguenti sezioni:
 1. Panoramica Cliente - Background completo, situazione attuale, contesto
 2. Analisi della Situazione - Dettagli approfonditi su cosa emerge dai dati
 3. Punti di Forza e Debolezza - Con esempi specifici dai documenti
 4. Pattern e Tendenze - Comportamenti ricorrenti, trend osservati
 5. Valutazione del Rischio - Analisi dettagliata dei fattori di rischio
 6. Piano d'Azione - Raccomandazioni operative concrete e prioritizzate
-7. Prossimi Passi - Azioni immediate con timeline suggerita
+7. Prossimi Passi - Azioni immediate con timeline suggerita`}
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 {
@@ -596,7 +604,10 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     }
   ],
   "call_duration_estimate_minutes": 5,
-  "call_priority": "high|medium|low"
+  "call_priority": "high|medium|low",
+  "preferred_call_time": "HH:MM",
+  "preferred_call_date": "YYYY-MM-DD",
+  "timing_reasoning": "spiegazione del perché questo orario è ottimale"
 }`;
 
   const apiKey = await getGeminiApiKeyForClassifier();
@@ -617,7 +628,14 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (_step.params?.preferred_time && !parsed.preferred_call_time) {
+        parsed.preferred_call_time = _step.params.preferred_time;
+      }
+      if (_step.params?.preferred_date && !parsed.preferred_call_date) {
+        parsed.preferred_call_date = _step.params.preferred_date;
+      }
+      return parsed;
     }
   } catch (parseError: any) {
     console.warn(`${LOG_PREFIX} Failed to parse call prep JSON, returning raw text`);
@@ -637,6 +655,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     objection_responses: [],
     call_duration_estimate_minutes: 5,
     call_priority: "medium",
+    preferred_call_time: _step.params?.preferred_time || null,
+    preferred_call_date: _step.params?.preferred_date || null,
     raw_response: text,
   };
 }
@@ -659,6 +679,20 @@ async function handleVoiceCall(
 
   const scheduledCallId = generateScheduledCallId();
 
+  const preferredDate = callPrep.preferred_call_date || _step.params?.preferred_date;
+  const preferredTime = callPrep.preferred_call_time || _step.params?.preferred_time;
+  let scheduledAtSql = sql`NOW()`;
+
+  if (preferredDate && preferredTime) {
+    const dateTimeStr = `${preferredDate} ${preferredTime}:00`;
+    scheduledAtSql = sql`${dateTimeStr}::timestamp AT TIME ZONE 'Europe/Rome'`;
+    console.log(`${LOG_PREFIX} Scheduling call at preferred time: ${dateTimeStr} (Europe/Rome)`);
+  } else if (preferredDate) {
+    const dateTimeStr = `${preferredDate} 10:00:00`;
+    scheduledAtSql = sql`${dateTimeStr}::timestamp AT TIME ZONE 'Europe/Rome'`;
+    console.log(`${LOG_PREFIX} Scheduling call at preferred date: ${preferredDate} 10:00 (Europe/Rome)`);
+  }
+
   console.log(`${LOG_PREFIX} Creating scheduled voice call ${scheduledCallId} for task ${task.id}`);
 
   await db.execute(sql`
@@ -668,7 +702,7 @@ async function handleVoiceCall(
       priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
     ) VALUES (
       ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone},
-      NOW(), 'scheduled', 'assistenza',
+      ${scheduledAtSql}, 'scheduled', 'assistenza',
       ${customPrompt}, ${customPrompt},
       'task', 0, 3,
       ${task.priority || 1}, ${task.id}, '[]'::jsonb, true, NOW(), NOW()
@@ -687,7 +721,7 @@ async function handleVoiceCall(
     ) VALUES (
       ${childTaskId}, ${task.consultant_id}, ${task.contact_phone},
       ${task.contact_name}, 'single_call', ${customPrompt},
-      NOW(), ${task.timezone || "Europe/Rome"}, 'scheduled', ${task.priority || 1}, ${task.id},
+      ${scheduledAtSql}, ${task.timezone || "Europe/Rome"}, 'scheduled', ${task.priority || 1}, ${task.id},
       ${task.contact_id}, ${task.task_category}, ${scheduledCallId},
       3, 0, 5,
       NOW(), NOW()
@@ -702,7 +736,55 @@ async function handleVoiceCall(
     target_phone: task.contact_phone,
     custom_prompt: customPrompt,
     status: "scheduled",
+    scheduled_at: preferredDate && preferredTime ? `${preferredDate} ${preferredTime}` : "now",
   };
+}
+
+function generateServerPdfContent(report: any, analysis: any, task: AITaskInfo): string {
+  const lines: string[] = [];
+  lines.push(`═══════════════════════════════════════`);
+  lines.push(report.title || 'Report AI');
+  lines.push(`Cliente: ${task.contact_name || 'N/A'}`);
+  lines.push(`Data: ${new Date().toLocaleDateString('it-IT')}`);
+  lines.push(`═══════════════════════════════════════\n`);
+
+  if (report.summary) {
+    lines.push(`RIEPILOGO`);
+    lines.push(report.summary);
+    lines.push('');
+  }
+
+  if (report.sections && Array.isArray(report.sections)) {
+    for (const section of report.sections) {
+      lines.push(`\n--- ${section.heading} ---`);
+      lines.push(section.content);
+    }
+  }
+
+  if (report.key_findings && Array.isArray(report.key_findings)) {
+    lines.push(`\n--- Risultati Chiave ---`);
+    for (const f of report.key_findings) {
+      lines.push(`• ${f}`);
+    }
+  }
+
+  if (report.recommendations && Array.isArray(report.recommendations)) {
+    lines.push(`\n--- Raccomandazioni ---`);
+    for (const r of report.recommendations) {
+      const priority = r.priority === 'high' ? '[ALTA]' : r.priority === 'medium' ? '[MEDIA]' : '[BASSA]';
+      lines.push(`${priority} ${r.action}`);
+      if (r.rationale) lines.push(`  → ${r.rationale}`);
+    }
+  }
+
+  if (report.next_steps && Array.isArray(report.next_steps)) {
+    lines.push(`\n--- Prossimi Passi ---`);
+    report.next_steps.forEach((s: string, i: number) => {
+      lines.push(`${i+1}. ${s}`);
+    });
+  }
+
+  return lines.join('\n');
 }
 
 async function handleSendEmail(
@@ -710,33 +792,128 @@ async function handleSendEmail(
   _step: ExecutionStep,
   previousResults: Record<string, any>,
 ): Promise<Record<string, any>> {
-  console.log(`${LOG_PREFIX} [PLACEHOLDER] Email send requested for task ${task.id} to ${task.contact_name || task.contact_phone}`);
-
+  const clientData = previousResults.fetch_client_data || {};
   const reportData = previousResults.generate_report || {};
   const analysisData = previousResults.analyze_patterns || {};
+  const contactEmail = clientData.contact?.email;
 
-  await logActivity(task.consultant_id, {
-    event_type: "send_email",
-    title: `Email pianificata per ${task.contact_name || task.contact_phone}`,
-    description: `Placeholder - integrazione email prevista in Phase 4. Categoria: ${task.task_category}`,
-    icon: "📧",
-    severity: "info",
-    task_id: task.id,
-    contact_name: task.contact_name,
-    contact_id: task.contact_id,
-    event_data: {
-      report_title: reportData.title,
-      key_findings_count: (reportData.key_findings || []).length,
-      engagement_score: analysisData.engagement_score,
-    },
-  });
+  if (!contactEmail) {
+    return { status: "skipped", reason: "Nessun indirizzo email disponibile per il contatto" };
+  }
 
-  return {
-    status: "placeholder",
-    message: "Email integration coming in Phase 4",
-    intended_recipient: task.contact_name || task.contact_phone,
-    task_category: task.task_category,
-  };
+  const smtpResult = await db.execute(sql`
+    SELECT smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
+    FROM email_accounts
+    WHERE consultant_id = ${task.consultant_id} AND smtp_host IS NOT NULL
+    LIMIT 1
+  `);
+
+  if (smtpResult.rows.length === 0) {
+    return { status: "skipped", reason: "Nessun account email SMTP configurato per il consulente" };
+  }
+
+  const smtpConfig = smtpResult.rows[0] as any;
+
+  const emailSubject = _step.params?.subject || `Report: ${reportData.title || task.task_category}`;
+  let emailBody = _step.params?.message_summary || "";
+
+  if (!emailBody) {
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (apiKey) {
+      const ai = new GoogleGenAI({ apiKey });
+      const emailPrompt = `Scrivi un'email BREVE (massimo 3-4 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
+Contesto: ${task.ai_instruction}
+${reportData.title ? `Report allegato: "${reportData.title}"` : ''}
+${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 200)}` : ''}
+NON scrivere un papiro. Il dettaglio è nel PDF allegato. Scrivi solo il corpo dell'email (senza oggetto, senza "Gentile..." all'inizio, inizia direttamente con il contenuto).`;
+
+      const resp = await withRetry(() => ai.models.generateContent({
+        model: GEMINI_LEGACY_MODEL,
+        contents: [{ role: "user", parts: [{ text: emailPrompt }] }],
+        config: { temperature: 0.4, maxOutputTokens: 512 },
+      }));
+      emailBody = resp.text || "";
+    }
+  }
+
+  const htmlBody = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <p>Gentile ${task.contact_name || 'Cliente'},</p>
+    <p>${emailBody.replace(/\n/g, '</p><p>')}</p>
+    ${reportData.title ? '<p><em>In allegato trova il report dettagliato.</em></p>' : ''}
+    <p>Cordiali saluti</p>
+  </div>`;
+
+  let attachments: any[] = [];
+  if (reportData && reportData.title) {
+    const pdfContent = generateServerPdfContent(reportData, analysisData, task);
+    attachments.push({
+      filename: `report_${(task.contact_name || 'cliente').replace(/[^a-zA-Z0-9]/g, '_')}.txt`,
+      content: pdfContent,
+    });
+  }
+
+  try {
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.smtp_host,
+      port: smtpConfig.smtp_port || 587,
+      secure: (smtpConfig.smtp_port || 587) === 465,
+      auth: { user: smtpConfig.smtp_user, pass: smtpConfig.smtp_password },
+      tls: { rejectUnauthorized: false },
+    });
+
+    const mailOptions: any = {
+      from: smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address,
+      to: contactEmail,
+      subject: emailSubject,
+      html: htmlBody,
+    };
+
+    if (attachments.length > 0) {
+      mailOptions.attachments = attachments;
+    }
+
+    const sendResult = await transporter.sendMail(mailOptions);
+
+    await logActivity(task.consultant_id, {
+      event_type: "email_sent",
+      title: `Email inviata a ${task.contact_name || contactEmail}`,
+      description: `Oggetto: "${emailSubject}". ${attachments.length > 0 ? 'Report allegato.' : 'Senza allegati.'}`,
+      icon: "📧",
+      severity: "info",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+
+    return {
+      status: "sent",
+      message_id: sendResult.messageId,
+      recipient: contactEmail,
+      subject: emailSubject,
+      has_attachment: attachments.length > 0,
+    };
+  } catch (error: any) {
+    console.error(`${LOG_PREFIX} Email send failed:`, error.message);
+
+    await logActivity(task.consultant_id, {
+      event_type: "email_failed",
+      title: `Email fallita per ${task.contact_name || contactEmail}`,
+      description: error.message,
+      icon: "❌",
+      severity: "error",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+
+    return {
+      status: "failed",
+      error: error.message,
+      recipient: contactEmail,
+      subject: emailSubject,
+    };
+  }
 }
 
 async function handleSendWhatsapp(
@@ -744,34 +921,78 @@ async function handleSendWhatsapp(
   _step: ExecutionStep,
   previousResults: Record<string, any>,
 ): Promise<Record<string, any>> {
-  console.log(`${LOG_PREFIX} [PLACEHOLDER] WhatsApp send requested for task ${task.id} to ${task.contact_name || task.contact_phone}`);
-
   const reportData = previousResults.generate_report || {};
-  const analysisData = previousResults.analyze_patterns || {};
 
-  await logActivity(task.consultant_id, {
-    event_type: "send_whatsapp",
-    title: `WhatsApp pianificato per ${task.contact_name || task.contact_phone}`,
-    description: `Placeholder - integrazione WhatsApp prevista in Phase 4. Categoria: ${task.task_category}`,
-    icon: "💬",
-    severity: "info",
-    task_id: task.id,
-    contact_name: task.contact_name,
-    contact_id: task.contact_id,
-    event_data: {
-      report_title: reportData.title,
-      key_findings_count: (reportData.key_findings || []).length,
-      engagement_score: analysisData.engagement_score,
-    },
-  });
+  if (!task.contact_phone) {
+    return { status: "skipped", reason: "Nessun numero di telefono disponibile" };
+  }
 
-  return {
-    status: "placeholder",
-    message: "WhatsApp integration coming in Phase 4",
-    intended_recipient: task.contact_name || task.contact_phone,
-    target_phone: task.contact_phone,
-    task_category: task.task_category,
-  };
+  let messageText = _step.params?.message_summary || "";
+
+  if (!messageText) {
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (apiKey) {
+      const ai = new GoogleGenAI({ apiKey });
+      const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${task.contact_name || 'il cliente'}.
+Contesto: ${task.ai_instruction}
+${reportData.title ? `Report preparato: "${reportData.title}"` : ''}
+${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 150)}` : ''}
+NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report, menziona che lo riceverà via email.`;
+
+      const resp = await withRetry(() => ai.models.generateContent({
+        model: GEMINI_LEGACY_MODEL,
+        contents: [{ role: "user", parts: [{ text: whatsappPrompt }] }],
+        config: { temperature: 0.5, maxOutputTokens: 256 },
+      }));
+      messageText = resp.text || `Buongiorno ${task.contact_name || ''}, la contatto per aggiornarla.`;
+    }
+  }
+
+  try {
+    const { sendWhatsAppMessage } = await import('../whatsapp/twilio-client');
+    const messageSid = await sendWhatsAppMessage(
+      task.consultant_id,
+      task.contact_phone,
+      messageText,
+    );
+
+    await logActivity(task.consultant_id, {
+      event_type: "whatsapp_sent",
+      title: `WhatsApp inviato a ${task.contact_name || task.contact_phone}`,
+      description: `Messaggio: "${messageText.substring(0, 100)}..."`,
+      icon: "💬",
+      severity: "info",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+
+    return {
+      status: "sent",
+      message_sid: messageSid,
+      target_phone: task.contact_phone,
+      message_preview: messageText.substring(0, 100),
+    };
+  } catch (error: any) {
+    console.error(`${LOG_PREFIX} WhatsApp send failed:`, error.message);
+
+    await logActivity(task.consultant_id, {
+      event_type: "whatsapp_failed",
+      title: `WhatsApp fallito per ${task.contact_name || task.contact_phone}`,
+      description: error.message,
+      icon: "❌",
+      severity: "error",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+
+    return {
+      status: "failed",
+      error: error.message,
+      target_phone: task.contact_phone,
+    };
+  }
 }
 
 async function handleWebSearch(
@@ -779,10 +1000,14 @@ async function handleWebSearch(
   step: ExecutionStep,
   previousResults: Record<string, any>,
 ): Promise<Record<string, any>> {
-  let searchQuery = step.params?.search_query || task.ai_instruction || "ricerca generica";
+  let searchQuery = step.params?.search_topic || step.params?.search_query || "";
   const analysisData = previousResults.analyze_patterns || {};
   const clientData = previousResults.fetch_client_data || {};
   const contactName = task.contact_name || clientData.contact?.first_name || "N/A";
+
+  if (!searchQuery || searchQuery.length < 10) {
+    searchQuery = task.ai_instruction || "ricerca generica";
+  }
 
   if (searchQuery.length > 100) {
     console.log(`${LOG_PREFIX} Search query too long (${searchQuery.length} chars), generating focused queries with Gemini`);

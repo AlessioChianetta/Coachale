@@ -480,14 +480,14 @@ AZIONI INTERNE (sempre disponibili, non richiedono canali di comunicazione):
 - "fetch_client_data": Recupera dati aggiuntivi sul cliente dal database
 - "search_private_stores": Cerca nei documenti privati del cliente e del consulente (consulenze, esercizi, knowledge base, libreria) usando ricerca semantica AI
 - "analyze_patterns": Analizza pattern e storico interazioni
-- "generate_report": Genera un report scritto o analisi dettagliata
-- "web_search": Cerca informazioni aggiornate su internet (normative, mercati, notizie, trend finanziari)
+- "generate_report": Genera un report scritto dettagliato. La struttura predefinita include: Panoramica Cliente, Analisi Situazione, Punti di Forza/Debolezza, Pattern, Rischio, Piano d'Azione, Prossimi Passi. Tuttavia, puoi specificare una struttura personalizzata tramite il parametro "custom_sections" (array di titoli sezione) se l'obiettivo del task richiede una struttura diversa.
+- "web_search": Cerca informazioni aggiornate su internet su un ARGOMENTO SPECIFICO. Specifica sempre il parametro "search_topic" con l'argomento preciso da ricercare (es. "strategie marketing massoterapia sportiva", "normative fiscali partita IVA 2026"). NON fare ricerche generiche.
 
 AZIONI DI COMUNICAZIONE (richiedono canale abilitato E contatto valido):
-- "prepare_call": Prepara script e contesto per una chiamata (richiede canale "voice" e numero di telefono valido)
-- "voice_call": Effettua una chiamata vocale (richiede canale "voice" e numero di telefono valido)
-- "send_email": Invia un'email (richiede canale "email" e indirizzo email valido)
-- "send_whatsapp": Invia un messaggio WhatsApp (richiede canale "whatsapp" e numero di telefono valido)
+- "prepare_call": Prepara script e contesto per una chiamata E decide l'orario migliore per effettuarla. Specifica il parametro "preferred_time" (formato HH:MM) e "preferred_date" (formato YYYY-MM-DD) basandoti sul contesto del cliente e l'urgenza del task.
+- "voice_call": Effettua una chiamata vocale. L'AI decide autonomamente il contenuto della chiamata in base alla situazione: può spiegare, dare consigli, far fare azioni al cliente, etc. La chiamata è flessibile e adattata al contesto.
+- "send_email": Invia un'email al cliente. Scrivi un messaggio BREVE e professionale. Se è disponibile un report, viene allegato come PDF. Specifica parametro "subject" per l'oggetto e "message_summary" per il contenuto (max 3-4 frasi).
+- "send_whatsapp": Invia un messaggio WhatsApp al cliente. Scrivi un messaggio BREVE (max 2-3 frasi). Se è disponibile un report, viene allegato il PDF. Specifica parametro "message_summary".
 
 REGOLE:
 1. Le azioni INTERNE sono SEMPRE disponibili indipendentemente dai canali abilitati
@@ -500,6 +500,9 @@ REGOLE:
 8. Evita azioni duplicate o ridondanti rispetto ai task recenti
 9. Se l'istruzione chiede esplicitamente un report o un'analisi, genera il report come documento scritto tramite generate_report, NON tramite chiamata
 10. Per task che riguardano un contatto specifico, USA SEMPRE "search_private_stores" dopo "fetch_client_data" per arricchire il contesto con documenti privati (consulenze, esercizi, KB)
+11. Per web_search, specifica SEMPRE un "search_topic" specifico nel params - non usare l'istruzione generica del task
+12. Per prepare_call, specifica SEMPRE "preferred_time" e "preferred_date" nel params
+13. Per send_email e send_whatsapp, specifica "subject" (solo email) e "message_summary" nel params - i messaggi devono essere BREVI, il dettaglio è nel PDF allegato
 
 Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 {

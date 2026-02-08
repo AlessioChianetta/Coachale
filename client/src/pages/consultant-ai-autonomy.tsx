@@ -647,22 +647,29 @@ async function generateTaskPDF(task: AITask) {
 
   if (webSearch && typeof webSearch === 'object') {
     checkPageBreak(15);
+    const webSearchY = y;
+    const boxHeight = (webSearch.findings ? 25 : 8) + (webSearch.sources?.length || 0) * 8;
+    doc.setFillColor(240, 245, 255);
+    doc.rect(margin - 2, webSearchY - 3, contentWidth + 4, boxHeight, 'F');
+    doc.setDrawColor(100, 150, 200);
+    doc.setLineWidth(0.5);
+    doc.line(margin, webSearchY + boxHeight - 5, margin + contentWidth, webSearchY + boxHeight - 5);
     addText('Ricerca Web', 13, { bold: true, color: [30, 30, 130] });
-    addSpacer(2);
+    addSpacer(3);
     if (webSearch.findings) {
-      addText(webSearch.findings, 10, { color: [80, 80, 80], lineHeight: 4.5 });
-      addSpacer(4);
+      addText(webSearch.findings, 10.5, { color: [80, 80, 80], lineHeight: 5 });
+      addSpacer(5);
     }
     if (webSearch.sources && Array.isArray(webSearch.sources) && webSearch.sources.length > 0) {
-      addText('Fonti:', 10, { bold: true, color: [40, 40, 40] });
+      addText('Fonti:', 11, { bold: true, color: [40, 40, 40] });
       addSpacer(2);
       for (const source of webSearch.sources) {
         checkPageBreak(6);
-        addText(`• ${source.title || source.url}`, 9, { color: [40, 80, 160] });
+        addText(`• ${source.title || source.url}`, 10, { color: [40, 80, 160] });
         if (source.url && source.title) {
-          addText(`  ${source.url}`, 8, { color: [120, 120, 120] });
+          addText(`  ${source.url}`, 9, { color: [120, 120, 120] });
         }
-        addSpacer(1);
+        addSpacer(3);
       }
       addSpacer(4);
     }
@@ -725,41 +732,6 @@ async function generateTaskPDF(task: AITask) {
         addText(`• ${typeof rec === 'string' ? rec : rec.action || JSON.stringify(rec)}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
         addSpacer(1);
       }
-      addSpacer(4);
-    }
-  }
-
-  if (callPrep && typeof callPrep === 'object') {
-    checkPageBreak(15);
-    addText('Preparazione Chiamata', 13, { bold: true, color: [30, 30, 130] });
-    addSpacer(2);
-
-    if (callPrep.opening_script) {
-      addText('Apertura:', 10, { bold: true });
-      addSpacer(1);
-      addText(callPrep.opening_script, 10, { color: [80, 80, 80], lineHeight: 4.5 });
-      addSpacer(4);
-    }
-
-    if (callPrep.talking_points && Array.isArray(callPrep.talking_points)) {
-      addText('Punti di Discussione:', 10, { bold: true });
-      addSpacer(2);
-      for (const tp of callPrep.talking_points) {
-        checkPageBreak(12);
-        addText(`• ${tp.topic}`, 10, { bold: true, color: [40, 40, 40] });
-        addText(tp.key_message, 9, { color: [80, 80, 80], lineHeight: 4 });
-        if (tp.supporting_details) {
-          addText(tp.supporting_details, 8, { color: [120, 120, 120], lineHeight: 3.5 });
-        }
-        addSpacer(2);
-      }
-      addSpacer(4);
-    }
-
-    if (callPrep.closing_script) {
-      addText('Chiusura:', 10, { bold: true });
-      addSpacer(1);
-      addText(callPrep.closing_script, 10, { color: [80, 80, 80], lineHeight: 4.5 });
       addSpacer(4);
     }
   }
