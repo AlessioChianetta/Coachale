@@ -1044,6 +1044,7 @@ export default function ConsultantAIAutonomyPage() {
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardStatusFilter, setDashboardStatusFilter] = useState<string>("all");
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>("all");
+  const [dashboardOriginFilter, setDashboardOriginFilter] = useState<string>("all");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showMobileChat, setShowMobileChat] = useState(false);
@@ -1258,7 +1259,7 @@ export default function ConsultantAIAutonomyPage() {
     enabled: activeTab === "dashboard",
   });
 
-  const tasksUrl = `/api/ai-autonomy/tasks?page=${dashboardPage}&limit=10${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}`;
+  const tasksUrl = `/api/ai-autonomy/tasks?page=${dashboardPage}&limit=10${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}${dashboardOriginFilter !== "all" ? `&origin=${dashboardOriginFilter}` : ""}`;
   const { data: tasksData, isLoading: loadingTasks } = useQuery<TasksResponse>({
     queryKey: [tasksUrl],
     queryFn: async () => {
@@ -2661,6 +2662,16 @@ export default function ConsultantAIAutonomyPage() {
                       <SelectItem value="monitoring">Monitoraggio</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={dashboardOriginFilter} onValueChange={(val) => { setDashboardOriginFilter(val); setDashboardPage(1); }}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Origine" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti</SelectItem>
+                      <SelectItem value="manual">Manuali</SelectItem>
+                      <SelectItem value="autonomous">Autonomi (AI)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {loadingTasks ? (
@@ -2699,6 +2710,12 @@ export default function ConsultantAIAutonomyPage() {
                                 {getTaskStatusBadge(task.status)}
                                 {getCategoryBadge(task.task_category)}
                                 {getPriorityIndicator(task.priority)}
+                                {task.origin_type === 'autonomous' && (
+                                  <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-xs">
+                                    <Sparkles className="h-3 w-3 mr-1" />
+                                    AI Autonomo
+                                  </Badge>
+                                )}
                               </div>
                               <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">

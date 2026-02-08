@@ -402,6 +402,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     const offset = (page - 1) * limit;
     const statusFilter = req.query.status as string | undefined;
     const categoryFilter = req.query.category as string | undefined;
+    const originFilter = req.query.origin as string | undefined;
 
     let conditions = [sql`consultant_id = ${consultantId}`, sql`task_type = 'ai_task'`];
     if (statusFilter && statusFilter !== 'all') {
@@ -415,6 +416,9 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (categoryFilter && categoryFilter !== 'all') {
       conditions.push(sql`task_category = ${categoryFilter}`);
+    }
+    if (originFilter && originFilter !== 'all') {
+      conditions.push(sql`origin_type = ${originFilter}`);
     }
 
     const whereClause = sql.join(conditions, sql` AND `);
