@@ -390,6 +390,14 @@ export async function generateExecutionPlan(task: {
   ai_instruction?: string;
   task_category?: string;
   priority?: number;
+  preferred_channel?: string | null;
+  tone?: string | null;
+  urgency?: string | null;
+  scheduled_datetime?: string | null;
+  objective?: string | null;
+  additional_context?: string | null;
+  voice_template_suggestion?: string | null;
+  language?: string | null;
 }, options?: { isManual?: boolean }): Promise<DecisionResult> {
   console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}`);
 
@@ -432,6 +440,14 @@ CONTESTO TASK:
 - Categoria: ${task.task_category || "generico"}
 - Priorità: ${task.priority ?? 3}/5
 - Istruzione AI: "${task.ai_instruction || "Nessuna istruzione specifica"}"
+- Canale preferito: ${task.preferred_channel || "nessuno"}
+- Tono richiesto: ${task.tone || "professionale"}
+- Urgenza: ${task.urgency || "normale"}
+- Obiettivo: ${task.objective || "informare"}
+- Lingua: ${task.language || "it"}
+${task.additional_context ? `- Contesto aggiuntivo: "${task.additional_context}"` : ""}
+${task.voice_template_suggestion ? `- Template vocale suggerito: ${task.voice_template_suggestion}` : ""}
+${task.scheduled_datetime ? `- Data/ora programmata: ${task.scheduled_datetime}` : ""}
 
 CONTATTO:
 - Nome: ${task.contact_name || context.contact?.name || "Sconosciuto"}

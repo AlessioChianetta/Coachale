@@ -7,6 +7,7 @@ import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-fac
 import { generateExecutionPlan, type ExecutionStep } from "../ai/autonomous-decision-engine";
 import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
 import { logActivity } from "../cron/ai-task-scheduler";
+import { getTemplatesByDirection } from '../voice/voice-templates';
 
 const router = Router();
 
@@ -203,6 +204,135 @@ router.post("/activity/read-all", authenticateToken, requireAnyRole(["consultant
   }
 });
 
+router.post("/tasks/analyze", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { ai_instruction } = req.body;
+    if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
+      return res.status(400).json({ error: "ai_instruction is required" });
+    }
+
+    const clientsResult = await db.execute(sql`
+      SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number, u.is_active
+      FROM users u
+      JOIN user_role_profiles urp ON u.id = urp.user_id
+      WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client'
+      ORDER BY u.first_name
+    `);
+    const clients = clientsResult.rows;
+
+    const outboundTemplates = getTemplatesByDirection('outbound');
+    const templateOptions = outboundTemplates.map(t => ({ id: t.id, name: t.name, description: t.shortDescription || t.description }));
+
+    const settingsResult = await db.execute(sql`
+      SELECT channels_enabled, allowed_task_categories FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const settings = settingsResult.rows[0] as any || {};
+    const channelsEnabled = settings?.channels_enabled || { voice: true, email: false, whatsapp: false };
+
+    const clientNames = clients.map((c: any) => `${c.first_name} ${c.last_name} (ID: ${c.id})`).join('\n');
+    const templateList = templateOptions.map(t => `${t.id}: ${t.name} - ${t.description}`).join('\n');
+    const enabledChannels = Object.entries(channelsEnabled).filter(([_, v]) => v).map(([k]) => k).join(', ');
+
+    const prompt = `Sei un assistente AI per consulenti finanziari italiani. Analizza questa istruzione e suggerisci i campi del task.
+
+ISTRUZIONE: "${ai_instruction.trim()}"
+
+CLIENTI DISPONIBILI:
+${clientNames || 'Nessun cliente registrato'}
+
+TEMPLATE VOCALI DISPONIBILI:
+${templateList}
+
+CANALI ABILITATI: ${enabledChannels}
+
+CATEGORIE VALIDE: outreach, reminder, followup, analysis, report, research, preparation, monitoring
+
+Rispondi SOLO con un JSON valido (no markdown, no backticks):
+{
+  "task_category": "una delle categorie valide",
+  "priority": numero 1-4 (1=alta, 4=bassa),
+  "client_id": "UUID del cliente se menzionato nel testo, altrimenti null",
+  "client_name": "Nome Cognome se trovato, altrimenti null",
+  "contact_phone": "numero telefono se menzionato, altrimenti null",
+  "preferred_channel": "voice|email|whatsapp|none",
+  "tone": "formale|informale|empatico|professionale|persuasivo",
+  "urgency": "immediata|oggi|settimana|programmata|normale",
+  "objective": "informare|vendere|fidelizzare|raccogliere_info|supporto|followup",
+  "voice_template_suggestion": "ID template se canale è voice, altrimenti null",
+  "language": "it|en",
+  "reasoning": "breve spiegazione delle scelte fatte"
+}`;
+
+    const { GoogleGenAI } = await import("@google/genai");
+    const { getGeminiApiKeyForClassifier, GEMINI_LEGACY_MODEL } = await import("../ai/provider-factory");
+
+    const apiKey = await getGeminiApiKeyForClassifier();
+    const genAI = new GoogleGenAI({ apiKey });
+
+    const result = await genAI.models.generateContent({
+      model: GEMINI_LEGACY_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 500,
+      }
+    });
+
+    const responseText = result.text?.trim() || '';
+
+    let parsed;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found");
+      }
+    } catch (parseErr) {
+      console.error("[AI-AUTONOMY] Failed to parse AI response:", responseText);
+      return res.status(200).json({
+        success: true,
+        suggestions: {
+          task_category: "analysis",
+          priority: 3,
+          preferred_channel: "none",
+          tone: "professionale",
+          urgency: "normale",
+          objective: "informare",
+          language: "it",
+          reasoning: "Analisi automatica non riuscita, valori predefiniti applicati"
+        }
+      });
+    }
+
+    if (parsed.client_id) {
+      const clientExists = clients.some((c: any) => c.id === parsed.client_id);
+      if (!clientExists) {
+        parsed.client_id = null;
+        parsed.client_name = null;
+      }
+    }
+
+    if (parsed.client_id) {
+      const matchedClient = clients.find((c: any) => c.id === parsed.client_id) as any;
+      if (matchedClient && !parsed.contact_phone) {
+        parsed.contact_phone = matchedClient.phone_number || null;
+      }
+      if (matchedClient && !parsed.client_name) {
+        parsed.client_name = `${matchedClient.first_name} ${matchedClient.last_name}`;
+      }
+    }
+
+    return res.json({ success: true, suggestions: parsed });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error analyzing task:", error);
+    return res.status(500).json({ error: "Failed to analyze task" });
+  }
+});
+
 router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
@@ -210,7 +340,7 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { ai_instruction, task_category, priority, contact_name, contact_phone, client_id } = req.body;
+    const { ai_instruction, task_category, priority, contact_name, contact_phone, client_id, preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language } = req.body;
 
     if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
       return res.status(400).json({ error: "ai_instruction is required" });
@@ -243,10 +373,12 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
     const result = await db.execute(sql`
       INSERT INTO ai_scheduled_tasks (
         id, consultant_id, task_type, task_category, ai_instruction, status,
-        scheduled_at, timezone, origin_type, priority, contact_name, contact_phone, contact_id
+        scheduled_at, timezone, origin_type, priority, contact_name, contact_phone, contact_id,
+        preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language
       ) VALUES (
         ${taskId}, ${consultantId}, 'ai_task', ${task_category}, ${ai_instruction.trim()}, 'scheduled',
-        NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${sanitizedPhone}, ${client_id || null}
+        NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${sanitizedPhone || ''}, ${client_id || null},
+        ${preferred_channel || null}, ${tone || null}, ${urgency || 'normal'}, ${scheduled_datetime ? new Date(scheduled_datetime) : null}, ${objective || null}, ${additional_context || null}, ${voice_template_suggestion || null}, ${language || 'it'}
       )
       RETURNING *
     `);
@@ -618,6 +750,14 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
             ai_instruction: task.ai_instruction,
             task_category: task.task_category,
             priority: task.priority,
+            preferred_channel: task.preferred_channel,
+            tone: task.tone,
+            urgency: task.urgency,
+            scheduled_datetime: task.scheduled_datetime,
+            objective: task.objective,
+            additional_context: task.additional_context,
+            voice_template_suggestion: task.voice_template_suggestion,
+            language: task.language,
           }, { isManual: true });
 
           if (!decision.should_execute) {

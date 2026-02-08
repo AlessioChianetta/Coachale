@@ -516,6 +516,14 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         ai_instruction: task.ai_instruction,
         task_category: task.task_category,
         priority: task.priority,
+        preferred_channel: task.preferred_channel,
+        tone: task.tone,
+        urgency: task.urgency,
+        scheduled_datetime: task.scheduled_datetime,
+        objective: task.objective,
+        additional_context: task.additional_context,
+        voice_template_suggestion: task.voice_template_suggestion,
+        language: task.language,
       });
       
       if (!decision.should_execute) {

@@ -9978,6 +9978,16 @@ export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
   callAfterTask: boolean("call_after_task").default(false),
   postActions: jsonb("post_actions").$type<any[]>().default(sql`'[]'::jsonb`),
   attemptsLog: jsonb("attempts_log").$type<any[]>().default(sql`'[]'::jsonb`),
+  
+  // Enhanced task fields (AI auto-fill)
+  preferredChannel: varchar("preferred_channel", { length: 20 }),
+  tone: varchar("tone", { length: 30 }),
+  urgency: varchar("urgency", { length: 20 }).default("normal"),
+  scheduledDatetime: timestamp("scheduled_datetime", { withTimezone: true }),
+  objective: varchar("objective", { length: 50 }),
+  additionalContext: text("additional_context"),
+  voiceTemplateSuggestion: varchar("voice_template_suggestion", { length: 50 }),
+  language: varchar("language", { length: 10 }).default("it"),
 }, (table) => ({
   consultantIdx: index("idx_ai_tasks_consultant").on(table.consultantId),
   statusIdx: index("idx_ai_tasks_status").on(table.status),

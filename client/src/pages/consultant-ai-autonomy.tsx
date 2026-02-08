@@ -488,7 +488,12 @@ export default function ConsultantAIAutonomyPage() {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
-  const [newTask, setNewTask] = useState({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "" });
+  const [newTask, setNewTask] = useState({
+    ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "",
+    preferred_channel: "", tone: "", urgency: "normale", scheduled_datetime: "", objective: "", additional_context: "", voice_template_suggestion: "", language: "it"
+  });
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiSuggested, setAiSuggested] = useState(false);
   const [clientSearchFilter, setClientSearchFilter] = useState("");
 
   const queryClient = useQueryClient();
@@ -619,7 +624,8 @@ export default function ConsultantAIAutonomyPage() {
     onSuccess: () => {
       toast({ title: "Task creato", description: "Il task è stato programmato per l'esecuzione" });
       setShowCreateTask(false);
-      setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "" });
+      setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "", preferred_channel: "", tone: "", urgency: "normale", scheduled_datetime: "", objective: "", additional_context: "", voice_template_suggestion: "", language: "it" });
+      setAiSuggested(false);
       setClientSearchFilter("");
       queryClient.invalidateQueries({ queryKey: [tasksUrl] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
@@ -629,6 +635,45 @@ export default function ConsultantAIAutonomyPage() {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
     },
   });
+
+  const analyzeWithAI = async () => {
+    if (!newTask.ai_instruction.trim()) return;
+    setAiAnalyzing(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/tasks/analyze", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ ai_instruction: newTask.ai_instruction }),
+      });
+      if (!res.ok) throw new Error("Analisi fallita");
+      const data = await res.json();
+      if (data.success && data.suggestions) {
+        const s = data.suggestions;
+        setNewTask(prev => ({
+          ...prev,
+          task_category: s.task_category || prev.task_category,
+          priority: s.priority || prev.priority,
+          client_id: s.client_id || prev.client_id,
+          contact_name: s.client_name || s.contact_name || prev.contact_name,
+          contact_phone: s.contact_phone || prev.contact_phone,
+          preferred_channel: s.preferred_channel && s.preferred_channel !== "none" ? s.preferred_channel : prev.preferred_channel,
+          tone: s.tone || prev.tone,
+          urgency: s.urgency || prev.urgency,
+          objective: s.objective || prev.objective,
+          voice_template_suggestion: s.voice_template_suggestion || prev.voice_template_suggestion,
+          language: s.language || prev.language,
+          additional_context: s.additional_context || prev.additional_context,
+          scheduled_datetime: s.scheduled_datetime || prev.scheduled_datetime,
+        }));
+        setAiSuggested(true);
+        toast({ title: "Analisi completata", description: s.reasoning || "Campi compilati dall'AI" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore analisi", description: err.message, variant: "destructive" });
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
 
   const { data: activeTasks } = useQuery<AITask[]>({
     queryKey: ["/api/ai-autonomy/active-tasks"],
@@ -1522,24 +1567,44 @@ export default function ConsultantAIAutonomyPage() {
                             </Button>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-5">
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">Istruzioni per l'AI</Label>
                             <Textarea
-                              placeholder="Descrivi cosa deve fare l'AI... es: Analizza il portafoglio del cliente Mario Rossi e prepara un report sulle performance"
+                              placeholder="Descrivi cosa deve fare l'AI... es: Chiama Mario Rossi per ricordargli la scadenza del portafoglio"
                               value={newTask.ai_instruction}
-                              onChange={(e) => setNewTask(prev => ({ ...prev, ai_instruction: e.target.value }))}
+                              onChange={(e) => { setNewTask(prev => ({ ...prev, ai_instruction: e.target.value })); setAiSuggested(false); }}
                               rows={3}
                               className="resize-none"
                             />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={analyzeWithAI}
+                              disabled={!newTask.ai_instruction.trim() || aiAnalyzing}
+                              className="gap-2 border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
+                            >
+                              {aiAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                              {aiAnalyzing ? "Analisi in corso..." : "Analizza con AI"}
+                            </Button>
                           </div>
+
+                          {aiSuggested && (
+                            <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 bg-purple-500/10 rounded-lg px-3 py-2 border border-purple-500/20">
+                              <Sparkles className="h-3.5 w-3.5" />
+                              <span>Campi compilati dall'AI — puoi modificarli prima di creare il task</span>
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Categoria</Label>
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Categoria
+                                {aiSuggested && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
                               <Select value={newTask.task_category} onValueChange={(v) => setNewTask(prev => ({ ...prev, task_category: v }))}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   {TASK_CATEGORIES.map(cat => (
                                     <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
@@ -1548,11 +1613,12 @@ export default function ConsultantAIAutonomyPage() {
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Priorità</Label>
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Priorità
+                                {aiSuggested && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
                               <Select value={String(newTask.priority)} onValueChange={(v) => setNewTask(prev => ({ ...prev, priority: parseInt(v) }))}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="1">Alta</SelectItem>
                                   <SelectItem value="2">Media-Alta</SelectItem>
@@ -1562,9 +1628,113 @@ export default function ConsultantAIAutonomyPage() {
                               </Select>
                             </div>
                           </div>
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Cliente <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Canale preferito
+                                {aiSuggested && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
+                              <Select value={newTask.preferred_channel || "none"} onValueChange={(v) => setNewTask(prev => ({ ...prev, preferred_channel: v === "none" ? "" : v }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Nessun canale specifico</SelectItem>
+                                  <SelectItem value="voice">Voce (Chiamata)</SelectItem>
+                                  <SelectItem value="email">Email</SelectItem>
+                                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Tono
+                                {aiSuggested && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
+                              <Select value={newTask.tone || "professionale"} onValueChange={(v) => setNewTask(prev => ({ ...prev, tone: v }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="formale">Formale</SelectItem>
+                                  <SelectItem value="informale">Informale</SelectItem>
+                                  <SelectItem value="empatico">Empatico</SelectItem>
+                                  <SelectItem value="professionale">Professionale</SelectItem>
+                                  <SelectItem value="persuasivo">Persuasivo</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Urgenza
+                                {aiSuggested && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
+                              <Select value={newTask.urgency || "normale"} onValueChange={(v) => setNewTask(prev => ({ ...prev, urgency: v }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="immediata">Immediata</SelectItem>
+                                  <SelectItem value="oggi">Entro oggi</SelectItem>
+                                  <SelectItem value="settimana">Entro questa settimana</SelectItem>
+                                  <SelectItem value="programmata">Programmata (data specifica)</SelectItem>
+                                  <SelectItem value="normale">Normale</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Obiettivo
+                                {aiSuggested && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
+                              <Select value={newTask.objective || "informare"} onValueChange={(v) => setNewTask(prev => ({ ...prev, objective: v }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="informare">Informare</SelectItem>
+                                  <SelectItem value="vendere">Vendere / Proporre</SelectItem>
+                                  <SelectItem value="fidelizzare">Fidelizzare</SelectItem>
+                                  <SelectItem value="raccogliere_info">Raccogliere Informazioni</SelectItem>
+                                  <SelectItem value="supporto">Supporto</SelectItem>
+                                  <SelectItem value="followup">Follow-up Generico</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {newTask.urgency === "programmata" && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Data e ora programmata</Label>
+                              <Input
+                                type="datetime-local"
+                                value={newTask.scheduled_datetime}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, scheduled_datetime: e.target.value }))}
+                              />
+                            </div>
+                          )}
+
+                          {newTask.preferred_channel === "voice" && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Template Vocale
+                                {aiSuggested && newTask.voice_template_suggestion && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
+                              <Select value={newTask.voice_template_suggestion || "__none__"} onValueChange={(v) => setNewTask(prev => ({ ...prev, voice_template_suggestion: v === "__none__" ? "" : v }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">Nessun template specifico</SelectItem>
+                                  <SelectItem value="sales-orbitale">Sales Call Orbitale</SelectItem>
+                                  <SelectItem value="follow-up-lead">Follow-up Lead</SelectItem>
+                                  <SelectItem value="recupero-crediti">Recupero Crediti</SelectItem>
+                                  <SelectItem value="check-in-cliente">Check-in Cliente</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium flex items-center gap-1.5">
+                                Cliente <span className="text-muted-foreground font-normal">(opzionale)</span>
+                                {aiSuggested && newTask.client_id && <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30 text-[9px] px-1 py-0">AI</Badge>}
+                              </Label>
                               <Select
                                 value={newTask.client_id}
                                 onValueChange={(v) => {
@@ -1646,44 +1816,51 @@ export default function ConsultantAIAutonomyPage() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            {newTask.client_id && (
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Telefono <span className="text-muted-foreground font-normal">(modificabile)</span></Label>
-                                <Input
-                                  placeholder="es: +39 333 1234567"
-                                  value={newTask.contact_phone}
-                                  onChange={(e) => {
-                                    const val = e.target.value.replace(/[^0-9+\s\-()]/g, '');
-                                    setNewTask(prev => ({ ...prev, contact_phone: val }));
-                                  }}
-                                  className={cn("h-9 text-sm", newTask.contact_phone && !/^\+?[0-9\s\-()]{7,20}$/.test(newTask.contact_phone) && "border-red-500 focus-visible:ring-red-500")}
-                                  type="tel"
-                                />
-                                {newTask.contact_phone && !/^\+?[0-9\s\-()]{7,20}$/.test(newTask.contact_phone) && (
-                                  <p className="text-xs text-red-500">Formato non valido. Usa il formato: +39 333 1234567</p>
-                                )}
-                              </div>
-                            )}
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Telefono <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                              <Input
+                                placeholder="es: +39 333 1234567"
+                                value={newTask.contact_phone}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9+\s\-()]/g, '');
+                                  setNewTask(prev => ({ ...prev, contact_phone: val }));
+                                }}
+                                className={cn("h-9 text-sm", newTask.contact_phone && !/^\+?[0-9\s\-()]{7,20}$/.test(newTask.contact_phone) && "border-red-500 focus-visible:ring-red-500")}
+                                type="tel"
+                              />
+                              {newTask.contact_phone && !/^\+?[0-9\s\-()]{7,20}$/.test(newTask.contact_phone) && (
+                                <p className="text-xs text-red-500">Formato non valido. Usa il formato: +39 333 1234567</p>
+                              )}
+                            </div>
                           </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Contesto aggiuntivo <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                            <Textarea
+                              placeholder="Note o contesto extra per l'AI... es: Il cliente ha mostrato interesse per i fondi pensione nell'ultima call"
+                              value={newTask.additional_context}
+                              onChange={(e) => setNewTask(prev => ({ ...prev, additional_context: e.target.value }))}
+                              rows={2}
+                              className="resize-none"
+                            />
+                          </div>
+
                           <div className="flex items-center gap-3 pt-2">
                             <Button
                               onClick={() => createTaskMutation.mutate(newTask)}
                               disabled={!newTask.ai_instruction.trim() || createTaskMutation.isPending}
                               className="gap-2"
                             >
-                              {createTaskMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Plus className="h-4 w-4" />
-                              )}
+                              {createTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                               Crea Task
                             </Button>
                             <Button
                               variant="outline"
                               onClick={() => {
                                 setShowCreateTask(false);
-                                setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "" });
+                                setNewTask({ ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "", preferred_channel: "", tone: "", urgency: "normale", scheduled_datetime: "", objective: "", additional_context: "", voice_template_suggestion: "", language: "it" });
                                 setClientSearchFilter("");
+                                setAiSuggested(false);
                               }}
                             >
                               Annulla
