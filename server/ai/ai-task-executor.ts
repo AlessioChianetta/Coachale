@@ -236,8 +236,8 @@ async function handleSearchPrivateStores(
   }
 
   try {
-    const consultantStores = await fileSearchService.getStoreNamesForGeneration(task.consultant_id, 'consultant');
-    storeNames.push(...consultantStores);
+    const consultantOwnStores = await fileSearchService.getConsultantOwnStores(task.consultant_id);
+    storeNames.push(...consultantOwnStores);
   } catch (err: any) {
     console.warn(`${LOG_PREFIX} Failed to get consultant stores: ${err.message}`);
   }

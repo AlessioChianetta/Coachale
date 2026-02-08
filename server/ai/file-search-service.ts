@@ -1409,6 +1409,36 @@ export class FileSearchService {
     return uniqueStoreNames;
   }
 
+  async getConsultantOwnStores(consultantId: string): Promise<string[]> {
+    const conditions = [];
+
+    conditions.push(
+      and(
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchStores.ownerType, 'consultant'),
+        eq(fileSearchStores.isActive, true)
+      )
+    );
+
+    conditions.push(
+      and(
+        eq(fileSearchStores.ownerType, 'system'),
+        eq(fileSearchStores.isActive, true)
+      )
+    );
+
+    const stores = await db.query.fileSearchStores.findMany({
+      where: or(...conditions),
+    });
+
+    const uniqueStoreNames = [...new Set(stores.map(store => store.googleStoreName))];
+
+    console.log(`🔍 [FileSearch] getConsultantOwnStores - ConsultantId: ${consultantId}`);
+    console.log(`   📦 Found ${uniqueStoreNames.length} consultant-only stores: ${stores.map(s => s.displayName).join(', ') || 'nessuno'}`);
+
+    return uniqueStoreNames;
+  }
+
   /**
    * Get detailed breakdown of stores and documents for AI generation logging
    * Returns store names + detailed category breakdown for console output

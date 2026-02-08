@@ -1,0 +1,47 @@
+ [TASK-EXECUTOR] Client data fetched: contact=found, recent_tasks=1
+⚙️ [TASK-EXECUTOR] Step 1 (fetch_client_data) completed in 204ms
+⚠️ [AI-SCHEDULER] Failed to log activity: value too long for type character varying(30)
+✅ [AI-AUTONOMY] Step 1/4 completed in 204ms
+🧠 [AI-AUTONOMY] Executing step 2/4: search_private_stores
+⚙️ [TASK-EXECUTOR] Executing step 2: search_private_stores - Cerca nei documenti privati del cliente e del consulente (consulenze passate, note, preferenze, storico interazioni) per personalizzare il check-in e renderlo più rilevante ed empatico, come richiesto dal tono.
+⚙️ [TASK-EXECUTOR] Searching private stores for consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, contact=7e40b56c-2cc8-4515-b843-dc105e478f38
+🔍 [FileSearch] getStoreNamesForClient - ClientId: 7e40b56c-2cc8-4515-b843-dc105e478f38, ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 2 stores: Private Store - Client 7e40b56c (client), Knowledge Base Consulente (consultant)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔐 [FileSearch] Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - including 38 client private stores
+🔍 [FileSearch] getStoreNamesForGeneration - Role: consultant, UserId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, ConsultantId: N/A
+   📦 Found 25 unique stores: Private Store - Client ad0f878c, Private Store - Client 8a7f6b63, Private Store - Client 788725fc, Private Store - Client b7f1ee28, Private Store - Client 65eefa26, Private Store - Client cf9405d3, Private Store - Client 42105c6d, Private Store - Client c806e79d, Private Store - Client bc1dec4d, Private Store - Client 10de931f, Private Store - Client 7cdfb7ae, Private Store - Client 19ed2469, Private Store - Client fded8db5, Private Store - Client c2146759, Private Store - Client 7e40b56c, Private Store - Client 14503a6f, Private Store - Client bb4dac3d, Private Store - Client eecd97d5, Private Store - Client 31773fa8, Private Store - Client bc754af6, Private Store - Client f39648c5, Private Store - Client e9c37790, Private Store - Client 4fa4606c, Private Store - Client 117d8d1c, Knowledge Base Consulente
+1:11:15 AM [express] GET /api/ai-autonomy/tasks/task_1770513059584_yfblf84z 200 in 398ms :: {"task":…
+1:11:17 AM [express] GET /api/ai-autonomy/tasks 200 in 905ms :: {"tasks":[{"id":"task_1770513059584_…
+1:11:17 AM [express] GET /api/ai-autonomy/tasks/task_1770513059584_yfblf84z 304 in 401ms :: {"task":…
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+✅ [FileSearch] Store name valid: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-ad0f87-dnhdfau02on6
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-8a7f6b-r0u8xyz6uyn9
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-788725-f7zo7oh9vncj
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-b7f1ee-u7mdfx98q04t
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-65eefa-chhplr8ynbv3
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-cf9405-z4iffq4s5jjt
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-42105c-hzg7ixgbosa5
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-c806e7-l4oskp60v5l2
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-bc1dec-r426ef884pbg
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-10de93-12u68aqqaoog
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-7cdfb7-eunl6qmu9tp2
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-19ed24-7vc3z6n39pxe
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-fded8d-q7pqcmifh53q
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-c21467-1jkj76fczn2k
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-14503a-ei00gzehmifk
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-bb4dac-ycuo0nbtir8m
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-eecd97-l19ucyzg5zka
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-31773f-kqpcl74jnazs
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-bc754a-87ffhh5lixa6
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-f39648-d3vfhqadd03c
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-e9c377-0qubcpy51a0r
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-4fa460-vg2goz9ixl4r
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-117d8d-cok7k88r049j
+⚠️ [FileSearch] Limiting stores from 25 to 5 (Google API limit)
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+1:11:20 AM [express] GET /api/ai-autonomy/activity 200 in 303ms :: {"activities":[{"id":"ef74d5df-25…
+1:11:20 AM [express] GET /api/ai-autonomy/tasks/task_1770513059584_yfblf84z 200 in 400ms :: {"task":…
+1:11:22 AM [express] GET /api/ai-autonomy/tasks/task_1770513059584_yfblf84z 304 in 401ms :: {"task":…
+1:11:23 AM [express] GET /api/ai-autonomy/tasks 304 in 
