@@ -2294,6 +2294,27 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let userContext: any = null; // Declare here to be accessible throughout the function
       let conversationHistory: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}> = []; // For sales_agent/consultation_invite modes
       let agentBusinessContext: { businessName: string; whatWeDo: string; servicesOffered: string[]; targetClient: string; nonTargetClient: string } | undefined = undefined; // 🆕 Business context per feedback
+      let _ncLatency = {
+        parallelQueriesStartTime: 0,
+        consultantInfoResolvedTime: 0,
+        settingsResolvedTime: 0,
+        previousConversationsResolvedTime: 0,
+        proactiveLeadResolvedTime: 0,
+        brandVoiceResolvedTime: 0,
+        promptBuildDoneTime: 0,
+        previousConversationsCount: 0,
+        previousConversationsDbRows: 0,
+        voiceDirectivesChars: 0,
+        brandVoiceChars: 0,
+        contentPromptChars: 0,
+        previousCallContextChars: 0,
+        isNonClientCall: false,
+        hasInstruction: false,
+        hasCallHistory: false,
+        callDirection: '' as string,
+        promptSource: '' as string,
+        deferredCallHistory: '' as string,
+      };
       
       // 🆕 ARCHETYPE STATE PERSISTENCE - Mantiene lo stato dell'archetipo tra le chiamate al SalesManager
       // Questo risolve il problema di perdita dello stato tra turni di conversazione
@@ -2759,6 +2780,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         // ⚡ PARALLEL OPTIMIZATION: Start all independent queries simultaneously
         // Each query runs in background and is awaited at its original location
         const _ncParallelStart = Date.now();
+        _ncLatency.parallelQueriesStartTime = _ncParallelStart;
+        _ncLatency.isNonClientCall = true;
         
         const _consultantInfoPromise = consultantId 
           ? storage.getUser(consultantId).catch((err: any) => {
@@ -2810,7 +2833,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
                     ) as msg_data
                     FROM ai_messages am
                     WHERE am.conversation_id = ac.id
-                    ORDER BY am.created_at ASC
+                    ORDER BY am.created_at DESC
+                    LIMIT 30
                   ) sub
                 ) as messages
               FROM ai_conversations ac
@@ -2853,6 +2877,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         let consultantName = 'il consulente';
         let consultantBusinessName = '';
         const _consultantResult = await _consultantInfoPromise;
+        _ncLatency.consultantInfoResolvedTime = Date.now();
+        console.log(`⏱️ [NC-LATENCY] consultantInfo resolved: +${_ncLatency.consultantInfoResolvedTime - _ncParallelStart}ms`);
         if (_consultantResult) {
           const fullName = [(_consultantResult as any).firstName, (_consultantResult as any).lastName].filter(Boolean).join(' ').trim();
           consultantName = fullName || (_consultantResult as any).email?.split('@')[0] || 'il consulente';
@@ -2870,6 +2896,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         
         try {
           const proactiveLeadResult = await _proactiveLeadPromise;
+          _ncLatency.proactiveLeadResolvedTime = Date.now();
+          console.log(`⏱️ [NC-LATENCY] proactiveLead resolved: +${_ncLatency.proactiveLeadResolvedTime - _ncParallelStart}ms`);
           if (proactiveLeadResult.rows.length > 0) {
             const lead = proactiveLeadResult.rows[0] as any;
             const leadName = [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim();
@@ -2925,6 +2953,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           let outboundBrandVoiceAgentId: string | null = null;
           
           const settingsResult = await _settingsPromise;
+          _ncLatency.settingsResolvedTime = Date.now();
+          console.log(`⏱️ [NC-LATENCY] settings resolved (instruction path): +${_ncLatency.settingsResolvedTime - _ncParallelStart}ms`);
           if (settingsResult.length > 0) {
             const settings = settingsResult[0] as any;
             if (settings.voiceDirectives) {
@@ -2982,6 +3012,10 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           const instructionTypeLabel = phoneInstructionType === 'task' ? '📋 TASK' : 
                                         phoneInstructionType === 'reminder' ? '⏰ PROMEMORIA' : '🎯 ISTRUZIONE';
           
+          const _instructionBrandVoicePromise = (outboundBrandVoiceEnabled && outboundBrandVoiceAgentId)
+            ? buildBrandVoiceFromAgent(outboundBrandVoiceAgentId)
+            : Promise.resolve('');
+          
           // ⚡ LOAD PREVIOUS CONVERSATIONS (pre-started in parallel)
           const MAX_HISTORY_CHARS = 8000;
           let instructionPreviousCallContext = '';
@@ -2989,6 +3023,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           if (phoneCallerId) {
             try {
               const previousConversations = await _previousConversationsPromise;
+              _ncLatency.previousConversationsResolvedTime = Date.now();
+              _ncLatency.previousConversationsDbRows = previousConversations.rows.length;
+              console.log(`⏱️ [NC-LATENCY] previousConversations resolved (instruction path): +${_ncLatency.previousConversationsResolvedTime - _ncParallelStart}ms (${previousConversations.rows.length} rows)`);
               
               if (previousConversations.rows.length > 0) {
                 instructionHasPreviousConversations = true;
@@ -3113,13 +3150,13 @@ Presentati brevemente e poi vai dritto all'istruzione.
    
 4️⃣ CONFERMA E CHIUDI`;
           
-          // 🏢 Load Brand Voice if enabled for OUTBOUND with instruction
           let outboundInstructionBrandVoiceSection = '';
-          if (outboundBrandVoiceEnabled && outboundBrandVoiceAgentId) {
-            outboundInstructionBrandVoiceSection = await buildBrandVoiceFromAgent(outboundBrandVoiceAgentId);
-            if (outboundInstructionBrandVoiceSection) {
-              console.log(`🏢 [${connectionId}] Brand Voice loaded for OUTBOUND instruction (${outboundInstructionBrandVoiceSection.length} chars)`);
-            }
+          outboundInstructionBrandVoiceSection = await _instructionBrandVoicePromise;
+          if (outboundInstructionBrandVoiceSection) {
+            _ncLatency.brandVoiceResolvedTime = Date.now();
+            _ncLatency.brandVoiceChars = outboundInstructionBrandVoiceSection.length;
+            console.log(`🏢 [${connectionId}] Brand Voice loaded for OUTBOUND instruction (${outboundInstructionBrandVoiceSection.length} chars)`);
+            console.log(`⏱️ [NC-LATENCY] brandVoice resolved (instruction path): +${_ncLatency.brandVoiceResolvedTime - _ncParallelStart}ms`);
           }
           
           // Build prompt with: VOICE DIRECTIVES FIRST + BRAND VOICE + IDENTITY + INSTRUCTION + GREETING + CALL HISTORY
@@ -3166,10 +3203,27 @@ ${leadContactData.leadId ? `
 Una volta che hanno capito e confermato:
 • Chiedere "C'è qualcos'altro di cui hai bisogno?"
 • Se no, saluta cordialmente "Perfetto allora! Buona giornata!"
-• Proponi appuntamento con ${consultantName} solo se appropriato${instructionPreviousCallContext}`;
+• Proponi appuntamento con ${consultantName} solo se appropriato`;
+
+          if (instructionPreviousCallContext) {
+            _ncLatency.deferredCallHistory = instructionPreviousCallContext;
+            console.log(`📚 [${connectionId}] Call history DEFERRED from system_instruction (${instructionPreviousCallContext.length} chars) → will be sent after greeting`);
+          }
+
+          _ncLatency.promptBuildDoneTime = Date.now();
+          _ncLatency.hasInstruction = true;
+          _ncLatency.hasCallHistory = !!instructionPreviousCallContext;
+          _ncLatency.callDirection = 'OUTBOUND';
+          _ncLatency.promptSource = outboundPromptSource;
+          _ncLatency.voiceDirectivesChars = voiceDirectivesSection.length;
+          _ncLatency.contentPromptChars = 0;
+          _ncLatency.previousCallContextChars = instructionPreviousCallContext?.length || 0;
+          _ncLatency.previousConversationsCount = instructionHasPreviousConversations ? _ncLatency.previousConversationsDbRows : 0;
+          console.log(`⏱️ [NC-LATENCY] Prompt build done (instruction path): +${_ncLatency.promptBuildDoneTime - _ncParallelStart}ms`);
+          console.log(`📏 [NC-CONTEXT] Components: voiceDirectives=${_ncLatency.voiceDirectivesChars} | brandVoice=${_ncLatency.brandVoiceChars} | callHistory=${_ncLatency.previousCallContextChars} | TOTAL systemInstruction=${systemInstruction.length} chars (~${Math.round(systemInstruction.length / 4)} tokens)`);
 
           userDataContext = '';
-          console.log(`🎯 [${connectionId}] Instruction prompt built (${systemInstruction.length} chars)${instructionPreviousCallContext ? ' [WITH CALL HISTORY]' : ''}`);
+          console.log(`🎯 [${connectionId}] Instruction prompt built (${systemInstruction.length} chars)${instructionPreviousCallContext ? ' [CALL HISTORY DEFERRED]' : ''}`);
           
           // 🔥 PRINT FULL PROMPT FOR DEBUGGING
           console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -3204,6 +3258,8 @@ Una volta che hanno capito e confermato:
         // ⚡ Await pre-started settings promise (runs in parallel with other queries)
         {
           const settingsResult = await _settingsPromise;
+          _ncLatency.settingsResolvedTime = Date.now();
+          console.log(`⏱️ [NC-LATENCY] settings resolved (non-instruction path): +${_ncLatency.settingsResolvedTime - _ncParallelStart}ms`);
           if (settingsResult.length > 0) {
             const settings = settingsResult[0] as any;
             voiceDirectives = settings.voiceDirectives || '';
@@ -3234,6 +3290,15 @@ Una volta che hanno capito e confermato:
             }
           }
         }
+        
+        const _nonInstructionBrandVoicePromise = (() => {
+          if (isOutbound && outboundBrandVoiceEnabled && outboundBrandVoiceAgentId) {
+            return buildBrandVoiceFromAgent(outboundBrandVoiceAgentId);
+          } else if (!isOutbound && inboundBrandVoiceEnabled && inboundBrandVoiceAgentId) {
+            return buildBrandVoiceFromAgent(inboundBrandVoiceAgentId);
+          }
+          return Promise.resolve('');
+        })();
         
         // Helper to interpolate placeholders (supports both {{mustache}} and ${javascript} styles)
         // Note: This is for DEFAULT prompts only. Agent instructions use their own interpolation.
@@ -3400,6 +3465,9 @@ Non devi rifiutarti di aiutare - dai valore anche senza dati specifici!`;
         if (phoneCallerId) {
           try {
             const previousConversations = await _previousConversationsPromise;
+            _ncLatency.previousConversationsResolvedTime = Date.now();
+            _ncLatency.previousConversationsDbRows = previousConversations.rows.length;
+            console.log(`⏱️ [NC-LATENCY] previousConversations resolved (non-instruction path): +${_ncLatency.previousConversationsResolvedTime - _ncParallelStart}ms (${previousConversations.rows.length} rows)`);
             
             if (previousConversations.rows.length > 0) {
               let historyContent = '';
@@ -3802,18 +3870,13 @@ ${brandVoicePrompt}` : ''}`;
         }
         console.log(`└─────────────────────────────────────────────────────────────────────┘\n`);
         
-        // 🏢 Load Brand Voice if enabled for non-client flow (INBOUND or OUTBOUND)
         let nonClientBrandVoiceSection = '';
-        if (isOutbound && outboundBrandVoiceEnabled && outboundBrandVoiceAgentId) {
-          nonClientBrandVoiceSection = await buildBrandVoiceFromAgent(outboundBrandVoiceAgentId);
-          if (nonClientBrandVoiceSection) {
-            console.log(`🏢 [${connectionId}] Brand Voice loaded for OUTBOUND non-client (${nonClientBrandVoiceSection.length} chars)`);
-          }
-        } else if (!isOutbound && inboundBrandVoiceEnabled && inboundBrandVoiceAgentId) {
-          nonClientBrandVoiceSection = await buildBrandVoiceFromAgent(inboundBrandVoiceAgentId);
-          if (nonClientBrandVoiceSection) {
-            console.log(`🏢 [${connectionId}] Brand Voice loaded for INBOUND non-client (${nonClientBrandVoiceSection.length} chars)`);
-          }
+        nonClientBrandVoiceSection = await _nonInstructionBrandVoicePromise;
+        if (nonClientBrandVoiceSection) {
+          _ncLatency.brandVoiceResolvedTime = Date.now();
+          _ncLatency.brandVoiceChars = nonClientBrandVoiceSection.length;
+          console.log(`🏢 [${connectionId}] Brand Voice loaded for ${isOutbound ? 'OUTBOUND' : 'INBOUND'} non-client (${nonClientBrandVoiceSection.length} chars)`);
+          console.log(`⏱️ [NC-LATENCY] brandVoice resolved (non-instruction path): +${_ncLatency.brandVoiceResolvedTime - _ncParallelStart}ms`);
         }
         
         // 🎯 Direction context - clear indication of who called who
@@ -3862,10 +3925,27 @@ ${directionContext}
 ${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}${callerContactSection}
 📅 Data e ora attuale: ${italianTime} (fuso orario Italia)
 
-${contentPrompt}${previousCallContext ? '\n\n' + previousCallContext : ''}`;
-        
+${contentPrompt}`;
+
+        if (previousCallContext) {
+          _ncLatency.deferredCallHistory = previousCallContext;
+          console.log(`📚 [${connectionId}] Call history DEFERRED from system_instruction (${previousCallContext.length} chars) → will be sent after greeting`);
+        }
+
+        _ncLatency.promptBuildDoneTime = Date.now();
+        _ncLatency.hasInstruction = false;
+        _ncLatency.hasCallHistory = !!previousCallContext;
+        _ncLatency.callDirection = isOutbound ? 'OUTBOUND' : 'INBOUND';
+        _ncLatency.promptSource = promptSource;
+        _ncLatency.voiceDirectivesChars = finalVoiceDirectives.length;
+        _ncLatency.contentPromptChars = contentPrompt.length;
+        _ncLatency.previousCallContextChars = previousCallContext?.length || 0;
+        _ncLatency.previousConversationsCount = previousCallContext ? _ncLatency.previousConversationsDbRows : 0;
+        console.log(`⏱️ [NC-LATENCY] Prompt build done (non-instruction path): +${_ncLatency.promptBuildDoneTime - _ncParallelStart}ms`);
+        console.log(`📏 [NC-CONTEXT] Components: voiceDirectives=${_ncLatency.voiceDirectivesChars} | brandVoice=${_ncLatency.brandVoiceChars} | contentPrompt=${_ncLatency.contentPromptChars} | callHistory=${_ncLatency.previousCallContextChars} | TOTAL systemInstruction=${systemInstruction.length} chars (~${Math.round(systemInstruction.length / 4)} tokens)`);
+
         userDataContext = ''; // No user data for unknown callers
-        console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} non-client prompt built (${systemInstruction.length} chars) - Source: ${promptSource}, Template: ${templateId}${previousCallContext ? ' [WITH CALL HISTORY]' : ''}${nonClientBrandVoiceSection ? ' [WITH BRAND VOICE]' : ''}`);
+        console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} non-client prompt built (${systemInstruction.length} chars) - Source: ${promptSource}, Template: ${templateId}${previousCallContext ? ' [CALL HISTORY DEFERRED]' : ''}${nonClientBrandVoiceSection ? ' [WITH BRAND VOICE]' : ''}`);
         
         // 🔍 DEBUG: Full system prompt for non-client calls
         console.log(`📞 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -4961,6 +5041,34 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         greetingTriggerTime: 0,
         firstAudioByteTime: 0,
         greetingTriggered: false,
+        ncParallelQueriesStartTime: _ncLatency.parallelQueriesStartTime,
+        ncConsultantInfoResolvedTime: _ncLatency.consultantInfoResolvedTime,
+        ncSettingsResolvedTime: _ncLatency.settingsResolvedTime,
+        ncPreviousConversationsResolvedTime: _ncLatency.previousConversationsResolvedTime,
+        ncProactiveLeadResolvedTime: _ncLatency.proactiveLeadResolvedTime,
+        ncBrandVoiceResolvedTime: _ncLatency.brandVoiceResolvedTime,
+        ncPromptBuildDoneTime: _ncLatency.promptBuildDoneTime,
+        systemInstructionChars: systemInstruction.length,
+        systemInstructionTokens: Math.round(systemInstruction.length / 4),
+        previousCallContextChars: _ncLatency.previousCallContextChars,
+        previousCallContextTokens: Math.round(_ncLatency.previousCallContextChars / 4),
+        brandVoiceChars: _ncLatency.brandVoiceChars,
+        contentPromptChars: _ncLatency.contentPromptChars,
+        voiceDirectivesChars: _ncLatency.voiceDirectivesChars,
+        totalContextChars: 0,
+        totalContextTokens: 0,
+        previousConversationsCount: _ncLatency.previousConversationsCount,
+        previousConversationsDbRows: _ncLatency.previousConversationsDbRows,
+        geminiFirstResponseTime: 0,
+        geminiFirstResponseType: '' as string,
+        chunksSendStartTime: 0,
+        chunksSendEndTime: 0,
+        chunksCount: 0,
+        isNonClientCall: _ncLatency.isNonClientCall,
+        hasInstruction: _ncLatency.hasInstruction,
+        hasCallHistory: _ncLatency.hasCallHistory,
+        callDirection: _ncLatency.callDirection as string,
+        promptSource: _ncLatency.promptSource as string,
       };
       
       let pendingChunksSend: (() => void) | null = null;
@@ -5475,6 +5583,25 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
         
         try {
           const response = JSON.parse(data.toString());
+
+          if (latencyTracker.greetingTriggered && latencyTracker.geminiFirstResponseTime === 0) {
+            latencyTracker.geminiFirstResponseTime = Date.now();
+            if (response.setupComplete) {
+              latencyTracker.geminiFirstResponseType = 'setupComplete';
+            } else if (response.serverContent?.modelTurn?.parts) {
+              const parts = response.serverContent.modelTurn.parts;
+              if (parts.some((p: any) => p.inlineData?.data)) {
+                latencyTracker.geminiFirstResponseType = 'audio';
+              } else if (parts.some((p: any) => p.text)) {
+                latencyTracker.geminiFirstResponseType = 'text';
+              } else {
+                latencyTracker.geminiFirstResponseType = 'other_serverContent';
+              }
+            } else {
+              latencyTracker.geminiFirstResponseType = 'other';
+            }
+            console.log(`⏱️ [LATENCY] First Gemini response after greeting: +${latencyTracker.geminiFirstResponseTime - latencyTracker.greetingTriggerTime}ms (type: ${latencyTracker.geminiFirstResponseType})`);
+          }
           // Log ridotto - non logghiamo ogni singolo response, solo eventi importanti
           
           // Setup complete response
@@ -5742,6 +5869,20 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 latencyTracker.greetingTriggered = true;
                 console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode}, backend: ${liveApiBackend})`);
                 console.log(`⏱️ [LATENCY] Greeting trigger sent: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
+
+                if (isPhoneCall && _ncLatency.deferredCallHistory) {
+                  const historyChunk = {
+                    clientContent: {
+                      turns: [{
+                        role: 'user',
+                        parts: [{ text: _ncLatency.deferredCallHistory }]
+                      }],
+                      turnComplete: false
+                    }
+                  };
+                  geminiSession.send(JSON.stringify(historyChunk));
+                  console.log(`📚 [${connectionId}] Deferred call history sent AFTER greeting trigger (${_ncLatency.deferredCallHistory.length} chars) - Gemini receives while generating greeting`);
+                }
               }
               
               clientWs.send(JSON.stringify({
@@ -6299,29 +6440,116 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   isAiSpeaking = true;
                   if (latencyTracker.firstAudioByteTime === 0) {
                     latencyTracker.firstAudioByteTime = Date.now();
-                    console.log(`\n⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+                    const total = latencyTracker.firstAudioByteTime - latencyTracker.wsArrivalTime;
+
+                    console.log(`\n⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                     console.log(`⏱️ [LATENCY REPORT] FIRST AUDIO BYTE - ${connectionId}`);
-                    console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                    console.log(`⏱️  === REPLIT SERVER SIDE ===`);
-                    console.log(`⏱️  A. VPS WS arrival → Auth done:   +${latencyTracker.authDoneTime - latencyTracker.wsArrivalTime}ms`);
-                    console.log(`⏱️  B. Auth → Data load + prompt:    +${latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime}ms`);
-                    console.log(`⏱️  C. Data load → Gemini WS open:   +${latencyTracker.geminiOpenTime - latencyTracker.dataLoadDoneTime}ms`);
-                    console.log(`⏱️  D. Gemini WS open → Setup sent:  +${latencyTracker.setupSentTime - latencyTracker.geminiOpenTime}ms`);
-                    console.log(`⏱️  E. Setup → setupComplete:        +${latencyTracker.setupCompleteTime - latencyTracker.primerSentTime}ms`);
-                    if (latencyTracker.greetingTriggered) {
-                      console.log(`⏱️  F. setupComplete → Greeting:     +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms`);
-                      console.log(`⏱️  G. Greeting → First audio byte:  +${latencyTracker.firstAudioByteTime - latencyTracker.greetingTriggerTime}ms`);
-                    } else {
-                      console.log(`⏱️  F. setupComplete → First audio:   +${latencyTracker.firstAudioByteTime - latencyTracker.setupCompleteTime}ms`);
+                    console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`⏱️`);
+                    console.log(`⏱️  ┌─── STEP A: AUTH ─────────────────────────────────────────────────────────────┐`);
+                    console.log(`⏱️  │  A. WS arrival → Auth done:           ${String(latencyTracker.authDoneTime - latencyTracker.wsArrivalTime).padStart(6)}ms                              │`);
+                    console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    console.log(`⏱️`);
+                    console.log(`⏱️  ┌─── STEP B: DATA LOAD + PROMPT BUILD ─────────────────────────────────────────┐`);
+                    console.log(`⏱️  │  B. Auth → Data load complete:        ${String(latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime).padStart(6)}ms                              │`);
+
+                    if (latencyTracker.isNonClientCall) {
+                      console.log(`⏱️  │  ├── Parallel queries start:          +0ms (baseline)                          │`);
+                      if (latencyTracker.ncConsultantInfoResolvedTime > 0) {
+                        console.log(`⏱️  │  ├── consultantInfo resolved:         ${String(latencyTracker.ncConsultantInfoResolvedTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms                              │`);
+                      }
+                      if (latencyTracker.ncProactiveLeadResolvedTime > 0) {
+                        console.log(`⏱️  │  ├── proactiveLead resolved:          ${String(latencyTracker.ncProactiveLeadResolvedTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms                              │`);
+                      }
+                      if (latencyTracker.ncSettingsResolvedTime > 0) {
+                        console.log(`⏱️  │  ├── settings resolved:               ${String(latencyTracker.ncSettingsResolvedTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms                              │`);
+                      }
+                      if (latencyTracker.ncPreviousConversationsResolvedTime > 0) {
+                        console.log(`⏱️  │  ├── previousConversations resolved:  ${String(latencyTracker.ncPreviousConversationsResolvedTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms (${latencyTracker.previousConversationsDbRows} DB rows → ${latencyTracker.previousConversationsCount} included) │`);
+                      }
+                      if (latencyTracker.ncBrandVoiceResolvedTime > 0) {
+                        console.log(`⏱️  │  ├── brandVoice resolved:             ${String(latencyTracker.ncBrandVoiceResolvedTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms (${latencyTracker.brandVoiceChars} chars)                │`);
+                      }
+                      if (latencyTracker.ncPromptBuildDoneTime > 0) {
+                        console.log(`⏱️  │  └── prompt build done:               ${String(latencyTracker.ncPromptBuildDoneTime - latencyTracker.ncParallelQueriesStartTime).padStart(6)}ms                              │`);
+                      }
                     }
-                    console.log(`⏱️  ─────────────────────────────────────────`);
-                    console.log(`⏱️  REPLIT TOTAL: ${latencyTracker.firstAudioByteTime - latencyTracker.wsArrivalTime}ms (VPS WS arrival → first audio byte sent to VPS)`);
-                    console.log(`⏱️  ─ Breakdown ─`);
-                    console.log(`⏱️   Auth:        ${latencyTracker.authDoneTime - latencyTracker.wsArrivalTime}ms`);
-                    console.log(`⏱️   Data/Prompt: ${latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime}ms`);
-                    console.log(`⏱️   Gemini conn: ${latencyTracker.geminiOpenTime - latencyTracker.dataLoadDoneTime}ms`);
-                    console.log(`⏱️   Gemini proc: ${latencyTracker.firstAudioByteTime - latencyTracker.geminiOpenTime}ms`);
-                    console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
+                    console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    console.log(`⏱️`);
+                    console.log(`⏱️  ┌─── STEP C: GEMINI WS CONNECT ────────────────────────────────────────────────┐`);
+                    console.log(`⏱️  │  C. Data load → Gemini WS open:       ${String(latencyTracker.geminiOpenTime - latencyTracker.dataLoadDoneTime).padStart(6)}ms                              │`);
+                    console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    console.log(`⏱️`);
+                    console.log(`⏱️  ┌─── STEP D: SETUP MESSAGE ────────────────────────────────────────────────────┐`);
+                    console.log(`⏱️  │  D. Gemini WS open → Setup sent:      ${String(latencyTracker.setupSentTime - latencyTracker.geminiOpenTime).padStart(6)}ms                              │`);
+                    console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    console.log(`⏱️`);
+                    console.log(`⏱️  ┌─── STEP E: GEMINI SETUP PROCESSING ──────────────────────────────────────────┐`);
+                    console.log(`⏱️  │  E. Setup sent → setupComplete:       ${String(latencyTracker.setupCompleteTime - latencyTracker.setupSentTime).padStart(6)}ms                              │`);
+                    console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    console.log(`⏱️`);
+
+                    if (latencyTracker.greetingTriggered) {
+                      console.log(`⏱️  ┌─── STEP F: CHUNKS + GREETING TRIGGER ──────────────────────────────────────┐`);
+                      if (latencyTracker.chunksSendStartTime > 0 && latencyTracker.chunksSendEndTime > 0) {
+                        console.log(`⏱️  │  F1. setupComplete → chunks start:    ${String(latencyTracker.chunksSendStartTime - latencyTracker.setupCompleteTime).padStart(6)}ms                              │`);
+                        console.log(`⏱️  │  F2. chunks sending (${String(latencyTracker.chunksCount).padStart(3)} chunks):    ${String(latencyTracker.chunksSendEndTime - latencyTracker.chunksSendStartTime).padStart(6)}ms                              │`);
+                        console.log(`⏱️  │  F3. chunks end → greeting trigger:   ${String(latencyTracker.greetingTriggerTime - latencyTracker.chunksSendEndTime).padStart(6)}ms                              │`);
+                      } else {
+                        console.log(`⏱️  │  F. setupComplete → Greeting trigger: ${String(latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime).padStart(6)}ms (no chunks)                    │`);
+                      }
+                      console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                      console.log(`⏱️`);
+                      console.log(`⏱️  ┌─── STEP G: GEMINI THINKING + AUDIO GENERATION ──────────────────────────────┐`);
+                      console.log(`⏱️  │  G. Greeting → First audio byte:     ${String(latencyTracker.firstAudioByteTime - latencyTracker.greetingTriggerTime).padStart(6)}ms ← GEMINI PROCESSING             │`);
+                      if (latencyTracker.geminiFirstResponseTime > 0) {
+                        console.log(`⏱️  │  ├── G1. Greeting → first response:   ${String(latencyTracker.geminiFirstResponseTime - latencyTracker.greetingTriggerTime).padStart(6)}ms (type: ${latencyTracker.geminiFirstResponseType.padEnd(20)})  │`);
+                        console.log(`⏱️  │  └── G2. First response → first audio:${String(latencyTracker.firstAudioByteTime - latencyTracker.geminiFirstResponseTime).padStart(6)}ms                              │`);
+                      }
+                      console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    } else {
+                      console.log(`⏱️  ┌─── STEP F: FIRST AUDIO ────────────────────────────────────────────────────┐`);
+                      console.log(`⏱️  │  F. setupComplete → First audio:      ${String(latencyTracker.firstAudioByteTime - latencyTracker.setupCompleteTime).padStart(6)}ms                              │`);
+                      console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    }
+
+                    console.log(`⏱️`);
+                    console.log(`⏱️  ┌─── CONTEXT SIZE BREAKDOWN ───────────────────────────────────────────────────┐`);
+                    console.log(`⏱️  │  📝 System Instruction:               ${String(latencyTracker.systemInstructionChars).padStart(6)} chars (~${String(latencyTracker.systemInstructionTokens).padStart(5)} tok)      │`);
+                    if (latencyTracker.isNonClientCall) {
+                      console.log(`⏱️  │  ├── Voice Directives:                ${String(latencyTracker.voiceDirectivesChars).padStart(6)} chars                              │`);
+                      console.log(`⏱️  │  ├── Content Prompt:                  ${String(latencyTracker.contentPromptChars).padStart(6)} chars                              │`);
+                      console.log(`⏱️  │  ├── Brand Voice:                     ${String(latencyTracker.brandVoiceChars).padStart(6)} chars                              │`);
+                      console.log(`⏱️  │  └── Call History:                     ${String(latencyTracker.previousCallContextChars).padStart(6)} chars (${latencyTracker.previousConversationsCount} convs)          │`);
+                    }
+                    console.log(`⏱️  │  📦 Chunks (user data):               ${String(latencyTracker.totalContextChars - latencyTracker.systemInstructionChars).padStart(6)} chars                              │`);
+                    console.log(`⏱️  │  ═══════════════════════════════════════════                              │`);
+                    console.log(`⏱️  │  📊 TOTAL CONTEXT:                     ${String(latencyTracker.totalContextChars).padStart(6)} chars (~${String(latencyTracker.totalContextTokens).padStart(5)} tok)      │`);
+                    console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+
+                    if (latencyTracker.isNonClientCall) {
+                      console.log(`⏱️`);
+                      console.log(`⏱️  ┌─── CALL METADATA ──────────────────────────────────────────────────────────┐`);
+                      console.log(`⏱️  │  📞 Type: Non-Client ${latencyTracker.callDirection.padEnd(10)}                                            │`);
+                      console.log(`⏱️  │  📋 Has Instruction: ${latencyTracker.hasInstruction ? 'YES' : 'NO '}                                                   │`);
+                      console.log(`⏱️  │  📜 Has Call History: ${latencyTracker.hasCallHistory ? 'YES' : 'NO '}                                                   │`);
+                      console.log(`⏱️  │  🎯 Prompt Source: ${latencyTracker.promptSource.padEnd(12)}                                              │`);
+                      console.log(`⏱️  │  📞 Previous Conversations: ${String(latencyTracker.previousConversationsCount).padStart(3)} (${String(latencyTracker.previousConversationsDbRows).padStart(3)} DB rows)                       │`);
+                      console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    }
+
+                    console.log(`⏱️`);
+                    console.log(`⏱️  ┌─── SUMMARY ──────────────────────────────────────────────────────────────────┐`);
+                    console.log(`⏱️  │  🏁 TOTAL: WS arrival → First audio:  ${String(total).padStart(6)}ms (${(total / 1000).toFixed(1)}s)                       │`);
+                    console.log(`⏱️  │  ─────────────────────────────────────────                                   │`);
+                    console.log(`⏱️  │  Auth:           ${String(latencyTracker.authDoneTime - latencyTracker.wsArrivalTime).padStart(6)}ms  (${((latencyTracker.authDoneTime - latencyTracker.wsArrivalTime) / total * 100).toFixed(0).padStart(3)}%)                                  │`);
+                    console.log(`⏱️  │  Data/Prompt:    ${String(latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime).padStart(6)}ms  (${((latencyTracker.dataLoadDoneTime - latencyTracker.authDoneTime) / total * 100).toFixed(0).padStart(3)}%)                                  │`);
+                    console.log(`⏱️  │  Gemini connect: ${String(latencyTracker.geminiOpenTime - latencyTracker.dataLoadDoneTime).padStart(6)}ms  (${((latencyTracker.geminiOpenTime - latencyTracker.dataLoadDoneTime) / total * 100).toFixed(0).padStart(3)}%)                                  │`);
+                    console.log(`⏱️  │  Gemini proc:    ${String(latencyTracker.firstAudioByteTime - latencyTracker.geminiOpenTime).padStart(6)}ms  (${((latencyTracker.firstAudioByteTime - latencyTracker.geminiOpenTime) / total * 100).toFixed(0).padStart(3)}%)                                  │`);
+                    console.log(`⏱️  └──────────────────────────────────────────────────────────────────────────────┘`);
+                    console.log(`⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                   }
                   console.log(`🎤 [${connectionId}] AI started speaking (audio streaming)`);
                   
