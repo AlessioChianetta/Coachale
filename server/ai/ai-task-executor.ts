@@ -91,10 +91,28 @@ export async function executeStep(
     const duration_ms = Date.now() - startTime;
     console.log(`${LOG_PREFIX} Step ${step.step} (${step.action}) completed in ${duration_ms}ms`);
 
+    let enrichedDescription = step.description;
+
+    if (step.action === 'fetch_client_data' && result) {
+      enrichedDescription = `Dati recuperati per ${result.contact?.first_name || 'N/A'} ${result.contact?.last_name || ''}. Task recenti: ${result.recent_tasks?.length || 0}`;
+    } else if (step.action === 'search_private_stores' && result) {
+      enrichedDescription = `Trovati ${result.documents_found || 0} documenti in ${result.stores_searched || 0} archivi. ${result.findings_summary?.substring(0, 200) || ''}`;
+    } else if (step.action === 'analyze_patterns' && result) {
+      enrichedDescription = `Analisi completata. Score: ${result.engagement_score || 'N/A'}/100. Rischio: ${result.risk_assessment?.level || 'N/A'}. ${result.insights?.length || 0} insight, ${result.recommendations?.length || 0} raccomandazioni. Approccio: ${result.suggested_approach?.substring(0, 150) || ''}`;
+    } else if (step.action === 'web_search' && result) {
+      enrichedDescription = `Ricerca web: "${result.search_query?.substring(0, 80) || 'N/A'}". ${result.sources?.length || 0} fonti trovate. ${result.findings?.substring(0, 200) || ''}`;
+    } else if (step.action === 'generate_report' && result) {
+      enrichedDescription = `Report: "${result.title || 'N/A'}". ${result.sections?.length || 0} sezioni, ${result.key_findings?.length || 0} risultati chiave, ${result.recommendations?.length || 0} raccomandazioni.`;
+    } else if (step.action === 'prepare_call' && result) {
+      enrichedDescription = `Chiamata preparata: ${result.talking_points?.length || 0} punti di discussione. Priorità: ${result.call_priority || 'N/A'}. Durata stimata: ${result.call_duration_estimate_minutes || 'N/A'} min.`;
+    } else if (step.action === 'voice_call' && result) {
+      enrichedDescription = `Chiamata programmata a ${result.target_phone || 'N/A'}. ID: ${result.call_id || 'N/A'}. Status: ${result.status || 'N/A'}.`;
+    }
+
     await logActivity(task.consultant_id, {
       event_type: `step_${step.action}_completed`,
       title: `Step ${step.step} completato: ${step.action}`,
-      description: step.description,
+      description: enrichedDescription,
       icon: "⚙️",
       severity: "info",
       task_id: task.id,
@@ -235,13 +253,6 @@ async function handleSearchPrivateStores(
     }
   }
 
-  try {
-    const consultantOwnStores = await fileSearchService.getConsultantOwnStores(task.consultant_id);
-    storeNames.push(...consultantOwnStores);
-  } catch (err: any) {
-    console.warn(`${LOG_PREFIX} Failed to get consultant stores: ${err.message}`);
-  }
-
   storeNames = [...new Set(storeNames)];
 
   if (storeNames.length === 0) {
@@ -342,7 +353,7 @@ Riassumi le informazioni trovate in modo strutturato.`;
     stores_searched: storeNames.length,
     store_breakdown: breakdown,
     findings_summary: text,
-    citations: citations.map(c => ({ source: c.sourceTitle, content: c.content?.substring(0, 200) })),
+    citations: citations.map(c => ({ source: c.sourceTitle, content: c.content })),
     search_query: task.ai_instruction,
   };
 }
@@ -359,33 +370,52 @@ async function handleAnalyzePatterns(
     ? `\nDOCUMENTI PRIVATI TROVATI:\n${privateStoreData.findings_summary || "Nessun documento privato trovato"}\n\nCITAZIONI:\n${privateStoreData.citations?.map((c: any) => `- ${c.source}: ${c.content}`).join('\n') || "Nessuna citazione"}\n`
     : "";
 
-  const prompt = `Sei un analista AI specializzato in consulenza commerciale italiana.
+  const prompt = `Sei un analista AI senior. Il tuo compito è analizzare in modo DETTAGLIATO e APPROFONDITO la situazione del cliente basandoti esclusivamente sui dati e documenti disponibili.
 
-Analizza i seguenti dati del cliente e fornisci un'analisi dettagliata.
+IMPORTANTE: La tua analisi deve essere COMPLETA e DETTAGLIATA (almeno 2000 caratteri totali nel JSON). Analizza TUTTI i dati disponibili, incluse TUTTE le citazioni dai documenti privati. Non essere generico - fornisci insight specifici con esempi concreti dai dati.
 
-DATI CLIENTE:
+=== DATI CLIENTE ===
 ${JSON.stringify(clientData.contact || {}, null, 2)}
 
-TASK RECENTI:
+=== TASK RECENTI DEL CLIENTE ===
 ${JSON.stringify(clientData.recent_tasks || [], null, 2)}
 ${privateStoreSection}
-ISTRUZIONE ORIGINALE DEL TASK:
+=== ISTRUZIONE ORIGINALE DEL TASK ===
 ${task.ai_instruction}
 
-CATEGORIA TASK: ${task.task_category}
+=== CATEGORIA TASK ===
+${task.task_category}
+
+ANALIZZA IN DETTAGLIO LE SEGUENTI AREE:
+1. **Profilo Cliente**: Chi è questo cliente? Qual è la sua situazione complessiva? Da quanto tempo è seguito? Livello di engagement?
+2. **Punti di Forza**: Quali sono i punti di forza del cliente emersi dai dati? Cosa fa bene? Dove mostra impegno?
+3. **Punti di Debolezza**: Dove il cliente mostra difficoltà? Quali aree necessitano miglioramento? Ci sono pattern negativi?
+4. **Opportunità**: Quali opportunità di crescita esistono? Come può il consulente aiutare meglio?
+5. **Pattern Comportamentali**: Come si comporta il cliente nelle consulenze? Completa gli esercizi? È puntuale? È proattivo?
+6. **Insight dalle Consulenze Passate**: Cosa emerge dalle note delle consulenze precedenti? Quali temi ricorrono? Quali progressi sono stati fatti?
+7. **Valutazione del Rischio**: C'è rischio di abbandono? Il cliente è soddisfatto? Ci sono segnali di allarme?
+8. **Raccomandazioni Operative**: Cosa dovrebbe fare concretamente il consulente? Con quali priorità?
+
+USA TUTTI i dati delle citazioni dei documenti privati per supportare ogni insight con esempi specifici.
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 {
-  "insights": ["insight 1", "insight 2", ...],
+  "client_profile_summary": "riassunto completo della situazione del cliente, almeno 300 caratteri, includendo background, situazione attuale, e contesto generale",
+  "strengths": ["punto di forza 1 con spiegazione dettagliata ed esempio dai dati", "punto di forza 2 con spiegazione..."],
+  "weaknesses": ["debolezza 1 con spiegazione dettagliata ed esempio dai dati", "debolezza 2 con spiegazione..."],
+  "opportunities": ["opportunità 1 con spiegazione dettagliata e come sfruttarla", "opportunità 2 con spiegazione..."],
+  "behavioral_patterns": ["pattern comportamentale 1 osservato nei dati", "pattern 2..."],
+  "past_consultation_insights": ["insight dalla consulenza passata 1 con dettagli specifici", "insight 2..."],
+  "insights": ["insight dettagliato e actionable 1", "insight dettagliato 2", ...],
   "risk_assessment": {
     "level": "low|medium|high",
-    "factors": ["fattore 1", "fattore 2", ...],
-    "description": "descrizione del rischio"
+    "factors": ["fattore di rischio 1 con spiegazione", "fattore 2..."],
+    "description": "descrizione dettagliata del livello di rischio, almeno 200 caratteri, con motivazioni specifiche basate sui dati"
   },
-  "recommendations": ["raccomandazione 1", "raccomandazione 2", ...],
+  "recommendations": ["raccomandazione operativa dettagliata 1 con azione concreta", "raccomandazione 2..."],
   "engagement_score": 0-100,
-  "suggested_approach": "descrizione dell'approccio suggerito",
-  "key_topics": ["topic 1", "topic 2", ...]
+  "suggested_approach": "descrizione dettagliata dell'approccio suggerito per il prossimo contatto con il cliente, almeno 300 caratteri, includendo tono, argomenti da trattare, e obiettivi specifici",
+  "key_topics": ["argomento chiave 1", "argomento 2", ...]
 }`;
 
   const apiKey = await getGeminiApiKeyForClassifier();
@@ -396,7 +426,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     return await ai.models.generateContent({
       model: GEMINI_LEGACY_MODEL,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.3, maxOutputTokens: 4096 },
+      config: { temperature: 0.3, maxOutputTokens: 16384 },
     });
   });
 
@@ -413,6 +443,12 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   }
 
   return {
+    client_profile_summary: text.substring(0, 500),
+    strengths: [],
+    weaknesses: [],
+    opportunities: [],
+    behavioral_patterns: [],
+    past_consultation_insights: [],
     insights: ["Analisi completata - risultato in formato testo"],
     risk_assessment: { level: "medium", factors: [], description: text.substring(0, 500) },
     recommendations: [],
@@ -436,37 +472,47 @@ async function handleGenerateReport(
     ? `\nDOCUMENTI PRIVATI TROVATI:\n${privateStoreData.findings_summary || "Nessun documento privato trovato"}\n\nCITAZIONI:\n${privateStoreData.citations?.map((c: any) => `- ${c.source}: ${c.content}`).join('\n') || "Nessuna citazione"}\n`
     : "";
 
-  const prompt = `Sei un assistente AI per consulenti commerciali italiani.
-Genera un report strutturato basato sull'analisi seguente.
+  const prompt = `Sei un assistente AI senior. Genera un report COMPLETO, DETTAGLIATO e APPROFONDITO basato sull'analisi seguente, adattandoti al contesto specifico del cliente e della sua attività.
 
-ANALISI:
+IMPORTANTE: Il report deve essere esaustivo e ricco di dettagli. Ogni sezione deve contenere almeno 200 caratteri di contenuto. Includi dati specifici, citazioni dai documenti privati, e raccomandazioni operative concrete.
+
+=== ANALISI COMPLETA ===
 ${JSON.stringify(analysisData, null, 2)}
 
-DATI CLIENTE:
+=== DATI CLIENTE ===
 ${JSON.stringify(clientData.contact || {}, null, 2)}
 ${privateStoreSection}
-ISTRUZIONE ORIGINALE:
+=== ISTRUZIONE ORIGINALE ===
 ${task.ai_instruction}
+
+STRUTTURA DEL REPORT - Includi TUTTE le seguenti sezioni:
+1. Panoramica Cliente - Background completo, situazione attuale, contesto
+2. Analisi della Situazione - Dettagli approfonditi su cosa emerge dai dati
+3. Punti di Forza e Debolezza - Con esempi specifici dai documenti
+4. Pattern e Tendenze - Comportamenti ricorrenti, trend osservati
+5. Valutazione del Rischio - Analisi dettagliata dei fattori di rischio
+6. Piano d'Azione - Raccomandazioni operative concrete e prioritizzate
+7. Prossimi Passi - Azioni immediate con timeline suggerita
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 {
-  "title": "Titolo del report",
-  "summary": "Riepilogo esecutivo in 2-3 frasi",
+  "title": "Titolo descrittivo del report",
+  "summary": "Riepilogo esecutivo dettagliato in 3-5 frasi che cattura i punti essenziali",
   "sections": [
     {
       "heading": "Titolo sezione",
-      "content": "Contenuto della sezione"
+      "content": "Contenuto dettagliato della sezione (almeno 200 caratteri per sezione)"
     }
   ],
-  "key_findings": ["risultato chiave 1", "risultato chiave 2", ...],
+  "key_findings": ["risultato chiave dettagliato 1", "risultato chiave dettagliato 2", ...],
   "recommendations": [
     {
-      "action": "azione consigliata",
+      "action": "azione consigliata dettagliata",
       "priority": "high|medium|low",
-      "rationale": "motivazione"
+      "rationale": "motivazione dettagliata basata sui dati"
     }
   ],
-  "next_steps": ["passo successivo 1", "passo successivo 2", ...]
+  "next_steps": ["passo successivo concreto 1 con timeline", "passo successivo 2", ...]
 }`;
 
   const apiKey = await getGeminiApiKeyForClassifier();
@@ -477,7 +523,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     return await ai.models.generateContent({
       model: GEMINI_LEGACY_MODEL,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.3, maxOutputTokens: 4096 },
+      config: { temperature: 0.3, maxOutputTokens: 16384 },
     });
   });
 
@@ -513,8 +559,8 @@ async function handlePrepareCall(
   const reportData = previousResults.generate_report || {};
   const clientData = previousResults.fetch_client_data || {};
 
-  const prompt = `Sei un assistente AI per consulenti commerciali italiani.
-Prepara i punti chiave per una telefonata con il cliente.
+  const prompt = `Sei un assistente AI per consulenti.
+Prepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.
 
 DATI CLIENTE:
 Nome: ${task.contact_name || clientData.contact?.first_name || "N/A"}
@@ -733,14 +779,49 @@ async function handleWebSearch(
   step: ExecutionStep,
   previousResults: Record<string, any>,
 ): Promise<Record<string, any>> {
-  const searchQuery = step.params?.search_query || task.ai_instruction || "ricerca generica";
+  let searchQuery = step.params?.search_query || task.ai_instruction || "ricerca generica";
   const analysisData = previousResults.analyze_patterns || {};
   const clientData = previousResults.fetch_client_data || {};
   const contactName = task.contact_name || clientData.contact?.first_name || "N/A";
 
+  if (searchQuery.length > 100) {
+    console.log(`${LOG_PREFIX} Search query too long (${searchQuery.length} chars), generating focused queries with Gemini`);
+    try {
+      const queryGenApiKey = await getGeminiApiKeyForClassifier();
+      if (queryGenApiKey) {
+        const queryGenAi = new GoogleGenAI({ apiKey: queryGenApiKey });
+        const keyTopics = analysisData.key_topics || [];
+        const queryGenPrompt = `Based on the following task context, generate 2-3 concise, focused web search queries (each max 10 words) that would find the most relevant information. Return ONLY the queries, one per line.
+
+Task instruction: ${task.ai_instruction.substring(0, 300)}
+Client name: ${contactName}
+Task category: ${task.task_category}
+${keyTopics.length > 0 ? `Key topics: ${keyTopics.join(', ')}` : ''}
+${step.description ? `Step description: ${step.description}` : ''}`;
+
+        const queryGenResponse = await withRetry(async () => {
+          return await queryGenAi.models.generateContent({
+            model: GEMINI_LEGACY_MODEL,
+            contents: [{ role: "user", parts: [{ text: queryGenPrompt }] }],
+            config: { temperature: 0.3, maxOutputTokens: 256 },
+          });
+        });
+
+        const generatedQueries = (queryGenResponse.text || "").trim().split('\n').filter((q: string) => q.trim().length > 0);
+        if (generatedQueries.length > 0) {
+          searchQuery = generatedQueries[0].trim().replace(/^\d+[\.\)]\s*/, '');
+          console.log(`${LOG_PREFIX} Generated focused search query: "${searchQuery}" (from ${generatedQueries.length} candidates)`);
+        }
+      }
+    } catch (queryGenErr: any) {
+      console.warn(`${LOG_PREFIX} Failed to generate focused query, using truncated original: ${queryGenErr.message}`);
+      searchQuery = searchQuery.substring(0, 100);
+    }
+  }
+
   console.log(`${LOG_PREFIX} Esecuzione ricerca web: "${searchQuery}"`);
 
-  const prompt = `Sei un ricercatore AI specializzato in consulenza finanziaria e commerciale italiana.
+  const prompt = `Sei un ricercatore AI. Cerca informazioni pertinenti al contesto del cliente e della sua attività.
 
 RICERCA RICHIESTA:
 ${searchQuery}
@@ -756,11 +837,11 @@ ${task.ai_instruction}
 
 Cerca informazioni aggiornate e pertinenti su internet riguardo alla ricerca richiesta.
 Concentrati su:
-1. Normative e regolamenti italiani/europei rilevanti
-2. Andamenti di mercato e trend finanziari
+1. Informazioni rilevanti per il settore e l'attività del cliente
+2. Andamenti di mercato e trend del settore
 3. Notizie recenti pertinenti
-4. Dati statistici e benchmark di settore
-5. Best practice e raccomandazioni degli esperti
+4. Dati statistici e benchmark utili
+5. Best practice e strategie raccomandate dagli esperti
 
 Fornisci una risposta strutturata e dettagliata con le informazioni trovate, citando le fonti quando possibile.`;
 

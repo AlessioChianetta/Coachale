@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import {
   Bot, Settings, Activity, Bell, BellOff, Phone, Mail, MessageSquare,
-  Clock, Calendar, Shield, Zap, Brain, CheckCircle, AlertCircle,
+  Clock, Calendar, Shield, Zap, Brain, CheckCircle, AlertCircle, AlertTriangle,
   XCircle, Info, Loader2, RefreshCw, Eye, ChevronLeft, ChevronRight,
   Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus,
   Sparkles, User, Lightbulb,
@@ -447,10 +447,33 @@ function getStepActionLabel(action: string): string {
   return labels[action] || action;
 }
 
+function tryParseJSON(value: any): any {
+  if (typeof value !== 'string') return value;
+  let cleaned = value.trim();
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
+  }
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return value;
+  }
+}
+
 function DeepResearchResults({ results }: { results: Record<string, any> }) {
   const sections: React.ReactNode[] = [];
 
-  const report = results.generate_report;
+  const parsedResults = { ...results };
+  for (const key of Object.keys(parsedResults)) {
+    parsedResults[key] = tryParseJSON(parsedResults[key]);
+  }
+  const report = parsedResults.generate_report;
+  const analysis = parsedResults.analyze_patterns;
+  const webSearch = parsedResults.web_search;
+  const callPrep = parsedResults.prepare_call;
+
   if (report && typeof report === 'object') {
     sections.push(
       <div key="report" className="space-y-4">
@@ -517,7 +540,6 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
     );
   }
 
-  const analysis = results.analyze_patterns;
   if (analysis && typeof analysis === 'object' && !report) {
     sections.push(
       <div key="analysis" className="space-y-3">
@@ -525,9 +547,80 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
           <BarChart3 className="h-5 w-5 text-primary" />
           Analisi
         </h3>
+        {analysis.client_profile_summary && (
+          <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
+            <p className="text-sm font-semibold mb-1">Profilo Cliente</p>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{analysis.client_profile_summary}</p>
+          </div>
+        )}
+        {analysis.strengths && Array.isArray(analysis.strengths) && analysis.strengths.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-green-700 dark:text-green-400">💪 Punti di Forza</p>
+            <ul className="space-y-1">
+              {analysis.strengths.map((s: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-green-500" />
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {analysis.weaknesses && Array.isArray(analysis.weaknesses) && analysis.weaknesses.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">⚠️ Aree di Miglioramento</p>
+            <ul className="space-y-1">
+              {analysis.weaknesses.map((w: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-orange-500" />
+                  <span>{w}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {analysis.opportunities && Array.isArray(analysis.opportunities) && analysis.opportunities.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">🚀 Opportunità</p>
+            <ul className="space-y-1">
+              {analysis.opportunities.map((o: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <ArrowRight className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
+                  <span>{o}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {analysis.behavioral_patterns && Array.isArray(analysis.behavioral_patterns) && analysis.behavioral_patterns.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">📊 Pattern Comportamentali</p>
+            <ul className="space-y-1">
+              {analysis.behavioral_patterns.map((p: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <span className="text-muted-foreground/60">•</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {analysis.past_consultation_insights && Array.isArray(analysis.past_consultation_insights) && analysis.past_consultation_insights.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">📋 Insight dalle Consulenze Passate</p>
+            <ul className="space-y-1">
+              {analysis.past_consultation_insights.map((ins: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-purple-500" />
+                  <span>{ins}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {analysis.insights && Array.isArray(analysis.insights) && (
           <div className="space-y-1">
-            <p className="text-sm font-semibold">Insight</p>
+            <p className="text-sm font-semibold">💡 Insight</p>
             <ul className="space-y-1">
               {analysis.insights.map((insight: string, i: number) => (
                 <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -554,14 +647,13 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
         {analysis.suggested_approach && (
           <div className="bg-muted/50 rounded-lg p-3 border border-border">
             <p className="text-sm font-semibold mb-1">Approccio Suggerito</p>
-            <p className="text-sm text-muted-foreground">{analysis.suggested_approach}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.suggested_approach}</p>
           </div>
         )}
       </div>
     );
   }
 
-  const webSearch = results.web_search;
   if (webSearch && typeof webSearch === 'object') {
     sections.push(
       <div key="websearch" className="space-y-3">
@@ -591,7 +683,6 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
     );
   }
 
-  const callPrep = results.prepare_call;
   if (callPrep && typeof callPrep === 'object') {
     sections.push(
       <div key="callprep" className="space-y-3">
