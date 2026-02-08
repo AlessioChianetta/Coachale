@@ -1,0 +1,58 @@
+c1504974cce87d6b.js:2 WebSocket is already in CLOSING or CLOSED state.
+send @ c1504974cce87d6b.js:2
+b @ c1504974cce87d6b.js:2
+send @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+apply @ c1504974cce87d6b.js:2
+(anonime) @ 2da6d6fbd31ca7ea.js:2364
+wait @ 2da6d6fbd31ca7ea.js:2364
+f @ 3aa080622513a0e2.js:2
+(anonime) @ 3aa080622513a0e2.js:2
+r @ a34503bffc2b6c73.js:14
+setTimeout
+(anonime) @ a34503bffc2b6c73.js:14
+Object.assign.isScheduled @ 3aa080622513a0e2.js:2
+(anonime) @ 2da6d6fbd31ca7ea.js:2364
+l @ 2da6d6fbd31ca7ea.js:2364
+r @ a34503bffc2b6c73.js:14Comprendi l'errore
+c1504974cce87d6b.js:2 WebSocket is already in CLOSING or CLOSED state.
+send @ c1504974cce87d6b.js:2
+b @ c1504974cce87d6b.js:2
+send @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+apply @ c1504974cce87d6b.js:2
+(anonime) @ 2da6d6fbd31ca7ea.js:2364
+wait @ 2da6d6fbd31ca7ea.js:2364
+f @ 3aa080622513a0e2.js:2
+(anonime) @ 3aa080622513a0e2.js:2
+r @ a34503bffc2b6c73.js:14
+setTimeout
+(anonime) @ a34503bffc2b6c73.js:14
+Object.assign.isScheduled @ 3aa080622513a0e2.js:2
+(anonime) @ 2da6d6fbd31ca7ea.js:2364
+l @ 2da6d6fbd31ca7ea.js:2364
+r @ a34503bffc2b6c73.js:14Comprendi l'errore
+c1504974cce87d6b.js:2 WebSocket is already in CLOSING or CLOSED state.
+send @ c1504974cce87d6b.js:2
+b @ c1504974cce87d6b.js:2
+send @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+(anonime) @ c1504974cce87d6b.js:2
+apply @ c1504974cce87d6b.js:2
+(anonime) @ 2da6d6fbd31ca7ea.js:2364
+wait @ 2da6d6fbd31ca7ea.js:2364
+f @ 3aa080622513a0e2.js:2
+(anonime) @ 3aa080622513a0e2.js:2
+r @ a34503bffc2b6c73.js:14
+setTimeout
+(anonime) @ a34503bffc2b6c73.js:14
+Object.assign.isScheduled @ 3aa080622513a0e2.js:2
+(anonime) @ 2da6d6fbd31ca7ea.js:2364
+l @ 2da6d6fbd31ca7ea.js:2364
+r @ a34503bffc2b6c73.js:14Comprendi l'errore
+c1504974cce87d6b.js:2 WebSocket is already in CLOSING or CLOSED state.
