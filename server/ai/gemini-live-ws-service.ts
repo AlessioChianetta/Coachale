@@ -1638,6 +1638,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     // ⏱️ PER-TURN LATENCY TRACKING
     let userFinishedSpeakingTime: number = 0; // Timestamp when isFinal received
     let lastInputTranscriptionTime: number = 0; // Timestamp of last inputTranscription chunk (fallback for phone calls where isFinal never arrives)
+    let lastPhoneAudioReceivedTime: number = 0; // Timestamp of last audio chunk received from phone VPS
+    let firstAudioSentToPhoneTime: number = 0; // Timestamp of first AI audio chunk sent to phone VPS in this turn
     let turnLatencyMeasured: boolean = false; // Reset each turn to measure first audio byte per turn
     let turnCount: number = 0; // Counts user→AI exchanges
     let turnSalesTrackerDoneTime: number = 0; // After salesTracker.trackUserMessage
@@ -6773,6 +6775,16 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                       console.log(`⏱️ │    └─ commit:          ${String(cmMs).padStart(5)}ms                            │`);
                     }
                     console.log(`⏱️ │  Gemini thinking:  ${String(geminiThinking).padStart(5)}ms  (${geminiThinking > 0 ? ((geminiThinking / totalTurnLatencyMs) * 100).toFixed(0) : '0'}%) ← AI processing            │`);
+                    if (isPhoneCall && lastPhoneAudioReceivedTime > 0) {
+                      const e2eLatency = Date.now() - lastPhoneAudioReceivedTime;
+                      const vadToTranscript = userFinishedSpeakingTime - lastPhoneAudioReceivedTime;
+                      console.log(`⏱️ │  ─────────────────────────────────────────                    │`);
+                      console.log(`⏱️ │  📞 E2E PHONE LATENCY (estimated):                          │`);
+                      console.log(`⏱️ │    Last phone audio → now: ${String(e2eLatency).padStart(5)}ms                            │`);
+                      console.log(`⏱️ │    VAD gap (audio→transcript): ${String(Math.max(0, vadToTranscript)).padStart(5)}ms                        │`);
+                      console.log(`⏱️ │    + downstream VPS→phone: ~300-500ms                        │`);
+                      console.log(`⏱️ │    ≈ PERCEIVED: ${String(e2eLatency + 400).padStart(5)}ms (${((e2eLatency + 400) / 1000).toFixed(1)}s)${(e2eLatency + 400) > 3000 ? ' ⚠️ SLOW' : ' ⚡'}                       │`);
+                    }
                     console.log(`⏱️ └──────────────────────────────────────────────────────────────┘\n`);
                   }
                 } else {
@@ -6786,6 +6798,12 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 if (isPhoneCall) {
                   // PHONE CALL: Invia PCM raw binario direttamente al VPS (24kHz)
                   clientWs.send(pcmBuffer, { binary: true });
+                  
+                  // ⏱️ Track first audio sent to phone for E2E latency
+                  if (firstAudioSentToPhoneTime === 0) {
+                    firstAudioSentToPhoneTime = Date.now();
+                  }
+                  
                   // Log solo ogni 10 chunk per non spammare
                   if (Math.random() < 0.1) {
                     console.log(`📞 [${connectionId}] Phone audio: ${pcmBuffer.length} bytes PCM raw → VPS`);
@@ -7210,6 +7228,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             userFinishedSpeakingTime = 0;
             lastInputTranscriptionTime = 0;
             turnFirstGeminiResponseTime = 0;
+            firstAudioSentToPhoneTime = 0;
             
             // 🔒 AI has finished speaking
             const wasAiSpeaking = isAiSpeaking;
@@ -8535,6 +8554,8 @@ ${compactFeedback}
                 pendingFeedbackForAI = null;
               }
 
+              lastPhoneAudioReceivedTime = Date.now();
+              
               const audioMessage = liveApiBackend === 'google_ai_studio' 
                 ? { realtimeInput: { mediaChunks: [{ data: data.toString('base64'), mimeType: 'audio/pcm' }] } }
                 : { realtime_input: { media_chunks: [{ data: data.toString('base64'), mime_type: 'audio/pcm' }] } };
