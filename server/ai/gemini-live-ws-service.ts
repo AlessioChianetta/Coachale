@@ -5766,6 +5766,20 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             const shouldGreetEarly = (mode === 'assistenza' || mode === 'consulente' || mode === 'phone_service') && !validatedResumeHandle;
             if (shouldGreetEarly) {
+              if (isPhoneCall && _ncLatency.deferredCallHistory) {
+                const historyChunk = {
+                  clientContent: {
+                    turns: [{
+                      role: 'user',
+                      parts: [{ text: _ncLatency.deferredCallHistory }]
+                    }],
+                    turnComplete: false
+                  }
+                };
+                geminiSession.send(JSON.stringify(historyChunk));
+                console.log(`📚 [${connectionId}] Deferred call history sent BEFORE greeting (${_ncLatency.deferredCallHistory.length} chars) - Gemini has context for personalized greeting`);
+              }
+
               const earlyGreetingMessage = {
                 clientContent: {
                   turns: [{
@@ -5779,22 +5793,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               latencyTracker.greetingTriggerTime = Date.now();
               latencyTracker.greetingTriggered = true;
               greetingAlreadySent = true;
-              console.log(`🚀 [${connectionId}] EARLY GREETING sent BEFORE chunks (O2 optimization) - mode: ${mode}`);
+              console.log(`🚀 [${connectionId}] EARLY GREETING sent after call history injection (O2 optimization) - mode: ${mode}`);
               console.log(`⏱️ [LATENCY] Early greeting trigger: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
-              
-              if (isPhoneCall && _ncLatency.deferredCallHistory) {
-                const historyChunk = {
-                  clientContent: {
-                    turns: [{
-                      role: 'user',
-                      parts: [{ text: _ncLatency.deferredCallHistory }]
-                    }],
-                    turnComplete: false
-                  }
-                };
-                geminiSession.send(JSON.stringify(historyChunk));
-                console.log(`📚 [${connectionId}] Deferred call history sent AFTER early greeting (${_ncLatency.deferredCallHistory.length} chars)`);
-              }
               
               clientWs.send(JSON.stringify({
                 type: 'ai_starting',
@@ -6044,12 +6044,6 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   }
                 };
                 
-                geminiSession.send(JSON.stringify(startGreetingMessage));
-                latencyTracker.greetingTriggerTime = Date.now();
-                latencyTracker.greetingTriggered = true;
-                console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode}, backend: ${liveApiBackend})`);
-                console.log(`⏱️ [LATENCY] Greeting trigger sent: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
-
                 if (isPhoneCall && _ncLatency.deferredCallHistory) {
                   const historyChunk = {
                     clientContent: {
@@ -6061,8 +6055,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                     }
                   };
                   geminiSession.send(JSON.stringify(historyChunk));
-                  console.log(`📚 [${connectionId}] Deferred call history sent AFTER greeting trigger (${_ncLatency.deferredCallHistory.length} chars) - Gemini receives while generating greeting`);
+                  console.log(`📚 [${connectionId}] Deferred call history sent BEFORE greeting (${_ncLatency.deferredCallHistory.length} chars) - Gemini has context for personalized greeting`);
                 }
+
+                geminiSession.send(JSON.stringify(startGreetingMessage));
+                latencyTracker.greetingTriggerTime = Date.now();
+                latencyTracker.greetingTriggered = true;
+                console.log(`🎬 [${connectionId}] GREETING command sent - AI will speak first (mode: ${mode}, backend: ${liveApiBackend})`);
+                console.log(`⏱️ [LATENCY] Greeting trigger sent: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
               }
               
               clientWs.send(JSON.stringify({
