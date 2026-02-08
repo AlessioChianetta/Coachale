@@ -1,0 +1,70 @@
+6|voice-br | 
+6|voice-br | 2026-02-08T14:32:00.026Z [INFO ] [BRIDGE:MAIN] Configuration loaded:
+6|voice-br | 2026-02-08T14:32:00.026Z [INFO ] [BRIDGE:MAIN]   WebSocket Server: 0.0.0.0:9090
+6|voice-br | 2026-02-08T14:32:00.026Z [INFO ] [BRIDGE:MAIN]   Auth Token: configured
+6|voice-br | 2026-02-08T14:32:00.026Z [INFO ] [BRIDGE:MAIN]   Replit WS: wss://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/ws/ai-voice
+6|voice-br | 2026-02-08T14:32:00.026Z [INFO ] [BRIDGE:MAIN]   Voice: Puck
+6|voice-br | 2026-02-08T14:32:00.027Z [INFO ] [BRIDGE:MAIN]   ESL Connection: 127.0.0.1:8021
+6|voice-br | 2026-02-08T14:32:00.027Z [INFO ] [BRIDGE:MAIN]   Max Concurrent Calls: 10
+6|voice-br | 2026-02-08T14:32:00.027Z [INFO ] [BRIDGE:MAIN]   Session Timeout: 1800000ms
+6|voice-br | 2026-02-08T14:32:00.027Z [INFO ] [BRIDGE:MAIN]   Log Level: debug
+6|voice-br | 2026-02-08T14:32:00.027Z [INFO ] [BRIDGE:MAIN] Starting Voice Bridge System...
+6|voice-br | 2026-02-08T14:32:00.054Z [INFO ] [BRIDGE:ESL] Connecting to FreeSWITCH ESL at 127.0.0.1:8021...
+6|voice-br | 2026-02-08T14:32:00.058Z [INFO ] [BRIDGE:SERVER] Voice Bridge Server started on port 9090
+6|voice-br | 2026-02-08T14:32:00.058Z [INFO ] [BRIDGE:SERVER] Outbound endpoint ready at POST /outbound/call
+6|voice-br | 2026-02-08T14:32:00.086Z [INFO ] [BRIDGE:ESL] ✅ Connected to FreeSWITCH Event Socket!
+
+6|voice-bridge  | 2026-02-08T14:32:10.547Z [INFO ] [BRIDGE:ESL] 🅿️  Detected call to 9999 (Parked) uuid=c26bc140-815a-4297-8bcf-904aba5eb54d callerIdNumber=1005 callerIdName=Alessio
+6|voice-bridge  | 2026-02-08T14:32:10.547Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] CHANNEL_PARK event received at 1770561130547 uuid=c26bc140-815a-4297-8bcf-904aba5eb54d
+6|voice-bridge  | 2026-02-08T14:32:10.547Z [INFO ] [BRIDGE:SERVER] 📝 Setting expected call: callId=c26bc140-815a-4297-8bcf-904aba5eb54d, uuid=c26bc140-815a-4297-8bcf-904aba5eb54d
+6|voice-bridge  | 2026-02-08T14:32:10.547Z [INFO ] [BRIDGE:SERVER] ✅ Pending calls count: 1
+6|voice-bridge  | 2026-02-08T14:32:10.547Z [INFO ] [BRIDGE:ESL] 📞 INBOUND call - setting UUID as call ID uuid=c26bc140-815a-4297-8bcf-904aba5eb54d
+6|voice-bridge  | 2026-02-08T14:32:10.548Z [INFO ] [BRIDGE:ESL] ⏱️ [ESL-TIMING] bgapi commands setup: 1ms, now executing uuid_audio_stream uuid=c26bc140-815a-4297-8bcf-904aba5eb54d
+6|voice-bridge  | 2026-02-08T14:32:10.600Z [INFO ] [BRIDGE:SERVER] New WebSocket connection clientIp=72.62.50.40
+6|voice-bridge  | 2026-02-08T14:32:10.601Z [INFO ] [BRIDGE:SERVER] 🔍 WEBSOCKET CONNECTION path=/stream/c26bc140-815a-4297-8bcf-904aba5eb54d uuidFromUrl=c26bc140-815a-4297-8bcf-904aba5eb54d pendingCallsCount=1 pendingIds=[{"uuid":"c26bc140-815a-4297-8bcf-904aba5eb54d","callId":"c26bc140-815a-4297-8bcf-904aba5eb54d"}] timestamp=1770561130601
+6|voice-bridge  | 2026-02-08T14:32:10.601Z [INFO ] [BRIDGE:SERVER] ✅ Consumed pending call: callId=c26bc140-815a-4297-8bcf-904aba5eb54d, uuid=c26bc140-815a-4297-8bcf-904aba5eb54d
+6|voice-bridge  | 2026-02-08T14:32:10.601Z [INFO ] [BRIDGE:SERVER] 📞 INBOUND call matched: callId=c26bc140-815a-4297-8bcf-904aba5eb54d (same as uuid)
+6|voice-bridge  | 2026-02-08T14:32:10.601Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] CHANNEL_PARK → WebSocket connection: 54ms (FreeSWITCH audio_stream setup + WS open) callId=c26bc140-815a-4297-8bcf-904aba5eb54d
+6|voice-bridge  | 2026-02-08T14:32:10.601Z [INFO ] [BRIDGE:SERVER] 📞 Call detected: ID=c26bc140-815a-4297-8bcf-904aba5eb54d | CallerId=1005 | CallerName=Alessio
+6|voice-bridge  | 2026-02-08T14:32:10.602Z [INFO ] [BRIDGE:SESSION] Session created sessionId=b3ffbc0e callId=c26bc140-815a-4297-8bcf-904aba5eb54d callerId=1005 calledNumber=9999 codec=L16 sampleRate=8000 activeSessions=1
+6|voice-bridge  | 2026-02-08T14:32:10.634Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] handleCallStart setup: session=1ms, bgInit+queue=32ms sessionId=b3ffbc0e
+6|voice-bridge  | 2026-02-08T14:32:10.634Z [INFO ] [BRIDGE:SERVER] 🎵 Adaptive audio timer started (prefill=4) sessionId=b3ffbc0e
+6|voice-bridge  | 2026-02-08T14:32:10.635Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Pre-connect overhead: 34ms sessionId=b3ffbc0e
+6|voice-bridge  | 2026-02-08T14:32:10.635Z [INFO ] [BRIDGE:REPLIT-WS] Connecting to Replit WebSocket sessionId=b3ffbc0e url=wss://15bf6ceb-8cc9-4d13-88a7-3efc4fc2cb40-00-2fipo6kxgrywy.picard.replit.dev/ws/ai-voice voice=Puck isResume=false
+6|voice-bridge  | 2026-02-08T14:32:10.682Z [INFO ] [BRIDGE:ESL] ✅ Audio stream initiated successfully in 134ms (total from PARK: 135ms) uuid=c26bc140-815a-4297-8bcf-904aba5eb54d
+6|voice-bridge  | 2026-02-08T14:32:11.206Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] TLS+HTTP upgrade handshake: 571ms sessionId=b3ffbc0e resumed=false
+6|voice-bridge  | 2026-02-08T14:32:11.206Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Replit WS connected in 571ms (TLS handshake + HTTP upgrade) sessionId=b3ffbc0e
+6|voice-bridge  | 2026-02-08T14:32:11.206Z [INFO ] [BRIDGE:SESSION] Replit client attached sessionId=b3ffbc0e
+6|voice-bridge  | 2026-02-08T14:32:11.206Z [INFO ] [BRIDGE:SESSION] Session state change sessionId=b3ffbc0e from=connecting to=active
+6|voice-bridge  | 2026-02-08T14:32:11.207Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS-TIMING] Total handleCallStart: 605ms (setup=34ms, connect=571ms, post=0ms) sessionId=b3ffbc0e
+6|voice-bridge  | 2026-02-08T14:32:14.435Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: **Initiating a High-Energy Greeting**
+6|voice-bridge  | I'm focusing intently on delivering an energetic greeting, a "vocal smile" to instantly engage the in-bound user. I've also checked the conversation history to ensure a seamless flow and contextual awareness for continuity.
+6|voice-bridge  | 2026-02-08T14:32:14.435Z [INFO ] [BRIDGE:SERVER] [AI]: "**Initiating a High-Energy Greeting**
+6|voice-bridge  | I'm focusing intently on delivering an energetic greeting, a "vocal smile" to instantly engage the in-bound user. I've also checked the conversation history to ensure a seamless flow and contextual awareness for continuity.
+6|voice-bridge  | "
+6|voice-bridge  | 2026-02-08T14:32:14.575Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]: Ehi, ciao
+6|voice-bridge  | 2026-02-08T14:32:14.575Z [INFO ] [BRIDGE:SERVER] [AI]: "Ehi, ciao"
+6|voice-bridge  | 2026-02-08T14:32:14.828Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Francesco!
+6|voice-bridge  | 2026-02-08T14:32:14.828Z [INFO ] [BRIDGE:SERVER] [AI]: " Francesco!"
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:REPLIT-WS] ⏱️ [REPLIT-WS-TIMING] First BINARY audio byte received 3885ms after WS open sessionId=b3ffbc0e
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] 
+6|voice-bridge  | ⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️ [VPS LATENCY REPORT] First audio from Replit
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️  handleCallStart entry → Replit WS connect start:  34ms (local setup)
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️  Replit WS connect (TLS handshake):                571ms
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️  Replit WS open → First audio byte:               3885ms (server-side processing)
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️  ─────────────────────────────────────────
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️  TOTAL handleCallStart → First audio:              4490ms
+6|voice-bridge  | 2026-02-08T14:32:15.091Z [INFO ] [BRIDGE:SERVER] ⏱️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6|voice-bridge  | 2026-02-08T14:32:15.128Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Che bello
+6|voice-bridge  | 2026-02-08T14:32:15.128Z [INFO ] [BRIDGE:SERVER] [AI]: " Che bello"
+6|voice-bridge  | 2026-02-08T14:32:15.141Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  sentirti
+6|voice-bridge  | 2026-02-08T14:32:15.142Z [INFO ] [BRIDGE:SERVER] [AI]: " sentirti"
+6|voice-bridge  | 2026-02-08T14:32:15.257Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  di nuovo!
+6|voice-bridge  | 2026-02-08T14:32:15.257Z [INFO ] [BRIDGE:SERVER] [AI]: " di nuovo!"
+6|voice-bridge  | 2026-02-08T14:32:15.353Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  Come
+6|voice-bridge  | 2026-02-08T14:32:15.354Z [INFO ] [BRIDGE:SERVER] [AI]: " Come"
+6|voice-bridge  | 2026-02-08T14:32:15.426Z [INFO ] [BRIDGE:REPLIT-WS] [AI DICE]:  stai?
+6|voice-bridge  | 2026-02-08T14:32:15.426Z [INFO ] [BRIDGE:SERVER] [AI]: " stai?"
+6|voice-bridge  | 2026-02-08T14:32:18.822Z [INFO ] [BRIDGE:REPLIT-WS] 🔄 [SESSION HANDLE] Saved resume handle for proactive restart sessionId=b3ffbc0e handlePreview=Cih6YXZudTc4emlpMGJhcTNsb...
