@@ -5259,7 +5259,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 topK: 40,
                 maxOutputTokens: 8192,
                 thinkingConfig: {
-                  thinkingBudget: 0
+                  thinkingBudget: 128
                 }
               },
               inputAudioTranscription: {},
