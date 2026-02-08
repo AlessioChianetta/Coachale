@@ -20,13 +20,14 @@ import {
   XCircle, Info, Loader2, RefreshCw, Eye, ChevronLeft, ChevronRight,
   Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus,
   Sparkles, User, Lightbulb,
-  ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp, Plus
+  ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp, Plus, BookOpen
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AllessiaSidePanel } from "@/components/alessia/FloatingEmployeeChat";
 
 interface AutonomySettings {
@@ -133,6 +134,189 @@ const TASK_CATEGORIES = [
   { value: "research", label: "Ricerca", description: "Ricercare informazioni di mercato e normative" },
   { value: "preparation", label: "Preparazione", description: "Preparare materiale per consulenze e incontri" },
   { value: "monitoring", label: "Monitoraggio", description: "Monitorare proattivamente situazioni e scadenze clienti" },
+];
+
+const TASK_LIBRARY: Array<{
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  category: string;
+  instruction: string;
+  preferred_channel?: string;
+  tone?: string;
+  urgency?: string;
+  objective?: string;
+  priority?: number;
+  voice_template_suggestion?: string;
+}> = [
+  {
+    id: "outreach-call",
+    icon: "📞",
+    title: "Chiamata commerciale",
+    description: "Contatta il cliente per presentare i nuovi servizi di consulenza finanziaria e proporre un appuntamento conoscitivo",
+    category: "outreach",
+    instruction: "Contatta il cliente per presentare i nuovi servizi di consulenza finanziaria e proporre un appuntamento conoscitivo",
+    preferred_channel: "voice",
+    tone: "persuasivo",
+    objective: "vendere",
+    priority: 2,
+    voice_template_suggestion: "sales-orbitale",
+  },
+  {
+    id: "outreach-email",
+    icon: "📧",
+    title: "Email di presentazione",
+    description: "Invia un'email professionale di presentazione dei servizi di consulenza, con focus sui vantaggi e invito a fissare un appuntamento",
+    category: "outreach",
+    instruction: "Invia un'email professionale di presentazione dei servizi di consulenza, con focus sui vantaggi e invito a fissare un appuntamento",
+    preferred_channel: "email",
+    tone: "professionale",
+    objective: "vendere",
+    priority: 3,
+  },
+  {
+    id: "outreach-whatsapp",
+    icon: "💬",
+    title: "Messaggio WhatsApp",
+    description: "Invia un messaggio WhatsApp breve e cordiale per presentarsi e proporre una consulenza gratuita",
+    category: "outreach",
+    instruction: "Invia un messaggio WhatsApp breve e cordiale per presentarsi e proporre una consulenza gratuita",
+    preferred_channel: "whatsapp",
+    tone: "informale",
+    objective: "vendere",
+    priority: 3,
+  },
+  {
+    id: "followup-post-consulenza",
+    icon: "🔄",
+    title: "Follow-up post consulenza",
+    description: "Ricontatta il cliente dopo l'ultima consulenza per verificare se ha domande, raccogliere feedback e proporre prossimi passi",
+    category: "followup",
+    instruction: "Ricontatta il cliente dopo l'ultima consulenza per verificare se ha domande, raccogliere feedback e proporre prossimi passi",
+    preferred_channel: "voice",
+    tone: "empatico",
+    objective: "fidelizzare",
+    priority: 2,
+    voice_template_suggestion: "follow-up-lead",
+  },
+  {
+    id: "followup-email",
+    icon: "📩",
+    title: "Follow-up email",
+    description: "Invia un'email di follow-up dopo la consulenza con un riepilogo dei punti discussi e le azioni concordate",
+    category: "followup",
+    instruction: "Invia un'email di follow-up dopo la consulenza con un riepilogo dei punti discussi e le azioni concordate",
+    preferred_channel: "email",
+    tone: "professionale",
+    objective: "fidelizzare",
+    priority: 3,
+  },
+  {
+    id: "followup-sollecito",
+    icon: "🔔",
+    title: "Sollecito pagamento",
+    description: "Contatta il cliente per ricordare gentilmente un pagamento in sospeso e offrire assistenza per il saldo",
+    category: "followup",
+    instruction: "Contatta il cliente per ricordare gentilmente un pagamento in sospeso e offrire assistenza per il saldo",
+    preferred_channel: "voice",
+    tone: "formale",
+    objective: "raccogliere_info",
+    priority: 1,
+    voice_template_suggestion: "recupero-crediti",
+  },
+  {
+    id: "reminder-scadenza",
+    icon: "⏰",
+    title: "Scadenza portafoglio",
+    description: "Avvisa il cliente della prossima scadenza del suo portafoglio investimenti e suggerisci una revisione strategica",
+    category: "reminder",
+    instruction: "Avvisa il cliente della prossima scadenza del suo portafoglio investimenti e suggerisci una revisione strategica",
+    preferred_channel: "voice",
+    tone: "professionale",
+    objective: "informare",
+    priority: 2,
+  },
+  {
+    id: "reminder-appuntamento",
+    icon: "📅",
+    title: "Promemoria appuntamento",
+    description: "Ricorda al cliente l'appuntamento di consulenza programmato e conferma la sua disponibilità",
+    category: "reminder",
+    instruction: "Ricorda al cliente l'appuntamento di consulenza programmato e conferma la sua disponibilità",
+    preferred_channel: "whatsapp",
+    tone: "informale",
+    objective: "informare",
+    priority: 1,
+  },
+  {
+    id: "analysis-portafoglio",
+    icon: "📊",
+    title: "Analisi portafoglio cliente",
+    description: "Analizza il portafoglio del cliente, identifica pattern di investimento, valuta la performance e genera raccomandazioni strategiche",
+    category: "analysis",
+    instruction: "Analizza il portafoglio del cliente, identifica pattern di investimento, valuta la performance e genera raccomandazioni strategiche",
+    tone: "professionale",
+    objective: "informare",
+    priority: 2,
+  },
+  {
+    id: "report-mensile",
+    icon: "📋",
+    title: "Report mensile",
+    description: "Genera un report mensile dettagliato con l'andamento degli investimenti, le performance e le raccomandazioni per il mese prossimo",
+    category: "report",
+    instruction: "Genera un report mensile dettagliato con l'andamento degli investimenti, le performance e le raccomandazioni per il mese prossimo",
+    tone: "professionale",
+    objective: "informare",
+    priority: 3,
+  },
+  {
+    id: "research-mercato",
+    icon: "🔍",
+    title: "Ricerca di mercato",
+    description: "Cerca e analizza le ultime tendenze di mercato, normative finanziarie e opportunità di investimento rilevanti per i clienti",
+    category: "research",
+    instruction: "Cerca e analizza le ultime tendenze di mercato, normative finanziarie e opportunità di investimento rilevanti per i clienti",
+    tone: "professionale",
+    objective: "informare",
+    priority: 3,
+  },
+  {
+    id: "monitoring-checkin",
+    icon: "💚",
+    title: "Check-in periodico",
+    description: "Effettua un check-in di cortesia con il cliente per verificare il suo stato, rispondere a domande e mantenere il rapporto",
+    category: "monitoring",
+    instruction: "Effettua un check-in di cortesia con il cliente per verificare il suo stato, rispondere a domande e mantenere il rapporto",
+    preferred_channel: "voice",
+    tone: "empatico",
+    objective: "fidelizzare",
+    priority: 3,
+    voice_template_suggestion: "check-in-cliente",
+  },
+  {
+    id: "monitoring-proattivo",
+    icon: "👀",
+    title: "Monitoraggio proattivo",
+    description: "Monitora la situazione finanziaria del cliente, verifica scadenze imminenti e segnala eventuali criticità che richiedono attenzione",
+    category: "monitoring",
+    instruction: "Monitora la situazione finanziaria del cliente, verifica scadenze imminenti e segnala eventuali criticità che richiedono attenzione",
+    tone: "professionale",
+    objective: "supporto",
+    priority: 2,
+  },
+  {
+    id: "preparation-consulenza",
+    icon: "📝",
+    title: "Preparazione consulenza",
+    description: "Prepara materiale e dossier per la prossima consulenza: analisi situazione attuale, obiettivi del cliente e proposte da discutere",
+    category: "preparation",
+    instruction: "Prepara materiale e dossier per la prossima consulenza: analisi situazione attuale, obiettivi del cliente e proposte da discutere",
+    tone: "professionale",
+    objective: "informare",
+    priority: 2,
+  },
 ];
 
 const DEFAULT_SETTINGS: AutonomySettings = {
@@ -488,6 +672,7 @@ export default function ConsultantAIAutonomyPage() {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(true);
   const [newTask, setNewTask] = useState({
     ai_instruction: "", task_category: "analysis", priority: 3, contact_name: "", contact_phone: "", client_id: "",
     preferred_channel: "", tone: "", urgency: "normale", scheduled_datetime: "", objective: "", additional_context: "", voice_template_suggestion: "", language: "it"
@@ -1562,11 +1747,72 @@ export default function ConsultantAIAutonomyPage() {
                               </div>
                               Crea Nuovo Task AI
                             </div>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setShowCreateTask(false)}>
-                              <ChevronUp className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={cn("h-8 gap-1 text-xs", showLibrary && "bg-indigo-500/10 text-indigo-500")}
+                                onClick={() => setShowLibrary(prev => !prev)}
+                              >
+                                <BookOpen className="h-3.5 w-3.5" />
+                                Libreria
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setShowCreateTask(false)}>
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </CardTitle>
                         </CardHeader>
+                        {showLibrary && (
+                          <div className="px-6 pb-2">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <BookOpen className="h-4 w-4 text-indigo-500" />
+                                <span className="text-sm font-semibold">Libreria Task</span>
+                                <Badge className="bg-indigo-500/20 text-indigo-500 border-indigo-500/30 text-[10px]">{TASK_LIBRARY.length} preset</Badge>
+                              </div>
+                            </div>
+                            <ScrollArea className="h-[200px]">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pr-3">
+                                {TASK_LIBRARY.map((preset) => (
+                                  <button
+                                    key={preset.id}
+                                    onClick={() => {
+                                      setNewTask(prev => ({
+                                        ...prev,
+                                        ai_instruction: preset.instruction,
+                                        task_category: preset.category,
+                                        priority: preset.priority || 3,
+                                        preferred_channel: preset.preferred_channel || "",
+                                        tone: preset.tone || "",
+                                        urgency: preset.urgency || "normale",
+                                        objective: preset.objective || "",
+                                        voice_template_suggestion: preset.voice_template_suggestion || "",
+                                      }));
+                                      setAiSuggested(false);
+                                    }}
+                                    className="flex items-start gap-2.5 p-3 rounded-lg border bg-card hover:bg-accent/50 hover:border-indigo-500/40 transition-all duration-200 text-left group"
+                                  >
+                                    <span className="text-lg shrink-0 mt-0.5">{preset.icon}</span>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-semibold group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{preset.title}</p>
+                                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">{preset.description}</p>
+                                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                        {getCategoryBadge(preset.category)}
+                                        {preset.preferred_channel && (
+                                          <Badge variant="outline" className="text-[9px] py-0 px-1">
+                                            {preset.preferred_channel === 'voice' ? '📞' : preset.preferred_channel === 'email' ? '📧' : '💬'}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                            <Separator className="mt-3" />
+                          </div>
+                        )}
                         <CardContent className="space-y-5">
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">Istruzioni per l'AI</Label>
