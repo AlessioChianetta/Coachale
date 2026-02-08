@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { jsPDF } from "jspdf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -462,6 +463,318 @@ function tryParseJSON(value: any): any {
   }
 }
 
+function renderFormattedText(text: any): React.ReactNode {
+  if (typeof text !== 'string') return text;
+  const parts: React.ReactNode[] = [];
+  const boldRegex = /\*\*(.+?)\*\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const processItalicAndBreaks = (str: string, keyPrefix: string): React.ReactNode[] => {
+    const result: React.ReactNode[] = [];
+    const italicRegex = /\*(.+?)\*/g;
+    let iLastIndex = 0;
+    let iMatch: RegExpExecArray | null;
+    while ((iMatch = italicRegex.exec(str)) !== null) {
+      if (iMatch.index > iLastIndex) {
+        const before = str.slice(iLastIndex, iMatch.index);
+        before.split('\n').forEach((line, li, arr) => {
+          result.push(<React.Fragment key={`${keyPrefix}-t-${iLastIndex}-${li}`}>{line}</React.Fragment>);
+          if (li < arr.length - 1) result.push(<br key={`${keyPrefix}-br-${iLastIndex}-${li}`} />);
+        });
+      }
+      result.push(<em key={`${keyPrefix}-em-${iMatch.index}`}>{iMatch[1]}</em>);
+      iLastIndex = iMatch.index + iMatch[0].length;
+    }
+    if (iLastIndex < str.length) {
+      const remaining = str.slice(iLastIndex);
+      remaining.split('\n').forEach((line, li, arr) => {
+        result.push(<React.Fragment key={`${keyPrefix}-t-${iLastIndex}-${li}`}>{line}</React.Fragment>);
+        if (li < arr.length - 1) result.push(<br key={`${keyPrefix}-br-${iLastIndex}-${li}`} />);
+      });
+    }
+    return result;
+  };
+  while ((match = boldRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(...processItalicAndBreaks(text.slice(lastIndex, match.index), `p-${lastIndex}`));
+    }
+    parts.push(<strong key={`b-${match.index}`}>{match[1]}</strong>);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push(...processItalicAndBreaks(text.slice(lastIndex), `p-${lastIndex}`));
+  }
+  return <>{parts}</>;
+}
+
+function cleanBoldMarkers(text: string): string {
+  if (typeof text !== 'string') return String(text || '');
+  return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+}
+
+function generateTaskPDF(task: AITask) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+  let pageNum = 1;
+
+  const checkPageBreak = (neededHeight: number) => {
+    if (y + neededHeight > pageHeight - 25) {
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Pagina ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.addPage();
+      pageNum++;
+      y = margin;
+    }
+  };
+
+  const addText = (text: string, fontSize: number, options?: { bold?: boolean; color?: [number, number, number]; maxWidth?: number; lineHeight?: number }) => {
+    const cleaned = cleanBoldMarkers(text);
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica', options?.bold ? 'bold' : 'normal');
+    if (options?.color) doc.setTextColor(...options.color);
+    else doc.setTextColor(40, 40, 40);
+    const w = options?.maxWidth || contentWidth;
+    const lines = doc.splitTextToSize(cleaned, w);
+    const lh = options?.lineHeight || fontSize * 0.5;
+    for (const line of lines) {
+      checkPageBreak(lh);
+      doc.text(line, margin, y);
+      y += lh;
+    }
+  };
+
+  const addSpacer = (h: number) => { y += h; };
+
+  const parsedResults: Record<string, any> = {};
+  if (task.result_data?.results) {
+    for (const key of Object.keys(task.result_data.results)) {
+      parsedResults[key] = tryParseJSON(task.result_data.results[key]);
+    }
+  }
+
+  const report = parsedResults.generate_report;
+  const analysis = parsedResults.analyze_patterns;
+  const webSearch = parsedResults.web_search;
+  const callPrep = parsedResults.prepare_call;
+
+  const title = report?.title || task.ai_instruction || 'Report AI';
+  const contactName = task.contact_name || '';
+  const dateStr = task.completed_at
+    ? new Date(task.completed_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  doc.setFillColor(20, 30, 50);
+  doc.rect(0, 0, pageWidth, 45, 'F');
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  const titleLines = doc.splitTextToSize(cleanBoldMarkers(title), contentWidth);
+  let titleY = 18;
+  for (const line of titleLines) {
+    doc.text(line, margin, titleY);
+    titleY += 8;
+  }
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(200, 200, 220);
+  const headerInfo = [contactName && `Cliente: ${contactName}`, `Data: ${dateStr}`].filter(Boolean).join('  |  ');
+  doc.text(headerInfo, margin, Math.max(titleY + 2, 38));
+  y = 55;
+
+  if (report && typeof report === 'object') {
+    if (report.summary) {
+      addText('Riepilogo', 13, { bold: true, color: [30, 30, 30] });
+      addSpacer(2);
+      addText(report.summary, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+      addSpacer(6);
+    }
+
+    if (report.sections && Array.isArray(report.sections)) {
+      for (const section of report.sections) {
+        checkPageBreak(15);
+        addText(section.heading, 12, { bold: true, color: [30, 30, 30] });
+        addSpacer(2);
+        addText(section.content, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+        addSpacer(6);
+      }
+    }
+
+    if (report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0) {
+      checkPageBreak(15);
+      addText('Risultati Chiave', 13, { bold: true, color: [30, 100, 30] });
+      addSpacer(2);
+      for (const finding of report.key_findings) {
+        checkPageBreak(8);
+        addText(`• ${finding}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+        addSpacer(2);
+      }
+      addSpacer(4);
+    }
+
+    if (report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0) {
+      checkPageBreak(15);
+      addText('Raccomandazioni', 13, { bold: true, color: [30, 30, 130] });
+      addSpacer(2);
+      for (const rec of report.recommendations) {
+        checkPageBreak(12);
+        const priorityLabel = rec.priority === 'high' ? '[ALTA]' : rec.priority === 'medium' ? '[MEDIA]' : '[BASSA]';
+        addText(`${priorityLabel} ${rec.action}`, 10, { bold: true, color: [40, 40, 40] });
+        if (rec.rationale) {
+          addText(rec.rationale, 9, { color: [100, 100, 100], lineHeight: 4 });
+        }
+        addSpacer(3);
+      }
+      addSpacer(4);
+    }
+
+    if (report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0) {
+      checkPageBreak(15);
+      addText('Prossimi Passi', 13, { bold: true, color: [30, 80, 130] });
+      addSpacer(2);
+      report.next_steps.forEach((step: string, i: number) => {
+        checkPageBreak(8);
+        addText(`${i + 1}. ${step}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+        addSpacer(2);
+      });
+      addSpacer(4);
+    }
+  }
+
+  if (webSearch && typeof webSearch === 'object') {
+    checkPageBreak(15);
+    addText('Ricerca Web', 13, { bold: true, color: [30, 30, 130] });
+    addSpacer(2);
+    if (webSearch.findings) {
+      addText(webSearch.findings, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+      addSpacer(4);
+    }
+    if (webSearch.sources && Array.isArray(webSearch.sources) && webSearch.sources.length > 0) {
+      addText('Fonti:', 10, { bold: true, color: [40, 40, 40] });
+      addSpacer(2);
+      for (const source of webSearch.sources) {
+        checkPageBreak(6);
+        addText(`• ${source.title || source.url}`, 9, { color: [40, 80, 160] });
+        if (source.url && source.title) {
+          addText(`  ${source.url}`, 8, { color: [120, 120, 120] });
+        }
+        addSpacer(1);
+      }
+      addSpacer(4);
+    }
+  }
+
+  if (analysis && typeof analysis === 'object' && !report) {
+    checkPageBreak(15);
+    addText('Analisi', 13, { bold: true, color: [30, 30, 30] });
+    addSpacer(2);
+
+    if (analysis.client_profile_summary) {
+      addText('Profilo Cliente', 11, { bold: true });
+      addSpacer(2);
+      addText(analysis.client_profile_summary, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+      addSpacer(4);
+    }
+
+    const listSections: Array<{ label: string; items: string[]; color: [number, number, number] }> = [];
+    if (analysis.strengths?.length) listSections.push({ label: 'Punti di Forza', items: analysis.strengths, color: [30, 120, 30] });
+    if (analysis.weaknesses?.length) listSections.push({ label: 'Aree di Miglioramento', items: analysis.weaknesses, color: [180, 100, 30] });
+    if (analysis.opportunities?.length) listSections.push({ label: 'Opportunità', items: analysis.opportunities, color: [30, 80, 160] });
+    if (analysis.behavioral_patterns?.length) listSections.push({ label: 'Pattern Comportamentali', items: analysis.behavioral_patterns, color: [80, 80, 80] });
+    if (analysis.insights?.length) listSections.push({ label: 'Insight', items: analysis.insights, color: [130, 100, 30] });
+
+    for (const sec of listSections) {
+      checkPageBreak(12);
+      addText(sec.label, 11, { bold: true, color: sec.color });
+      addSpacer(2);
+      for (const item of sec.items) {
+        checkPageBreak(8);
+        addText(`• ${item}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+        addSpacer(1);
+      }
+      addSpacer(4);
+    }
+
+    if (analysis.risk_assessment) {
+      checkPageBreak(12);
+      const riskLabel = analysis.risk_assessment.level === 'high' ? 'Alto' : analysis.risk_assessment.level === 'medium' ? 'Medio' : 'Basso';
+      addText(`Valutazione Rischio: ${riskLabel}`, 11, { bold: true, color: analysis.risk_assessment.level === 'high' ? [180, 30, 30] : analysis.risk_assessment.level === 'medium' ? [180, 150, 30] : [30, 130, 30] });
+      addSpacer(2);
+      addText(analysis.risk_assessment.description, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+      addSpacer(4);
+    }
+
+    if (analysis.suggested_approach) {
+      checkPageBreak(12);
+      addText('Approccio Suggerito', 11, { bold: true });
+      addSpacer(2);
+      addText(analysis.suggested_approach, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+      addSpacer(4);
+    }
+
+    if (analysis.recommendations?.length) {
+      checkPageBreak(12);
+      addText('Raccomandazioni', 11, { bold: true, color: [30, 30, 130] });
+      addSpacer(2);
+      for (const rec of analysis.recommendations) {
+        checkPageBreak(6);
+        addText(`• ${typeof rec === 'string' ? rec : rec.action || JSON.stringify(rec)}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+        addSpacer(1);
+      }
+      addSpacer(4);
+    }
+  }
+
+  if (callPrep && typeof callPrep === 'object') {
+    checkPageBreak(15);
+    addText('Preparazione Chiamata', 13, { bold: true, color: [30, 30, 130] });
+    addSpacer(2);
+
+    if (callPrep.opening_script) {
+      addText('Apertura:', 10, { bold: true });
+      addSpacer(1);
+      addText(callPrep.opening_script, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+      addSpacer(4);
+    }
+
+    if (callPrep.talking_points && Array.isArray(callPrep.talking_points)) {
+      addText('Punti di Discussione:', 10, { bold: true });
+      addSpacer(2);
+      for (const tp of callPrep.talking_points) {
+        checkPageBreak(12);
+        addText(`• ${tp.topic}`, 10, { bold: true, color: [40, 40, 40] });
+        addText(tp.key_message, 9, { color: [80, 80, 80], lineHeight: 4 });
+        if (tp.supporting_details) {
+          addText(tp.supporting_details, 8, { color: [120, 120, 120], lineHeight: 3.5 });
+        }
+        addSpacer(2);
+      }
+      addSpacer(4);
+    }
+
+    if (callPrep.closing_script) {
+      addText('Chiusura:', 10, { bold: true });
+      addSpacer(1);
+      addText(callPrep.closing_script, 10, { color: [80, 80, 80], lineHeight: 4.5 });
+      addSpacer(4);
+    }
+  }
+
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text(`Pagina ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+  const safeName = (contactName || 'task').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  const fileDate = task.completed_at
+    ? new Date(task.completed_at).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  doc.save(`report_${safeName}_${fileDate}.pdf`);
+}
+
 function DeepResearchResults({ results }: { results: Record<string, any> }) {
   const sections: React.ReactNode[] = [];
 
@@ -476,38 +789,38 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (report && typeof report === 'object') {
     sections.push(
-      <div key="report" className="space-y-4">
-        <h3 className="text-base font-bold flex items-center gap-2">
+      <div key="report" className="space-y-6">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
           <Target className="h-5 w-5 text-primary" />
           {report.title || "Report"}
         </h3>
         {report.summary && (
-          <p className="text-sm text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 leading-relaxed">
-            {report.summary}
+          <p className="text-sm text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 leading-relaxed mb-3">
+            {renderFormattedText(report.summary)}
           </p>
         )}
         {report.sections && Array.isArray(report.sections) && report.sections.map((section: any, i: number) => (
-          <div key={i} className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground">{section.heading}</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{section.content}</p>
+          <div key={i} className="space-y-2 mt-4">
+            <h4 className="text-sm font-semibold text-foreground mb-2">{section.heading}</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap mb-3">{renderFormattedText(section.content)}</p>
           </div>
         ))}
         {report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0 && (
-          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 rounded-xl p-4">
-            <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">🔑 Risultati Chiave</p>
-            <ul className="space-y-1">
+          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 rounded-xl p-4 mt-4">
+            <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-3">🔑 Risultati Chiave</p>
+            <ul className="space-y-2">
               {report.key_findings.map((finding: string, i: number) => (
-                <li key={i} className="text-sm text-green-700 dark:text-green-300 flex items-start gap-2">
+                <li key={i} className="text-sm text-green-700 dark:text-green-300 flex items-start gap-2 leading-relaxed">
                   <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>{finding}</span>
+                  <span>{renderFormattedText(finding)}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
         {report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">💡 Raccomandazioni</p>
+          <div className="space-y-3 mt-4">
+            <p className="text-sm font-semibold mb-2">💡 Raccomandazioni</p>
             {report.recommendations.map((rec: any, i: number) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border">
                 <div className={cn(
@@ -519,19 +832,19 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
                   {rec.priority === 'high' ? 'Alta' : rec.priority === 'medium' ? 'Media' : 'Bassa'}
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{rec.action}</p>
-                  {rec.rationale && <p className="text-xs text-muted-foreground mt-0.5">{rec.rationale}</p>}
+                  <p className="text-sm font-medium leading-relaxed">{renderFormattedText(rec.action)}</p>
+                  {rec.rationale && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{renderFormattedText(rec.rationale)}</p>}
                 </div>
               </div>
             ))}
           </div>
         )}
         {report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4">
-            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">➡️ Prossimi Passi</p>
-            <ol className="space-y-1 list-decimal list-inside">
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 mt-4">
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-3">➡️ Prossimi Passi</p>
+            <ol className="space-y-2 list-decimal list-inside">
               {report.next_steps.map((step: string, i: number) => (
-                <li key={i} className="text-sm text-blue-700 dark:text-blue-300">{step}</li>
+                <li key={i} className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">{renderFormattedText(step)}</li>
               ))}
             </ol>
           </div>
@@ -542,90 +855,90 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (analysis && typeof analysis === 'object' && !report) {
     sections.push(
-      <div key="analysis" className="space-y-3">
-        <h3 className="text-base font-bold flex items-center gap-2">
+      <div key="analysis" className="space-y-5">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
           <BarChart3 className="h-5 w-5 text-primary" />
           Analisi
         </h3>
         {analysis.client_profile_summary && (
           <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
-            <p className="text-sm font-semibold mb-1">Profilo Cliente</p>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{analysis.client_profile_summary}</p>
+            <p className="text-sm font-semibold mb-2">Profilo Cliente</p>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap mb-3">{renderFormattedText(analysis.client_profile_summary)}</p>
           </div>
         )}
         {analysis.strengths && Array.isArray(analysis.strengths) && analysis.strengths.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-green-700 dark:text-green-400">💪 Punti di Forza</p>
-            <ul className="space-y-1">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">💪 Punti di Forza</p>
+            <ul className="space-y-2">
               {analysis.strengths.map((s: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
                   <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-green-500" />
-                  <span>{s}</span>
+                  <span>{renderFormattedText(s)}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
         {analysis.weaknesses && Array.isArray(analysis.weaknesses) && analysis.weaknesses.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">⚠️ Aree di Miglioramento</p>
-            <ul className="space-y-1">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-orange-700 dark:text-orange-400 mb-2">⚠️ Aree di Miglioramento</p>
+            <ul className="space-y-2">
               {analysis.weaknesses.map((w: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-orange-500" />
-                  <span>{w}</span>
+                  <span>{renderFormattedText(w)}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
         {analysis.opportunities && Array.isArray(analysis.opportunities) && analysis.opportunities.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">🚀 Opportunità</p>
-            <ul className="space-y-1">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2">🚀 Opportunità</p>
+            <ul className="space-y-2">
               {analysis.opportunities.map((o: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
                   <ArrowRight className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
-                  <span>{o}</span>
+                  <span>{renderFormattedText(o)}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
         {analysis.behavioral_patterns && Array.isArray(analysis.behavioral_patterns) && analysis.behavioral_patterns.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-sm font-semibold">📊 Pattern Comportamentali</p>
-            <ul className="space-y-1">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold mb-2">📊 Pattern Comportamentali</p>
+            <ul className="space-y-2">
               {analysis.behavioral_patterns.map((p: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
                   <span className="text-muted-foreground/60">•</span>
-                  <span>{p}</span>
+                  <span>{renderFormattedText(p)}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
         {analysis.past_consultation_insights && Array.isArray(analysis.past_consultation_insights) && analysis.past_consultation_insights.length > 0 && (
-          <div className="space-y-1">
-            <p className="text-sm font-semibold">📋 Insight dalle Consulenze Passate</p>
-            <ul className="space-y-1">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold mb-2">📋 Insight dalle Consulenze Passate</p>
+            <ul className="space-y-2">
               {analysis.past_consultation_insights.map((ins: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
                   <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-purple-500" />
-                  <span>{ins}</span>
+                  <span>{renderFormattedText(ins)}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
         {analysis.insights && Array.isArray(analysis.insights) && (
-          <div className="space-y-1">
-            <p className="text-sm font-semibold">💡 Insight</p>
-            <ul className="space-y-1">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold mb-2">💡 Insight</p>
+            <ul className="space-y-2">
               {analysis.insights.map((insight: string, i: number) => (
-                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
                   <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-yellow-500" />
-                  <span>{insight}</span>
+                  <span>{renderFormattedText(insight)}</span>
                 </li>
               ))}
             </ul>
@@ -638,16 +951,16 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
             analysis.risk_assessment.level === 'medium' ? "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/50" :
             "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/50"
           )}>
-            <p className="text-sm font-semibold mb-1">
+            <p className="text-sm font-semibold mb-2">
               {analysis.risk_assessment.level === 'high' ? '🔴' : analysis.risk_assessment.level === 'medium' ? '🟡' : '🟢'} Valutazione Rischio: {analysis.risk_assessment.level === 'high' ? 'Alto' : analysis.risk_assessment.level === 'medium' ? 'Medio' : 'Basso'}
             </p>
-            <p className="text-sm text-muted-foreground">{analysis.risk_assessment.description}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{renderFormattedText(analysis.risk_assessment.description)}</p>
           </div>
         )}
         {analysis.suggested_approach && (
           <div className="bg-muted/50 rounded-lg p-3 border border-border">
-            <p className="text-sm font-semibold mb-1">Approccio Suggerito</p>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.suggested_approach}</p>
+            <p className="text-sm font-semibold mb-2">Approccio Suggerito</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{renderFormattedText(analysis.suggested_approach)}</p>
           </div>
         )}
       </div>
@@ -656,13 +969,13 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (webSearch && typeof webSearch === 'object') {
     sections.push(
-      <div key="websearch" className="space-y-3">
-        <h3 className="text-base font-bold flex items-center gap-2">
+      <div key="websearch" className="space-y-5">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
           🌐 Ricerca Web
         </h3>
         {webSearch.findings && (
-          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-4 border border-border">
-            {webSearch.findings}
+          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-4 border border-border mb-3">
+            {renderFormattedText(webSearch.findings)}
           </div>
         )}
         {webSearch.sources && Array.isArray(webSearch.sources) && webSearch.sources.length > 0 && (
@@ -685,33 +998,33 @@ function DeepResearchResults({ results }: { results: Record<string, any> }) {
 
   if (callPrep && typeof callPrep === 'object') {
     sections.push(
-      <div key="callprep" className="space-y-3">
-        <h3 className="text-base font-bold flex items-center gap-2">
+      <div key="callprep" className="space-y-5">
+        <h3 className="text-base font-bold flex items-center gap-2 mb-2">
           <Phone className="h-5 w-5 text-primary" />
           Preparazione Chiamata
         </h3>
         {callPrep.opening_script && (
           <div className="bg-muted/50 rounded-lg p-3 border border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-1">Apertura</p>
-            <p className="text-sm italic">"{callPrep.opening_script}"</p>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Apertura</p>
+            <p className="text-sm italic leading-relaxed">"{renderFormattedText(callPrep.opening_script)}"</p>
           </div>
         )}
         {callPrep.talking_points && Array.isArray(callPrep.talking_points) && (
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">Punti di Discussione</p>
+          <div className="space-y-3">
+            <p className="text-sm font-semibold mb-2">Punti di Discussione</p>
             {callPrep.talking_points.map((tp: any, i: number) => (
               <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-sm font-medium">{tp.topic}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{tp.key_message}</p>
-                {tp.supporting_details && <p className="text-xs text-muted-foreground mt-0.5 italic">{tp.supporting_details}</p>}
+                <p className="text-sm font-medium leading-relaxed">{renderFormattedText(tp.topic)}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{renderFormattedText(tp.key_message)}</p>
+                {tp.supporting_details && <p className="text-xs text-muted-foreground mt-1 italic leading-relaxed">{renderFormattedText(tp.supporting_details)}</p>}
               </div>
             ))}
           </div>
         )}
         {callPrep.closing_script && (
           <div className="bg-muted/50 rounded-lg p-3 border border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-1">Chiusura</p>
-            <p className="text-sm italic">"{callPrep.closing_script}"</p>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Chiusura</p>
+            <p className="text-sm italic leading-relaxed">"{renderFormattedText(callPrep.closing_script)}"</p>
           </div>
         )}
       </div>
@@ -2801,7 +3114,7 @@ export default function ConsultantAIAutonomyPage() {
                               )}
                               <Button
                                 variant="outline"
-                                onClick={() => toast({ title: "Funzionalità in arrivo", description: "La generazione del PDF sarà disponibile a breve" })}
+                                onClick={() => generateTaskPDF(task)}
                               >
                                 <Save className="h-4 w-4 mr-1.5" />
                                 Scarica PDF
@@ -2905,27 +3218,17 @@ export default function ConsultantAIAutonomyPage() {
                           <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 text-xs">search_private_stores</Badge>
                         </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                          Cerca nei <span className="font-medium text-foreground">documenti privati</span> del cliente e del consulente usando
+                          Cerca esclusivamente nei <span className="font-medium text-foreground">documenti privati del cliente</span> usando
                           <span className="font-medium text-foreground"> ricerca semantica AI</span> (Gemini File Search).
                         </p>
                         <div className="mt-3 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
                           <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
                             <Search className="h-3.5 w-3.5" />
-                            Store Cliente (se disponibile)
+                            Store Privato del Cliente
                           </div>
                           <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                            <p><span className="font-medium text-foreground">Fonti:</span> Note consulenze, risposte esercizi, knowledge base cliente</p>
+                            <p><span className="font-medium text-foreground">Fonti:</span> Note consulenze, risposte esercizi, documenti caricati, storico interazioni</p>
                             <p><span className="font-medium text-foreground">Metodo:</span> Ricerca semantica nei documenti indicizzati del contatto</p>
-                          </div>
-                        </div>
-                        <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                            <Search className="h-3.5 w-3.5" />
-                            Store Consulente
-                          </div>
-                          <div className="text-xs text-muted-foreground space-y-1 pl-5">
-                            <p><span className="font-medium text-foreground">Fonti:</span> Libreria documenti, knowledge base, contesto AI dinamico, guide piattaforma</p>
-                            <p><span className="font-medium text-foreground">Metodo:</span> Ricerca semantica negli archivi del consulente</p>
                           </div>
                         </div>
                         <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/20 border p-3 space-y-2">

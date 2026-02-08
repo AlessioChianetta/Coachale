@@ -840,13 +840,25 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
           console.log(`🧠 [AI-AUTONOMY] Executing step ${i + 1}/${totalSteps}: ${stepName}`);
 
           executionPlan[i] = { ...executionPlan[i], status: 'in_progress' };
+          const stepProgressMsg = `Eseguendo step ${i + 1}/${totalSteps}: ${step.description || stepName}`;
           await db.execute(sql`
             UPDATE ai_scheduled_tasks
             SET execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
-                result_summary = ${`Eseguendo step ${i + 1}/${totalSteps}: ${step.description || stepName}`},
+                result_summary = ${stepProgressMsg},
                 updated_at = NOW()
             WHERE id = ${task.id}
           `);
+
+          await logActivity(taskInfo.consultant_id, {
+            event_type: `step_${stepName}_started`,
+            title: `Eseguendo step ${i + 1}/${totalSteps}: ${stepName}`,
+            description: step.description || stepName,
+            icon: "🔄",
+            severity: "info",
+            task_id: task.id,
+            contact_name: taskInfo.contact_name,
+            contact_id: taskInfo.contact_id,
+          });
 
           const stepResult = await executeStep(taskInfo, step, allResults);
 
