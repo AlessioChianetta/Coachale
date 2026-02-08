@@ -1504,13 +1504,48 @@ export function setupGeminiLiveWSService(): WebSocketServer {
 
     const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode, isPhoneCall, phoneCallerId, voiceCallId, phoneCallInstruction, phoneInstructionType, phoneScheduledCallId } = authResult;
 
-    // ⚡ O4: EARLY-START non-client parallel queries immediately after auth
+    // ⚡ O4: EARLY-START parallel queries immediately after auth
     // These queries start running while 1400+ lines of variable declarations and function definitions execute
-    // They'll be reused at their original location (line ~2920) via the _earlyStarted* promises
+    // They'll be reused at their original location via the _earlyStarted* promises
     let _earlyStartedConsultantInfoPromise: Promise<any> | null = null;
     let _earlyStartedSettingsPromise: Promise<any> | null = null;
     let _earlyStartedPreviousConversationsPromise: Promise<any> | null = null;
     let _earlyStartedProactiveLeadPromise: Promise<any> | null = null;
+    // ⚡ O5: EARLY-START booking slots + task queries for ALL phone calls
+    let _earlyStartedSlotsPromise: Promise<any> | null = null;
+    let _earlyStartedTasksPromise: Promise<any> | null = null;
+    
+    // ⚡ O5: Start booking slots + task existing-tasks query for ALL phone calls (client + non-client)
+    if (isPhoneCall && consultantId) {
+      console.log(`⚡ [O5] EARLY-START: Launching slots + tasks queries immediately after auth`);
+      
+      _earlyStartedSlotsPromise = executeConsultationTool(
+        "getAvailableSlots",
+        { startDate: new Date().toISOString().slice(0, 10) },
+        userId || 'voice_anonymous',
+        consultantId,
+        undefined,
+        agentId || undefined
+      ).catch((err: any) => {
+        console.warn(`⚠️ [${connectionId}] [O5] Could not pre-load slots:`, err.message);
+        return { success: false, result: null };
+      });
+      
+      if (phoneCallerId) {
+        _earlyStartedTasksPromise = db.execute(sql`
+          SELECT id, ai_instruction, scheduled_at, recurrence_type, status, contact_name
+          FROM ai_scheduled_tasks
+          WHERE consultant_id = ${consultantId} AND contact_phone = ${phoneCallerId}
+          AND status IN ('scheduled', 'retry_pending', 'paused')
+          AND (scheduled_at >= NOW() OR recurrence_type IN ('daily', 'weekly'))
+          ORDER BY scheduled_at ASC
+          LIMIT 20
+        `).catch((err: any) => {
+          console.warn(`⚠️ [${connectionId}] [O5] Could not pre-load tasks:`, err.message);
+          return { rows: [] as any[] };
+        });
+      }
+    }
     
     if (isPhoneCall && !userId && consultantId) {
       console.log(`⚡ [O4] EARLY-START: Launching non-client parallel queries immediately after auth`);
@@ -4784,18 +4819,17 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         }
       }
 
+        // ⚡ O5: Await early-started slots + tasks IN PARALLEL (launched right after auth)
         if (isPhoneCall && consultantId) {
+          const _slotsTaskStart = Date.now();
+          const [slotsResult, preloadedTaskRows] = await Promise.all([
+            _earlyStartedSlotsPromise || Promise.resolve({ success: false, result: null }),
+            _earlyStartedTasksPromise || Promise.resolve({ rows: [] as any[] }),
+          ]);
+          console.log(`⏱️ [O5] Slots + tasks await resolved: ${Date.now() - _slotsTaskStart}ms (already running since auth)`);
+
           try {
-            const slotsResult = await executeConsultationTool(
-              "getAvailableSlots",
-              { startDate: new Date().toISOString().slice(0, 10) },
-              userId || 'voice_anonymous',
-              consultantId,
-              undefined,
-              agentId || undefined
-            );
-            console.log(`📅 [${connectionId}] Slot loading: agentId=${agentId || 'none (using consultant global settings)'}`);
-            if (slotsResult.success && slotsResult.result?.slots) {
+            if (slotsResult?.success && slotsResult?.result?.slots) {
               bookingAvailableSlots = slotsResult.result.slots.map((s: any) => ({
                 date: s.date,
                 dayOfWeek: s.dayOfWeek,
@@ -4804,14 +4838,11 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 duration: s.duration || 60,
               }));
               console.log(`📅 [${connectionId}] Pre-loaded ${bookingAvailableSlots.length} available slots for booking supervisor`);
-              if (bookingAvailableSlots.length > 0) {
-                console.log(`📅 [${connectionId}] First slot: ${bookingAvailableSlots[0].dayOfWeek} ${bookingAvailableSlots[0].date} ${bookingAvailableSlots[0].time}`);
-              }
             } else {
-              console.warn(`⚠️ [${connectionId}] Slot loading returned 0 slots: success=${slotsResult.success}, error=${slotsResult.error || 'none'}, resultKeys=${slotsResult.result ? Object.keys(slotsResult.result).join(',') : 'null'}`);
+              console.warn(`⚠️ [${connectionId}] Slot loading returned 0 slots`);
             }
           } catch (slotErr: any) {
-            console.warn(`⚠️ [${connectionId}] Could not pre-load slots for booking:`, slotErr.message);
+            console.warn(`⚠️ [${connectionId}] Could not process slots:`, slotErr.message);
           }
 
           bookingSupervisor = new VoiceBookingSupervisor({
@@ -4826,23 +4857,21 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               name: phoneLeadContactData.name,
             } : undefined,
           });
-          console.log(`📋 [${connectionId}] VoiceBookingSupervisor initialized (isClient: ${!!userId}, slots: ${bookingAvailableSlots.length}${phoneLeadContactData?.leadId ? `, leadData: phone=${phoneLeadContactData.phone}, email=${phoneLeadContactData.email}, name=${phoneLeadContactData.name}` : ''})`);
 
           const bookingPromptSection = bookingSupervisor.getBookingPromptSection();
           systemInstruction = systemInstruction + '\n\n' + bookingPromptSection;
           console.log(`📋 [${connectionId}] Booking prompt section appended (${bookingPromptSection.length} chars)`);
-        }
 
-        if (isPhoneCall && consultantId) {
           taskSupervisor = new VoiceTaskSupervisor({
             consultantId,
             voiceCallId: voiceCallId || '',
             contactPhone: phoneCallerId || '',
             contactName: phoneLeadContactData?.name || null,
           });
-          console.log(`📝 [${connectionId}] VoiceTaskSupervisor initialized (phone: ${phoneCallerId || 'unknown'})`);
 
-          const taskPromptSection = await taskSupervisor.getTaskPromptSection();
+          const taskPromptSection = await taskSupervisor.getTaskPromptSection(
+            (preloadedTaskRows as any)?.rows || []
+          );
           systemInstruction = systemInstruction + '\n\n' + taskPromptSection;
           console.log(`📝 [${connectionId}] Task prompt section appended (${taskPromptSection.length} chars)`);
         }
