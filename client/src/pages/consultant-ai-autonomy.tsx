@@ -759,21 +759,80 @@ export default function ConsultantAIAutonomyPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="settings" className="space-y-6 mt-6">
+              <TabsContent value="settings" className="mt-6">
                 {loadingSettings ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <>
-                    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="space-y-8"
+                  >
+                    <Card className="rounded-xl shadow-sm border-l-4 border-l-cyan-500 bg-gradient-to-r from-cyan-500/5 via-teal-500/5 to-transparent dark:from-cyan-950/30 dark:via-teal-950/20 dark:to-transparent">
+                      <CardContent className="py-5 px-6">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <div className={cn(
+                              "flex items-center justify-center h-14 w-14 rounded-2xl text-2xl font-bold text-white shadow-lg",
+                              settings.autonomy_level === 0 ? "bg-muted-foreground" :
+                              settings.autonomy_level <= 3 ? "bg-green-500" :
+                              settings.autonomy_level <= 6 ? "bg-yellow-500" :
+                              settings.autonomy_level <= 9 ? "bg-orange-500" : "bg-red-500"
+                            )}>
+                              {settings.autonomy_level}
+                            </div>
+                            {settings.is_active && (
+                              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500" />
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Zap className="h-4 w-4 text-cyan-500" />
+                              <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">Stato attuale</span>
+                            </div>
+                            <p className="text-sm text-foreground">
+                              Il tuo Dipendente AI è in modalità{" "}
+                              <span className="font-semibold">
+                                {settings.default_mode === "manual" ? "Manuale" : settings.default_mode === "hybrid" ? "Ibrido" : "Automatico"}
+                              </span>.{" "}
+                              {settings.is_active ? (
+                                <span className="text-green-600 dark:text-green-400">
+                                  Sta operando con autonomia livello {settings.autonomy_level}.
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  Non sta eseguendo azioni autonome.
+                                </span>
+                              )}
+                            </p>
+                            <div className="flex items-center gap-3 mt-2">
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <Activity className="h-3 w-3" />
+                                {[settings.channels_enabled.voice, settings.channels_enabled.email, settings.channels_enabled.whatsapp].filter(Boolean).length} canali attivi
+                              </Badge>
+                              <Badge className={cn("text-xs", getAutonomyBadgeColor(settings.autonomy_level))}>
+                                {autonomyInfo.label}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="rounded-xl shadow-sm border-primary/10 bg-gradient-to-br from-primary/[0.03] to-primary/[0.06] dark:from-primary/[0.05] dark:to-primary/[0.08]">
                       <CardHeader className="cursor-pointer" onClick={() => setShowArchDetails(!showArchDetails)}>
                         <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600">
-                              <Bot className="h-5 w-5 text-white" />
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-md">
+                              <Bot className="h-6 w-6 text-white" />
                             </div>
-                            Cosa può fare il tuo Dipendente AI
+                            <span className="text-xl font-bold">Cosa può fare il tuo Dipendente AI</span>
                           </div>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                             {showArchDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -796,12 +855,12 @@ export default function ConsultantAIAutonomyPage() {
                             <div className="rounded-xl border-l-4 border-purple-500 bg-gradient-to-r from-purple-500/10 to-transparent p-4">
                               <div className="flex items-start gap-3">
                                 <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 shrink-0">
-                                  <Brain className="h-5 w-5 text-white" />
+                                  <Brain className="h-6 w-6 text-white" />
                                 </div>
                                 <div className="space-y-2 flex-1">
                                   <h4 className="font-semibold text-sm flex items-center gap-2">
                                     Come funziona
-                                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">Il Cervello</Badge>
+                                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs hover:scale-105 transition-transform cursor-default">Il Cervello</Badge>
                                   </h4>
                                   <p className="text-sm text-muted-foreground leading-relaxed">
                                     Un <span className="font-medium text-foreground">motore decisionale</span> basato su Gemini analizza il contesto di ogni cliente
@@ -809,9 +868,9 @@ export default function ConsultantAIAutonomyPage() {
                                     Ragiona come un consulente esperto per decidere cosa fare, quando e come.
                                   </p>
                                   <div className="flex flex-wrap gap-2 pt-1">
-                                    <Badge variant="outline" className="text-xs gap-1"><Eye className="h-3 w-3" /> Analisi contesto</Badge>
-                                    <Badge variant="outline" className="text-xs gap-1"><ListTodo className="h-3 w-3" /> Piani multi-step</Badge>
-                                    <Badge variant="outline" className="text-xs gap-1"><Sparkles className="h-3 w-3" /> Reasoning AI</Badge>
+                                    <Badge variant="outline" className="text-xs gap-1 hover:scale-105 transition-transform cursor-default"><Eye className="h-3 w-3" /> Analisi contesto</Badge>
+                                    <Badge variant="outline" className="text-xs gap-1 hover:scale-105 transition-transform cursor-default"><ListTodo className="h-3 w-3" /> Piani multi-step</Badge>
+                                    <Badge variant="outline" className="text-xs gap-1 hover:scale-105 transition-transform cursor-default"><Sparkles className="h-3 w-3" /> Reasoning AI</Badge>
                                   </div>
                                 </div>
                               </div>
@@ -820,43 +879,61 @@ export default function ConsultantAIAutonomyPage() {
                             <Separator />
 
                             <div className="rounded-xl border-l-4 border-blue-500 bg-gradient-to-r from-blue-500/10 to-transparent p-4">
-                              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                              <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
                                 <Cog className="h-4 w-4 text-blue-500" />
                                 Le 3 Modalità
                               </h4>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="rounded-lg border bg-card p-3 space-y-2">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className={cn(
+                                  "rounded-xl border bg-card p-5 space-y-3 hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-default relative",
+                                  settings.default_mode === "manual" && "ring-2 ring-primary border-primary/30"
+                                )}>
                                   <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-md bg-green-500/15">
-                                      <User className="h-4 w-4 text-green-500" />
+                                    <div className="p-2 rounded-lg bg-green-500/15">
+                                      <User className="h-5 w-5 text-green-500" />
                                     </div>
-                                    <span className="font-medium text-sm">Manuale</span>
+                                    <span className="font-semibold text-sm">Manuale</span>
                                   </div>
                                   <p className="text-xs text-muted-foreground leading-relaxed">
                                     Tu crei i task, l'AI li esegue quando programmati. Controllo totale su ogni azione.
                                   </p>
+                                  <p className="text-[11px] font-medium text-green-600 dark:text-green-400">
+                                    Ideale per: chi vuole controllo totale
+                                  </p>
                                 </div>
-                                <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 space-y-2 relative">
-                                  <Badge className="absolute -top-2 right-2 bg-blue-500 text-white text-[10px] px-1.5 py-0">Consigliata</Badge>
+                                <div className={cn(
+                                  "rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 space-y-3 hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-default relative",
+                                  settings.default_mode === "hybrid" && "ring-2 ring-primary border-primary/30"
+                                )}>
+                                  <Badge className="absolute -top-3 right-3 bg-blue-500 text-white text-xs px-2.5 py-0.5 shadow-sm">⭐ Consigliata</Badge>
                                   <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-md bg-blue-500/15">
-                                      <Lightbulb className="h-4 w-4 text-blue-500" />
+                                    <div className="p-2 rounded-lg bg-blue-500/15">
+                                      <Lightbulb className="h-5 w-5 text-blue-500" />
                                     </div>
-                                    <span className="font-medium text-sm">Ibrida</span>
+                                    <span className="font-semibold text-sm">Ibrida</span>
                                   </div>
                                   <p className="text-xs text-muted-foreground leading-relaxed">
                                     L'AI propone nuove azioni ma chiede approvazione per quelle importanti.
                                   </p>
+                                  <p className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                                    Ideale per: consulenti e team piccoli
+                                  </p>
                                 </div>
-                                <div className="rounded-lg border bg-card p-3 space-y-2">
+                                <div className={cn(
+                                  "rounded-xl border bg-card p-5 space-y-3 hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-default relative",
+                                  settings.default_mode === "automatic" && "ring-2 ring-primary border-primary/30"
+                                )}>
                                   <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-md bg-orange-500/15">
-                                      <Zap className="h-4 w-4 text-orange-500" />
+                                    <div className="p-2 rounded-lg bg-orange-500/15">
+                                      <Zap className="h-5 w-5 text-orange-500" />
                                     </div>
-                                    <span className="font-medium text-sm">Automatica</span>
+                                    <span className="font-semibold text-sm">Automatica</span>
                                   </div>
                                   <p className="text-xs text-muted-foreground leading-relaxed">
                                     L'AI opera in piena autonomia entro i limiti configurati.
+                                  </p>
+                                  <p className="text-[11px] font-medium text-orange-600 dark:text-orange-400">
+                                    Ideale per: aziende strutturate
                                   </p>
                                 </div>
                               </div>
@@ -865,37 +942,35 @@ export default function ConsultantAIAutonomyPage() {
                             <Separator />
 
                             <div className="rounded-xl border-l-4 border-emerald-500 bg-gradient-to-r from-emerald-500/10 to-transparent p-4">
-                              <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                              <h4 className="font-semibold text-sm mb-5 flex items-center gap-2">
                                 <RefreshCw className="h-4 w-4 text-emerald-500" />
                                 Il Ciclo di Lavoro
                               </h4>
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 {[
-                                  { step: 1, icon: Timer, title: "CRON Scheduler", desc: "Controlla ogni minuto se ci sono task da eseguire", color: "text-cyan-500", bg: "bg-cyan-500/15" },
-                                  { step: 2, icon: Brain, title: "Decision Engine", desc: "Analizza contesto cliente, storico e priorità", color: "text-purple-500", bg: "bg-purple-500/15" },
-                                  { step: 3, icon: ListTodo, title: "Piano Esecuzione", desc: "Crea un piano multi-step con azioni ordinate", color: "text-blue-500", bg: "bg-blue-500/15" },
-                                  { step: 4, icon: Play, title: "Task Executor", desc: "Esegue: chiamate, email, WhatsApp, analisi, report", color: "text-emerald-500", bg: "bg-emerald-500/15" },
+                                  { step: 1, icon: Timer, title: "CRON Scheduler", desc: "Verifica task ogni minuto", color: "text-cyan-500", bg: "bg-cyan-500" },
+                                  { step: 2, icon: Brain, title: "Decision Engine", desc: "Analizza contesto e priorità", color: "text-purple-500", bg: "bg-purple-500" },
+                                  { step: 3, icon: ListTodo, title: "Piano Esecuzione", desc: "Crea piano multi-step", color: "text-blue-500", bg: "bg-blue-500" },
+                                  { step: 4, icon: Play, title: "Task Executor", desc: "Esegue azioni su tutti i canali", color: "text-emerald-500", bg: "bg-emerald-500" },
                                 ].map((item, idx) => (
-                                  <div key={item.step} className="flex items-start gap-2">
+                                  <div key={item.step} className="flex items-start gap-3 relative">
                                     <div className="flex flex-col items-center gap-1 shrink-0">
-                                      <div className={cn("flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold text-white", 
-                                        item.step === 1 ? "bg-cyan-500" : item.step === 2 ? "bg-purple-500" : item.step === 3 ? "bg-blue-500" : "bg-emerald-500"
-                                      )}>
+                                      <div className={cn("flex items-center justify-center h-9 w-9 rounded-full text-sm font-bold text-white shadow-md", item.bg)}>
                                         {item.step}
                                       </div>
-                                      {idx < 3 && <ArrowRight className="h-3 w-3 text-muted-foreground hidden lg:block rotate-0 lg:rotate-0" />}
+                                      {idx < 3 && <div className={cn("hidden lg:block h-[3px] w-6 absolute top-4 -right-1.5 rounded-full", item.bg, "opacity-40")} />}
                                     </div>
                                     <div className="space-y-1 min-w-0">
                                       <div className="flex items-center gap-1.5">
-                                        <item.icon className={cn("h-3.5 w-3.5", item.color)} />
-                                        <span className="text-xs font-medium truncate">{item.title}</span>
+                                        <item.icon className={cn("h-4 w-4", item.color)} />
+                                        <span className="text-xs font-semibold truncate">{item.title}</span>
                                       </div>
                                       <p className="text-[11px] text-muted-foreground leading-relaxed">{item.desc}</p>
                                     </div>
                                   </div>
                                 ))}
                               </div>
-                              <div className="mt-3 flex flex-wrap gap-1.5">
+                              <div className="mt-4 flex flex-wrap gap-1.5">
                                 {[
                                   { icon: Phone, label: "Chiamate", color: "text-green-500" },
                                   { icon: Mail, label: "Email", color: "text-blue-500" },
@@ -903,7 +978,7 @@ export default function ConsultantAIAutonomyPage() {
                                   { icon: BarChart3, label: "Analisi", color: "text-purple-500" },
                                   { icon: Target, label: "Ricerca", color: "text-cyan-500" },
                                 ].map((ch) => (
-                                  <Badge key={ch.label} variant="outline" className="text-[10px] gap-1 py-0.5">
+                                  <Badge key={ch.label} variant="outline" className="text-[10px] gap-1 py-0.5 hover:scale-105 transition-transform cursor-default">
                                     <ch.icon className={cn("h-3 w-3", ch.color)} />
                                     {ch.label}
                                   </Badge>
@@ -913,22 +988,25 @@ export default function ConsultantAIAutonomyPage() {
 
                             <Separator />
 
-                            <div className="rounded-xl border-l-4 border-amber-500 bg-gradient-to-r from-amber-500/10 to-transparent p-4">
+                            <div className="rounded-xl border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4">
                               <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                <Shield className="h-4 w-4 text-amber-500" />
+                                <Shield className="h-5 w-5 text-amber-500" />
                                 Guardrail di Sicurezza
                               </h4>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
                                 {[
-                                  { icon: Clock, text: "Opera solo nell'orario di lavoro configurato" },
-                                  { icon: Shield, text: "Limiti giornalieri per ogni canale" },
-                                  { icon: Zap, text: "Solo canali e categorie abilitate" },
-                                  { icon: AlertCircle, text: "Livello autonomia richiesto per ogni azione" },
-                                  { icon: Activity, text: "Ogni azione registrata nel feed attività" },
-                                  { icon: CheckCircle, text: "Nessuna azione duplicata o ridondante" },
+                                  { icon: Clock, text: "Opera solo nell'orario di lavoro configurato", col: 1 },
+                                  { icon: Shield, text: "Limiti giornalieri per ogni canale", col: 1 },
+                                  { icon: Zap, text: "Solo canali e categorie abilitate", col: 1 },
+                                  { icon: AlertCircle, text: "Livello autonomia richiesto per ogni azione", col: 2 },
+                                  { icon: Activity, text: "Ogni azione registrata nel feed attività", col: 2 },
+                                  { icon: CheckCircle, text: "Nessuna azione duplicata o ridondante", col: 2 },
                                 ].map((rule, i) => (
-                                  <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
-                                    <rule.icon className="h-4 w-4 text-amber-500 shrink-0" />
+                                  <div key={i} className={cn(
+                                    "flex items-center gap-2.5 text-[13px] text-muted-foreground py-1.5",
+                                    i < 3 && "sm:border-r sm:border-amber-200 dark:sm:border-amber-800/30 sm:pr-6"
+                                  )}>
+                                    <rule.icon className="h-5 w-5 text-amber-500 shrink-0" />
                                     <span>{rule.text}</span>
                                   </div>
                                 ))}
@@ -939,7 +1017,7 @@ export default function ConsultantAIAutonomyPage() {
                       )}
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl shadow-sm overflow-hidden">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Zap className="h-5 w-5" />
@@ -965,34 +1043,68 @@ export default function ConsultantAIAutonomyPage() {
 
                         <Separator />
 
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-base font-medium">Livello di Autonomia</Label>
-                            <Badge className={getAutonomyBadgeColor(settings.autonomy_level)}>
-                              {settings.autonomy_level}/10 — {autonomyInfo.label}
-                            </Badge>
+                        <div className="space-y-5">
+                          <div className="flex flex-col items-center justify-center py-4">
+                            <div className="relative">
+                              <div className={cn(
+                                "absolute inset-0 rounded-full blur-xl opacity-30 animate-pulse",
+                                settings.autonomy_level === 0 ? "bg-muted-foreground" :
+                                settings.autonomy_level <= 3 ? "bg-green-500" :
+                                settings.autonomy_level <= 6 ? "bg-yellow-500" :
+                                settings.autonomy_level <= 9 ? "bg-orange-500" : "bg-red-500"
+                              )} />
+                              <div className={cn(
+                                "relative flex items-center justify-center h-28 w-28 rounded-full border-4 text-5xl font-bold",
+                                settings.autonomy_level === 0 ? "border-muted-foreground/30 text-muted-foreground" :
+                                settings.autonomy_level <= 3 ? "border-green-500/40 text-green-500" :
+                                settings.autonomy_level <= 6 ? "border-yellow-500/40 text-yellow-500" :
+                                settings.autonomy_level <= 9 ? "border-orange-500/40 text-orange-500" : "border-red-500/40 text-red-500"
+                              )}>
+                                {settings.autonomy_level}
+                              </div>
+                            </div>
+                            <p className={cn("text-lg font-semibold mt-3", autonomyInfo.color)}>
+                              {autonomyInfo.label}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">su 10</p>
                           </div>
 
-                          <Slider
-                            value={[settings.autonomy_level]}
-                            onValueChange={(val) => setSettings(prev => ({ ...prev, autonomy_level: val[0] }))}
-                            max={10}
-                            min={0}
-                            step={1}
-                            className="w-full"
-                          />
+                          <div className="rounded-xl bg-muted/40 dark:bg-muted/20 border p-5 space-y-4">
+                            <div className="flex items-center justify-between mb-1">
+                              <Label className="text-base font-medium">Livello di Autonomia</Label>
+                              <Badge className={getAutonomyBadgeColor(settings.autonomy_level)}>
+                                {settings.autonomy_level}/10
+                              </Badge>
+                            </div>
 
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>0 - Disattivato</span>
-                            <span className="text-green-500">1-3 Proposte</span>
-                            <span className="text-yellow-500">4-6 Semi-auto</span>
-                            <span className="text-orange-500">7-9 Quasi-auto</span>
-                            <span className="text-red-500">10 Completa</span>
+                            <Slider
+                              value={[settings.autonomy_level]}
+                              onValueChange={(val) => setSettings(prev => ({ ...prev, autonomy_level: val[0] }))}
+                              max={10}
+                              min={0}
+                              step={1}
+                              className="w-full"
+                            />
+
+                            <div className="flex justify-between gap-1">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">0 Off</Badge>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-green-500 border-green-500/30">1-3</Badge>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-yellow-500 border-yellow-500/30">4-6</Badge>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-orange-500 border-orange-500/30">7-9</Badge>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-red-500 border-red-500/30">10</Badge>
+                            </div>
                           </div>
 
-                          <div className={`p-3 rounded-lg border ${autonomyInfo.color === "text-muted-foreground" ? "bg-muted/50" : "bg-muted/30"}`}>
-                            <p className={`text-sm ${autonomyInfo.color}`}>
-                              <Info className="h-4 w-4 inline mr-1" />
+                          <div className={cn(
+                            "p-4 rounded-xl border-2",
+                            autonomyInfo.color === "text-muted-foreground" ? "bg-muted/50 border-muted" :
+                            settings.autonomy_level <= 3 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/40" :
+                            settings.autonomy_level <= 6 ? "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40" :
+                            settings.autonomy_level <= 9 ? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40" :
+                            "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40"
+                          )}>
+                            <p className={cn("text-sm font-medium flex items-start gap-2", autonomyInfo.color)}>
+                              <Info className="h-4 w-4 mt-0.5 shrink-0" />
                               {autonomyInfo.description}
                             </p>
                           </div>
@@ -1019,7 +1131,7 @@ export default function ConsultantAIAutonomyPage() {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl shadow-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Clock className="h-5 w-5" />
@@ -1069,7 +1181,7 @@ export default function ConsultantAIAutonomyPage() {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl shadow-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Shield className="h-5 w-5" />
@@ -1129,7 +1241,7 @@ export default function ConsultantAIAutonomyPage() {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl shadow-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Zap className="h-5 w-5" />
@@ -1184,7 +1296,7 @@ export default function ConsultantAIAutonomyPage() {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl shadow-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <ListTodo className="h-5 w-5" />
@@ -1197,7 +1309,7 @@ export default function ConsultantAIAutonomyPage() {
                       <CardContent>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {TASK_CATEGORIES.map((cat) => (
-                            <div key={cat.value} className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
+                            <div key={cat.value} className="flex items-start gap-3 p-3 rounded-xl border bg-muted/30">
                               <Checkbox
                                 id={`cat-${cat.value}`}
                                 checked={settings.allowed_task_categories.includes(cat.value)}
@@ -1215,7 +1327,7 @@ export default function ConsultantAIAutonomyPage() {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="rounded-xl shadow-sm">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Brain className="h-5 w-5" />
@@ -1245,7 +1357,7 @@ export default function ConsultantAIAutonomyPage() {
                         Salva Impostazioni
                       </Button>
                     </div>
-                  </>
+                  </motion.div>
                 )}
               </TabsContent>
 
