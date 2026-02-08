@@ -352,8 +352,8 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
     }
 
     const sanitizedPhone = contact_phone ? String(contact_phone).replace(/[^0-9+\s\-()]/g, '') : null;
-    if (sanitizedPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(sanitizedPhone)) {
-      return res.status(400).json({ error: "Formato telefono non valido. Usa il formato: +39 333 1234567" });
+    if (sanitizedPhone && !/^\+?[0-9\s\-()]{3,20}$/.test(sanitizedPhone)) {
+      return res.status(400).json({ error: "Formato telefono non valido. Usa un numero di telefono o interno (es: +39 333 1234567, 1009)" });
     }
 
     if (client_id) {
