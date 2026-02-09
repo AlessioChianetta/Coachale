@@ -1211,6 +1211,53 @@ export default function ConsultantApiKeysUnified() {
   const [isTestingActivecampaign, setIsTestingActivecampaign] = useState(false);
   const [selectedACTestConfigId, setSelectedACTestConfigId] = useState<string | null>(null);
 
+  const [webhookDebugLogs, setWebhookDebugLogs] = useState<any[]>([]);
+  const [isLoadingDebugLogs, setIsLoadingDebugLogs] = useState(false);
+  const [debugLogAutoRefresh, setDebugLogAutoRefresh] = useState(false);
+  const [showDebugLogs, setShowDebugLogs] = useState(false);
+
+  const fetchWebhookDebugLogs = async () => {
+    if (!consultant?.id) return;
+    try {
+      setIsLoadingDebugLogs(true);
+      const response = await fetch(`/api/webhook/debug-logs/${consultant.id}?limit=50`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWebhookDebugLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch debug logs:", err);
+    } finally {
+      setIsLoadingDebugLogs(false);
+    }
+  };
+
+  const clearWebhookDebugLogs = async () => {
+    if (!consultant?.id) return;
+    try {
+      const response = await fetch(`/api/webhook/debug-logs/${consultant.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        setWebhookDebugLogs([]);
+        toast({ title: "Log cancellati", description: "Tutti i log di debug sono stati eliminati" });
+      }
+    } catch (err) {
+      console.error("Failed to clear debug logs:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (debugLogAutoRefresh && showDebugLogs) {
+      fetchWebhookDebugLogs();
+      const interval = setInterval(fetchWebhookDebugLogs, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [debugLogAutoRefresh, showDebugLogs]);
+
   const handleTestHubdigitalWebhook = async () => {
     // Use the selected test config or the first available one
     const testConfig = selectedTestConfigId 
@@ -7279,6 +7326,185 @@ export default function ConsultantApiKeysUnified() {
                       </Card>
                     )}
                   </>
+                )}
+
+                {(selectedIntegration === "hubdigital" || selectedIntegration === "activecampaign") && (
+                  <Card className="border-2 border-gray-200 shadow-xl bg-white/70 backdrop-blur-sm mt-6">
+                    <CardHeader className="cursor-pointer" onClick={() => {
+                      const newShow = !showDebugLogs;
+                      setShowDebugLogs(newShow);
+                      if (newShow && webhookDebugLogs.length === 0) fetchWebhookDebugLogs();
+                    }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-gradient-to-br from-gray-100 to-slate-100 rounded-lg">
+                            <FileText className="h-5 w-5 text-gray-600" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">Log Debug Webhook</CardTitle>
+                            <CardDescription>Registro in tempo reale di tutti i webhook ricevuti</CardDescription>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {webhookDebugLogs.length > 0 && (
+                            <Badge variant="secondary">{webhookDebugLogs.length} log</Badge>
+                          )}
+                          {showDebugLogs ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    {showDebugLogs && (
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={fetchWebhookDebugLogs}
+                              disabled={isLoadingDebugLogs}
+                              className="border-gray-300"
+                            >
+                              <RefreshCw className={`h-4 w-4 mr-1 ${isLoadingDebugLogs ? "animate-spin" : ""}`} />
+                              Aggiorna
+                            </Button>
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border">
+                              <Switch
+                                checked={debugLogAutoRefresh}
+                                onCheckedChange={setDebugLogAutoRefresh}
+                              />
+                              <Label className="text-xs text-gray-600 cursor-pointer">Auto-refresh (5s)</Label>
+                            </div>
+                          </div>
+                          {webhookDebugLogs.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm("Sei sicuro di voler cancellare tutti i log di debug?")) {
+                                  clearWebhookDebugLogs();
+                                }
+                              }}
+                              className="border-red-200 text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Cancella Log
+                            </Button>
+                          )}
+                        </div>
+
+                        {isLoadingDebugLogs && webhookDebugLogs.length === 0 ? (
+                          <div className="flex items-center justify-center py-8 text-gray-500">
+                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                            Caricamento log...
+                          </div>
+                        ) : webhookDebugLogs.length === 0 ? (
+                          <div className="text-center py-8 text-gray-400">
+                            <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                            <p className="text-sm">Nessun log di debug disponibile</p>
+                            <p className="text-xs mt-1">I log appariranno quando riceverai un webhook</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                            {webhookDebugLogs.map((log: any) => (
+                              <div
+                                key={log.id}
+                                className={`p-4 rounded-xl border ${
+                                  log.status === 'success' ? 'border-green-200 bg-green-50/50' :
+                                  log.status === 'error' ? 'border-red-200 bg-red-50/50' :
+                                  log.status === 'filtered' ? 'border-orange-200 bg-orange-50/50' :
+                                  'border-gray-200 bg-gray-50/50'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge className={
+                                      log.status === 'success' ? 'bg-green-500' :
+                                      log.status === 'error' ? 'bg-red-500' :
+                                      log.status === 'filtered' ? 'bg-orange-500' :
+                                      'bg-gray-500'
+                                    }>
+                                      {log.status === 'success' ? 'Importato' :
+                                       log.status === 'error' ? 'Errore' :
+                                       log.status === 'filtered' ? 'Filtrato' :
+                                       log.status}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {log.provider === 'hubdigital' ? 'Hubdigital' : 'ActiveCampaign'}
+                                    </Badge>
+                                    {log.config_name && (
+                                      <span className="text-xs text-gray-500">{log.config_name}</span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-gray-400 whitespace-nowrap">
+                                    {new Date(log.created_at).toLocaleString('it-IT', {
+                                      day: '2-digit', month: '2-digit', year: '2-digit',
+                                      hour: '2-digit', minute: '2-digit', second: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs mb-2">
+                                  {log.first_name && (
+                                    <div><span className="text-gray-500">Nome:</span> <span className="font-medium">{log.first_name}</span></div>
+                                  )}
+                                  {log.last_name && (
+                                    <div><span className="text-gray-500">Cognome:</span> <span className="font-medium">{log.last_name}</span></div>
+                                  )}
+                                  {log.phone && (
+                                    <div><span className="text-gray-500">Tel:</span> <span className="font-mono">{log.phone}</span></div>
+                                  )}
+                                  {log.phone_normalized && log.phone_normalized !== log.phone && (
+                                    <div><span className="text-gray-500">Tel Norm:</span> <span className="font-mono">{log.phone_normalized}</span></div>
+                                  )}
+                                  {log.email && (
+                                    <div><span className="text-gray-500">Email:</span> <span className="font-medium">{log.email}</span></div>
+                                  )}
+                                  {log.source && (
+                                    <div><span className="text-gray-500">Fonte:</span> <span className="font-mono text-purple-700">{log.source}</span></div>
+                                  )}
+                                  {log.lead_id && (
+                                    <div><span className="text-gray-500">Lead ID:</span> <span className="font-mono text-green-700">{log.lead_id.substring(0, 8)}...</span></div>
+                                  )}
+                                </div>
+
+                                {log.status_message && (
+                                  <p className={`text-xs ${
+                                    log.status === 'error' ? 'text-red-600' :
+                                    log.status === 'filtered' ? 'text-orange-600' :
+                                    'text-gray-600'
+                                  }`}>
+                                    {log.status_message}
+                                  </p>
+                                )}
+
+                                <Collapsible>
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-6 text-xs text-gray-500 mt-1 px-2">
+                                      <ChevronDown className="h-3 w-3 mr-1" />
+                                      Payload Grezzo
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <pre className="mt-2 p-3 bg-gray-900 text-green-400 rounded-lg text-xs overflow-x-auto max-h-60 font-mono">
+                                      {JSON.stringify(log.raw_payload, null, 2)}
+                                    </pre>
+                                    {log.processed_data && (
+                                      <>
+                                        <p className="text-xs text-gray-500 mt-2 mb-1">Dati Processati:</p>
+                                        <pre className="p-3 bg-blue-900 text-blue-200 rounded-lg text-xs overflow-x-auto max-h-60 font-mono">
+                                          {JSON.stringify(log.processed_data, null, 2)}
+                                        </pre>
+                                      </>
+                                    )}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    )}
+                  </Card>
                 )}
               </TabsContent>
 

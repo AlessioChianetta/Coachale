@@ -2,9 +2,54 @@ import { Router, type Request, type Response } from 'express';
 import { storage } from '../storage';
 import { db } from '../db';
 import * as schema from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
+import { authenticateToken, type AuthRequest } from '../middleware/auth';
 
 const router = Router();
+
+async function logWebhookDebug(data: {
+  consultantId: string;
+  webhookConfigId?: string;
+  provider: string;
+  configName?: string;
+  rawPayload: any;
+  processedData?: any;
+  status: "success" | "error" | "skipped" | "filtered";
+  statusMessage?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  phoneNormalized?: string;
+  email?: string;
+  source?: string;
+  leadId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  try {
+    await db.insert(schema.webhookDebugLogs).values({
+      consultantId: data.consultantId,
+      webhookConfigId: data.webhookConfigId || null,
+      provider: data.provider,
+      configName: data.configName || null,
+      rawPayload: data.rawPayload,
+      processedData: data.processedData || null,
+      status: data.status,
+      statusMessage: data.statusMessage || null,
+      firstName: data.firstName || null,
+      lastName: data.lastName || null,
+      phone: data.phone || null,
+      phoneNormalized: data.phoneNormalized || null,
+      email: data.email || null,
+      source: data.source || null,
+      leadId: data.leadId || null,
+      ipAddress: data.ipAddress || null,
+      userAgent: data.userAgent || null,
+    });
+  } catch (err: any) {
+    console.error(`❌ [WEBHOOK-DEBUG] Failed to log debug entry: ${err.message}`);
+  }
+}
 
 function normalizePhone(phone: string | undefined): string {
   if (!phone) return '';
@@ -183,6 +228,23 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       
       // Increment skipped leads counter
       await storage.incrementWebhookSkippedCount(webhookConfig.id);
+
+      await logWebhookDebug({
+        consultantId: webhookConfig.consultantId,
+        webhookConfigId: webhookConfig.id,
+        provider: 'hubdigital',
+        configName: webhookConfig.configName || webhookConfig.displayName,
+        rawPayload: payload,
+        status: 'filtered',
+        statusMessage: `Fonte filtrata: attesa "${configuredSource}", ricevuta "${payloadSource}"`,
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        phone: payload.phone,
+        source: payloadSource,
+        email: payload.email,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+        userAgent: req.headers['user-agent'],
+      });
       
       return res.json({
         success: true,
@@ -210,6 +272,21 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     
     if (!phoneNumber) {
       console.log(`❌ [WEBHOOK] Missing phone number in payload`);
+      await logWebhookDebug({
+        consultantId: webhookConfig.consultantId,
+        webhookConfigId: webhookConfig.id,
+        provider: 'hubdigital',
+        configName: webhookConfig.configName || webhookConfig.displayName,
+        rawPayload: payload,
+        status: 'error',
+        statusMessage: 'Telefono mancante',
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        email: payload.email,
+        source: payloadSource,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+        userAgent: req.headers['user-agent'],
+      });
       return res.status(400).json({
         success: false,
         error: 'Phone number is required',
@@ -356,12 +433,46 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
 
     console.log(`✅ [WEBHOOK] Lead created successfully: ${lead.id}`);
 
+    await logWebhookDebug({
+      consultantId: webhookConfig.consultantId,
+      webhookConfigId: webhookConfig.id,
+      provider: 'hubdigital',
+      configName: webhookConfig.configName || webhookConfig.displayName,
+      rawPayload: payload,
+      processedData: { leadInfo, campaignSnapshot, agentConfigId },
+      status: 'success',
+      statusMessage: `Lead creato: ${lead.id}`,
+      firstName,
+      lastName,
+      phone: payload.phone,
+      phoneNormalized: phoneNumber,
+      email: payload.email,
+      source,
+      leadId: lead.id,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+      userAgent: req.headers['user-agent'],
+    });
+
     res.json({
       success: true,
       leadId: lead.id,
     });
   } catch (error: any) {
     console.error('❌ [WEBHOOK] Error processing webhook:', error);
+
+    if (webhookConfig) {
+      await logWebhookDebug({
+        consultantId: webhookConfig.consultantId,
+        webhookConfigId: webhookConfig.id,
+        provider: 'hubdigital',
+        configName: webhookConfig.configName || webhookConfig.displayName,
+        rawPayload: req.body,
+        status: 'error',
+        statusMessage: error.message || 'Errore interno',
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+        userAgent: req.headers['user-agent'],
+      });
+    }
     
     if (error.message?.includes('duplicate') || error.code === '23505') {
       return res.status(409).json({
@@ -582,6 +693,20 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     if (!phoneNumber) {
       console.log(`❌ [AC-WEBHOOK] Missing phone number in payload - tried all field variations`);
       console.log(`💡 [AC-WEBHOOK] Tip: Make sure the phone field is mapped in ActiveCampaign automation`);
+      await logWebhookDebug({
+        consultantId: webhookConfig.consultantId,
+        webhookConfigId: webhookConfig.id,
+        provider: 'activecampaign',
+        configName: webhookConfig.configName || webhookConfig.displayName,
+        rawPayload: rawPayload,
+        status: 'error',
+        statusMessage: 'Telefono mancante',
+        firstName,
+        lastName,
+        email: contact.email || payload.email,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+        userAgent: req.headers['user-agent'],
+      });
       return res.status(400).json({
         success: false,
         error: 'Phone number is required. Ensure your ActiveCampaign automation includes the phone field.',
@@ -696,6 +821,26 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
 
     console.log(`✅ [AC-WEBHOOK] Lead created successfully: ${lead.id}`);
 
+    await logWebhookDebug({
+      consultantId: webhookConfig.consultantId,
+      webhookConfigId: webhookConfig.id,
+      provider: 'activecampaign',
+      configName: webhookConfig.configName || webhookConfig.displayName,
+      rawPayload: rawPayload,
+      processedData: { leadInfo, campaignSnapshot, agentConfigId },
+      status: 'success',
+      statusMessage: `Lead creato: ${lead.id}`,
+      firstName,
+      lastName,
+      phone: rawPhone,
+      phoneNormalized: phoneNumber,
+      email,
+      source,
+      leadId: lead.id,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+      userAgent: req.headers['user-agent'],
+    });
+
     res.json({
       success: true,
       leadId: lead.id,
@@ -703,6 +848,20 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     });
   } catch (error: any) {
     console.error('❌ [AC-WEBHOOK] Error processing webhook:', error);
+
+    if (webhookConfig) {
+      await logWebhookDebug({
+        consultantId: webhookConfig.consultantId,
+        webhookConfigId: webhookConfig.id,
+        provider: 'activecampaign',
+        configName: webhookConfig.configName || webhookConfig.displayName,
+        rawPayload: req.body,
+        status: 'error',
+        statusMessage: error.message || 'Errore interno',
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+        userAgent: req.headers['user-agent'],
+      });
+    }
     
     if (error.message?.includes('duplicate') || error.code === '23505') {
       return res.status(409).json({
@@ -715,6 +874,54 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       success: false,
       error: 'Internal server error',
     });
+  }
+});
+
+// === Webhook Debug Log Endpoints ===
+
+router.get('/debug-logs/:consultantId', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    const { consultantId } = req.params;
+
+    if (authReq.user?.id !== consultantId && authReq.user?.role !== 'super_admin') {
+      return res.status(403).json({ success: false, error: 'Non autorizzato' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const provider = req.query.provider as string;
+    
+    const logs = await db.select()
+      .from(schema.webhookDebugLogs)
+      .where(eq(schema.webhookDebugLogs.consultantId, consultantId))
+      .orderBy(desc(schema.webhookDebugLogs.createdAt))
+      .limit(limit);
+    
+    const filtered = provider ? logs.filter(l => l.provider === provider) : logs;
+    
+    res.json({ success: true, logs: filtered, total: filtered.length });
+  } catch (error: any) {
+    console.error('❌ [WEBHOOK-DEBUG] Error fetching logs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/debug-logs/:consultantId', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    const { consultantId } = req.params;
+
+    if (authReq.user?.id !== consultantId && authReq.user?.role !== 'super_admin') {
+      return res.status(403).json({ success: false, error: 'Non autorizzato' });
+    }
+    
+    await db.delete(schema.webhookDebugLogs)
+      .where(eq(schema.webhookDebugLogs.consultantId, consultantId));
+    
+    res.json({ success: true, message: 'Log di debug cancellati' });
+  } catch (error: any) {
+    console.error('❌ [WEBHOOK-DEBUG] Error clearing logs:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
