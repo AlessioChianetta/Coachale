@@ -4184,11 +4184,38 @@ export default function ConsultantAIAutonomyPage() {
                                 )}
                               </div>
                             </div>
+                            {task.status === 'waiting_approval' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
+                                title="Approva task"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
+                                    method: "PATCH",
+                                    headers: getAuthHeaders(),
+                                  }).then(res => {
+                                    if (res.ok) {
+                                      toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
+                                      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                    } else {
+                                      toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
+                                    }
+                                  });
+                                }}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
                             {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                title="Cancella task"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (window.confirm("Sei sicuro di voler cancellare questo task?")) {
@@ -4309,6 +4336,7 @@ export default function ConsultantAIAutonomyPage() {
                                       task.status === 'failed' ? "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30" :
                                       task.status === 'in_progress' ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30" :
                                       task.status === 'paused' ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30" :
+                                      task.status === 'waiting_approval' ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30" :
                                       "bg-muted text-muted-foreground border-border"
                                     )}>
                                       {task.status === 'completed' ? '✅ Completato' :
@@ -4316,6 +4344,7 @@ export default function ConsultantAIAutonomyPage() {
                                        task.status === 'in_progress' ? '⚡ In esecuzione' :
                                        task.status === 'paused' ? '⏸️ In pausa' :
                                        task.status === 'scheduled' ? '📅 Programmato' :
+                                       task.status === 'waiting_approval' ? '⏳ In attesa di approvazione' :
                                        task.status}
                                     </span>
                                   </div>
@@ -4588,6 +4617,30 @@ export default function ConsultantAIAutonomyPage() {
                           {/* Section 4: Action Buttons */}
                           <div className="rounded-xl border shadow-sm bg-card p-4">
                             <div className="flex items-center gap-3 flex-wrap">
+                              {task.status === 'waiting_approval' && (
+                                <Button
+                                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
+                                  onClick={() => {
+                                    fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
+                                      method: "PATCH",
+                                      headers: getAuthHeaders(),
+                                    }).then(res => {
+                                      if (res.ok) {
+                                        toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
+                                        queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${selectedTaskId}`] });
+                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                      } else {
+                                        toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
+                                      }
+                                    });
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                                  Approva Task
+                                </Button>
+                              )}
                               {(task.status === 'paused' || task.status === 'scheduled') && (
                                 <Button
                                   onClick={() => executeTaskMutation.mutate(task.id)}
