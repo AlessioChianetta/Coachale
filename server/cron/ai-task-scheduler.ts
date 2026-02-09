@@ -246,7 +246,7 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
           priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
         ) VALUES (
           ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone}, 
-          ${task.scheduled_at}, 'calling', 'assistenza',
+          NOW(), 'calling', 'assistenza',
           ${task.ai_instruction}, ${task.ai_instruction}, 
           ${task.task_type === 'single_call' ? 'task' : 'reminder'},
           1, ${task.max_attempts || 3},

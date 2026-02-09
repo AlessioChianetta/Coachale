@@ -3693,6 +3693,14 @@ export default function ConsultantAIAutonomyPage() {
                                     : task.ai_instruction}
                                 </span>
                               </div>
+                              {task.origin_type === 'autonomous' && task.ai_reasoning && (
+                                <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2 bg-purple-50 dark:bg-purple-950/20 rounded px-2 py-1 border border-purple-200/50 dark:border-purple-800/30">
+                                  <Sparkles className="h-3 w-3 inline mr-1 text-purple-500" />
+                                  {task.ai_reasoning.length > 120
+                                    ? task.ai_reasoning.substring(0, 120) + "…"
+                                    : task.ai_reasoning}
+                                </p>
+                              )}
                               <div className="flex items-center gap-2 mt-2 flex-wrap">
                                 {getTaskStatusBadge(task.status)}
                                 {getCategoryBadge(task.task_category)}
