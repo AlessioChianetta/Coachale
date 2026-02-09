@@ -1265,7 +1265,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   const allRecentTasksResult = await db.execute(sql`
     SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, 
            t.ai_instruction, t.status, t.ai_role, t.created_at,
-           t.completed_at, t.cancelled_at
+           t.completed_at
     FROM ai_scheduled_tasks t
     WHERE t.consultant_id = ${consultantId}::uuid
       AND t.created_at > NOW() - INTERVAL '7 days'
