@@ -1034,13 +1034,13 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
           AND NOT EXISTS (
             SELECT 1 FROM ai_scheduled_tasks ast
             WHERE ast.consultant_id = ${consultantId}
-              AND ast.contact_id = u.id::text
+              AND ast.contact_id = u.id
               AND ast.status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
           )
           AND NOT EXISTS (
             SELECT 1 FROM ai_scheduled_tasks ast2
             WHERE ast2.consultant_id = ${consultantId}
-              AND ast2.contact_id = u.id::text
+              AND ast2.contact_id = u.id
               AND ast2.status = 'completed'
               AND ast2.completed_at > NOW() - INTERVAL '24 hours'
           )
