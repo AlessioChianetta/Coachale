@@ -1275,7 +1275,7 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           temperature: 0.3,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
           responseMimeType: 'application/json',
         },
       });
@@ -1290,35 +1290,55 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
       try {
         parsed = JSON.parse(responseText);
       } catch {
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          const arrayMatch = responseText.match(/\[[\s\S]*\]/);
-          if (arrayMatch) {
+        let cleaned = responseText.trim();
+        if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+        if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+        if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+        cleaned = cleaned.trim();
+
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch {
+          const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
             try {
-              const arr = JSON.parse(arrayMatch[0]);
-              parsed = { tasks: Array.isArray(arr) ? arr : [] };
+              parsed = JSON.parse(jsonMatch[0]);
             } catch {
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 300 chars): ${responseText.substring(0, 300)}`);
-              continue;
+              try {
+                const fixed = jsonMatch[0].replace(/,\s*([}\]])/g, '$1');
+                parsed = JSON.parse(fixed);
+              } catch {
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini JSON response`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 500 chars): ${responseText.substring(0, 500)}`);
+                continue;
+              }
             }
           } else {
-            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
-            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 300 chars): ${responseText.substring(0, 300)}`);
-            continue;
-          }
-        } else {
-          try {
-            parsed = JSON.parse(jsonMatch[0]);
-          } catch {
-            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse extracted JSON`);
-            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 300 chars): ${responseText.substring(0, 300)}`);
-            continue;
+            const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+              try {
+                const arr = JSON.parse(arrayMatch[0]);
+                parsed = { tasks: Array.isArray(arr) ? arr : [] };
+              } catch {
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 500 chars): ${responseText.substring(0, 500)}`);
+                continue;
+              }
+            } else {
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response - no JSON found`);
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 500 chars): ${responseText.substring(0, 500)}`);
+              continue;
+            }
           }
         }
       }
+
       if (!parsed.tasks) {
-        parsed = { ...parsed, tasks: [] };
+        if (Array.isArray((parsed as any).suggestions)) {
+          parsed = { ...parsed, tasks: (parsed as any).suggestions };
+        } else {
+          parsed = { ...parsed, tasks: [] };
+        }
       }
 
       await logActivity(consultantId, {

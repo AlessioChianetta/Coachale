@@ -1,0 +1,49 @@
+GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 5b0b7fca)
+🤖 [AI-SCHEDULER] Processing AI tasks...
+🤖 [AI-SCHEDULER] No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+1:03:09 PM [express] POST /api/activity/session/heartbeat 200 in 432ms :: {"success":true,"lastActiv…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🧠 [AI-AUTONOMY] Manual trigger by consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+🧠 [AUTONOMOUS-GEN] Running 8 AI roles for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza
+🧠 [AUTONOMOUS-GEN] [Alessia] Fetching role-specific data...
+🧠 [AUTONOMOUS-GEN] [Alessia] Calling Gemini...
+1:03:21 PM [express] GET /api/ai-autonomy/activity 200 in 430ms :: {"activities":[{"id":"21ff3de1-07…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+✅ [AUTONOMOUS-GEN] [Alessia] Created task auto_alessia_1770642213766_pg0uxt for Silvia Caldironi (followup)
+✅ [AUTONOMOUS-GEN] [Alessia] Created task auto_alessia_1770642214075_qqnyxx for Giulia Turatto (followup)
+🧠 [AUTONOMOUS-GEN] [Millie] Fetching role-specific data...
+🧠 [AUTONOMOUS-GEN] [Millie] Calling Gemini...
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+1:03:45 PM [express] GET /api/ai-autonomy/system-status 200 in 1637ms :: {"is_active":true,"autonomy…
+❌ [AUTONOMOUS-GEN] [Millie] Could not parse Gemini response
+❌ [AUTONOMOUS-GEN] [Millie] Raw response (first 300 chars): {
+  "overall_reasoning": "L'analisi ha evidenziato che Riccardo Goghero si trova in una fase di stallo critico, con l'ultima email inviata il 14 gennaio nonostante una consulenza avvenuta il 16 gennaio; è prioritario riattivare il contatto. Per simone sal
+🧠 [AUTONOMOUS-GEN] [Echo] Fetching role-specific data...
+🧠 [AUTONOMOUS-GEN] [Echo] Calling Gemini...
+1:03:51 PM [express] GET /api/ai-autonomy/activity 200 in 432ms :: {"activities":[{"id":"a7f63ec7-e2…
+🧠 [AUTONOMOUS-GEN] [Echo] No tasks suggested
+🧠 [AUTONOMOUS-GEN] [Nova] Fetching role-specific data...
+🧠 [AUTONOMOUS-GEN] [Nova] Calling Gemini...
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 5b0b7fca)
+🤖 [AI-SCHEDULER] Processing AI tasks...
+🤖 [AI-SCHEDULER] No tasks to process
+🔓 [CronLock] Released lock for "ai-task-scheduler"
+✅ [AUTONOMOUS-GEN] [Nova] Created task auto_nova_1770642245034_bo776u for Content Strategy (analysis)
+🧠 [AUTONOMOUS-GEN] [Stella] Fetching role-specific data...
+🧠 [AUTONOMOUS-GEN] [Stella] Calling Gemini...
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+1:04:16 PM [express] GET /api/ai-autonomy/system-status 200 in 732ms :: {"is_active":true,"autonomy_…
+❌ [AUTONOMOUS-GEN] [Stella] Could not parse Gemini response
+❌ [AUTONOMOUS-GEN] [Stella] Raw response (first 300 chars): {
+  "overall_reasoning": "Ho analizzato le conversazioni attive e i messaggi degli ultimi 7 giorni. Ho identificato due priorità principali: 1) Fernando Villon, che ha inviato l'ultimo messaggio il 6 febbraio condividendo un risultato positivo (500€ di nuove vendite) che
+🧠 [AUTONOMOUS-GEN] [Iris] Fetching role-specific data...
+🧠 [AUTONOMOUS-GEN] [Iris] Calling Gemini...
+1:04:21 PM [express] GET /api/ai-autonomy/activity 200 in 433ms :: {"activities":[{"id":"0498f109-9d…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+❌ [AUTONOMOUS-GEN] [Iris] Could not parse extracted JSON
+❌ [AUTONOMOUS-GEN] [Iris] Raw response (first 300 chars): {
+  "overall_reasoning": "L'analisi ha rilevato un'email critica non letta da parte di Gloria Santi, ricevuta il 5 febbraio 20

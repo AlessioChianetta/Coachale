@@ -229,7 +229,7 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
       COUNT(*) FILTER (WHERE status = 'completed' AND updated_at > NOW() - INTERVAL '30 days') as completed_30d,
       COUNT(*) FILTER (WHERE status = 'completed' AND updated_at > NOW() - INTERVAL '7 days') as completed_7d,
       COUNT(*) FILTER (WHERE status IN ('pending', 'scheduled')) as pending_tasks
-    FROM ai_tasks
+    FROM ai_scheduled_tasks
     WHERE consultant_id = ${consultantId}
   `);
 
@@ -263,12 +263,12 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
   `);
 
   const recentTasksResult = await db.execute(sql`
-    SELECT at.id, at.contact_name, at.task_category, at.status,
-           at.preferred_channel, at.ai_role, at.created_at
-    FROM ai_tasks at
-    WHERE at.consultant_id = ${consultantId}
-      AND at.created_at > NOW() - INTERVAL '14 days'
-    ORDER BY at.created_at DESC
+    SELECT ast.id, ast.contact_name, ast.task_category, ast.status,
+           ast.preferred_channel, ast.origin_type, ast.created_at
+    FROM ai_scheduled_tasks ast
+    WHERE ast.consultant_id = ${consultantId}
+      AND ast.created_at > NOW() - INTERVAL '14 days'
+    ORDER BY ast.created_at DESC
     LIMIT 20
   `);
 
