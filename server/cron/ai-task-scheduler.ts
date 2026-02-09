@@ -1042,6 +1042,57 @@ interface AutonomousSuggestedTask {
   tone: string;
 }
 
+interface SimulationRoleResult {
+  roleId: string;
+  roleName: string;
+  skipped: boolean;
+  skipReason?: string;
+  dataAnalyzed: {
+    totalClients: number;
+    eligibleClients: number;
+    clientsWithPendingTasks: number;
+    clientsWithRecentCompletion: number;
+    clientsList: any[];
+    roleSpecificData: Record<string, any>;
+  };
+  promptSent: string;
+  aiResponse: {
+    raw: string;
+    parsed: any;
+    overallReasoning: string;
+    tasksWouldCreate: Array<{
+      contactName: string;
+      contactId: string | null;
+      category: string;
+      instruction: string;
+      reasoning: string;
+      channel: string;
+      priority: number;
+      urgency: string;
+      wouldBeStatus: string;
+    }>;
+  } | null;
+  error?: string;
+  providerUsed: string;
+  modelUsed: string;
+}
+
+interface SimulationResult {
+  consultantId: string;
+  simulatedAt: string;
+  totalRolesAnalyzed: number;
+  totalTasksWouldCreate: number;
+  providerName: string;
+  modelName: string;
+  settings: {
+    autonomyLevel: number;
+    isActive: boolean;
+    workingHoursStart: string;
+    workingHoursEnd: string;
+  };
+  roles: SimulationRoleResult[];
+}
+
 async function runAutonomousTaskGeneration(): Promise<void> {
   const result = await withCronLock(AUTONOMOUS_GENERATION_LOCK, async () => {
     console.log('🧠 [AUTONOMOUS-GEN] Starting autonomous task generation...');
@@ -1097,17 +1148,22 @@ async function runAutonomousTaskGeneration(): Promise<void> {
   }
 }
 
-async function generateTasksForConsultant(consultantId: string): Promise<number> {
+async function generateTasksForConsultant(consultantId: string, options?: { dryRun?: boolean }): Promise<number | SimulationResult> {
+  const dryRun = options?.dryRun || false;
   const settings = await getAutonomySettings(consultantId);
 
-  if (!settings.is_active || settings.autonomy_level < 2) {
-    return 0;
+  if (!dryRun) {
+    if (!settings.is_active || settings.autonomy_level < 2) {
+      return 0;
+    }
+
+    if (!isWithinWorkingHours(settings)) {
+      console.log(`🧠 [AUTONOMOUS-GEN] Consultant ${consultantId} outside working hours, skipping`);
+      return 0;
+    }
   }
 
-  if (!isWithinWorkingHours(settings)) {
-    console.log(`🧠 [AUTONOMOUS-GEN] Consultant ${consultantId} outside working hours, skipping`);
-    return 0;
-  }
+  const simulationRoles: SimulationRoleResult[] = [];
 
   const enabledRolesResult = await db.execute(sql`
     SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
@@ -1241,6 +1297,23 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
     const apiKey = await getGeminiApiKeyForClassifier();
     if (!apiKey) {
       console.error('❌ [AUTONOMOUS-GEN] No Gemini API key available');
+      if (dryRun) {
+        return {
+          consultantId,
+          simulatedAt: new Date().toISOString(),
+          totalRolesAnalyzed: 0,
+          totalTasksWouldCreate: 0,
+          providerName: 'N/A',
+          modelName: 'N/A',
+          settings: {
+            autonomyLevel: settings.autonomy_level,
+            isActive: settings.is_active,
+            workingHoursStart: settings.working_hours_start,
+            workingHoursEnd: settings.working_hours_end,
+          },
+          roles: [],
+        } as SimulationResult;
+      }
       return 0;
     }
     const genAI = new GoogleGenAI({ apiKey });
@@ -1262,6 +1335,23 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
 
   if (!aiClient) {
     console.error('❌ [AUTONOMOUS-GEN] No AI client available');
+    if (dryRun) {
+      return {
+        consultantId,
+        simulatedAt: new Date().toISOString(),
+        totalRolesAnalyzed: 0,
+        totalTasksWouldCreate: 0,
+        providerName: 'N/A',
+        modelName: 'N/A',
+        settings: {
+          autonomyLevel: settings.autonomy_level,
+          isActive: settings.is_active,
+          workingHoursStart: settings.working_hours_start,
+          workingHoursEnd: settings.working_hours_end,
+        },
+        roles: [],
+      } as SimulationResult;
+    }
     return 0;
   }
 
@@ -1272,43 +1362,72 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
 
   let totalCreated = 0;
 
-  console.log(`🧠 [AUTONOMOUS-GEN] Running ${activeRoles.length} AI roles for consultant ${consultantId}: ${activeRoles.map(r => r.name).join(', ')}`);
+  console.log(`🧠 [AUTONOMOUS-GEN] Running ${activeRoles.length} AI roles for consultant ${consultantId}: ${activeRoles.map(r => r.name).join(', ')}${dryRun ? ' [DRY-RUN]' : ''}`);
 
-  await logActivity(consultantId, {
-    event_type: 'autonomous_analysis',
-    title: `Analisi multi-ruolo avviata: ${activeRoles.length} dipendenti AI attivi`,
-    description: `Ruoli attivi: ${activeRoles.map(r => r.name).join(', ')}. ${eligibleClients.length} clienti idonei su ${clients.length} totali.`,
-    icon: '🧠',
-    severity: 'info',
-    event_data: {
-      total_clients: clients.length,
-      eligible_clients: eligibleClients.length,
-      clients_with_pending_tasks: clientsWithPendingTasks.size,
-      clients_with_recent_completion: clientsWithRecentCompletion.size,
-      active_roles: activeRoles.map(r => r.id),
-      provider_name: providerName,
-      provider_model: providerModel,
-    },
-  });
+  if (!dryRun) {
+    await logActivity(consultantId, {
+      event_type: 'autonomous_analysis',
+      title: `Analisi multi-ruolo avviata: ${activeRoles.length} dipendenti AI attivi`,
+      description: `Ruoli attivi: ${activeRoles.map(r => r.name).join(', ')}. ${eligibleClients.length} clienti idonei su ${clients.length} totali.`,
+      icon: '🧠',
+      severity: 'info',
+      event_data: {
+        total_clients: clients.length,
+        eligible_clients: eligibleClients.length,
+        clients_with_pending_tasks: clientsWithPendingTasks.size,
+        clients_with_recent_completion: clientsWithRecentCompletion.size,
+        active_roles: activeRoles.map(r => r.id),
+        provider_name: providerName,
+        provider_model: providerModel,
+      },
+    });
+  }
 
   for (const role of activeRoles) {
     try {
       if (role.id !== 'nova' && eligibleClients.length === 0) {
         console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No eligible clients, skipping`);
+        if (dryRun) {
+          simulationRoles.push({
+            roleId: role.id,
+            roleName: role.name,
+            skipped: true,
+            skipReason: 'Nessun cliente idoneo disponibile',
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: 0, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+            promptSent: '',
+            aiResponse: null,
+            providerUsed: providerName,
+            modelUsed: providerModel,
+          });
+        }
         continue;
       }
 
       const channelRequired = role.preferredChannels[0];
       if (channelRequired && channelRequired !== 'none' && settings.channels_enabled && !settings.channels_enabled[channelRequired]) {
         console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Channel "${channelRequired}" disabled, skipping`);
-        await logActivity(consultantId, {
-          event_type: 'autonomous_analysis',
-          title: `${role.name}: canale disabilitato`,
-          description: `Il ruolo ${role.name} richiede il canale "${channelRequired}" che è disabilitato nelle impostazioni.`,
-          icon: '⏭️',
-          severity: 'info',
-          ai_role: role.id,
-        });
+        if (dryRun) {
+          simulationRoles.push({
+            roleId: role.id,
+            roleName: role.name,
+            skipped: true,
+            skipReason: `Il canale "${channelRequired}" è disabilitato nelle impostazioni`,
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: eligibleClients.length, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList, roleSpecificData: {} },
+            promptSent: '',
+            aiResponse: null,
+            providerUsed: providerName,
+            modelUsed: providerModel,
+          });
+        } else {
+          await logActivity(consultantId, {
+            event_type: 'autonomous_analysis',
+            title: `${role.name}: canale disabilitato`,
+            description: `Il ruolo ${role.name} richiede il canale "${channelRequired}" che è disabilitato nelle impostazioni.`,
+            icon: '⏭️',
+            severity: 'info',
+            ai_role: role.id,
+          });
+        }
         continue;
       }
 
@@ -1411,117 +1530,194 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
         }
       }
 
-      await logActivity(consultantId, {
-        event_type: 'autonomous_analysis',
-        title: `${role.name}: ${parsed.tasks?.length || 0} task suggeriti`,
-        description: parsed.overall_reasoning || 
-          (parsed.tasks && parsed.tasks.length > 0
-            ? `${role.name} ha analizzato i dati e suggerito ${parsed.tasks.length} task.`
-            : `${role.name} ha analizzato i dati ma non ha identificato task necessari.`),
-        icon: '🤖',
-        severity: 'info',
-        ai_role: role.id,
-        event_data: {
-          role_name: role.name,
-          overall_reasoning: parsed.overall_reasoning || null,
-          tasks_suggested: parsed.tasks?.length || 0,
-          suggestions: (parsed.tasks || []).map(t => ({
-            client_name: t.contact_name,
-            category: t.task_category,
-            instruction: t.ai_instruction?.substring(0, 150),
-            reasoning: t.reasoning,
-            channel: t.preferred_channel,
-            priority: t.priority,
-          })),
-        },
-      });
-
-      if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
-        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No tasks suggested`);
-        continue;
+      if (!dryRun) {
+        await logActivity(consultantId, {
+          event_type: 'autonomous_analysis',
+          title: `${role.name}: ${parsed.tasks?.length || 0} task suggeriti`,
+          description: parsed.overall_reasoning || 
+            (parsed.tasks && parsed.tasks.length > 0
+              ? `${role.name} ha analizzato i dati e suggerito ${parsed.tasks.length} task.`
+              : `${role.name} ha analizzato i dati ma non ha identificato task necessari.`),
+          icon: '🤖',
+          severity: 'info',
+          ai_role: role.id,
+          event_data: {
+            role_name: role.name,
+            overall_reasoning: parsed.overall_reasoning || null,
+            tasks_suggested: parsed.tasks?.length || 0,
+            suggestions: (parsed.tasks || []).map(t => ({
+              client_name: t.contact_name,
+              category: t.task_category,
+              instruction: t.ai_instruction?.substring(0, 150),
+              reasoning: t.reasoning,
+              channel: t.preferred_channel,
+              priority: t.priority,
+            })),
+          },
+        });
       }
 
-      const tasksToCreate = parsed.tasks.slice(0, role.maxTasksPerRun);
+      const tasksToProcess = (parsed.tasks && Array.isArray(parsed.tasks)) ? parsed.tasks.slice(0, role.maxTasksPerRun) : [];
 
-      for (const suggestedTask of tasksToCreate) {
-        try {
-          if (!suggestedTask.ai_instruction) continue;
+      if (dryRun) {
+        const tasksWouldCreate = tasksToProcess
+          .filter(t => t.ai_instruction)
+          .filter(t => !(t.contact_id && (clientsWithPendingTasks.has(t.contact_id) || clientsWithRecentCompletion.has(t.contact_id))))
+          .map(t => ({
+            contactName: t.contact_name || 'N/A',
+            contactId: t.contact_id || null,
+            category: t.task_category || role.categories[0] || 'followup',
+            instruction: t.ai_instruction,
+            reasoning: t.reasoning || '',
+            channel: t.preferred_channel || role.preferredChannels[0] || 'none',
+            priority: Math.min(Math.max(t.priority || 3, 1), 4),
+            urgency: t.urgency || 'normale',
+            wouldBeStatus: taskStatus,
+          }));
 
-          if (suggestedTask.contact_id && (clientsWithPendingTasks.has(suggestedTask.contact_id) || clientsWithRecentCompletion.has(suggestedTask.contact_id))) {
-            continue;
+        simulationRoles.push({
+          roleId: role.id,
+          roleName: role.name,
+          skipped: false,
+          dataAnalyzed: {
+            totalClients: clients.length,
+            eligibleClients: eligibleClients.length,
+            clientsWithPendingTasks: clientsWithPendingTasks.size,
+            clientsWithRecentCompletion: clientsWithRecentCompletion.size,
+            clientsList,
+            roleSpecificData: roleData,
+          },
+          promptSent: prompt,
+          aiResponse: {
+            raw: responseText || '',
+            parsed,
+            overallReasoning: parsed.overall_reasoning || '',
+            tasksWouldCreate,
+          },
+          providerUsed: providerName,
+          modelUsed: providerModel,
+        });
+
+        totalCreated += tasksWouldCreate.length;
+      } else {
+        if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+          console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No tasks suggested`);
+          continue;
+        }
+
+        for (const suggestedTask of tasksToProcess) {
+          try {
+            if (!suggestedTask.ai_instruction) continue;
+
+            if (suggestedTask.contact_id && (clientsWithPendingTasks.has(suggestedTask.contact_id) || clientsWithRecentCompletion.has(suggestedTask.contact_id))) {
+              continue;
+            }
+
+            const taskId = `auto_${role.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+            const contactIdValue = suggestedTask.contact_id || null;
+            const hasValidContactId = contactIdValue && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactIdValue);
+
+            await db.execute(sql`
+              INSERT INTO ai_scheduled_tasks (
+                id, consultant_id, contact_name, contact_phone, task_type,
+                ai_instruction, scheduled_at, timezone, status,
+                origin_type, task_category, contact_id, ai_reasoning,
+                priority, preferred_channel, tone, urgency,
+                max_attempts, recurrence_type, ai_role
+              ) VALUES (
+                ${taskId}, ${consultantId}::uuid, ${suggestedTask.contact_name || null},
+                ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
+                ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
+                ${taskStatus}, 'autonomous',
+                ${suggestedTask.task_category || role.categories[0] || 'followup'},
+                ${hasValidContactId ? sql`${contactIdValue}::uuid` : sql`NULL`},
+                ${suggestedTask.reasoning || null},
+                ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)},
+                ${suggestedTask.preferred_channel || role.preferredChannels[0] || 'none'},
+                ${suggestedTask.tone || 'professionale'},
+                ${suggestedTask.urgency || 'normale'},
+                1, 'once', ${role.id}
+              )
+            `);
+
+            await logActivity(consultantId, {
+              event_type: 'autonomous_task_created',
+              title: `[${role.name}] Task creato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Task AI'}`,
+              description: suggestedTask.reasoning || `Task generato da ${role.name}`,
+              icon: '🤖',
+              severity: 'info',
+              task_id: taskId,
+              contact_name: suggestedTask.contact_name,
+              contact_id: suggestedTask.contact_id,
+              ai_role: role.id,
+              event_data: {
+                task_category: suggestedTask.task_category,
+                priority: suggestedTask.priority,
+                preferred_channel: suggestedTask.preferred_channel,
+                autonomy_level: settings.autonomy_level,
+                role_name: role.name,
+              },
+            });
+
+            if (suggestedTask.contact_id) {
+              clientsWithPendingTasks.add(suggestedTask.contact_id);
+            }
+            totalCreated++;
+
+            console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] Created task ${taskId} for ${suggestedTask.contact_name} (${suggestedTask.task_category})`);
+          } catch (error: any) {
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Failed to create task for ${suggestedTask.contact_name}:`, error.message);
           }
-
-          const taskId = `auto_${role.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-
-          const contactIdValue = suggestedTask.contact_id || null;
-          const hasValidContactId = contactIdValue && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactIdValue);
-
-          await db.execute(sql`
-            INSERT INTO ai_scheduled_tasks (
-              id, consultant_id, contact_name, contact_phone, task_type,
-              ai_instruction, scheduled_at, timezone, status,
-              origin_type, task_category, contact_id, ai_reasoning,
-              priority, preferred_channel, tone, urgency,
-              max_attempts, recurrence_type, ai_role
-            ) VALUES (
-              ${taskId}, ${consultantId}::uuid, ${suggestedTask.contact_name || null},
-              ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
-              ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
-              ${taskStatus}, 'autonomous',
-              ${suggestedTask.task_category || role.categories[0] || 'followup'},
-              ${hasValidContactId ? sql`${contactIdValue}::uuid` : sql`NULL`},
-              ${suggestedTask.reasoning || null},
-              ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)},
-              ${suggestedTask.preferred_channel || role.preferredChannels[0] || 'none'},
-              ${suggestedTask.tone || 'professionale'},
-              ${suggestedTask.urgency || 'normale'},
-              1, 'once', ${role.id}
-            )
-          `);
-
-          await logActivity(consultantId, {
-            event_type: 'autonomous_task_created',
-            title: `[${role.name}] Task creato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Task AI'}`,
-            description: suggestedTask.reasoning || `Task generato da ${role.name}`,
-            icon: '🤖',
-            severity: 'info',
-            task_id: taskId,
-            contact_name: suggestedTask.contact_name,
-            contact_id: suggestedTask.contact_id,
-            ai_role: role.id,
-            event_data: {
-              task_category: suggestedTask.task_category,
-              priority: suggestedTask.priority,
-              preferred_channel: suggestedTask.preferred_channel,
-              autonomy_level: settings.autonomy_level,
-              role_name: role.name,
-            },
-          });
-
-          if (suggestedTask.contact_id) {
-            clientsWithPendingTasks.add(suggestedTask.contact_id);
-          }
-          totalCreated++;
-
-          console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] Created task ${taskId} for ${suggestedTask.contact_name} (${suggestedTask.task_category})`);
-        } catch (error: any) {
-          console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Failed to create task for ${suggestedTask.contact_name}:`, error.message);
         }
       }
     } catch (error: any) {
       console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Error:`, error.message);
-      await logActivity(consultantId, {
-        event_type: 'autonomous_analysis',
-        title: `${role.name}: errore durante l'analisi`,
-        description: error.message,
-        icon: '❌',
-        severity: 'error',
-        ai_role: role.id,
-      });
+      if (dryRun) {
+        simulationRoles.push({
+          roleId: role.id,
+          roleName: role.name,
+          skipped: false,
+          dataAnalyzed: { totalClients: clients?.length || 0, eligibleClients: 0, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+          promptSent: '',
+          aiResponse: null,
+          error: error.message,
+          providerUsed: providerName,
+          modelUsed: providerModel,
+        });
+      } else {
+        await logActivity(consultantId, {
+          event_type: 'autonomous_analysis',
+          title: `${role.name}: errore durante l'analisi`,
+          description: error.message,
+          icon: '❌',
+          severity: 'error',
+          ai_role: role.id,
+        });
+      }
     }
   }
 
-  console.log(`🧠 [AUTONOMOUS-GEN] Total: ${totalCreated} tasks created across ${activeRoles.length} roles for consultant ${consultantId}`);
+  console.log(`🧠 [AUTONOMOUS-GEN] Total: ${totalCreated} tasks ${dryRun ? 'would be' : ''} created across ${activeRoles.length} roles for consultant ${consultantId}`);
+
+  if (dryRun) {
+    return {
+      consultantId,
+      simulatedAt: new Date().toISOString(),
+      totalRolesAnalyzed: simulationRoles.length,
+      totalTasksWouldCreate: totalCreated,
+      providerName,
+      modelName: providerModel,
+      settings: {
+        autonomyLevel: settings.autonomy_level,
+        isActive: settings.is_active,
+        workingHoursStart: settings.working_hours_start,
+        workingHoursEnd: settings.working_hours_end,
+      },
+      roles: simulationRoles,
+    } as SimulationResult;
+  }
+
   return totalCreated;
 }
 
@@ -1610,10 +1806,14 @@ export { scheduleNextRecurrence, calculateNextDate };
 
 export async function triggerAutonomousGenerationForConsultant(consultantId: string): Promise<{ tasksGenerated: number; error?: string }> {
   try {
-    const tasksGenerated = await generateTasksForConsultant(consultantId);
+    const tasksGenerated = await generateTasksForConsultant(consultantId) as number;
     return { tasksGenerated };
   } catch (error: any) {
     console.error(`❌ [AUTONOMOUS-GEN] Manual trigger error for ${consultantId}:`, error.message);
     return { tasksGenerated: 0, error: error.message };
   }
+}
+
+export async function simulateTaskGenerationForConsultant(consultantId: string): Promise<SimulationResult> {
+  return generateTasksForConsultant(consultantId, { dryRun: true }) as Promise<SimulationResult>;
 }

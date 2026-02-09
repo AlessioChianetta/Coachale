@@ -1497,4 +1497,21 @@ router.patch("/tasks/:id/cancel", authenticateToken, requireAnyRole(["consultant
   }
 });
 
+router.post("/simulate", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    
+    console.log(`🔬 [AI-AUTONOMY] Simulation triggered by consultant ${consultantId}`);
+    
+    const { simulateTaskGenerationForConsultant } = await import("../cron/ai-task-scheduler");
+    const result = await simulateTaskGenerationForConsultant(consultantId);
+    
+    return res.json(result);
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error running simulation:", error);
+    return res.status(500).json({ error: "Simulation failed: " + error.message });
+  }
+});
+
 export default router;

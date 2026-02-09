@@ -1211,7 +1211,9 @@ export default function ConsultantAIAutonomyPage() {
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
   const [activityPage, setActivityPage] = useState(1);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
-  const [activitySubTab, setActivitySubTab] = useState<"all" | "reasoning">("all");
+  const [activitySubTab, setActivitySubTab] = useState<"all" | "reasoning" | "simulation">("all");
+  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [simulationLoading, setSimulationLoading] = useState(false);
   const [reasoningPage, setReasoningPage] = useState(1);
   const [reasoningPeriod, setReasoningPeriod] = useState<string>("all");
   const [reasoningRole, setReasoningRole] = useState<string>("all");
@@ -3040,6 +3042,15 @@ export default function ConsultantAIAutonomyPage() {
                     <Brain className="h-3.5 w-3.5" />
                     Ragionamento AI
                   </Button>
+                  <Button
+                    variant={activitySubTab === "simulation" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActivitySubTab("simulation")}
+                    className="gap-1.5"
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    Simulazione
+                  </Button>
                 </div>
 
                 {activitySubTab === "all" && (
@@ -3423,6 +3434,256 @@ export default function ConsultantAIAutonomyPage() {
                           </div>
                         )}
                       </>
+                    )}
+                  </div>
+                )}
+
+                {activitySubTab === "simulation" && (
+                  <div className="space-y-4">
+                    <Card>
+                      <CardContent className="py-6">
+                        <div className="text-center space-y-3">
+                          <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                            <Zap className="h-8 w-8 text-amber-500" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg">Modalità Simulazione</h3>
+                            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                              Lancia una simulazione per vedere cosa farebbero i tuoi dipendenti AI con i dati reali, senza creare nessun task.
+                            </p>
+                          </div>
+                          <Button
+                            onClick={async () => {
+                              setSimulationLoading(true);
+                              setSimulationResult(null);
+                              try {
+                                const res = await fetch("/api/ai-autonomy/simulate", {
+                                  method: "POST",
+                                  headers: { ...getAuthHeaders() },
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || "Errore simulazione");
+                                setSimulationResult(data);
+                              } catch (err: any) {
+                                toast({ title: "Errore", description: err.message, variant: "destructive" });
+                              } finally {
+                                setSimulationLoading(false);
+                              }
+                            }}
+                            disabled={simulationLoading}
+                            size="lg"
+                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                          >
+                            {simulationLoading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Simulazione in corso...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Avvia Simulazione
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {simulationResult && (
+                      <div className="space-y-4">
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <BarChart3 className="h-4 w-4" />
+                              Risultati Simulazione
+                            </CardTitle>
+                            <CardDescription>
+                              Simulato il {new Date(simulationResult.simulatedAt).toLocaleString('it-IT')} — Provider: {simulationResult.providerName} ({simulationResult.modelName})
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-3 gap-3 text-center">
+                              <div className="bg-muted/40 rounded-lg p-3">
+                                <p className="text-2xl font-bold">{simulationResult.totalRolesAnalyzed}</p>
+                                <p className="text-xs text-muted-foreground">Ruoli analizzati</p>
+                              </div>
+                              <div className="bg-muted/40 rounded-lg p-3">
+                                <p className="text-2xl font-bold text-amber-500">{simulationResult.totalTasksWouldCreate}</p>
+                                <p className="text-xs text-muted-foreground">Task che creerebbero</p>
+                              </div>
+                              <div className="bg-muted/40 rounded-lg p-3">
+                                <p className="text-2xl font-bold">{simulationResult.settings?.autonomyLevel || 'N/A'}</p>
+                                <p className="text-xs text-muted-foreground">Livello autonomia</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {simulationResult.roles?.map((role: any) => {
+                          const AI_SIM_ROLE_COLORS: Record<string, string> = {
+                            alessia: 'border-pink-300 bg-pink-50 dark:bg-pink-950/20',
+                            millie: 'border-purple-300 bg-purple-50 dark:bg-purple-950/20',
+                            echo: 'border-orange-300 bg-orange-50 dark:bg-orange-950/20',
+                            nova: 'border-rose-300 bg-rose-50 dark:bg-rose-950/20',
+                            stella: 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20',
+                            iris: 'border-teal-300 bg-teal-50 dark:bg-teal-950/20',
+                            marco: 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/20',
+                            personalizza: 'border-gray-300 bg-gray-50 dark:bg-gray-950/20',
+                          };
+                          const roleColor = AI_SIM_ROLE_COLORS[role.roleId] || 'border-gray-300 bg-gray-50';
+                          
+                          return (
+                            <Card key={role.roleId} className={cn("border-2", roleColor)}>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center justify-between">
+                                  <span className="flex items-center gap-2">
+                                    <Bot className="h-4 w-4" />
+                                    {role.roleName}
+                                  </span>
+                                  {role.skipped ? (
+                                    <Badge variant="outline" className="text-xs">Saltato</Badge>
+                                  ) : role.aiResponse?.tasksWouldCreate?.length > 0 ? (
+                                    <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">
+                                      {role.aiResponse.tasksWouldCreate.length} task
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs text-green-600">Nessun task</Badge>
+                                  )}
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {role.skipped && (
+                                  <p className="text-sm text-muted-foreground">{role.skipReason}</p>
+                                )}
+
+                                {role.error && (
+                                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                                    <p className="text-sm text-red-600">{role.error}</p>
+                                  </div>
+                                )}
+
+                                {!role.skipped && role.dataAnalyzed && (
+                                  <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                                    <div className="bg-muted/40 rounded p-2">
+                                      <p className="font-bold">{role.dataAnalyzed.totalClients}</p>
+                                      <p className="text-muted-foreground">Clienti tot.</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded p-2">
+                                      <p className="font-bold">{role.dataAnalyzed.eligibleClients}</p>
+                                      <p className="text-muted-foreground">Idonei</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded p-2">
+                                      <p className="font-bold">{role.dataAnalyzed.clientsWithPendingTasks}</p>
+                                      <p className="text-muted-foreground">Con task pendenti</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded p-2">
+                                      <p className="font-bold">{role.dataAnalyzed.clientsWithRecentCompletion}</p>
+                                      <p className="text-muted-foreground">Completati recenti</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {role.aiResponse?.overallReasoning && (
+                                  <div className="rounded-lg border bg-muted/20 p-3">
+                                    <p className="text-xs font-bold mb-1.5 flex items-center gap-1.5">
+                                      <Brain className="h-3.5 w-3.5" />
+                                      Cosa ha pensato
+                                    </p>
+                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                                      {role.aiResponse.overallReasoning}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {role.aiResponse?.tasksWouldCreate && role.aiResponse.tasksWouldCreate.length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-bold flex items-center gap-1.5">
+                                      <Sparkles className="h-3.5 w-3.5" />
+                                      Task che avrebbe creato ({role.aiResponse.tasksWouldCreate.length})
+                                    </p>
+                                    {role.aiResponse.tasksWouldCreate.map((task: any, idx: number) => (
+                                      <div key={idx} className="rounded-lg border p-3 bg-card">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                          <span className="font-semibold text-sm">{task.contactName || 'N/A'}</span>
+                                          <div className="flex items-center gap-1.5">
+                                            {task.channel && task.channel !== 'none' && (
+                                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                                {task.channel === 'voice' ? '📞' : task.channel === 'email' ? '📧' : '💬'} {task.channel}
+                                              </Badge>
+                                            )}
+                                            <Badge className={cn("text-[10px]",
+                                              task.priority === 1 ? "bg-red-500/20 text-red-600 border-red-500/30" :
+                                              task.priority === 2 ? "bg-orange-500/20 text-orange-600 border-orange-500/30" :
+                                              "bg-muted text-muted-foreground"
+                                            )}>
+                                              {task.priority === 1 ? 'Urgente' : task.priority === 2 ? 'Alta' : 'Normale'}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                        <p className="text-sm mb-1.5">{task.instruction}</p>
+                                        {task.reasoning && (
+                                          <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded p-2">
+                                            <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
+                                            <span><strong>Perché:</strong> {task.reasoning}</span>
+                                          </div>
+                                        )}
+                                        <div className="mt-1.5 text-[10px] text-muted-foreground">
+                                          Stato previsto: <Badge variant="outline" className="text-[10px] px-1 py-0">{task.wouldBeStatus === 'waiting_approval' ? '⏳ In attesa approvazione' : '📅 Programmato'}</Badge>
+                                          {' · '}{task.category} · {task.urgency || 'normale'}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {!role.skipped && role.aiResponse && (!role.aiResponse.tasksWouldCreate || role.aiResponse.tasksWouldCreate.length === 0) && !role.error && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 rounded-lg p-3">
+                                    <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                                    <span>Nessuna azione necessaria. Tutto sotto controllo.</span>
+                                  </div>
+                                )}
+
+                                {!role.skipped && role.dataAnalyzed?.roleSpecificData && (
+                                  <details className="text-xs">
+                                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1">
+                                      <Database className="h-3 w-3" />
+                                      Dati analizzati (dettaglio tecnico)
+                                    </summary>
+                                    <pre className="mt-2 p-2 bg-muted/30 rounded text-[10px] overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
+                                      {JSON.stringify(role.dataAnalyzed.roleSpecificData, null, 2)}
+                                    </pre>
+                                  </details>
+                                )}
+
+                                {!role.skipped && role.promptSent && (
+                                  <details className="text-xs">
+                                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1">
+                                      <FileText className="h-3 w-3" />
+                                      Prompt inviato all'AI
+                                    </summary>
+                                    <pre className="mt-2 p-2 bg-muted/30 rounded text-[10px] overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
+                                      {role.promptSent}
+                                    </pre>
+                                  </details>
+                                )}
+
+                                {!role.skipped && role.aiResponse?.raw && (
+                                  <details className="text-xs">
+                                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1">
+                                      <Search className="h-3 w-3" />
+                                      Risposta AI grezza
+                                    </summary>
+                                    <pre className="mt-2 p-2 bg-muted/30 rounded text-[10px] overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
+                                      {role.aiResponse.raw}
+                                    </pre>
+                                  </details>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 )}
