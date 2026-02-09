@@ -1206,6 +1206,26 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
     role: t.ai_role || 'generic',
   }));
 
+  const allRecentTasksResult = await db.execute(sql`
+    SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, 
+           t.ai_instruction, t.status, t.ai_role, t.created_at,
+           t.completed_at, t.cancelled_at
+    FROM ai_scheduled_tasks t
+    WHERE t.consultant_id = ${consultantId}::uuid
+      AND t.created_at > NOW() - INTERVAL '7 days'
+      AND t.status IN ('scheduled', 'waiting_approval', 'approved', 'cancelled', 'completed', 'failed')
+    ORDER BY t.created_at DESC
+    LIMIT 40
+  `);
+  const recentAllTasksSummary = (allRecentTasksResult.rows as any[]).map(t => ({
+    contact: t.contact_name || t.contact_id || 'N/A',
+    category: t.task_category,
+    instruction: t.ai_instruction?.substring(0, 120),
+    status: t.status,
+    role: t.ai_role || 'generic',
+    created: t.created_at ? new Date(t.created_at).toISOString() : 'N/A',
+  }));
+
   let aiClient: GeminiClient | null = null;
   let providerModel = GEMINI_3_MODEL;
   let providerName = 'Google AI Studio';
@@ -1301,6 +1321,7 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
         settings,
         romeTimeStr,
         recentCompletedTasks: recentTasksSummary,
+        recentAllTasks: recentAllTasksSummary,
       });
 
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini (${providerName}, ${providerModel})...`);
