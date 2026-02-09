@@ -48,6 +48,7 @@ interface AutonomySettings {
   };
   allowed_task_categories: string[];
   custom_instructions: string;
+  proactive_check_interval_minutes: number;
 }
 
 interface ActivityItem {
@@ -334,6 +335,7 @@ const DEFAULT_SETTINGS: AutonomySettings = {
   channels_enabled: { voice: true, email: false, whatsapp: false },
   allowed_task_categories: ["outreach", "reminder", "followup"],
   custom_instructions: "",
+  proactive_check_interval_minutes: 60,
 };
 
 function getAutonomyLabel(level: number): { label: string; color: string; description: string } {
@@ -1270,6 +1272,7 @@ export default function ConsultantAIAutonomyPage() {
     pending_tasks: number;
     cron_schedule: string;
     task_execution_schedule: string;
+    last_error: { created_at: string; title: string; description: string; data: any } | null;
   }>({
     queryKey: ["/api/ai-autonomy/system-status"],
     queryFn: async () => {
@@ -1279,6 +1282,38 @@ export default function ConsultantAIAutonomyPage() {
     },
     enabled: activeTab === "settings",
     refetchInterval: 30000,
+  });
+
+  const [autonomousLogsPage, setAutonomousLogsPage] = useState(1);
+  const [autonomousLogTypeFilter, setAutonomousLogTypeFilter] = useState("all");
+  const [autonomousLogSeverityFilter, setAutonomousLogSeverityFilter] = useState("all");
+  const { data: autonomousLogs } = useQuery<{
+    logs: Array<{
+      id: string;
+      event_type: string;
+      title: string;
+      description: string;
+      icon: string;
+      severity: string;
+      created_at: string;
+      event_data: any;
+      contact_name: string | null;
+      task_id: string | null;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+  }>({
+    queryKey: ["/api/ai-autonomy/autonomous-logs", autonomousLogsPage, autonomousLogTypeFilter, autonomousLogSeverityFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(autonomousLogsPage), limit: "10" });
+      if (autonomousLogTypeFilter !== "all") params.set("event_type", autonomousLogTypeFilter);
+      if (autonomousLogSeverityFilter !== "all") params.set("severity", autonomousLogSeverityFilter);
+      const res = await fetch(`/api/ai-autonomy/autonomous-logs?${params}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: activeTab === "settings",
   });
 
   const { data: activeTasks } = useQuery<AITask[]>({
@@ -2043,9 +2078,174 @@ export default function ConsultantAIAutonomyPage() {
                                         </p>
                                       </div>
                                     )}
+                                    {systemStatus.last_error && (
+                                      <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40">
+                                        <div className="flex items-start gap-2">
+                                          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                                          <div>
+                                            <p className="text-xs font-medium text-red-700 dark:text-red-400">Ultimo errore rilevato</p>
+                                            <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">{systemStatus.last_error.title}</p>
+                                            <p className="text-[10px] text-red-500/70 dark:text-red-400/70 mt-0.5">{systemStatus.last_error.description}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                              {new Date(systemStatus.last_error.created_at).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               )}
+
+                              {autonomousLogs && (
+                                <div className="rounded-xl border bg-card p-5 space-y-4">
+                                  <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                                      <Brain className="h-4 w-4" />
+                                      Log Ragionamenti AI
+                                      <Badge variant="secondary" className="text-[10px]">{autonomousLogs.total}</Badge>
+                                    </h4>
+                                    <div className="flex items-center gap-2">
+                                      <Select value={autonomousLogTypeFilter} onValueChange={(val) => { setAutonomousLogTypeFilter(val); setAutonomousLogsPage(1); }}>
+                                        <SelectTrigger className="h-7 text-xs w-[130px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="all">Tutti i tipi</SelectItem>
+                                          <SelectItem value="autonomous_analysis">Analisi</SelectItem>
+                                          <SelectItem value="autonomous_task_created">Task creati</SelectItem>
+                                          <SelectItem value="autonomous_error">Errori</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <Select value={autonomousLogSeverityFilter} onValueChange={(val) => { setAutonomousLogSeverityFilter(val); setAutonomousLogsPage(1); }}>
+                                        <SelectTrigger className="h-7 text-xs w-[110px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="all">Tutti</SelectItem>
+                                          <SelectItem value="info">Info</SelectItem>
+                                          <SelectItem value="success">Successo</SelectItem>
+                                          <SelectItem value="warning">Warning</SelectItem>
+                                          <SelectItem value="error">Errore</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  {autonomousLogs.logs.length === 0 ? (
+                                    <div className="flex items-center gap-3 text-muted-foreground py-4">
+                                      <Brain className="h-5 w-5" />
+                                      <div>
+                                        <p className="text-sm font-medium">Nessun log trovato</p>
+                                        <p className="text-xs">
+                                          {autonomousLogTypeFilter !== "all" || autonomousLogSeverityFilter !== "all"
+                                            ? "Prova a cambiare i filtri per vedere altri risultati."
+                                            : "Quando l'AI analizzerà i tuoi clienti, qui vedrai ogni decisione, ragionamento e risultato."}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                                    {autonomousLogs.logs.map((log) => (
+                                      <div key={log.id} className={cn(
+                                        "p-3 rounded-lg border text-xs space-y-2",
+                                        log.severity === "error" ? "bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-800/30" :
+                                        log.event_type === "autonomous_task_created" ? "bg-green-50 dark:bg-green-950/10 border-green-200 dark:border-green-800/30" :
+                                        "bg-muted/30 border-border"
+                                      )}>
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                                            <span className="text-base shrink-0">{log.icon || "🧠"}</span>
+                                            <div className="min-w-0">
+                                              <p className="font-medium truncate">{log.title}</p>
+                                              <p className="text-muted-foreground mt-0.5">{log.description}</p>
+                                            </div>
+                                          </div>
+                                          <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                                            {new Date(log.created_at).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                          </span>
+                                        </div>
+
+                                        {log.event_data && (
+                                          <div className="space-y-1 pl-7">
+                                            {log.event_data.total_clients !== undefined && (
+                                              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                                                <span>Clienti totali: <strong>{log.event_data.total_clients}</strong></span>
+                                                <span>Eleggibili: <strong>{log.event_data.eligible_clients}</strong></span>
+                                                <span>Con task pendenti: <strong>{log.event_data.clients_with_pending_tasks}</strong></span>
+                                                <span>Completati recenti: <strong>{log.event_data.clients_with_recent_completion}</strong></span>
+                                              </div>
+                                            )}
+                                            {log.event_data.tasks_suggested > 0 && (
+                                              <p className="text-[10px] font-medium text-green-600 dark:text-green-400">
+                                                {log.event_data.tasks_suggested} task suggeriti dall'AI
+                                              </p>
+                                            )}
+                                            {log.event_data.suggestions && Array.isArray(log.event_data.suggestions) && log.event_data.suggestions.length > 0 && (
+                                              <div className="space-y-1 mt-1">
+                                                {log.event_data.suggestions.map((s: any, i: number) => (
+                                                  <div key={i} className="p-2 rounded bg-background/50 border border-border/50">
+                                                    <div className="flex items-center gap-2">
+                                                      <Badge variant="outline" className="text-[9px] px-1 py-0">{s.category}</Badge>
+                                                      <span className="font-medium">{s.client_name}</span>
+                                                      {s.channel && s.channel !== "none" && (
+                                                        <Badge variant="secondary" className="text-[9px] px-1 py-0">{s.channel}</Badge>
+                                                      )}
+                                                    </div>
+                                                    <p className="text-muted-foreground mt-0.5">{s.instruction}</p>
+                                                    {s.reasoning && (
+                                                      <p className="text-muted-foreground/70 mt-0.5 italic">Motivazione: {s.reasoning}</p>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                            {log.event_data.task_category && (
+                                              <div className="flex items-center gap-2 text-[10px]">
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0">{log.event_data.task_category}</Badge>
+                                                {log.contact_name && <span>Cliente: <strong>{log.contact_name}</strong></span>}
+                                                {log.event_data.preferred_channel && log.event_data.preferred_channel !== "none" && (
+                                                  <Badge variant="secondary" className="text-[9px] px-1 py-0">{log.event_data.preferred_channel}</Badge>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  )}
+
+                                  {autonomousLogs.total > 10 && (
+                                    <div className="flex items-center justify-between pt-2">
+                                      <p className="text-[10px] text-muted-foreground">
+                                        Pagina {autonomousLogsPage} di {Math.ceil(autonomousLogs.total / 10)}
+                                      </p>
+                                      <div className="flex gap-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 text-xs"
+                                          disabled={autonomousLogsPage <= 1}
+                                          onClick={() => setAutonomousLogsPage(p => p - 1)}
+                                        >
+                                          <ChevronLeft className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 text-xs"
+                                          disabled={autonomousLogsPage >= Math.ceil(autonomousLogs.total / 10)}
+                                          onClick={() => setAutonomousLogsPage(p => p + 1)}
+                                        >
+                                          <ChevronRight className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
                             </div>
                           )}
                         </div>
@@ -2176,6 +2376,36 @@ export default function ConsultantAIAutonomyPage() {
                               value={settings.max_daily_analyses}
                               onChange={(e) => setSettings(prev => ({ ...prev, max_daily_analyses: parseInt(e.target.value) || 0 }))}
                             />
+                          </div>
+                        </div>
+
+                        <Separator className="my-4" />
+
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Frequenza Analisi Autonoma (minuti)
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Ogni quanti minuti l'AI deve analizzare i tuoi clienti e proporre nuovi task. Il cron controlla ogni 30 minuti, ma rispetta questo intervallo tra un'analisi e l'altra.
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <Input
+                              type="number"
+                              min={30}
+                              max={1440}
+                              className="w-32"
+                              value={settings.proactive_check_interval_minutes}
+                              onChange={(e) => setSettings(prev => ({ ...prev, proactive_check_interval_minutes: Math.max(30, parseInt(e.target.value) || 60) }))}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {settings.proactive_check_interval_minutes < 60
+                                ? `ogni ${settings.proactive_check_interval_minutes} minuti`
+                                : settings.proactive_check_interval_minutes === 60
+                                  ? "ogni ora"
+                                  : `ogni ${Math.floor(settings.proactive_check_interval_minutes / 60)}h ${settings.proactive_check_interval_minutes % 60 > 0 ? `${settings.proactive_check_interval_minutes % 60}m` : ""}`
+                              }
+                            </span>
                           </div>
                         </div>
                       </CardContent>

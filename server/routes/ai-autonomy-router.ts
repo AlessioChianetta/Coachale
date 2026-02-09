@@ -1031,18 +1031,18 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
         WHERE u.consultant_id = ${consultantId}
           AND u.role = 'client'
           AND u.is_active = true
-          AND u.id::text NOT IN (
-            SELECT COALESCE(contact_id, '') FROM ai_scheduled_tasks
-            WHERE consultant_id = ${consultantId}
-              AND status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
-              AND contact_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM ai_scheduled_tasks ast
+            WHERE ast.consultant_id = ${consultantId}
+              AND ast.contact_id = u.id::text
+              AND ast.status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
           )
-          AND u.id::text NOT IN (
-            SELECT COALESCE(contact_id, '') FROM ai_scheduled_tasks
-            WHERE consultant_id = ${consultantId}
-              AND status = 'completed'
-              AND completed_at > NOW() - INTERVAL '24 hours'
-              AND contact_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM ai_scheduled_tasks ast2
+            WHERE ast2.consultant_id = ${consultantId}
+              AND ast2.contact_id = u.id::text
+              AND ast2.status = 'completed'
+              AND ast2.completed_at > NOW() - INTERVAL '24 hours'
           )
       `),
       db.execute(sql`
@@ -1099,6 +1099,15 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
     const isWithinHours = currentTimeMinutes >= startMinutes && currentTimeMinutes <= endMinutes;
     const isInWorkingHours = isWorkingDay && isWithinHours;
 
+    const lastErrorResult = await db.execute(sql`
+      SELECT created_at, title, description, event_data FROM ai_activity_log
+      WHERE consultant_id = ${consultantId}
+        AND severity = 'error'
+        AND event_type LIKE '%autonomous%'
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    const lastError = lastErrorResult.rows[0] as any || null;
+
     return res.json({
       is_active: settings.is_active || false,
       autonomy_level: settings.autonomy_level || 0,
@@ -1127,10 +1136,72 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
       pending_tasks: pendingTasks,
       cron_schedule: "ogni 30 minuti",
       task_execution_schedule: "ogni minuto",
+      last_error: lastError ? {
+        created_at: lastError.created_at,
+        title: lastError.title,
+        description: lastError.description,
+        data: lastError.event_data,
+      } : null,
     });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching system status:", error);
     return res.status(500).json({ error: "Failed to fetch system status" });
+  }
+});
+
+router.get("/autonomous-logs", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+    const offset = (page - 1) * limit;
+    const eventTypeFilter = req.query.event_type as string || "all";
+    const severityFilter = req.query.severity as string || "all";
+
+    const allowedEventTypes = ['autonomous_analysis', 'autonomous_task_created', 'autonomous_error'];
+    const filterEventTypes = eventTypeFilter !== "all" && allowedEventTypes.includes(eventTypeFilter)
+      ? [eventTypeFilter]
+      : allowedEventTypes;
+
+    const eventTypeSql = filterEventTypes.length === 1
+      ? sql`AND event_type = ${filterEventTypes[0]}`
+      : sql`AND event_type IN ('autonomous_analysis', 'autonomous_task_created', 'autonomous_error')`;
+
+    const severitySql = severityFilter !== "all"
+      ? sql`AND severity = ${severityFilter}`
+      : sql``;
+
+    const [logsResult, totalResult] = await Promise.all([
+      db.execute(sql`
+        SELECT id, event_type, title, description, icon, severity, created_at, event_data, contact_name, task_id
+        FROM ai_activity_log
+        WHERE consultant_id = ${consultantId}
+          ${eventTypeSql}
+          ${severitySql}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as count FROM ai_activity_log
+        WHERE consultant_id = ${consultantId}
+          ${eventTypeSql}
+          ${severitySql}
+      `),
+    ]);
+
+    return res.json({
+      logs: logsResult.rows,
+      total: (totalResult.rows[0] as any)?.count || 0,
+      page,
+      limit,
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching autonomous logs:", error);
+    return res.status(500).json({ error: "Failed to fetch autonomous logs" });
   }
 });
 
