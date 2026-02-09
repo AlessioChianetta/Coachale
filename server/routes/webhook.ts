@@ -14,6 +14,11 @@ async function logWebhookDebug(data: {
   configName?: string;
   rawPayload: any;
   processedData?: any;
+  requestHeaders?: any;
+  requestMethod?: string;
+  requestUrl?: string;
+  requestQuery?: any;
+  contentType?: string;
   status: "success" | "error" | "skipped" | "filtered";
   statusMessage?: string;
   firstName?: string;
@@ -32,8 +37,13 @@ async function logWebhookDebug(data: {
       webhookConfigId: data.webhookConfigId || null,
       provider: data.provider,
       configName: data.configName || null,
-      rawPayload: data.rawPayload,
+      rawPayload: data.rawPayload || {},
       processedData: data.processedData || null,
+      requestHeaders: data.requestHeaders || null,
+      requestMethod: data.requestMethod || null,
+      requestUrl: data.requestUrl || null,
+      requestQuery: data.requestQuery || null,
+      contentType: data.contentType || null,
       status: data.status,
       statusMessage: data.statusMessage || null,
       firstName: data.firstName || null,
@@ -49,6 +59,18 @@ async function logWebhookDebug(data: {
   } catch (err: any) {
     console.error(`❌ [WEBHOOK-DEBUG] Failed to log debug entry: ${err.message}`);
   }
+}
+
+function captureRequestMeta(req: Request) {
+  return {
+    requestHeaders: { ...req.headers },
+    requestMethod: req.method,
+    requestUrl: req.originalUrl || req.url,
+    requestQuery: req.query && Object.keys(req.query).length > 0 ? req.query : null,
+    contentType: req.headers['content-type'] || null,
+    ipAddress: (req.headers['x-forwarded-for'] as string) || req.ip || null,
+    userAgent: req.headers['user-agent'] || null,
+  };
 }
 
 function normalizePhone(phone: string | undefined): string {
@@ -234,7 +256,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
         webhookConfigId: webhookConfig.id,
         provider: 'hubdigital',
         configName: webhookConfig.configName || webhookConfig.displayName,
-        rawPayload: payload,
+        rawPayload: req.body,
         status: 'filtered',
         statusMessage: `Fonte filtrata: attesa "${configuredSource}", ricevuta "${payloadSource}"`,
         firstName: payload.firstName,
@@ -242,8 +264,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
         phone: payload.phone,
         source: payloadSource,
         email: payload.email,
-        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-        userAgent: req.headers['user-agent'],
+        ...captureRequestMeta(req),
       });
       
       return res.json({
@@ -277,15 +298,14 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
         webhookConfigId: webhookConfig.id,
         provider: 'hubdigital',
         configName: webhookConfig.configName || webhookConfig.displayName,
-        rawPayload: payload,
+        rawPayload: req.body,
         status: 'error',
         statusMessage: 'Telefono mancante',
         firstName: payload.firstName,
         lastName: payload.lastName,
         email: payload.email,
         source: payloadSource,
-        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-        userAgent: req.headers['user-agent'],
+        ...captureRequestMeta(req),
       });
       return res.status(400).json({
         success: false,
@@ -438,7 +458,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       webhookConfigId: webhookConfig.id,
       provider: 'hubdigital',
       configName: webhookConfig.configName || webhookConfig.displayName,
-      rawPayload: payload,
+      rawPayload: req.body,
       processedData: { leadInfo, campaignSnapshot, agentConfigId },
       status: 'success',
       statusMessage: `Lead creato: ${lead.id}`,
@@ -449,8 +469,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       email: payload.email,
       source,
       leadId: lead.id,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-      userAgent: req.headers['user-agent'],
+      ...captureRequestMeta(req),
     });
 
     res.json({
@@ -469,8 +488,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
         rawPayload: req.body,
         status: 'error',
         statusMessage: error.message || 'Errore interno',
-        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-        userAgent: req.headers['user-agent'],
+        ...captureRequestMeta(req),
       });
     }
     
@@ -698,14 +716,13 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
         webhookConfigId: webhookConfig.id,
         provider: 'activecampaign',
         configName: webhookConfig.configName || webhookConfig.displayName,
-        rawPayload: rawPayload,
+        rawPayload: req.body,
         status: 'error',
         statusMessage: 'Telefono mancante',
         firstName,
         lastName,
         email: contact.email || payload.email,
-        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-        userAgent: req.headers['user-agent'],
+        ...captureRequestMeta(req),
       });
       return res.status(400).json({
         success: false,
@@ -826,7 +843,7 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       webhookConfigId: webhookConfig.id,
       provider: 'activecampaign',
       configName: webhookConfig.configName || webhookConfig.displayName,
-      rawPayload: rawPayload,
+      rawPayload: req.body,
       processedData: { leadInfo, campaignSnapshot, agentConfigId },
       status: 'success',
       statusMessage: `Lead creato: ${lead.id}`,
@@ -837,8 +854,7 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       email,
       source,
       leadId: lead.id,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-      userAgent: req.headers['user-agent'],
+      ...captureRequestMeta(req),
     });
 
     res.json({
@@ -858,8 +874,7 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
         rawPayload: req.body,
         status: 'error',
         statusMessage: error.message || 'Errore interno',
-        ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
-        userAgent: req.headers['user-agent'],
+        ...captureRequestMeta(req),
       });
     }
     

@@ -4441,6 +4441,11 @@ export const webhookDebugLogs = pgTable("webhook_debug_logs", {
   
   rawPayload: jsonb("raw_payload").notNull(),
   processedData: jsonb("processed_data"),
+  requestHeaders: jsonb("request_headers"),
+  requestMethod: text("request_method"),
+  requestUrl: text("request_url"),
+  requestQuery: jsonb("request_query"),
+  contentType: text("content_type"),
   
   status: text("status").notNull().$type<"success" | "error" | "skipped" | "filtered">(),
   statusMessage: text("status_message"),

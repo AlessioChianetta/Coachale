@@ -7477,25 +7477,53 @@ export default function ConsultantApiKeysUnified() {
                                   </p>
                                 )}
 
+                                {(log.request_method || log.request_url || log.content_type) && (
+                                  <div className="flex flex-wrap gap-2 mt-1">
+                                    {log.request_method && (
+                                      <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-mono">{log.request_method}</span>
+                                    )}
+                                    {log.content_type && (
+                                      <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-mono">{log.content_type}</span>
+                                    )}
+                                    {log.ip_address && (
+                                      <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-mono">IP: {log.ip_address}</span>
+                                    )}
+                                  </div>
+                                )}
+
                                 <Collapsible>
                                   <CollapsibleTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-6 text-xs text-gray-500 mt-1 px-2">
                                       <ChevronDown className="h-3 w-3 mr-1" />
-                                      Payload Grezzo
+                                      Payload Completo (req.body)
                                     </Button>
                                   </CollapsibleTrigger>
                                   <CollapsibleContent>
-                                    <pre className="mt-2 p-3 bg-gray-900 text-green-400 rounded-lg text-xs overflow-x-auto max-h-60 font-mono">
+                                    <pre className="mt-2 p-3 bg-gray-900 text-green-400 rounded-lg text-xs overflow-x-auto max-h-80 font-mono whitespace-pre-wrap break-all">
                                       {JSON.stringify(log.raw_payload, null, 2)}
                                     </pre>
                                     {log.processed_data && (
                                       <>
-                                        <p className="text-xs text-gray-500 mt-2 mb-1">Dati Processati:</p>
-                                        <pre className="p-3 bg-blue-900 text-blue-200 rounded-lg text-xs overflow-x-auto max-h-60 font-mono">
+                                        <p className="text-xs text-gray-500 mt-2 mb-1 font-semibold">Dati Processati:</p>
+                                        <pre className="p-3 bg-blue-900 text-blue-200 rounded-lg text-xs overflow-x-auto max-h-60 font-mono whitespace-pre-wrap break-all">
                                           {JSON.stringify(log.processed_data, null, 2)}
                                         </pre>
                                       </>
                                     )}
+                                  </CollapsibleContent>
+                                </Collapsible>
+
+                                <Collapsible>
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-6 text-xs text-gray-500 px-2">
+                                      <ChevronDown className="h-3 w-3 mr-1" />
+                                      Headers Richiesta
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <pre className="mt-2 p-3 bg-slate-800 text-amber-300 rounded-lg text-xs overflow-x-auto max-h-60 font-mono whitespace-pre-wrap break-all">
+                                      {JSON.stringify(log.request_headers, null, 2)}
+                                    </pre>
                                   </CollapsibleContent>
                                 </Collapsible>
                               </div>
