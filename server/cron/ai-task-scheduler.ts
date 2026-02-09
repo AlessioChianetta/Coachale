@@ -1286,29 +1286,54 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
         continue;
       }
 
-      let parsed: { tasks: AutonomousSuggestedTask[] };
+      let parsed: { tasks: AutonomousSuggestedTask[], overall_reasoning?: string };
       try {
         parsed = JSON.parse(responseText);
       } catch {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-          console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
-          continue;
+          const arrayMatch = responseText.match(/\[[\s\S]*\]/);
+          if (arrayMatch) {
+            try {
+              const arr = JSON.parse(arrayMatch[0]);
+              parsed = { tasks: Array.isArray(arr) ? arr : [] };
+            } catch {
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 300 chars): ${responseText.substring(0, 300)}`);
+              continue;
+            }
+          } else {
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 300 chars): ${responseText.substring(0, 300)}`);
+            continue;
+          }
+        } else {
+          try {
+            parsed = JSON.parse(jsonMatch[0]);
+          } catch {
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse extracted JSON`);
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 300 chars): ${responseText.substring(0, 300)}`);
+            continue;
+          }
         }
-        parsed = JSON.parse(jsonMatch[0]);
+      }
+      if (!parsed.tasks) {
+        parsed = { ...parsed, tasks: [] };
       }
 
       await logActivity(consultantId, {
         event_type: 'autonomous_analysis',
         title: `${role.name}: ${parsed.tasks?.length || 0} task suggeriti`,
-        description: parsed.tasks && parsed.tasks.length > 0
-          ? `${role.name} ha analizzato i dati e suggerito ${parsed.tasks.length} task.`
-          : `${role.name} ha analizzato i dati ma non ha identificato task necessari.`,
+        description: parsed.overall_reasoning || 
+          (parsed.tasks && parsed.tasks.length > 0
+            ? `${role.name} ha analizzato i dati e suggerito ${parsed.tasks.length} task.`
+            : `${role.name} ha analizzato i dati ma non ha identificato task necessari.`),
         icon: '🤖',
         severity: 'info',
         ai_role: role.id,
         event_data: {
           role_name: role.name,
+          overall_reasoning: parsed.overall_reasoning || null,
           tasks_suggested: parsed.tasks?.length || 0,
           suggestions: (parsed.tasks || []).map(t => ({
             client_name: t.contact_name,

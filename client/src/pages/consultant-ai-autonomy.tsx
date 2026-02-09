@@ -2321,6 +2321,17 @@ export default function ConsultantAIAutonomyPage() {
                                                 )}
                                               </div>
                                               <p className="text-muted-foreground mt-0.5">{log.description}</p>
+                                              {log.event_data?.overall_reasoning && log.event_data.overall_reasoning !== log.description && (
+                                                <div className="mt-2 p-2 rounded-md bg-purple-50/80 dark:bg-purple-950/20 border border-purple-200/50 dark:border-purple-800/30">
+                                                  <p className="text-[11px] font-medium text-purple-700 dark:text-purple-300 mb-1 flex items-center gap-1">
+                                                    <Brain className="h-3 w-3" />
+                                                    Ragionamento AI:
+                                                  </p>
+                                                  <p className="text-[11px] text-purple-600/80 dark:text-purple-400/80 whitespace-pre-line leading-relaxed">
+                                                    {log.event_data.overall_reasoning}
+                                                  </p>
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                           <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">

@@ -44,7 +44,7 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
     SELECT svc.target_phone, svc.scheduled_at, svc.status, svc.duration_seconds,
            svc.call_instruction, svc.hangup_cause, svc.source_task_id
     FROM scheduled_voice_calls svc
-    WHERE svc.consultant_id = ${consultantId}::uuid
+    WHERE svc.consultant_id = ${consultantId}
       AND svc.status IN ('completed', 'failed', 'scheduled')
     ORDER BY svc.scheduled_at DESC
     LIMIT 30
@@ -71,10 +71,10 @@ async function fetchMillieData(consultantId: string, clientIds: string[]): Promi
   `);
 
   const emailLogsResult = await db.execute(sql`
-    SELECT ael.client_id, ael.sent_at, ael.subject, ael.status, ael.opened_at
+    SELECT ael.client_id, ael.sent_at, ael.subject, ael.email_type, ael.opened_at
     FROM automated_emails_log ael
-    WHERE ael.consultant_id = ${consultantId}
-      AND ael.sent_at > NOW() - INTERVAL '14 days'
+    JOIN client_email_journey_progress jp ON jp.client_id = ael.client_id AND jp.consultant_id = ${consultantId}
+    WHERE ael.sent_at > NOW() - INTERVAL '14 days'
     ORDER BY ael.sent_at DESC
     LIMIT 50
   `);
@@ -281,8 +281,11 @@ REGOLE DI ALESSIA:
 5. Non suggerire chiamate a clienti già chiamati negli ultimi 3 giorni
 6. Usa le categorie: followup, reminder
 
-Rispondi SOLO con un JSON valido (senza markdown, senza backtick):
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali clienti hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo (es: tutti i clienti sono già seguiti, nessuna urgenza, etc.)",
   "tasks": [
     {
       "contact_id": "uuid del cliente",
@@ -327,7 +330,7 @@ Rispondi SOLO con un JSON valido (senza markdown, senza backtick):
         client_id: el.client_id,
         sent_at: el.sent_at,
         subject: el.subject?.substring(0, 80),
-        status: el.status,
+        email_type: el.email_type,
         opened: !!el.opened_at,
       }));
 
@@ -366,8 +369,11 @@ REGOLE DI MILLIE:
 4. Il campo preferred_channel DEVE essere "email"
 5. Usa le categorie: outreach, followup
 
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
 Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali clienti hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo (es: tutti i clienti sono già seguiti, nessuna urgenza, etc.)",
   "tasks": [
     {
       "contact_id": "uuid",
@@ -452,8 +458,11 @@ REGOLE DI ECHO:
 5. Se NON ci sono consulenze da riepilogare, restituisci tasks vuoto
 6. Usa la categoria: analysis
 
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
 Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali clienti hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo (es: tutti i clienti sono già seguiti, nessuna urgenza, etc.)",
   "tasks": [
     {
       "contact_id": "uuid",
@@ -533,8 +542,11 @@ REGOLE DI NOVA:
    - Hook e CTA suggeriti
 6. Usa le categorie: analysis, outreach
 
-Rispondi SOLO con JSON valido:
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali clienti hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo (es: tutti i clienti sono già seguiti, nessuna urgenza, etc.)",
   "tasks": [
     {
       "contact_id": null,
@@ -618,8 +630,11 @@ REGOLE DI STELLA:
 4. Il campo preferred_channel DEVE essere "whatsapp"
 5. Usa le categorie: outreach, followup
 
-Rispondi SOLO con JSON valido:
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali clienti hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo (es: tutti i clienti sono già seguiti, nessuna urgenza, etc.)",
   "tasks": [
     {
       "contact_id": "uuid",
@@ -700,8 +715,11 @@ REGOLE DI IRIS:
 5. Se non ci sono email/ticket da gestire, restituisci tasks vuoto
 6. Usa le categorie: reminder, followup
 
-Rispondi SOLO con JSON valido:
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali clienti hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo (es: tutti i clienti sono già seguiti, nessuna urgenza, etc.)",
   "tasks": [
     {
       "contact_id": "uuid o null",
