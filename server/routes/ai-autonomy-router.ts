@@ -125,6 +125,8 @@ router.get("/activity", authenticateToken, requireAnyRole(["consultant", "super_
     const offset = (page - 1) * limit;
     const eventType = req.query.event_type as string | undefined;
     const severity = req.query.severity as string | undefined;
+    const aiRole = req.query.ai_role as string | undefined;
+    const period = req.query.period as string | undefined;
 
     let whereConditions = [sql`consultant_id = ${consultantId}`];
     if (eventType) {
@@ -132,6 +134,27 @@ router.get("/activity", authenticateToken, requireAnyRole(["consultant", "super_
     }
     if (severity) {
       whereConditions.push(sql`severity = ${severity}`);
+    }
+    if (aiRole && aiRole !== 'all') {
+      whereConditions.push(sql`event_data->>'ai_role' = ${aiRole}`);
+    }
+    if (period && period !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      switch (period) {
+        case 'today':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          break;
+        default:
+          startDate = new Date(0);
+      }
+      whereConditions.push(sql`created_at >= ${startDate.toISOString()}`);
     }
 
     const whereClause = sql.join(whereConditions, sql` AND `);

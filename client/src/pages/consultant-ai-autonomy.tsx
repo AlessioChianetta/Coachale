@@ -1213,6 +1213,8 @@ export default function ConsultantAIAutonomyPage() {
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [activitySubTab, setActivitySubTab] = useState<"all" | "reasoning">("all");
   const [reasoningPage, setReasoningPage] = useState(1);
+  const [reasoningPeriod, setReasoningPeriod] = useState<string>("all");
+  const [reasoningRole, setReasoningRole] = useState<string>("all");
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardStatusFilter, setDashboardStatusFilter] = useState<string>("all");
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>("all");
@@ -1303,9 +1305,16 @@ export default function ConsultantAIAutonomyPage() {
   });
 
   const { data: reasoningData, isLoading: loadingReasoning, refetch: refetchReasoning } = useQuery<ActivityResponse>({
-    queryKey: ["ai-reasoning", reasoningPage],
+    queryKey: ["ai-reasoning", reasoningPage, reasoningPeriod, reasoningRole],
     queryFn: async () => {
-      const res = await fetch(`/api/ai-autonomy/activity?event_type=autonomous_analysis&page=${reasoningPage}&limit=20`, {
+      const params = new URLSearchParams({
+        event_type: 'autonomous_analysis',
+        page: String(reasoningPage),
+        limit: '20',
+      });
+      if (reasoningPeriod !== 'all') params.set('period', reasoningPeriod);
+      if (reasoningRole !== 'all') params.set('ai_role', reasoningRole);
+      const res = await fetch(`/api/ai-autonomy/activity?${params.toString()}`, {
         headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error("Failed to fetch reasoning data");
@@ -3153,6 +3162,40 @@ export default function ConsultantAIAutonomyPage() {
 
                 {activitySubTab === "reasoning" && (
                   <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select value={reasoningPeriod} onValueChange={(v) => { setReasoningPeriod(v); setReasoningPage(1); }}>
+                        <SelectTrigger className="w-[150px] h-9 text-sm">
+                          <SelectValue placeholder="Periodo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti i periodi</SelectItem>
+                          <SelectItem value="today">Oggi</SelectItem>
+                          <SelectItem value="week">Ultima settimana</SelectItem>
+                          <SelectItem value="month">Ultimo mese</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={reasoningRole} onValueChange={(v) => { setReasoningRole(v); setReasoningPage(1); }}>
+                        <SelectTrigger className="w-[170px] h-9 text-sm">
+                          <SelectValue placeholder="Ruolo AI" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tutti i ruoli</SelectItem>
+                          <SelectItem value="alessia">Alessia</SelectItem>
+                          <SelectItem value="millie">Millie</SelectItem>
+                          <SelectItem value="echo">Echo</SelectItem>
+                          <SelectItem value="nova">Nova</SelectItem>
+                          <SelectItem value="stella">Stella</SelectItem>
+                          <SelectItem value="iris">Iris</SelectItem>
+                          <SelectItem value="marco">Marco</SelectItem>
+                          <SelectItem value="personalizza">Personalizza</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {(reasoningPeriod !== 'all' || reasoningRole !== 'all') && (
+                        <Button variant="ghost" size="sm" className="h-9 text-xs text-muted-foreground" onClick={() => { setReasoningPeriod('all'); setReasoningRole('all'); setReasoningPage(1); }}>
+                          Rimuovi filtri
+                        </Button>
+                      )}
+                    </div>
                     {loadingReasoning ? (
                       <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
