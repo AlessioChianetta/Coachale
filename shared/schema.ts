@@ -4432,6 +4432,39 @@ export type WebhookConfig = typeof webhookConfigs.$inferSelect;
 export type InsertWebhookConfig = z.infer<typeof insertWebhookConfigSchema>;
 export type UpdateWebhookConfig = z.infer<typeof updateWebhookConfigSchema>;
 
+export const webhookDebugLogs = pgTable("webhook_debug_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  webhookConfigId: varchar("webhook_config_id").references(() => webhookConfigs.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  configName: text("config_name"),
+  
+  rawPayload: jsonb("raw_payload").notNull(),
+  processedData: jsonb("processed_data"),
+  
+  status: text("status").notNull().$type<"success" | "error" | "skipped" | "filtered">(),
+  statusMessage: text("status_message"),
+  
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phone: text("phone"),
+  phoneNormalized: text("phone_normalized"),
+  email: text("email"),
+  source: text("source"),
+  
+  leadId: varchar("lead_id"),
+  
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+}, (table) => ({
+  consultantIdx: index("idx_webhook_debug_logs_consultant").on(table.consultantId),
+  createdAtIdx: index("idx_webhook_debug_logs_created_at").on(table.createdAt),
+}));
+
+export type WebhookDebugLog = typeof webhookDebugLogs.$inferSelect;
+
 // System Errors (centralized error tracking)
 export const systemErrors = pgTable("system_errors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
