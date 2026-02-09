@@ -1284,6 +1284,40 @@ export default function ConsultantAIAutonomyPage() {
     refetchInterval: 30000,
   });
 
+  const [isTriggering, setIsTriggering] = useState(false);
+  const [triggerResult, setTriggerResult] = useState<{ success: boolean; tasks_generated: number; error?: string } | null>(null);
+
+  const handleTriggerAnalysis = async () => {
+    setIsTriggering(true);
+    setTriggerResult(null);
+    try {
+      const res = await fetch("/api/ai-autonomy/trigger-analysis", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTriggerResult({ success: false, tasks_generated: 0, error: data.error || "Errore sconosciuto" });
+        toast({ title: "Errore", description: data.error || "Impossibile avviare l'analisi", variant: "destructive" });
+        return;
+      }
+      setTriggerResult(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/system-status"] });
+      queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string)?.startsWith?.("/api/ai-autonomy/autonomous-logs") || query.queryKey[0] === "/api/ai-autonomy/autonomous-logs" });
+      toast({
+        title: data.success ? "Analisi completata" : "Analisi fallita",
+        description: data.success
+          ? `${data.tasks_generated} task generati dall'analisi.`
+          : data.error || "Errore durante l'analisi",
+        variant: data.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({ title: "Errore", description: "Impossibile avviare l'analisi", variant: "destructive" });
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
   const [autonomousLogsPage, setAutonomousLogsPage] = useState(1);
   const [autonomousLogTypeFilter, setAutonomousLogTypeFilter] = useState("all");
   const [autonomousLogSeverityFilter, setAutonomousLogSeverityFilter] = useState("all");
@@ -2045,7 +2079,35 @@ export default function ConsultantAIAutonomyPage() {
                                   <Separator />
 
                                   <div className="space-y-2">
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controllo Autonomo</p>
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controllo Autonomo</p>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1.5"
+                                        onClick={handleTriggerAnalysis}
+                                        disabled={isTriggering || !systemStatus.is_active || systemStatus.autonomy_level < 2}
+                                      >
+                                        {isTriggering ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Play className="h-3 w-3" />
+                                        )}
+                                        {isTriggering ? "Analisi in corso..." : "Avvia Analisi Ora"}
+                                      </Button>
+                                    </div>
+                                    {triggerResult && (
+                                      <div className={cn(
+                                        "p-2.5 rounded-lg border text-xs",
+                                        triggerResult.success
+                                          ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/40 text-green-700 dark:text-green-300"
+                                          : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300"
+                                      )}>
+                                        {triggerResult.success
+                                          ? `Analisi completata: ${triggerResult.tasks_generated} task generati.`
+                                          : `Errore: ${triggerResult.error || "Analisi fallita"}`}
+                                      </div>
+                                    )}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                       <div className="p-2.5 rounded-lg bg-muted/20">
                                         <p className="text-[10px] text-muted-foreground">Ultimo controllo</p>

@@ -6,7 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-factory";
 import { generateExecutionPlan, type ExecutionStep } from "../ai/autonomous-decision-engine";
 import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
-import { logActivity } from "../cron/ai-task-scheduler";
+import { logActivity, triggerAutonomousGenerationForConsultant } from "../cron/ai-task-scheduler";
 import { getTemplatesByDirection } from '../voice/voice-templates';
 
 const router = Router();
@@ -1203,6 +1203,44 @@ router.get("/autonomous-logs", authenticateToken, requireAnyRole(["consultant", 
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching autonomous logs:", error);
     return res.status(500).json({ error: "Failed to fetch autonomous logs" });
+  }
+});
+
+router.post("/trigger-analysis", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const settingsCheck = await db.execute(sql`SELECT is_active, autonomy_level FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1`);
+    const s = settingsCheck.rows[0] as any;
+    if (!s || !s.is_active || s.autonomy_level < 2) {
+      return res.status(400).json({ success: false, error: "Sistema non attivo o livello autonomia insufficiente (min. 2)" });
+    }
+
+    console.log(`🧠 [AI-AUTONOMY] Manual trigger by consultant ${consultantId}`);
+
+    const result = await triggerAutonomousGenerationForConsultant(consultantId);
+
+    await logActivity(consultantId, {
+      event_type: 'autonomous_analysis',
+      severity: result.error ? 'error' : 'info',
+      title: result.error ? 'Analisi manuale fallita' : `Analisi manuale completata`,
+      description: result.error
+        ? `Errore durante l'analisi manuale: ${result.error}`
+        : `Analisi manuale avviata. ${result.tasksGenerated} task generati.`,
+      event_data: { manual: true, tasks_generated: result.tasksGenerated, error: result.error || null },
+    });
+
+    return res.json({
+      success: !result.error,
+      tasks_generated: result.tasksGenerated,
+      error: result.error || null,
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error triggering analysis:", error);
+    return res.status(500).json({ error: "Failed to trigger analysis" });
   }
 });
 

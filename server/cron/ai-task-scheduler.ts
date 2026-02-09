@@ -1487,3 +1487,13 @@ export async function triggerAITaskProcessing(): Promise<void> {
  * Export scheduleNextRecurrence for use by callback when call completes
  */
 export { scheduleNextRecurrence, calculateNextDate };
+
+export async function triggerAutonomousGenerationForConsultant(consultantId: string): Promise<{ tasksGenerated: number; error?: string }> {
+  try {
+    const tasksGenerated = await generateTasksForConsultant(consultantId);
+    return { tasksGenerated };
+  } catch (error: any) {
+    console.error(`❌ [AUTONOMOUS-GEN] Manual trigger error for ${consultantId}:`, error.message);
+    return { tasksGenerated: 0, error: error.message };
+  }
+}
