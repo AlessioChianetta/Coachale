@@ -428,6 +428,9 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     const originFilter = req.query.origin as string | undefined;
 
     let conditions = [sql`consultant_id = ${consultantId}`, sql`task_type = 'ai_task'`];
+    if (!statusFilter || statusFilter === 'all') {
+      conditions.push(sql`status != 'cancelled'`);
+    }
     if (statusFilter && statusFilter !== 'all') {
       if (statusFilter === 'active') {
         conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved')`);
@@ -521,7 +524,7 @@ router.get("/tasks-stats", authenticateToken, requireAnyRole(["consultant", "sup
 
     const result = await db.execute(sql`
       SELECT 
-        COUNT(*)::int as total,
+        COUNT(*) FILTER (WHERE status != 'cancelled')::int as total,
         COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
         COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
         COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
@@ -1452,7 +1455,7 @@ router.patch("/tasks/:id/cancel", authenticateToken, requireAnyRole(["consultant
       SET status = 'cancelled', updated_at = NOW()
       WHERE id = ${id}
         AND consultant_id = ${consultantId}
-        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused')
+        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'in_progress')
     `);
 
     if ((result.rowCount ?? 0) === 0) {

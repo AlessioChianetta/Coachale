@@ -1564,6 +1564,18 @@ export default function ConsultantAIAutonomyPage() {
     enabled: activeTab === "settings",
   });
 
+  const { data: pendingApprovalTasks } = useQuery<AITask[]>({
+    queryKey: ["/api/ai-autonomy/pending-approval-tasks"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/tasks?status=active&origin=autonomous&limit=20", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      return (data.tasks || []).filter((t: any) => t.status === 'scheduled');
+    },
+    enabled: activeTab === "dashboard",
+    refetchInterval: 10000,
+  });
+
   const { data: activeTasks } = useQuery<AITask[]>({
     queryKey: ["/api/ai-autonomy/active-tasks"],
     queryFn: async () => {
@@ -3894,6 +3906,104 @@ export default function ConsultantAIAutonomyPage() {
                   </Card>
                 )}
 
+                {pendingApprovalTasks && pendingApprovalTasks.length > 0 && (
+                  <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-amber-500" />
+                        <CardTitle className="text-base">Task Generati dall'AI</CardTitle>
+                        <Badge variant="outline" className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300">
+                          {pendingApprovalTasks.length}
+                        </Badge>
+                      </div>
+                      <CardDescription>Task autonomi in attesa della tua approvazione</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {pendingApprovalTasks.map((task) => (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-3 rounded-lg border border-amber-200/50 dark:border-amber-800/50 bg-background/80 space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{task.ai_instruction}</p>
+                              {task.ai_reasoning && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.ai_reasoning}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center flex-wrap gap-1.5">
+                            {getCategoryBadge(task.task_category)}
+                            {getPriorityIndicator(task.priority)}
+                            {task.ai_role && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                {task.ai_role}
+                              </Badge>
+                            )}
+                            {task.contact_name && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                <User className="h-3 w-3 mr-0.5" />
+                                {task.contact_name}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, {
+                                    method: "PATCH",
+                                    headers: getAuthHeaders(),
+                                  });
+                                  if (!res.ok) throw new Error("Failed");
+                                  toast({ title: "Task avviato", description: "Il task è stato avviato con successo" });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                  queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                } catch {
+                                  toast({ title: "Errore", description: "Impossibile avviare il task", variant: "destructive" });
+                                }
+                              }}
+                            >
+                              <Play className="h-3 w-3 mr-1" />
+                              Avvia
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
+                                    method: "PATCH",
+                                    headers: getAuthHeaders(),
+                                  });
+                                  if (!res.ok) throw new Error("Failed");
+                                  toast({ title: "Task eliminato", description: "Il task è stato eliminato" });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                  queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                } catch {
+                                  toast({ title: "Errore", description: "Impossibile eliminare il task", variant: "destructive" });
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Elimina
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="pt-6">
@@ -3960,6 +4070,7 @@ export default function ConsultantAIAutonomyPage() {
                       <SelectItem value="completed">Completati</SelectItem>
                       <SelectItem value="failed">Falliti</SelectItem>
                       <SelectItem value="paused">In pausa</SelectItem>
+                      <SelectItem value="cancelled">Cancellati</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={dashboardCategoryFilter} onValueChange={(val) => { setDashboardCategoryFilter(val); setDashboardPage(1); }}>
